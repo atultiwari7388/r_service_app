@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/dashboard/widgets/search_result_Screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/text_field.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
@@ -169,8 +170,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     "https://firebasestorage.googleapis.com/v0/b/food-otg-service-app.appspot.com/o/7.png?alt=media&token=ce747cf1-39eb-4cdd-936a-8db77a8f6299"
   ];
 
-  TextEditingController titleController = new TextEditingController();
-  TextEditingController descriptionController = new TextEditingController();
+  TextEditingController _whereToSearchController = new TextEditingController();
+  TextEditingController _serviceAndNetworkController =
+      new TextEditingController();
   int _currentIndex = 0;
 
   @override
@@ -184,74 +186,141 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 20.h),
-              buildImageSlider(),
-              SizedBox(height: 20.h),
-              // Request form container
+
+              // buildImageSlider(),
+              // SizedBox(height: 20.h),
               Container(
-                padding: EdgeInsets.all(20.w),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
                 decoration: BoxDecoration(
-                  color: kGrayLight.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(15.r),
-                ),
+                    color: kSecondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.r)),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Text(
-                        "Submit Your Details",
-                        style: TextStyle(
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    _buildTextField(
+                        appbarTitle.isEmpty
+                            ? "Fetching Addresses....."
+                            : appbarTitle,
+                        appbarTitle.isEmpty
+                            ? "Fetching Addresses....."
+                            : appbarTitle,
+                        _whereToSearchController,
+                        false),
                     SizedBox(height: 20.h),
-                    Text(
-                      "Title",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 5.h),
-                    TextFieldInputWidget(
-                      hintText: "Enter your title",
-                      textEditingController: titleController,
-                      textInputType: TextInputType.text,
-                      icon: Icons.abc,
-                      isIconApply: false,
-                    ),
+                    _buildTextField("Service or Network", "Service or Network",
+                        _serviceAndNetworkController, true),
                     SizedBox(height: 20.h),
-                    Text(
-                      "Description",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 5.h),
-                    TextFieldInputWidget(
-                      hintText: "Enter your description",
-                      textEditingController: descriptionController,
-                      textInputType: TextInputType.text,
-                      icon: Icons.abc,
-                      isIconApply: false,
-                      maxLines: 5,
-                    ),
-                    SizedBox(height: 30.h),
-                    Center(
-                      child: CustomButton(
-                          text: "Submit", onPress: () {}, color: kPrimary),
-                    ),
+                    CustomButton(
+                        text: "Search",
+                        onPress: () => Get.to(() => SearchResultsScreen(
+                            searchText:
+                                _serviceAndNetworkController.text.toString())),
+                        color: kPrimary),
                   ],
                 ),
               ),
+              SizedBox(height: 40.h),
+              // Quick Search Section
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Quick Search',
+                    style: appStyle(22, kDark, FontWeight.w500)),
+              ),
+              SizedBox(height: 10.0.h),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
+                decoration: BoxDecoration(
+                    color: kSecondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.r)),
+                child: GridView.count(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  children: _buildQuickSearchItems(),
+                ),
+              ),
+
               SizedBox(height: 100.h),
             ],
           ),
         ),
       ),
     );
+  }
+
+  // TextField Builder
+  Widget _buildTextField(String label, String hint,
+      TextEditingController controller, bool enable) {
+    final inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12.0), // Rounded corners
+      borderSide: BorderSide(
+        color: Colors.grey.shade300, // Border color
+        width: 1.0,
+      ),
+    );
+
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 4.0.h),
+      decoration: BoxDecoration(
+        color: Colors.white, // White background
+        borderRadius: BorderRadius.circular(12.0.r), // Rounded corners
+      ),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          enabled: enable,
+          labelText: label,
+          hintText: hint,
+          border: inputBorder,
+          focusedBorder: inputBorder,
+          enabledBorder: inputBorder,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.all(8),
+          hintStyle: appStyle(14, kGrayLight, FontWeight.normal),
+          labelStyle: appStyle(14, kDark, FontWeight.normal),
+        ),
+      ),
+    );
+  }
+
+// Quick Search Items Builder
+  List<Widget> _buildQuickSearchItems() {
+    List<Map<String, dynamic>> items = [
+      {"title": "TRUCK REPAIR", "icon": Icons.build},
+      {"title": "TIRES", "icon": Icons.directions_car},
+      {"title": "TRUCK STOPS", "icon": Icons.local_gas_station},
+      {"title": "MOBILE REPAIR", "icon": Icons.local_shipping},
+      {"title": "MOBILE TIRES", "icon": Icons.airline_seat_recline_normal},
+      {"title": "TOWING", "icon": Icons.local_taxi},
+    ];
+
+    return items.map((item) {
+      return ElevatedButton(
+        onPressed: () {
+          Get.to(
+              () => SearchResultsScreen(searchText: item["title"].toString()));
+          // Your quick search logic here
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kPrimary,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(item["icon"], color: Colors.white, size: 25.sp),
+            SizedBox(height: 5.h),
+            Text(
+              item["title"],
+              style: TextStyle(color: Colors.white, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }).toList();
   }
 
   /**--------------------------- Build Carousel Slider ----------------------------**/
@@ -312,6 +381,67 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   Widget _buildPlaceholder() {
     return Center(child: CircularProgressIndicator());
   }
+
+  // // Request form container
+  // Container(
+  //   padding: EdgeInsets.all(20.w),
+  //   decoration: BoxDecoration(
+  //     color: kGrayLight.withOpacity(0.1),
+  //     borderRadius: BorderRadius.circular(15.r),
+  //   ),
+  //   child: Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Center(
+  //         child: Text(
+  //           "Submit Your Details",
+  //           style: TextStyle(
+  //             fontSize: 20.sp,
+  //             fontWeight: FontWeight.bold,
+  //           ),
+  //         ),
+  //       ),
+  //       SizedBox(height: 20.h),
+  //       Text(
+  //         "Title",
+  //         style: TextStyle(
+  //           fontSize: 16.sp,
+  //           fontWeight: FontWeight.w500,
+  //         ),
+  //       ),
+  //       SizedBox(height: 5.h),
+  //       TextFieldInputWidget(
+  //         hintText: "Enter your title",
+  //         textEditingController: titleController,
+  //         textInputType: TextInputType.text,
+  //         icon: Icons.abc,
+  //         isIconApply: false,
+  //       ),
+  //       SizedBox(height: 20.h),
+  //       Text(
+  //         "Description",
+  //         style: TextStyle(
+  //           fontSize: 16.sp,
+  //           fontWeight: FontWeight.w500,
+  //         ),
+  //       ),
+  //       SizedBox(height: 5.h),
+  //       TextFieldInputWidget(
+  //         hintText: "Enter your description",
+  //         textEditingController: descriptionController,
+  //         textInputType: TextInputType.text,
+  //         icon: Icons.abc,
+  //         isIconApply: false,
+  //         maxLines: 5,
+  //       ),
+  //       SizedBox(height: 30.h),
+  //       Center(
+  //         child: CustomButton(
+  //             text: "Submit", onPress: () {}, color: kPrimary),
+  //       ),
+  //     ],
+  //   ),
+  // ),
 
   // ----------------------------------- Custom App bar ------------------------------
   PreferredSize buildCustomAppBar(BuildContext context) {

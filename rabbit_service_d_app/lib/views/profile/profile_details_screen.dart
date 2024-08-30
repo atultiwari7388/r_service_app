@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:regal_service_d_app/widgets/custom_background_container.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/text_field.dart';
 import '../../services/collection_references.dart';
@@ -286,13 +285,13 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   }
 
   Widget _buildSectionCard(
-      BuildContext context, {
-        required String title,
-        required IconData icon,
-        required bool isExpanded,
-        required Function onToggle,
-        required List<Widget> children,
-      }) {
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required bool isExpanded,
+    required Function onToggle,
+    required List<Widget> children,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 15.w),
       child: Container(
@@ -345,7 +344,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       ),
     );
   }
-
 }
 
 // import 'package:flutter/material.dart';

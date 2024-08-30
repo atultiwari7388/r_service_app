@@ -69,7 +69,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               children: [
                 Text(
                   "Forgot \nPassword?",
-                  style: appStyle(34, kDark, FontWeight.normal),
+                  style: appStyle(34, kPrimary, FontWeight.normal),
                 ),
                 SizedBox(height: 10.h),
                 Text(
