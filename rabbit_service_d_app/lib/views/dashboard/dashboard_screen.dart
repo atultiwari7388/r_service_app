@@ -6,7 +6,6 @@ import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/dashboard/widgets/search_result_Screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
-import 'package:regal_service_d_app/widgets/text_field.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../services/latlng_converter.dart';
 import '../../utils/show_toast_msg.dart';
@@ -178,7 +177,30 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: buildCustomAppBar(context),
+      // appBar: buildCustomAppBar(context),
+      appBar: AppBar(
+        backgroundColor: kLightWhite,
+        elevation: 0,
+        centerTitle: true,
+        title: Image.asset(
+          'assets/no-background-logo.png', // Replace with your logo asset path
+          height: 100.h, // Adjust the height as needed
+        ),
+        actions: [
+          GestureDetector(
+            onTap: () => Get.to(() => ProfileScreen()),
+            child: CircleAvatar(
+              radius: 19.r,
+              backgroundColor: kPrimary,
+              child: Text("A", style: appStyle(18, kWhite, FontWeight.normal)),
+            ),
+          ),
+          SizedBox(
+            width: 20.w,
+          ),
+        ],
+      ),
+
       body: SingleChildScrollView(
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 5.h),
@@ -196,6 +218,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     borderRadius: BorderRadius.circular(12.r)),
                 child: Column(
                   children: [
+                    _buildTextField("Service or Network", "Service or Network",
+                        _serviceAndNetworkController, true),
+                    SizedBox(height: 20.h),
                     _buildTextField(
                         appbarTitle.isEmpty
                             ? "Fetching Addresses....."
@@ -205,9 +230,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             : appbarTitle,
                         _whereToSearchController,
                         false),
-                    SizedBox(height: 20.h),
-                    _buildTextField("Service or Network", "Service or Network",
-                        _serviceAndNetworkController, true),
                     SizedBox(height: 20.h),
                     CustomButton(
                         text: "Search",
@@ -382,67 +404,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     return Center(child: CircularProgressIndicator());
   }
 
-  // // Request form container
-  // Container(
-  //   padding: EdgeInsets.all(20.w),
-  //   decoration: BoxDecoration(
-  //     color: kGrayLight.withOpacity(0.1),
-  //     borderRadius: BorderRadius.circular(15.r),
-  //   ),
-  //   child: Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Center(
-  //         child: Text(
-  //           "Submit Your Details",
-  //           style: TextStyle(
-  //             fontSize: 20.sp,
-  //             fontWeight: FontWeight.bold,
-  //           ),
-  //         ),
-  //       ),
-  //       SizedBox(height: 20.h),
-  //       Text(
-  //         "Title",
-  //         style: TextStyle(
-  //           fontSize: 16.sp,
-  //           fontWeight: FontWeight.w500,
-  //         ),
-  //       ),
-  //       SizedBox(height: 5.h),
-  //       TextFieldInputWidget(
-  //         hintText: "Enter your title",
-  //         textEditingController: titleController,
-  //         textInputType: TextInputType.text,
-  //         icon: Icons.abc,
-  //         isIconApply: false,
-  //       ),
-  //       SizedBox(height: 20.h),
-  //       Text(
-  //         "Description",
-  //         style: TextStyle(
-  //           fontSize: 16.sp,
-  //           fontWeight: FontWeight.w500,
-  //         ),
-  //       ),
-  //       SizedBox(height: 5.h),
-  //       TextFieldInputWidget(
-  //         hintText: "Enter your description",
-  //         textEditingController: descriptionController,
-  //         textInputType: TextInputType.text,
-  //         icon: Icons.abc,
-  //         isIconApply: false,
-  //         maxLines: 5,
-  //       ),
-  //       SizedBox(height: 30.h),
-  //       Center(
-  //         child: CustomButton(
-  //             text: "Submit", onPress: () {}, color: kPrimary),
-  //       ),
-  //     ],
-  //   ),
-  // ),
-
   // ----------------------------------- Custom App bar ------------------------------
   PreferredSize buildCustomAppBar(BuildContext context) {
     return PreferredSize(
@@ -542,6 +503,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     // Icon(Icons.location_on, color: kSecondary, size: 35.sp),
                   ],
                 ),
+
                 GestureDetector(
                   onTap: () => Get.to(() => ProfileScreen()),
                   child: CircleAvatar(
