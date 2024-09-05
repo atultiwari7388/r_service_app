@@ -3,8 +3,7 @@ import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/views/dashboard/dashboard_screen.dart';
 import 'package:regal_service_d_app/views/history/history_screen.dart';
-import 'package:regal_service_d_app/views/profile/profile_screen.dart';
-import 'package:regal_service_d_app/views/upload/upload_request_screen.dart';
+import 'package:regal_service_d_app/views/myJobs/my_jobs_screen.dart';
 import '../controllers/tab_index_controller.dart';
 import '../utils/app_styles.dart';
 import '../utils/constants.dart';
@@ -32,7 +31,7 @@ class _EntryScreenState extends State<EntryScreen> {
   Widget build(BuildContext context) {
     List<Widget> screens = [
       DashBoardScreen(),
-      RequestsScreen(),
+      MyJobsScreen(),
       // UploadRequestsScreen(),
       HistoryScreen(),
       // ProfileScreen(),
@@ -73,8 +72,8 @@ class _EntryScreenState extends State<EntryScreen> {
                       label: "Home",
                     ),
                     const BottomNavigationBarItem(
-                      icon: Icon(AntDesign.message1),
-                      label: "Requests",
+                      icon: Icon(AntDesign.jpgfile1),
+                      label: "My Jobs",
                     ),
                     // const BottomNavigationBarItem(
                     //   icon: Icon(AntDesign.upload),

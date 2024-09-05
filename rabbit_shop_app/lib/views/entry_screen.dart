@@ -3,7 +3,6 @@ import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
 import 'package:regal_shop_app/views/dashboard/dashboard_screen.dart';
 import 'package:regal_shop_app/views/history/history_screen.dart';
-import 'package:regal_shop_app/views/new/new_request_screen.dart';
 import 'package:regal_shop_app/views/profile/profile_screen.dart';
 import '../controllers/tab_index_controller.dart';
 import '../utils/app_styles.dart';
@@ -31,9 +30,8 @@ class _EntryScreenState extends State<EntryScreen> {
   Widget build(BuildContext context) {
     List<Widget> screens = [
       DashBoardScreen(),
-      NewRequestScreeen(),
-      OrdersScreen(setTab: setTab),
-      // ProfileScreen(),
+      UpcomingAndCompletedJobsScreen(setTab: setTab),
+      ProfileScreen(),
     ];
 
     final controller = Get.put(TabIndexController());
@@ -47,8 +45,10 @@ class _EntryScreenState extends State<EntryScreen> {
               alignment: Alignment.bottomCenter,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.transparent, // Keep the background transparent
-                  border: Border.all(color: kGray, width: 1), // Add border here
+                  color: Colors.transparent,
+                  // Keep the background transparent
+                  border: Border.all(color: kGray, width: 1),
+                  // Add border here
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: BottomNavigationBar(
@@ -71,12 +71,12 @@ class _EntryScreenState extends State<EntryScreen> {
                       label: "Home",
                     ),
                     const BottomNavigationBarItem(
-                      icon: Icon(AntDesign.message1),
-                      label: "New",
+                      icon: Icon(AntDesign.jpgfile1),
+                      label: "Jobs",
                     ),
                     BottomNavigationBarItem(
-                      icon: const Icon(AntDesign.book),
-                      label: "History",
+                      icon: const Icon(AntDesign.user),
+                      label: "Profile",
                     ),
                   ],
                 ),

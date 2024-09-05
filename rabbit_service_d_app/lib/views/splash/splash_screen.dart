@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,13 +17,23 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final user = FirebaseAuth.instance.currentUser;
+
   @override
   void initState() {
     super.initState();
-    Timer(Duration(seconds: 3), () {
-      Get.offAll(() => LoginScreen(),
-          transition: Transition.cupertino,
-          duration: const Duration(milliseconds: 900));
+    Timer(const Duration(seconds: 2), () {
+      if (user != null) {
+        Get.offAll(() => EntryScreen(),
+            transition: Transition.cupertino,
+            duration: const Duration(milliseconds: 900));
+        log("User is authenticated");
+      } else {
+        Get.offAll(() => const LoginScreen(),
+            transition: Transition.cupertino,
+            duration: const Duration(milliseconds: 900));
+        log("User is null");
+      }
     });
   }
 

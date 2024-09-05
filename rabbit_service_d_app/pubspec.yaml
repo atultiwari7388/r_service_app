@@ -35,6 +35,7 @@ dependencies:
   flutter_vector_icons:
   flutter_screenutil:
   google_maps_flutter:
+  flutter_google_places:
   http:
   url_launcher: ^6.2.6
   image_picker:

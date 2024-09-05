@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "605779344995",
+    "project_id": "rabbit-service-d3d90",
+    "storage_bucket": "rabbit-service-d3d90.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605779344995:android:f4689d5242c0ed90018256",
+        "android_client_info": {
+          "package_name": "com.rabbit_u_d_app.rabbit_services_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWscm-Y87peiFPzHb7OzNnUhCse5yUhKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

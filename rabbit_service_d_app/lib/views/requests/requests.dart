@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/widgets/request_history_upcoming_request.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 import '../profile/profile_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
-  const RequestsScreen({super.key});
+  const RequestsScreen(
+      {super.key,
+      required this.serviceName,
+      this.companyAndVehicleName = "",
+      this.id = ""});
+  final String serviceName;
+  final String companyAndVehicleName;
+  final String id;
 
   @override
   State<RequestsScreen> createState() => _RequestsScreenState();
@@ -47,10 +56,26 @@ class _RequestsScreenState extends State<RequestsScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              if (_selectedCardIndex == null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 260.w,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildInfoBox("${widget.id}", kSecondary),
+                          SizedBox(width: 5.w),
+                          _buildInfoBox(
+                              "${widget.companyAndVehicleName}", kPrimary),
+                          SizedBox(width: 5.w),
+                          // _buildInfoBox("${widget.serviceName}", kSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_selectedCardIndex == null)
                     Container(
                       padding:
                           EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -77,8 +102,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                             child: Text("Price"),
                           ),
                           PopupMenuItem(
-                            value: "Review",
-                            child: Text("Review"),
+                            value: "Rating",
+                            child: Text("Rating"),
                           ),
                         ],
                         child: Row(
@@ -93,17 +118,17 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         ),
                       ),
                     ),
-                  ],
-                ),
+                ],
+              ),
               SizedBox(height: 10.h),
-              for (int i = 0; i < 10; i++)
+              for (int i = 0; i < 2; i++)
                 RequestAcceptHistoryCard(
-                  shopName: "Shop $i",
-                  time: "12:00 PM",
+                  shopName: "Johan Tyer Shop",
+                  time: "25 mints",
                   distance: "5 km",
                   rating: "4.5",
                   arrivalCharges: "100",
-                  perHourCharges: "50",
+                  // perHourCharges: "50",
                   imagePath: "assets/images/profile.jpg",
                   isAcceptVisible: _selectedCardIndex == null,
                   isPayVisible: _selectedCardIndex == i &&
@@ -114,16 +139,18 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       _cardStates[i] == CardState.Confirmed,
                   isHidden:
                       _selectedCardIndex != null && _selectedCardIndex != i,
+                  languages: ["Hindi", "English", "Punjabi", "Spanish"],
                   onAcceptTap: () {
                     _showConfirmDialog(i);
                   },
                   onPayTap: () {
-                    _handlePayTap(i);
+                    _handlePayTap(i, "100");
                   },
                   onConfirmStartTap: () {
                     _handleConfirmStartTap(i);
                   },
                   onCallTap: () {
+                    makePhoneCall("+9111111111");
                     // Handle call action
                   },
                 ),
@@ -131,6 +158,20 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoBox(String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8.0.r),
+      ),
+      child: Text(
+        text,
+        style: appStyle(12.sp, color, FontWeight.normal),
       ),
     );
   }
@@ -169,9 +210,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
     );
   }
 
-  void _handlePayTap(int index) {
+  void _handlePayTap(int index, String payCharges) {
     if (_cardStates[index] == CardState.Accepted) {
-      _showPayDialog(index);
+      _showPayDialog(index, payCharges);
     } else {
       // Show a message or handle the case where the card is not in the right state
       // showToast("You can only pay for accepted requests.");
@@ -187,9 +228,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
     }
   }
 
-  void _showPayDialog(int index) {
+  void _showPayDialog(int index, String payCharges) {
     Get.defaultDialog(
-      title: "Pay \$10",
+      title: "Pay \$$payCharges",
       middleText: "Please proceed to pay.",
       confirm: ElevatedButton(
         onPressed: () {

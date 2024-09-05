@@ -13,6 +13,7 @@ class TextFieldInputWidget extends StatelessWidget {
     this.isPass = false,
     this.isIconApply = true,
     this.maxLines = 1,
+    this.validator,
   }) : super(key: key);
 
   final String hintText;
@@ -22,6 +23,8 @@ class TextFieldInputWidget extends StatelessWidget {
   final IconData icon;
   final bool isIconApply;
   final int maxLines;
+  final String? Function(String?)? validator;
+
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +42,8 @@ class TextFieldInputWidget extends StatelessWidget {
         color: Colors.white, // White background
         borderRadius: BorderRadius.circular(12.0.r), // Rounded corners
       ),
-      child: TextField(
+      child: TextFormField(
+        validator: validator,
         controller: textEditingController,
         maxLines: maxLines,
         decoration: InputDecoration(

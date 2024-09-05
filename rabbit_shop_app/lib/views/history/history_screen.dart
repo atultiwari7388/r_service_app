@@ -2,26 +2,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:get/get.dart';
+import 'package:regal_shop_app/views/dashboard/widgets/upcoming_request_card.dart';
 import 'package:regal_shop_app/widgets/custom_background_container.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 
-class OrdersScreen extends StatefulWidget {
-  const OrdersScreen({super.key, required this.setTab});
+class UpcomingAndCompletedJobsScreen extends StatefulWidget {
+  const UpcomingAndCompletedJobsScreen({super.key, required this.setTab});
+
   final Function? setTab;
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  State<UpcomingAndCompletedJobsScreen> createState() =>
+      _UpcomingAndCompletedJobsScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen>
+class _UpcomingAndCompletedJobsScreenState
+    extends State<UpcomingAndCompletedJobsScreen>
     with SingleTickerProviderStateMixin {
   late TextEditingController searchController;
   late Stream<QuerySnapshot> ordersStream;
   bool isVendorActive = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabsController;
+  int _currentStatus = 1;
 
   void switchTab(int index) {
     _tabsController.animateTo(index);
@@ -31,7 +37,7 @@ class _OrdersScreenState extends State<OrdersScreen>
   void initState() {
     super.initState();
     searchController = TextEditingController();
-    _tabsController = TabController(length: 3, vsync: this);
+    _tabsController = TabController(length: 2, vsync: this);
 
     // FirebaseFirestore.instance
     //     .collection("Vendors")
@@ -56,13 +62,13 @@ class _OrdersScreenState extends State<OrdersScreen>
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
           backgroundColor: kLightWhite,
           title: ReusableText(
-            text: "Orders",
+            text: "Jobs",
             style: appStyle(20, kDark, FontWeight.normal),
           ),
         ),
@@ -74,7 +80,6 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Widget buildOrderStreamSection() {
-    List<Map<String, dynamic>> newOrders = [];
     List<Map<String, dynamic>> ongoingOrders = [];
     List<Map<String, dynamic>> completedOrders = [];
     return DefaultTabController(
@@ -95,18 +100,42 @@ class _OrdersScreenState extends State<OrdersScreen>
               insets: EdgeInsets.symmetric(horizontal: 20.w),
             ),
             tabs: const [
-              Tab(text: "New"),
               Tab(text: "Ongoing"),
-              Tab(text: "Complete/Cancel"),
+              Tab(text: "Completed"),
             ],
           ),
           Expanded(
             child: TabBarView(
               controller: _tabsController,
               children: [
-                _buildOrdersList(newOrders, 0),
                 _buildOrdersList(ongoingOrders, 1),
-                _buildOrdersList(completedOrders, 2),
+
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                  child: UpcomingRequestCard(
+                    userName: "Sachin Minhas",
+                    vehicleName: "Freightliner",
+                    address: "STPI - 2nd phase, Mohali PB.",
+                    serviceName: "5th wheel",
+                    jobId: "#RMS0001",
+                    imagePath: "assets/images/profile.jpg",
+                    date: "25 Aug 2024",
+                    buttonName: "Start",
+                    onButtonTap: () {
+                      setState(() {
+                        // status == 2;
+                        _showConfirmDialog();
+                      });
+                    },
+                    currentStatus: 3,
+                    companyNameAndVehicleName: "Freightliner (A45-143)",
+                    onCompletedButtonTap: () {},
+                    rating: "4.3",
+                    arrivalCharges: "20",
+                  ),
+                ),
+
+                // _buildOrdersList(completedOrders, 3),
               ],
             ),
           ),
@@ -148,7 +177,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     //   return orderId.contains(searchQuery);
     // }).toList();
 
-    return CustomBackgroundContainer(
+    return SingleChildScrollView(
       child: Column(
         children: [
           //filter and search bar section
@@ -158,27 +187,128 @@ class _OrdersScreenState extends State<OrdersScreen>
               children: [
                 Expanded(child: buildTopSearchBar()),
                 SizedBox(width: 5.w),
-                FilterChip(
-                    label: const Icon(Icons.calendar_month, color: kPrimary),
-                    onSelected: (value) {})
+                // FilterChip(
+                //     label: const Icon(Icons.sort, color: kPrimary),
+                //     onSelected: (value) {})
               ],
             ),
           ),
 
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 1,
-            itemBuilder: (ctx, index) {
-              return Container();
-            },
+          // ListView.builder(
+          //   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          //   shrinkWrap: true,
+          //   physics: const NeverScrollableScrollPhysics(),
+          //   itemCount: 1,
+          //   itemBuilder: (ctx, index) {
+          //     return UpcomingRequestCard(
+          //       userName: "Sachin Minhas",
+          //       vehicleName: "Freightliner",
+          //       address: "STPI - 2nd phase, Mohali PB.",
+          //       serviceName: "5th wheel",
+          //       jobId: "#RMS0001",
+          //       imagePath: "assets/images/profile.jpg",
+          //       date: "25 Aug 2024",
+          //       buttonName: "Start",
+          //       onButtonTap: () {
+          //         setState(() {
+          //           status == 2;
+          //           _showConfirmDialog();
+          //         });
+          //       },
+          //       currentStatus: status,
+          //       companyNameAndVehicleName: "Freightliner (A45-143)",
+          //       onCompletedButtonTap: (){},
+          //       rating: "4.3",
+          //       arrivalCharges: "20",
+          //     );
+          //
+          //   },
+          // ),
+
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            child: UpcomingRequestCard(
+              userName: "Sachin Minhas",
+              vehicleName: "Freightliner",
+              address: "STPI - 2nd phase, Mohali PB.",
+              serviceName: "5th wheel",
+              jobId: "#RMS0001",
+              imagePath: "assets/images/profile.jpg",
+              date: "25 Aug 2024",
+              buttonName: "Start",
+              onButtonTap: () {
+                setState(() {
+                  status == 2;
+                  _showConfirmDialog();
+                });
+              },
+              currentStatus: status,
+              companyNameAndVehicleName: "Freightliner (A45-143)",
+              onCompletedButtonTap: () {},
+              rating: "4.3",
+              arrivalCharges: "20",
+            ),
           ),
-          // SizedBox(height: 100.h),
+          // SizedBox(height: 10.h),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            child: UpcomingRequestCard(
+              userName: "Sachin Minhas",
+              vehicleName: "Freightliner",
+              address: "STPI - 2nd phase, Mohali PB.",
+              serviceName: "5th wheel",
+              jobId: "#RMS0001",
+              imagePath: "assets/images/profile.jpg",
+              date: "25 Aug 2024",
+              buttonName: "Start",
+              onButtonTap: () {
+                setState(() {
+                  status == 2;
+                  _showConfirmDialog();
+                });
+              },
+              currentStatus: 2,
+              companyNameAndVehicleName: "Freightliner (A45-143)",
+              onCompletedButtonTap: () {},
+              rating: "4.3",
+              arrivalCharges: "20",
+            ),
+          ),
+
+          // // SizedBox(height: 100.h),
         ],
       ),
-      horizontalW: 20,
-      vertical: 1,
-      scrollPhysics: NeverScrollableScrollPhysics(),
+    );
+  }
+
+  void _showConfirmDialog() {
+    Get.defaultDialog(
+      title: "Waiting",
+      middleText: "Waiting for Driver confirmation..",
+      // textCancel: "No",
+      // textConfirm: "Yes",
+      // cancel: OutlinedButton(
+      //   onPressed: () {
+      //     Get.back(); // Close the dialog if "No" is pressed
+      //   },
+      //   child: Text(
+      //     "No",
+      //     style: TextStyle(color: Colors.red), // Custom color for "No" button
+      //   ),
+      // ),
+      confirm: ElevatedButton(
+        onPressed: () {
+          Get.back(); // Close the current dialog
+          setState(() {});
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green, // Custom color for "Yes" button
+        ),
+        child: Text(
+          "Okay",
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
     );
   }
 
@@ -189,7 +319,7 @@ class _OrdersScreenState extends State<OrdersScreen>
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18.h),
-          // border: Border.all(color: kGrayLight),
+          // border: Border.all(color: kPrimary.withOpacity(0.1)),
           boxShadow: const [
             BoxShadow(
               color: kLightWhite,
@@ -205,10 +335,12 @@ class _OrdersScreenState extends State<OrdersScreen>
             setState(() {});
           },
           decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: "Search by #00001",
-              prefixIcon: const Icon(Icons.search),
-              prefixStyle: appStyle(14, kDark, FontWeight.w200)),
+            border: InputBorder.none,
+            hintText: "Search by #00001",
+            prefixIcon: Icon(Icons.search, color: kPrimary.withOpacity(0.5)),
+            prefixStyle:
+                appStyle(14, kPrimary.withOpacity(0.1), FontWeight.w200),
+          ),
         ),
       ),
     );
