@@ -69,6 +69,8 @@ class AuthController extends GetxController {
           break;
         default:
           errorMessage = e.message ?? "An unknown error occurred.";
+
+          showToastMessage("Error", errorMessage, Colors.red);
       }
     } finally {
       isUserAcCreated = false;

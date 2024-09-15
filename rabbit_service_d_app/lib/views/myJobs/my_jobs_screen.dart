@@ -1,11 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/views/myJobs/widgets/my_jobs_card.dart';
+import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 import '../profile/profile_screen.dart';
+import '../requests/requests.dart';
 
 class MyJobsScreen extends StatefulWidget {
   const MyJobsScreen({super.key});
@@ -28,17 +32,53 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         title: ReusableText(
             text: "My Jobs", style: appStyle(20, kDark, FontWeight.normal)),
         actions: [
-          if (_selectedCardIndex == null) // Show only if no card is selected
-            GestureDetector(
-              onTap: () => Get.to(() => ProfileScreen()),
-              child: CircleAvatar(
-                radius: 19.r,
-                backgroundColor: kPrimary,
-                child:
-                    Text("A", style: appStyle(18, kWhite, FontWeight.normal)),
+          GestureDetector(
+            onTap: () => Get.to(() => const ProfileScreen(),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900)),
+            child: CircleAvatar(
+              radius: 19.r,
+              backgroundColor: kPrimary,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(currentUId)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<DocumentSnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final userPhoto = data['profilePicture'] ?? '';
+                  final userName = data['userName'] ?? '';
+                  final phoneNumber = data['phoneNumber'] ?? '';
+
+                  if (userPhoto.isEmpty) {
+                    return Text(
+                      userName.isNotEmpty ? userName[0] : '',
+                      style: appStyle(20, kWhite, FontWeight.w500),
+                    );
+                  } else {
+                    return ClipOval(
+                      child: Image.network(
+                        userPhoto,
+                        width: 38.r, // Set appropriate size for the image
+                        height: 35.r,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }
+                },
               ),
             ),
-          SizedBox(width: 10.w),
+          ),
+          SizedBox(width: 20.w),
         ],
       ),
       body: SingleChildScrollView(
@@ -47,73 +87,68 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              // if (_selectedCardIndex == null)
-              //   Row(
-              //     mainAxisAlignment: MainAxisAlignment.end,
-              //     children: [
-              //       Container(
-              //         padding:
-              //             EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-              //         decoration: BoxDecoration(
-              //           color: kPrimary.withOpacity(0.1),
-              //           borderRadius: BorderRadius.circular(8.0.r),
-              //         ),
-              //         child: PopupMenuButton<String>(
-              //           onSelected: (value) {
-              //             setState(() {
-              //               _selectedSortOption =
-              //                   value; // Update the button text
-              //             });
-              //             // Implement your sorting logic here if needed
-              //             print('Selected sort option: $value');
-              //           },
-              //           itemBuilder: (context) => [
-              //             PopupMenuItem(
-              //               value: "Near by",
-              //               child: Text("Near by"),
-              //             ),
-              //             PopupMenuItem(
-              //               value: "Price",
-              //               child: Text("Price"),
-              //             ),
-              //             PopupMenuItem(
-              //               value: "Review",
-              //               child: Text("Review"),
-              //             ),
-              //           ],
-              //           child: Row(
-              //             children: [
-              //               Icon(Icons.sort, color: kPrimary),
-              //               SizedBox(width: 4.w),
-              //               Text(
-              //                 _selectedSortOption, // Show the selected option
-              //                 style: appStyle(16.sp, kPrimary, FontWeight.w500),
-              //               ),
-              //             ],
-              //           ),
-              //         ),
-              //       ),
-              //     ],
-              //   ),
+              SizedBox(height: 10.h),
+              StreamBuilder(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(currentUId)
+                    .collection("history")
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<QuerySnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
 
-              SizedBox(height: 10.h),
-              MyJobsCard(
-                companyNameAndVehicleName: "Freightliner (A45-143)",
-                address: "STPI - 2nd phase, Mohali PB.",
-                serviceName: "5th wheel",
-                jobId: "#RMS0001",
-                imagePath: "assets/images/profile.jpg",
-                dateTime: "25 Aug 2024, 14:08:27",
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot
+                      .data!.docs; // List of documents in the 'jobs' collection
+
+                  return data.isEmpty
+                      ? Center(child: Text("No Jobs Created"))
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: data.length,
+                          itemBuilder: (context, index) {
+                            final job =
+                                data[index].data() as Map<String, dynamic>;
+                            final userName = job['userName'] ?? "N/A";
+                            final imagePath = job['userPhoto'] ?? "";
+                            final vehicleNumber = job['vehicleNumber'] ??
+                                "N/A"; // Fetch the vehicle number
+
+                            String dateString = '';
+                            if (job['orderDate'] is Timestamp) {
+                              DateTime dateTime =
+                                  (job['orderDate'] as Timestamp).toDate();
+                              dateString =
+                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                            }
+                            return MyJobsCard(
+                              companyNameAndVehicleName:
+                                  "${job["companyName"]} (${vehicleNumber})",
+                              address: job["userDeliveryAddress"].toString(),
+                              serviceName: job["selectedService"].toString(),
+                              jobId: job["orderId"].toString(),
+                              imagePath: job["userPhoto"].toString(),
+                              dateTime: dateString,
+                              onButtonTap: () {
+                                Get.to(() => RequestsScreen(
+                                    serviceName:
+                                        job["selectedService"].toString(),
+                                    id: job["orderId"].toString(),
+                                    companyAndVehicleName:
+                                        "${job["companyName"]} (${vehicleNumber})"));
+                              },
+                            );
+                          });
+                },
               ),
-              SizedBox(height: 10.h),
-              MyJobsCard(
-                companyNameAndVehicleName: "International (B65-128)",
-                address: "Sector 20 , Panchkula Haryana",
-                serviceName: "Alignment Trailer",
-                jobId: "#RMS0002",
-                imagePath: "assets/images/profile.jpg",
-                dateTime: "2 Sept 2024, 6:00:27",
-              ),
+
               SizedBox(height: 50.h)
             ],
           ),

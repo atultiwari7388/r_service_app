@@ -12,24 +12,25 @@ class DatabaseServices {
 //save user data to firebase
 
   Future savingUserData(
-      String emailAddress,
-      String userName,
-      String phoneNumber,
-      String address,
-      num perHourCharge,
-     Map<String,dynamic> languages,
-      ) async {
+    String emailAddress,
+    String userName,
+    String phoneNumber,
+    String address,
+    num perHourCharge,
+    Map<String, dynamic> languages,
+  ) async {
     return fireStoreDatabase.doc(uid!).set({
       "uid": uid,
       "email": emailAddress,
       "userName": userName,
       "phoneNumber": phoneNumber,
       "address": address,
-      "perHCharge":perHourCharge,
+      "perHCharge": perHourCharge,
       "lastAddress": "",
-      "languages":languages,
+      "languages": languages,
       "profilePicture": "",
       "isNotificationOn": true,
+      "active": true,
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),
     });

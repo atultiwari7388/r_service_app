@@ -158,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           } else {
                                             showToastMessage(
                                                 "Error",
-                                                "Please enter valid inputs",
+                                                "Invalid Email or Password",
                                                 Colors.red);
                                           }
                                         },

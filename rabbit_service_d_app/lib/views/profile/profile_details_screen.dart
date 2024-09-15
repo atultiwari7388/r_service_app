@@ -25,12 +25,10 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _vehicleNameController = TextEditingController();
-  final TextEditingController _vehicleNumberController =
-      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  String profilePictureUrl = "";
 
   bool isLoading = false;
   bool _isPersonalDetailsExpanded = false;
@@ -47,6 +45,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       String? imageUrl;
       if (_image != null) {
         imageUrl = await _uploadImage();
+      } else if (_image == null) {
+        imageUrl = profilePictureUrl;
       }
       // Uncomment below for Firebase functionality
       await FirebaseFirestore.instance
@@ -150,7 +150,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _userNameController.text = data['userName'] ?? '';
       _emailController.text = data['email'] ?? '';
       _phoneNumberController.text = data['phoneNumber'] ?? '';
-      _addressController.text = data['lastAddress'] ?? '';
+      _addressController.text = data['address'] ?? '';
     }).catchError((error) {
       print("Failed to fetch user data: $error");
     });
@@ -178,7 +178,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   return CircularProgressIndicator();
                 }
                 final data = snapshot.data!.data() as Map<String, dynamic>;
-                final profilePictureUrl = data['profilePicture'] ?? '';
+                profilePictureUrl = data['profilePicture'] ?? '';
                 _userNameController.text = data['userName'] ?? '';
                 _emailController.text = data['email'] ?? '';
                 _phoneNumberController.text = data['phoneNumber'] ?? '';
@@ -265,50 +265,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                             ),
                             SizedBox(height: 20.0.h),
 
-                            // Vehicle Details Section
-                            // _buildSectionCard(
-                            //   context,
-                            //   title: "Vehicle Details",
-                            //   icon: Icons.directions_car,
-                            //   isExpanded: _isVehicleDetailsExpanded,
-                            //   onToggle: () => _toggleSection('vehicle'),
-                            //   onTap: () async {
-                            //     var result = await Navigator.push(
-                            //       context,
-                            //       MaterialPageRoute(
-                            //         builder: (context) => AddVehicleScreen(),
-                            //       ),
-                            //     );
-                            //     if (result != null) {
-                            //       // Handle the result
-                            //       String? company = result['company'];
-                            //       String? vehicleNumber =
-                            //           result['vehicleNumber'];
-                            //       log("Company: $company, Vehicle Number: $vehicleNumber");
-                            //
-                            //       // setState(() {
-                            //       //   _selectedCompanyAndVehcileName = company;
-                            //       // });
-                            //     }
-                            //   },
-                            //   isAddIconEnabled: true,
-                            //   children: [
-                            //     buildVehicleNameEditDeleteSection("A45-143",
-                            //         () {
-                            //       log("On Edit Press tap");
-                            //     }, () {
-                            //       log("On Delete Press tap");
-                            //     }),
-                            //     Divider(),
-                            //     buildVehicleNameEditDeleteSection("B65-128",
-                            //         () {
-                            //       log("On Edit Press tap");
-                            //     }, () {
-                            //       log("On delete press tap");
-                            //     }),
-                            //   ],
-                            // ),
-                            // Vehicle Details Section
                             _buildSectionCard(
                               context,
                               title: "Vehicle Details",
@@ -546,10 +502,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddVehicleScreen(
-            // initialCompany: company,
-            // initialVehicleNumber: vehicleNumber,
-            ),
+        builder: (context) => AddVehicleScreen(),
       ),
     );
 

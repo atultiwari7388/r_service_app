@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
+import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import '../../utils/app_styles.dart';
@@ -20,6 +21,7 @@ class AddressManagementScreen extends StatefulWidget {
 
   const AddressManagementScreen(
       {super.key, required this.userLat, required this.userLng});
+
   @override
   _AddressManagementScreenState createState() =>
       _AddressManagementScreenState();
@@ -122,32 +124,36 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     }
   }
 
-  // Future<void> saveAddress() async {
-  //   // String userId = FirebaseAuth.instance.currentUser!.uid;
-  //   // String address = _addressController.text.trim();
+  Future<void> saveAddress() async {
+    String userId = FirebaseAuth.instance.currentUser!.uid;
+    String address = _addressController.text.trim();
 
-  //   // if (address.isNotEmpty && selectedLat != null && selectedLng != null) {
-  //   //   DocumentReference addressRef = await FirebaseFirestore.instance
-  //   //       .collection('Users')
-  //   //       .doc(userId)
-  //   //       .collection('Addresses')
-  //   //       .add({
-  //   //     'address': address,
-  //   //     'location': {
-  //   //       'latitude': selectedLat,
-  //   //       'longitude': selectedLng,
-  //   //     },
-  //   //     'addressType': selectedAddressType,
-  //   //   });
+    if (address.isNotEmpty && selectedLat != null && selectedLng != null) {
+      DocumentReference addressRef = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .collection('Addresses')
+          .add({
+        'address': address,
+        'location': {
+          'latitude': selectedLat,
+          'longitude': selectedLng,
+        },
+        'addressType': selectedAddressType,
+      });
 
-  //   // Retrieve the document ID
-  //   // String docId = addressRef.id;
-  //   // await addressRef.update({'id': docId});
-  //   // _addressController.clear();
-  //   // showToastMessage("Success", "Address added successfully", Colors.green);
-  //   // Navigator.pop(context);
-  //   // }
-  // }
+      // Retrieve the document ID
+      String docId = addressRef.id;
+      await addressRef.update({'id': docId});
+      // _addressController.clear();
+      showToastMessage("Success", "Address added successfully", Colors.green);
+      // Navigator.pop(context);
+      // Return the selected address to the previous screen
+      Navigator.pop(context, {
+        "address": _addressController.text.toString(),
+      });
+    }
+  }
 
   Widget buildAddressList(DocumentSnapshot document, int index) {
     var address = document.data() as Map<String, dynamic>;
@@ -171,41 +177,41 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             },
           ),
           onTap: () async {
-            // String userId = FirebaseAuth.instance.currentUser!.uid;
+            String userId = FirebaseAuth.instance.currentUser!.uid;
 
-            // // Get a reference to the address document
-            // DocumentReference addressRef = document.reference;
+            // Get a reference to the address document
+            DocumentReference addressRef = document.reference;
 
-            // // Begin a batch write
-            // WriteBatch batch = FirebaseFirestore.instance.batch();
+            // Begin a batch write
+            WriteBatch batch = FirebaseFirestore.instance.batch();
 
-            // // Set the selected address to true
-            // batch.update(addressRef, {'isAddressSelected': true});
+            // Set the selected address to true
+            batch.update(addressRef, {'isAddressSelected': true});
 
-            // // Fetch all addresses that are currently selected (excluding the newly selected one)
-            // QuerySnapshot otherAddresses = await FirebaseFirestore.instance
-            //     .collection('Users')
-            //     .doc(userId)
-            //     .collection('Addresses')
-            //     .where('isAddressSelected', isEqualTo: true)
-            //     .get();
+            // Fetch all addresses that are currently selected (excluding the newly selected one)
+            QuerySnapshot otherAddresses = await FirebaseFirestore.instance
+                .collection('Users')
+                .doc(userId)
+                .collection('Addresses')
+                .where('isAddressSelected', isEqualTo: true)
+                .get();
 
-            // // Set all other addresses to false
-            // for (DocumentSnapshot otherAddress in otherAddresses.docs) {
-            //   if (otherAddress.id != document.id) {
-            //     batch.update(
-            //         otherAddress.reference, {'isAddressSelected': false});
-            //   }
-            // }
+            // Set all other addresses to false
+            for (DocumentSnapshot otherAddress in otherAddresses.docs) {
+              if (otherAddress.id != document.id) {
+                batch.update(
+                    otherAddress.reference, {'isAddressSelected': false});
+              }
+            }
 
-            // // Commit the batch write
-            // await batch.commit();
+            // Commit the batch write
+            await batch.commit();
 
             // Optionally, update the UI if needed
-            // setState(() {});
+            setState(() {});
 
             // Return the selected address to the previous screen
-            // Navigator.pop(context, address);
+            Navigator.pop(context, address);
           },
         ),
         // DashedDivider(),
@@ -269,31 +275,30 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Expanded(
-                  //   flex: 2,
-                  //   child: StreamBuilder<QuerySnapshot>(
-                  //     stream: FirebaseFirestore.instance
-                  //         .collection('Users')
-                  //         .doc(userId)
-                  //         .collection('Addresses')
-                  //         .snapshots(),
-                  //     builder: (context, snapshot) {
-                  //       if (!snapshot.hasData) {
-                  //         return const Center(
-                  //             child: CircularProgressIndicator());
-                  //       }
-                  //       return ListView.builder(
-                  //         itemCount: snapshot.data!.docs.length,
-                  //         itemBuilder: (context, index) {
-                  //           DocumentSnapshot document =
-                  //               snapshot.data!.docs[index];
-                  //           return buildAddressList(document, index);
-                  //         },
-                  //       );
-                  //     },
-                  //   ),
-                  // ),
-
+                  Expanded(
+                    flex: 2,
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('Users')
+                          .doc(currentUId)
+                          .collection('Addresses')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        return ListView.builder(
+                          itemCount: snapshot.data!.docs.length,
+                          itemBuilder: (context, index) {
+                            DocumentSnapshot document =
+                                snapshot.data!.docs[index];
+                            return buildAddressList(document, index);
+                          },
+                        );
+                      },
+                    ),
+                  ),
                   Text("Address Type",
                       style: appStyle(16, kDark, FontWeight.bold)),
                   DropdownButton<String>(
@@ -332,10 +337,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                       // Assuming you have already selected an address and stored it in a variable called `selectedAddress`
 
                       if (_addressController.text.isNotEmpty) {
-                        // Return the selected address to the previous screen
-                        Navigator.pop(context, {
-                          "address": _addressController.text.toString(),
-                        });
+                        saveAddress();
                       } else {
                         log("something went wrong");
                         // Handle case where no address is selected, if needed

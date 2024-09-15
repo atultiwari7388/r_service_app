@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:get/get.dart';
 import 'package:regal_shop_app/views/dashboard/widgets/upcoming_request_card.dart';
-import 'package:regal_shop_app/widgets/custom_background_container.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../services/calculate_distance.dart';
+import '../../services/collection_references.dart';
+import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
@@ -23,11 +24,10 @@ class _UpcomingAndCompletedJobsScreenState
     extends State<UpcomingAndCompletedJobsScreen>
     with SingleTickerProviderStateMixin {
   late TextEditingController searchController;
-  late Stream<QuerySnapshot> ordersStream;
+  late Stream<QuerySnapshot> jobsStream;
   bool isVendorActive = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabsController;
-  int _currentStatus = 1;
 
   void switchTab(int index) {
     _tabsController.animateTo(index);
@@ -38,25 +38,10 @@ class _UpcomingAndCompletedJobsScreenState
     super.initState();
     searchController = TextEditingController();
     _tabsController = TabController(length: 2, vsync: this);
-
-    // FirebaseFirestore.instance
-    //     .collection("Vendors")
-    //     .doc(currentUId)
-    //     .snapshots()
-    //     .listen((event) {
-    //   if (event.exists) {
-    //     setState(() {
-    //       isVendorActive = event.data()?["active"] ?? false;
-    //     });
-
-    //     if (isVendorActive) {
-    //       ordersStream = FirebaseFirestore.instance
-    //           .collection('orders')
-    //           .where("venId", isEqualTo: currentUId)
-    //           .snapshots();
-    //     }
-    //   }
-    // });
+    jobsStream = FirebaseFirestore.instance
+        .collection('jobs')
+        .where("mId", isEqualTo: currentUId)
+        .snapshots();
   }
 
   @override
@@ -79,68 +64,85 @@ class _UpcomingAndCompletedJobsScreenState
     );
   }
 
-  Widget buildOrderStreamSection() {
-    List<Map<String, dynamic>> ongoingOrders = [];
-    List<Map<String, dynamic>> completedOrders = [];
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          TabBar(
-            controller: _tabsController,
-            labelColor: kPrimary,
-            unselectedLabelColor: kGray,
-            tabAlignment: TabAlignment.center,
-            padding: EdgeInsets.zero,
-            isScrollable: true,
-            labelStyle: appStyle(16, kDark, FontWeight.normal),
-            indicator: UnderlineTabIndicator(
-              borderSide: BorderSide(
-                  width: 2.w, color: kPrimary), // Set your color here
-              insets: EdgeInsets.symmetric(horizontal: 20.w),
-            ),
-            tabs: const [
-              Tab(text: "Ongoing"),
-              Tab(text: "Completed"),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabsController,
+  StreamBuilder<QuerySnapshot<Object?>> buildOrderStreamSection() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: jobsStream,
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+        if (snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildOrdersList(ongoingOrders, 1),
-
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                  child: UpcomingRequestCard(
-                    userName: "Sachin Minhas",
-                    vehicleName: "Freightliner",
-                    address: "STPI - 2nd phase, Mohali PB.",
-                    serviceName: "5th wheel",
-                    jobId: "#RMS0001",
-                    imagePath: "assets/images/profile.jpg",
-                    date: "25 Aug 2024",
-                    buttonName: "Start",
-                    onButtonTap: () {
-                      setState(() {
-                        // status == 2;
-                        _showConfirmDialog();
-                      });
-                    },
-                    currentStatus: 3,
-                    companyNameAndVehicleName: "Freightliner (A45-143)",
-                    onCompletedButtonTap: () {},
-                    rating: "4.3",
-                    arrivalCharges: "20",
-                  ),
+                // const Icon(
+                //   Icons.shopping_cart_outlined,
+                //   size: 100,
+                //   color: kPrimary,
+                // ),
+                const SizedBox(height: 20),
+                ReusableText(
+                  text: "No Jobs Found",
+                  style: appStyle(20, kSecondary, FontWeight.bold),
                 ),
-
-                // _buildOrdersList(completedOrders, 3),
               ],
             ),
+          );
+        }
+        // Filter orders based on status
+        List<Map<String, dynamic>> ongoingOrders = [];
+        List<Map<String, dynamic>> completedOrders = [];
+
+        // Extract orders data from the snapshot
+        List<Map<String, dynamic>> orders = snapshot.data!.docs
+            .map((doc) => doc.data() as Map<String, dynamic>)
+            .toList();
+
+        ongoingOrders = orders
+            .where((order) => order['status'] >= 1 && order['status'] <= 4)
+            .toList();
+        completedOrders =
+            orders.where((order) => order['status'] == 5).toList();
+
+        return DefaultTabController(
+          length: 2,
+          child: Column(
+            children: [
+              TabBar(
+                controller: _tabsController,
+                labelColor: kSecondary,
+                unselectedLabelColor: kGray,
+                tabAlignment: TabAlignment.center,
+                padding: EdgeInsets.zero,
+                isScrollable: true,
+                labelStyle: appStyle(16, kDark, FontWeight.normal),
+                indicator: UnderlineTabIndicator(
+                  borderSide: BorderSide(
+                      width: 2.w, color: kPrimary), // Set your color here
+                  insets: EdgeInsets.symmetric(horizontal: 20.w),
+                ),
+                tabs: const [
+                  Tab(text: "Ongoing"),
+                  Tab(text: "Complete/Cancel"),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabsController,
+                  children: [
+                    _buildOrdersList(ongoingOrders, 1),
+                    _buildOrdersList(completedOrders, 2),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -169,13 +171,13 @@ class _UpcomingAndCompletedJobsScreenState
 
   Widget _buildOrdersList(List<Map<String, dynamic>> orders, int status) {
     // Get the search query from the text controller
-    // final searchQuery = searchController.text.toLowerCase();
+    final searchQuery = searchController.text.toLowerCase();
 
-    // // Filter orders based on orderId containing the search query
-    // final filteredOrders = orders.where((order) {
-    //   final orderId = order["orderId"].toLowerCase();
-    //   return orderId.contains(searchQuery);
-    // }).toList();
+    // Filter orders based on orderId containing the search query
+    final filteredOrders = orders.where((order) {
+      final orderId = order["orderId"].toLowerCase();
+      return orderId.contains(searchQuery);
+    }).toList();
 
     return SingleChildScrollView(
       child: Column(
@@ -187,127 +189,72 @@ class _UpcomingAndCompletedJobsScreenState
               children: [
                 Expanded(child: buildTopSearchBar()),
                 SizedBox(width: 5.w),
-                // FilterChip(
-                //     label: const Icon(Icons.sort, color: kPrimary),
-                //     onSelected: (value) {})
               ],
             ),
           ),
 
-          // ListView.builder(
-          //   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          //   shrinkWrap: true,
-          //   physics: const NeverScrollableScrollPhysics(),
-          //   itemCount: 1,
-          //   itemBuilder: (ctx, index) {
-          //     return UpcomingRequestCard(
-          //       userName: "Sachin Minhas",
-          //       vehicleName: "Freightliner",
-          //       address: "STPI - 2nd phase, Mohali PB.",
-          //       serviceName: "5th wheel",
-          //       jobId: "#RMS0001",
-          //       imagePath: "assets/images/profile.jpg",
-          //       date: "25 Aug 2024",
-          //       buttonName: "Start",
-          //       onButtonTap: () {
-          //         setState(() {
-          //           status == 2;
-          //           _showConfirmDialog();
-          //         });
-          //       },
-          //       currentStatus: status,
-          //       companyNameAndVehicleName: "Freightliner (A45-143)",
-          //       onCompletedButtonTap: (){},
-          //       rating: "4.3",
-          //       arrivalCharges: "20",
-          //     );
-          //
-          //   },
-          // ),
-
-          Padding(
+          ListView.builder(
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-            child: UpcomingRequestCard(
-              userName: "Sachin Minhas",
-              vehicleName: "Freightliner",
-              address: "STPI - 2nd phase, Mohali PB.",
-              serviceName: "5th wheel",
-              jobId: "#RMS0001",
-              imagePath: "assets/images/profile.jpg",
-              date: "25 Aug 2024",
-              buttonName: "Start",
-              onButtonTap: () {
-                setState(() {
-                  status == 2;
-                  _showConfirmDialog();
-                });
-              },
-              currentStatus: status,
-              companyNameAndVehicleName: "Freightliner (A45-143)",
-              onCompletedButtonTap: () {},
-              rating: "4.3",
-              arrivalCharges: "20",
-            ),
-          ),
-          // SizedBox(height: 10.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-            child: UpcomingRequestCard(
-              userName: "Sachin Minhas",
-              vehicleName: "Freightliner",
-              address: "STPI - 2nd phase, Mohali PB.",
-              serviceName: "5th wheel",
-              jobId: "#RMS0001",
-              imagePath: "assets/images/profile.jpg",
-              date: "25 Aug 2024",
-              buttonName: "Start",
-              onButtonTap: () {
-                setState(() {
-                  status == 2;
-                  _showConfirmDialog();
-                });
-              },
-              currentStatus: 2,
-              companyNameAndVehicleName: "Freightliner (A45-143)",
-              onCompletedButtonTap: () {},
-              rating: "4.3",
-              arrivalCharges: "20",
-            ),
-          ),
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filteredOrders.length,
+            itemBuilder: (ctx, index) {
+              final jobs = filteredOrders[index];
+              final userName = jobs['userName'] ?? "N/A";
+              final userPhoneNumber = jobs['userPhoneNumber'] ?? "N/A";
+              final imagePath = jobs['userPhoto'] ?? "";
+              final userLat = jobs["userLat"] ?? 00;
+              final userLng = jobs["userLong"] ?? 00;
+              final mecLatitude = jobs["mecLatitude"] ?? 00;
+              final mecLongtitude = jobs["mecLongtitude"] ?? 00;
+              final currentStatus = jobs["status"] ?? 0;
+              final dId = jobs["userId"];
+              final bool isImage = jobs["isImageSelected"] ?? false;
+              final List<dynamic> images = jobs['images'] ?? [];
 
-          // // SizedBox(height: 100.h),
+              String dateString = '';
+              if (jobs['date'] is Timestamp) {
+                DateTime dateTime = (jobs['date'] as Timestamp).toDate();
+                dateString =
+                    "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+              }
+              double distance = calculateDistance(
+                  userLat, userLng, mecLatitude, mecLongtitude);
+
+              return UpcomingRequestCard(
+                userName: jobs["userName"],
+                vehicleName: jobs['vehicleNumber'] ?? "N/A",
+                address: jobs['userDeliveryAddress'] ?? "N/A",
+                serviceName: jobs['selectedService'] ?? "N/A",
+                jobId: jobs['orderId'] ?? "#Unknown",
+                imagePath: imagePath.isEmpty
+                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/playstore.png?alt=media&token=a6526b0d-7ddf-48d6-a2f7-0612f04742b5"
+                    : imagePath,
+                date: dateString,
+                buttonName: "Start",
+                onButtonTap: () {},
+                onPhoneCallTap: () async {
+                  final Uri launchUri = Uri(
+                    scheme: 'tel',
+                    path: userPhoneNumber,
+                  );
+                  await launchUrl(launchUri);
+                },
+                currentStatus: currentStatus,
+                companyNameAndVehicleName: "Freightliner (A45-143)",
+                onCompletedButtonTap: () {},
+                rating: jobs["rating"].toString(),
+                arrivalCharges: jobs["arrivalCharges"].toString(),
+                fixCharge: jobs["fixPrice"].toString(),
+                km: "${distance.toStringAsFixed(0)} km",
+                dId: dId.toString(),
+                isImage: isImage,
+                images: images,
+              );
+            },
+          ),
+          SizedBox(height: 80.h),
         ],
-      ),
-    );
-  }
-
-  void _showConfirmDialog() {
-    Get.defaultDialog(
-      title: "Waiting",
-      middleText: "Waiting for Driver confirmation..",
-      // textCancel: "No",
-      // textConfirm: "Yes",
-      // cancel: OutlinedButton(
-      //   onPressed: () {
-      //     Get.back(); // Close the dialog if "No" is pressed
-      //   },
-      //   child: Text(
-      //     "No",
-      //     style: TextStyle(color: Colors.red), // Custom color for "No" button
-      //   ),
-      // ),
-      confirm: ElevatedButton(
-        onPressed: () {
-          Get.back(); // Close the current dialog
-          setState(() {});
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green, // Custom color for "Yes" button
-        ),
-        child: Text(
-          "Okay",
-          style: TextStyle(color: Colors.white),
-        ),
       ),
     );
   }
@@ -344,18 +291,5 @@ class _UpcomingAndCompletedJobsScreenState
         ),
       ),
     );
-  }
-
-  //================= Convert latlang to actual address =========================
-  Future<String> _getAddressFromLatLng(
-      double latitude, double longitude) async {
-    List<Placemark> placemarks =
-        await placemarkFromCoordinates(latitude, longitude);
-
-    if (placemarks.isNotEmpty) {
-      final Placemark pm = placemarks.first;
-      return "${pm.name}, ${pm.locality}, ${pm.administrativeArea}";
-    }
-    return '';
   }
 }

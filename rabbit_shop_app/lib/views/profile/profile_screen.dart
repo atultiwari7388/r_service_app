@@ -10,6 +10,7 @@ import '../../utils/show_toast_msg.dart';
 import '../../widgets/dashed_divider.dart';
 import '../../widgets/reusable_text.dart';
 import '../auth/login_screen.dart';
+import '../history/completed_history_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -59,7 +60,7 @@ class ProfileScreen extends StatelessWidget {
                     const DashedDivider(color: kGrayLight),
                     SizedBox(height: 10.h),
                     buildListTile("assets/bookings_bw.png", "My History", () {
-                      // Get.to(() => HistoryScreen());
+                      Get.to(() => CompletedJobsHistoryScreen());
                     }),
                     buildListTile("assets/profile_bw.png", "My Profile", () {
                       Get.to(() => ProfileDetailsScreen());
@@ -146,7 +147,7 @@ class ProfileScreen extends StatelessWidget {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const CircularProgressIndicator();
+            return Container();
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -162,13 +163,13 @@ class ProfileScreen extends StatelessWidget {
                 backgroundColor: kSecondary,
                 child: profilePictureUrl.isEmpty
                     ? Text(
-                  userName.isNotEmpty ? userName[0] : '',
-                  style: appStyle(20, kWhite, FontWeight.bold),
-                )
+                        userName.isNotEmpty ? userName[0] : '',
+                        style: appStyle(20, kWhite, FontWeight.bold),
+                      )
                     : CircleAvatar(
-                  radius: 33.r,
-                  backgroundImage: NetworkImage(profilePictureUrl),
-                ),
+                        radius: 33.r,
+                        backgroundImage: NetworkImage(profilePictureUrl),
+                      ),
               ),
               SizedBox(width: 10.w),
               Padding(
@@ -184,6 +185,28 @@ class ProfileScreen extends StatelessWidget {
                       text: email.isNotEmpty ? email : '',
                       style: appStyle(12, kDark, FontWeight.normal),
                     ),
+                    Spacer(),
+                    Container(
+                      height: 30.h,
+                      width: 140.w,
+                      // padding: EdgeInsets.only(left: 10.w),
+                      decoration: BoxDecoration(
+                          color: kSuccess.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12.r)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset("assets/wallet_3.png",
+                              height: 20.h, width: 20.w, color: kWhite),
+                          SizedBox(width: 5.w),
+                          ReusableText(
+                            text: "\$240",
+                            style: appStyle(17, kWhite, FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Spacer(),
                   ],
                 ),
               )
@@ -204,7 +227,4 @@ class ProfileScreen extends StatelessWidget {
       showToastMessage("Error", e.toString(), Colors.red);
     }
   }
-
-
-
 }

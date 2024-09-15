@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/views/myJobs/widgets/my_jobs_card.dart';
+import '../../services/collection_references.dart';
+import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
@@ -96,24 +99,59 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ],
                 ),
               SizedBox(height: 10.h),
-              MyJobsCard(
-                companyNameAndVehicleName: "Freightliner (A45-143)",
-                address: "STPI - 2nd phase, Mohali PB.",
-                serviceName: "5th wheel",
-                jobId: "#RMS0001",
-                imagePath: "assets/images/profile.jpg",
-                dateTime: "25 Aug 2024, 14:08:27",
-                isStatusCompleted: true,
-              ),
-              SizedBox(height: 10.h),
-              MyJobsCard(
-                companyNameAndVehicleName: "International (B65-128)",
-                address: "Sector 20 , Panchkula Haryana",
-                serviceName: "Alignment Trailer",
-                jobId: "#RMS0002",
-                imagePath: "assets/images/profile.jpg",
-                dateTime: "2 Sept 2024, 6:00:27",
-                isStatusCompleted: true,
+              StreamBuilder(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(currentUId)
+                    .collection("history")
+                    .where("status", isEqualTo: 5)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<QuerySnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot
+                      .data!.docs; // List of documents in the 'jobs' collection
+
+                  return data.isEmpty
+                      ? Center(child: Text("No History found !"))
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: data.length,
+                          itemBuilder: (context, index) {
+                            final job =
+                                data[index].data() as Map<String, dynamic>;
+                            final userName = job['userName'] ?? "N/A";
+                            final imagePath = job['userPhoto'] ?? "";
+                            final vehicleNumber = job['vehicleNumber'] ??
+                                "N/A"; // Fetch the vehicle number
+
+                            String dateString = '';
+                            if (job['orderDate'] is Timestamp) {
+                              DateTime dateTime =
+                                  (job['orderDate'] as Timestamp).toDate();
+                              dateString =
+                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                            }
+                            return MyJobsCard(
+                              companyNameAndVehicleName:
+                                  "${job["companyName"]} (${vehicleNumber})",
+                              address: job["userDeliveryAddress"].toString(),
+                              serviceName: job["selectedService"].toString(),
+                              jobId: job["orderId"].toString(),
+                              imagePath: job["userPhoto"].toString(),
+                              dateTime: dateString,
+                              // isStatusCompleted: true,
+                            );
+                          });
+                },
               ),
               SizedBox(height: 50.h)
             ],

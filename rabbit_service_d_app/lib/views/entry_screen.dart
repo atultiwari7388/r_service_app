@@ -7,7 +7,6 @@ import 'package:regal_service_d_app/views/myJobs/my_jobs_screen.dart';
 import '../controllers/tab_index_controller.dart';
 import '../utils/app_styles.dart';
 import '../utils/constants.dart';
-import 'requests/requests.dart';
 
 // ignore: must_be_immutable
 class EntryScreen extends StatefulWidget {
@@ -32,9 +31,7 @@ class _EntryScreenState extends State<EntryScreen> {
     List<Widget> screens = [
       DashBoardScreen(),
       MyJobsScreen(),
-      // UploadRequestsScreen(),
       HistoryScreen(),
-      // ProfileScreen(),
     ];
 
     final controller = Get.put(TabIndexController());
@@ -48,8 +45,10 @@ class _EntryScreenState extends State<EntryScreen> {
               alignment: Alignment.bottomCenter,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.transparent, // Keep the background transparent
-                  border: Border.all(color: kGray, width: 1), // Add border here
+                  color: Colors.transparent,
+                  // Keep the background transparent
+                  border: Border.all(color: kGray, width: 1),
+                  // Add border here
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: BottomNavigationBar(

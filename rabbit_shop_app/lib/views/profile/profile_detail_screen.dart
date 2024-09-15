@@ -28,6 +28,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final ScrollController scrollController = ScrollController();
+  String profilePictureUrl = "";
 
   bool isLoading = false;
   bool _isPersonalDetailsExpanded = false;
@@ -44,6 +46,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       String? imageUrl;
       if (_image != null) {
         imageUrl = await _uploadImage();
+      } else if (_image == null) {
+        imageUrl = profilePictureUrl;
       }
       // Uncomment below for Firebase functionality
       await FirebaseFirestore.instance
@@ -133,23 +137,13 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     });
   }
 
-  final List<String> languages = [
-    'English',
-    'Hindi',
-    'Punjabi',
-    'Spanish',
-    // Add more languages here...
-  ];
-
-  Map<String, bool> selectedLanguages = {};
+  Map<String, bool> languages = {};
 
   @override
   void initState() {
     super.initState();
+    fetchLanguagesFromDatabase();
     // Initialize all languages as unchecked
-    for (var language in languages) {
-      selectedLanguages[language] = false;
-    }
 
     FirebaseFirestore.instance
         .collection("Mechanics")
@@ -166,6 +160,36 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }).catchError((error) {
       print("Failed to fetch user data: $error");
     });
+  }
+
+  Future<void> fetchLanguagesFromDatabase() async {
+    // Fetch the document from Firestore
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('Mechanics')
+        .doc(currentUId) // replace with the actual mechanic's ID
+        .get();
+
+    if (doc.exists) {
+      // Ensure the data is a Map and cast it properly
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+      // Extract the 'languages' field and cast it as Map<String, bool>
+      Map<String, bool> languagesData =
+          Map<String, bool>.from(data['languages']);
+
+      // Update the state with the languages data
+      setState(() {
+        languages = languagesData;
+        print(languages);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    scrollController.dispose();
   }
 
   @override
@@ -190,7 +214,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                   return CircularProgressIndicator();
                 }
                 final data = snapshot.data!.data() as Map<String, dynamic>;
-                final profilePictureUrl = data['profilePicture'] ?? '';
+                profilePictureUrl = data['profilePicture'] ?? '';
                 _userNameController.text = data['userName'] ?? '';
                 _emailController.text = data['email'] ?? '';
                 _phoneNumberController.text = data['phoneNumber'] ?? '';
@@ -202,7 +226,6 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             SizedBox(height: 20.0.h),
-
                             // Profile Picture and Edit Button
                             Stack(
                               children: [
@@ -282,6 +305,50 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                               ],
                             ),
                             SizedBox(height: 20.0.h),
+                            // _buildSectionCard(
+                            //   context,
+                            //   title: "Selected Languages",
+                            //   icon: Icons.language,
+                            //   isExpanded: _isLanguageDetailsExpanded,
+                            //   onToggle: () => _toggleSection('languages'),
+                            //   children: [
+                            //     Container(
+                            //       decoration: BoxDecoration(
+                            //         borderRadius: BorderRadius.circular(8.r),
+                            //       ),
+                            //       child: Scrollbar(
+                            //         thumbVisibility: true,
+                            //         child: ListView.builder(
+                            //           padding: EdgeInsets.zero,
+                            //           shrinkWrap: true,
+                            //           itemCount: languages.length,
+                            //           itemBuilder: (context, index) {
+                            //             return ListView(
+                            //               children:
+                            //                   languages.entries.map((entry) {
+                            //                 return entry.value
+                            //                     ? CheckboxListTile(
+                            //                         title: Text(entry.key),
+                            //                         value: entry.value,
+                            //                         onChanged: (bool? value) {
+                            //                           // Logic for toggling checkbox (if needed)
+                            //                           setState(() {
+                            //                             languages[entry.key] =
+                            //                                 value!;
+                            //                           });
+                            //                         },
+                            //                       )
+                            //                     : Container(); // Don't show the checkbox if the value is false
+                            //               }).toList(),
+                            //             );
+                            //           },
+                            //         ),
+                            //       ),
+                            //     ),
+                            //   ],
+                            //
+                            // ),
+
                             _buildSectionCard(
                               context,
                               title: "Selected Languages",
@@ -290,39 +357,39 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                               onToggle: () => _toggleSection('languages'),
                               children: [
                                 Container(
-                                  // Remove or adjust the height based on the content
-                                  // height: 180.h,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(8.r),
                                   ),
                                   child: Scrollbar(
                                     thumbVisibility: true,
-                                    child: ListView.builder(
-                                      padding: EdgeInsets.zero,
+                                    // Keep thumbVisibility as true
+                                    controller: scrollController,
+                                    // Provide the ScrollController
+                                    child: ListView(
+                                      controller: scrollController,
+                                      // Use the same ScrollController
                                       shrinkWrap: true,
-                                      itemCount: languages.length,
-                                      itemBuilder: (context, index) {
-                                        return CheckboxListTile(
-                                          contentPadding: EdgeInsets.zero,
-                                          title: Text(languages[index]),
-                                          value: selectedLanguages[
-                                              languages[index]],
-                                          onChanged: (bool? value) {
-                                            setState(() {
-                                              selectedLanguages[
-                                                  languages[index]] = value!;
-                                            });
-                                          },
-                                          controlAffinity:
-                                              ListTileControlAffinity.leading,
-                                          activeColor: kPrimary,
-                                        );
-                                      },
+                                      padding: EdgeInsets.zero,
+                                      children: languages.entries.map((entry) {
+                                        return entry.value
+                                            ? CheckboxListTile(
+                                                title: Text(entry.key),
+                                                value: entry.value,
+                                                onChanged: (bool? value) {
+                                                  setState(() {
+                                                    languages[entry.key] =
+                                                        value!;
+                                                  });
+                                                },
+                                              )
+                                            : Container(); // Show nothing if the value is false
+                                      }).toList(),
                                     ),
                                   ),
                                 ),
                               ],
                             ),
+
                             SizedBox(height: 20.0.h),
 
                             // Change Password Section

@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/widgets/request_history_upcoming_request.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../services/collection_references.dart';
+import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
@@ -15,6 +17,7 @@ class RequestsScreen extends StatefulWidget {
       required this.serviceName,
       this.companyAndVehicleName = "",
       this.id = ""});
+
   final String serviceName;
   final String companyAndVehicleName;
   final String id;
@@ -37,17 +40,53 @@ class _RequestsScreenState extends State<RequestsScreen> {
         title: ReusableText(
             text: "Requests", style: appStyle(20, kDark, FontWeight.normal)),
         actions: [
-          if (_selectedCardIndex == null) // Show only if no card is selected
-            GestureDetector(
-              onTap: () => Get.to(() => ProfileScreen()),
-              child: CircleAvatar(
-                radius: 19.r,
-                backgroundColor: kPrimary,
-                child:
-                    Text("A", style: appStyle(18, kWhite, FontWeight.normal)),
+          GestureDetector(
+            onTap: () => Get.to(() => const ProfileScreen(),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900)),
+            child: CircleAvatar(
+              radius: 19.r,
+              backgroundColor: kPrimary,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(currentUId)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<DocumentSnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final userPhoto = data['profilePicture'] ?? '';
+                  final userName = data['userName'] ?? '';
+                  final phoneNumber = data['phoneNumber'] ?? '';
+
+                  if (userPhoto.isEmpty) {
+                    return Text(
+                      userName.isNotEmpty ? userName[0] : '',
+                      style: appStyle(20, kWhite, FontWeight.w500),
+                    );
+                  } else {
+                    return ClipOval(
+                      child: Image.network(
+                        userPhoto,
+                        width: 38.r, // Set appropriate size for the image
+                        height: 35.r,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }
+                },
               ),
             ),
-          SizedBox(width: 10.w),
+          ),
+          SizedBox(width: 20.w),
         ],
       ),
       body: SingleChildScrollView(
@@ -121,39 +160,71 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 ],
               ),
               SizedBox(height: 10.h),
-              for (int i = 0; i < 2; i++)
-                RequestAcceptHistoryCard(
-                  shopName: "Johan Tyer Shop",
-                  time: "25 mints",
-                  distance: "5 km",
-                  rating: "4.5",
-                  arrivalCharges: "100",
-                  // perHourCharges: "50",
-                  imagePath: "assets/images/profile.jpg",
-                  isAcceptVisible: _selectedCardIndex == null,
-                  isPayVisible: _selectedCardIndex == i &&
-                      _cardStates[i] == CardState.Accepted,
-                  isConfirmVisible: _selectedCardIndex == i &&
-                      _cardStates[i] == CardState.Paid,
-                  isOngoingVisible: _selectedCardIndex == i &&
-                      _cardStates[i] == CardState.Confirmed,
-                  isHidden:
-                      _selectedCardIndex != null && _selectedCardIndex != i,
-                  languages: ["Hindi", "English", "Punjabi", "Spanish"],
-                  onAcceptTap: () {
-                    _showConfirmDialog(i);
-                  },
-                  onPayTap: () {
-                    _handlePayTap(i, "100");
-                  },
-                  onConfirmStartTap: () {
-                    _handleConfirmStartTap(i);
-                  },
-                  onCallTap: () {
-                    makePhoneCall("+9111111111");
-                    // Handle call action
-                  },
-                ),
+              StreamBuilder(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(currentUId)
+                    .collection("history")
+                    .where("orderId", isEqualTo: widget.id)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<QuerySnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot
+                      .data!.docs; // List of documents in the 'jobs' collection
+
+                  return data.isEmpty
+                      ? Center(child: Text("No Request"))
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: data.length,
+                          itemBuilder: (context, index) {
+                            final job =
+                                data[index].data() as Map<String, dynamic>;
+                            final userName = job['userName'] ?? "N/A";
+                            final imagePath = job['userPhoto'] ?? "";
+                            final vehicleNumber = job['vehicleNumber'] ??
+                                "N/A"; // Fetch the vehicle number
+
+                            String dateString = '';
+                            if (job['orderDate'] is Timestamp) {
+                              DateTime dateTime =
+                                  (job['orderDate'] as Timestamp).toDate();
+                              dateString =
+                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                            }
+                            return RequestAcceptHistoryCard(
+                              shopName: job["mName"].toString(),
+                              time: job["time"].toString(),
+                              distance: "5 km",
+                              rating: "4.5",
+                              jobId: job["orderId"].toString(),
+                              userId: job["userId"].toString(),
+                              mId: job["mId"].toString(),
+                              arrivalCharges: job["arrivalCharges"].toString(),
+                              fixCharges: job["fixPrice"].toString(),
+                              perHourCharges: job["perHourCharges"].toString(),
+                              imagePath: job["mDp"].toString(),
+                              currentStatus: job["status"],
+                              isHidden: _selectedCardIndex != null &&
+                                  _selectedCardIndex != index,
+                              languages: job["languages"],
+                              isImage: job["isImageSelected"],
+                              onCallTap: () {
+                                makePhoneCall(job["mNumber"].toString());
+                              },
+                            );
+                          });
+                },
+              ),
               SizedBox(height: 50.h)
             ],
           ),
@@ -176,47 +247,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
     );
   }
 
-  void _showConfirmDialog(int index) {
-    Get.defaultDialog(
-      title: "Confirm",
-      middleText: "Are you sure you want to accept this offer?",
-      textCancel: "No",
-      textConfirm: "Yes",
-      cancel: OutlinedButton(
-        onPressed: () {
-          Get.back(); // Close the dialog if "No" is pressed
-        },
-        child: Text(
-          "No",
-          style: TextStyle(color: Colors.red), // Custom color for "No" button
-        ),
-      ),
-      confirm: ElevatedButton(
-        onPressed: () {
-          Get.back(); // Close the current dialog
-          setState(() {
-            _selectedCardIndex = index; // Select the card
-            _cardStates[index] = CardState.Accepted; // Update card state
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green, // Custom color for "Yes" button
-        ),
-        child: Text(
-          "Yes",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-    );
-  }
-
   void _handlePayTap(int index, String payCharges) {
     if (_cardStates[index] == CardState.Accepted) {
       _showPayDialog(index, payCharges);
-    } else {
-      // Show a message or handle the case where the card is not in the right state
-      // showToast("You can only pay for accepted requests.");
-    }
+    } else {}
   }
 
   void _handleConfirmStartTap(int index) {

@@ -2,16 +2,15 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:regal_shop_app/utils/app_styles.dart';
 import 'package:regal_shop_app/utils/constants.dart';
 import 'package:regal_shop_app/views/dashboard/widgets/upcoming_request_card.dart';
 import 'package:regal_shop_app/views/profile/profile_screen.dart';
-import 'package:regal_shop_app/widgets/custom_background_container.dart';
 import 'package:location/location.dart' as loc;
 import 'package:location/location.dart';
 import '../../services/collection_references.dart';
+import '../../services/get_month_string.dart';
 import '../../services/latlng_converter.dart';
 import '../../utils/show_toast_msg.dart';
 import '../../widgets/reusable_text.dart';
@@ -26,9 +25,8 @@ class DashBoardScreen extends StatefulWidget {
 class _DashBoardScreenState extends State<DashBoardScreen> {
   bool online = false;
   String appbarTitle = "";
-  int totalOrders = 0;
-  int todaysOrder = 0;
-  int pendingOrders = 0;
+  int totalJobs = 0;
+  int ongoingJobs = 0;
 
   bool firstTimeAppLaunch = true; // Boolean flag to track first app launch
   bool isLocationSet = false;
@@ -39,11 +37,69 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   String userName = "";
   String phoneNumber = "";
   String userPhoto = "";
+  num perHourCharges = 0;
+  Map<String, bool> languages = {};
+  List<String> selectedLanguages = [];
 
   @override
   void initState() {
     super.initState();
-    checkIfLocationIsSet();
+    _fetchOnlineStatus();
+    fetchUserCurrentLocationAndUpdateToFirebase();
+    fetchJobData();
+    fetchLanguagesFromDatabase();
+  }
+
+  Future<void> fetchLanguagesFromDatabase() async {
+    // Fetch the document from Firestore
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('Mechanics')
+        .doc(currentUId) // replace with the actual mechanic's ID
+        .get();
+
+    if (doc.exists) {
+      // Ensure the data is a Map and cast it properly
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+      // Extract the 'languages' field and cast it as Map<String, bool>
+      Map<String, bool> languagesData =
+          Map<String, bool>.from(data['languages']);
+
+      // Update the state with the languages data
+      setState(() {
+        languages = languagesData;
+        selectedLanguages = languages.entries
+            .where((entry) => entry.value) // Filter entries where value is true
+            .map((entry) =>
+                entry.key) // Map those entries to their keys (language names)
+            .toList();
+        print(selectedLanguages);
+      });
+    }
+  }
+
+  Future<void> fetchJobData() async {
+    try {
+      // Fetch all jobs for the current user
+      QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
+          .collection('jobs')
+          .where("mId", isEqualTo: currentUId)
+          .get();
+
+      // Filter jobs based on status
+      var allJobs = jobSnapshot.docs;
+
+      // Total Jobs where status is 5
+      var totalJobsCount = allJobs.where((job) => job['status'] == 5).length;
+      totalJobs = totalJobsCount;
+
+      // Ongoing Jobs where status is [1, 2, 3, 4]
+      var ongoingJobsCount =
+          allJobs.where((job) => [1, 2, 3, 4].contains(job['status'])).length;
+      ongoingJobs = ongoingJobsCount;
+    } catch (e) {
+      print('Error fetching job data: $e');
+    }
   }
 
   int? _selectedCardIndex; // Track which card is selected
@@ -57,7 +113,14 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         title: ReusableText(
             text: "Dashboard", style: appStyle(20, kDark, FontWeight.normal)),
         actions: [
-          Switch(activeColor: kSuccess, value: true, onChanged: (value) {}),
+          // Switch(activeColor: kSuccess, value: true, onChanged: (value) {}),
+          Switch(
+            value: online,
+            onChanged: (value) {
+              _toggleActive(value);
+            },
+            activeColor: kSuccess,
+          ),
           SizedBox(width: 10.w),
           GestureDetector(
             onTap: () => Get.to(() => const ProfileScreen(),
@@ -85,6 +148,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   userPhoto = data['profilePicture'] ?? '';
                   userName = data['userName'] ?? '';
                   phoneNumber = data['phoneNumber'] ?? '';
+                  perHourCharges = data["perHCharge"] ?? 0;
 
                   if (userPhoto.isEmpty) {
                     return Text(
@@ -105,6 +169,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               ),
             ),
           ),
+
           SizedBox(width: 10.w),
         ],
       ),
@@ -121,83 +186,176 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   GestureDetector(
                     // onTap: () => Get.to(() => OrderHistoryScreen()),
                     child: _compactDashboardItem(
-                        "Total Jobs", todaysOrder.toString(), kSecondary),
+                        "Total Jobs", totalJobs.toString(), kSecondary),
                   ),
                   // SizedBox(width: 10.w),
                   GestureDetector(
                     // onTap: () => Get.to(() => OrderHistoryScreen()),
                     child: _compactDashboardItem(
-                        "Ongoing Jobs", totalOrders.toString(), kRed),
+                        "Ongoing Jobs", ongoingJobs.toString(), kRed),
                   ),
                 ],
               ),
+
               SizedBox(height: 20.h),
               // New jobs section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ReusableText(
-                      text: "New Jobs",
-                      style: appStyle(17, kDark, FontWeight.w500)),
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: kPrimary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8.0.r),
-                    ),
-                    child: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        setState(() {
-                          _selectedSortOption = value; // Update the button text
-                        });
-                        // Implement your sorting logic here if needed
-                        print('Selected sort option: $value');
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: "Near by",
-                          child: Text("Near by"),
-                        ),
-                        PopupMenuItem(
-                          value: "Rating",
-                          child: Text("Rating"),
-                        ),
-                      ],
-                      child: Row(
-                        children: [
-                          Icon(Icons.sort, color: kPrimary),
-                          SizedBox(width: 4.w),
-                          Text(
-                            _selectedSortOption, // Show the selected option
-                            style: appStyle(16.sp, kPrimary, FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10.h),
-              for (int i = 0; i < 1; i++)
-                UpcomingRequestCard(
-                  userName: "Sachin Minhas",
-                  vehicleName: "Freightliner",
-                  address: "STPI - 2nd phase, Mohali PB.",
-                  serviceName: "5th wheel",
-                  jobId: "#RMS0001",
-                  imagePath: "assets/images/profile.jpg",
-                  date: "25 Aug 2024",
-                  buttonName: "Interested",
-                  onButtonTap: () => _showConfirmDialog(i),
-                  currentStatus: 0,
-                  rating: "4.3",
-                  arrivalCharges: "20",
-                ),
 
-              SizedBox(height: 50.h)
+              online
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ReusableText(
+                                text: "New Jobs",
+                                style: appStyle(17, kDark, FontWeight.w500)),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: kPrimary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8.0.r),
+                              ),
+                              child: PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  setState(() {
+                                    _selectedSortOption =
+                                        value; // Update the button text
+                                  });
+                                  // Implement your sorting logic here if needed
+                                  print('Selected sort option: $value');
+                                },
+                                itemBuilder: (context) => [
+                                  PopupMenuItem(
+                                    value: "Near by",
+                                    child: Text("Near by"),
+                                  ),
+                                  PopupMenuItem(
+                                    value: "Rating",
+                                    child: Text("Rating"),
+                                  ),
+                                ],
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.sort, color: kPrimary),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      _selectedSortOption, // Show the selected option
+                                      style: appStyle(
+                                          16.sp, kPrimary, FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10.h),
+                        StreamBuilder(
+                          stream: FirebaseFirestore.instance
+                              .collection('jobs')
+                              .where('status', isEqualTo: 0)
+                              .snapshots(),
+                          builder: (BuildContext context,
+                              AsyncSnapshot<QuerySnapshot> snapshot) {
+                            if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}');
+                            }
+
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const CircularProgressIndicator();
+                            }
+
+                            final data = snapshot.data!
+                                .docs; // List of documents in the 'jobs' collection
+
+                            return data.isEmpty
+                                ? Center(child: Text("No Request Available"))
+                                : ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: NeverScrollableScrollPhysics(),
+                                    itemCount: data.length,
+                                    itemBuilder: (context, index) {
+                                      final job = data[index].data()
+                                          as Map<String, dynamic>;
+                                      final userName = job['userName'] ?? "N/A";
+                                      final imagePath = job['userPhoto'] ?? "";
+                                      final bool isImage =
+                                          job["isImageSelected"] ?? false;
+                                      final List<dynamic> images =
+                                          job['images'] ?? [];
+
+                                      String dateString = '';
+                                      if (job['orderDate'] is Timestamp) {
+                                        DateTime dateTime =
+                                            (job['orderDate'] as Timestamp)
+                                                .toDate();
+                                        dateString =
+                                            "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                                      }
+                                      return UpcomingRequestCard(
+                                        userName: userName,
+                                        vehicleName:
+                                            job['vehicleNumber'] ?? "N/A",
+                                        address:
+                                            job['userDeliveryAddress'] ?? "N/A",
+                                        serviceName:
+                                            job['selectedService'] ?? "N/A",
+                                        jobId: job['orderId'] ?? "#Unknown",
+                                        imagePath: imagePath.isEmpty
+                                            ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/playstore.png?alt=media&token=a6526b0d-7ddf-48d6-a2f7-0612f04742b5"
+                                            : imagePath,
+                                        date: dateString,
+                                        buttonName: "Interested",
+                                        onButtonTap: () => _showConfirmDialog(
+                                          index,
+                                          data,
+                                          job["userId"].toString(),
+                                          job["orderId"].toString(),
+                                          isImage,
+                                        ),
+                                        currentStatus: job['status'] ?? 0,
+                                        rating: "",
+                                        arrivalCharges: "30",
+                                        km: "",
+                                        isImage: isImage,
+                                        images: images,
+                                        fixCharge: job["fixPrice"].toString(),
+                                      );
+                                    });
+                          },
+                        ),
+                        SizedBox(height: 70.h)
+                      ],
+                    )
+                  : buildInactiveMechanicScreen()
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildInactiveMechanicScreen() {
+    return Padding(
+      padding: EdgeInsets.all(28.sp),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.warning,
+              size: 100,
+              color: kPrimary,
+            ),
+            const SizedBox(height: 20),
+            ReusableText(
+              text: "Please activate the online button.",
+              style: appStyle(17, kSecondary, FontWeight.normal),
+            ),
+          ],
         ),
       ),
     );
@@ -225,61 +383,161 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     );
   }
 
-  void _showConfirmDialog(int index) {
-    Get.defaultDialog(
-      title: "Confirm",
-      middleText: "Are you sure you want to accept this offer?",
-      textCancel: "No",
-      textConfirm: "Yes",
-      cancel: OutlinedButton(
-        onPressed: () {
-          Get.back(); // Close the dialog if "No" is pressed
-        },
-        child: Text(
-          "No",
-          style: TextStyle(color: Colors.red), // Custom color for "No" button
+  void _showConfirmDialog(
+      int index, dynamic data, String userId, String jobId, bool isShowImage) {
+    if (isShowImage) {
+      _showAddArrivalChargesDialog2(userId, jobId);
+    } else {
+      final TextEditingController arrivalChargesController =
+          TextEditingController();
+      final TextEditingController timeController =
+          TextEditingController(text: "10");
+      final TextEditingController perHourChargesController =
+          TextEditingController(text: perHourCharges.toString());
+
+      Get.defaultDialog(
+        title: "Confirm",
+        content: Column(
+          children: [
+            Text("Please enter the arrival and per-hour charges:",
+                style: TextStyle(fontSize: 16)),
+            SizedBox(height: 20.h),
+            TextField(
+              controller: arrivalChargesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Enter your Arrival Charges",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextField(
+              controller: timeController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Arrival Time",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextField(
+              controller: perHourChargesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Per Hour Charges",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
-      ),
-      confirm: ElevatedButton(
-        onPressed: () {
-          Get.back(); // Close the current dialog
-          setState(() {
-            _selectedCardIndex = index; // Select the card
-          });
-          _showAddArrivalChargesDialog(); // Show the next dialog
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green, // Custom color for "Yes" button
+        textCancel: "Cancel",
+        textConfirm: "Submit",
+        cancel: OutlinedButton(
+          onPressed: () {
+            Get.back(); // Close the dialog if "Cancel" is pressed
+          },
+          child: Text("Cancel", style: TextStyle(color: Colors.red)),
         ),
-        child: Text(
-          "Yes",
-          style: TextStyle(color: Colors.white),
+        confirm: ElevatedButton(
+          onPressed: () async {
+            final arrivalCharges = arrivalChargesController.text;
+            final perHourCharges = perHourChargesController.text;
+            final time = timeController.text;
+
+            if (arrivalCharges.isNotEmpty && perHourCharges.isNotEmpty) {
+              Get.back(); // Close the current dialog
+
+              // Get the current mechanic location
+              loc.Location location = loc.Location();
+              loc.LocationData locationData = await location.getLocation();
+
+              var jobData = {
+                "status": 1,
+                "rating": "4.3",
+                "time": time,
+                "mId": currentUId.toString(),
+                "mName": userName.toString(),
+                "mNumber": phoneNumber.toString(),
+                "mDp": userPhoto.toString(),
+                'arrivalCharges': arrivalCharges,
+                'perHourCharges': perHourCharges,
+                "fixPrice": 0,
+                "languages": selectedLanguages,
+                'mechanicAddress': appbarTitle,
+                'mecLatitude': locationData.latitude,
+                'mecLongtitude': locationData.longitude,
+              };
+
+              // Update the Firestore `jobs` collection
+              await FirebaseFirestore.instance
+                  .collection('jobs')
+                  .doc(jobId)
+                  .update(jobData);
+
+              // Check if the history document exists
+              DocumentReference historyDoc = await FirebaseFirestore.instance
+                  .collection("Users")
+                  .doc(userId)
+                  .collection("history")
+                  .doc(jobId);
+
+              // Get the history document snapshot
+              DocumentSnapshot docSnapshot = await historyDoc.get();
+
+              if (docSnapshot.exists) {
+                // If document exists, update it
+                await historyDoc.update(jobData);
+              } else {
+                // If document does not exist, create it
+                await historyDoc.set(jobData);
+              }
+
+              // Optional: Show a confirmation message or navigate to another screen
+              Get.snackbar("Success", "Request updated successfully.");
+            } else {
+              Get.snackbar("Error", "Please enter all required charges.");
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          child: Text("Submit", style: TextStyle(color: Colors.white)),
         ),
-      ),
-    );
+      );
+    }
   }
 
-  void _showAddArrivalChargesDialog() {
-    final TextEditingController arrivalChargesController =
-        TextEditingController();
+  void _showAddArrivalChargesDialog2(String userId, String jobId) {
+    final TextEditingController fixPriceController =
+        TextEditingController(text: "150");
+    final TextEditingController timeController =
+        TextEditingController(text: "10 ");
 
     Get.defaultDialog(
-      title: "Add Arrival Charges",
+      title: "Add Fix Price",
       content: Column(
         children: [
           Text(
-            "Please enter the arrival charges:",
+            "Please enter the fix price:",
             style: TextStyle(fontSize: 16),
           ),
           SizedBox(height: 20.h),
           TextField(
-            controller: arrivalChargesController,
+            controller: timeController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: "Arrival Charges",
+              labelText: "Arrival Time",
               border: OutlineInputBorder(),
             ),
           ),
+          SizedBox(height: 10.h),
+          TextField(
+            controller: fixPriceController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: "Enter Fix Price",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 10.h),
         ],
       ),
       textCancel: "Cancel",
@@ -295,11 +553,59 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         ),
       ),
       confirm: ElevatedButton(
-        onPressed: () {
-          final arrivalCharges = arrivalChargesController.text;
-          if (arrivalCharges.isNotEmpty) {
+        onPressed: () async {
+          final fixCharge = fixPriceController.text;
+          final time = timeController.text;
+          if (fixCharge.isNotEmpty) {
+            loc.Location location = loc.Location();
+            loc.LocationData locationData = await location.getLocation();
+
+            var jobData = {
+              "status": 1,
+              "rating": "4.3",
+              "time": time,
+              "mId": currentUId.toString(),
+              "mName": userName.toString(),
+              "mNumber": phoneNumber.toString(),
+              "mDp": userPhoto.toString(),
+              "languages": selectedLanguages,
+              'arrivalCharges': 0,
+              'perHourCharges': 0,
+              "fixPrice": fixCharge,
+              'mechanicAddress': appbarTitle,
+              'mecLatitude': locationData.latitude,
+              'mecLongtitude': locationData.longitude,
+            };
+
+            // Update the Firestore `jobs` collection
+            await FirebaseFirestore.instance
+                .collection('jobs')
+                .doc(jobId)
+                .update(jobData);
+
+            // Check if the history document exists
+            DocumentReference historyDoc = await FirebaseFirestore.instance
+                .collection("Users")
+                .doc(userId)
+                .collection("history")
+                .doc(jobId);
+
+            // Get the history document snapshot
+            DocumentSnapshot docSnapshot = await historyDoc.get();
+
+            if (docSnapshot.exists) {
+              // If document exists, update it
+              await historyDoc.update(jobData);
+            } else {
+              // If document does not exist, create it
+              await historyDoc.set(jobData);
+            }
+
+            // Optional: Show a confirmation message or navigate to another screen
+            Get.snackbar("Success", "Request updated successfully.");
             // You can handle the arrival charges here, like saving them to a database
-            print("Arrival Charges: $arrivalCharges");
+            print("Arrival Charges: $fixCharge");
+            Get.snackbar("Success", "Request updated successfully.");
 
             Get.back(); // Close the dialog after submission
             // Further actions can be taken here, like navigating to another screen
@@ -319,60 +625,17 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     );
   }
 
-  //========================================= Location Section ==========================
-
-  Future<void> checkIfLocationIsSet() async {
-    try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('Mechanics')
-          .doc(currentUId)
-          .get();
-
-      if (userDoc.exists && userDoc.data() != null) {
-        var data = userDoc.data() as Map<String, dynamic>;
-        if (data.containsKey('isLocationSet') &&
-            data['isLocationSet'] == true) {
-          // If location is set, fetch the stored location and address
-          userLat = data['lastLocation']['latitude'] ?? 0.0;
-          userLong = data['lastLocation']['longitude'] ?? 0.0;
-          fetchCurrentAddress();
-        } else {
-          // If location is not set, fetch and update the current location
-          fetchUserCurrentLocationAndUpdateToFirebase();
-        }
-      } else {
-        // If document doesn't exist, fetch and update current location
-        fetchUserCurrentLocationAndUpdateToFirebase();
-      }
-    } catch (e) {
-      log("Error checking location set status: $e");
-    }
+  void _fetchOnlineStatus() async {
+    DocumentSnapshot snapshot = await FirebaseFirestore.instance
+        .collection('Mechanics')
+        .doc(currentUId)
+        .get();
+    setState(() {
+      online = snapshot['active'] ?? false;
+    });
   }
 
-  Future<void> fetchCurrentAddress() async {
-    try {
-      QuerySnapshot addressSnapshot = await FirebaseFirestore.instance
-          .collection('Mechanics')
-          .doc(currentUId)
-          .collection("Addresses")
-          .where('isAddressSelected', isEqualTo: true)
-          .get();
-
-      if (addressSnapshot.docs.isNotEmpty) {
-        var addressData =
-            addressSnapshot.docs.first.data() as Map<String, dynamic>;
-        setState(() {
-          appbarTitle = addressData['address'];
-          // _locationController.text = addressData['address'];
-        });
-      }
-    } catch (e) {
-      log("Error fetching current address: $e");
-    }
-  }
-
-//====================== Fetching user current location =====================
-  Future<void> fetchUserCurrentLocationAndUpdateToFirebase() async {
+  void fetchUserCurrentLocationAndUpdateToFirebase() async {
     loc.Location location = loc.Location();
     bool serviceEnabled;
     PermissionStatus permissionGranted;
@@ -381,10 +644,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     serviceEnabled = await location.serviceEnabled();
     if (!serviceEnabled) {
       showToastMessage(
-        "Location Error",
-        "Please enable location Services",
-        kRed,
-      );
+          "Location Error", "Please enable location Services", kRed);
       serviceEnabled = await location.requestService();
       if (!serviceEnabled) {
         return;
@@ -395,78 +655,59 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     permissionGranted = await location.hasPermission();
     if (permissionGranted == loc.PermissionStatus.denied) {
       showToastMessage(
-        "Error",
-        "Please grant location permission in app settings",
-        kRed,
-      );
+          "Error", "Please grant location permission in app settings", kRed);
+      // Open app settings to grant permission
       await loc.Location().requestPermission();
       permissionGranted = await location.hasPermission();
+      permissionGranted = await location.requestPermission();
       if (permissionGranted != loc.PermissionStatus.granted) {
         return;
       }
     }
 
     // Get the current location
-    currentLocation = await location.getLocation();
+    loc.LocationData locationData = await location.getLocation();
 
-    // Check the distance from the stored location (userLat and userLong)
-    if (userLat != 0.0 && userLong != 0.0) {
-      double distanceInMeters = Geolocator.distanceBetween(
-        userLat,
-        userLong,
-        currentLocation!.latitude!,
-        currentLocation!.longitude!,
-      );
-
-      if (distanceInMeters < 100) {
-        // User hasn't moved far; use the stored address
-        setState(() {
-          // _locationController.text = appbarTitle; // previously stored address
-        });
-        return; // Skip storing the same address again
-      }
-    }
-
-    // If the location is different, fetch the new address
+    // Get the address from latitude and longitude
     String address = await getAddressFromLtLng(
-      "LatLng(${currentLocation!.latitude}, ${currentLocation!.longitude})",
-    );
-    log(address.toString());
+        "LatLng(${locationData.latitude}, ${locationData.longitude})");
+    print(address);
 
-    // Update app bar with the current address and save it to Firestore
+    // Update the app bar with the current address
     setState(() {
       appbarTitle = address;
-      // _locationController.text = address;
+      log(appbarTitle);
+      log(locationData.latitude.toString());
+      log(locationData.longitude.toString());
+      // Update the Firestore document with the current location
       saveUserLocation(
-        currentLocation!.latitude!,
-        currentLocation!.longitude!,
-        appbarTitle,
-      );
+          locationData.latitude!, locationData.longitude!, appbarTitle);
+      saveUserStatus(online);
     });
   }
 
   void saveUserLocation(double latitude, double longitude, String userAddress) {
-    FirebaseFirestore.instance.collection('Mechanics').doc(currentUId).set({
-      'isLocationSet': true,
-      'lastLocation': {
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-      'lastAddress': userAddress,
-    }, SetOptions(merge: true));
-
-    FirebaseFirestore.instance
-        .collection('Mechanics')
-        .doc(currentUId)
-        .collection("Addresses")
-        .add({
+    FirebaseFirestore.instance.collection('Mechanics').doc(currentUId).update({
       'address': userAddress,
-      'location': {
+      "location": {
         'latitude': latitude,
         'longitude': longitude,
-      },
-      'addressType': "Current",
-      "isAddressSelected": true,
+      }
+    });
+  }
+
+  // Toggle active status
+  void _toggleActive(bool value) {
+    setState(() {
+      online = value;
+      saveUserStatus(value);
+    });
+  }
+
+  // Save active status in Firestore
+  void saveUserStatus(bool active) {
+    FirebaseFirestore.instance.collection('Mechanics').doc(currentUId).update({
+      'active': active,
     });
   }
 }

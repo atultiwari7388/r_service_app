@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/splash/splash_screen.dart';
 
+import 'controllers/tab_index_controller.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -23,6 +25,7 @@ class MyApp extends StatelessWidget {
       // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (context, child) {
         return GetMaterialApp(
+          themeMode: ThemeMode.system,
           debugShowCheckedModeBanner: false,
           title: appName,
           theme: ThemeData(

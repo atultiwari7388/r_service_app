@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -5,8 +7,9 @@ import 'package:regal_service_d_app/views/history/widgets/history_completed_scre
 import 'package:regal_service_d_app/views/requests/requests.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
+import '../../../widgets/rating_box_widgets.dart';
 
-class MyJobsCard extends StatelessWidget {
+class MyJobsCard extends StatefulWidget {
   const MyJobsCard({
     super.key,
     required this.companyNameAndVehicleName,
@@ -16,6 +19,7 @@ class MyJobsCard extends StatelessWidget {
     this.imagePath = "",
     required this.dateTime,
     this.isStatusCompleted = false,
+    this.onButtonTap,
   });
 
   final String companyNameAndVehicleName;
@@ -25,6 +29,47 @@ class MyJobsCard extends StatelessWidget {
   final String imagePath;
   final String dateTime;
   final bool isStatusCompleted;
+  final void Function()? onButtonTap;
+
+  @override
+  State<MyJobsCard> createState() => _MyJobsCardState();
+}
+
+class _MyJobsCardState extends State<MyJobsCard> {
+  late Timer _timer;
+  int _remainingTime = 5 * 60; // 25 minutes in seconds
+
+  @override
+  void initState() {
+    super.initState();
+    startTimer();
+  }
+
+  void startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+        });
+      } else {
+        _timer.cancel();
+      }
+    });
+  }
+
+  String getFormattedTime() {
+    int minutes = _remainingTime ~/ 60;
+    int seconds = _remainingTime % 60;
+    String formattedMinutes = minutes.toString().padLeft(2, '0');
+    String formattedSeconds = seconds.toString().padLeft(2, '0');
+    return '$formattedMinutes:$formattedSeconds';
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +95,7 @@ class MyJobsCard extends StatelessWidget {
               // Shop image
               CircleAvatar(
                 radius: 24.w,
-                backgroundImage: AssetImage(imagePath),
+                backgroundImage: NetworkImage(widget.imagePath),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -58,33 +103,38 @@ class MyJobsCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // id
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(jobId,
+                        Text(widget.jobId,
                             style: appStyle(12, kSecondary, FontWeight.bold)),
-                        Text(dateTime,
-                            style: appStyle(12, kGray, FontWeight.w500)),
+                        Text(widget.dateTime,
+                            style: appStyle(13, kGray, FontWeight.bold)),
                       ],
                     ),
                     SizedBox(height: 4.h),
                     //company Name
                     Text(
-                      companyNameAndVehicleName,
+                      widget.companyNameAndVehicleName,
                       style: appStyle(16.sp, kDark, FontWeight.w500),
                     ),
-
                     SizedBox(height: 4.h),
-
                     SizedBox(
                       width: 250,
                       child: Text(
-                        address,
+                        widget.address,
                         maxLines: 2,
-                        style: appStyle(12.sp, kGray, FontWeight.w500),
+                        style: appStyle(15.sp, kGray, FontWeight.bold),
                       ),
                     ),
+                    SizedBox(height: 4.h),
+                    SizedBox(
+                      width: 120.w,
+                      child: RatingBoxWidget(
+                        rating: getFormattedTime(),
+                        iconData: Icons.timer,
+                      ),
+                    )
                   ],
                 ),
               ),
@@ -101,30 +151,20 @@ class MyJobsCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Selected Service :  $serviceName",
-                      maxLines: 2,
-                      style: appStyle(16.sp, kDark, FontWeight.w500),
-                    ),
-                  ],
-                ),
+                buildReusableRow("Selected Service", "${widget.serviceName}"),
                 SizedBox(height: 15.h),
                 Row(
                   children: [
-                    isStatusCompleted
+                    widget.isStatusCompleted
                         ? buildButton(kSuccess, "Completed",
                             () => Get.to(() => HistoryCompletedScreen()))
-                        : buildButton(
-                            kSecondary,
-                            "View",
-                            () => Get.to(() => RequestsScreen(
-                                serviceName: serviceName,
-                                id: jobId,
-                                companyAndVehicleName:
-                                    companyNameAndVehicleName))),
+                        : buildButton(kSecondary, "View", widget.onButtonTap),
+                    SizedBox(width: 20.w),
+                    buildButton(
+                      kRed,
+                      "Cancel",
+                      () {},
+                    )
                   ],
                 ),
               ],
@@ -132,7 +172,6 @@ class MyJobsCard extends StatelessWidget {
           ),
           SizedBox(height: 12.h),
 
-          SizedBox(height: 10.h),
           // Call button
         ],
       ),
@@ -154,6 +193,29 @@ class MyJobsCard extends StatelessWidget {
           style: appStyle(13.sp, Colors.white, FontWeight.bold),
         ),
       ),
+    );
+  }
+
+  Row buildReusableRow(String text1, String text2) {
+    return Row(
+      // mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          text1,
+          maxLines: 2,
+          style: appStyle(16.sp, kDark, FontWeight.w500),
+        ),
+        SizedBox(width: 20.w),
+        SizedBox(
+          width: 155.w,
+          child: Text(
+            text2,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: appStyle(13.sp, kSecondary, FontWeight.w500),
+          ),
+        ),
+      ],
     );
   }
 }

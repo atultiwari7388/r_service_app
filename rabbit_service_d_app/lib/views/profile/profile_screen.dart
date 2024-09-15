@@ -192,6 +192,28 @@ class ProfileScreen extends StatelessWidget {
                       text: email.isNotEmpty ? email : '',
                       style: appStyle(12, kDark, FontWeight.normal),
                     ),
+                    Spacer(),
+                    Container(
+                      height: 30.h,
+                      width: 140.w,
+                      // padding: EdgeInsets.only(left: 10.w),
+                      decoration: BoxDecoration(
+                          color: kSuccess.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(12.r)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset("assets/wallet_3.png",
+                              height: 20.h, width: 20.w, color: kWhite),
+                          SizedBox(width: 5.w),
+                          ReusableText(
+                            text: "\$240",
+                            style: appStyle(17, kWhite, FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Spacer(),
                   ],
                 ),
               )
