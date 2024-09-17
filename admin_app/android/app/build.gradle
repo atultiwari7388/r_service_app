@@ -1,6 +1,7 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
+    id 'com.google.gms.google-services'
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -23,7 +24,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.admin_app"
+    namespace "com.rabbit_service.admin_rabbit_app"
     compileSdkVersion 34
     ndkVersion flutter.ndkVersion
 
@@ -41,7 +42,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.admin_app"
+        applicationId "com.rabbit_service.admin_rabbit_app"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
@@ -60,4 +61,9 @@ flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation platform('com.google.firebase:firebase-bom:30.3.2')
+    implementation 'com.google.firebase:firebase-analytics'
+}
+

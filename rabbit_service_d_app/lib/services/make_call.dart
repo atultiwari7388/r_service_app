@@ -7,3 +7,12 @@ Future<void> makePhoneCall(String phoneNumber) async {
   );
   await launchUrl(launchUri);
 }
+
+Future<void> sendMail(String email) async {
+  final Uri emailLaunchUri = Uri(
+    scheme: 'mailto',
+    path: email,
+  );
+
+  launchUrl(emailLaunchUri);
+}

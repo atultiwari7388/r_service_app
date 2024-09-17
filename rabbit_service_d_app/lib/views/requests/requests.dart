@@ -165,7 +165,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     .collection('Users')
                     .doc(currentUId)
                     .collection("history")
-                    .where("orderId", isEqualTo: widget.id)
+                    .where("orderId", isEqualTo: widget.id).where("status", isEqualTo: [1,2,3,4,5])
                     .snapshots(),
                 builder: (BuildContext context,
                     AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -216,7 +216,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               currentStatus: job["status"],
                               isHidden: _selectedCardIndex != null &&
                                   _selectedCardIndex != index,
-                              languages: job["languages"],
+                              languages: job["languages"] ?? [],
                               isImage: job["isImageSelected"],
                               onCallTap: () {
                                 makePhoneCall(job["mNumber"].toString());

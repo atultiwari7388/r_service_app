@@ -11,15 +11,14 @@ class DatabaseServices {
 
 //save user data to firebase
 
-  Future savingUserData(
-    String emailAddress,
-    String userName,
-    String phoneNumber,
-    String address,
-  ) async {
+  Future savingUserData(String emailAddress,
+      String userName,
+      String phoneNumber,
+      String address,) async {
     return fireStoreDatabase.doc(uid!).set({
       "uid": uid,
       "email": emailAddress,
+      "active": true,
       "userName": userName,
       "phoneNumber": phoneNumber,
       "address": address,

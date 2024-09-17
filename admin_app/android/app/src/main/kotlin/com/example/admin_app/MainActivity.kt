@@ -1,4 +1,4 @@
-package com.example.admin_app
+package com.rabbit_service.admin_rabbit_app
 
 import io.flutter.embedding.android.FlutterActivity
 
