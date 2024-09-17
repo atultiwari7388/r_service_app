@@ -37,6 +37,47 @@ class AuthController extends GetxController {
   TextEditingController get passController => _passController;
 
 //========================== Create account with email and password =================
+//   Future<void> createUserWithEmailAndPassword() async {
+//     isUserAcCreated = true;
+//     update();
+//     try {
+//       var user = await _auth.createUserWithEmailAndPassword(
+//           email: _emailController.text, password: _passController.text);
+//
+//       await DatabaseServices(uid: user.user!.uid).savingUserData(
+//           _emailController.text,
+//           _nameController.text,
+//           _phoneNumberController.text,
+//           _addressController.text);
+//
+//       isUserAcCreated = false;
+//       update();
+//       Get.offAll(() => EntryScreen());
+//       showToastMessage("Success", "Account created successfully", Colors.green);
+//     } on FirebaseAuthException catch (e) {
+//       // handleAuthError(e);
+//       String errorMessage;
+//       switch (e.code) {
+//         case 'email-already-in-use':
+//           errorMessage = "The email is already in use by another account.";
+//           break;
+//         case 'invalid-email':
+//           errorMessage = "The email address is invalid.";
+//           break;
+//         case 'weak-password':
+//           errorMessage = "The password is too weak.";
+//           break;
+//         default:
+//           errorMessage = e.message ?? "An unknown error occurred.";
+//
+//           showToastMessage("Error", errorMessage, Colors.red);
+//       }
+//     } finally {
+//       isUserAcCreated = false;
+//       update();
+//     }
+//   }
+
   Future<void> createUserWithEmailAndPassword() async {
     isUserAcCreated = true;
     update();
@@ -50,12 +91,23 @@ class AuthController extends GetxController {
           _phoneNumberController.text,
           _addressController.text);
 
+      // Send email verification
+      await user.user!.sendEmailVerification();
+
       isUserAcCreated = false;
       update();
-      Get.offAll(() => EntryScreen());
-      showToastMessage("Success", "Account created successfully", Colors.green);
+
+      // Inform the user to verify their email before logging in
+      showToastMessage(
+          "Verification Required",
+          "A verification email has been sent to your email address. Please verify it before logging in.",
+          Colors.orange);
+
+      // Sign out the user immediately after account creation, to prevent unverified access
+      await _auth.signOut();
+
+      Get.offAll(() => const LoginScreen()); // Redirect to login screen
     } on FirebaseAuthException catch (e) {
-      // handleAuthError(e);
       String errorMessage;
       switch (e.code) {
         case 'email-already-in-use':
@@ -69,7 +121,6 @@ class AuthController extends GetxController {
           break;
         default:
           errorMessage = e.message ?? "An unknown error occurred.";
-
           showToastMessage("Error", errorMessage, Colors.red);
       }
     } finally {
@@ -79,6 +130,34 @@ class AuthController extends GetxController {
   }
 
 //========================== SignIn with email and Password ===============================
+//   Future<void> signInWithEmailAndPassword() async {
+//     isUserSign = true;
+//     update();
+//     try {
+//       var signInUser = await _auth.signInWithEmailAndPassword(
+//           email: _emailController.text, password: _passController.text);
+//
+//       final User? user = signInUser.user;
+//       if (user != null) {
+//         var doc =
+//             await FirebaseFirestore.instance.doc("Users/${user.uid}").get();
+//         if (doc.exists && doc['uid'] == user.uid) {
+//           isUserSign = false;
+//           update();
+//           Get.offAll(() => EntryScreen());
+//           showToastMessage("Success", "Login Successful", Colors.green);
+//         } else {
+//           Get.to(() => RegistrationScreen());
+//         }
+//       }
+//     } on FirebaseAuthException catch (e) {
+//       handleAuthError(e);
+//     } finally {
+//       isUserSign = false;
+//       update();
+//     }
+//   }
+
   Future<void> signInWithEmailAndPassword() async {
     isUserSign = true;
     update();
@@ -88,6 +167,22 @@ class AuthController extends GetxController {
 
       final User? user = signInUser.user;
       if (user != null) {
+        if (!user.emailVerified) {
+          // If the email is not verified, prompt the user to verify
+          showToastMessage("Email Not Verified",
+              "Please verify your email before logging in.", Colors.orange);
+
+          // Send another verification email
+          await user.sendEmailVerification();
+
+          // Optionally sign out the user
+          await _auth.signOut();
+
+          isUserSign = false;
+          update();
+          return;
+        }
+
         var doc =
             await FirebaseFirestore.instance.doc("Users/${user.uid}").get();
         if (doc.exists && doc['uid'] == user.uid) {
@@ -149,7 +244,7 @@ class AuthController extends GetxController {
         showToastMessage("Error", "Wrong password provided.", Colors.red);
         break;
       default:
-        showToastMessage("Error", e.message ?? "An error occurred", Colors.red);
+        showToastMessage("Error", "Invalid email or password , create new account", Colors.red);
     }
   }
 

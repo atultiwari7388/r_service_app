@@ -143,10 +143,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                               controller.filterSelectedCompanyAndvehicleName =
                                   List.from(vehicleNames);
 
-                              return
-
-                                  // select your vehicle section
-                                  Row(
+                              return Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
