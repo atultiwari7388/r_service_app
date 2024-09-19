@@ -11,10 +11,12 @@ class DatabaseServices {
 
 //save user data to firebase
 
-  Future savingUserData(String emailAddress,
-      String userName,
-      String phoneNumber,
-      String address,) async {
+  Future savingUserData(
+    String emailAddress,
+    String userName,
+    String phoneNumber,
+    String address,
+  ) async {
     return fireStoreDatabase.doc(uid!).set({
       "uid": uid,
       "email": emailAddress,
@@ -24,6 +26,7 @@ class DatabaseServices {
       "address": address,
       "lastAddress": "",
       "profilePicture": "",
+      "wallet": 0,
       "isNotificationOn": true,
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),

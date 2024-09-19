@@ -14,7 +14,9 @@ import '../address/address_management_screen.dart';
 import '../profile/profile_screen.dart';
 
 class DashBoardScreen extends StatefulWidget {
-  const DashBoardScreen({super.key});
+  const DashBoardScreen({super.key, required this.setTab});
+
+  final Function? setTab;
 
   @override
   State<DashBoardScreen> createState() => _DashBoardScreenState();
@@ -99,11 +101,11 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
             body: SingleChildScrollView(
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 5.h),
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: 20.h),
+                    // SizedBox(height: 20.h),
 
                     Container(
                       padding:
@@ -127,7 +129,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
-                                return Container();
+                                return Center(
+                                    child: CircularProgressIndicator());
                               }
 
                               // Process the data and build the UI
@@ -294,31 +297,40 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                 )
                               : Container(),
                           SizedBox(height: 20.h),
-                          CustomButton(
-                            text: "Find Mechanic",
-                            onPress: () async {
-                              controller.findMechanic(
-                                controller.locationController.text,
-                                controller.userPhoto,
-                                controller.userName,
-                                controller.phoneNumber,
-                                controller.userLat,
-                                controller.userLong,
-                                controller.serviceAndNetworkController.text
-                                    .toString(),
-                                controller.companyNameController.text
-                                    .toString(),
-                                controller
-                                    .selectedCompanyAndVehcileNameController
-                                    .text
-                                    .toString(),
-                                controller.imageSelected,
-                                controller.images,
-                              );
-                              // dashboardController.switchToMyJobsScreen();
-                            },
-                            color: kPrimary,
-                          ),
+                          controller.isFindMechanicEnabled
+                              ? CustomButton(
+                                  text: "Find Mechanic",
+                                  onPress: () async {
+                                    controller
+                                        .findMechanic(
+                                      controller.locationController.text,
+                                      controller.userPhoto,
+                                      controller.userName,
+                                      controller.phoneNumber,
+                                      controller.userLat,
+                                      controller.userLong,
+                                      controller
+                                          .serviceAndNetworkController.text
+                                          .toString(),
+                                      controller.companyNameController.text
+                                          .toString(),
+                                      controller
+                                          .selectedCompanyAndVehcileNameController
+                                          .text
+                                          .toString(),
+                                      controller.imageSelected,
+                                      controller.images,
+                                    )
+                                        .then((value) {
+                                      widget.setTab?.call(1);
+                                    });
+                                  },
+                                  color: kPrimary,
+                                )
+                              : CustomButton(
+                                  text: "Find Mechanic",
+                                  onPress: null,
+                                  color: kGray)
                         ],
                       ),
                     ),
@@ -348,7 +360,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                       ),
                     ),
 
-                    SizedBox(height: 100.h),
+                    SizedBox(height: 20.h),
                   ],
                 ),
               ),

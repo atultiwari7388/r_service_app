@@ -30,6 +30,7 @@ class DatabaseServices {
       "languages": languages,
       "profilePicture": "",
       "isNotificationOn": true,
+      "wallet": 0,
       "active": true,
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),

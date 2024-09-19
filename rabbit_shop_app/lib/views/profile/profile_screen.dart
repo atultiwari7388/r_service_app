@@ -154,6 +154,7 @@ class ProfileScreen extends StatelessWidget {
           final profilePictureUrl = data['profilePicture'] ?? '';
           final userName = data['userName'] ?? '';
           final email = data['email'] ?? '';
+          final wallet = data["wallet"] ?? 0;
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,7 +201,7 @@ class ProfileScreen extends StatelessWidget {
                               height: 20.h, width: 20.w, color: kWhite),
                           SizedBox(width: 5.w),
                           ReusableText(
-                            text: "\$240",
+                            text: "\$${wallet.toString()}",
                             style: appStyle(17, kWhite, FontWeight.bold),
                           ),
                         ],

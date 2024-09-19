@@ -43,6 +43,10 @@ dependencies:
   rxdart:
   vibration:
   logger:
+  #zoom in and out image
+  photo_view:
+  dio:
+  image_gallery_saver:
 
 dev_dependencies:
   flutter_test:

@@ -191,28 +191,28 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                     : isImage
                         ? SizedBox()
                         : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    SizedBox(
-                      width: 145.w,
-                      child: Text(
-                        "Per Hour Charges",
-                        style:
-                        appStyle(16.sp, kDark, FontWeight.w500),
-                      ),
-                    ),
-                    Container(
-                      height: 20.h,
-                      width: 1.w,
-                      color: kDark,
-                      margin: EdgeInsets.symmetric(horizontal: 10.w),
-                    ),
-                    Text(
-                      "\$$perHourCharges",
-                      style: appStyle(16.sp, kDark, FontWeight.w500),
-                    ),
-                  ],
-                ),
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              SizedBox(
+                                width: 145.w,
+                                child: Text(
+                                  "Per Hour Charges",
+                                  style:
+                                      appStyle(16.sp, kDark, FontWeight.w500),
+                                ),
+                              ),
+                              Container(
+                                height: 20.h,
+                                width: 1.w,
+                                color: kDark,
+                                margin: EdgeInsets.symmetric(horizontal: 10.w),
+                              ),
+                              Text(
+                                "\$$perHourCharges",
+                                style: appStyle(16.sp, kDark, FontWeight.w500),
+                              ),
+                            ],
+                          ),
                 SizedBox(height: 15.h),
                 Row(
                   mainAxisAlignment: currentStatus == [1, 2, 3, 4]
@@ -224,10 +224,16 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                         _showConfirmDialog();
                       }),
                     if (currentStatus == 2)
-                      buildButton(kSecondary, "Pay \$$arrivalCharges", () {
-                        _showPayDialog("$arrivalCharges");
-                        // updateStatus(3);
-                      }),
+                      isImage
+                          ? buildButton(kSecondary, "Pay \$$fixCharges", () {
+                              _showPayDialog("$fixCharges", isImage);
+                              // updateStatus(3);flu
+                            })
+                          : buildButton(kSecondary, "Pay \$$arrivalCharges",
+                              () {
+                              _showPayDialog("$arrivalCharges", isImage);
+                              // updateStatus(3);
+                            }),
                     if (currentStatus == 3)
                       buildButton(kPrimary, "Confirm to Start", () {
                         // updateStatus(4);
@@ -270,7 +276,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                               ),
                     currentStatus == 5
                         ? Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
                                 height: 40.h,
@@ -353,7 +359,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
     );
   }
 
-  void _showPayDialog(String payCharges) {
+  void _showPayDialog(String payCharges, bool isShowImage) {
     Get.defaultDialog(
       title: "Pay \$$payCharges",
       middleText: "Please proceed to pay.",

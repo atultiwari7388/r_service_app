@@ -148,6 +148,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                   userLat, userLng, mecLatitude, mecLongtitude);
 
               return UpcomingRequestCard(
+                orderId: jobs["orderId"].toString(),
                 userName: jobs["userName"],
                 vehicleName: jobs['vehicleNumber'] ?? "N/A",
                 address: jobs['userDeliveryAddress'] ?? "N/A",

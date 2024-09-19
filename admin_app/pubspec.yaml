@@ -43,7 +43,7 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: 'assets/new_logo_f.png'
+  image_path: 'assets/playstore.png'
   min_sdk_android: 21
 
   flutter_lints: ^2.0.0

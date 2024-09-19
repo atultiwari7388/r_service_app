@@ -104,8 +104,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     .collection('Users')
                     .doc(currentUId)
                     .collection("history")
-                    .where("status", isEqualTo: 5)
-                    .snapshots(),
+                    .where("status", whereIn: [-1, 5]).snapshots(),
                 builder: (BuildContext context,
                     AsyncSnapshot<QuerySnapshot> snapshot) {
                   if (snapshot.hasError) {
@@ -148,6 +147,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               jobId: job["orderId"].toString(),
                               imagePath: job["userPhoto"].toString(),
                               dateTime: dateString,
+                              currentStatus: job["status"],
                               // isStatusCompleted: true,
                             );
                           });

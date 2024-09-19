@@ -1,10 +1,8 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/views/history/widgets/history_completed_screen.dart';
-import 'package:regal_service_d_app/views/requests/requests.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
 import '../../../widgets/rating_box_widgets.dart';
@@ -20,6 +18,8 @@ class MyJobsCard extends StatefulWidget {
     required this.dateTime,
     this.isStatusCompleted = false,
     this.onButtonTap,
+    this.onCancelBtnTap,
+    required this.currentStatus,
   });
 
   final String companyNameAndVehicleName;
@@ -30,6 +30,8 @@ class MyJobsCard extends StatefulWidget {
   final String dateTime;
   final bool isStatusCompleted;
   final void Function()? onButtonTap;
+  final void Function()? onCancelBtnTap;
+  final int currentStatus;
 
   @override
   State<MyJobsCard> createState() => _MyJobsCardState();
@@ -128,13 +130,18 @@ class _MyJobsCardState extends State<MyJobsCard> {
                       ),
                     ),
                     SizedBox(height: 4.h),
-                    SizedBox(
-                      width: 120.w,
-                      child: RatingBoxWidget(
-                        rating: getFormattedTime(),
-                        iconData: Icons.timer,
-                      ),
-                    )
+
+                    widget.currentStatus == -1
+                        ? SizedBox()
+                        : widget.currentStatus == 5
+                            ? SizedBox()
+                            : SizedBox(
+                                width: 120.w,
+                                child: RatingBoxWidget(
+                                  rating: getFormattedTime(),
+                                  iconData: Icons.timer,
+                                ),
+                              )
                   ],
                 ),
               ),
@@ -153,20 +160,37 @@ class _MyJobsCardState extends State<MyJobsCard> {
               children: [
                 buildReusableRow("Selected Service", "${widget.serviceName}"),
                 SizedBox(height: 15.h),
-                Row(
-                  children: [
-                    widget.isStatusCompleted
-                        ? buildButton(kSuccess, "Completed",
-                            () => Get.to(() => HistoryCompletedScreen()))
-                        : buildButton(kSecondary, "View", widget.onButtonTap),
-                    SizedBox(width: 20.w),
-                    buildButton(
-                      kRed,
-                      "Cancel",
-                      () {},
-                    )
-                  ],
-                ),
+                widget.currentStatus == -1
+                    ? Container(
+                        height: 40.h,
+                        width: 320.w,
+                        decoration: BoxDecoration(
+                            color: kPrimary,
+                            borderRadius: BorderRadius.circular(12.r)),
+                        child: Center(
+                          child: Text(
+                            "Canceled",
+                            style: appStyle(15.sp, kWhite, FontWeight.bold),
+                          ),
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          widget.currentStatus == 5
+                              ? buildButton(kSuccess, "Completed",
+                                  () => Get.to(() => HistoryCompletedScreen(orderId: widget.jobId)))
+                              : buildButton(
+                                  kSecondary, "View", widget.onButtonTap),
+                          SizedBox(width: 20.w),
+                          widget.currentStatus == 1
+                              ? buildButton(
+                                  kRed,
+                                  "Cancel",
+                                  widget.onCancelBtnTap,
+                                )
+                              : SizedBox()
+                        ],
+                      ),
               ],
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:regal_shop_app/views/dashboard/widgets/upcoming_request_card.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/calculate_distance.dart';
@@ -203,14 +204,12 @@ class _UpcomingAndCompletedJobsScreenState
               final userName = jobs['userName'] ?? "N/A";
               final userPhoneNumber = jobs['userPhoneNumber'] ?? "N/A";
               final imagePath = jobs['userPhoto'] ?? "";
-              final userLat = jobs["userLat"] ?? 00;
-              final userLng = jobs["userLong"] ?? 00;
-              final mecLatitude = jobs["mecLatitude"] ?? 00;
-              final mecLongtitude = jobs["mecLongtitude"] ?? 00;
               final currentStatus = jobs["status"] ?? 0;
               final dId = jobs["userId"];
               final bool isImage = jobs["isImageSelected"] ?? false;
               final List<dynamic> images = jobs['images'] ?? [];
+              final vehicleNumber =
+                  jobs['vehicleNumber'] ?? "N/A"; // Fetch the vehicle number
 
               String dateString = '';
               if (jobs['date'] is Timestamp) {
@@ -218,21 +217,37 @@ class _UpcomingAndCompletedJobsScreenState
                 dateString =
                     "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
               }
+              final userLat = (jobs["userLat"] as num).toDouble();
+              final userLng = (jobs["userLong"] as num).toDouble();
+              final mecLatitude = (jobs["mecLatitude"] as num).toDouble();
+              final mecLongtitude = (jobs["mecLongtitude"] as num).toDouble();
+
+              // Print to check values
+              print('User Latitude: $userLat, User Longitude: $userLng');
+              print(
+                  'Mechanic Latitude: $mecLatitude, Mechanic Longitude: $mecLongtitude');
+
               double distance = calculateDistance(
                   userLat, userLng, mecLatitude, mecLongtitude);
+              print('Calculated Distance: $distance');
+
+              if (distance < 1) {
+                distance = 1;
+              }
 
               return UpcomingRequestCard(
+                orderId: jobs["orderId"].toString(),
                 userName: jobs["userName"],
                 vehicleName: jobs['vehicleNumber'] ?? "N/A",
                 address: jobs['userDeliveryAddress'] ?? "N/A",
                 serviceName: jobs['selectedService'] ?? "N/A",
                 jobId: jobs['orderId'] ?? "#Unknown",
                 imagePath: imagePath.isEmpty
-                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/playstore.png?alt=media&token=a6526b0d-7ddf-48d6-a2f7-0612f04742b5"
+                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
                     : imagePath,
                 date: dateString,
                 buttonName: "Start",
-                onButtonTap: () {},
+                onButtonTap: _showStartDialog,
                 onPhoneCallTap: () async {
                   final Uri launchUri = Uri(
                     scheme: 'tel',
@@ -240,8 +255,21 @@ class _UpcomingAndCompletedJobsScreenState
                   );
                   await launchUrl(launchUri);
                 },
+                onDirectionTapButton: () async {
+                  final Uri googleMapsUri = Uri.parse(
+                      'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                  // ignore: deprecated_member_use
+                  if (await canLaunch(googleMapsUri.toString())) {
+                    // ignore: deprecated_member_use
+                    await launch(googleMapsUri.toString());
+                  } else {
+                    // Handle the error if the URL cannot be launched
+                    print('Could not launch Google Maps');
+                  }
+                },
                 currentStatus: currentStatus,
-                companyNameAndVehicleName: "Freightliner (A45-143)",
+                companyNameAndVehicleName:
+                    "${jobs["companyName"]} (${vehicleNumber})",
                 onCompletedButtonTap: () {},
                 rating: jobs["rating"].toString(),
                 arrivalCharges: jobs["arrivalCharges"].toString(),
@@ -255,6 +283,25 @@ class _UpcomingAndCompletedJobsScreenState
           ),
           SizedBox(height: 80.h),
         ],
+      ),
+    );
+  }
+
+  void _showStartDialog() {
+    Get.defaultDialog(
+      title: "Start Job Confirmation ",
+      middleText: "Wait for Driver Confirmation",
+      confirm: ElevatedButton(
+        onPressed: () {
+          Get.back(); // Close the pay dialog
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kPrimary, // Custom color for "Pay" button
+        ),
+        child: Text(
+          "Confirm",
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }

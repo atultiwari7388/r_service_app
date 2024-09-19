@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:regal_shop_app/widgets/info_box.dart';
 import 'package:regal_shop_app/widgets/rating_box.dart';
 import '../../../utils/app_styles.dart';
@@ -25,6 +26,8 @@ class UpcomingRequestCard extends StatefulWidget {
     this.isStatusCompleted = false,
     this.onButtonTap,
     this.onPhoneCallTap,
+    this.onDirectionTapButton,
+    this.onDasMapButton,
     this.currentStatus = 0,
     required this.buttonName,
     this.onCompletedButtonTap,
@@ -33,6 +36,7 @@ class UpcomingRequestCard extends StatefulWidget {
     this.fixCharge = "",
     this.km = "",
     this.dId = "",
+    required this.orderId,
     required this.isImage,
     this.images = const [],
   });
@@ -49,6 +53,8 @@ class UpcomingRequestCard extends StatefulWidget {
   final void Function()? onButtonTap;
   final Future<void> Function()? onPhoneCallTap;
   final void Function()? onCompletedButtonTap;
+  final Future<void> Function()? onDirectionTapButton;
+  final Future<void> Function()? onDasMapButton;
   final int currentStatus;
   final String buttonName;
   final String rating;
@@ -56,6 +62,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final String fixCharge;
   final String km;
   final String dId;
+  final String orderId;
   final bool isImage;
   final List images;
 
@@ -102,18 +109,20 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                       children: [
                         Text(widget.jobId,
                             style: appStyle(12, kSecondary, FontWeight.bold)),
-                        widget.currentStatus == 0
-                            ? SizedBox()
-                            : Row(
-                                children: [
-                                  InfoBoxWidget(
-                                      text: widget.km, color: kPrimary),
-                                  RatingBoxWidget(rating: widget.rating),
-                                  Text(widget.date,
-                                      style:
-                                          appStyle(13, kGray, FontWeight.bold)),
-                                ],
-                              ),
+                        // widget.currentStatus == 0
+                        //     ? SizedBox()
+                        // :
+                        Row(
+                          children: [
+                            InfoBoxWidget(text: widget.km, color: kPrimary),
+                            widget.currentStatus == 0
+                                ? SizedBox()
+                                : RatingBoxWidget(rating: widget.rating),
+                            SizedBox(width: 5.w),
+                            Text(widget.date,
+                                style: appStyle(13, kGray, FontWeight.bold)),
+                          ],
+                        ),
                       ],
                     ),
                     SizedBox(height: 4.h),
@@ -205,24 +214,27 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                               kPrimary, widget.buttonName, widget.onButtonTap),
                           SizedBox(width: 10.w),
                           Expanded(
-                            child: Container(
-                              height: 40.h,
-                              width: 120.w,
-                              decoration: BoxDecoration(
-                                color: kSecondary, // Button color
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.directions, color: kWhite),
-                                  SizedBox(width: 5.w),
-                                  Text(
-                                    "Map",
-                                    style:
-                                        appStyle(14, kWhite, FontWeight.normal),
-                                  ),
-                                ],
+                            child: GestureDetector(
+                              onTap: widget.onDasMapButton,
+                              child: Container(
+                                height: 40.h,
+                                width: 120.w,
+                                decoration: BoxDecoration(
+                                  color: kSecondary, // Button color
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.directions, color: kWhite),
+                                    SizedBox(width: 5.w),
+                                    Text(
+                                      "Map",
+                                      style: appStyle(
+                                          14, kWhite, FontWeight.normal),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -268,11 +280,14 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                       buildButton(kSecondary, "Call",
                                           widget.onPhoneCallTap),
                                       SizedBox(width: 10.w),
-                                      CircleAvatar(
-                                          radius: 25.r,
-                                          backgroundColor: kSuccess,
-                                          child: Icon(Icons.directions,
-                                              color: kWhite)),
+                                      GestureDetector(
+                                        onTap: widget.onDirectionTapButton,
+                                        child: CircleAvatar(
+                                            radius: 25.r,
+                                            backgroundColor: kSuccess,
+                                            child: Icon(Icons.directions,
+                                                color: kWhite)),
+                                      ),
                                     ],
                                   )
                                 : widget.currentStatus == 3
@@ -343,7 +358,9 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                                       kSuccess,
                                                       "Rate Now",
                                                       () => showRatingDialog(
-                                                          context, widget.dId))
+                                                          context,
+                                                          widget.dId,
+                                                          widget.orderId))
                                                 ],
                                               )
                                             : SizedBox()
@@ -365,20 +382,72 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
             spacing: 10.w,
             runSpacing: 10.h,
             children: widget.images.map((image) {
-              return Container(
-                width: 50.w,
-                height: 50.h,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12.r),
-                  image: DecorationImage(
-                    image: NetworkImage(image),
-                    fit: BoxFit.cover,
+              return GestureDetector(
+                onTap: () => _showImageViewer(image),
+                child: Container(
+                  width: 50.w,
+                  height: 50.h,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12.r),
+                    image: DecorationImage(
+                      image: NetworkImage(image),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               );
             }).toList(),
           )
         : Container(); // Empty container when no images are selected
+  }
+
+  void _showImageViewer(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          // child: Container(
+          //   height: 400,
+          //   child: Column(
+          //     mainAxisSize: MainAxisSize.min,
+          //     children: [
+          //       PhotoView(
+          //         imageProvider: NetworkImage(imageUrl),
+          //         minScale: PhotoViewComputedScale.covered,
+          //         maxScale: PhotoViewComputedScale.covered,
+          //       ),
+          //       // SizedBox(height: 10.h),
+          //       // ElevatedButton(
+          //       //   onPressed: () async {
+          //       //     // Implement your download logic here
+          //       //     // Example: using Dio or any other method to download
+          //       //     await _downloadImage(imageUrl);
+          //       //   },
+          //       //   child: Text('Download'),
+          //       // ),
+          //     ],
+          //   ),
+          // ),
+          child: Container(
+            // Set a fixed height and width, or use MediaQuery for dynamic sizing
+            height: MediaQuery.of(context).size.height * 0.8,
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: PhotoView(
+              imageProvider: NetworkImage(imageUrl),
+              minScale:
+                  PhotoViewComputedScale.contained, // Adjust this as needed
+              maxScale: PhotoViewComputedScale.covered, // Adjust this as needed
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _downloadImage(String imageUrl) async {
+    // Your download logic (e.g., using Dio or another package)
+    showToastMessage('Download', 'Downloading image...', Colors.blue);
+    // Implement the actual download logic here
   }
 
   void _showConfirmStartDialog() {
@@ -460,7 +529,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
     );
   }
 
-  void showRatingDialog(BuildContext context, String dId) {
+  void showRatingDialog(BuildContext context, String dId, String orderId) {
     double _rating = 0;
     String _review = '';
 
@@ -498,7 +567,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           actions: [
             ElevatedButton(
               onPressed: () async {
-                await _updateRatingAndReview(dId, _rating, _review);
+                await _updateRatingAndReview(dId, orderId, _rating, _review);
                 Navigator.of(context).pop();
               },
               child: Text('Submit'),
@@ -524,19 +593,36 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
   }
 
   Future<void> _updateRatingAndReview(
-      String dId, double rating, String review) async {
+      String dId, String orderId, double rating, String review) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('Mechanics')
-          .doc(dId)
-          .collection('ratings')
-          .doc()
-          .set({
+      final data = {
         'rating': rating,
         'review': review,
         "mId": FirebaseAuth.instance.currentUser!.uid,
+        "orderId": orderId,
         "timestamp": DateTime.now(),
-      });
+      };
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(dId)
+          .collection('ratings')
+          .doc()
+          .set(data);
+
+      // Update the Firestore `jobs` collection
+      await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(orderId)
+          .update(data);
+
+      // Check if the history document exists
+      await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(dId)
+          .collection("history")
+          .doc(orderId)
+          .update(data);
+
       showToastMessage('Rating', 'Review Submitted.', Colors.red);
       log('Rating and review updated successfully.');
     } catch (error) {

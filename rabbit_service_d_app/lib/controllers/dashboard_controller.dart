@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -26,8 +27,14 @@ class DashboardController extends GetxController {
   bool hasVehicles = false;
   String userName = "";
   String phoneNumber = "";
-  String userPhoto = "";
+  String userPhoto =
+      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658";
   bool imageSelected = false;
+  bool isVehicleSelected = false;
+  bool isServiceSelected = false;
+  bool isAddressSelected = false;
+  bool isFindMechanicEnabled = false;
+
   File? image;
   List<File> images = [];
 
@@ -36,6 +43,15 @@ class DashboardController extends GetxController {
 
   // Getter to expose loading state
   bool get isLoading => _isLoading;
+
+  Timer? _debounce;
+
+  void onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      filterselectedCompanyAndvehicle(query);
+    });
+  }
 
   // Method to set loading state
   void setLoading(bool loading) {
@@ -125,6 +141,8 @@ class DashboardController extends GetxController {
 
         companyNameController.text =
             vehicleData['companyName'] ?? 'Company Name';
+        isVehicleSelected = true; // Vehicle selected
+        checkIfAllSelected();
 
         print("new function called $selectedCompanyAndVehcileNameController");
         update();
@@ -189,224 +207,6 @@ class DashboardController extends GetxController {
     update();
   }
 
-  //========================================= Location Section ==========================
-
-  Future<void> checkIfLocationIsSet() async {
-    try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .get();
-
-      if (userDoc.exists && userDoc.data() != null) {
-        var data = userDoc.data() as Map<String, dynamic>;
-        if (data.containsKey('isLocationSet') &&
-            data['isLocationSet'] == true) {
-          // If location is set, fetch the stored location and address
-          userLat = data['lastLocation']['latitude'] ?? 0.0;
-          userLong = data['lastLocation']['longitude'] ?? 0.0;
-          fetchCurrentAddress();
-        } else {
-          // If location is not set, fetch and update the current location
-          fetchUserCurrentLocationAndUpdateToFirebase();
-        }
-      } else {
-        // If document doesn't exist, fetch and update current location
-        fetchUserCurrentLocationAndUpdateToFirebase();
-      }
-    } catch (e) {
-      log("Error checking location set status: $e");
-    }
-  }
-
-  Future<void> fetchCurrentAddress() async {
-    try {
-      QuerySnapshot addressSnapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .collection("Addresses")
-          .where('isAddressSelected', isEqualTo: true)
-          .get();
-
-      if (addressSnapshot.docs.isNotEmpty) {
-        var addressData =
-            addressSnapshot.docs.first.data() as Map<String, dynamic>;
-
-        appbarTitle = addressData['address'];
-        locationController.text = addressData['address'];
-        update();
-      }
-    } catch (e) {
-      log("Error fetching current address: $e");
-    }
-  }
-
-//====================== Fetching user current location =====================
-  Future<void> fetchUserCurrentLocationAndUpdateToFirebase() async {
-    loc.Location location = loc.Location();
-    bool serviceEnabled;
-    PermissionStatus permissionGranted;
-
-    // Check if location services are enabled
-    serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      showToastMessage(
-        "Location Error",
-        "Please enable location Services",
-        kRed,
-      );
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) {
-        return;
-      }
-    }
-
-    // Check if location permissions are granted
-    permissionGranted = await location.hasPermission();
-    if (permissionGranted == loc.PermissionStatus.denied) {
-      showToastMessage(
-        "Error",
-        "Please grant location permission in app settings",
-        kRed,
-      );
-      await loc.Location().requestPermission();
-      permissionGranted = await location.hasPermission();
-      if (permissionGranted != loc.PermissionStatus.granted) {
-        return;
-      }
-    }
-
-    // Get the current location
-    currentLocation = await location.getLocation();
-
-    // Check the distance from the stored location (userLat and userLong)
-    if (userLat != 0.0 && userLong != 0.0) {
-      double distanceInMeters = Geolocator.distanceBetween(
-        userLat,
-        userLong,
-        currentLocation!.latitude!,
-        currentLocation!.longitude!,
-      );
-
-      if (distanceInMeters < 100) {
-        // User hasn't moved far; use the stored address
-
-        locationController.text = appbarTitle; // previously stored address
-        update();
-        return; // Skip storing the same address again
-      }
-    }
-
-    // If the location is different, fetch the new address
-    String address = await getAddressFromLtLng(
-      "LatLng(${currentLocation!.latitude}, ${currentLocation!.longitude})",
-    );
-    log(address.toString());
-
-    // Update app bar with the current address and save it to Firestore
-
-    appbarTitle = address;
-    locationController.text = address;
-    saveUserLocation(
-      currentLocation!.latitude!,
-      currentLocation!.longitude!,
-      appbarTitle,
-    );
-    update();
-  }
-
-  void saveUserLocation(double latitude, double longitude, String userAddress) {
-    FirebaseFirestore.instance.collection('Users').doc(currentUId).set({
-      'isLocationSet': true,
-      'lastLocation': {
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-      'lastAddress': userAddress,
-    }, SetOptions(merge: true));
-
-    FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUId)
-        .collection("Addresses")
-        .add({
-      'address': userAddress,
-      'location': {
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-      'addressType': "Current",
-      "isAddressSelected": true,
-    });
-  }
-
-  void showServiceAndNetworkOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 1.0,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(20.0),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 10),
-                    width: 60,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: "Search Service or Network",
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onChanged: (value) {
-                        filterServiceAndNetwork(value);
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: filteredServiceAndNetworkOptions.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(filteredServiceAndNetworkOptions[index]),
-                          onTap: () {
-                            serviceAndNetworkController.text =
-                                filteredServiceAndNetworkOptions[index];
-                            update();
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   void showSelectedVehicleAndCompanyOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -444,7 +244,8 @@ class DashboardController extends GetxController {
                         prefixIcon: Icon(Icons.search),
                       ),
                       onChanged: (value) {
-                        filterselectedCompanyAndvehicle(value);
+                        // filterselectedCompanyAndvehicle(value);
+                        onSearchChanged(value);
                       },
                     ),
                   ),
@@ -456,16 +257,36 @@ class DashboardController extends GetxController {
                         return ListTile(
                           title:
                               Text(filterSelectedCompanyAndvehicleName[index]),
+                          // onTap: () async {
+                          //   selectedCompanyAndVehcileName =
+                          //       filterSelectedCompanyAndvehicleName[index];
+                          //   log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
+                          //   await updateVehicleSelection(
+                          //       filterSelectedCompanyAndvehicleName[index]);
+                          //   selectedCompanyAndVehcileNameController.text =
+                          //       filterSelectedCompanyAndvehicleName[index];
+                          //   update();
+                          //   Navigator.pop(context);
+                          // },
                           onTap: () async {
+                            _isLoading = true; // Show loading indicator
+                            update();
+
                             selectedCompanyAndVehcileName =
                                 filterSelectedCompanyAndvehicleName[index];
                             log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
+
                             await updateVehicleSelection(
-                                filterSelectedCompanyAndvehicleName[index]);
+                                filterSelectedCompanyAndvehicleName[
+                                    index]); // Database update
                             selectedCompanyAndVehcileNameController.text =
                                 filterSelectedCompanyAndvehicleName[index];
-                            update();
-                            Navigator.pop(context);
+
+                            _isLoading = false; // Hide loading indicator
+                            isVehicleSelected = true; // Vehicle selected
+                            checkIfAllSelected();
+                            update(); // UI update
+                            Navigator.pop(context); // Close dialog
                           },
                         );
                       },
@@ -531,6 +352,75 @@ class DashboardController extends GetxController {
     }
   }
 
+  void showServiceAndNetworkOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 1.0,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(20.0),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 10),
+                    width: 60,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        labelText: "Search Service or Network",
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        filterServiceAndNetwork(value);
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: filteredServiceAndNetworkOptions.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(filteredServiceAndNetworkOptions[index]),
+                          onTap: () {
+                            serviceAndNetworkController.text =
+                                filteredServiceAndNetworkOptions[index];
+                            isServiceSelected = true; // Service selected
+                            checkIfAllSelected();
+                            update();
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void showImageSourceDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -565,22 +455,40 @@ class DashboardController extends GetxController {
   }
 
   void getImage(ImageSource source, BuildContext context) async {
-    final pickedFiles = await ImagePicker().pickMultiImage(
-      imageQuality: 50,
-    );
-
-    if (pickedFiles != null && pickedFiles.length <= 4) {
-      images = pickedFiles.map((file) => File(file.path)).toList();
-      imageSelected = images.isNotEmpty; // Update the boolean value
-      update(); // Notify listeners
-    } else if (pickedFiles != null && pickedFiles.length > 4) {
-      // If more than 4 images selected, show a message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("You can only select up to 4 images")),
+    if (source == ImageSource.camera) {
+      // For camera, use pickImage
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 50,
       );
-    } else {
-      imageSelected = false; // No images selected
-      update(); // Notify listeners
+
+      if (pickedFile != null) {
+        images = [File(pickedFile.path)];
+        imageSelected = true; // Update the boolean value
+        update(); // Notify listeners
+      } else {
+        imageSelected = false; // No image captured
+        update(); // Notify listeners
+      }
+    } else if (source == ImageSource.gallery) {
+      // For gallery, use pickMultiImage
+      final pickedFiles = await ImagePicker().pickMultiImage(
+        imageQuality: 50,
+      );
+
+      if (pickedFiles != null && pickedFiles.length <= 4) {
+        images = pickedFiles.map((file) => File(file.path)).toList();
+        imageSelected = images.isNotEmpty; // Update the boolean value
+        update(); // Notify listeners
+      } else if (pickedFiles != null && pickedFiles.length > 4) {
+        // If more than 4 images selected, show a message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("You can only select up to 4 images")),
+        );
+      } else {
+        imageSelected = false; // No images selected
+        update(); // Notify listeners
+      }
     }
   }
 
@@ -680,8 +588,166 @@ class DashboardController extends GetxController {
     }
   }
 
-  // void switchToMyJobsScreen() {
-  //   final tabIndexController = Get.find<TabIndexController>();
-  //   tabIndexController.setTabIndex = 1; // Switch to MyJobsScreen
-  // }
+  //========================================= Location Section ==========================
+
+  Future<void> checkIfLocationIsSet() async {
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+
+      if (userDoc.exists && userDoc.data() != null) {
+        var data = userDoc.data() as Map<String, dynamic>;
+        if (data.containsKey('isLocationSet') &&
+            data['isLocationSet'] == true) {
+          // If location is set, fetch the stored location and address
+          userLat = data['lastLocation']['latitude'] ?? 0.0;
+          userLong = data['lastLocation']['longitude'] ?? 0.0;
+          fetchCurrentAddress();
+        } else {
+          // If location is not set, fetch and update the current location
+          fetchUserCurrentLocationAndUpdateToFirebase();
+        }
+      } else {
+        // If document doesn't exist, fetch and update current location
+        fetchUserCurrentLocationAndUpdateToFirebase();
+      }
+    } catch (e) {
+      log("Error checking location set status: $e");
+    }
+  }
+
+  Future<void> fetchCurrentAddress() async {
+    try {
+      QuerySnapshot addressSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection("Addresses")
+          .where('isAddressSelected', isEqualTo: true)
+          .get();
+
+      if (addressSnapshot.docs.isNotEmpty) {
+        var addressData =
+            addressSnapshot.docs.first.data() as Map<String, dynamic>;
+
+        appbarTitle = addressData['address'];
+        locationController.text = addressData['address'];
+        isAddressSelected = true; // Address selected
+        checkIfAllSelected();
+        update();
+      }
+    } catch (e) {
+      log("Error fetching current address: $e");
+    }
+  }
+
+//====================== Fetching user current location =====================
+  Future<void> fetchUserCurrentLocationAndUpdateToFirebase() async {
+    loc.Location location = loc.Location();
+    bool serviceEnabled;
+    PermissionStatus permissionGranted;
+
+    // Check if location services are enabled
+    serviceEnabled = await location.serviceEnabled();
+    if (!serviceEnabled) {
+      showToastMessage(
+        "Location Error",
+        "Please enable location Services",
+        kRed,
+      );
+      serviceEnabled = await location.requestService();
+      if (!serviceEnabled) {
+        return;
+      }
+    }
+
+    // Check if location permissions are granted
+    permissionGranted = await location.hasPermission();
+    if (permissionGranted == loc.PermissionStatus.denied) {
+      showToastMessage(
+        "Error",
+        "Please grant location permission in app settings",
+        kRed,
+      );
+      await loc.Location().requestPermission();
+      permissionGranted = await location.hasPermission();
+      if (permissionGranted != loc.PermissionStatus.granted) {
+        return;
+      }
+    }
+
+    // Get the current location
+    currentLocation = await location.getLocation();
+
+    // Check the distance from the stored location (userLat and userLong)
+    if (userLat != 0.0 && userLong != 0.0) {
+      double distanceInMeters = Geolocator.distanceBetween(
+        userLat,
+        userLong,
+        currentLocation!.latitude!,
+        currentLocation!.longitude!,
+      );
+
+      if (distanceInMeters < 100) {
+        // User hasn't moved far; use the stored address
+
+        locationController.text = appbarTitle; // previously stored address
+        isAddressSelected = true; // Address selected
+        checkIfAllSelected();
+        update();
+        return; // Skip storing the same address again
+      }
+    }
+
+    // If the location is different, fetch the new address
+    String address = await getAddressFromLtLng(
+      "LatLng(${currentLocation!.latitude}, ${currentLocation!.longitude})",
+    );
+    log(address.toString());
+
+    // Update app bar with the current address and save it to Firestore
+
+    appbarTitle = address;
+    locationController.text = address;
+    saveUserLocation(
+      currentLocation!.latitude!,
+      currentLocation!.longitude!,
+      appbarTitle,
+    );
+    update();
+  }
+
+  void saveUserLocation(double latitude, double longitude, String userAddress) {
+    FirebaseFirestore.instance.collection('Users').doc(currentUId).set({
+      'isLocationSet': true,
+      'lastLocation': {
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+      'lastAddress': userAddress,
+    }, SetOptions(merge: true));
+
+    FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection("Addresses")
+        .add({
+      'address': userAddress,
+      'location': {
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+      'addressType': "Current",
+      "isAddressSelected": true,
+    });
+  }
+
+  void checkIfAllSelected() {
+    if (isVehicleSelected && isServiceSelected && isAddressSelected) {
+      isFindMechanicEnabled = true;
+    } else {
+      isFindMechanicEnabled = false;
+    }
+  }
 }

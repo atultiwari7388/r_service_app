@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           SizedBox(height: 20.h),
                           ReusableText(
-                            text: "Login",
+                            text: "Admin Login",
                             style: appStyle(24, kPrimary, FontWeight.w500),
                           ),
                         ],

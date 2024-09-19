@@ -9,6 +9,8 @@ import 'package:regal_shop_app/views/dashboard/widgets/upcoming_request_card.dar
 import 'package:regal_shop_app/views/profile/profile_screen.dart';
 import 'package:location/location.dart' as loc;
 import 'package:location/location.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../services/calculate_distance.dart';
 import '../../services/collection_references.dart';
 import '../../services/get_month_string.dart';
 import '../../services/latlng_converter.dart';
@@ -30,8 +32,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
   bool firstTimeAppLaunch = true; // Boolean flag to track first app launch
   bool isLocationSet = false;
-  double userLat = 0.0;
-  double userLong = 0.0;
+  double mecLat = 0.0;
+  double mecLng = 0.0;
   LocationData? currentLocation;
   String _selectedSortOption = "Sort";
   String userName = "";
@@ -295,7 +297,26 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                         dateString =
                                             "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
                                       }
+                                      final userLat =
+                                          (job["userLat"] as num).toDouble();
+                                      final userLng =
+                                          (job["userLong"] as num).toDouble();
+
+                                      print(
+                                          'User Latitude: $userLat, User Longitude: $userLng');
+                                      print(
+                                          'Mechanic Latitude: $mecLat, Mechanic Longitude: $mecLng');
+
+                                      double distance = calculateDistance(
+                                          userLat, userLng, mecLat, mecLng);
+                                      print('Calculated Distance: $distance');
+
+                                      if (distance < 1) {
+                                        distance = 1;
+                                      }
+
                                       return UpcomingRequestCard(
+                                        orderId: job["orderId"].toString(),
                                         userName: userName,
                                         vehicleName:
                                             job['vehicleNumber'] ?? "N/A",
@@ -305,7 +326,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                             job['selectedService'] ?? "N/A",
                                         jobId: job['orderId'] ?? "#Unknown",
                                         imagePath: imagePath.isEmpty
-                                            ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/playstore.png?alt=media&token=a6526b0d-7ddf-48d6-a2f7-0612f04742b5"
+                                            ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
                                             : imagePath,
                                         date: dateString,
                                         buttonName: "Interested",
@@ -316,10 +337,25 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                           job["orderId"].toString(),
                                           isImage,
                                         ),
+                                        onDasMapButton: () async {
+                                          final Uri googleMapsUri = Uri.parse(
+                                              'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                          // ignore: deprecated_member_use
+                                          if (await canLaunch(
+                                              googleMapsUri.toString())) {
+                                            // ignore: deprecated_member_use
+                                            await launch(
+                                                googleMapsUri.toString());
+                                          } else {
+                                            // Handle the error if the URL cannot be launched
+                                            print(
+                                                'Could not launch Google Maps');
+                                          }
+                                        },
                                         currentStatus: job['status'] ?? 0,
                                         rating: "",
                                         arrivalCharges: "30",
-                                        km: "",
+                                        km: "${distance.toStringAsFixed(0)} km",
                                         isImage: isImage,
                                         images: images,
                                         fixCharge: job["fixPrice"].toString(),
@@ -613,6 +649,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             // Optionally show a message if the input is empty
             Get.snackbar("Error", "Please enter arrival charges.");
           }
+
+          Get.back();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green, // Custom color for "Submit" button
@@ -676,6 +714,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     // Update the app bar with the current address
     setState(() {
       appbarTitle = address;
+      mecLat = locationData.latitude!;
+      mecLng = locationData.longitude!;
       log(appbarTitle);
       log(locationData.latitude.toString());
       log(locationData.longitude.toString());

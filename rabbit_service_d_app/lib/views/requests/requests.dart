@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/widgets/request_history_upcoming_request.dart';
 import '../../services/collection_references.dart';
+import '../../services/find_mechanic.dart';
 import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
@@ -165,8 +166,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     .collection('Users')
                     .doc(currentUId)
                     .collection("history")
-                    .where("orderId", isEqualTo: widget.id).where("status", isEqualTo: [1,2,3,4,5])
-                    .snapshots(),
+                    .where("orderId", isEqualTo: widget.id)
+                    .where("status", whereIn: [1, 2, 3, 4, 5]).snapshots(),
                 builder: (BuildContext context,
                     AsyncSnapshot<QuerySnapshot> snapshot) {
                   if (snapshot.hasError) {
@@ -181,7 +182,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       .data!.docs; // List of documents in the 'jobs' collection
 
                   return data.isEmpty
-                      ? Center(child: Text("No Request"))
+                      ? Center(child: Text("No Mechanic Found"))
                       : ListView.builder(
                           shrinkWrap: true,
                           physics: NeverScrollableScrollPhysics(),
@@ -201,10 +202,30 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               dateString =
                                   "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
                             }
+                            final userLat = (job["userLat"] as num).toDouble();
+                            final userLng = (job["userLong"] as num).toDouble();
+                            final mecLatitude =
+                                (job["mecLatitude"] as num).toDouble();
+                            final mecLongtitude =
+                                (job["mecLongtitude"] as num).toDouble();
+
+                            // Print to check values
+                            print(
+                                'User Latitude: $userLat, User Longitude: $userLng');
+                            print(
+                                'Mechanic Latitude: $mecLatitude, Mechanic Longitude: $mecLongtitude');
+
+                            double distance = calculateDistance(
+                                userLat, userLng, mecLatitude, mecLongtitude);
+                            print('Calculated Distance: $distance');
+
+                            if (distance < 1) {
+                              distance = 1;
+                            }
                             return RequestAcceptHistoryCard(
                               shopName: job["mName"].toString(),
                               time: job["time"].toString(),
-                              distance: "5 km",
+                              distance: "${distance.toStringAsFixed(0)} km",
                               rating: "4.5",
                               jobId: job["orderId"].toString(),
                               userId: job["userId"].toString(),
@@ -212,7 +233,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                               arrivalCharges: job["arrivalCharges"].toString(),
                               fixCharges: job["fixPrice"].toString(),
                               perHourCharges: job["perHourCharges"].toString(),
-                              imagePath: job["mDp"].toString(),
+                              imagePath: job["mDp"].toString().isEmpty
+                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                  : job["mDp"].toString(),
                               currentStatus: job["status"],
                               isHidden: _selectedCardIndex != null &&
                                   _selectedCardIndex != index,
@@ -246,80 +269,4 @@ class _RequestsScreenState extends State<RequestsScreen> {
       ),
     );
   }
-
-  void _handlePayTap(int index, String payCharges) {
-    if (_cardStates[index] == CardState.Accepted) {
-      _showPayDialog(index, payCharges);
-    } else {}
-  }
-
-  void _handleConfirmStartTap(int index) {
-    if (_cardStates[index] == CardState.Paid) {
-      _showConfirmStartDialog(index);
-    } else {
-      // Show a message or handle the case where the card is not in the right state
-      // showToast("You can only start requests that have been paid.");
-    }
-  }
-
-  void _showPayDialog(int index, String payCharges) {
-    Get.defaultDialog(
-      title: "Pay \$$payCharges",
-      middleText: "Please proceed to pay.",
-      confirm: ElevatedButton(
-        onPressed: () {
-          Get.back(); // Close the pay dialog
-          setState(() {
-            _cardStates[index] = CardState.Paid; // Update card state
-          });
-          // _showConfirmStartDialog(index); // Show confirm to start dialog
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: kSecondary, // Custom color for "Pay" button
-        ),
-        child: Text(
-          "Pay",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-    );
-  }
-
-  void _showConfirmStartDialog(int index) {
-    Get.defaultDialog(
-      title: "Confirm to Start",
-      middleText: "Are you sure you want to start?",
-      textCancel: "No",
-      textConfirm: "Yes",
-      cancel: OutlinedButton(
-        onPressed: () {
-          Get.back(); // Close the dialog if "No" is pressed
-        },
-        child: Text(
-          "No",
-          style: TextStyle(color: Colors.red), // Custom color for "No" button
-        ),
-      ),
-      confirm: ElevatedButton(
-        onPressed: () {
-          Get.back(); // Close the confirm to start dialog
-          setState(() {
-            _cardStates[index] = CardState.Confirmed; // Update card state
-          });
-          // Optionally, you can show a toast or other indication of ongoing status
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green, // Custom color for "Yes" button
-        ),
-        child: Text(
-          "Yes",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-    );
-  }
 }
-
-enum CardState { Initial, Accepted, Paid, Confirmed }
-
-List<CardState> _cardStates = List.generate(10, (_) => CardState.Initial);
