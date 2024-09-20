@@ -1,7 +1,9 @@
 import 'dart:developer';
+import 'package:admin_app/views/drivers/driver_details_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../services/collection_references.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
@@ -28,7 +30,6 @@ class _DriversScreenState extends State<DriversScreen> {
   void initState() {
     super.initState();
     _driverStream = _driverStreamData();
-    fetchDriverCharges();
   }
 
   Stream<List<DocumentSnapshot>> _driverStreamData() {
@@ -50,7 +51,7 @@ class _DriversScreenState extends State<DriversScreen> {
     if (_startDate != null && _endDate != null) {
       query = query
           .where("created_at", isGreaterThanOrEqualTo: _startDate)
-          .where("updated_at",
+          .where("created_at",
               isLessThanOrEqualTo:
                   _endDate!.add(const Duration(days: 1))); // include end date
     }
@@ -95,23 +96,6 @@ class _DriversScreenState extends State<DriversScreen> {
   void dispose() {
     super.dispose();
     searchController.dispose();
-  }
-
-  Future<Map<String, dynamic>?> fetchDriverCharges() async {
-    try {
-      DocumentSnapshot snapshot = await FirebaseFirestore.instance
-          .collection('settings')
-          .doc('driverCharges')
-          .get();
-
-      if (snapshot.exists) {
-        log(snapshot.data().toString());
-        return snapshot.data() as Map<String, dynamic>;
-      }
-    } catch (e) {
-      log(e.toString());
-    }
-    return null;
   }
 
   @override
@@ -191,7 +175,8 @@ class _DriversScreenState extends State<DriversScreen> {
                       border: TableBorder.all(color: kDark, width: 1.0),
                       children: [
                         TableRow(
-                          decoration: BoxDecoration(color: kSecondary.withOpacity(0.8)),
+                          decoration:
+                              BoxDecoration(color: kSecondary.withOpacity(0.8)),
                           children: [
                             buildTableHeaderCell("Sr.no."),
                             buildTableHeaderCell("D'Name"),
@@ -537,7 +522,7 @@ class _DriversScreenState extends State<DriversScreen> {
     return TableCell(
       child: GestureDetector(
         onTap: () {
-          // Get.to(() => DriversDetailSecondScreenTesting(riderData: data));
+          Get.to(() => DriverDetailsScreen(riderData: data));
         },
         child: Padding(
           padding: const EdgeInsets.all(8.0),

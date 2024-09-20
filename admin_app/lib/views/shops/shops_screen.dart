@@ -1,7 +1,9 @@
 import 'dart:developer';
+import 'package:admin_app/views/shops/mechanic_details_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../services/collection_references.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
@@ -49,7 +51,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
     if (_startDate != null && _endDate != null) {
       query = query
           .where("created_at", isGreaterThanOrEqualTo: _startDate)
-          .where("updated_at",
+          .where("created_at",
               isLessThanOrEqualTo:
                   _endDate!.add(const Duration(days: 1))); // include end date
     }
@@ -522,7 +524,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
     return TableCell(
       child: GestureDetector(
         onTap: () {
-          // Get.to(() => DriversDetailSecondScreenTesting(riderData: data));
+          Get.to(() => MechanicDetailsScreen(riderData: data));
         },
         child: Padding(
           padding: const EdgeInsets.all(8.0),

@@ -5,6 +5,7 @@ import 'package:admin_app/views/help/help_screen.dart';
 import 'package:admin_app/views/languages/languages_screen.dart';
 import 'package:admin_app/views/payments/payments_screen.dart';
 import 'package:admin_app/views/privacyPolicy/privacy_policy.dart';
+import 'package:admin_app/views/profile/profile_detail_screen.dart';
 import 'package:admin_app/views/services/services.dart';
 import 'package:admin_app/views/terms_and_condition/terms_condition.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,6 +16,7 @@ import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 import '../aboutUs/about_us.dart';
+import '../profile/profile_screen.dart';
 import '../shops/shops_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -38,6 +40,54 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         title: ReusableText(
             text: "Welcome Admin",
             style: appStyle(20, kDark, FontWeight.normal)),
+        actions: [
+          GestureDetector(
+            onTap: () => Get.to(() => const ProfileDetailsScreen(),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900)),
+            child: CircleAvatar(
+              radius: 19.r,
+              backgroundColor: kPrimary,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('admin')
+                    .doc(currentUId)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<DocumentSnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final userPhoto = data['profilePicture'] ?? '';
+                  final userName = data['name'] ?? '';
+
+                  if (userPhoto.isEmpty) {
+                    return Text(
+                      userName.isNotEmpty ? userName[0] : '',
+                      style: appStyle(20, kWhite, FontWeight.w500),
+                    );
+                  } else {
+                    return ClipOval(
+                      child: Image.network(
+                        userPhoto,
+                        width: 38.r, // Set appropriate size for the image
+                        height: 35.r,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+          SizedBox(width: 20.w),
+        ],
       ),
       drawer: buildDrawer(),
       body: Padding(
@@ -104,26 +154,33 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          const DrawerHeader(
+          DrawerHeader(
             decoration: BoxDecoration(
-              color: kPrimary,
-            ), //BoxDecoration
-            child: UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: kPrimary),
-              accountName: Text(
-                "Mylex Infotech",
-                style: TextStyle(fontSize: 18),
-              ),
-              accountEmail: Text("mylexinfotech@gmail.com"),
-              currentAccountPictureSize: Size.square(50),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: kWhite,
-                child: Text(
-                  "M",
-                  style: TextStyle(fontSize: 30.0, color: Colors.blue),
-                ), //Text
-              ),
+              color: kWhite,
             ),
+            child: Container(
+              decoration: BoxDecoration(
+                  image: DecorationImage(
+                      image: AssetImage("assets/playstore.png"),
+                      fit: BoxFit.fitWidth)),
+            ), //BoxDecoration
+            // child: UserAccountsDrawerHeader(
+            //   decoration: BoxDecoration(color: kPrimary),
+            //   accountName: Text(
+            //     "Mylex Infotech",
+            //     style: TextStyle(fontSize: 18),
+            //   ),
+            //   accountEmail: Text("mylexinfotech@gmail.com"),
+            //   currentAccountPictureSize: Size.square(50),
+            //   currentAccountPicture: CircleAvatar(
+            //     backgroundColor: kWhite,
+            //     child: Text(
+            //       "M",
+            //       style: TextStyle(fontSize: 30.0, color: Colors.blue),
+            //     ), //Text
+            //   ),
+            // ),
+            //
           ),
           buildListTile("assets/order-history.png", "All Jobs",
               () => Get.to(() => AllJobsScreen())),

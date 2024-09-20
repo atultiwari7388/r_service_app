@@ -1,13 +1,15 @@
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import "dart:io";
+import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:admin_app/widgets/custom_background_container.dart';
-import 'package:admin_app/widgets/custom_button.dart';
 import '../../services/collection_references.dart';
+import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/text_field.dart';
 
 class ProfileDetailsScreen extends StatefulWidget {
   const ProfileDetailsScreen({Key? key}) : super(key: key);
@@ -19,14 +21,17 @@ class ProfileDetailsScreen extends StatefulWidget {
 class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _userNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  final ScrollController scrollController = ScrollController();
+  String profilePictureUrl = "";
+
   bool isLoading = false;
-  String _selectedGender = "Male";
-  final List<String> _genders = [
-    'Male',
-    'Female',
-    'Other',
-    'Prefer not to disclose'
-  ];
+  bool _isPersonalDetailsExpanded = false;
+  bool _isLanguageDetailsExpanded = false;
+  bool _isChangePasswordExpanded = false;
 
   File? _image;
 
@@ -38,14 +43,16 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       String? imageUrl;
       if (_image != null) {
         imageUrl = await _uploadImage();
+      } else if (_image == null) {
+        imageUrl = profilePictureUrl;
       }
+      // Uncomment below for Firebase functionality
       await FirebaseFirestore.instance
-          .collection("Users")
+          .collection("admin")
           .doc(currentUId)
           .update({
-        'userName': _userNameController.text,
+        'name': _userNameController.text,
         'email': _emailController.text,
-        'gender': _selectedGender,
         'profilePicture': imageUrl,
         "updated_at": DateTime.now(),
       }).then((value) {
@@ -101,30 +108,52 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     }
   }
 
+  void _toggleSection(String section) {
+    setState(() {
+      if (section == 'personal') {
+        _isPersonalDetailsExpanded = !_isPersonalDetailsExpanded;
+        if (_isPersonalDetailsExpanded) {
+          _isLanguageDetailsExpanded = false;
+          _isChangePasswordExpanded = false;
+        }
+      } else if (section == 'languages') {
+        _isLanguageDetailsExpanded = !_isLanguageDetailsExpanded;
+        if (_isLanguageDetailsExpanded) {
+          _isPersonalDetailsExpanded = false;
+          _isChangePasswordExpanded = false;
+        }
+      } else if (section == 'password') {
+        _isChangePasswordExpanded = !_isChangePasswordExpanded;
+        if (_isChangePasswordExpanded) {
+          _isPersonalDetailsExpanded = false;
+          _isLanguageDetailsExpanded = false;
+        }
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
-    // // Fetch user data from Firestore
-    // FirebaseFirestore.instance
-    //     .collection("Users")
-    //     .doc(currentUId)
-    //     .get()
-    //     .then((DocumentSnapshot snapshot) {
-    //   final data = snapshot.data() as Map<String, dynamic>;
-    //   // Update text fields with user data
-    //   _userNameController.text = data['userName'] ?? '';
-    //   _emailController.text = data['email'] ?? '';
-    //   _phoneNumberController.text = data['phoneNumber'] ?? '';
-    //   // Update gender if valid
-    //   final gender = data['gender'];
-    //   if (_genders.contains(gender)) {
-    //     setState(() {
-    //       _selectedGender = gender;
-    //     });
-    //   }
-    // }).catchError((error) {
-    //   print("Failed to fetch user data: $error");
-    // });
+    FirebaseFirestore.instance
+        .collection("admin")
+        .doc(currentUId)
+        .get()
+        .then((DocumentSnapshot snapshot) {
+      final data = snapshot.data() as Map<String, dynamic>;
+      // Update text fields with user data
+      _userNameController.text = data['name'] ?? '';
+      _emailController.text = data['email'] ?? '';
+    }).catchError((error) {
+      print("Failed to fetch user data: $error");
+    });
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    scrollController.dispose();
   }
 
   @override
@@ -135,88 +164,123 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          : CustomBackgroundContainer(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(height: 20.0.h),
-                  Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20.0.r),
-                        ),
-                        padding: EdgeInsets.all(20.0.h),
+          : StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection("admin")
+                  .doc(currentUId)
+                  .snapshots(),
+              builder: (BuildContext context,
+                  AsyncSnapshot<DocumentSnapshot<Object?>> snapshot) {
+                if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                profilePictureUrl = data['profilePicture'] ?? '';
+                _userNameController.text = data['name'] ?? '';
+                _emailController.text = data['email'] ?? '';
+
+                return data.isNotEmpty
+                    ? SingleChildScrollView(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            CircleAvatar(
-                              radius: 50.r,
-                              backgroundImage:
-                                  AssetImage('assets/images/profile.jpg'),
-                            ),
-                            SizedBox(height: 20.0),
-                            TextFormField(
-                              controller: _userNameController,
-                              decoration: InputDecoration(
-                                labelText: 'Company Name',
-                              ),
-                            ),
-                            SizedBox(height: 10.0),
-                            TextFormField(
-                              enabled: false,
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                labelText: 'Email',
-                              ),
-                            ),
-                            SizedBox(height: 10.0.h),
-                            DropdownButtonFormField<String>(
-                              value: _selectedGender,
-                              decoration: InputDecoration(
-                                labelText: 'Gender',
-                              ),
-                              items: _genders.map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  _selectedGender = value!;
-                                });
-                              },
-                            ),
                             SizedBox(height: 20.0.h),
+                            // Profile Picture and Edit Button
+                            Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 50.r,
+                                  backgroundImage: _image != null
+                                      ? FileImage(
+                                          _image!) // Show selected image
+                                      : profilePictureUrl.isNotEmpty
+                                          ? NetworkImage(
+                                              profilePictureUrl) // Show Firebase image
+                                          : AssetImage(
+                                                  'assets/placeholder_image.png')
+                                              as ImageProvider<Object>,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: CircleAvatar(
+                                    backgroundColor: kPrimary,
+                                    child: IconButton(
+                                      icon: Icon(Icons.camera_alt),
+                                      color: Colors.white,
+                                      onPressed: () {
+                                        _getImage(ImageSource.gallery);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 30.0.h),
+
+                            // Personal Details Section
+                            _buildSectionCard(
+                              context,
+                              title: "Personal Details",
+                              icon: Icons.person,
+                              isExpanded: _isPersonalDetailsExpanded,
+                              onToggle: () => _toggleSection('personal'),
+                              children: [
+                                TextFieldInputWidget(
+                                  hintText: "Name",
+                                  textEditingController: _userNameController,
+                                  textInputType: TextInputType.text,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Email",
+                                  textEditingController: _emailController,
+                                  textInputType: TextInputType.emailAddress,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 20.0.h),
+
+                            // Change Password Section
+                            _buildSectionCard(
+                              context,
+                              title: "Change Password",
+                              icon: Icons.lock,
+                              isExpanded: _isChangePasswordExpanded,
+                              onToggle: () => _toggleSection('password'),
+                              children: [
+                                TextFieldInputWidget(
+                                  hintText: "Enter New Password",
+                                  textEditingController: _newPasswordController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  isIconApply: false,
+                                  icon: Icons.abc,
+                                  isPass: true,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Confirm New Password",
+                                  textEditingController:
+                                      _confirmPasswordController,
+                                  textInputType: TextInputType.visiblePassword,
+                                  isIconApply: false,
+                                  isPass: false,
+                                  icon: Icons.abc,
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 100.0.h),
                           ],
                         ),
-                      ),
-                      Positioned(
-                        top: 80.h,
-                        right: 0,
-                        left: 0,
-                        child: CircleAvatar(
-                          backgroundColor: kPrimary,
-                          child: IconButton(
-                            onPressed: () {
-                              _getImage(ImageSource.gallery);
-                            },
-                            icon: Icon(Icons.upload),
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 80.0.h),
-                ],
-              ),
-              horizontalW: 15.w,
-              vertical: 10.h,
-              scrollPhysics: NeverScrollableScrollPhysics(),
-            ),
+                      )
+                    : Center(child: Text("Data Not Found"));
+              }),
       bottomSheet: Container(
         margin: EdgeInsets.all(12),
         height: 60.h,
@@ -224,6 +288,100 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           text: "Upload Profile",
           onPress: _uploadProfile,
           color: kPrimary,
+        ),
+      ),
+    );
+  }
+
+  Container buildVehicleNameEditDeleteSection(String vehcileName,
+      void Function()? onEditPress, void Function()? onDeletePress) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 2.0.h),
+      padding: EdgeInsets.symmetric(vertical: 1.0.h, horizontal: 2.w),
+      width: double.maxFinite,
+      height: 40.h,
+      decoration: BoxDecoration(
+        // color: kWhite.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 190.w,
+            child: Text(
+              vehcileName,
+              textAlign: TextAlign.left,
+              style: appStyle(13, kDark, FontWeight.normal),
+            ),
+          ),
+          Expanded(child: SizedBox()),
+          IconButton(
+              onPressed: onEditPress,
+              icon: Icon(Icons.edit, color: kSecondary)),
+          IconButton(
+              onPressed: onDeletePress,
+              icon: Icon(Icons.delete, color: kPrimary))
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required bool isExpanded,
+    required Function onToggle,
+    required List<Widget> children,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 15.w),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: kSecondary.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(20.r),
+          color: kWhite.withOpacity(0.1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: () => onToggle(),
+              child: Padding(
+                padding: EdgeInsets.all(15.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, color: kPrimary),
+                        SizedBox(width: 10.w),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: kPrimary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              height: isExpanded ? null : 0.0,
+              padding: EdgeInsets.symmetric(horizontal: 15.w),
+              child: isExpanded ? Column(children: children) : null,
+            ),
+          ],
         ),
       ),
     );

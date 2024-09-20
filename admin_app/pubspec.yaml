@@ -31,6 +31,7 @@ dependencies:
   url_launcher: ^6.2.6
   image_picker:
   flutter_ringtone_player:
+  flutter_rating_bar:
   rxdart:
   vibration:
   logger:
