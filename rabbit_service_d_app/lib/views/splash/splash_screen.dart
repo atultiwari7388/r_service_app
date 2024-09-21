@@ -9,6 +9,8 @@ import 'package:regal_service_d_app/views/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/entry_screen.dart';
 import 'package:regal_service_d_app/widgets/background_lottie.dart';
 
+import '../onBoard/on_boarding_screen.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -29,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen> {
             duration: const Duration(milliseconds: 900));
         log("User is authenticated");
       } else {
-        Get.offAll(() => const LoginScreen(),
+        Get.offAll(() => const OnBoardingScreen(),
             transition: Transition.cupertino,
             duration: const Duration(milliseconds: 900));
         log("User is null");
@@ -41,30 +43,51 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kWhite,
-      body: Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
-              child: Image.asset(
-                "assets/no-background-logo.png",
-                height: 300.h,
-                fit: BoxFit.cover,
-              ),
-            ),
-            SizedBox(height: 30.h),
-          ],
+      body: Center(
+        child: TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0.0, end: 1.0),
+          duration: Duration(seconds: 2),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: child,
+            );
+          },
+          child: Image.asset(
+            "assets/no-background-logo.png",
+            height: 300.h,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
-      //
-      // body: BackgroundLottieContainer(
-      //   child: Image.asset(
-      //     "assets/no-background-logo.png",
-      //     height: 300.h,
-      //     fit: BoxFit.cover,
-      //   ),
-      //   color: kWhite,
-      // ),
     );
+    // return Scaffold(
+    //   backgroundColor: kWhite,
+    //   body: Container(
+    //     child: Column(
+    //       mainAxisAlignment: MainAxisAlignment.center,
+    //       children: [
+    //         Center(
+    //           child: Image.asset(
+    //             "assets/no-background-logo.png",
+    //             height: 300.h,
+    //             fit: BoxFit.cover,
+    //           ),
+    //         ),
+    //         SizedBox(height: 30.h),
+    //       ],
+    //     ),
+    //   ),
+    //
+    // body: BackgroundLottieContainer(
+    //   child: Image.asset(
+    //     "assets/no-background-logo.png",
+    //     height: 300.h,
+    //     fit: BoxFit.cover,
+    //   ),
+    //   color: kWhite,
+    // ),
+    // );
   }
 }

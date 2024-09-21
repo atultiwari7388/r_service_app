@@ -13,6 +13,7 @@ class MyJobsCard extends StatefulWidget {
     required this.companyNameAndVehicleName,
     required this.address,
     required this.serviceName,
+    this.cancelationReason = "",
     required this.jobId,
     this.imagePath = "",
     required this.dateTime,
@@ -25,6 +26,7 @@ class MyJobsCard extends StatefulWidget {
   final String companyNameAndVehicleName;
   final String address;
   final String serviceName;
+  final String cancelationReason;
   final String jobId;
   final String imagePath;
   final String dateTime;
@@ -159,6 +161,10 @@ class _MyJobsCardState extends State<MyJobsCard> {
             child: Column(
               children: [
                 buildReusableRow("Selected Service", "${widget.serviceName}"),
+                widget.currentStatus == -1
+                    ? buildReusableRow(
+                        "Cancel Reason", "${widget.cancelationReason}")
+                    : SizedBox(),
                 SizedBox(height: 15.h),
                 widget.currentStatus == -1
                     ? Container(
@@ -177,12 +183,15 @@ class _MyJobsCardState extends State<MyJobsCard> {
                     : Row(
                         children: [
                           widget.currentStatus == 5
-                              ? buildButton(kSuccess, "Completed",
-                                  () => Get.to(() => HistoryCompletedScreen(orderId: widget.jobId)))
+                              ? buildButton(
+                                  kSuccess,
+                                  "Completed",
+                                  () => Get.to(() => HistoryCompletedScreen(
+                                      orderId: widget.jobId)))
                               : buildButton(
                                   kSecondary, "View", widget.onButtonTap),
                           SizedBox(width: 20.w),
-                          widget.currentStatus == 1
+                          widget.currentStatus == 0
                               ? buildButton(
                                   kRed,
                                   "Cancel",

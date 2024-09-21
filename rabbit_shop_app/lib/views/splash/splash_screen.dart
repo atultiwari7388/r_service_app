@@ -38,21 +38,43 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // return Scaffold(
+    //   backgroundColor: kWhite,
+    //   body: Container(
+    //     child: Column(
+    //       mainAxisAlignment: MainAxisAlignment.center,
+    //       children: [
+    //         Center(
+    //           child: Image.asset(
+    //             "assets/no-background-logo.png",
+    //             height: 300.h,
+    //             fit: BoxFit.cover,
+    //           ),
+    //         ),
+    //         SizedBox(height: 30.h),
+    //       ],
+    //     ),
+    //   ),
+    // );
+
     return Scaffold(
       backgroundColor: kWhite,
-      body: Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
-              child: Image.asset(
-                "assets/no-background-logo.png",
-                height: 300.h,
-                fit: BoxFit.cover,
-              ),
-            ),
-            SizedBox(height: 30.h),
-          ],
+      body: Center(
+        child: TweenAnimationBuilder(
+          tween: Tween<double>(begin: 0.0, end: 1.0),
+          duration: Duration(seconds: 2),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: child,
+            );
+          },
+          child: Image.asset(
+            "assets/no-background-logo.png",
+            height: 300.h,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );

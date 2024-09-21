@@ -9,7 +9,7 @@ import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../utils/show_toast_msg.dart';
 
-class RequestAcceptHistoryCard extends StatelessWidget {
+class RequestAcceptHistoryCard extends StatefulWidget {
   const RequestAcceptHistoryCard({
     super.key,
     required this.shopName,
@@ -48,8 +48,16 @@ class RequestAcceptHistoryCard extends StatelessWidget {
   final bool isImage;
 
   @override
+  State<RequestAcceptHistoryCard> createState() =>
+      _RequestAcceptHistoryCardState();
+}
+
+class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
+  @override
   Widget build(BuildContext context) {
-    if (isHidden) return SizedBox.shrink();
+    if (widget.isHidden) return SizedBox.shrink();
+
+    String? _selectedPaymentMode;
 
     return Container(
       padding: EdgeInsets.all(5.w),
@@ -72,7 +80,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24.w,
-                backgroundImage: NetworkImage(imagePath),
+                backgroundImage: NetworkImage(widget.imagePath),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -80,17 +88,17 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      shopName,
+                      widget.shopName,
                       style: appStyle(16.sp, kDark, FontWeight.w500),
                     ),
                     SizedBox(height: 4.h),
                     Row(
                       children: [
-                        _buildInfoBox("$time mints", Colors.red),
+                        _buildInfoBox("${widget.time} mints", Colors.red),
                         SizedBox(width: 6.w),
-                        _buildInfoBox(distance, kPrimary),
+                        _buildInfoBox(widget.distance, kPrimary),
                         SizedBox(width: 6.w),
-                        _buildRatingBox(rating),
+                        _buildRatingBox(widget.rating),
                       ],
                     ),
                     SizedBox(height: 5.h),
@@ -98,7 +106,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          for (int i = 0; i < languages.length; i++) ...[
+                          for (int i = 0; i < widget.languages.length; i++) ...[
                             Container(
                               padding: EdgeInsets.symmetric(
                                   horizontal: 10.w, vertical: 4.h),
@@ -110,7 +118,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8.0.r),
                               ),
                               child: Text(
-                                languages[i],
+                                widget.languages[i],
                                 style: appStyle(
                                     13.sp,
                                     i.isEven ? kPrimary : kSecondary,
@@ -136,7 +144,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                isImage
+                widget.isImage
                     ? Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -154,7 +162,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                             margin: EdgeInsets.symmetric(horizontal: 10.w),
                           ),
                           Text(
-                            "\$$fixCharges",
+                            "\$${widget.fixCharges}",
                             style: appStyle(16.sp, kDark, FontWeight.w500),
                           ),
                         ],
@@ -176,19 +184,19 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                             margin: EdgeInsets.symmetric(horizontal: 10.w),
                           ),
                           Text(
-                            "\$$arrivalCharges",
+                            "\$${widget.arrivalCharges}",
                             style: appStyle(16.sp, kDark, FontWeight.w500),
                           ),
                         ],
                       ),
-                currentStatus == 2
+                widget.currentStatus == 2
                     ? SizedBox()
-                    : isImage
+                    : widget.isImage
                         ? SizedBox()
                         : Divider(),
-                currentStatus == 2
+                widget.currentStatus == 2
                     ? SizedBox()
-                    : isImage
+                    : widget.isImage
                         ? SizedBox()
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -208,38 +216,49 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                                 margin: EdgeInsets.symmetric(horizontal: 10.w),
                               ),
                               Text(
-                                "\$$perHourCharges",
+                                "\$${widget.perHourCharges}",
                                 style: appStyle(16.sp, kDark, FontWeight.w500),
                               ),
                             ],
                           ),
                 SizedBox(height: 15.h),
                 Row(
-                  mainAxisAlignment: currentStatus == [1, 2, 3, 4]
+                  mainAxisAlignment: widget.currentStatus == [1, 2, 3, 4]
                       ? MainAxisAlignment.center
                       : MainAxisAlignment.spaceEvenly,
                   children: [
-                    if (currentStatus == 1)
+                    if (widget.currentStatus == 1)
                       buildButton(kSuccess, "Accept", () {
                         _showConfirmDialog();
                       }),
-                    if (currentStatus == 2)
-                      isImage
-                          ? buildButton(kSecondary, "Pay \$$fixCharges", () {
-                              _showPayDialog("$fixCharges", isImage);
+                    if (widget.currentStatus == 2)
+                      widget.isImage
+                          ? buildButton(
+                              kSecondary, "Pay \$${widget.fixCharges}", () {
+                              _showPayDialog(
+                                  context,
+                                  "${widget.fixCharges}",
+                                  widget.isImage,
+                                  _selectedPaymentMode,
+                                  setState);
                               // updateStatus(3);flu
                             })
-                          : buildButton(kSecondary, "Pay \$$arrivalCharges",
-                              () {
-                              _showPayDialog("$arrivalCharges", isImage);
+                          : buildButton(
+                              kSecondary, "Pay \$${widget.arrivalCharges}", () {
+                              _showPayDialog(
+                                  context,
+                                  "${widget.arrivalCharges}",
+                                  widget.isImage,
+                                  _selectedPaymentMode,
+                                  setState);
                               // updateStatus(3);
                             }),
-                    if (currentStatus == 3)
+                    if (widget.currentStatus == 3)
                       buildButton(kPrimary, "Confirm to Start", () {
                         // updateStatus(4);
                         _showConfirmStartDialog();
                       }),
-                    if (currentStatus == 4)
+                    if (widget.currentStatus == 4)
                       Container(
                         height: 40.h,
                         width: 220.w,
@@ -256,9 +275,9 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                                   fontWeight: FontWeight.w500)),
                         ),
                       ),
-                    currentStatus == 4
+                    widget.currentStatus == 4
                         ? SizedBox()
-                        : currentStatus == 5
+                        : widget.currentStatus == 5
                             ? SizedBox()
                             : ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -267,14 +286,14 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12.0.r),
                                   ),
                                 ),
-                                onPressed: onCallTap,
+                                onPressed: widget.onCallTap,
                                 child: Text(
                                   "Need to talk",
                                   style: appStyle(
                                       13.sp, Colors.white, FontWeight.bold),
                                 ),
                               ),
-                    currentStatus == 5
+                    widget.currentStatus == 5
                         ? Row(
                             // mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -296,7 +315,7 @@ class RequestAcceptHistoryCard extends StatelessWidget {
                               ),
                               SizedBox(width: 15.w),
                               buildButton(kSuccess, "Rate Now",
-                                  () => showRatingDialog(context, mId))
+                                  () => showRatingDialog(context, widget.mId))
                             ],
                           )
                         : SizedBox()
@@ -359,23 +378,48 @@ class RequestAcceptHistoryCard extends StatelessWidget {
     );
   }
 
-  void _showPayDialog(String payCharges, bool isShowImage) {
-    Get.defaultDialog(
-      title: "Pay \$$payCharges",
-      middleText: "Please proceed to pay.",
-      confirm: ElevatedButton(
-        onPressed: () {
-          updateStatus(3);
-          Get.back(); // Close the pay dialog
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: kSecondary, // Custom color for "Pay" button
-        ),
-        child: Text(
-          "Pay",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
+  // void _showPayDialog(String payCharges, bool isShowImage) {
+  void _showPayDialog(BuildContext context, String payCharges, bool isShowImage,
+      _selectedPaymentMode, setState) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Select Payment Mode"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: const Text('Online'),
+                value: 'Online',
+                groupValue: _selectedPaymentMode,
+                onChanged: (String? value) {
+                  setState(() {
+                    _selectedPaymentMode = value;
+                  });
+                  Navigator.pop(context); // Close dialog after selection
+                  updatePaymentAndStatus(3,
+                      _selectedPaymentMode); // Save selected payment mode to Firebase
+                  // Save selected payment mode to Firebase
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('COD'),
+                value: 'COD',
+                groupValue: _selectedPaymentMode,
+                onChanged: (String? value) {
+                  setState(() {
+                    _selectedPaymentMode = value;
+                  });
+                  Navigator.pop(context); // Close dialog after selection
+                  updatePaymentAndStatus(3,
+                      _selectedPaymentMode); // Save selected payment mode to Firebase
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -404,14 +448,36 @@ class RequestAcceptHistoryCard extends StatelessWidget {
   Future<void> updateStatus(int status) async {
     final userHistoryRef = FirebaseFirestore.instance
         .collection('Users')
-        .doc(userId)
+        .doc(widget.userId)
         .collection('history')
-        .doc(jobId);
-    final jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
+        .doc(widget.jobId);
+    final jobRef =
+        FirebaseFirestore.instance.collection('jobs').doc(widget.jobId);
 
     try {
       await userHistoryRef.update({'status': status});
       await jobRef.update({'status': status});
+    } catch (e) {
+      print('Error updating status: $e');
+    }
+  }
+
+  // Firestore update function
+  Future<void> updatePaymentAndStatus(
+      int status, String _selectedPaymentMode) async {
+    final userHistoryRef = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(widget.userId)
+        .collection('history')
+        .doc(widget.jobId);
+    final jobRef =
+        FirebaseFirestore.instance.collection('jobs').doc(widget.jobId);
+
+    try {
+      await userHistoryRef.update(
+          {'status': status, "payMode": _selectedPaymentMode.toString()});
+      await jobRef.update(
+          {'status': status, "payMode": _selectedPaymentMode.toString()});
     } catch (e) {
       print('Error updating status: $e');
     }
@@ -517,7 +583,10 @@ class RequestAcceptHistoryCard extends StatelessWidget {
   Future<void> _updateRatingAndReview(
       String mId, double rating, String review) async {
     try {
-      await FirebaseFirestore.instance.collection('jobs').doc(jobId).update({
+      await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(widget.jobId)
+          .update({
         'rating': rating,
         'review': review,
         "reviewSubmitted": true,

@@ -75,7 +75,6 @@ class DashboardController extends GetxController {
 
   @override
   void onInit() {
-    // TODO: implement onInit
     super.onInit();
     checkIfLocationIsSet();
     fetchServicesName();
@@ -269,8 +268,8 @@ class DashboardController extends GetxController {
                           //   Navigator.pop(context);
                           // },
                           onTap: () async {
-                            _isLoading = true; // Show loading indicator
-                            update();
+                            // _isLoading = true; // Show loading indicator
+                            // update();
 
                             selectedCompanyAndVehcileName =
                                 filterSelectedCompanyAndvehicleName[index];
@@ -282,7 +281,7 @@ class DashboardController extends GetxController {
                             selectedCompanyAndVehcileNameController.text =
                                 filterSelectedCompanyAndvehicleName[index];
 
-                            _isLoading = false; // Hide loading indicator
+                            // _isLoading = false; // Hide loading indicator
                             isVehicleSelected = true; // Vehicle selected
                             checkIfAllSelected();
                             update(); // UI update
@@ -534,6 +533,7 @@ class DashboardController extends GetxController {
 
       var data = {
         'orderId': orderId.toString(),
+        "cancelReason": "",
         'userId': currentUId,
         "userPhoto": userPhoto,
         'userName': name,
@@ -547,6 +547,7 @@ class DashboardController extends GetxController {
         "images": imageUrls,
         'userLong': userLongitude,
         'orderDate': DateTime.now(),
+        "payMode": "",
         "status": 0,
         "rating": "4.3",
         "time": "",

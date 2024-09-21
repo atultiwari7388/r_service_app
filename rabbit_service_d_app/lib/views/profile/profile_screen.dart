@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,7 +10,6 @@ import 'package:regal_service_d_app/views/myTeam/my_team_screen.dart';
 import 'package:regal_service_d_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:regal_service_d_app/views/profile/profile_details_screen.dart';
 import 'package:regal_service_d_app/views/termsCondition/terms_conditions.dart';
-import 'package:regal_service_d_app/widgets/custom_background_container.dart';
 import '../../services/collection_references.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
@@ -107,7 +104,8 @@ class ProfileScreen extends StatelessWidget {
                     SizedBox(height: 10.h),
                     buildListTile("assets/about_us_bw.png", "About us",
                         () => Get.to(() => AboutUsScreen())),
-                    buildListTile("assets/help_bw.png", "Help", () => Get.to(() => EmergencyContactsScreen())),
+                    buildListTile("assets/help_bw.png", "Help",
+                        () => Get.to(() => EmergencyContactsScreen())),
                     buildListTile("assets/t_c_bw.png", "Terms & Conditions",
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
@@ -166,6 +164,7 @@ class ProfileScreen extends StatelessWidget {
           final profilePictureUrl = data['profilePicture'] ?? '';
           final userName = data['userName'] ?? '';
           final email = data['email'] ?? '';
+          final wallet = data["wallet"] ?? "";
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,7 +211,7 @@ class ProfileScreen extends StatelessWidget {
                               height: 20.h, width: 20.w, color: kWhite),
                           SizedBox(width: 5.w),
                           ReusableText(
-                            text: "\$240",
+                            text: "\$${wallet.toString()}",
                             style: appStyle(17, kWhite, FontWeight.bold),
                           ),
                         ],

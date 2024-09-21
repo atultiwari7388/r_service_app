@@ -64,6 +64,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
+                          // return Container();
                           return const CircularProgressIndicator();
                         }
 
@@ -129,8 +130,10 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
-                                return Center(
-                                    child: CircularProgressIndicator());
+                                return Container();
+
+                                // return Center(
+                                //     child: CircularProgressIndicator());
                               }
 
                               // Process the data and build the UI

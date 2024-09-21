@@ -144,6 +144,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   "${job["companyName"]} (${vehicleNumber})",
                               address: job["userDeliveryAddress"].toString(),
                               serviceName: job["selectedService"].toString(),
+                              cancelationReason: job["cancelReason"].toString(),
                               jobId: job["orderId"].toString(),
                               imagePath: job["userPhoto"].toString(),
                               dateTime: dateString,

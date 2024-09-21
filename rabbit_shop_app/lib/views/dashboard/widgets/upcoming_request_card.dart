@@ -39,6 +39,7 @@ class UpcomingRequestCard extends StatefulWidget {
     required this.orderId,
     required this.isImage,
     this.images = const [],
+    this.payMode = "",
   });
 
   final String userName;
@@ -65,6 +66,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final String orderId;
   final bool isImage;
   final List images;
+  final String payMode;
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
@@ -159,6 +161,9 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
             child: Column(
               children: [
                 buildReusableRow("Selected Service", "${widget.serviceName}"),
+                widget.currentStatus == 5
+                    ? buildReusableRow("Payment Mode", "${widget.payMode}")
+                    : SizedBox(),
                 SizedBox(height: 5.h),
                 widget.currentStatus == 0
                     ? Column(
@@ -303,28 +308,58 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                         ],
                                       )
                                     : widget.currentStatus == 4
-                                        ? GestureDetector(
-                                            onTap: () =>
-                                                _showConfirmStartDialog(),
-                                            child: Container(
-                                              height: 40.h,
-                                              width: 220.w,
-                                              decoration: BoxDecoration(
-                                                color: kPrimary,
-                                                borderRadius:
-                                                    BorderRadius.circular(12.r),
-                                              ),
-                                              child: Center(
-                                                child: Text("Complete now",
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                        color: kWhite,
-                                                        fontSize: 16.sp,
-                                                        fontWeight:
-                                                            FontWeight.w500)),
-                                              ),
-                                            ),
-                                          )
+                                        ? widget.payMode == "COD"
+                                            ? GestureDetector(
+                                                onTap: () =>
+                                                    _showCollectCashFromUser(),
+                                                child: Container(
+                                                  height: 40.h,
+                                                  width: 220.w,
+                                                  decoration: BoxDecoration(
+                                                    color: kPrimary,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12.r),
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                        "Collect cash from user",
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                            color: kWhite,
+                                                            fontSize: 16.sp,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                  ),
+                                                ),
+                                              )
+                                            : GestureDetector(
+                                                onTap: () =>
+                                                    _showConfirmStartDialog(),
+                                                child: Container(
+                                                  height: 40.h,
+                                                  width: 220.w,
+                                                  decoration: BoxDecoration(
+                                                    color: kPrimary,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12.r),
+                                                  ),
+                                                  child: Center(
+                                                    child: Text("Complete now",
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                            color: kWhite,
+                                                            fontSize: 16.sp,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500)),
+                                                  ),
+                                                ),
+                                              )
                                         : widget.currentStatus == 5
                                             ? Row(
                                                 mainAxisAlignment:
@@ -454,6 +489,26 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
     Get.defaultDialog(
       title: "Complete Job Confirmation ",
       middleText: "Are you sure you want to complete this job?",
+      confirm: ElevatedButton(
+        onPressed: () {
+          updateStatus(5, widget.dId);
+          Get.back(); // Close the pay dialog
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: kPrimary, // Custom color for "Pay" button
+        ),
+        child: Text(
+          "Confirm",
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  void _showCollectCashFromUser() {
+    Get.defaultDialog(
+      title: "Complete Job Confirmation ",
+      middleText: "Collect cash from user ",
       confirm: ElevatedButton(
         onPressed: () {
           updateStatus(5, widget.dId);

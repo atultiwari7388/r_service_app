@@ -42,6 +42,7 @@ class _UpcomingAndCompletedJobsScreenState
     jobsStream = FirebaseFirestore.instance
         .collection('jobs')
         .where("mId", isEqualTo: currentUId)
+        .orderBy("orderDate", descending: true)
         .snapshots();
   }
 
@@ -217,6 +218,7 @@ class _UpcomingAndCompletedJobsScreenState
                 dateString =
                     "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
               }
+              final payMode = jobs["payMode"].toString();
               final userLat = (jobs["userLat"] as num).toDouble();
               final userLng = (jobs["userLong"] as num).toDouble();
               final mecLatitude = (jobs["mecLatitude"] as num).toDouble();
@@ -278,6 +280,7 @@ class _UpcomingAndCompletedJobsScreenState
                 dId: dId.toString(),
                 isImage: isImage,
                 images: images,
+                payMode: payMode,
               );
             },
           ),

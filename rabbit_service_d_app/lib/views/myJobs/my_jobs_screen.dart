@@ -93,7 +93,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                     .collection('Users')
                     .doc(currentUId)
                     .collection("history")
-                    .where("status", whereIn: [0, 1, 2, 3, 4, 5])
+                    .where("status", whereIn: [0, 1, 2, 3, 4])
                     .orderBy("orderDate", descending: true)
                     .snapshots(),
                 builder: (BuildContext context,

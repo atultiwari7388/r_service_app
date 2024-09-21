@@ -5,8 +5,6 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/splash/splash_screen.dart';
 
-import 'controllers/tab_index_controller.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
