@@ -34,6 +34,9 @@ class DashboardController extends GetxController {
   bool isServiceSelected = false;
   bool isAddressSelected = false;
   bool isFindMechanicEnabled = false;
+  String role = "";
+  String ownerEmail = "";
+  String ownerId = "";
 
   File? image;
   List<File> images = [];
@@ -80,6 +83,7 @@ class DashboardController extends GetxController {
     fetchServicesName();
     fetchUserVehicles();
     fetchByDefaultUserVehicle();
+    fetchUserDetails();
   }
 
   Future<void> fetchServicesName() async {
@@ -194,6 +198,28 @@ class DashboardController extends GetxController {
       }
     } catch (e) {
       log("Error fetching user vehicles: $e");
+    }
+  }
+
+  Future<void> fetchUserDetails() async {
+    try {
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+
+      if (userSnapshot.exists) {
+        // Cast the document data to a map
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+        role = userData["role"] ?? "";
+        ownerId = userData["createdBy"] ?? "";
+        update();
+      } else {
+        log("No user document found for ID: $currentUId");
+      }
+    } catch (e) {
+      log("Error fetching user details: $e");
+      update();
     }
   }
 
@@ -547,6 +573,8 @@ class DashboardController extends GetxController {
         "images": imageUrls,
         'userLong': userLongitude,
         'orderDate': DateTime.now(),
+        "role": role.toString(),
+        "ownerId": ownerId.toString(),
         "payMode": "",
         "status": 0,
         "rating": "4.3",
@@ -556,6 +584,7 @@ class DashboardController extends GetxController {
         "mNumber": "",
         "mDp": "",
         'arrivalCharges': "",
+        "fixPrice": "",
         'perHourCharges': "",
         'mechanicAddress': "",
         'mecLatitude': "",

@@ -238,6 +238,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
       final data = {
         'status': -1, // Update status to cancelled
         'cancelReason': reason, // Store the selected reason
+        'cancelBy': 'Driver',
       };
       await FirebaseFirestore.instance
           .collection('jobs')

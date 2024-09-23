@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
-import 'package:regal_service_d_app/views/history/widgets/history_completed_screen.dart';
-import 'package:regal_service_d_app/views/requests/requests.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
 
@@ -18,6 +15,8 @@ class MemberJobsCard extends StatelessWidget {
     this.isStatusCompleted = false,
     required this.charges,
     required this.status,
+    required this.isImage,
+    this.fixCharges = "",
   });
 
   final String companyNameAndVehicleName;
@@ -29,6 +28,8 @@ class MemberJobsCard extends StatelessWidget {
   final bool isStatusCompleted;
   final String charges;
   final String status;
+  final bool isImage;
+  final String fixCharges;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +55,7 @@ class MemberJobsCard extends StatelessWidget {
               // Shop image
               CircleAvatar(
                 radius: 24.w,
-                backgroundImage: AssetImage(imagePath),
+                backgroundImage: NetworkImage(imagePath),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -107,7 +108,9 @@ class MemberJobsCard extends StatelessWidget {
               children: [
                 buildReusableRow("Selected Service :", "$serviceName "),
                 Divider(),
-                buildReusableRow("Arriving Charges :", "\$$charges"),
+                isImage
+                    ? buildReusableRow("Fix Charges :", "\$$charges")
+                    : buildReusableRow("Arriving Charges :", "\$$charges"),
                 Divider(),
                 buildReusableRow("Status :", "$status"),
               ],

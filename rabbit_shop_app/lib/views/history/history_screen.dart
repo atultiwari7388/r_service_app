@@ -250,6 +250,37 @@ class _UpcomingAndCompletedJobsScreenState
                 date: dateString,
                 buttonName: "Start",
                 onButtonTap: _showStartDialog,
+                onCancelBtnTap: () {
+                  // Step 1: Show the first confirmation dialog (Are you sure?)
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text("Are you sure to cancel this job?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              // If "No" is pressed, close the dialog
+                              Navigator.pop(context);
+                            },
+                            child: Text("No"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              // If "Yes" is pressed, proceed to select the reason
+                              Navigator.pop(context); // Close the first dialog
+
+                              // Step 2: Show the reason selection dialog
+                              _showReasonDialog(jobs[
+                                  'orderId']); // Pass the job ID to update status later
+                            },
+                            child: Text("Yes"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
                 onPhoneCallTap: () async {
                   final Uri launchUri = Uri(
                     scheme: 'tel',
@@ -307,6 +338,80 @@ class _UpcomingAndCompletedJobsScreenState
         ),
       ),
     );
+  }
+
+  void _showReasonDialog(String orderId) {
+    // List of reasons for canceling the job
+    List<String> reasons = [
+      'Driver Late',
+      'Mis-Communication',
+      'Language Problem',
+      'Other'
+    ];
+
+    String? selectedReason;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Select Reason:"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: reasons.map((reason) {
+              return RadioListTile<String>(
+                title: Text(reason),
+                value: reason,
+                groupValue: selectedReason,
+                onChanged: (value) {
+                  setState(() {
+                    selectedReason = value!;
+                  });
+                  Navigator.pop(context); // Close the reason selection dialog
+                  _updateJobStatus(orderId,
+                      selectedReason!); // Proceed to update the job status
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  void _updateJobStatus(String orderId, String reason) async {
+    try {
+      // Update the job document in Firestore with the new status and reason
+
+      final data = {
+        'status': -1, // Update status to cancelled
+        'cancelReason': reason, // Store the selected reason
+        'cancelBy': 'Mechanic',
+      };
+      await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(orderId)
+          .update(data);
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('history')
+          .doc(orderId)
+          .update(data);
+
+      // Show a success message
+      Get.snackbar("Job Cancelled", "The job was cancelled due to: $reason",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white);
+    } catch (error) {
+      // Handle any errors
+      Get.snackbar("Error", "Failed to cancel job: $error",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+    }
   }
 
   /**-------------------------- Build Top Search Bar ----------------------------------**/

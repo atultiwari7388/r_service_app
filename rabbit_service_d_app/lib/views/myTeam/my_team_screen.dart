@@ -1,14 +1,23 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/myTeam/widgets/add_team_screen.dart';
 import 'package:regal_service_d_app/views/myTeam/widgets/member_jobs_history.dart';
-
 import '../../utils/app_styles.dart';
 
 class MyTeamScreen extends StatelessWidget {
   const MyTeamScreen({super.key});
+
+  Future<QuerySnapshot> fetchTeamMembers() async {
+    return FirebaseFirestore.instance
+        .collection('Users')
+        .where('createdBy', isEqualTo: currentUId)
+        .where('uid', isNotEqualTo: currentUId) // Exclude the owner's UID
+        .get();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,56 +36,79 @@ class MyTeamScreen extends StatelessWidget {
           SizedBox(width: 10.w),
         ],
       ),
-      body: Container(
-        padding: EdgeInsets.all(4.h),
-        margin: EdgeInsets.all(10.h),
-        child: Table(
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          border: TableBorder.all(color: kDark, width: 0.3),
-          columnWidths: const {
-            0: FlexColumnWidth(3),
-            1: FlexColumnWidth(3),
-            2: FlexColumnWidth(2),
-          },
-          children: [
-            TableRow(
-              decoration: BoxDecoration(color: kSecondary.withOpacity(0.8)),
+      body: FutureBuilder<QuerySnapshot>(
+        future: fetchTeamMembers(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading team members'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No team members found'));
+          }
+
+          // List of members fetched from Firestore
+          List<QueryDocumentSnapshot> members = snapshot.data!.docs;
+
+          return Container(
+            padding: EdgeInsets.all(4.h),
+            margin: EdgeInsets.all(10.h),
+            child: Table(
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              border: TableBorder.all(color: kDark, width: 0.3),
+              columnWidths: const {
+                0: FlexColumnWidth(3),
+                1: FlexColumnWidth(3),
+                2: FlexColumnWidth(2),
+              },
               children: [
-                buildTableHeaderCell("Name"),
-                buildTableHeaderCell("Email"),
-                buildTableHeaderCell("Actions"),
-              ],
-            ),
-            // Display List of team members
-            buildTableRow("Sachin Minhas", "Sachin@gmail.com", false),
-            buildTableRow("Navneet Dhiman", "navneet@gmail.com", true),
-            // Pagination Button
-            TableRow(
-              children: [
-                const SizedBox(),
-                const SizedBox(),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Center(
-                    child: TextButton(
-                      onPressed: () {},
-                      child: const Text("Next"),
-                    ),
-                  ),
+                // Table Header
+                TableRow(
+                  decoration: BoxDecoration(color: kSecondary.withOpacity(0.8)),
+                  children: [
+                    buildTableHeaderCell("Name"),
+                    buildTableHeaderCell("Email"),
+                    buildTableHeaderCell("Actions"),
+                  ],
                 ),
+                // Build Table Rows dynamically from Firestore data
+                ...members.map((member) {
+                  String name = member['userName'] ?? 'No Name';
+                  String email = member['email'] ?? 'No Email';
+                  bool isActive = member['active'] ?? false;
+                  String memberId = member['uid'] ?? '';
+                  String ownerId = member['createdBy'] ?? '';
+
+                  return buildTableRow(
+                      name, email, isActive, memberId, ownerId);
+                }).toList(),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  TableRow buildTableRow(String name, String email, bool switchValue) {
+  TableRow buildTableRow(
+    String name,
+    String email,
+    bool switchValue,
+    String memebrId,
+    String ownerId,
+  ) {
     return TableRow(
       children: [
         InkWell(
-          onTap: () => Get.to(() => MemberJobsHistoryScreen(memberName: name)),
+          onTap: () => Get.to(() => MemberJobsHistoryScreen(
+                memberName: name,
+                memebrId: memebrId,
+                ownerId: ownerId,
+              )),
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
@@ -102,10 +134,14 @@ class MyTeamScreen extends StatelessWidget {
             Switch(
               activeColor: kPrimary,
               value: switchValue,
-              onChanged: (bool value) {},
+              onChanged: (bool value) {
+                // Handle the switch change (update in Firestore if necessary)
+              },
             ),
             InkWell(
-              onTap: () {},
+              onTap: () {
+                // Handle Edit action
+              },
               child: const Icon(Icons.edit, color: Colors.green),
             ),
           ],
@@ -128,14 +164,12 @@ class MyTeamScreen extends StatelessWidget {
 }
 
 
-
 // import 'package:flutter/material.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:get/get.dart';
 // import 'package:regal_service_d_app/utils/constants.dart';
 // import 'package:regal_service_d_app/views/myTeam/widgets/add_team_screen.dart';
 // import 'package:regal_service_d_app/views/myTeam/widgets/member_jobs_history.dart';
-
 // import '../../utils/app_styles.dart';
 
 // class MyTeamScreen extends StatelessWidget {
@@ -145,14 +179,14 @@ class MyTeamScreen extends StatelessWidget {
 //   Widget build(BuildContext context) {
 //     return Scaffold(
 //       appBar: AppBar(
-//         title: Text("My Team"),
+//         title: const Text("My Team"),
 //         actions: [
 //           InkWell(
-//             onTap: () => Get.to(() => AddTeamMember()),
+//             onTap: () => Get.to(() => const AddTeamMember()),
 //             child: CircleAvatar(
 //               radius: 20.r,
 //               backgroundColor: kPrimary,
-//               child: Icon(Icons.add, color: kWhite),
+//               child: const Icon(Icons.add, color: kWhite),
 //             ),
 //           ),
 //           SizedBox(width: 10.w),
@@ -163,124 +197,35 @@ class MyTeamScreen extends StatelessWidget {
 //         margin: EdgeInsets.all(10.h),
 //         child: Table(
 //           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-//           textBaseline: TextBaseline.alphabetic,
-//           border: TableBorder.all(color: kDark, width: .3),
+//           border: TableBorder.all(color: kDark, width: 0.3),
+//           columnWidths: const {
+//             0: FlexColumnWidth(3),
+//             1: FlexColumnWidth(3),
+//             2: FlexColumnWidth(2),
+//           },
 //           children: [
 //             TableRow(
 //               decoration: BoxDecoration(color: kSecondary.withOpacity(0.8)),
 //               children: [
-//                 // buildTableHeaderCell("#"),
 //                 buildTableHeaderCell("Name"),
 //                 buildTableHeaderCell("Email"),
 //                 buildTableHeaderCell("Actions"),
 //               ],
 //             ),
 //             // Display List of team members
-
-//             TableRow(
-//               children: [
-//                 InkWell(
-//                   onTap: () => Get.to(() =>
-//                       MemberJobsHistoryScreen(memberName: "Sachin Minhas")),
-//                   child: TableCell(
-//                     child: Text(
-//                       "Sachin Minhas",
-//                       overflow: TextOverflow.ellipsis,
-//                       style: appStyle(13, kDark, FontWeight.normal),
-//                       textAlign: TextAlign.center,
-//                     ),
-//                   ),
-//                 ),
-//                 TableCell(
-//                   child: Text(
-//                     "Sachin@gmail.com",
-//                     overflow: TextOverflow.ellipsis,
-//                     style: appStyle(13, kDark, FontWeight.normal),
-//                     textAlign: TextAlign.center,
-//                   ),
-//                 ),
-//                 TableCell(
-//                   child: Row(
-//                     mainAxisAlignment: MainAxisAlignment.center,
-//                     children: [
-//                       Builder(builder: (context) {
-//                         return Switch(
-//                           activeColor: kPrimary,
-//                           key: UniqueKey(),
-//                           value: false,
-//                           onChanged: (bool value) {},
-//                         );
-//                       }),
-//                       InkWell(
-//                         onTap: () {},
-//                         child: const Icon(Icons.edit, color: Colors.green),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ],
-//             ),
-
-//             TableRow(
-//               children: [
-//                 InkWell(
-//                   onTap: () => Get.to(() =>
-//                       MemberJobsHistoryScreen(memberName: "Navneet Dhiman")),
-//                   child: TableCell(
-//                     child: Text(
-//                       "Navneet Dhiman",
-//                       overflow: TextOverflow.ellipsis,
-//                       style: appStyle(13, kDark, FontWeight.normal),
-//                       textAlign: TextAlign.center,
-//                     ),
-//                   ),
-//                 ),
-//                 TableCell(
-//                   child: Text(
-//                     "navneet@gmail.com",
-//                     overflow: TextOverflow.ellipsis,
-//                     style: appStyle(13, kDark, FontWeight.normal),
-//                     textAlign: TextAlign.center,
-//                   ),
-//                 ),
-//                 TableCell(
-//                   child: Row(
-//                     mainAxisAlignment: MainAxisAlignment.center,
-//                     children: [
-//                       Builder(builder: (context) {
-//                         return Switch(
-//                           activeColor: kPrimary,
-//                           key: UniqueKey(),
-//                           value: true,
-//                           onChanged: (bool value) {},
-//                         );
-//                       }),
-//                       InkWell(
-//                         onTap: () {},
-//                         child: const Icon(Icons.edit, color: Colors.green),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ],
-//             ),
+//             buildTableRow("Sachin Minhas", "Sachin@gmail.com", false),
+//             buildTableRow("Navneet Dhiman", "navneet@gmail.com", true),
 //             // Pagination Button
 //             TableRow(
 //               children: [
-//                 TableCell(
-//                   child: SizedBox(),
-//                 ),
-//                 TableCell(
-//                   child: SizedBox(),
-//                 ),
-//                 TableCell(
-//                   child: Padding(
-//                     padding: const EdgeInsets.all(8.0),
-//                     child: Center(
-//                       child: TextButton(
-//                         onPressed: () {},
-//                         child: const Text("Next"),
-//                       ),
+//                 const SizedBox(),
+//                 const SizedBox(),
+//                 Padding(
+//                   padding: const EdgeInsets.all(8.0),
+//                   child: Center(
+//                     child: TextButton(
+//                       onPressed: () {},
+//                       child: const Text("Next"),
 //                     ),
 //                   ),
 //                 ),
@@ -292,16 +237,56 @@ class MyTeamScreen extends StatelessWidget {
 //     );
 //   }
 
-//   Widget buildTableHeaderCell(String text) {
-//     return TableCell(
-//       child: Padding(
-//         padding: const EdgeInsets.all(8.0),
-//         child: Text(
-//           text,
-//           style: const TextStyle(
-//               fontSize: 13, fontWeight: FontWeight.normal, color: Colors.white),
-//           textAlign: TextAlign.center,
+//   TableRow buildTableRow(String name, String email, bool switchValue) {
+//     return TableRow(
+//       children: [
+//         InkWell(
+//           onTap: () => Get.to(() => MemberJobsHistoryScreen(memberName: name)),
+//           child: Padding(
+//             padding: const EdgeInsets.all(8.0),
+//             child: Text(
+//               name,
+//               overflow: TextOverflow.ellipsis,
+//               style: appStyle(13, kDark, FontWeight.normal),
+//               textAlign: TextAlign.center,
+//             ),
+//           ),
 //         ),
+//         Padding(
+//           padding: const EdgeInsets.all(8.0),
+//           child: Text(
+//             email,
+//             overflow: TextOverflow.ellipsis,
+//             style: appStyle(13, kDark, FontWeight.normal),
+//             textAlign: TextAlign.center,
+//           ),
+//         ),
+//         Row(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Switch(
+//               activeColor: kPrimary,
+//               value: switchValue,
+//               onChanged: (bool value) {},
+//             ),
+//             InkWell(
+//               onTap: () {},
+//               child: const Icon(Icons.edit, color: Colors.green),
+//             ),
+//           ],
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget buildTableHeaderCell(String text) {
+//     return Padding(
+//       padding: const EdgeInsets.all(8.0),
+//       child: Text(
+//         text,
+//         style: const TextStyle(
+//             fontSize: 13, fontWeight: FontWeight.normal, color: Colors.white),
+//         textAlign: TextAlign.center,
 //       ),
 //     );
 //   }

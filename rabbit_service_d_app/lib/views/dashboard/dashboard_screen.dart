@@ -248,11 +248,13 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                 });
                               }
                             },
-                            child: DashBoardSearchTextField(
-                              label: "Select your Location",
-                              // label: "Select your Location",
-                              controller: controller.locationController,
-                              enable: false,
+                            child: AbsorbPointer(
+                              child: DashBoardSearchTextField(
+                                label: "Select your Location",
+                                // label: "Select your Location",
+                                controller: controller.locationController,
+                                enable: false,
+                              ),
                             ),
                           ),
                           SizedBox(height: 20.h),

@@ -2,7 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_shop_app/views/aboutUs/about_us_screen.dart';
+import 'package:regal_shop_app/views/helpContact/help_center.dart';
+import 'package:regal_shop_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:regal_shop_app/views/profile/profile_detail_screen.dart';
+import 'package:regal_shop_app/views/termsCondition/terms_conditions.dart';
 import '../../services/collection_references.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
@@ -93,12 +97,14 @@ class ProfileScreen extends StatelessWidget {
                     SizedBox(height: 15.h),
                     const DashedDivider(color: kGrayLight),
                     SizedBox(height: 10.h),
-                    buildListTile("assets/about_us_bw.png", "About us", () {}),
-                    buildListTile("assets/help_bw.png", "Help", () {}),
-                    buildListTile(
-                        "assets/t_c_bw.png", "Terms & Conditions", () {}),
-                    buildListTile(
-                        "assets/privacy_bw.png", "Privacy Policy", () {}),
+                    buildListTile("assets/about_us_bw.png", "About us",
+                        () => Get.to(() => AboutUsScreen())),
+                    buildListTile("assets/help_bw.png", "Help",
+                        () => Get.to(() => EmergencyContactsScreen())),
+                    buildListTile("assets/t_c_bw.png", "Terms & Conditions",
+                        () => Get.to(() => TermsAndConditions())),
+                    buildListTile("assets/privacy_bw.png", "Privacy Policy",
+                        () => Get.to(() => PrivacyPolicyScreen())),
                     buildListTile(
                         "assets/out_bw.png", "Logout", () => signOut(context)),
                     SizedBox(height: 50.h),

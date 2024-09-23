@@ -21,6 +21,7 @@ class DatabaseServices {
       "uid": uid,
       "email": emailAddress,
       "active": true,
+      "isTeamMember": false,
       "userName": userName,
       "phoneNumber": phoneNumber,
       "address": address,
@@ -30,6 +31,8 @@ class DatabaseServices {
       "isNotificationOn": true,
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),
+      'createdBy': uid, // ID of the current user
+      'role': 'Owner',
     });
   }
 }

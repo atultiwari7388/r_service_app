@@ -40,6 +40,7 @@ class UpcomingRequestCard extends StatefulWidget {
     required this.isImage,
     this.images = const [],
     this.payMode = "",
+    this.onCancelBtnTap,
   });
 
   final String userName;
@@ -56,6 +57,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final void Function()? onCompletedButtonTap;
   final Future<void> Function()? onDirectionTapButton;
   final Future<void> Function()? onDasMapButton;
+  final void Function()? onCancelBtnTap;
   final int currentStatus;
   final String buttonName;
   final String rating;
@@ -247,18 +249,26 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                         ],
                       )
                     : widget.currentStatus == 1
-                        ? Container(
-                            height: 45.h,
-                            decoration: BoxDecoration(
-                              color: kPrimary,
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            child: Center(
-                              child: Text(
-                                  "Waiting for driver to  accept your offer",
-                                  style:
-                                      appStyle(14, kWhite, FontWeight.normal)),
-                            ),
+                        ? Row(
+                            children: [
+                              Container(
+                                height: 45.h,
+                                padding: EdgeInsets.all(2.h),
+                                margin: EdgeInsets.all(2.h),
+                                decoration: BoxDecoration(
+                                  color: kSecondary,
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                child: Center(
+                                  child: Text("Wait for driver acceptance.",
+                                      style: appStyle(
+                                          12, kWhite, FontWeight.normal)),
+                                ),
+                              ),
+                              SizedBox(width: 5.w),
+                              buildButton(
+                                  kPrimary, "Cancel", widget.onCancelBtnTap)
+                            ],
                           )
                         : widget.currentStatus == 2
                             ? Container(

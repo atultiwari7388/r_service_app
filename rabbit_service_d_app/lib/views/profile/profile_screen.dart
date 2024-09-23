@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,8 +19,45 @@ import '../../utils/show_toast_msg.dart';
 import '../../widgets/dashed_divider.dart';
 import '../../widgets/reusable_text.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late String role = "";
+
+  Future<void> fetchUserDetails() async {
+    try {
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+
+      if (userSnapshot.exists) {
+        // Cast the document data to a map
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          role = userData["role"] ?? "";
+        });
+        log("Role set to " + role);
+      } else {
+        log("No user document found for ID: $currentUId");
+      }
+    } catch (e) {
+      log("Error fetching user details: $e");
+      setState(() {});
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserDetails();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +109,11 @@ class ProfileScreen extends StatelessWidget {
                     buildListTile("assets/profile_bw.png", "My Profile", () {
                       Get.to(() => ProfileDetailsScreen());
                     }),
-                    buildListTile("assets/team.png", "Manage Team", () {
-                      Get.to(() => MyTeamScreen());
-                    }),
+                    role == "Owner"
+                        ? buildListTile("assets/team.png", "Manage Team", () {
+                            Get.to(() => MyTeamScreen());
+                          })
+                        : SizedBox(),
                     buildListTile("assets/rating_bw.png", "Rate Us", () {}),
                   ],
                 ),

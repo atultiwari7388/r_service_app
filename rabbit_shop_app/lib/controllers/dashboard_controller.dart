@@ -11,14 +11,14 @@ import '../../services/latlng_converter.dart';
 import '../../utils/show_toast_msg.dart';
 
 class DashboardController extends GetxController {
-  bool online = false;
+  bool online = true;
   String appbarTitle = "";
   int totalJobs = 0;
   int ongoingJobs = 0;
 
   bool firstTimeAppLaunch = true; // Boolean flag to track first app launch
   bool isLocationSet = false;
-  bool requestCardVisible = false;
+  // bool requestCardVisible = false;
   double mecLat = 0.0;
   double mecLng = 0.0;
   LocationData? currentLocation;
