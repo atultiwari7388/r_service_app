@@ -313,7 +313,7 @@ class DashboardController extends GetxController {
               }
 
               // Optional: Show a confirmation message or navigate to another screen
-              Get.snackbar("Success", "Request updated successfully.");
+              Get.snackbar("Success", "Request Sent Successfully.");
             } else {
               Get.snackbar("Error", "Please enter all required charges.");
             }
@@ -426,10 +426,10 @@ class DashboardController extends GetxController {
             }
 
             // Optional: Show a confirmation message or navigate to another screen
-            Get.snackbar("Success", "Request updated successfully.");
+            Get.snackbar("Success", "Request Sent Successfully.");
             // You can handle the arrival charges here, like saving them to a database
             print("Fix Charges: $fixCharge");
-            Get.snackbar("Success", "Request updated successfully.");
+            Get.snackbar("Success", "Request Sent Successfully.");
 
             // Close the dialog after submission
             // Further actions can be taken here, like navigating to another screen

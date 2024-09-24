@@ -2,7 +2,6 @@ import 'dart:developer';
 import 'package:admin_app/utils/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class ServicesScreen extends StatefulWidget {
   const ServicesScreen({super.key});
@@ -12,9 +11,12 @@ class ServicesScreen extends StatefulWidget {
 }
 
 class _ServicesScreenState extends State<ServicesScreen> {
-  List<String> services = [];
-  List<String> filteredServices = [];
-  final TextEditingController _servicesController = TextEditingController();
+  List<Map<String, dynamic>> services = [];
+  List<Map<String, dynamic>> filteredServices = [];
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _imageTypeController = TextEditingController();
+  final TextEditingController _priceTypeController = TextEditingController();
+  final TextEditingController _priorityController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
 
@@ -28,12 +30,13 @@ class _ServicesScreenState extends State<ServicesScreen> {
   Future<void> _fetchServices() async {
     FirebaseFirestore.instance
         .collection('metadata')
-        .doc('servicesName')
+        .doc('servicesList')
         .get()
         .then((docSnapshot) {
       if (docSnapshot.exists) {
         setState(() {
-          services = List<String>.from(docSnapshot.data()!['data']);
+          services =
+              List<Map<String, dynamic>>.from(docSnapshot.data()!['data']);
           filteredServices = services; // Initialize filtered list
           _isLoading = false;
         });
@@ -46,78 +49,81 @@ class _ServicesScreenState extends State<ServicesScreen> {
     });
   }
 
-  // Future<void> _fetchServices() async {
-  //   FirebaseFirestore.instance
-  //       .collection('metadata')
-  //       .doc('servicesName')
-  //       .get()
-  //       .then((docSnapshot) {
-  //     if (docSnapshot.exists) {
-  //       setState(() {
-  //         services = List<String>.from(docSnapshot.data()!['data']);
-  //         _isLoading = false;
-  //       });
-  //     }
-  //   }).catchError((error) {
-  //     log('Failed to load services: $error');
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-  //   });
-  // }
-
-  Future<void> _updateLanguages() async {
+  Future<void> _updateServices() async {
     FirebaseFirestore.instance
         .collection('metadata')
-        .doc('servicesName')
+        .doc('servicesList')
         .update({
       'data': services,
     }).then((value) {
-      log('Languages updated');
+      log('Services updated');
     }).catchError((error) {
-      log('Failed to update languages: $error');
+      log('Failed to update services: $error');
     });
   }
 
-  void _addLanguage() {
-    if (_servicesController.text.isNotEmpty) {
-      setState(() {
-        services.add(_servicesController.text);
-      });
-      _updateLanguages();
-      _servicesController.clear();
-    }
-  }
-
-  void _editLanguage(int index) {
-    _servicesController.text = services[index];
+  void _addService() {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Edit Service'),
-          content: TextField(
-            controller: _servicesController,
-            decoration: InputDecoration(hintText: 'Enter new Service'),
+          title: Text('Add Service'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(labelText: 'Service Title'),
+              ),
+              TextField(
+                controller: _imageTypeController,
+                decoration: InputDecoration(labelText: 'Image Type'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _priceTypeController,
+                decoration: InputDecoration(labelText: 'Price Type'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _priorityController,
+                decoration: InputDecoration(labelText: 'Priority'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                setState(() {
-                  services[index] = _servicesController.text;
-                });
-                _updateLanguages();
-                _servicesController.clear();
-                Navigator.pop(context);
-              },
-              child: Text('Save'),
-            ),
-            TextButton(
-              onPressed: () {
-                _servicesController.clear();
+                _titleController.clear();
+                _imageTypeController.clear();
+                _priceTypeController.clear();
+                _priorityController.clear();
                 Navigator.pop(context);
               },
               child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (_titleController.text.isNotEmpty) {
+                  setState(() {
+                    services.add({
+                      'title': _titleController.text,
+                      'image_type': int.parse(_imageTypeController.text),
+                      'price_type': int.parse(_priceTypeController.text),
+                      'priority': int.parse(_priorityController.text),
+                      'image': "", // Assuming image is left empty for now
+                    });
+                  });
+                  _updateServices();
+                  _titleController.clear();
+                  _imageTypeController.clear();
+                  _priceTypeController.clear();
+                  _priorityController.clear();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Add'),
             ),
           ],
         );
@@ -125,18 +131,90 @@ class _ServicesScreenState extends State<ServicesScreen> {
     );
   }
 
-  void _deleteLanguage(int index) {
+  void _editService(int index) {
+    _titleController.text = services[index]['title'];
+    _imageTypeController.text = services[index]['image_type'].toString();
+    _priceTypeController.text = services[index]['price_type'].toString();
+    _priorityController.text = services[index]['priority'].toString();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Service'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(labelText: 'Service Title'),
+              ),
+              TextField(
+                controller: _imageTypeController,
+                decoration: InputDecoration(labelText: 'Image Type'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _priceTypeController,
+                decoration: InputDecoration(labelText: 'Price Type'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _priorityController,
+                decoration: InputDecoration(labelText: 'Priority'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _titleController.clear();
+                _imageTypeController.clear();
+                _priceTypeController.clear();
+                _priorityController.clear();
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  services[index] = {
+                    'title': _titleController.text,
+                    'image_type': int.parse(_imageTypeController.text),
+                    'price_type': int.parse(_priceTypeController.text),
+                    'priority': int.parse(_priorityController.text),
+                    'image': "", // Assuming image is left empty for now
+                  };
+                });
+                _updateServices();
+                _titleController.clear();
+                _imageTypeController.clear();
+                _priceTypeController.clear();
+                _priorityController.clear();
+                Navigator.pop(context);
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteService(int index) {
     setState(() {
       services.removeAt(index);
     });
-    _updateLanguages();
+    _updateServices();
   }
 
   // Method to filter services based on search query
   void _filterServices() {
     setState(() {
       filteredServices = services
-          .where((service) => service
+          .where((service) => service['title']
               .toLowerCase()
               .contains(_searchController.text.toLowerCase()))
           .toList();
@@ -145,7 +223,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   @override
   void dispose() {
-    _servicesController.dispose();
+    _titleController.dispose();
+    _imageTypeController.dispose();
+    _priceTypeController.dispose();
+    _priorityController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -155,23 +236,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Services"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: _addService, // Opens the dialog to add a service
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Search bar
-                // Padding(
-                //   padding: const EdgeInsets.all(16.0),
-                //   child: TextField(
-                //     controller: _searchController,
-                //     decoration: InputDecoration(
-                //       labelText: 'Search services',
-                //       border: OutlineInputBorder(),
-                //       prefixIcon: Icon(Icons.search),
-                //     ),
-                //   ),
-                // ),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: TextField(
@@ -180,16 +256,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       hintText: 'Search services...',
                       prefixIcon: Icon(Icons.search, color: Colors.grey),
                       filled: true,
-                      // Adds background color
                       fillColor: Colors.grey[200],
-                      // Light background color
                       contentPadding: EdgeInsets.symmetric(
                           vertical: 12.0, horizontal: 20.0),
-                      // Padding inside the text field
                       border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(30.0), // Rounded corners
-                        borderSide: BorderSide.none, // Removes border line
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: BorderSide.none,
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30.0),
@@ -197,8 +269,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30.0),
-                        borderSide:
-                            BorderSide(color: kPrimary), // Border when focused
+                        borderSide: BorderSide(color: kPrimary),
                       ),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
@@ -215,78 +286,33 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     },
                   ),
                 ),
-
                 Expanded(
                   child: ListView.builder(
-                    // itemCount: services.length,
                     itemCount: filteredServices.length,
                     itemBuilder: (context, index) {
                       return ListTile(
-                        title: Text(filteredServices[index]),
+                        title: Text(filteredServices[index]['title']),
+                        // subtitle: Text(
+                        //     'Image Type: ${filteredServices[index]['image_type']}, Price Type: ${filteredServices[index]['price_type']}, Priority: ${filteredServices[index]['priority']}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _editLanguage(index),
+                              onPressed: () {
+                                _editService(index);
+                              },
                             ),
                             IconButton(
                               icon: Icon(Icons.delete, color: Colors.red),
-                              // onPressed: () => _deleteLanguage(index),
                               onPressed: () {
-                                Get.defaultDialog(
-                                  title: "Delete Service",
-                                  content: Text(
-                                      "Are you sure you want to delete this service"),
-                                  textCancel: "No",
-                                  textConfirm: "Yes",
-                                  cancel: OutlinedButton(
-                                    onPressed: () {
-                                      Get.back(); // Close the dialog if "Cancel" is pressed
-                                    },
-                                    child: Text("No",
-                                        style: TextStyle(color: Colors.red)),
-                                  ),
-                                  confirm: ElevatedButton(
-                                    onPressed: () {
-                                      _deleteLanguage(index);
-                                      Get.back();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green),
-                                    child: Text("Yes",
-                                        style: TextStyle(color: Colors.white)),
-                                  ),
-                                );
+                                _deleteService(index);
                               },
                             ),
                           ],
                         ),
                       );
                     },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _servicesController,
-                          decoration: InputDecoration(
-                            labelText: 'Add a service',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 10),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimary, foregroundColor: kWhite),
-                        onPressed: _addLanguage,
-                        child: Text('Add'),
-                      ),
-                    ],
                   ),
                 ),
               ],

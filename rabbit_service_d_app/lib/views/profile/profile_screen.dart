@@ -11,6 +11,7 @@ import 'package:regal_service_d_app/views/history/history_screen.dart';
 import 'package:regal_service_d_app/views/myTeam/my_team_screen.dart';
 import 'package:regal_service_d_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:regal_service_d_app/views/profile/profile_details_screen.dart';
+import 'package:regal_service_d_app/views/ratings/ratings_screen.dart';
 import 'package:regal_service_d_app/views/termsCondition/terms_conditions.dart';
 import '../../services/collection_references.dart';
 import '../../utils/app_styles.dart';
@@ -114,7 +115,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Get.to(() => MyTeamScreen());
                           })
                         : SizedBox(),
-                    buildListTile("assets/rating_bw.png", "Rate Us", () {}),
+                    buildListTile("assets/rating_bw.png", "Ratings", () {
+                      Get.to(() => RatingsScreen());
+                    }),
                   ],
                 ),
               ),
@@ -198,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const CircularProgressIndicator();
+            return Center(child: CircularProgressIndicator());
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;

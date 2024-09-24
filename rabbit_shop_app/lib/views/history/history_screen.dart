@@ -438,7 +438,7 @@ class _UpcomingAndCompletedJobsScreenState
           },
           decoration: InputDecoration(
             border: InputBorder.none,
-            hintText: "Search by #00001",
+            hintText: "Search by #RMS00001",
             prefixIcon: Icon(Icons.search, color: kPrimary.withOpacity(0.5)),
             prefixStyle:
                 appStyle(14, kPrimary.withOpacity(0.1), FontWeight.w200),

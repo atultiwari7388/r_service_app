@@ -171,40 +171,43 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                       ),
                                     ),
                                   ),
-                                  GestureDetector(
-                                    onTap: () async {
-                                      var result = await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AddVehicleScreen(),
-                                        ),
-                                      );
-                                      if (result != null) {
-                                        // Handle the result
-                                        String? company = result['company'];
-                                        String? vehicleNumber =
-                                            result['vehicleNumber'];
-                                        log("Company: $company, Vehicle Number: $vehicleNumber");
+                                  controller.role == "Owner"
+                                      ? GestureDetector(
+                                          onTap: () async {
+                                            var result = await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    AddVehicleScreen(),
+                                              ),
+                                            );
+                                            if (result != null) {
+                                              // Handle the result
+                                              String? company =
+                                                  result['company'];
+                                              String? vehicleNumber =
+                                                  result['vehicleNumber'];
+                                              log("Company: $company, Vehicle Number: $vehicleNumber");
 
-                                        setState(
-                                          () {
-                                            controller
-                                                    .selectedCompanyAndVehcileName =
-                                                company;
+                                              setState(
+                                                () {
+                                                  controller
+                                                          .selectedCompanyAndVehcileName =
+                                                      company;
+                                                },
+                                              );
+                                            }
                                           },
-                                        );
-                                      }
-                                    },
-                                    child: CircleAvatar(
-                                      backgroundColor: kPrimary,
-                                      child: Icon(
-                                        Icons.add,
-                                        color: kWhite,
-                                        size: 24.r,
-                                      ),
-                                    ),
-                                  ),
+                                          child: CircleAvatar(
+                                            backgroundColor: kPrimary,
+                                            child: Icon(
+                                              Icons.add,
+                                              color: kWhite,
+                                              size: 24.r,
+                                            ),
+                                          ),
+                                        )
+                                      : SizedBox()
                                 ],
                               );
                             },

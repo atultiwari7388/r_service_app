@@ -86,25 +86,54 @@ class DashboardController extends GetxController {
     fetchUserDetails();
   }
 
+//======================== Fetch Services Name=============================
+  // Future<void> fetchServicesName() async {
+  //   try {
+  //     DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
+  //         await FirebaseFirestore.instance
+  //             .collection('metadata')
+  //             .doc('servicesName')
+  //             .get();
+
+  //     if (metadataSnapshot.exists) {
+  //       List<dynamic> servicesList = metadataSnapshot.data()?['data'] ?? [];
+  //       // print('Services List: $servicesList'); // Debugging line
+
+  //       allServiceAndNetworkOptions = List<String>.from(servicesList);
+  //       // Initialize filtered list with all options
+  //       filteredServiceAndNetworkOptions =
+  //           List.from(allServiceAndNetworkOptions);
+
+  //       print(
+  //           'Filter List: $filteredServiceAndNetworkOptions'); // Debugging line
+  //       update();
+  //     }
+  //   } catch (e) {
+  //     print('Error fetching services names: $e');
+  //   }
+  // }
+
+//======================== Fetch Services Name=============================
   Future<void> fetchServicesName() async {
     try {
       DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
           await FirebaseFirestore.instance
               .collection('metadata')
-              .doc('servicesName')
+              .doc('servicesList')
               .get();
 
       if (metadataSnapshot.exists) {
         List<dynamic> servicesList = metadataSnapshot.data()?['data'] ?? [];
-        // print('Services List: $servicesList'); // Debugging line
 
-        allServiceAndNetworkOptions = List<String>.from(servicesList);
+        // Extract titles from each service map
+        allServiceAndNetworkOptions =
+            servicesList.map((service) => service['title'].toString()).toList();
+
         // Initialize filtered list with all options
         filteredServiceAndNetworkOptions =
             List.from(allServiceAndNetworkOptions);
 
-        print(
-            'Filter List: $filteredServiceAndNetworkOptions'); // Debugging line
+        print('Filter List: $filteredServiceAndNetworkOptions');
         update();
       }
     } catch (e) {
@@ -112,15 +141,174 @@ class DashboardController extends GetxController {
     }
   }
 
+//============================ Filter Services and Network Options =============================
+  // void filterServiceAndNetwork(String query) {
+  //   final filteredList = allServiceAndNetworkOptions
+  //       .where((item) => item.toLowerCase().contains(query.toLowerCase()))
+  //       .toList();
+
+  //   filteredServiceAndNetworkOptions = filteredList;
+  //   print(
+  //       'New Filter List: $filteredServiceAndNetworkOptions'); // Debugging line
+  //   update();
+  // }
+
+//============================ Filter Services and Network Options =============================
   void filterServiceAndNetwork(String query) {
     final filteredList = allServiceAndNetworkOptions
         .where((item) => item.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
     filteredServiceAndNetworkOptions = filteredList;
-    print(
-        'New Filter List: $filteredServiceAndNetworkOptions'); // Debugging line
+    print('New Filter List: $filteredServiceAndNetworkOptions');
     update();
+  }
+
+//=============================== Select Services ==================================
+
+  // void showServiceAndNetworkOptions(BuildContext context) {
+  //   // Reset the filtered list before showing the bottom sheet
+  //   filteredServiceAndNetworkOptions = List.from(allServiceAndNetworkOptions);
+
+  //   showModalBottomSheet(
+  //     context: context,
+  //     isScrollControlled: true,
+  //     backgroundColor: Colors.transparent,
+  //     builder: (BuildContext context) {
+  //       return DraggableScrollableSheet(
+  //         initialChildSize: 0.7,
+  //         minChildSize: 0.5,
+  //         maxChildSize: 1.0,
+  //         builder: (BuildContext context, ScrollController scrollController) {
+  //           return Container(
+  //             decoration: BoxDecoration(
+  //               color: Colors.white,
+  //               borderRadius: BorderRadius.vertical(
+  //                 top: Radius.circular(20.0),
+  //               ),
+  //             ),
+  //             child: Column(
+  //               children: [
+  //                 Container(
+  //                   margin: EdgeInsets.symmetric(vertical: 10),
+  //                   width: 60,
+  //                   height: 5,
+  //                   decoration: BoxDecoration(
+  //                     color: Colors.grey[300],
+  //                     borderRadius: BorderRadius.circular(10),
+  //                   ),
+  //                 ),
+  //                 Padding(
+  //                   padding: EdgeInsets.symmetric(horizontal: 10),
+  //                   child: TextField(
+  //                     decoration: InputDecoration(
+  //                       labelText: "Search Service or Network",
+  //                       prefixIcon: Icon(Icons.search),
+  //                     ),
+  //                     onChanged: (value) {
+  //                       filterServiceAndNetwork(value);
+  //                     },
+  //                   ),
+  //                 ),
+  //                 Expanded(
+  //                   child: ListView.builder(
+  //                     controller: scrollController,
+  //                     itemCount: filteredServiceAndNetworkOptions.length,
+  //                     itemBuilder: (context, index) {
+  //                       return ListTile(
+  //                         title: Text(filteredServiceAndNetworkOptions[index]),
+  //                         onTap: () {
+  //                           serviceAndNetworkController.text =
+  //                               filteredServiceAndNetworkOptions[index];
+  //                           isServiceSelected = true; // Service selected
+  //                           checkIfAllSelected();
+  //                           update();
+  //                           Navigator.pop(context);
+  //                         },
+  //                       );
+  //                     },
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+
+//=============================== Select Services ==================================
+  void showServiceAndNetworkOptions(BuildContext context) {
+    // Reset the filtered list before showing the bottom sheet
+    filteredServiceAndNetworkOptions = List.from(allServiceAndNetworkOptions);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 1.0,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(20.0),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: EdgeInsets.symmetric(vertical: 10),
+                    width: 60,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        labelText: "Search Service or Network",
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        filterServiceAndNetwork(value);
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: filteredServiceAndNetworkOptions.length,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          title: Text(filteredServiceAndNetworkOptions[index]),
+                          onTap: () {
+                            serviceAndNetworkController.text =
+                                filteredServiceAndNetworkOptions[index];
+                            isServiceSelected = true; // Service selected
+                            checkIfAllSelected();
+                            update();
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> fetchByDefaultUserVehicle() async {
@@ -214,6 +402,7 @@ class DashboardController extends GetxController {
         role = userData["role"] ?? "";
         ownerId = userData["createdBy"] ?? "";
         update();
+        log("Role is set to " + role);
       } else {
         log("No user document found for ID: $currentUId");
       }
@@ -232,6 +421,7 @@ class DashboardController extends GetxController {
     update();
   }
 
+//================================== Select Company and Vehicle ===============================
   void showSelectedVehicleAndCompanyOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -282,21 +472,7 @@ class DashboardController extends GetxController {
                         return ListTile(
                           title:
                               Text(filterSelectedCompanyAndvehicleName[index]),
-                          // onTap: () async {
-                          //   selectedCompanyAndVehcileName =
-                          //       filterSelectedCompanyAndvehicleName[index];
-                          //   log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
-                          //   await updateVehicleSelection(
-                          //       filterSelectedCompanyAndvehicleName[index]);
-                          //   selectedCompanyAndVehcileNameController.text =
-                          //       filterSelectedCompanyAndvehicleName[index];
-                          //   update();
-                          //   Navigator.pop(context);
-                          // },
                           onTap: () async {
-                            // _isLoading = true; // Show loading indicator
-                            // update();
-
                             selectedCompanyAndVehcileName =
                                 filterSelectedCompanyAndvehicleName[index];
                             log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
@@ -326,6 +502,7 @@ class DashboardController extends GetxController {
     );
   }
 
+//================================== Update Vehicle Section =============================
   Future<void> updateVehicleSelection(String selectedVehicle) async {
     try {
       // First, set all vehicles' isSet to false
@@ -377,75 +554,7 @@ class DashboardController extends GetxController {
     }
   }
 
-  void showServiceAndNetworkOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 1.0,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(20.0),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 10),
-                    width: 60,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: "Search Service or Network",
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onChanged: (value) {
-                        filterServiceAndNetwork(value);
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: filteredServiceAndNetworkOptions.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(filteredServiceAndNetworkOptions[index]),
-                          onTap: () {
-                            serviceAndNetworkController.text =
-                                filteredServiceAndNetworkOptions[index];
-                            isServiceSelected = true; // Service selected
-                            checkIfAllSelected();
-                            update();
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
+//=============================== Image Uploader =====================================
   void showImageSourceDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -479,6 +588,7 @@ class DashboardController extends GetxController {
     );
   }
 
+//=============================== Image Previewer =====================================
   void getImage(ImageSource source, BuildContext context) async {
     if (source == ImageSource.camera) {
       // For camera, use pickImage
@@ -517,6 +627,7 @@ class DashboardController extends GetxController {
     }
   }
 
+//=============================== Order Generation =====================================
   Future<void> findMechanic(
     String address,
     String userPhoto,

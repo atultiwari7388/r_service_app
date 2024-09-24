@@ -186,6 +186,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                       stream: FirebaseFirestore.instance
                                           .collection('jobs')
                                           .where('status', isEqualTo: 0)
+                                          .orderBy("orderDate",
+                                              descending: true)
                                           .snapshots(),
                                       builder: (BuildContext context,
                                           AsyncSnapshot<QuerySnapshot>
@@ -256,7 +258,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                               return UpcomingRequestCard(
                                                 orderId:
                                                     job["orderId"].toString(),
-                                                userName: controller.userName,
+                                                userName:
+                                                    job["userName"].toString(),
                                                 vehicleName:
                                                     job['vehicleNumber'] ??
                                                         "N/A",

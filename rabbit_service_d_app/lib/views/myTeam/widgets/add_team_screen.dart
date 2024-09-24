@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -23,14 +24,48 @@ class AddTeamMember extends StatefulWidget {
 class _AddTeamMemberState extends State<AddTeamMember> {
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
-  TextEditingController addressController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
-  TextEditingController vehicleController = TextEditingController();
   TextEditingController passController = TextEditingController();
 
   var isUserAcCreated = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  List<Map<String, dynamic>> vehicles = []; // To store vehicle details
+  List<String> selectedVehicles = []; // To store selected vehicles' IDs
+
+  @override
+  void initState() {
+    super.initState();
+    fetchOwnerVehiclesDetails();
+  }
+
+  Future<void> fetchOwnerVehiclesDetails() async {
+    try {
+      QuerySnapshot vehiclesSnapshot = await _firestore
+          .collection('Users')
+          .doc(currentUId) // Replace with the owner's UID
+          .collection('Vehicles')
+          .get();
+
+      // Store fetched vehicle details into the list
+      vehicles = vehiclesSnapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'companyName': doc['companyName'],
+          'licensePlate': doc['licensePlate'],
+          'vehicleNumber': doc['vehicleNumber'],
+          'year': doc['year'],
+          'vin': doc['vin'],
+          'isSet': doc['isSet']
+        };
+      }).toList();
+
+      setState(() {}); // Update the UI after fetching vehicles
+    } catch (e) {
+      log("Error fetching user vehicles: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +113,35 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 isPass: true,
               ),
               SizedBox(height: 15.h),
+
+              // Vehicle selection with checkboxes
+              SizedBox(height: 24.h),
+              Text(
+                "Assign Vehicles",
+                style: appStyle(16, Colors.black, FontWeight.bold),
+              ),
+              SizedBox(height: 15.h),
+              vehicles.isEmpty
+                  ? CircularProgressIndicator()
+                  : Column(
+                      children: vehicles.map((vehicle) {
+                        return CheckboxListTile(
+                          title: Text(
+                              "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
+                          value: selectedVehicles.contains(vehicle['id']),
+                          onChanged: (bool? selected) {
+                            setState(() {
+                              if (selected == true) {
+                                selectedVehicles.add(vehicle['id']);
+                              } else {
+                                selectedVehicles.remove(vehicle['id']);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+
               SizedBox(height: 24.h),
               isUserAcCreated
                   ? CircularProgressIndicator()
@@ -114,8 +178,10 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
         phoneController.text.isEmpty ||
-        passController.text.isEmpty) {
-      showToastMessage("Error", "All fields are required", Colors.red);
+        passController.text.isEmpty ||
+        selectedVehicles.isEmpty) {
+      showToastMessage(
+          "Error", "All fields and vehicle selection are required", Colors.red);
       return;
     }
 
@@ -130,42 +196,65 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     setState(() {});
 
     try {
+      // Create the team member's account
       var user = await _auth.createUserWithEmailAndPassword(
         email: emailController.text,
         password: passController.text,
       );
 
-      // Store the new team member in Firestore
+      // Store the new team member in Firestore under 'Users'
       await _firestore.collection('Users').doc(user.user!.uid).set({
         "uid": user.user!.uid,
-        "email": emailController.text.toString(),
+        "email": emailController.text,
         "active": true,
         "isTeamMember": true,
-        "userName": nameController.text.toString(),
-        "phoneNumber": phoneController.text.toString(),
-        "address": addressController.text.toString(),
-        "lastAddress": "",
-        "profilePicture": "",
-        "wallet": 0,
-        "isNotificationOn": true,
+        "userName": nameController.text,
+        "phoneNumber": phoneController.text,
+        "createdBy": currentUId,
+        "role": "TMember",
         "created_at": DateTime.now(),
         "updated_at": DateTime.now(),
-        'createdBy': currentUId, // ID of the current user
-        'role': 'TMember',
       });
 
-      // Continue with the flow as before
+      // Fetch and store selected vehicles in the team member's subcollection
+      for (String vehicleId in selectedVehicles) {
+        DocumentSnapshot vehicleDoc = await _firestore
+            .collection('Users')
+            .doc(currentUId) // Fetching from the owner's vehicles collection
+            .collection('Vehicles')
+            .doc(vehicleId)
+            .get();
+
+        if (vehicleDoc.exists) {
+          // Store the selected vehicle details in the new team member's Vehicles subcollection
+          await _firestore
+              .collection('Users')
+              .doc(user.user!.uid) // New team member's document
+              .collection('Vehicles')
+              .doc(vehicleId)
+              .set({
+            'companyName': vehicleDoc['companyName'],
+            'licensePlate': vehicleDoc['licensePlate'],
+            'vehicleNumber': vehicleDoc['vehicleNumber'],
+            'year': vehicleDoc['year'],
+            'vin': vehicleDoc['vin'],
+            'isSet': vehicleDoc['isSet'],
+            'assigned_at': DateTime.now(),
+            "createdAt": DateTime.now(),
+          });
+        }
+      }
+
+      // Send email verification
       await user.user!.sendEmailVerification();
       showToastMessage(
         "Verification Sent",
         "A verification email has been sent to ${emailController.text}.",
         Colors.orange,
       );
-      // Get.back();
-      // Sign out the newly created user immediately
-      await _auth.signOut();
 
-      // Go back or navigate to the login screen after signing out
+      // Sign out the newly created user immediately after account creation
+      await _auth.signOut();
       Get.offAll(() => const LoginScreen());
     } on FirebaseAuthException catch (e) {
       handleError(e);

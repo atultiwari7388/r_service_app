@@ -15,6 +15,7 @@ import '../../widgets/dashed_divider.dart';
 import '../../widgets/reusable_text.dart';
 import '../auth/login_screen.dart';
 import '../history/completed_history_screen.dart';
+import '../ratings/ratings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -65,6 +66,9 @@ class ProfileScreen extends StatelessWidget {
                     SizedBox(height: 10.h),
                     buildListTile("assets/bookings_bw.png", "My History", () {
                       Get.to(() => CompletedJobsHistoryScreen());
+                    }),
+                    buildListTile("assets/rating_bw.png", "Ratings", () {
+                      Get.to(() => RatingsScreen());
                     }),
                     buildListTile("assets/profile_bw.png", "My Profile", () {
                       Get.to(() => ProfileDetailsScreen());

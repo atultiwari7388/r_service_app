@@ -314,8 +314,11 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 ),
                               ),
                               SizedBox(width: 15.w),
-                              buildButton(kSuccess, "Rate Now",
-                                  () => showRatingDialog(context, widget.mId))
+                              buildButton(
+                                  kSuccess,
+                                  "Rate Now",
+                                  () => showRatingDialog(context, widget.mId,
+                                      widget.jobId.toString()))
                             ],
                           )
                         : SizedBox()
@@ -517,7 +520,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
     );
   }
 
-  void showRatingDialog(BuildContext context, String mId) {
+  void showRatingDialog(BuildContext context, String mId, String orderId) {
     double _rating = 0;
     String _review = '';
 
@@ -555,7 +558,8 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
           actions: [
             ElevatedButton(
               onPressed: () async {
-                await _updateRatingAndReview(mId, _rating, _review);
+                await _updateRatingAndReview(
+                    mId, _rating, _review, orderId.toString());
                 Navigator.of(context).pop();
               },
               child: Text('Submit'),
@@ -581,7 +585,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
   }
 
   Future<void> _updateRatingAndReview(
-      String mId, double rating, String review) async {
+      String mId, double rating, String review, String orderId) async {
     try {
       await FirebaseFirestore.instance
           .collection('jobs')
@@ -602,6 +606,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
         'review': review,
         "uId": FirebaseAuth.instance.currentUser!.uid,
         "timestamp": DateTime.now(),
+        "orderId": orderId.toString(),
       });
       showToastMessage('Rating', 'Review Submitted.', Colors.red);
       log('Rating and review updated successfully.');
