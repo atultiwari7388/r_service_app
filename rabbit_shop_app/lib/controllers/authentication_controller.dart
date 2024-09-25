@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:regal_shop_app/utils/constants.dart';
 import '../services/database_services.dart';
 import '../utils/show_toast_msg.dart';
 import '../views/auth/login_screen.dart';
@@ -50,47 +51,6 @@ class AuthController extends GetxController {
   TextEditingController get passController => _passController;
 
 //========================== Create account with email and password =================
-  // Future<void> createUserWithEmailAndPassword() async {
-  //   isUserAcCreated = true;
-  //   update();
-  //   try {
-  //     var user = await _auth.createUserWithEmailAndPassword(
-  //         email: _emailController.text, password: _passController.text);
-
-  //     await DatabaseServices(uid: user.user!.uid).savingUserData(
-  //       _emailController.text,
-  //       _nameController.text,
-  //       _phoneNumberController.text,
-  //       _addressController.text,
-  //       int.parse(_perHourCharge.text),
-  //       selectedLanguages,
-  //     );
-
-  //     isUserAcCreated = false;
-  //     update();
-  //     Get.offAll(() => EntryScreen());
-  //     showToastMessage("Success", "Account created successfully", Colors.green);
-  //   } on FirebaseAuthException catch (e) {
-  //     // handleAuthError(e);
-  //     String errorMessage;
-  //     switch (e.code) {
-  //       case 'email-already-in-use':
-  //         errorMessage = "The email is already in use by another account.";
-  //         break;
-  //       case 'invalid-email':
-  //         errorMessage = "The email address is invalid.";
-  //         break;
-  //       case 'weak-password':
-  //         errorMessage = "The password is too weak.";
-  //         break;
-  //       default:
-  //         errorMessage = e.message ?? "An unknown error occurred.";
-  //     }
-  //   } finally {
-  //     isUserAcCreated = false;
-  //     update();
-  //   }
-  // }
 
   Future<void> createUserWithEmailAndPassword() async {
     isUserAcCreated = true;
@@ -129,12 +89,17 @@ class AuthController extends GetxController {
       switch (e.code) {
         case 'email-already-in-use':
           errorMessage = "The email is already in use by another account.";
+          showToastMessage("Error", errorMessage.toString(), kRed);
           break;
         case 'invalid-email':
           errorMessage = "The email address is invalid.";
+          showToastMessage("Invalid", errorMessage.toString(), kRed);
+
           break;
         case 'weak-password':
           errorMessage = "The password is too weak.";
+          showToastMessage("Weak", errorMessage.toString(), kRed);
+
           break;
         default:
           errorMessage = e.message ?? "An unknown error occurred.";
@@ -147,33 +112,6 @@ class AuthController extends GetxController {
   }
 
 //========================== SignIn with email and Password ===============================
-  // Future<void> signInWithEmailAndPassword() async {
-  //   isUserSign = true;
-  //   update();
-  //   try {
-  //     var signInUser = await _auth.signInWithEmailAndPassword(
-  //         email: _emailController.text, password: _passController.text);
-
-  //     final User? user = signInUser.user;
-  //     if (user != null) {
-  //       var doc =
-  //           await FirebaseFirestore.instance.doc("Mechanics/${user.uid}").get();
-  //       if (doc.exists && doc['uid'] == user.uid) {
-  //         isUserSign = false;
-  //         update();
-  //         Get.offAll(() => EntryScreen());
-  //         showToastMessage("Success", "Login Successful", Colors.green);
-  //       } else {
-  //         Get.to(() => RegistrationScreen());
-  //       }
-  //     }
-  //   } on FirebaseAuthException catch (e) {
-  //     handleAuthError(e);
-  //   } finally {
-  //     isUserSign = false;
-  //     update();
-  //   }
-  // }
 
   Future<void> signInWithEmailAndPassword() async {
     isUserSign = true;
@@ -267,7 +205,6 @@ class AuthController extends GetxController {
 
   @override
   void onInit() {
-    // TODO: implement onInit
     super.onInit();
     // Initialize all languages as unchecked
     for (var language in languages) {

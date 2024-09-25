@@ -261,29 +261,35 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             ),
                           ),
                           SizedBox(height: 20.h),
-                          GestureDetector(
-                            onTap: () =>
-                                controller.showImageSourceDialog(context),
-                            child: Container(
-                              height: 40.h,
-                              width: double.maxFinite,
-                              alignment: Alignment.centerLeft,
-                              decoration: BoxDecoration(
-                                  border: Border.all(
-                                      color: kSecondary.withOpacity(0.1)),
-                                  color: kWhite,
-                                  borderRadius: BorderRadius.circular(12.r)),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text("Upload Images"),
-                                  SizedBox(width: 20.w),
-                                  Icon(Icons.upload_file, color: kDark),
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 20.h),
+                          controller.imageUploadEnabled
+                              ? GestureDetector(
+                                  onTap: () =>
+                                      controller.showImageSourceDialog(context),
+                                  child: Container(
+                                    height: 40.h,
+                                    width: double.maxFinite,
+                                    alignment: Alignment.centerLeft,
+                                    decoration: BoxDecoration(
+                                        border: Border.all(
+                                            color: kSecondary.withOpacity(0.1)),
+                                        color: kWhite,
+                                        borderRadius:
+                                            BorderRadius.circular(12.r)),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text("Upload Images"),
+                                        SizedBox(width: 20.w),
+                                        Icon(Icons.upload_file, color: kDark),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : SizedBox(),
+                          controller.imageUploadEnabled
+                              ? SizedBox(height: 20.h)
+                              : SizedBox(),
                           controller.images.isNotEmpty
                               ? Wrap(
                                   spacing: 10.w,

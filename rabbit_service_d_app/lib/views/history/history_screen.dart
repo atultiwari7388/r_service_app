@@ -146,7 +146,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               serviceName: job["selectedService"].toString(),
                               cancelationReason: job["cancelReason"].toString(),
                               jobId: job["orderId"].toString(),
-                              imagePath: job["userPhoto"].toString(),
+                              imagePath: job["userPhoto"].toString().isEmpty
+                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                  : job["userPhoto"].toString(),
                               dateTime: dateString,
                               currentStatus: job["status"],
                               // isStatusCompleted: true,

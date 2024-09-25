@@ -34,6 +34,8 @@ class DashboardController extends GetxController {
   bool isServiceSelected = false;
   bool isAddressSelected = false;
   bool isFindMechanicEnabled = false;
+  bool imageUploadEnabled = false; // To handle the upload button visibility
+  bool fixPriceEnabled = false; // for the fix price
   String role = "";
   String ownerEmail = "";
   String ownerId = "";
@@ -71,8 +73,9 @@ class DashboardController extends GetxController {
   TextEditingController companyNameController = TextEditingController();
   int currentIndex = 0;
   String? selectedCompanyAndVehcileName;
-  List<String> allServiceAndNetworkOptions = [];
-  List<String> filteredServiceAndNetworkOptions = [];
+  List<Map<String, dynamic>> allServiceAndNetworkOptions = [];
+  List<Map<String, dynamic>> filteredServiceAndNetworkOptions = [];
+
   List<dynamic> allVehicleAndCompanyName = [];
   List<dynamic> filterSelectedCompanyAndvehicleName = [];
 
@@ -87,33 +90,7 @@ class DashboardController extends GetxController {
   }
 
 //======================== Fetch Services Name=============================
-  // Future<void> fetchServicesName() async {
-  //   try {
-  //     DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
-  //         await FirebaseFirestore.instance
-  //             .collection('metadata')
-  //             .doc('servicesName')
-  //             .get();
 
-  //     if (metadataSnapshot.exists) {
-  //       List<dynamic> servicesList = metadataSnapshot.data()?['data'] ?? [];
-  //       // print('Services List: $servicesList'); // Debugging line
-
-  //       allServiceAndNetworkOptions = List<String>.from(servicesList);
-  //       // Initialize filtered list with all options
-  //       filteredServiceAndNetworkOptions =
-  //           List.from(allServiceAndNetworkOptions);
-
-  //       print(
-  //           'Filter List: $filteredServiceAndNetworkOptions'); // Debugging line
-  //       update();
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching services names: $e');
-  //   }
-  // }
-
-//======================== Fetch Services Name=============================
   Future<void> fetchServicesName() async {
     try {
       DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
@@ -125,9 +102,21 @@ class DashboardController extends GetxController {
       if (metadataSnapshot.exists) {
         List<dynamic> servicesList = metadataSnapshot.data()?['data'] ?? [];
 
-        // Extract titles from each service map
-        allServiceAndNetworkOptions =
-            servicesList.map((service) => service['title'].toString()).toList();
+        // Extract titles, image_type, and price_type from each service map
+        allServiceAndNetworkOptions = servicesList.map((service) {
+          String title = service['title'].toString();
+          int imageType = int.tryParse(service['image_type'].toString()) ??
+              0; // Ensuring the image_type is an int
+          int priceType = int.tryParse(service['price_type'].toString()) ??
+              0; // Ensuring the price_type is an int
+
+          // Return a map or object with title, imageType, and priceType
+          return {
+            'title': title,
+            'image_type': imageType,
+            'price_type': priceType,
+          };
+        }).toList();
 
         // Initialize filtered list with all options
         filteredServiceAndNetworkOptions =
@@ -142,21 +131,11 @@ class DashboardController extends GetxController {
   }
 
 //============================ Filter Services and Network Options =============================
-  // void filterServiceAndNetwork(String query) {
-  //   final filteredList = allServiceAndNetworkOptions
-  //       .where((item) => item.toLowerCase().contains(query.toLowerCase()))
-  //       .toList();
-
-  //   filteredServiceAndNetworkOptions = filteredList;
-  //   print(
-  //       'New Filter List: $filteredServiceAndNetworkOptions'); // Debugging line
-  //   update();
-  // }
-
-//============================ Filter Services and Network Options =============================
   void filterServiceAndNetwork(String query) {
     final filteredList = allServiceAndNetworkOptions
-        .where((item) => item.toLowerCase().contains(query.toLowerCase()))
+        .where((item) => (item['title'] as String)
+            .toLowerCase()
+            .contains(query.toLowerCase()))
         .toList();
 
     filteredServiceAndNetworkOptions = filteredList;
@@ -165,83 +144,10 @@ class DashboardController extends GetxController {
   }
 
 //=============================== Select Services ==================================
-
-  // void showServiceAndNetworkOptions(BuildContext context) {
-  //   // Reset the filtered list before showing the bottom sheet
-  //   filteredServiceAndNetworkOptions = List.from(allServiceAndNetworkOptions);
-
-  //   showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     backgroundColor: Colors.transparent,
-  //     builder: (BuildContext context) {
-  //       return DraggableScrollableSheet(
-  //         initialChildSize: 0.7,
-  //         minChildSize: 0.5,
-  //         maxChildSize: 1.0,
-  //         builder: (BuildContext context, ScrollController scrollController) {
-  //           return Container(
-  //             decoration: BoxDecoration(
-  //               color: Colors.white,
-  //               borderRadius: BorderRadius.vertical(
-  //                 top: Radius.circular(20.0),
-  //               ),
-  //             ),
-  //             child: Column(
-  //               children: [
-  //                 Container(
-  //                   margin: EdgeInsets.symmetric(vertical: 10),
-  //                   width: 60,
-  //                   height: 5,
-  //                   decoration: BoxDecoration(
-  //                     color: Colors.grey[300],
-  //                     borderRadius: BorderRadius.circular(10),
-  //                   ),
-  //                 ),
-  //                 Padding(
-  //                   padding: EdgeInsets.symmetric(horizontal: 10),
-  //                   child: TextField(
-  //                     decoration: InputDecoration(
-  //                       labelText: "Search Service or Network",
-  //                       prefixIcon: Icon(Icons.search),
-  //                     ),
-  //                     onChanged: (value) {
-  //                       filterServiceAndNetwork(value);
-  //                     },
-  //                   ),
-  //                 ),
-  //                 Expanded(
-  //                   child: ListView.builder(
-  //                     controller: scrollController,
-  //                     itemCount: filteredServiceAndNetworkOptions.length,
-  //                     itemBuilder: (context, index) {
-  //                       return ListTile(
-  //                         title: Text(filteredServiceAndNetworkOptions[index]),
-  //                         onTap: () {
-  //                           serviceAndNetworkController.text =
-  //                               filteredServiceAndNetworkOptions[index];
-  //                           isServiceSelected = true; // Service selected
-  //                           checkIfAllSelected();
-  //                           update();
-  //                           Navigator.pop(context);
-  //                         },
-  //                       );
-  //                     },
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
-
-//=============================== Select Services ==================================
   void showServiceAndNetworkOptions(BuildContext context) {
-    // Reset the filtered list before showing the bottom sheet
-    filteredServiceAndNetworkOptions = List.from(allServiceAndNetworkOptions);
+    // Ensure filteredServiceAndNetworkOptions is a List<Map<String, dynamic>>
+    filteredServiceAndNetworkOptions =
+        List<Map<String, dynamic>>.from(allServiceAndNetworkOptions);
 
     showModalBottomSheet(
       context: context,
@@ -288,14 +194,38 @@ class DashboardController extends GetxController {
                       controller: scrollController,
                       itemCount: filteredServiceAndNetworkOptions.length,
                       itemBuilder: (context, index) {
+                        final item = filteredServiceAndNetworkOptions[index];
+                        String title =
+                            filteredServiceAndNetworkOptions[index]['title'];
+                        int imageType = filteredServiceAndNetworkOptions[index]
+                            ['image_type'];
+                        int priceType = filteredServiceAndNetworkOptions[index]
+                            ['price_type'];
                         return ListTile(
-                          title: Text(filteredServiceAndNetworkOptions[index]),
+                          title: Text(item[
+                              'title']), // Assuming 'title' is the field name
                           onTap: () {
-                            serviceAndNetworkController.text =
-                                filteredServiceAndNetworkOptions[index];
+                            log("Selected Service Name $title and imageType is ${imageType.toString()} and  priceType is ${priceType.toString()}");
+                            serviceAndNetworkController.text = title;
                             isServiceSelected = true; // Service selected
                             checkIfAllSelected();
                             update();
+
+                            if (imageType == 1) {
+                              imageUploadEnabled = true;
+                              update();
+                            } else {
+                              imageUploadEnabled = false;
+                              update();
+                            }
+
+                            if (priceType == 1) {
+                              fixPriceEnabled = true;
+                              update();
+                            } else {
+                              fixPriceEnabled = false;
+                              update();
+                            }
                             Navigator.pop(context);
                           },
                         );
@@ -681,6 +611,7 @@ class DashboardController extends GetxController {
         'userDeliveryAddress': address,
         'userLat': userLatitude,
         "isImageSelected": isImageSelected,
+        "fixPriceEnabled": fixPriceEnabled,
         "images": imageUrls,
         'userLong': userLongitude,
         'orderDate': DateTime.now(),

@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -72,12 +71,15 @@ class AuthController extends GetxController {
       switch (e.code) {
         case 'email-already-in-use':
           errorMessage = "The email is already in use by another account.";
+          showToastMessage("Error", errorMessage, Colors.red);
           break;
         case 'invalid-email':
           errorMessage = "The email address is invalid.";
+          showToastMessage("Error", errorMessage, Colors.red);
           break;
         case 'weak-password':
           errorMessage = "The password is too weak.";
+          showToastMessage("Error", errorMessage, Colors.red);
           break;
         default:
           errorMessage = e.message ?? "An unknown error occurred.";

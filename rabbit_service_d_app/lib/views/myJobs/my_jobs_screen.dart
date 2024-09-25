@@ -136,7 +136,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                               address: job["userDeliveryAddress"].toString(),
                               serviceName: job["selectedService"].toString(),
                               jobId: job["orderId"].toString(),
-                              imagePath: job["userPhoto"].toString(),
+                              imagePath: job["userPhoto"].toString().isEmpty
+                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                  : job["userPhoto"].toString(),
                               dateTime: dateString,
                               onButtonTap: () {
                                 Get.to(() => RequestsScreen(
