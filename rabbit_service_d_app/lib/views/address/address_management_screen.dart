@@ -34,7 +34,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   double? selectedLat;
   double? selectedLng;
   Map<String, dynamic>? selectedAddress;
-  late String googleMapApiKey;
+  // late String googleMapApiKey;
   bool isApiKeyLoading = false;
   String selectedId = "";
 
@@ -44,36 +44,36 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     getCurrentLocation();
   }
 
-  //================== Fetch Api Key =====================
-  Future<void> fetchApiKey() async {
-    setState(() {
-      isApiKeyLoading = true;
-    });
-    try {
-      // Access the 'settings' collection and 'razorpayKey' document
-      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-          .instance
-          .collection('settings')
-          .doc('googleMapKey')
-          .get();
+  // //================== Fetch Api Key =====================
+  // Future<void> fetchApiKey() async {
+  //   setState(() {
+  //     isApiKeyLoading = true;
+  //   });
+  //   try {
+  //     // Access the 'settings' collection and 'razorpayKey' document
+  //     DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+  //         .instance
+  //         .collection('settings')
+  //         .doc('googleMapKey')
+  //         .get();
 
-      // Get the 'key' field from the document
-      String apiKey = snapshot.data()?['key'];
+  //     // Get the 'key' field from the document
+  //     String apiKey = snapshot.data()?['key'];
 
-      // Set the apiKey to the class variable
-      setState(() {
-        googleMapApiKey = apiKey;
-        log("Google Map Api key set to $googleMapApiKey");
-        isApiKeyLoading = false;
-      });
-    } catch (error) {
-      setState(() {
-        isApiKeyLoading = true;
-      });
-      // Handle any errors that occur during the process
-      log("Error fetching API key: $error");
-    }
-  }
+  //     // Set the apiKey to the class variable
+  //     setState(() {
+  //       googleMapApiKey = apiKey;
+  //       log("Google Map Api key set to $googleMapApiKey");
+  //       isApiKeyLoading = false;
+  //     });
+  //   } catch (error) {
+  //     setState(() {
+  //       isApiKeyLoading = true;
+  //     });
+  //     // Handle any errors that occur during the process
+  //     log("Error fetching API key: $error");
+  //   }
+  // }
 
   Future<void> getCurrentLocation() async {
     Location location = Location();
@@ -352,7 +352,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 }
 
 Future<String> getAddressFromLatLng(double lat, double lng) async {
-  const String apiKey = "AIzaSyBLlQfAkdkka1mJYL-H0GPYvdUWeT4o9Uw";
+  const String apiKey = "AIzaSyBLGQtovhzlh1ou14eKhNMOYK8uT2DfiW4";
   final String url =
       'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$apiKey';
 

@@ -171,11 +171,12 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 companyNameAndVehicleName: "Freightliner (A45-143)",
                 onCompletedButtonTap: () {},
                 rating: jobs["rating"].toString(),
-                arrivalCharges: jobs["arrivalCharges"],
+                arrivalCharges: jobs["arrivalCharges"].toString(),
                 km: "${distance.toStringAsFixed(0)} km",
                 dId: dId.toString(),
                 isImage: isImage,
                 images: images,
+                payMode: jobs["payMode"].toString(),
               );
             },
           ),

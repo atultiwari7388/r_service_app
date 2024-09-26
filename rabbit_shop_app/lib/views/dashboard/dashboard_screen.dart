@@ -261,8 +261,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                 userName:
                                                     job["userName"].toString(),
                                                 vehicleName:
-                                                    job['vehicleNumber'] ??
-                                                        "N/A",
+                                                    "${job["companyName"]} (${job['vehicleNumber']})",
                                                 address:
                                                     job['userDeliveryAddress'] ??
                                                         "N/A",

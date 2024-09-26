@@ -3,7 +3,6 @@ import 'package:admin_app/views/all_jobs/all_jobs_screen.dart';
 import 'package:admin_app/views/drivers/drivers_screen.dart';
 import 'package:admin_app/views/help/help_screen.dart';
 import 'package:admin_app/views/languages/languages_screen.dart';
-import 'package:admin_app/views/payments/payments_screen.dart';
 import 'package:admin_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:admin_app/views/profile/profile_detail_screen.dart';
 import 'package:admin_app/views/services/services.dart';
@@ -16,7 +15,6 @@ import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 import '../aboutUs/about_us.dart';
-import '../profile/profile_screen.dart';
 import '../shops/shops_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -100,21 +98,21 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 stream: usersList,
                 firstText: "Total Drivers",
                 icon: Icons.abc_sharp,
-                onTap: () {},
+                onTap: () => Get.to(() => DriversScreen()),
                 containerColor: kSecondary),
             SizedBox(height: 10.h),
             buildAnalysisBox(
                 stream: mechanicsList,
                 firstText: "Total Mechanics",
                 icon: Icons.abc_sharp,
-                onTap: () {},
+                onTap: () => Get.to(() => ShopsScreen()),
                 containerColor: kPrimary),
             SizedBox(height: 10.h),
             buildAnalysisBox(
                 stream: jobsList,
                 firstText: "Total Jobs",
                 icon: Icons.abc_sharp,
-                onTap: () {},
+                onTap: () => Get.to(() => AllJobsScreen()),
                 containerColor: kSuccess),
           ],
         ),

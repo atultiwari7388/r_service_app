@@ -180,26 +180,31 @@ class _MyJobsCardState extends State<MyJobsCard> {
                           ),
                         ),
                       )
-                    : Row(
-                        children: [
-                          widget.currentStatus == 5
-                              ? buildButton(
-                                  kSuccess,
-                                  "Completed",
-                                  () => Get.to(() => HistoryCompletedScreen(
-                                      orderId: widget.jobId)))
-                              : buildButton(
-                                  kSecondary, "View", widget.onButtonTap),
-                          SizedBox(width: 20.w),
-                          widget.currentStatus == 0
-                              ? buildButton(
-                                  kRed,
-                                  "Cancel",
-                                  widget.onCancelBtnTap,
-                                )
-                              : SizedBox()
-                        ],
-                      ),
+                    : widget.currentStatus == 0
+                        ? Row(
+                            children: [
+                              buildButton(
+                                kRed,
+                                "Cancel",
+                                widget.onCancelBtnTap,
+                              ),
+                              SizedBox(width: 20.w),
+                              buildButton(
+                                  kSecondary, "View", widget.onButtonTap)
+                            ],
+                          )
+                        : widget.currentStatus == 5
+                            ? Row(
+                                children: [
+                                  buildButton(
+                                      kSuccess,
+                                      "Completed",
+                                      () => Get.to(() => HistoryCompletedScreen(
+                                          orderId: widget.jobId)))
+                                ],
+                              )
+                            : SizedBox(),
+                SizedBox(width: 20.w),
               ],
             ),
           ),

@@ -47,7 +47,7 @@
             android:value="2" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBLlQfAkdkka1mJYL-H0GPYvdUWeT4o9Uw" />
+            android:value="AIzaSyBLGQtovhzlh1ou14eKhNMOYK8uT2DfiW4" />
     </application>
     <queries>
         <!-- If your app checks for SMS support -->
