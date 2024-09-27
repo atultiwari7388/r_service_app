@@ -44,7 +44,7 @@
             android:value="2" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="grocery_app_customer"/>
+            android:value="rabbit_services_mechanic"/>
     </application>
     <queries>
         <!-- If your app checks for SMS support -->

@@ -28,83 +28,14 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         init: DashboardController(),
         builder: (controller) {
           return Scaffold(
-            appBar: AppBar(
-              backgroundColor: kLightWhite,
-              elevation: 0,
-              title: ReusableText(
-                  text: "Dashboard",
-                  style: appStyle(20, kDark, FontWeight.normal)),
-              actions: [
-                // Switch(activeColor: kSuccess, value: true, onChanged: (value) {}),
-                Switch(
-                  value: controller.online,
-                  onChanged: (value) {
-                    controller.toggleActive(value);
-                  },
-                  activeColor: kSuccess,
-                ),
-                SizedBox(width: 10.w),
-                GestureDetector(
-                  onTap: () => Get.to(() => const ProfileScreen(),
-                      transition: Transition.cupertino,
-                      duration: const Duration(milliseconds: 900)),
-                  child: CircleAvatar(
-                    radius: 19.r,
-                    backgroundColor: kPrimary,
-                    child: StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('Mechanics')
-                          .doc(currentUId)
-                          .snapshots(),
-                      builder: (BuildContext context,
-                          AsyncSnapshot<DocumentSnapshot> snapshot) {
-                        if (snapshot.hasError) {
-                          return Text('Error: ${snapshot.error}');
-                        }
-
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const CircularProgressIndicator();
-                        }
-
-                        final data =
-                            snapshot.data!.data() as Map<String, dynamic>;
-                        controller.userPhoto = data['profilePicture'] ?? '';
-                        controller.userName = data['userName'] ?? '';
-                        controller.phoneNumber = data['phoneNumber'] ?? '';
-                        controller.perHourCharges = data["perHCharge"] ?? 0;
-
-                        if (controller.userPhoto.isEmpty) {
-                          return Text(
-                            controller.userName.isNotEmpty
-                                ? controller.userName[0]
-                                : '',
-                            style: appStyle(20, kWhite, FontWeight.w500),
-                          );
-                        } else {
-                          return ClipOval(
-                            child: Image.network(
-                              controller.userPhoto,
-                              width: 38.r, // Set appropriate size for the image
-                              height: 35.r,
-                              fit: BoxFit.cover,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ),
-
-                SizedBox(width: 10.w),
-              ],
-            ),
+            appBar: buildAppBar(controller),
             body: SingleChildScrollView(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    SizedBox(height: 15.h),
                     // Total jobs and Ongoing jobs section
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -330,6 +261,106 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             ),
           );
         });
+  }
+
+  AppBar buildAppBar(DashboardController controller) {
+    return AppBar(
+      backgroundColor: kLightWhite,
+      elevation: 0,
+      title: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start, // Align the title and address to the left
+        children: [
+          // Dashboard Title
+          ReusableText(
+            text: "Dashboard",
+            style: appStyle(20, kDark, FontWeight.normal),
+          ),
+          SizedBox(height: 1.h),
+
+          // Address and Icon Row
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined,
+                  size: 16, color: kSecondary), // Reduce icon size if necessary
+              SizedBox(width: 5.w), // Add space between the icon and text
+              ReusableText(
+                text: controller.appbarTitle.isEmpty
+                    ? "Fetching Address..."
+                    : controller.appbarTitle,
+                style: appStyle(13, kGray, FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        // Switch Button
+        Switch(
+          value: controller.online,
+          onChanged: (value) {
+            controller.toggleActive(value);
+          },
+          activeColor: kSuccess,
+        ),
+        SizedBox(width: 10.w),
+
+        // Profile Avatar with StreamBuilder
+        GestureDetector(
+          onTap: () => Get.to(
+            () => const ProfileScreen(),
+            transition: Transition.cupertino,
+            duration: const Duration(milliseconds: 900),
+          ),
+          child: CircleAvatar(
+            radius: 19.r,
+            backgroundColor: kPrimary,
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Mechanics')
+                  .doc(currentUId)
+                  .snapshots(),
+              builder: (BuildContext context,
+                  AsyncSnapshot<DocumentSnapshot> snapshot) {
+                if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
+
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                controller.userPhoto = data['profilePicture'] ?? '';
+                controller.userName = data['userName'] ?? '';
+                controller.phoneNumber = data['phoneNumber'] ?? '';
+                controller.perHourCharges = data["perHCharge"] ?? 0;
+
+                if (controller.userPhoto.isEmpty) {
+                  return Text(
+                    controller.userName.isNotEmpty
+                        ? controller.userName[0]
+                        : '',
+                    style: appStyle(20, kWhite, FontWeight.w500),
+                  );
+                } else {
+                  return ClipOval(
+                    child: Image.network(
+                      controller.userPhoto,
+                      width: 38.r, // Adjust image size accordingly
+                      height: 35.r,
+                      fit: BoxFit.cover,
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        ),
+
+        SizedBox(width: 10.w),
+      ],
+    );
   }
 
   Widget buildInactiveMechanicScreen() {

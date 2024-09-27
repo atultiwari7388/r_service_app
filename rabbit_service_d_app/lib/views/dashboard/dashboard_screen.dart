@@ -228,6 +228,44 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             ),
                           ),
                           SizedBox(height: 20.h),
+                          // GestureDetector(
+                          //   onTap: () async {
+                          //     var selectedAddress = await Navigator.push(
+                          //       context,
+                          //       MaterialPageRoute(
+                          //         builder: (context) => AddressManagementScreen(
+                          //           userLat: controller.userLat,
+                          //           userLng: controller.userLong,
+                          //         ),
+                          //       ),
+                          //     );
+                          //     if (selectedAddress != null) {
+                          //       setState(() {
+                          //         controller.appbarTitle =
+                          //             selectedAddress["address"];
+                          //         controller.userLat = selectedAddress["Lat"];
+                          //         controller.userLong = selectedAddress["Lng"];
+                          //         controller.locationController.text =
+                          //             selectedAddress[
+                          //                 "address"]; // Set the selected address to the text field
+                          //         log("Selected location: " +
+                          //             selectedAddress["address"] +
+                          //             "Lat Lng" +
+                          //             selectedAddress["Lat"] +
+                          //             selectedAddress["Lng"]);
+                          //       });
+                          //     }
+                          //   },
+                          //   child: AbsorbPointer(
+                          //     child: DashBoardSearchTextField(
+                          //       label: "Select your Location",
+                          //       // label: "Select your Location",
+                          //       controller: controller.locationController,
+                          //       enable: false,
+                          //     ),
+                          //   ),
+                          // ),
+
                           GestureDetector(
                             onTap: () async {
                               var selectedAddress = await Navigator.push(
@@ -243,23 +281,29 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                 setState(() {
                                   controller.appbarTitle =
                                       selectedAddress["address"];
+                                  controller.userLat = selectedAddress["Lat"];
+                                  controller.userLong = selectedAddress["Lng"];
                                   controller.locationController.text =
                                       selectedAddress[
                                           "address"]; // Set the selected address to the text field
                                   log("Selected location: " +
-                                      selectedAddress["address"]);
+                                      selectedAddress["address"] +
+                                      " Lat: " +
+                                      selectedAddress["Lat"].toString() +
+                                      " Lng: " +
+                                      selectedAddress["Lng"].toString());
                                 });
                               }
                             },
                             child: AbsorbPointer(
                               child: DashBoardSearchTextField(
                                 label: "Select your Location",
-                                // label: "Select your Location",
                                 controller: controller.locationController,
                                 enable: false,
                               ),
                             ),
                           ),
+
                           SizedBox(height: 20.h),
                           controller.imageUploadEnabled
                               ? GestureDetector(

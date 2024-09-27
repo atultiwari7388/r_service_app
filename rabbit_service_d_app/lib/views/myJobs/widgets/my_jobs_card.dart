@@ -180,31 +180,27 @@ class _MyJobsCardState extends State<MyJobsCard> {
                           ),
                         ),
                       )
-                    : widget.currentStatus == 0
+                    : widget.currentStatus == 5
                         ? Row(
                             children: [
                               buildButton(
-                                kRed,
-                                "Cancel",
-                                widget.onCancelBtnTap,
-                              ),
-                              SizedBox(width: 20.w),
-                              buildButton(
-                                  kSecondary, "View", widget.onButtonTap)
+                                  kSuccess,
+                                  "Completed",
+                                  () => Get.to(() => HistoryCompletedScreen(
+                                      orderId: widget.jobId))),
                             ],
                           )
-                        : widget.currentStatus == 5
-                            ? Row(
-                                children: [
-                                  buildButton(
-                                      kSuccess,
-                                      "Completed",
-                                      () => Get.to(() => HistoryCompletedScreen(
-                                          orderId: widget.jobId)))
-                                ],
-                              )
-                            : SizedBox(),
-                SizedBox(width: 20.w),
+                        : Row(
+                            children: [
+                              if (widget.currentStatus == 0)
+                                buildButton(
+                                    kRed, "Cancel", widget.onCancelBtnTap),
+                              if (widget.currentStatus == 0)
+                                SizedBox(width: 20.w),
+                              buildButton(
+                                  kSecondary, "View", widget.onButtonTap),
+                            ],
+                          )
               ],
             ),
           ),

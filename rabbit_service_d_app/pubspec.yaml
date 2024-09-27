@@ -43,6 +43,7 @@ dependencies:
   rxdart:
   vibration:
   logger:
+  google_maps_place_picker_mb:
 
 dev_dependencies:
   flutter_test:

@@ -44,37 +44,6 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
     getCurrentLocation();
   }
 
-  // //================== Fetch Api Key =====================
-  // Future<void> fetchApiKey() async {
-  //   setState(() {
-  //     isApiKeyLoading = true;
-  //   });
-  //   try {
-  //     // Access the 'settings' collection and 'razorpayKey' document
-  //     DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-  //         .instance
-  //         .collection('settings')
-  //         .doc('googleMapKey')
-  //         .get();
-
-  //     // Get the 'key' field from the document
-  //     String apiKey = snapshot.data()?['key'];
-
-  //     // Set the apiKey to the class variable
-  //     setState(() {
-  //       googleMapApiKey = apiKey;
-  //       log("Google Map Api key set to $googleMapApiKey");
-  //       isApiKeyLoading = false;
-  //     });
-  //   } catch (error) {
-  //     setState(() {
-  //       isApiKeyLoading = true;
-  //     });
-  //     // Handle any errors that occur during the process
-  //     log("Error fetching API key: $error");
-  //   }
-  // }
-
   Future<void> getCurrentLocation() async {
     Location location = Location();
 
@@ -151,6 +120,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       // Return the selected address to the previous screen
       Navigator.pop(context, {
         "address": _addressController.text.toString(),
+        "Lat": selectedLat,
+        "Lng": selectedLng,
       });
     }
   }
@@ -352,7 +323,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
 }
 
 Future<String> getAddressFromLatLng(double lat, double lng) async {
-  const String apiKey = "AIzaSyBLGQtovhzlh1ou14eKhNMOYK8uT2DfiW4";
+  String apiKey = googleApiKey;
   final String url =
       'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$apiKey';
 
