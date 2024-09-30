@@ -307,7 +307,7 @@ class _UpcomingAndCompletedJobsScreenState
                 rating: jobs["rating"].toString(),
                 arrivalCharges: jobs["arrivalCharges"].toString(),
                 fixCharge: jobs["fixPrice"].toString(),
-                km: "${distance.toStringAsFixed(0)} km",
+                km: "${distance.toStringAsFixed(0)} miles",
                 dId: dId.toString(),
                 isImage: isImage,
                 images: images,

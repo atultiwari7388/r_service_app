@@ -68,11 +68,15 @@ class PushNotification {
         AndroidNotificationDetails(
       'rabbit_services_mechanic',
       'Rabbit Mechanic',
-      channelDescription: 'rabbit_services_mechanic',
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
       playSound: true,
+      // timeoutAfter: 20000,
+      // audioAttributesUsage: AudioAttributesUsage.alarm,
+      // category: AndroidNotificationCategory.alarm,
+      enableVibration: true,
+      sound: RawResourceAndroidNotificationSound('new_sound_tw'),
     );
     const NotificationDetails notificationDetails =
         NotificationDetails(android: androidNotificationDetails);

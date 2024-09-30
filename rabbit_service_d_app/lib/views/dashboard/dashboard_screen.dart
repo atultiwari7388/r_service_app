@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import '../../services/collection_references.dart';
@@ -228,80 +229,225 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             ),
                           ),
                           SizedBox(height: 20.h),
-                          // GestureDetector(
-                          //   onTap: () async {
-                          //     var selectedAddress = await Navigator.push(
-                          //       context,
-                          //       MaterialPageRoute(
-                          //         builder: (context) => AddressManagementScreen(
-                          //           userLat: controller.userLat,
-                          //           userLng: controller.userLong,
+                          // StreamBuilder<QuerySnapshot>(
+                          //   stream: FirebaseFirestore.instance
+                          //       .collection('Users')
+                          //       .doc(currentUId)
+                          //       .collection('Addresses')
+                          //       .where("isAddressSelected", isEqualTo: true)
+                          //       .snapshots(),
+                          //   builder: (BuildContext context,
+                          //       AsyncSnapshot<QuerySnapshot> snapshot) {
+                          //     if (snapshot.hasError) {
+                          //       return Text('Error: ${snapshot.error}');
+                          //     }
+                          //
+                          //     if (snapshot.connectionState ==
+                          //         ConnectionState.waiting) {
+                          //       return Center(
+                          //           child: CircularProgressIndicator());
+                          //     }
+                          //
+                          //     if (!snapshot.hasData ||
+                          //         snapshot.data!.docs.isEmpty) {
+                          //       return GestureDetector(
+                          //         onTap: () async {
+                          //           var selectedAddress = await Navigator.push(
+                          //             context,
+                          //             MaterialPageRoute(
+                          //               builder: (context) =>
+                          //                   AddressManagementScreen(
+                          //                 userLat: controller.userLat,
+                          //                 userLng: controller.userLong,
+                          //               ),
+                          //             ),
+                          //           );
+                          //           if (selectedAddress != null) {
+                          //             setState(() {
+                          //               controller.appbarTitle =
+                          //                   selectedAddress["address"];
+                          //               controller.userLat =
+                          //                   selectedAddress["Lat"];
+                          //               controller.userLong =
+                          //                   selectedAddress["Lng"];
+                          //               controller.locationController.text =
+                          //                   selectedAddress[
+                          //                       "address"]; // Set the selected address to the text field
+                          //               log("Selected location: " +
+                          //                   selectedAddress["address"] +
+                          //                   " Lat: " +
+                          //                   selectedAddress["Lat"].toString() +
+                          //                   " Lng: " +
+                          //                   selectedAddress["Lng"].toString());
+                          //             });
+                          //           }
+                          //         },
+                          //         child: AbsorbPointer(
+                          //           child: DashBoardSearchTextField(
+                          //             label: "Select your Location",
+                          //             controller: controller.locationController,
+                          //             enable: false,
+                          //           ),
+                          //         ),
+                          //       );
+                          //     }
+                          //
+                          //     // Get the selected address from the snapshot
+                          //     var addressData = snapshot.data!.docs.first.data()
+                          //         as Map<String, dynamic>;
+                          //     controller.locationController.text =
+                          //         addressData["address"] ??
+                          //             "Select your Location";
+                          //
+                          //     return GestureDetector(
+                          //       onTap: () async {
+                          //         var selectedAddress = await Navigator.push(
+                          //           context,
+                          //           MaterialPageRoute(
+                          //             builder: (context) =>
+                          //                 AddressManagementScreen(
+                          //               userLat: controller.userLat,
+                          //               userLng: controller.userLong,
+                          //             ),
+                          //           ),
+                          //         );
+                          //       },
+                          //       child: AbsorbPointer(
+                          //         child: DashBoardSearchTextField(
+                          //           label: "Select your Location",
+                          //           controller: controller.locationController,
+                          //           enable: false,
                           //         ),
                           //       ),
                           //     );
-                          //     if (selectedAddress != null) {
-                          //       setState(() {
-                          //         controller.appbarTitle =
-                          //             selectedAddress["address"];
-                          //         controller.userLat = selectedAddress["Lat"];
-                          //         controller.userLong = selectedAddress["Lng"];
-                          //         controller.locationController.text =
-                          //             selectedAddress[
-                          //                 "address"]; // Set the selected address to the text field
-                          //         log("Selected location: " +
-                          //             selectedAddress["address"] +
-                          //             "Lat Lng" +
-                          //             selectedAddress["Lat"] +
-                          //             selectedAddress["Lng"]);
-                          //       });
-                          //     }
                           //   },
-                          //   child: AbsorbPointer(
-                          //     child: DashBoardSearchTextField(
-                          //       label: "Select your Location",
-                          //       // label: "Select your Location",
-                          //       controller: controller.locationController,
-                          //       enable: false,
-                          //     ),
-                          //   ),
                           // ),
 
-                          GestureDetector(
-                            onTap: () async {
-                              var selectedAddress = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AddressManagementScreen(
-                                    userLat: controller.userLat,
-                                    userLng: controller.userLong,
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('Users')
+                                .doc(currentUId)
+                                .collection('Addresses')
+                                .where("isAddressSelected", isEqualTo: true)
+                                .snapshots(),
+                            builder: (BuildContext context,
+                                AsyncSnapshot<QuerySnapshot> snapshot) {
+                              if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              }
+
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Center(
+                                    child: CircularProgressIndicator());
+                              }
+
+                              if (!snapshot.hasData ||
+                                  snapshot.data!.docs.isEmpty) {
+                                return GestureDetector(
+                                  onTap: () async {
+                                    var selectedAddress = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AddressManagementScreen(
+                                          userLat: controller.userLat,
+                                          userLng: controller.userLong,
+                                        ),
+                                      ),
+                                    );
+                                    if (selectedAddress != null) {
+                                      setState(() {
+                                        controller.appbarTitle =
+                                            selectedAddress["address"];
+                                        controller.userLat =
+                                            selectedAddress["Lat"];
+                                        controller.userLong =
+                                            selectedAddress["Lng"];
+                                        controller.locationController.text =
+                                            selectedAddress[
+                                                "address"]; // Set the selected address to the text field
+                                        log("Selected location: " +
+                                            selectedAddress["address"] +
+                                            " Lat: " +
+                                            selectedAddress["Lat"].toString() +
+                                            " Lng: " +
+                                            selectedAddress["Lng"].toString());
+                                      });
+                                    }
+                                  },
+                                  child: AbsorbPointer(
+                                    child: DashBoardSearchTextField(
+                                      label: "Select your Location",
+                                      controller: controller.locationController,
+                                      enable: false,
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              // Get the selected address and location from the snapshot
+                              var addressData = snapshot.data!.docs.first.data()
+                                  as Map<String, dynamic>;
+
+                              // Extract the location data
+                              var locationData = addressData["location"]
+                                  as Map<String, dynamic>?;
+
+                              // Extract latitude and longitude from location map
+                              double latitude =
+                                  locationData?["latitude"] ?? 0.0;
+                              double longitude =
+                                  locationData?["longitude"] ?? 0.0;
+
+                              // Assign values to the controller
+                              controller.locationController.text =
+                                  addressData["address"] ??
+                                      "Select your Location";
+                              controller.userLat = latitude;
+                              controller.userLong = longitude;
+
+                              return GestureDetector(
+                                onTap: () async {
+                                  var selectedAddress = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AddressManagementScreen(
+                                        userLat: controller.userLat,
+                                        userLng: controller.userLong,
+                                      ),
+                                    ),
+                                  );
+                                  if (selectedAddress != null) {
+                                    setState(() {
+                                      controller.appbarTitle =
+                                          selectedAddress["address"];
+                                      controller.userLat =
+                                          selectedAddress["Lat"];
+                                      controller.userLong =
+                                          selectedAddress["Lng"];
+                                      controller.locationController.text =
+                                          selectedAddress[
+                                              "address"]; // Set the selected address to the text field
+                                      log("Selected location: " +
+                                          selectedAddress["address"] +
+                                          " Lat: " +
+                                          selectedAddress["Lat"].toString() +
+                                          " Lng: " +
+                                          selectedAddress["Lng"].toString());
+                                    });
+                                  }
+                                },
+                                child: AbsorbPointer(
+                                  child: DashBoardSearchTextField(
+                                    label: "Select your Location",
+                                    controller: controller.locationController,
+                                    enable: false,
                                   ),
                                 ),
                               );
-                              if (selectedAddress != null) {
-                                setState(() {
-                                  controller.appbarTitle =
-                                      selectedAddress["address"];
-                                  controller.userLat = selectedAddress["Lat"];
-                                  controller.userLong = selectedAddress["Lng"];
-                                  controller.locationController.text =
-                                      selectedAddress[
-                                          "address"]; // Set the selected address to the text field
-                                  log("Selected location: " +
-                                      selectedAddress["address"] +
-                                      " Lat: " +
-                                      selectedAddress["Lat"].toString() +
-                                      " Lng: " +
-                                      selectedAddress["Lng"].toString());
-                                });
-                              }
                             },
-                            child: AbsorbPointer(
-                              child: DashBoardSearchTextField(
-                                label: "Select your Location",
-                                controller: controller.locationController,
-                                enable: false,
-                              ),
-                            ),
                           ),
 
                           SizedBox(height: 20.h),
@@ -359,29 +505,36 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                               ? CustomButton(
                                   text: "Find Mechanic",
                                   onPress: () async {
-                                    controller
-                                        .findMechanic(
-                                      controller.locationController.text,
-                                      controller.userPhoto,
-                                      controller.userName,
-                                      controller.phoneNumber,
-                                      controller.userLat,
-                                      controller.userLong,
+                                    if (controller.images.isEmpty &&
+                                        controller.isImageMandatory == true) {
+                                      showToastMessage("Image Upload",
+                                          "Upload at least one Image", kRed);
+                                    } else {
                                       controller
-                                          .serviceAndNetworkController.text
-                                          .toString(),
-                                      controller.companyNameController.text
-                                          .toString(),
-                                      controller
-                                          .selectedCompanyAndVehcileNameController
-                                          .text
-                                          .toString(),
-                                      controller.imageSelected,
-                                      controller.images,
-                                    )
-                                        .then((value) {
-                                      widget.setTab?.call(1);
-                                    });
+                                          .findMechanic(
+                                        controller.locationController.text,
+                                        controller.userPhoto,
+                                        controller.userName,
+                                        controller.phoneNumber,
+                                        controller.userLat,
+                                        controller.userLong,
+                                        controller
+                                            .serviceAndNetworkController.text
+                                            .toString(),
+                                        controller.companyNameController.text
+                                            .toString(),
+                                        controller
+                                            .selectedCompanyAndVehcileNameController
+                                            .text
+                                            .toString(),
+                                        controller.imageSelected,
+                                        controller.images,
+                                      )
+                                          .then((value) {
+                                        widget.setTab?.call(1);
+                                      });
+                                      log("Job Created");
+                                    }
                                   },
                                   color: kPrimary,
                                 )

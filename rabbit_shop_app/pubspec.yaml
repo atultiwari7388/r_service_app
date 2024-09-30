@@ -75,6 +75,7 @@ flutter:
     - assets/foodly/
     - assets/icons/
     - assets/images/
+    - assets/new_sound_tw.aac
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

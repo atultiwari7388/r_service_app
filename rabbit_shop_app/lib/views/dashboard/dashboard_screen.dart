@@ -159,6 +159,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
                                             final bool isImage =
                                                 job["isImageSelected"] ?? false;
+                                            final bool isPriceTypeEnable =
+                                                job["fixPriceEnabled"] ?? false;
                                             final imagePath =
                                                 job['userPhoto'] ?? "";
                                             final List<dynamic> images =
@@ -213,6 +215,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                   job["userId"].toString(),
                                                   job["orderId"].toString(),
                                                   isImage,
+                                                  isPriceTypeEnable,
                                                 ),
                                                 onDasMapButton: () async {
                                                   final Uri googleMapsUri =
@@ -235,7 +238,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                     job['status'] ?? 0,
                                                 rating: "",
                                                 arrivalCharges: "30",
-                                                km: "${distance.toStringAsFixed(0)} km",
+                                                km: "${distance.toStringAsFixed(0)} miles",
                                                 isImage: isImage,
                                                 images: images,
                                                 fixCharge:
@@ -279,16 +282,23 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           SizedBox(height: 1.h),
 
           // Address and Icon Row
+
           Row(
             children: [
               Icon(Icons.location_on_outlined,
                   size: 16, color: kSecondary), // Reduce icon size if necessary
               SizedBox(width: 5.w), // Add space between the icon and text
-              ReusableText(
-                text: controller.appbarTitle.isEmpty
-                    ? "Fetching Address..."
-                    : controller.appbarTitle,
-                style: appStyle(13, kGray, FontWeight.bold),
+              SizedBox(
+                width: 160.w, // Limit the width to 150
+                child: ReusableText(
+                  text: controller.appbarTitle.isEmpty
+                      ? "Fetching Address..."
+                      : controller.appbarTitle,
+                  style:
+                      appStyle(13, kGray, FontWeight.normal) // Make it unbold
+                          .copyWith(
+                              overflow: TextOverflow.ellipsis), // Add ellipsis
+                ),
               ),
             ],
           ),

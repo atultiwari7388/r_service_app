@@ -111,7 +111,7 @@ class _HistoryCompletedScreenState extends State<HistoryCompletedScreen> {
                             return RequestAcceptHistoryCard(
                               shopName: job["mName"].toString(),
                               time: job["time"].toString(),
-                              distance: "${distance.toStringAsFixed(0)} km",
+                              distance: "${distance.toStringAsFixed(0)} miles",
                               rating: "4.5",
                               jobId: job["orderId"].toString(),
                               userId: job["userId"].toString(),

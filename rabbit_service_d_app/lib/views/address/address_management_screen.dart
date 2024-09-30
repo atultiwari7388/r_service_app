@@ -118,11 +118,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       showToastMessage("Success", "Address added successfully", Colors.green);
       // Navigator.pop(context);
       // Return the selected address to the previous screen
-      Navigator.pop(context, {
-        "address": _addressController.text.toString(),
-        "Lat": selectedLat,
-        "Lng": selectedLng,
-      });
+      // Navigator.pop(context, {
+      //   "address": _addressController.text.toString(),
+      //   "Lat": selectedLat,
+      //   "Lng": selectedLng,
+      // });
     }
   }
 
@@ -179,10 +179,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             await batch.commit();
 
             // Optionally, update the UI if needed
-            setState(() {});
+            // setState(() {});
 
             // Return the selected address to the previous screen
             Navigator.pop(context, address);
+            log(address.toString());
           },
         ),
         // DashedDivider(),

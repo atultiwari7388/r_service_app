@@ -203,9 +203,11 @@ class DashboardController extends GetxController {
     fetchNearByDistance();
   }
 
-  void showConfirmDialog(
-      int index, dynamic data, String userId, String jobId, bool isShowImage) {
+  void showConfirmDialog(int index, dynamic data, String userId, String jobId,
+      bool isShowImage, bool isPriceTypeEnable) {
     if (isShowImage) {
+      showAddArrivalChargesDialog2(userId, jobId);
+    } else if (isPriceTypeEnable) {
       showAddArrivalChargesDialog2(userId, jobId);
     } else {
       final TextEditingController arrivalChargesController =

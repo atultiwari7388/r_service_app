@@ -35,6 +35,7 @@ class DashboardController extends GetxController {
   bool isAddressSelected = false;
   bool isFindMechanicEnabled = false;
   bool imageUploadEnabled = false; // To handle the upload button visibility
+  bool isImageMandatory = false; // To handle the upload button visibility
   bool fixPriceEnabled = false; // for the fix price
   String role = "";
   String ownerEmail = "";
@@ -211,11 +212,17 @@ class DashboardController extends GetxController {
                             checkIfAllSelected();
                             update();
 
-                            if (imageType == 1) {
+                            if (imageType == 0) {
                               imageUploadEnabled = true;
+                              isImageMandatory = false;
+                              update();
+                            } else if (imageType == 1) {
+                              imageUploadEnabled = true;
+                              isImageMandatory = true;
                               update();
                             } else {
                               imageUploadEnabled = false;
+                              isImageMandatory = false;
                               update();
                             }
 

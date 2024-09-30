@@ -14,6 +14,18 @@
         android:label="Rabbit Mechanic App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/ic_launcher" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="rabbit_services_mechanic"/>
+        <meta-data 
+            android:name="com.google.firebase.messaging.default_notification_sound"         android:value="new_sound_tw" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,9 +54,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="rabbit_services_mechanic"/>
     </application>
     <queries>
         <!-- If your app checks for SMS support -->
