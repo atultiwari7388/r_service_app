@@ -34,549 +34,482 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         if (controller.isLoading) {
           return Center(child: CircularProgressIndicator());
         } else {
-          return Scaffold(
-            // appBar: buildCustomAppBar(context),
-            appBar: AppBar(
-              backgroundColor: kLightWhite,
-              elevation: 0,
-              centerTitle: true,
-              title: Image.asset(
-                'assets/appbar_logo.png', // Replace with your logo asset path
-                height: 60.h, // Adjust the height as needed
-              ),
-              actions: [
-                GestureDetector(
-                  onTap: () => Get.to(() => const ProfileScreen(),
-                      transition: Transition.cupertino,
-                      duration: const Duration(milliseconds: 900)),
-                  child: CircleAvatar(
-                    radius: 19.r,
-                    backgroundColor: kPrimary,
-                    child: StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('Users')
-                          .doc(currentUId)
-                          .snapshots(),
-                      builder: (BuildContext context,
-                          AsyncSnapshot<DocumentSnapshot> snapshot) {
-                        if (snapshot.hasError) {
-                          return Text('Error: ${snapshot.error}');
-                        }
-
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          // return Container();
-                          return const CircularProgressIndicator();
-                        }
-
-                        final data =
-                            snapshot.data!.data() as Map<String, dynamic>;
-                        controller.userPhoto = data['profilePicture'] ?? '';
-                        controller.userName = data['userName'] ?? '';
-                        controller.phoneNumber = data['phoneNumber'] ?? '';
-
-                        if (controller.userPhoto.isEmpty) {
-                          return Text(
-                            controller.userName.isNotEmpty
-                                ? controller.userName[0]
-                                : '',
-                            style: appStyle(20, kWhite, FontWeight.w500),
-                          );
-                        } else {
-                          return ClipOval(
-                            child: Image.network(
-                              controller.userPhoto,
-                              width: 38.r,
-                              // Set appropriate size for the image
-                              height: 35.r,
-                              fit: BoxFit.cover,
-                            ),
-                          );
-                        }
-                      },
+          return controller.appbarTitle.isEmpty
+              ? Center(child: CircularProgressIndicator())
+              : Scaffold(
+                  // appBar: buildCustomAppBar(context),
+                  appBar: AppBar(
+                    backgroundColor: kLightWhite,
+                    elevation: 0,
+                    centerTitle: true,
+                    title: Image.asset(
+                      'assets/appbar_logo.png', // Replace with your logo asset path
+                      height: 60.h, // Adjust the height as needed
                     ),
-                  ),
-                ),
-                SizedBox(width: 20.w),
-              ],
-            ),
-
-            body: SingleChildScrollView(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // SizedBox(height: 20.h),
-
-                    Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
-                      decoration: BoxDecoration(
-                          color: kSecondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.r)),
-                      child: Column(
-                        children: [
-                          StreamBuilder<QuerySnapshot>(
+                    actions: [
+                      GestureDetector(
+                        onTap: () => Get.to(() => const ProfileScreen(),
+                            transition: Transition.cupertino,
+                            duration: const Duration(milliseconds: 900)),
+                        child: CircleAvatar(
+                          radius: 19.r,
+                          backgroundColor: kPrimary,
+                          child: StreamBuilder<DocumentSnapshot>(
                             stream: FirebaseFirestore.instance
                                 .collection('Users')
                                 .doc(currentUId)
-                                .collection('Vehicles')
                                 .snapshots(),
                             builder: (BuildContext context,
-                                AsyncSnapshot<QuerySnapshot> snapshot) {
+                                AsyncSnapshot<DocumentSnapshot> snapshot) {
                               if (snapshot.hasError) {
                                 return Text('Error: ${snapshot.error}');
                               }
 
                               if (snapshot.connectionState ==
                                   ConnectionState.waiting) {
-                                return Container();
-
-                                // return Center(
-                                //     child: CircularProgressIndicator());
+                                // return Container();
+                                return const CircularProgressIndicator();
                               }
 
-                              // Process the data and build the UI
-                              List vehicleNames =
-                                  snapshot.data!.docs.map((doc) {
-                                final data = doc.data() as Map<String, dynamic>;
-                                return data['vehicleNumber'] ?? '';
-                              }).toList();
+                              final data =
+                                  snapshot.data!.data() as Map<String, dynamic>;
+                              controller.userPhoto =
+                                  data['profilePicture'] ?? '';
+                              controller.userName = data['userName'] ?? '';
+                              controller.phoneNumber =
+                                  data['phoneNumber'] ?? '';
 
-                              // Update your controller or state here
-                              controller.allVehicleAndCompanyName =
-                                  vehicleNames;
-                              controller.filterSelectedCompanyAndvehicleName =
-                                  List.from(vehicleNames);
-
-                              return Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      controller
-                                          .showSelectedVehicleAndCompanyOptions(
-                                              context);
-                                    },
-                                    child: SizedBox(
-                                      width: 270.w,
-                                      child: AbsorbPointer(
-                                        child: DashBoardSearchTextField(
-                                          label: "Select your Vehicle",
-                                          controller: controller
-                                              .selectedCompanyAndVehcileNameController,
-                                          enable: true,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  controller.role == "Owner"
-                                      ? GestureDetector(
-                                          onTap: () async {
-                                            var result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    AddVehicleScreen(),
-                                              ),
-                                            );
-                                            if (result != null) {
-                                              // Handle the result
-                                              String? company =
-                                                  result['company'];
-                                              String? vehicleNumber =
-                                                  result['vehicleNumber'];
-                                              log("Company: $company, Vehicle Number: $vehicleNumber");
-
-                                              setState(
-                                                () {
-                                                  controller
-                                                          .selectedCompanyAndVehcileName =
-                                                      company;
-                                                },
-                                              );
-                                            }
-                                          },
-                                          child: CircleAvatar(
-                                            backgroundColor: kPrimary,
-                                            child: Icon(
-                                              Icons.add,
-                                              color: kWhite,
-                                              size: 24.r,
-                                            ),
-                                          ),
-                                        )
-                                      : SizedBox()
-                                ],
-                              );
-                            },
-                          ),
-                          SizedBox(height: 20.h),
-                          GestureDetector(
-                            onTap: () {
-                              controller.showServiceAndNetworkOptions(context);
-                            },
-                            child: AbsorbPointer(
-                              child: DashBoardSearchTextField(
-                                label: "Select Service",
-                                // hint: "Service or Network",
-                                controller:
-                                    controller.serviceAndNetworkController,
-                                enable: true,
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 20.h),
-                          // StreamBuilder<QuerySnapshot>(
-                          //   stream: FirebaseFirestore.instance
-                          //       .collection('Users')
-                          //       .doc(currentUId)
-                          //       .collection('Addresses')
-                          //       .where("isAddressSelected", isEqualTo: true)
-                          //       .snapshots(),
-                          //   builder: (BuildContext context,
-                          //       AsyncSnapshot<QuerySnapshot> snapshot) {
-                          //     if (snapshot.hasError) {
-                          //       return Text('Error: ${snapshot.error}');
-                          //     }
-                          //
-                          //     if (snapshot.connectionState ==
-                          //         ConnectionState.waiting) {
-                          //       return Center(
-                          //           child: CircularProgressIndicator());
-                          //     }
-                          //
-                          //     if (!snapshot.hasData ||
-                          //         snapshot.data!.docs.isEmpty) {
-                          //       return GestureDetector(
-                          //         onTap: () async {
-                          //           var selectedAddress = await Navigator.push(
-                          //             context,
-                          //             MaterialPageRoute(
-                          //               builder: (context) =>
-                          //                   AddressManagementScreen(
-                          //                 userLat: controller.userLat,
-                          //                 userLng: controller.userLong,
-                          //               ),
-                          //             ),
-                          //           );
-                          //           if (selectedAddress != null) {
-                          //             setState(() {
-                          //               controller.appbarTitle =
-                          //                   selectedAddress["address"];
-                          //               controller.userLat =
-                          //                   selectedAddress["Lat"];
-                          //               controller.userLong =
-                          //                   selectedAddress["Lng"];
-                          //               controller.locationController.text =
-                          //                   selectedAddress[
-                          //                       "address"]; // Set the selected address to the text field
-                          //               log("Selected location: " +
-                          //                   selectedAddress["address"] +
-                          //                   " Lat: " +
-                          //                   selectedAddress["Lat"].toString() +
-                          //                   " Lng: " +
-                          //                   selectedAddress["Lng"].toString());
-                          //             });
-                          //           }
-                          //         },
-                          //         child: AbsorbPointer(
-                          //           child: DashBoardSearchTextField(
-                          //             label: "Select your Location",
-                          //             controller: controller.locationController,
-                          //             enable: false,
-                          //           ),
-                          //         ),
-                          //       );
-                          //     }
-                          //
-                          //     // Get the selected address from the snapshot
-                          //     var addressData = snapshot.data!.docs.first.data()
-                          //         as Map<String, dynamic>;
-                          //     controller.locationController.text =
-                          //         addressData["address"] ??
-                          //             "Select your Location";
-                          //
-                          //     return GestureDetector(
-                          //       onTap: () async {
-                          //         var selectedAddress = await Navigator.push(
-                          //           context,
-                          //           MaterialPageRoute(
-                          //             builder: (context) =>
-                          //                 AddressManagementScreen(
-                          //               userLat: controller.userLat,
-                          //               userLng: controller.userLong,
-                          //             ),
-                          //           ),
-                          //         );
-                          //       },
-                          //       child: AbsorbPointer(
-                          //         child: DashBoardSearchTextField(
-                          //           label: "Select your Location",
-                          //           controller: controller.locationController,
-                          //           enable: false,
-                          //         ),
-                          //       ),
-                          //     );
-                          //   },
-                          // ),
-
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('Users')
-                                .doc(currentUId)
-                                .collection('Addresses')
-                                .where("isAddressSelected", isEqualTo: true)
-                                .snapshots(),
-                            builder: (BuildContext context,
-                                AsyncSnapshot<QuerySnapshot> snapshot) {
-                              if (snapshot.hasError) {
-                                return Text('Error: ${snapshot.error}');
-                              }
-
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return Center(
-                                    child: CircularProgressIndicator());
-                              }
-
-                              if (!snapshot.hasData ||
-                                  snapshot.data!.docs.isEmpty) {
-                                return GestureDetector(
-                                  onTap: () async {
-                                    var selectedAddress = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            AddressManagementScreen(
-                                          userLat: controller.userLat,
-                                          userLng: controller.userLong,
-                                        ),
-                                      ),
-                                    );
-                                    if (selectedAddress != null) {
-                                      setState(() {
-                                        controller.appbarTitle =
-                                            selectedAddress["address"];
-                                        controller.userLat =
-                                            selectedAddress["Lat"];
-                                        controller.userLong =
-                                            selectedAddress["Lng"];
-                                        controller.locationController.text =
-                                            selectedAddress[
-                                                "address"]; // Set the selected address to the text field
-                                        log("Selected location: " +
-                                            selectedAddress["address"] +
-                                            " Lat: " +
-                                            selectedAddress["Lat"].toString() +
-                                            " Lng: " +
-                                            selectedAddress["Lng"].toString());
-                                      });
-                                    }
-                                  },
-                                  child: AbsorbPointer(
-                                    child: DashBoardSearchTextField(
-                                      label: "Select your Location",
-                                      controller: controller.locationController,
-                                      enable: false,
-                                    ),
+                              if (controller.userPhoto.isEmpty) {
+                                return Text(
+                                  controller.userName.isNotEmpty
+                                      ? controller.userName[0]
+                                      : '',
+                                  style: appStyle(20, kWhite, FontWeight.w500),
+                                );
+                              } else {
+                                return ClipOval(
+                                  child: Image.network(
+                                    controller.userPhoto,
+                                    width: 38.r,
+                                    // Set appropriate size for the image
+                                    height: 35.r,
+                                    fit: BoxFit.cover,
                                   ),
                                 );
                               }
-
-                              // Get the selected address and location from the snapshot
-                              var addressData = snapshot.data!.docs.first.data()
-                                  as Map<String, dynamic>;
-
-                              // Extract the location data
-                              var locationData = addressData["location"]
-                                  as Map<String, dynamic>?;
-
-                              // Extract latitude and longitude from location map
-                              double latitude =
-                                  locationData?["latitude"] ?? 0.0;
-                              double longitude =
-                                  locationData?["longitude"] ?? 0.0;
-
-                              // Assign values to the controller
-                              controller.locationController.text =
-                                  addressData["address"] ??
-                                      "Select your Location";
-                              controller.userLat = latitude;
-                              controller.userLong = longitude;
-
-                              return GestureDetector(
-                                onTap: () async {
-                                  var selectedAddress = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          AddressManagementScreen(
-                                        userLat: controller.userLat,
-                                        userLng: controller.userLong,
-                                      ),
-                                    ),
-                                  );
-                                  if (selectedAddress != null) {
-                                    setState(() {
-                                      controller.appbarTitle =
-                                          selectedAddress["address"];
-                                      controller.userLat =
-                                          selectedAddress["Lat"];
-                                      controller.userLong =
-                                          selectedAddress["Lng"];
-                                      controller.locationController.text =
-                                          selectedAddress[
-                                              "address"]; // Set the selected address to the text field
-                                      log("Selected location: " +
-                                          selectedAddress["address"] +
-                                          " Lat: " +
-                                          selectedAddress["Lat"].toString() +
-                                          " Lng: " +
-                                          selectedAddress["Lng"].toString());
-                                    });
-                                  }
-                                },
-                                child: AbsorbPointer(
-                                  child: DashBoardSearchTextField(
-                                    label: "Select your Location",
-                                    controller: controller.locationController,
-                                    enable: false,
-                                  ),
-                                ),
-                              );
                             },
                           ),
+                        ),
+                      ),
+                      SizedBox(width: 20.w),
+                    ],
+                  ),
 
-                          SizedBox(height: 20.h),
-                          controller.imageUploadEnabled
-                              ? GestureDetector(
-                                  onTap: () =>
-                                      controller.showImageSourceDialog(context),
-                                  child: Container(
-                                    height: 40.h,
-                                    width: double.maxFinite,
-                                    alignment: Alignment.centerLeft,
-                                    decoration: BoxDecoration(
-                                        border: Border.all(
-                                            color: kSecondary.withOpacity(0.1)),
-                                        color: kWhite,
-                                        borderRadius:
-                                            BorderRadius.circular(12.r)),
-                                    child: Row(
+                  body: SingleChildScrollView(
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // SizedBox(height: 20.h),
+
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 15.h),
+                            decoration: BoxDecoration(
+                                color: kSecondary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12.r)),
+                            child: Column(
+                              children: [
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('Users')
+                                      .doc(currentUId)
+                                      .collection('Vehicles')
+                                      .snapshots(),
+                                  builder: (BuildContext context,
+                                      AsyncSnapshot<QuerySnapshot> snapshot) {
+                                    if (snapshot.hasError) {
+                                      return Text('Error: ${snapshot.error}');
+                                    }
+
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Container();
+
+                                      // return Center(
+                                      //     child: CircularProgressIndicator());
+                                    }
+
+                                    // Process the data and build the UI
+                                    List vehicleNames =
+                                        snapshot.data!.docs.map((doc) {
+                                      final data =
+                                          doc.data() as Map<String, dynamic>;
+                                      return data['vehicleNumber'] ?? '';
+                                    }).toList();
+
+                                    // Update your controller or state here
+                                    controller.allVehicleAndCompanyName =
+                                        vehicleNames;
+                                    controller
+                                            .filterSelectedCompanyAndvehicleName =
+                                        List.from(vehicleNames);
+
+                                    return Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text("Upload Images"),
-                                        SizedBox(width: 20.w),
-                                        Icon(Icons.upload_file, color: kDark),
+                                        GestureDetector(
+                                          onTap: () {
+                                            controller
+                                                .showSelectedVehicleAndCompanyOptions(
+                                                    context);
+                                          },
+                                          child: SizedBox(
+                                            width: 270.w,
+                                            child: AbsorbPointer(
+                                              child: DashBoardSearchTextField(
+                                                label: "Select your Vehicle",
+                                                controller: controller
+                                                    .selectedCompanyAndVehcileNameController,
+                                                enable: true,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        controller.role == "Owner"
+                                            ? GestureDetector(
+                                                onTap: () async {
+                                                  var result =
+                                                      await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          AddVehicleScreen(),
+                                                    ),
+                                                  );
+                                                  if (result != null) {
+                                                    // Handle the result
+                                                    String? company =
+                                                        result['company'];
+                                                    String? vehicleNumber =
+                                                        result['vehicleNumber'];
+                                                    log("Company: $company, Vehicle Number: $vehicleNumber");
+
+                                                    setState(
+                                                      () {
+                                                        controller
+                                                                .selectedCompanyAndVehcileName =
+                                                            company;
+                                                      },
+                                                    );
+                                                  }
+                                                },
+                                                child: CircleAvatar(
+                                                  backgroundColor: kPrimary,
+                                                  child: Icon(
+                                                    Icons.add,
+                                                    color: kWhite,
+                                                    size: 24.r,
+                                                  ),
+                                                ),
+                                              )
+                                            : SizedBox()
                                       ],
+                                    );
+                                  },
+                                ),
+                                SizedBox(height: 20.h),
+                                GestureDetector(
+                                  onTap: () {
+                                    controller
+                                        .showServiceAndNetworkOptions(context);
+                                  },
+                                  child: AbsorbPointer(
+                                    child: DashBoardSearchTextField(
+                                      label: "Select Service",
+                                      // hint: "Service or Network",
+                                      controller: controller
+                                          .serviceAndNetworkController,
+                                      enable: true,
                                     ),
                                   ),
-                                )
-                              : SizedBox(),
-                          controller.imageUploadEnabled
-                              ? SizedBox(height: 20.h)
-                              : SizedBox(),
-                          controller.images.isNotEmpty
-                              ? Wrap(
-                                  spacing: 10.w,
-                                  runSpacing: 10.h,
-                                  children: controller.images.map((image) {
-                                    return Container(
-                                      width: 80.w,
-                                      height: 80.h,
-                                      decoration: BoxDecoration(
-                                        borderRadius:
-                                            BorderRadius.circular(12.r),
-                                        image: DecorationImage(
-                                          image: FileImage(image),
-                                          fit: BoxFit.cover,
+                                ),
+                                SizedBox(height: 20.h),
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('Users')
+                                      .doc(currentUId)
+                                      .collection('Addresses')
+                                      .where("isAddressSelected",
+                                          isEqualTo: true)
+                                      .snapshots(),
+                                  builder: (BuildContext context,
+                                      AsyncSnapshot<QuerySnapshot> snapshot) {
+                                    if (snapshot.hasError) {
+                                      return Text('Error: ${snapshot.error}');
+                                    }
+
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Center(
+                                          child: CircularProgressIndicator());
+                                    }
+
+                                    if (!snapshot.hasData ||
+                                        snapshot.data!.docs.isEmpty) {
+                                      return GestureDetector(
+                                        onTap: () async {
+                                          var selectedAddress =
+                                              await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  AddressManagementScreen(
+                                                userLat: controller.userLat,
+                                                userLng: controller.userLong,
+                                              ),
+                                            ),
+                                          );
+                                          if (selectedAddress != null) {
+                                            setState(() {
+                                              controller.appbarTitle =
+                                                  selectedAddress["address"];
+                                              controller.userLat =
+                                                  selectedAddress["Lat"];
+                                              controller.userLong =
+                                                  selectedAddress["Lng"];
+                                              controller
+                                                      .locationController.text =
+                                                  selectedAddress[
+                                                      "address"]; // Set the selected address to the text field
+                                              log("Selected location: " +
+                                                  selectedAddress["address"] +
+                                                  " Lat: " +
+                                                  selectedAddress["Lat"]
+                                                      .toString() +
+                                                  " Lng: " +
+                                                  selectedAddress["Lng"]
+                                                      .toString());
+                                            });
+                                          }
+                                        },
+                                        child: AbsorbPointer(
+                                          child: DashBoardSearchTextField(
+                                            label: "Select your Location",
+                                            controller:
+                                                controller.locationController,
+                                            enable: false,
+                                          ),
+                                        ),
+                                      );
+                                    }
+
+                                    // Get the selected address and location from the snapshot
+                                    var addressData = snapshot.data!.docs.first
+                                        .data() as Map<String, dynamic>;
+
+                                    // Extract the location data
+                                    var locationData = addressData["location"]
+                                        as Map<String, dynamic>?;
+
+                                    // Extract latitude and longitude from location map
+                                    double latitude =
+                                        locationData?["latitude"] ?? 0.0;
+                                    double longitude =
+                                        locationData?["longitude"] ?? 0.0;
+
+                                    // Assign values to the controller
+                                    controller.locationController.text =
+                                        addressData["address"] ??
+                                            "Select your Location";
+                                    controller.userLat = latitude;
+                                    controller.userLong = longitude;
+
+                                    return GestureDetector(
+                                      onTap: () async {
+                                        var selectedAddress =
+                                            await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AddressManagementScreen(
+                                              userLat: controller.userLat,
+                                              userLng: controller.userLong,
+                                            ),
+                                          ),
+                                        );
+                                        if (selectedAddress != null) {
+                                          setState(() {
+                                            controller.appbarTitle =
+                                                selectedAddress["address"];
+                                            controller.userLat =
+                                                selectedAddress["Lat"];
+                                            controller.userLong =
+                                                selectedAddress["Lng"];
+                                            controller.locationController.text =
+                                                selectedAddress[
+                                                    "address"]; // Set the selected address to the text field
+                                            log("Selected location: " +
+                                                selectedAddress["address"] +
+                                                " Lat: " +
+                                                selectedAddress["Lat"]
+                                                    .toString() +
+                                                " Lng: " +
+                                                selectedAddress["Lng"]
+                                                    .toString());
+                                          });
+                                        }
+                                      },
+                                      child: AbsorbPointer(
+                                        child: DashBoardSearchTextField(
+                                          label: "Select your Location",
+                                          controller:
+                                              controller.locationController,
+                                          enable: false,
                                         ),
                                       ),
                                     );
-                                  }).toList(),
-                                )
-                              : Container(),
-                          SizedBox(height: 20.h),
-                          controller.isFindMechanicEnabled
-                              ? CustomButton(
-                                  text: "Find Mechanic",
-                                  onPress: () async {
-                                    if (controller.images.isEmpty &&
-                                        controller.isImageMandatory == true) {
-                                      showToastMessage("Image Upload",
-                                          "Upload at least one Image", kRed);
-                                    } else {
-                                      controller
-                                          .findMechanic(
-                                        controller.locationController.text,
-                                        controller.userPhoto,
-                                        controller.userName,
-                                        controller.phoneNumber,
-                                        controller.userLat,
-                                        controller.userLong,
-                                        controller
-                                            .serviceAndNetworkController.text
-                                            .toString(),
-                                        controller.companyNameController.text
-                                            .toString(),
-                                        controller
-                                            .selectedCompanyAndVehcileNameController
-                                            .text
-                                            .toString(),
-                                        controller.imageSelected,
-                                        controller.images,
-                                      )
-                                          .then((value) {
-                                        widget.setTab?.call(1);
-                                      });
-                                      log("Job Created");
-                                    }
                                   },
-                                  color: kPrimary,
-                                )
-                              : CustomButton(
-                                  text: "Find Mechanic",
-                                  onPress: null,
-                                  color: kGray)
+                                ),
+                                SizedBox(height: 20.h),
+                                controller.imageUploadEnabled
+                                    ? GestureDetector(
+                                        onTap: () => controller
+                                            .showImageSourceDialog(context),
+                                        child: Container(
+                                          height: 40.h,
+                                          width: double.maxFinite,
+                                          alignment: Alignment.centerLeft,
+                                          decoration: BoxDecoration(
+                                              border: Border.all(
+                                                  color: kSecondary
+                                                      .withOpacity(0.1)),
+                                              color: kWhite,
+                                              borderRadius:
+                                                  BorderRadius.circular(12.r)),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Text("Upload Images"),
+                                              SizedBox(width: 20.w),
+                                              Icon(Icons.upload_file,
+                                                  color: kDark),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : SizedBox(),
+                                controller.imageUploadEnabled
+                                    ? SizedBox(height: 20.h)
+                                    : SizedBox(),
+                                controller.images.isNotEmpty
+                                    ? Wrap(
+                                        spacing: 10.w,
+                                        runSpacing: 10.h,
+                                        children:
+                                            controller.images.map((image) {
+                                          return Container(
+                                            width: 80.w,
+                                            height: 80.h,
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(12.r),
+                                              image: DecorationImage(
+                                                image: FileImage(image),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      )
+                                    : Container(),
+                                SizedBox(height: 20.h),
+                                controller.isFindMechanicEnabled
+                                    ? CustomButton(
+                                        text: "Find Mechanic",
+                                        onPress: () async {
+                                          if (controller.images.isEmpty &&
+                                              controller.isImageMandatory ==
+                                                  true) {
+                                            showToastMessage(
+                                                "Image Upload",
+                                                "Upload at least one Image",
+                                                kRed);
+                                          } else {
+                                            controller
+                                                .findMechanic(
+                                              controller
+                                                  .locationController.text,
+                                              controller.userPhoto,
+                                              controller.userName,
+                                              controller.phoneNumber,
+                                              controller.userLat,
+                                              controller.userLong,
+                                              controller
+                                                  .serviceAndNetworkController
+                                                  .text
+                                                  .toString(),
+                                              controller
+                                                  .companyNameController.text
+                                                  .toString(),
+                                              controller
+                                                  .selectedCompanyAndVehcileNameController
+                                                  .text
+                                                  .toString(),
+                                              controller.isImageMandatory,
+                                              controller.images,
+                                            )
+                                                .then((value) {
+                                              widget.setTab?.call(1);
+                                            });
+                                            log("Job Created");
+                                          }
+                                        },
+                                        color: kPrimary,
+                                      )
+                                    : CustomButton(
+                                        text: "Find Mechanic",
+                                        onPress: null,
+                                        color: kGray)
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 12.h),
+                          // Quick Search Section
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Our Services',
+                                style: appStyle(22, kDark, FontWeight.w500)),
+                          ),
+                          SizedBox(height: 10.h),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 15.h),
+                            decoration: BoxDecoration(
+                                color: kSecondary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12.r)),
+                            child: GridView.count(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 1,
+                              mainAxisSpacing: 1,
+                              childAspectRatio: 6 / 5,
+                              children: _buildQuickSearchItems(),
+                            ),
+                          ),
+
+                          SizedBox(height: 20.h),
                         ],
                       ),
                     ),
-
-                    SizedBox(height: 12.h),
-                    // Quick Search Section
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Our Services',
-                          style: appStyle(22, kDark, FontWeight.w500)),
-                    ),
-                    SizedBox(height: 10.h),
-                    Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
-                      decoration: BoxDecoration(
-                          color: kSecondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.r)),
-                      child: GridView.count(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 1,
-                        mainAxisSpacing: 1,
-                        childAspectRatio: 6 / 5,
-                        children: _buildQuickSearchItems(),
-                      ),
-                    ),
-
-                    SizedBox(height: 20.h),
-                  ],
-                ),
-              ),
-            ),
-          );
+                  ),
+                );
         }
       },
     );

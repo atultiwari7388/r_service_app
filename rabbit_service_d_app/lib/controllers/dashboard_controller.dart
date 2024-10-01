@@ -663,6 +663,9 @@ class DashboardController extends GetxController {
       showToastMessage("Error", "Failed to Submit request: $e", kRed);
     } finally {
       images.clear();
+      isImageSelected = false;
+      isImageMandatory =false;
+      update();
       setLoading(false);
     }
   }
