@@ -1,22 +1,22 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_shop_app/views/entry_screen.dart';
+import 'services/push_notification.dart';
 import 'package:regal_shop_app/utils/constants.dart';
 import 'package:regal_shop_app/views/splash/splash_screen.dart';
-import 'services/push_notification.dart';
 
-final navigateKey = GlobalKey<NavigatorState>();
+// Initialize the navigator key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-// Function to listen to background messages
+// Function to handle background messages
 Future<void> _firebaseBackgroundMessaging(RemoteMessage message) async {
   await Firebase.initializeApp();
   if (message.notification != null) {
     log("Background Notification received");
-    // Handle background notification
   }
 }
 
@@ -24,32 +24,28 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Initialize local notifications first to ensure channels are set up
+  // Initialize Push Notifications
   PushNotification pushNotification = PushNotification();
-  await pushNotification.localNotiInit();
-  await pushNotification.init();
+  await pushNotification.localNotiInit(); // Initialize channels first
+  await pushNotification.init(); // Then initialize FCM and permissions
 
-  // Listen for background notifications
+  // Listen for background messages
   FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessaging);
 
   // Listen for when a user taps on a notification when the app is in background
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     if (message.notification != null) {
       log("Background Notification Tapped");
-      // navigatorKey.currentState!.pushNamed("/message", arguments: message);
-    }
-  });
-
-  // Listen for foreground messages
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    String payloadData = jsonEncode(message.data);
-    log("Got a message in foreground");
-    if (message.notification != null) {
-      PushNotification.showSimpleNotification(
-        title: message.notification!.title ?? '',
-        body: message.notification!.body ?? '',
-        payload: payloadData,
-      );
+      // Handle navigation based on notification type
+      String notificationType = message.data['type'] ?? 'default';
+      if (notificationType == 'new_job') {
+        navigatorKey.currentState?.pushNamed("/newJob", arguments: message);
+      } else if (notificationType == 'offer_accepted') {
+        navigatorKey.currentState
+            ?.pushNamed("/offerAccepted", arguments: message);
+      } else {
+        navigatorKey.currentState?.pushNamed("/default", arguments: message);
+      }
     }
   });
 
@@ -60,11 +56,21 @@ void main() async {
   if (initialMessage != null) {
     log("Launched from terminated state");
     Future.delayed(const Duration(seconds: 1), () {
-      // navigatorKey.currentState!.pushNamed("/message", arguments: initialMessage);
+      String notificationType = initialMessage.data['type'] ?? 'default';
+      if (notificationType == 'new_job') {
+        navigatorKey.currentState
+            ?.pushNamed("/newJob", arguments: initialMessage);
+      } else if (notificationType == 'offer_accepted') {
+        navigatorKey.currentState
+            ?.pushNamed("/offerAccepted", arguments: initialMessage);
+      } else {
+        navigatorKey.currentState
+            ?.pushNamed("/default", arguments: initialMessage);
+      }
     });
   }
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -76,11 +82,30 @@ class MyApp extends StatelessWidget {
       designSize: const Size(375, 825),
       minTextAdapt: true,
       splitScreenMode: true,
-      // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (context, child) {
         return GetMaterialApp(
-          navigatorKey: navigateKey,
-          // Ensure navigatorKey is set
+          navigatorKey: navigatorKey,
+          onGenerateRoute: (settings) {
+            // Define your routes here
+            switch (settings.name) {
+              case '/newJob':
+                return MaterialPageRoute(
+                  builder: (context) => EntryScreen(),
+                );
+              case '/offerAccepted':
+                return MaterialPageRoute(
+                  builder: (context) => EntryScreen(),
+                );
+              case '/default':
+                return MaterialPageRoute(
+                  builder: (context) => EntryScreen(),
+                );
+              default:
+                return MaterialPageRoute(
+                  builder: (context) => SplashScreen(),
+                );
+            }
+          },
           themeMode: ThemeMode.system,
           debugShowCheckedModeBanner: false,
           title: appName,

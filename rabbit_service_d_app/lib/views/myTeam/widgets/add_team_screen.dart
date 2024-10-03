@@ -211,6 +211,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         "userName": nameController.text,
         "phoneNumber": phoneController.text,
         "createdBy": currentUId,
+        "profilePicture": "",
         "role": "TMember",
         "created_at": DateTime.now(),
         "updated_at": DateTime.now(),

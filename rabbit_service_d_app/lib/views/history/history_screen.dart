@@ -31,17 +31,55 @@ class _HistoryScreenState extends State<HistoryScreen> {
         title: ReusableText(
             text: "History", style: appStyle(20, kDark, FontWeight.normal)),
         actions: [
-          if (_selectedCardIndex == null) // Show only if no card is selected
-            GestureDetector(
-              onTap: () => Get.to(() => ProfileScreen()),
-              child: CircleAvatar(
-                radius: 19.r,
-                backgroundColor: kPrimary,
-                child:
-                    Text("A", style: appStyle(18, kWhite, FontWeight.normal)),
+          GestureDetector(
+            onTap: () => Get.to(() => const ProfileScreen(),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900)),
+            child: CircleAvatar(
+              radius: 19.r,
+              backgroundColor: kPrimary,
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(currentUId)
+                    .snapshots(),
+                builder: (BuildContext context,
+                    AsyncSnapshot<DocumentSnapshot> snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    // return Container();
+                    return const CircularProgressIndicator();
+                  }
+
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final userPhoto = data['profilePicture'] ?? '';
+                  final userName = data['userName'] ?? '';
+                  final phoneNumber = data['phoneNumber'] ?? '';
+
+                  if (userPhoto.isEmpty) {
+                    return Text(
+                      userName.isNotEmpty ? userName[0] : '',
+                      style: appStyle(20, kWhite, FontWeight.w500),
+                    );
+                  } else {
+                    return ClipOval(
+                      child: Image.network(
+                        userPhoto,
+                        width: 38.r,
+                        // Set appropriate size for the image
+                        height: 35.r,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }
+                },
               ),
             ),
-          SizedBox(width: 10.w),
+          ),
+          SizedBox(width: 20.w),
         ],
       ),
       body: SingleChildScrollView(
@@ -119,12 +157,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             final imagePath = job['userPhoto'] ?? "";
                             final vehicleNumber = job['vehicleNumber'] ?? "N/A";
 
-                            String dateString = '';
+                            DateTime orderDateTime;
                             if (job['orderDate'] is Timestamp) {
-                              DateTime dateTime =
-                                  (job['orderDate'] as Timestamp).toDate();
-                              dateString =
-                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                              orderDateTime = (job['orderDate'] as Timestamp)
+                                  .toDate()
+                                  .toLocal();
+                            } else {
+                              // Handle cases where 'orderDate' is not a Timestamp
+                              orderDateTime = DateTime
+                                  .now(); // Fallback to current time or handle appropriately
                             }
                             return MyJobsCard(
                               companyNameAndVehicleName:
@@ -136,7 +177,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               imagePath: job["userPhoto"].toString().isEmpty
                                   ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
                                   : job["userPhoto"].toString(),
-                              dateTime: dateString,
+                              dateTime: orderDateTime,
                               currentStatus: job["status"],
                             );
                           });

@@ -557,6 +557,16 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
           ),
           actions: [
             ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton(
               onPressed: () async {
                 await _updateRatingAndReview(
                     mId, _rating, _review, orderId.toString());
@@ -565,16 +575,6 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
               child: Text('Submit'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: kSuccess,
-                foregroundColor: Colors.white,
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimary,
                 foregroundColor: Colors.white,
               ),
             ),

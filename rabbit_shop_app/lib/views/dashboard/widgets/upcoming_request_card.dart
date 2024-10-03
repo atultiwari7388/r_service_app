@@ -631,6 +631,16 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           ),
           actions: [
             ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton(
               onPressed: () async {
                 await _updateRatingAndReview(dId, orderId, _rating, _review);
                 Navigator.of(context).pop();
@@ -638,16 +648,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
               child: Text('Submit'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: kSuccess,
-                foregroundColor: Colors.white,
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimary,
                 foregroundColor: Colors.white,
               ),
             ),

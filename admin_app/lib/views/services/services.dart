@@ -286,6 +286,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     },
                   ),
                 ),
+
                 Expanded(
                   child: ListView.builder(
                     itemCount: filteredServices.length,

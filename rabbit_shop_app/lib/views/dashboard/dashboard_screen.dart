@@ -240,6 +240,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                 arrivalCharges: "30",
                                                 km: "${distance.toStringAsFixed(0)} miles",
                                                 isImage: isImage,
+                                                // priceEnabled: isPriceTypeEnable,
                                                 images: images,
                                                 fixCharge:
                                                     job["fixPrice"].toString(),

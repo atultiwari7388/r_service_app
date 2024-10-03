@@ -81,11 +81,6 @@ class _UpcomingAndCompletedJobsScreenState
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // const Icon(
-                //   Icons.shopping_cart_outlined,
-                //   size: 100,
-                //   color: kPrimary,
-                // ),
                 const SizedBox(height: 20),
                 ReusableText(
                   text: "No Jobs Found",
@@ -310,6 +305,7 @@ class _UpcomingAndCompletedJobsScreenState
                 km: "${distance.toStringAsFixed(0)} miles",
                 dId: dId.toString(),
                 isImage: isImage,
+                // priceEnabled: jobs["fixPriceEnabled"] ?? false,
                 images: images,
                 payMode: payMode,
               );

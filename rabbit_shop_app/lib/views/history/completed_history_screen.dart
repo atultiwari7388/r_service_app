@@ -175,6 +175,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 km: "${distance.toStringAsFixed(0)} km",
                 dId: dId.toString(),
                 isImage: isImage,
+                // priceEnabled: jobs["fixPriceEnabled"] ?? false,
                 images: images,
                 payMode: jobs["payMode"].toString(),
               );

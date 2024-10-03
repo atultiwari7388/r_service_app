@@ -21,11 +21,11 @@
         </receiver>
         <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/ic_launcher" />
-        <meta-data
+        <!-- <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="rabbit_services_mechanic"/>
         <meta-data 
-            android:name="com.google.firebase.messaging.default_notification_sound"         android:value="new_sound_tw" />
+            android:name="com.google.firebase.messaging.default_notification_sound"         android:value="default_sound" /> -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -309,6 +309,10 @@ class DashboardController extends GetxController {
               if (docSnapshot.exists) {
                 // If document exists, update it
                 await historyDoc.update(jobData);
+                await FirebaseFirestore.instance
+                    .collection('metadata')
+                    .doc('nearByDistance')
+                    .update({'value': 5});
               } else {
                 // If document does not exist, create it
                 await historyDoc.set(jobData);

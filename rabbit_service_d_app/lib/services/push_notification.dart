@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,15 +12,33 @@ class PushNotification {
   static final FlutterLocalNotificationsPlugin
       _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  // Notification Channel Details
-  static const String _channelId = 'rabbit_services_driver';
-  static const String _channelName = 'Rabbit Driver';
-  static const String _channelDescription =
-      'This channel is for Rabbit Driver notifications.';
-  static const String _soundName = 'noti'; // Without extension
+  // Define Notification Channel IDs and Names
+  static const String _channelIdNewJob = 'rabbit_services_driver_new_job';
+  static const String _channelNameNewJob = 'Rabbit Driver New Job';
+  static const String _channelDescriptionNewJob =
+      'Notifications for new job requests.';
 
-  // Request notification permissions and initialize FCM token
+  static const String _channelIdOfferAccepted =
+      'rabbit_services_driver_offer_accepted';
+  static const String _channelNameOfferAccepted =
+      'Rabbit Driver Offer Accepted';
+  static const String _channelDescriptionOfferAccepted =
+      'Notifications when your offer is accepted.';
+
+  // Default Notification Channel
+  static const String _channelIdDefault = 'rabbit_services_driver_default';
+  static const String _channelNameDefault = 'Rabbit Driver Default';
+  static const String _channelDescriptionDefault =
+      'Default notification channel.';
+
+  // Sound file names (without extension)
+  static const String _soundNewJob = 'new_job_sound';
+  static const String _soundOfferAccepted = 'offer_accepted_sound';
+  static const String _soundDefault = 'default_sound';
+
+  // Initialize Push Notifications
   Future init() async {
+    // Request notification permissions
     await _firebaseMessaging.requestPermission(
       alert: true,
       announcement: true,
@@ -32,32 +49,50 @@ class PushNotification {
       provisional: false,
     );
 
-    // Get FCM token
+    // Get the device token and store it in Firestore
     final fcmToken = await _firebaseMessaging.getToken();
-    // log("Device Token: $fcmToken");
-
-    // Update token in Firestore
+    log("Device Token: $fcmToken");
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId != null && fcmToken != null) {
-      log("Device Token: $fcmToken");
       await updateUserFCMToken(userId, fcmToken);
     }
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      String payloadData = jsonEncode(message.data);
-      log("Got a message in foreground");
+      String payloadData = message.data['jobId'] ?? '';
+      String notificationType = message.data['type'] ?? 'default';
+
+      log("Received a foreground message of type: $notificationType");
+
       if (message.notification != null) {
-        showSimpleNotification(
-          title: message.notification!.title ?? '',
-          body: message.notification!.body ?? '',
-          payload: payloadData,
-        );
+        switch (notificationType) {
+          case 'new_job':
+            showNewJobNotification(
+              title: message.notification!.title ?? '',
+              body: message.notification!.body ?? '',
+              payload: payloadData,
+            );
+            break;
+          case 'offer_accepted':
+            showOfferAcceptedNotification(
+              title: message.notification!.title ?? '',
+              body: message.notification!.body ?? '',
+              payload: payloadData,
+            );
+            break;
+          default:
+            showDefaultNotification(
+              title: message.notification!.title ?? '',
+              body: message.notification!.body ?? '',
+              payload: payloadData,
+            );
+            break;
+        }
       }
     });
   }
 
-  // Initialize local notifications with custom sound
+  // Initialize local notifications with custom sounds
   Future localNotiInit() async {
     // Android Initialization Settings
     final AndroidInitializationSettings initializationSettingsAndroid =
@@ -90,33 +125,66 @@ class PushNotification {
       onDidReceiveBackgroundNotificationResponse: onNotificationTap,
     );
 
-    // Create the notification channel with custom sound for Android
+    // Create Notification Channels with Custom Sounds for Android
     if (Platform.isAndroid) {
-      final AndroidNotificationChannel channel = AndroidNotificationChannel(
-        _channelId, // id
-        _channelName, // title
-        description: _channelDescription,
+      // Channel for New Job Notifications
+      final AndroidNotificationChannel channelNewJob =
+          AndroidNotificationChannel(
+        _channelIdNewJob,
+        _channelNameNewJob,
+        description: _channelDescriptionNewJob,
         importance: Importance.high,
-        sound: RawResourceAndroidNotificationSound(_soundName),
+        sound: RawResourceAndroidNotificationSound(_soundNewJob),
       );
+
+      // Channel for Offer Accepted Notifications
+      final AndroidNotificationChannel channelOfferAccepted =
+          AndroidNotificationChannel(
+        _channelIdOfferAccepted,
+        _channelNameOfferAccepted,
+        description: _channelDescriptionOfferAccepted,
+        importance: Importance.high,
+        sound: RawResourceAndroidNotificationSound(_soundOfferAccepted),
+      );
+
+      // Default Channel
+      final AndroidNotificationChannel channelDefault =
+          AndroidNotificationChannel(
+        _channelIdDefault,
+        _channelNameDefault,
+        description: _channelDescriptionDefault,
+        importance: Importance.defaultImportance,
+        sound: RawResourceAndroidNotificationSound(_soundDefault),
+      );
+
+      // Create Channels
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channelNewJob);
 
       await _flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+          ?.createNotificationChannel(channelOfferAccepted);
+
+      await _flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channelDefault);
     }
 
-    // For iOS, ensure the sound is added to the project and configured
+    // For iOS, ensure that the custom sounds are added to the project
   }
 
   // Handle notification taps
   static void onNotificationTap(NotificationResponse notificationResponse) {
     log("Tapped on notification: ${notificationResponse.payload}");
-    // Implement navigation or other actions here
+    // Implement navigation or other actions here based on payload
   }
 
-  // Show a simple notification
-  static Future<void> showSimpleNotification({
+  // Show New Job Notification with custom sound
+  static Future<void> showNewJobNotification({
     required String title,
     required String body,
     required String payload,
@@ -124,23 +192,21 @@ class PushNotification {
     // Android Notification Details
     final AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
-      _channelId, // Channel ID
-      _channelName, // Channel Name
-      channelDescription: _channelDescription,
+      _channelIdNewJob, // New Job Channel ID
+      _channelNameNewJob, // New Job Channel Name
+      channelDescription: _channelDescriptionNewJob,
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(_soundName),
-      // Without extension
+      sound: RawResourceAndroidNotificationSound(_soundNewJob), // Custom Sound
       enableVibration: true,
-      // Additional properties if needed
     );
 
     // iOS Notification Details
     final DarwinNotificationDetails iOSNotificationDetails =
         DarwinNotificationDetails(
-      sound: 'noti.mp3', // Include extension for iOS
+      sound: 'new_job_sound.mp3', // Include extension for iOS
     );
 
     // Combined Notification Details
@@ -150,7 +216,91 @@ class PushNotification {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      0, // Notification ID
+      1, // Unique Notification ID for New Job
+      title,
+      body,
+      notificationDetails,
+      payload: payload,
+    );
+  }
+
+  // Show Offer Accepted Notification with custom sound
+  static Future<void> showOfferAcceptedNotification({
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    // Android Notification Details
+    final AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      _channelIdOfferAccepted, // Offer Accepted Channel ID
+      _channelNameOfferAccepted, // Offer Accepted Channel Name
+      channelDescription: _channelDescriptionOfferAccepted,
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'ticker',
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound(
+          _soundOfferAccepted), // Custom Sound
+      enableVibration: true,
+    );
+
+    // iOS Notification Details
+    final DarwinNotificationDetails iOSNotificationDetails =
+        DarwinNotificationDetails(
+      sound: 'offer_accepted_sound.mp3', // Include extension for iOS
+    );
+
+    // Combined Notification Details
+    final NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: iOSNotificationDetails,
+    );
+
+    await _flutterLocalNotificationsPlugin.show(
+      2, // Unique Notification ID for Offer Accepted
+      title,
+      body,
+      notificationDetails,
+      payload: payload,
+    );
+  }
+
+  // Show Default Notification with default sound
+  static Future<void> showDefaultNotification({
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    // Android Notification Details
+    final AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      _channelIdDefault, // Default Channel ID
+      _channelNameDefault, // Default Channel Name
+      channelDescription: _channelDescriptionDefault,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      ticker: 'ticker',
+      playSound: true,
+      sound:
+          RawResourceAndroidNotificationSound(_soundDefault), // Default Sound
+      enableVibration: true,
+    );
+
+    // iOS Notification Details
+    final DarwinNotificationDetails iOSNotificationDetails =
+        DarwinNotificationDetails(
+      sound: 'default_sound.mp3', // Include extension for iOS
+    );
+
+    // Combined Notification Details
+    final NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: iOSNotificationDetails,
+    );
+
+    await _flutterLocalNotificationsPlugin.show(
+      3, // Unique Notification ID for Default
       title,
       body,
       notificationDetails,
@@ -164,9 +314,178 @@ class PushNotification {
       await _firestore.collection('Users').doc(userId).update({
         'fcmToken': fcmToken,
       });
-      log('FCM token updated in users collection');
+      log('FCM token updated in Mechanics collection');
     } catch (error) {
       log('Error updating FCM token in Mechanics collection: $error');
     }
   }
 }
+
+
+
+
+
+// class PushNotification {
+//   static final FirebaseMessaging _firebaseMessaging =
+//       FirebaseMessaging.instance;
+//   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+//   static final FlutterLocalNotificationsPlugin
+//       _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+//   // Notification Channel Details
+//   static const String _channelId = 'rabbit_services_driver';
+//   static const String _channelName = 'Rabbit Driver';
+//   static const String _channelDescription =
+//       'This channel is for Rabbit Driver notifications.';
+//   static const String _soundName = 'noti'; // Without extension
+
+//   // Request notification permissions and initialize FCM token
+//   Future init() async {
+//     await _firebaseMessaging.requestPermission(
+//       alert: true,
+//       announcement: true,
+//       badge: true,
+//       sound: true,
+//       carPlay: false,
+//       criticalAlert: false,
+//       provisional: false,
+//     );
+
+//     // Get FCM token
+//     final fcmToken = await _firebaseMessaging.getToken();
+//     // log("Device Token: $fcmToken");
+
+//     // Update token in Firestore
+//     final userId = FirebaseAuth.instance.currentUser?.uid;
+//     if (userId != null && fcmToken != null) {
+//       log("Device Token: $fcmToken");
+//       await updateUserFCMToken(userId, fcmToken);
+//     }
+
+//     // Handle foreground messages
+//     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+//       String payloadData = jsonEncode(message.data);
+//       log("Got a message in foreground");
+//       if (message.notification != null) {
+//         showSimpleNotification(
+//           title: message.notification!.title ?? '',
+//           body: message.notification!.body ?? '',
+//           payload: payloadData,
+//         );
+//       }
+//     });
+//   }
+
+//   // Initialize local notifications with custom sound
+//   Future localNotiInit() async {
+//     // Android Initialization Settings
+//     final AndroidInitializationSettings initializationSettingsAndroid =
+//         AndroidInitializationSettings('@mipmap/ic_launcher');
+
+//     // iOS Initialization Settings
+//     final DarwinInitializationSettings initializationSettingsDarwin =
+//         DarwinInitializationSettings(
+//       onDidReceiveLocalNotification: (id, title, body, payload) async {
+//         // Handle iOS local notification
+//       },
+//     );
+
+//     // Linux Initialization Settings
+//     final LinuxInitializationSettings initializationSettingsLinux =
+//         LinuxInitializationSettings(defaultActionName: 'Open notification');
+
+//     // Combined Initialization Settings
+//     final InitializationSettings initializationSettings =
+//         InitializationSettings(
+//       android: initializationSettingsAndroid,
+//       iOS: initializationSettingsDarwin,
+//       linux: initializationSettingsLinux,
+//     );
+
+//     // Initialize the plugin
+//     await _flutterLocalNotificationsPlugin.initialize(
+//       initializationSettings,
+//       onDidReceiveNotificationResponse: onNotificationTap,
+//       onDidReceiveBackgroundNotificationResponse: onNotificationTap,
+//     );
+
+//     // Create the notification channel with custom sound for Android
+//     if (Platform.isAndroid) {
+//       final AndroidNotificationChannel channel = AndroidNotificationChannel(
+//         _channelId, // id
+//         _channelName, // title
+//         description: _channelDescription,
+//         importance: Importance.high,
+//         sound: RawResourceAndroidNotificationSound(_soundName),
+//       );
+
+//       await _flutterLocalNotificationsPlugin
+//           .resolvePlatformSpecificImplementation<
+//               AndroidFlutterLocalNotificationsPlugin>()
+//           ?.createNotificationChannel(channel);
+//     }
+
+//     // For iOS, ensure the sound is added to the project and configured
+//   }
+
+//   // Handle notification taps
+//   static void onNotificationTap(NotificationResponse notificationResponse) {
+//     log("Tapped on notification: ${notificationResponse.payload}");
+//     // Implement navigation or other actions here
+//   }
+
+//   // Show a simple notification
+//   static Future<void> showSimpleNotification({
+//     required String title,
+//     required String body,
+//     required String payload,
+//   }) async {
+//     // Android Notification Details
+//     final AndroidNotificationDetails androidNotificationDetails =
+//         AndroidNotificationDetails(
+//       _channelId, // Channel ID
+//       _channelName, // Channel Name
+//       channelDescription: _channelDescription,
+//       importance: Importance.max,
+//       priority: Priority.high,
+//       ticker: 'ticker',
+//       playSound: true,
+//       sound: RawResourceAndroidNotificationSound(_soundName),
+//       // Without extension
+//       enableVibration: true,
+//       // Additional properties if needed
+//     );
+
+//     // iOS Notification Details
+//     final DarwinNotificationDetails iOSNotificationDetails =
+//         DarwinNotificationDetails(
+//       sound: 'noti.mp3', // Include extension for iOS
+//     );
+
+//     // Combined Notification Details
+//     final NotificationDetails notificationDetails = NotificationDetails(
+//       android: androidNotificationDetails,
+//       iOS: iOSNotificationDetails,
+//     );
+
+//     await _flutterLocalNotificationsPlugin.show(
+//       0, // Notification ID
+//       title,
+//       body,
+//       notificationDetails,
+//       payload: payload,
+//     );
+//   }
+
+//   // Update user FCM token in Firestore
+//   Future<void> updateUserFCMToken(String userId, String fcmToken) async {
+//     try {
+//       await _firestore.collection('Users').doc(userId).update({
+//         'fcmToken': fcmToken,
+//       });
+//       log('FCM token updated in users collection');
+//     } catch (error) {
+//       log('Error updating FCM token in Mechanics collection: $error');
+//     }
+//   }
+// }

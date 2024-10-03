@@ -1,10 +1,10 @@
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/views/myJobs/widgets/my_jobs_card.dart';
-import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
@@ -21,6 +21,45 @@ class MyJobsScreen extends StatefulWidget {
 class _MyJobsScreenState extends State<MyJobsScreen> {
   String _selectedSortOption = "Sort";
   int? _selectedCardIndex;
+  num nearbyDistance = 0;
+  bool isLoadingDistance = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchNearByDistance();
+  }
+
+  Future<num> fetchNearByDistance() async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+          .instance
+          .collection('metadata')
+          .doc('nearByDistance')
+          .get();
+
+      if (snapshot.exists) {
+        setState(() {
+          nearbyDistance = snapshot.get("value") ?? 0;
+          isLoadingDistance = false;
+        });
+        log('Nearby Distance: $nearbyDistance km');
+        return nearbyDistance;
+      } else {
+        log('Document does not exist.');
+        setState(() {
+          isLoadingDistance = false;
+        });
+        return 0;
+      }
+    } catch (e) {
+      log('Error fetching nearbyDistance: $e');
+      setState(() {
+        isLoadingDistance = false;
+      });
+      return 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,13 +162,17 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             final vehicleNumber = job['vehicleNumber'] ??
                                 "N/A"; // Fetch the vehicle number
 
-                            String dateString = '';
+                            DateTime orderDateTime;
                             if (job['orderDate'] is Timestamp) {
-                              DateTime dateTime =
-                                  (job['orderDate'] as Timestamp).toDate();
-                              dateString =
-                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                              orderDateTime = (job['orderDate'] as Timestamp)
+                                  .toDate()
+                                  .toLocal();
+                            } else {
+                              // Handle cases where 'orderDate' is not a Timestamp
+                              orderDateTime = DateTime
+                                  .now(); // Fallback to current time or handle appropriately
                             }
+
                             return MyJobsCard(
                               companyNameAndVehicleName:
                                   "${job["companyName"]} (${vehicleNumber})",
@@ -139,14 +182,16 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                               imagePath: job["userPhoto"].toString().isEmpty
                                   ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
                                   : job["userPhoto"].toString(),
-                              dateTime: dateString,
+                              dateTime:
+                                  orderDateTime, // Pass DateTime object directly
                               onButtonTap: () {
                                 Get.to(() => RequestsScreen(
-                                    serviceName:
-                                        job["selectedService"].toString(),
-                                    id: job["orderId"].toString(),
-                                    companyAndVehicleName:
-                                        "${job["companyName"]} (${vehicleNumber})"));
+                                      serviceName:
+                                          job["selectedService"].toString(),
+                                      id: job["orderId"].toString(),
+                                      companyAndVehicleName:
+                                          "${job["companyName"]} (${vehicleNumber})",
+                                    ));
                               },
                               onCancelBtnTap: () {
                                 // Step 1: Show the first confirmation dialog (Are you sure?)
@@ -182,8 +227,13 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                 );
                               },
                               currentStatus: job["status"],
+                              nearByDistance: nearbyDistance,
+                              onDistanceChanged: (newDistance) {
+                                _updateNearbyDistance(newDistance);
+                              },
                             );
-                          });
+                          },
+                        );
                 },
               ),
               SizedBox(height: 50.h)
@@ -192,6 +242,29 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         ),
       ),
     );
+  }
+
+  void _updateNearbyDistance(num newDistance) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('metadata')
+          .doc('nearByDistance')
+          .update({'value': newDistance});
+
+      setState(() {
+        nearbyDistance = newDistance;
+      });
+
+      Get.snackbar("Success", "Nearby distance updated to $newDistance km.",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white);
+    } catch (error) {
+      Get.snackbar("Error", "Failed to update distance: $error",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white);
+    }
   }
 
   void _showReasonDialog(String orderId) {

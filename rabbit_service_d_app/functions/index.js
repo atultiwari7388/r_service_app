@@ -23,7 +23,6 @@ const calculateDistance = (startLat, startLng, endLat, endLng) => {
 const toRadians = (degrees) => {
   return degrees * (Math.PI / 180)
 }
-
 // Function to send a new notification to the nearby Mechanics..
 exports.sendNewMechanicNotification = functions.firestore
   .document('jobs/{jobId}')
@@ -41,6 +40,25 @@ exports.sendNewMechanicNotification = functions.firestore
       }
 
       console.log('Job Location:', jobLocation)
+
+      // Fetch the dynamic nearby distance value from the metadata collection
+      const metadataDoc = await admin
+        .firestore()
+        .collection('metadata')
+        .doc('nearByDistance')
+        .get()
+      let nearByDistance = 5.0 // Default value
+
+      if (metadataDoc.exists) {
+        nearByDistance = metadataDoc.data().value || nearByDistance
+        console.log('Fetched nearByDistance:', nearByDistance)
+      } else {
+        console.log(
+          'Metadata document not found. Using default nearByDistance:',
+          nearByDistance
+        )
+      }
+
       const mechanicsSnapshot = await admin
         .firestore()
         .collection('Mechanics')
@@ -73,7 +91,7 @@ exports.sendNewMechanicNotification = functions.firestore
         )
 
         // Check if the distance is within a specified range (e.g., 5 km)
-        if (distance < 5.0) {
+        if (distance < nearByDistance) {
           console.log('Mechanic is in range. Sending notification...')
 
           const payload = {
@@ -83,6 +101,7 @@ exports.sendNewMechanicNotification = functions.firestore
             },
             data: {
               jobId: context.params.jobId,
+              type: 'new_job', // Added type field
             },
           }
 
@@ -160,6 +179,7 @@ exports.mechanicAcceptJobNotification = functions.firestore
           },
           data: {
             jobId: jobId,
+            type: 'default_sound',
           },
         }
 
@@ -216,10 +236,11 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
         const payload = {
           notification: {
             title: '👍 Offer Accepted!',
-            body: `Hey ${mechanicName}, ${userName} has accepted your offer! 🚗💰`,
+            body: `Hey ${mechanicName}, ${userName} has accepted your offer! 🚚💰`,
           },
           data: {
             jobId: jobId,
+            type: 'offer_accepted', // Added type field
           },
         }
 
@@ -245,110 +266,107 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
     return null
   })
 
-exports.scheduledAutoCancelJobs = functions.pubsub
-  .schedule('every 1 minutes') // Run this function every 1 minute
-  .onRun(async (context) => {
-    const fiveMinutesAgo = admin.firestore.Timestamp.fromDate(
-      new Date(Date.now() - 5 * 60 * 1000) // Get the time 5 minutes ago
-    )
+// Cloud Function to handle job completion and update mechanic's wallet
+exports.jobCompletionPayment = functions.firestore
+  .document('jobs/{jobId}')
+  .onUpdate(async (change, context) => {
+    const newValue = change.after.data()
+    const previousValue = change.before.data()
+    const jobId = context.params.jobId
 
-    try {
-      // Query jobs where status is 0 and orderDate is more than 5 minutes ago
-      const querySnapshot = await admin
-        .firestore()
-        .collection('jobs')
-        .where('status', '==', 0)
-        .where('orderDate', '<=', fiveMinutesAgo)
-        .get()
+    // Check if the status has been updated to 5
+    if (previousValue.status !== 5 && newValue.status === 5) {
+      // Check if payMode is 'Online'
+      const payMode = newValue.payMode
+      if (payMode === 'Online') {
+        // Determine the price to add
+        const fixPrice = parseFloat(newValue.fixPrice) || 0
+        const arrivalCharges = parseFloat(newValue.arrivalCharges) || 0
 
-      if (querySnapshot.empty) {
-        console.log('No jobs found for auto-cancelation.')
-        return null
+        const totalPrice = fixPrice + arrivalCharges
+
+        // Get the Mechanic's ID
+        const mechanicId = newValue.mId
+        if (!mechanicId) {
+          console.error(`Mechanic ID (mId) is missing in job ${jobId}`)
+          return null
+        }
+
+        try {
+          // Reference to the Mechanic's document
+          const mechanicRef = admin
+            .firestore()
+            .collection('Mechanics')
+            .doc(mechanicId)
+          const mechanicDoc = await mechanicRef.get()
+
+          // Initialize wallet to 0 if it doesn't exist yet
+          let currentWallet = 0
+          if (mechanicDoc.exists) {
+            const mechanicData = mechanicDoc.data()
+            currentWallet = mechanicData.wallet || 0 // Default to 0 if wallet field doesn't exist
+          }
+
+          // Update the wallet with the total price
+          await mechanicRef.update({
+            wallet: admin.firestore.FieldValue.increment(totalPrice),
+          })
+
+          console.log(
+            `Successfully added ₹${totalPrice} to mechanic ${mechanicId}'s wallet for job ${jobId}.`
+          )
+
+          // Send a notification to the mechanic about the wallet update
+          const updatedMechanicDoc = await mechanicRef.get()
+          if (updatedMechanicDoc.exists) {
+            const updatedMechanicData = updatedMechanicDoc.data()
+            const mechanicToken = updatedMechanicData.fcmToken
+
+            if (mechanicToken) {
+              const notificationPayload = {
+                notification: {
+                  title: '💰 Wallet Updated!',
+                  body: '',
+                  // body: `Your wallet has been credited with $${totalPrice} for job ID: ${jobId}. Total Balance: $${updatedMechanicData.wallet}`,
+                },
+                data: {
+                  jobId: jobId,
+                  type: 'default_sound',
+                },
+              }
+
+              // Send notification
+              await admin.messaging().send({
+                token: mechanicToken,
+                notification: notificationPayload.notification,
+                data: notificationPayload.data,
+              })
+
+              console.log(
+                `Notification sent to mechanic ${mechanicId} about wallet update.`
+              )
+            } else {
+              console.error(
+                `Mechanic ${mechanicId} does not have a valid FCM token.`
+              )
+            }
+          } else {
+            console.error(`Mechanic document not found for ID: ${mechanicId}`)
+          }
+        } catch (error) {
+          console.error(
+            `Error updating wallet for mechanic ${mechanicId}:`,
+            error
+          )
+        }
+      } else {
+        console.log(
+          `Job ${jobId} completed but payMode is not 'Online'. No wallet update required.`
+        )
       }
-
-      const batch = admin.firestore().batch()
-
-      // Loop through each job and cancel it
-      querySnapshot.forEach((doc) => {
-        const jobId = doc.id
-        const jobData = doc.data()
-        const userId = jobData.userId
-
-        console.log(`Auto-canceling job with ID: ${jobId}`)
-
-        // Update the job's status to -1 (cancelled) and add a cancel reason
-        batch.update(admin.firestore().collection('jobs').doc(jobId), {
-          status: -1,
-          cancelReason: 'No mechanic found',
-        })
-
-        // Update the job's status in the user's history subcollection
-        const userJobRef = admin
-          .firestore()
-          .collection('Users')
-          .doc(userId)
-          .collection('history')
-          .doc(jobId)
-
-        batch.update(userJobRef, {
-          status: -1,
-          cancelReason: 'No mechanic found',
-        })
-
-        // Send a notification to the user
-        sendCancelNotificationToUser(userId, jobId)
-      })
-
-      // Commit the batch
-      await batch.commit()
-
-      console.log('Successfully auto-canceled jobs after 5 minutes.')
-      return null
-    } catch (error) {
-      console.error('Error auto-canceling jobs:', error)
-      return null
-    }
-  })
-
-// Function to send a cancellation notification to the user
-async function sendCancelNotificationToUser(userId, jobId) {
-  try {
-    const userDoc = await admin
-      .firestore()
-      .collection('Users')
-      .doc(userId)
-      .get()
-    if (!userDoc.exists) {
-      console.error('User not found:', userId)
-      return
-    }
-
-    const userData = userDoc.data()
-    const userToken = userData.fcmToken
-    const userName = userData.name || 'User' // Assuming userName is stored in the Users document
-
-    // Prepare notification payload with emojis and personalized text
-    const payload = {
-      notification: {
-        title: '🚫 Mechanic Not Found!',
-        body: `Hey ${userName}, we couldn't find a mechanic for your job. Please try again later.`,
-      },
-      data: {
-        jobId: jobId,
-      },
-    }
-
-    if (userToken) {
-      await admin.messaging().send({
-        token: userToken,
-        notification: payload.notification,
-        data: payload.data,
-      })
-      console.log(`Notification sent to user: ${userId} for job: ${jobId}`)
     } else {
-      console.error(`No valid token for user: ${userId}`)
+      // Status did not change to 5; do nothing
+      return null
     }
-  } catch (error) {
-    console.error('Error sending notification:', error)
-  }
-}
+    return null
+  })

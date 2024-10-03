@@ -8,52 +8,118 @@ import 'package:regal_service_d_app/views/myTeam/widgets/add_team_screen.dart';
 import 'package:regal_service_d_app/views/myTeam/widgets/member_jobs_history.dart';
 import '../../utils/app_styles.dart';
 
-class MyTeamScreen extends StatelessWidget {
+class MyTeamScreen extends StatefulWidget {
   const MyTeamScreen({super.key});
 
+  @override
+  _MyTeamScreenState createState() => _MyTeamScreenState();
+}
+
+class _MyTeamScreenState extends State<MyTeamScreen> {
+  TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _allMembers = [];
+  List<Map<String, dynamic>> _filteredMembers = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchTeamMembersWithVehicles();
+    _searchController.addListener(_filterMembers);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterMembers);
+    _searchController.dispose();
+    super.dispose();
+  }
+
   // Method to fetch team members along with their vehicles
-  Future<List<Map<String, dynamic>>> fetchTeamMembersWithVehicles() async {
-    List<Map<String, dynamic>> membersWithVehicles = [];
+  Future<void> fetchTeamMembersWithVehicles() async {
+    try {
+      List<Map<String, dynamic>> membersWithVehicles = [];
 
-    // Fetch team members from the Users collection
-    QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
-        .collection('Users')
-        .where('createdBy', isEqualTo: currentUId)
-        .where('uid', isNotEqualTo: currentUId) // Exclude the owner's UID
-        .get();
-
-    for (var member in teamSnapshot.docs) {
-      String memberId = member['uid'];
-      String name = member['userName'] ?? 'No Name';
-      String email = member['email'] ?? 'No Email';
-      bool isActive = member['active'] ?? false;
-
-      // Fetch vehicles from the Vehicles subcollection for each member
-      QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
+      // Fetch team members from the Users collection
+      QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(memberId)
-          .collection('Vehicles')
+          .where('createdBy', isEqualTo: currentUId)
+          .where('uid', isNotEqualTo: currentUId) // Exclude the owner's UID
           .get();
 
-      List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
-        return {
-          'companyName': doc['companyName'] ?? 'No Company',
-          'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
-        };
-      }).toList();
+      print('Fetched ${teamSnapshot.docs.length} team members');
 
-      // Add member data along with their vehicles to the list
-      membersWithVehicles.add({
-        'name': name,
-        'email': email,
-        'isActive': isActive,
-        'memberId': memberId,
-        'ownerId': member['createdBy'],
-        'vehicles': vehicles, // List of vehicles
+      for (var member in teamSnapshot.docs) {
+        String memberId = member['uid'];
+        String name = member['userName'] ?? 'No Name';
+        String email = member['email'] ?? 'No Email';
+        bool isActive = member['active'] ?? false;
+
+        // Fetch vehicles from the Vehicles subcollection for each member
+        QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(memberId)
+            .collection('Vehicles')
+            .get();
+
+        List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
+          return {
+            'companyName': doc['companyName'] ?? 'No Company',
+            'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+          };
+        }).toList();
+
+        print('Member $name has ${vehicles.length} vehicles');
+
+        // Add member data along with their vehicles to the list
+        membersWithVehicles.add({
+          'name': name,
+          'email': email,
+          'isActive': isActive,
+          'memberId': memberId,
+          'ownerId': member['createdBy'],
+          'vehicles': vehicles, // List of vehicles
+        });
+      }
+
+      setState(() {
+        _allMembers = membersWithVehicles;
+        _filteredMembers = membersWithVehicles; // Initialize filtered list
+        _isLoading = false;
+      });
+
+      print('Total members fetched: ${_allMembers.length}');
+    } catch (e) {
+      print('Error fetching team members: $e');
+      setState(() {
+        _errorMessage = 'Error loading team members: $e';
+        _isLoading = false;
       });
     }
+  }
 
-    return membersWithVehicles;
+  void _filterMembers() {
+    String query = _searchController.text.toLowerCase();
+    print('Filtering members with query: "$query"');
+    setState(() {
+      if (query.isEmpty) {
+        _filteredMembers = _allMembers;
+      } else {
+        _filteredMembers = _allMembers.where((member) {
+          String name = member['name'].toLowerCase();
+          String vehicleDetails = member['vehicles']
+              .map<String>((vehicle) =>
+                  "${vehicle['companyName'].toLowerCase()} (${vehicle['vehicleNumber'].toLowerCase()})")
+              .join(' ')
+              .toLowerCase();
+          bool matchesName = name.contains(query);
+          bool matchesVehicle = vehicleDetails.contains(query);
+          return matchesName || matchesVehicle;
+        }).toList();
+      }
+      print('Filtered members count: ${_filteredMembers.length}');
+    });
   }
 
   @override
@@ -73,137 +139,120 @@ class MyTeamScreen extends StatelessWidget {
           SizedBox(width: 10.w),
         ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: fetchTeamMembersWithVehicles(), // Fetch members and vehicles
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return const Center(child: Text('Error loading team members'));
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No team members found'));
-          }
-
-          // List of members fetched from Firestore
-          List<Map<String, dynamic>> members = snapshot.data!;
-
-          return Container(
-            padding: EdgeInsets.all(4.h),
-            margin: EdgeInsets.all(10.h),
-            child: Table(
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              border: TableBorder.all(color: kDark, width: 0.3),
-              columnWidths: const {
-                0: FlexColumnWidth(3),
-                1: FlexColumnWidth(3),
-                2: FlexColumnWidth(2),
-              },
-              children: [
-                // Table Header
-                TableRow(
-                  decoration: BoxDecoration(color: kSecondary.withOpacity(0.8)),
-                  children: [
-                    buildTableHeaderCell("Name"),
-                    buildTableHeaderCell("Vehicle"),
-                    buildTableHeaderCell("Actions"),
-                  ],
+      body: Column(
+        children: [
+          // Attractive Search Bar
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by Name or Vehicle Number',
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey[200],
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 20.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  borderSide: BorderSide.none,
                 ),
-                // Build Table Rows dynamically from Firestore data
-                ...members.map((member) {
-                  String name = member['name'];
-                  String email = member['email'];
-                  bool isActive = member['isActive'];
-                  String memberId = member['memberId'];
-                  String ownerId = member['ownerId'];
-
-                  // Create a string of vehicle details
-                  String vehicleDetails = member['vehicles'].isNotEmpty
-                      ? member['vehicles']
-                          .map<String>((vehicle) =>
-                              "${vehicle['companyName']} (${vehicle['vehicleNumber']})")
-                          .join('\n')
-                      : 'No Vehicles';
-
-                  return buildTableRow(
-                      name, vehicleDetails, email, isActive, memberId, ownerId);
-                }).toList(),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  TableRow buildTableRow(
-    String name,
-    String vehicleDetails, // Updated to show vehicle details
-    String email,
-    bool switchValue,
-    String memberId,
-    String ownerId,
-  ) {
-    return TableRow(
-      children: [
-        InkWell(
-          onTap: () => Get.to(() => MemberJobsHistoryScreen(
-                memberName: name,
-                memebrId: memberId,
-                ownerId: ownerId,
-              )),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              name,
-              overflow: TextOverflow.ellipsis,
-              style: appStyle(13, kDark, FontWeight.normal),
-              textAlign: TextAlign.center,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  borderSide: BorderSide(color: kPrimary),
+                ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filterMembers(); // Clear search results
+                        },
+                      )
+                    : null,
+              ),
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(
-            vehicleDetails, // Display vehicle details here
-            overflow: TextOverflow.ellipsis,
-            style: appStyle(13, kDark, FontWeight.normal),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Switch(
-              activeColor: kPrimary,
-              value: switchValue,
-              onChanged: (bool value) {
-                // Handle the switch change (update in Firestore if necessary)
-              },
-            ),
-            InkWell(
-              onTap: () {
-                // Handle Edit action
-              },
-              child: const Icon(Icons.edit, color: Colors.green),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+          // Display content based on loading, error, or data state
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
+                    ? Center(child: Text(_errorMessage))
+                    : _filteredMembers.isEmpty
+                        ? const Center(child: Text('No team members found'))
+                        : ListView.builder(
+                            itemCount: _filteredMembers.length,
+                            itemBuilder: (context, index) {
+                              var member = _filteredMembers[index];
+                              String name = member['name'];
+                              String email = member['email'];
+                              bool isActive = member['isActive'];
+                              String memberId = member['memberId'];
+                              String ownerId = member['ownerId'];
+                              List vehicles = member['vehicles'];
 
-  Widget buildTableHeaderCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(
-        text,
-        style: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.normal, color: Colors.white),
-        textAlign: TextAlign.center,
+                              String vehicleDetails = vehicles.isNotEmpty
+                                  ? vehicles
+                                      .map<String>((vehicle) =>
+                                          "${vehicle['companyName']} (${vehicle['vehicleNumber']})")
+                                      .join('\n')
+                                  : 'No Vehicles';
+
+                              return Container(
+                                margin: EdgeInsets.only(left: 8.w, right: 8.w),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  color: kLightWhite,
+                                  border: Border.all(
+                                    color: kSecondary.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  title: Text(
+                                    name,
+                                    style: appStyle(16, kDark, FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    vehicleDetails,
+                                    style:
+                                        appStyle(14, kDark, FontWeight.normal),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Switch(
+                                        activeColor: kPrimary,
+                                        value: isActive,
+                                        onChanged: (bool value) {
+                                          // Handle the switch change (update in Firestore if necessary)
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.edit,
+                                            color: Colors.green),
+                                        onPressed: () {
+                                          // Handle Edit action
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () =>
+                                      Get.to(() => MemberJobsHistoryScreen(
+                                            memberName: name,
+                                            memebrId: memberId,
+                                            ownerId: ownerId,
+                                          )),
+                                ),
+                              );
+                            },
+                          ),
+          ),
+        ],
       ),
     );
   }
