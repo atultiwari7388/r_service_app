@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
+import '../../widgets/dashed_divider.dart';
 import '../../widgets/reusable_text.dart';
 
 class JobDetailsScreen extends StatefulWidget {
@@ -16,6 +17,11 @@ class JobDetailsScreen extends StatefulWidget {
   final String mechanicNumber;
   final status;
   final orderDate;
+  final payMode;
+  final fixPrice;
+  final arrivingCharges;
+  final bool isImageSelected;
+  final bool isPriceEnabled;
 
   const JobDetailsScreen({
     required this.orderId,
@@ -28,6 +34,11 @@ class JobDetailsScreen extends StatefulWidget {
     required this.mechanicNumber,
     required this.status,
     required this.orderDate,
+    required this.payMode,
+    this.fixPrice,
+    this.arrivingCharges,
+    required this.isImageSelected,
+    required this.isPriceEnabled,
   });
 
   @override
@@ -92,10 +103,28 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             Text("Status : ${getStatusString(widget.status)}"),
+
             // DashedDivider(),
             Divider(),
             SizedBox(height: 20),
-            Column(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                widget.isImageSelected && widget.isPriceEnabled
+                    ? reusbaleRowTextWidget("Payment Type :", "Fix")
+                    : reusbaleRowTextWidget("Payment Type :", "Arriving"),
+                widget.isPriceEnabled && widget.isImageSelected
+                    ? reusbaleRowTextWidget(
+                        "Fix Price :", "\$${widget.fixPrice}")
+                    : reusbaleRowTextWidget(
+                        "Arriving Charges :", "\$${widget.arrivingCharges}"),
+                reusbaleRowTextWidget("Payment Mode :", "${widget.payMode}"),
+                SizedBox(height: 3),
+                SizedBox(height: 5),
+                DashedDivider(),
+                SizedBox(height: 5),
+              ],
+            ),
             SizedBox(height: 20),
             Divider(),
             // Add more details as needed

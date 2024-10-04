@@ -254,16 +254,22 @@ class _ViewAllMechanicsOrdersState extends State<ViewAllMechanicsOrders> {
                       onTap: () {
                         Get.to(
                           () => JobDetailsScreen(
-                              orderId: orderId,
-                              driverName: dName,
-                              driverNumber: cNumber,
-                              driverDeliveryAddress: driverAddress.toString(),
-                              serviceName: serviceName,
-                              // servicePrice: servicePrice,
-                              mechanicName: mName,
-                              mechanicNumber: mNumber,
-                              status: status,
-                              orderDate: orderDate),
+                            orderId: orderId,
+                            driverName: dName,
+                            driverNumber: cNumber,
+                            driverDeliveryAddress: driverAddress.toString(),
+                            serviceName: serviceName,
+                            // servicePrice: servicePrice,
+                            mechanicName: mName,
+                            mechanicNumber: mNumber,
+                            status: status,
+                            orderDate: orderDate,
+                            payMode: data["payMode"],
+                            isImageSelected: data["isImageSelected"] ?? false,
+                            isPriceEnabled: data["fixPriceEnabled"] ?? false,
+                            fixPrice: data["arrivalCharges"].toString(),
+                            arrivingCharges: data["fixPrice"].toString(),
+                          ),
                         );
                       },
                       child: reusableRowWidget(

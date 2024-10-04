@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -484,7 +485,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text('Our Services',
-                                style: appStyle(22, kDark, FontWeight.w500)),
+                                style: kIsWeb
+                                    ? TextStyle(color: kDark)
+                                    : appStyle(22, kDark, FontWeight.w500)),
                           ),
                           SizedBox(height: 10.h),
                           Container(
@@ -533,9 +536,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           // // Your quick search logic here
         },
         child: Container(
-          width: 100,
+          width: kIsWeb ? 0 : 100,
           // Define width for the rectangle
-          height: 50,
+          height: kIsWeb ? 0 : 50,
           // Define height for the rectangle
           margin: EdgeInsets.only(left: 8, right: 8, bottom: 8, top: 8),
           padding: EdgeInsets.all(8),
@@ -557,7 +560,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               Flexible(
                 child: Text(
                   item["title"],
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: kIsWeb
+                      ? TextStyle(color: kWhite)
+                      : TextStyle(color: Colors.white, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               ),

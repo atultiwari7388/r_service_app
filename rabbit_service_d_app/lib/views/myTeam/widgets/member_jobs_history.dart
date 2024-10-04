@@ -35,7 +35,7 @@ class MemberJobsHistoryScreen extends StatelessWidget {
               StreamBuilder(
                 stream: FirebaseFirestore.instance
                     .collection('jobs')
-                    .where("status", whereIn: [0, 1, 2, 3, 4])
+                    .where("status", whereIn: [0, 1, 2, 3, 4, 5])
                     .where("ownerId", isEqualTo: ownerId.toString())
                     .where("userId", isEqualTo: memebrId)
                     .orderBy("orderDate", descending: true)

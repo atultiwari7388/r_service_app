@@ -188,62 +188,79 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
                                             if (distance <=
                                                 controller.nearbyDistance) {
-                                              return UpcomingRequestCard(
-                                                orderId:
-                                                    job["orderId"].toString(),
-                                                userName:
-                                                    job["userName"].toString(),
-                                                vehicleName:
-                                                    "${job["companyName"]} (${job['vehicleNumber']})",
-                                                address:
-                                                    job['userDeliveryAddress'] ??
-                                                        "N/A",
-                                                serviceName:
-                                                    job['selectedService'] ??
-                                                        "N/A",
-                                                jobId: job['orderId'] ??
-                                                    "#Unknown",
-                                                imagePath: imagePath.isEmpty
-                                                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                                    : imagePath,
-                                                date: dateString,
-                                                buttonName: "Interested",
-                                                onButtonTap: () => controller
-                                                    .showConfirmDialog(
-                                                  index,
-                                                  data,
-                                                  job["userId"].toString(),
-                                                  job["orderId"].toString(),
-                                                  isImage,
-                                                  isPriceTypeEnable,
-                                                ),
-                                                onDasMapButton: () async {
-                                                  final Uri googleMapsUri =
-                                                      Uri.parse(
-                                                          'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
-                                                  // ignore: deprecated_member_use
-                                                  if (await canLaunch(
-                                                      googleMapsUri
-                                                          .toString())) {
-                                                    // ignore: deprecated_member_use
-                                                    await launch(googleMapsUri
-                                                        .toString());
-                                                  } else {
-                                                    // Handle the error if the URL cannot be launched
-                                                    print(
-                                                        'Could not launch Google Maps');
+                                              return FutureBuilder(
+                                                future: getAverageUserRating(
+                                                    job["userId"]),
+                                                builder: (ctx, snapshot) {
+                                                  double rating = 4.5;
+                                                  if (snapshot.hasData) {
+                                                    rating =
+                                                        snapshot.data ?? 4.5;
                                                   }
+                                                  return UpcomingRequestCard(
+                                                    orderId: job["orderId"]
+                                                        .toString(),
+                                                    userName: job["userName"]
+                                                        .toString(),
+                                                    vehicleName:
+                                                        "${job["companyName"]} (${job['vehicleNumber']})",
+                                                    address:
+                                                        job['userDeliveryAddress'] ??
+                                                            "N/A",
+                                                    serviceName:
+                                                        job['selectedService'] ??
+                                                            "N/A",
+                                                    jobId: job['orderId'] ??
+                                                        "#Unknown",
+                                                    imagePath: imagePath.isEmpty
+                                                        ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                                        : imagePath,
+                                                    date: dateString,
+                                                    buttonName: "Interested",
+                                                    onButtonTap: () =>
+                                                        controller
+                                                            .showConfirmDialog(
+                                                      index,
+                                                      data,
+                                                      job["userId"].toString(),
+                                                      job["orderId"].toString(),
+                                                      isImage,
+                                                      isPriceTypeEnable,
+                                                    ),
+                                                    onDasMapButton: () async {
+                                                      final Uri googleMapsUri =
+                                                          Uri.parse(
+                                                              'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                                      // ignore: deprecated_member_use
+                                                      if (await canLaunch(
+                                                          googleMapsUri
+                                                              .toString())) {
+                                                        // ignore: deprecated_member_use
+                                                        await launch(
+                                                            googleMapsUri
+                                                                .toString());
+                                                      } else {
+                                                        // Handle the error if the URL cannot be launched
+                                                        print(
+                                                            'Could not launch Google Maps');
+                                                      }
+                                                    },
+                                                    currentStatus:
+                                                        job['status'] ?? 0,
+                                                    rating: rating
+                                                        .toStringAsFixed(1),
+                                                    arrivalCharges: "30",
+                                                    km: "${distance.toStringAsFixed(0)} miles",
+                                                    isImage: isImage,
+                                                    // priceEnabled: isPriceTypeEnable,
+                                                    images: images,
+                                                    fixCharge: job["fixPrice"]
+                                                        .toString(),
+                                                    reviewSubmitted:
+                                                        job["reviewSubmitted"] ??
+                                                            false,
+                                                  );
                                                 },
-                                                currentStatus:
-                                                    job['status'] ?? 0,
-                                                rating: "",
-                                                arrivalCharges: "30",
-                                                km: "${distance.toStringAsFixed(0)} miles",
-                                                isImage: isImage,
-                                                // priceEnabled: isPriceTypeEnable,
-                                                images: images,
-                                                fixCharge:
-                                                    job["fixPrice"].toString(),
                                               );
                                             } else {
                                               return Container(); // Return an empty container if the distance is greater than nearbyDistance
@@ -265,6 +282,31 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             ),
           );
         });
+  }
+
+  Future<double> getAverageUserRating(String userId) async {
+    try {
+      final ratingsSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .collection('ratings')
+          .get();
+
+      if (ratingsSnapshot.docs.isEmpty) {
+        return 4.5; // Default rating if there are no ratings
+      }
+
+      double totalRating = 0;
+      for (var doc in ratingsSnapshot.docs) {
+        totalRating += (doc.data()['rating'] as num).toDouble();
+      }
+
+      double averageRating = totalRating / ratingsSnapshot.docs.length;
+      return averageRating;
+    } catch (e) {
+      print("Error fetching ratings: $e");
+      return 4.5; // Return default rating in case of an error
+    }
   }
 
   AppBar buildAppBar(DashboardController controller) {

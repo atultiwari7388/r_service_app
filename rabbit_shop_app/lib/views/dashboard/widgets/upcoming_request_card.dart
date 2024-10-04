@@ -41,6 +41,7 @@ class UpcomingRequestCard extends StatefulWidget {
     this.images = const [],
     this.payMode = "",
     this.onCancelBtnTap,
+    required this.reviewSubmitted, // New parameter
   });
 
   final String userName;
@@ -69,6 +70,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final bool isImage;
   final List images;
   final String payMode;
+  final bool reviewSubmitted; // New parameter
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
@@ -119,9 +121,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                         Row(
                           children: [
                             InfoBoxWidget(text: widget.km, color: kPrimary),
-                            widget.currentStatus == 0
-                                ? SizedBox()
-                                : RatingBoxWidget(rating: widget.rating),
+                            RatingBoxWidget(rating: widget.rating),
                             SizedBox(width: 5.w),
                             Text(widget.date,
                                 style: appStyle(13, kGray, FontWeight.bold)),
@@ -400,8 +400,12 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                                   ),
                                                   SizedBox(width: 15.w),
                                                   buildButton(
-                                                      kSuccess,
-                                                      "Rate Now",
+                                                      widget.reviewSubmitted
+                                                          ? kSecondary
+                                                          : kSuccess,
+                                                      widget.reviewSubmitted
+                                                          ? "Edit Review"
+                                                          : "Rate Now",
                                                       () => showRatingDialog(
                                                           context,
                                                           widget.dId,

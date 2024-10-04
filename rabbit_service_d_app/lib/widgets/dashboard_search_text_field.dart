@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/app_styles.dart';
@@ -26,10 +27,14 @@ class DashBoardSearchTextField extends StatelessWidget {
     );
 
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 4.0.h),
+      margin: kIsWeb
+          ? EdgeInsets.symmetric(vertical: 4.0.h)
+          : EdgeInsets.symmetric(vertical: 4.0.h),
       decoration: BoxDecoration(
         color: Colors.white, // White background
-        borderRadius: BorderRadius.circular(12.0.r), // Rounded corners
+        borderRadius: kIsWeb
+            ? BorderRadius.circular(12.r)
+            : BorderRadius.circular(12.0.r), // Rounded corners
       ),
       child: TextField(
         controller: controller,
@@ -41,9 +46,11 @@ class DashBoardSearchTextField extends StatelessWidget {
           enabledBorder: inputBorder,
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.all(8),
-          hintStyle: appStyle(14, kDark, FontWeight.normal),
-          labelStyle: appStyle(14, kSecondary, FontWeight.bold),
+          contentPadding: kIsWeb ? EdgeInsets.all(2) : const EdgeInsets.all(8),
+          hintStyle:
+              kIsWeb ? TextStyle() : appStyle(14, kDark, FontWeight.normal),
+          labelStyle:
+              kIsWeb ? TextStyle() : appStyle(14, kSecondary, FontWeight.bold),
         ),
       ),
     );

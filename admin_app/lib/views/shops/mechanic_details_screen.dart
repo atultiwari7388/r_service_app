@@ -81,6 +81,127 @@ class _MechanicDetailsScreenState extends State<MechanicDetailsScreen> {
     return dateFormat.format(dateTime);
   }
 
+  // New method to show reviews in a popup dialog
+  void _showReviewsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16.0),
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: fetchRatings(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return SizedBox(
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return SizedBox(
+                    height: 200,
+                    child: Center(child: Text('Error: ${snapshot.error}')),
+                  );
+                }
+
+                final data = snapshot.data!;
+                final ratings = data['ratings'] as List<Map<String, dynamic>>;
+                final averageRating = data['averageRating'] as double;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Reviews",
+                      style: appStyle(20, kDark, FontWeight.bold),
+                    ),
+                    SizedBox(height: 10),
+                    ratings.isEmpty
+                        ? Text("This driver has no ratings yet.",
+                            style: appStyle(14, kDark, FontWeight.normal))
+                        : Expanded(
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: ratings.length,
+                              itemBuilder: (context, index) {
+                                final rating = ratings[index];
+                                return Card(
+                                  elevation: 2.0,
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              rating['userName'],
+                                              style: appStyle(
+                                                  16, kDark, FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                        RatingBarIndicator(
+                                          rating: (rating['rating'] as double),
+                                          itemBuilder: (context, index) => Icon(
+                                            Icons.star,
+                                            color: Colors.amber,
+                                          ),
+                                          itemCount: 5,
+                                          itemSize: 20,
+                                          direction: Axis.horizontal,
+                                        ),
+                                        SizedBox(height: 5),
+                                        Text(
+                                          rating['review'],
+                                          style: appStyle(
+                                              14, kDark, FontWeight.normal),
+                                        ),
+                                        SizedBox(height: 5),
+                                        Text(
+                                          _formatDateTime(rating['timestamp']),
+                                          style: appStyle(12, kSecondary,
+                                              FontWeight.normal),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text("Close",
+                            style: appStyle(14, kPrimary, FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,7 +247,7 @@ class _MechanicDetailsScreenState extends State<MechanicDetailsScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Average Rating Section
+                    // Average Rating Section with "View Reviews" button
                     Row(
                       children: [
                         RatingBarIndicator(
@@ -144,78 +265,23 @@ class _MechanicDetailsScreenState extends State<MechanicDetailsScreen> {
                           "${averageRating.toStringAsFixed(1)} (${ratings.length})",
                           style: appStyle(16, kDark, FontWeight.bold),
                         ),
+                        Spacer(),
                       ],
                     ),
                     SizedBox(height: 20),
-                    // Reviews Section
-                    Text(
-                      "Reviews",
-                      style: appStyle(18, kDark, FontWeight.bold),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimary,
+                      ),
+                      onPressed: _showReviewsDialog,
+                      child: Text(
+                        "View Reviews",
+                        style: appStyle(12, kWhite, FontWeight.normal),
+                      ),
                     ),
-                    SizedBox(height: 10),
-                    ratings.isEmpty
-                        ? Text("This driver has no ratings yet.",
-                            style: appStyle(14, kDark, FontWeight.normal))
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
-                            itemCount: ratings.length,
-                            itemBuilder: (context, index) {
-                              final rating = ratings[index];
-                              return Card(
-                                elevation: 2.0,
-                                margin:
-                                    const EdgeInsets.symmetric(vertical: 8.0),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            rating['userName'],
-                                            style: appStyle(
-                                                16, kDark, FontWeight.bold),
-                                          ),
-                                          RatingBarIndicator(
-                                            rating:
-                                                (rating['rating'] as double),
-                                            itemBuilder: (context, index) =>
-                                                Icon(
-                                              Icons.star,
-                                              color: Colors.amber,
-                                            ),
-                                            itemCount: 5,
-                                            itemSize: 20,
-                                            direction: Axis.horizontal,
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        rating['review'],
-                                        style: appStyle(
-                                            14, kDark, FontWeight.normal),
-                                      ),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        _formatDateTime(rating['timestamp']),
-                                        style: appStyle(
-                                            12, kSecondary, FontWeight.normal),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+
+                    // Remove the inline Reviews Section
+                    // Optionally, you can remove the "Reviews" header and related widgets below
                   ],
                 );
               },

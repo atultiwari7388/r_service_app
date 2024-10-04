@@ -127,6 +127,7 @@ class _HistoryCompletedScreenState extends State<HistoryCompletedScreen> {
                               //     _selectedCardIndex != index,
                               languages: job["languages"] ?? [],
                               isImage: job["isImageSelected"],
+                              reviewSubmitted: job["reviewSubmitted"],
                               onCallTap: () {
                                 makePhoneCall(job["mNumber"].toString());
                               },

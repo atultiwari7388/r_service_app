@@ -28,6 +28,7 @@ class RequestAcceptHistoryCard extends StatefulWidget {
     this.languages = const [],
     required this.currentStatus,
     required this.isImage,
+    required this.reviewSubmitted,
   });
 
   final String shopName;
@@ -46,6 +47,7 @@ class RequestAcceptHistoryCard extends StatefulWidget {
   final List<dynamic> languages;
   final int currentStatus;
   final bool isImage;
+  final bool reviewSubmitted;
 
   @override
   State<RequestAcceptHistoryCard> createState() =>
@@ -94,7 +96,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                     SizedBox(height: 4.h),
                     Row(
                       children: [
-                        _buildInfoBox("${widget.time} mints", Colors.red),
+                        _buildInfoBox("${widget.time} mins", Colors.red),
                         SizedBox(width: 6.w),
                         _buildInfoBox(widget.distance, kPrimary),
                         SizedBox(width: 6.w),
@@ -314,11 +316,23 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 ),
                               ),
                               SizedBox(width: 15.w),
+                              // buildButton(
+                              //     kSuccess,
+                              //     "Rate Now",
+                              //     () => showRatingDialog(context, widget.mId,
+                              //         widget.jobId.toString()))
                               buildButton(
-                                  kSuccess,
-                                  "Rate Now",
-                                  () => showRatingDialog(context, widget.mId,
-                                      widget.jobId.toString()))
+                                widget.reviewSubmitted ? kPrimary : kSuccess,
+                                widget.reviewSubmitted
+                                    ? "Edit Rating"
+                                    : "Rate Now",
+                                () => showRatingDialog(
+                                    context,
+                                    widget.mId,
+                                    widget.jobId.toString(),
+                                    widget.reviewSubmitted,
+                                    widget.userId),
+                              )
                             ],
                           )
                         : SizedBox()
@@ -520,9 +534,21 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
     );
   }
 
-  void showRatingDialog(BuildContext context, String mId, String orderId) {
+  void showRatingDialog(BuildContext context, String mId, String orderId,
+      bool isEdit, String uId) async {
     double _rating = 0;
     String _review = '';
+
+    if (isEdit) {
+      // Fetch existing rating and review from Firestore
+      DocumentSnapshot jobSnapshot = await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(widget.jobId)
+          .get();
+
+      _rating = jobSnapshot.get('rating')?.toDouble() ?? 0;
+      _review = jobSnapshot.get('review') ?? '';
+    }
 
     showDialog(
       context: context,
@@ -569,7 +595,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
             ElevatedButton(
               onPressed: () async {
                 await _updateRatingAndReview(
-                    mId, _rating, _review, orderId.toString());
+                    mId, _rating, _review, orderId.toString(), uId);
                 Navigator.of(context).pop();
               },
               child: Text('Submit'),
@@ -584,12 +610,23 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
     );
   }
 
-  Future<void> _updateRatingAndReview(
-      String mId, double rating, String review, String orderId) async {
+  Future<void> _updateRatingAndReview(String mId, double rating, String review,
+      String orderId, String uId) async {
     try {
       await FirebaseFirestore.instance
           .collection('jobs')
           .doc(widget.jobId)
+          .update({
+        'rating': rating,
+        'review': review,
+        "reviewSubmitted": true,
+      });
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uId)
+          .collection("history")
+          .doc(orderId)
           .update({
         'rating': rating,
         'review': review,

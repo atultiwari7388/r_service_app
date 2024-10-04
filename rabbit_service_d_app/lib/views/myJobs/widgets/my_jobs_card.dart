@@ -718,10 +718,6 @@ class _MyJobsCardState extends State<MyJobsCard> {
                                 icon: Icon(Icons.keyboard_arrow_down_rounded),
                                 elevation: 16,
                                 style: appStyle(16, kDark, FontWeight.normal),
-                                // underline: Container(
-                                //   height: 2.h,
-                                //   color: kPrimary,
-                                // ),
                                 onChanged: (num? newValue) {
                                   if (newValue != null &&
                                       newValue != _selectedDistance) {

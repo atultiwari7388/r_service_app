@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/app_styles.dart';
@@ -38,7 +39,10 @@ class CustomButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
           ),
-          child: Text(text, style: appStyle(16, kWhite, FontWeight.w500)),
+          child: Text(text,
+              style: kIsWeb
+                  ? TextStyle(color: kWhite)
+                  : appStyle(16, kWhite, FontWeight.w500)),
         ),
       ),
     );

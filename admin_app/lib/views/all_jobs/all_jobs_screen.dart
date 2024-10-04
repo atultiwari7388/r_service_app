@@ -438,6 +438,11 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
               mechanicNumber: mNumber,
               status: status,
               orderDate: orderDate,
+              payMode: data["payMode"],
+              isImageSelected: data["isImageSelected"] ?? false,
+              isPriceEnabled: data["fixPriceEnabled"] ?? false,
+              fixPrice: data["fixPrice"].toString(),
+              arrivingCharges: data["arrivalCharges"].toString(),
             ),
           );
         },

@@ -178,6 +178,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 // priceEnabled: jobs["fixPriceEnabled"] ?? false,
                 images: images,
                 payMode: jobs["payMode"].toString(),
+                reviewSubmitted: jobs["reviewSubmitted"],
               );
             },
           ),

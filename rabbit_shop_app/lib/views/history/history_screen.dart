@@ -305,9 +305,9 @@ class _UpcomingAndCompletedJobsScreenState
                 km: "${distance.toStringAsFixed(0)} miles",
                 dId: dId.toString(),
                 isImage: isImage,
-                // priceEnabled: jobs["fixPriceEnabled"] ?? false,
                 images: images,
                 payMode: payMode,
+                reviewSubmitted: jobs["reviewSubmitted"],
               );
             },
           ),

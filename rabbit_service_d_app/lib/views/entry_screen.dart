@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
@@ -87,7 +88,7 @@ class _EntryScreenState extends State<EntryScreen> {
               children: pages,
             ),
       bottomNavigationBar: BottomNavigationBar(
-        elevation: 5,
+        elevation: kIsWeb ? 1 : 5,
         items: [
           const BottomNavigationBarItem(
             icon: Icon(AntDesign.home),
@@ -108,7 +109,8 @@ class _EntryScreenState extends State<EntryScreen> {
         showUnselectedLabels: true,
         unselectedIconTheme: const IconThemeData(color: kGray),
         selectedIconTheme: const IconThemeData(color: kPrimary),
-        selectedLabelStyle: appStyle(12, kSecondary, FontWeight.bold),
+        selectedLabelStyle:
+            kIsWeb ? TextStyle() : appStyle(12, kSecondary, FontWeight.bold),
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
