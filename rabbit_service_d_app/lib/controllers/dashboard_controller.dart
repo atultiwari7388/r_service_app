@@ -638,6 +638,7 @@ class DashboardController extends GetxController {
         'mechanicAddress': "",
         'mecLatitude': "",
         'mecLongtitude': "",
+        'nearByDistance': 5,
       };
 
       // Save order details to user's history subcollection
@@ -664,7 +665,7 @@ class DashboardController extends GetxController {
     } finally {
       images.clear();
       isImageSelected = false;
-      isImageMandatory =false;
+      isImageMandatory = false;
       update();
       setLoading(false);
     }

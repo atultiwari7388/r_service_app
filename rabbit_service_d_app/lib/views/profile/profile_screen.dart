@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -67,7 +68,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: kLightWhite,
         elevation: 0,
         title: ReusableText(
-            text: "Menu", style: appStyle(20, kDark, FontWeight.normal)),
+            text: "Menu",
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(20, kDark, FontWeight.normal)),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -95,7 +99,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           "Manage Orders",
-                          style: appStyle(18, kPrimary, FontWeight.normal),
+                          style: kIsWeb
+                              ? TextStyle(color: kPrimary)
+                              : appStyle(18, kPrimary, FontWeight.normal),
                         ),
                         SizedBox(width: 5.w),
                         Container(width: 30.w, height: 3.h, color: kSecondary),
@@ -137,7 +143,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           "More",
-                          style: appStyle(18, kPrimary, FontWeight.normal),
+                          style: kIsWeb
+                              ? TextStyle(color: kPrimary)
+                              : appStyle(18, kPrimary, FontWeight.normal),
                         ),
                         SizedBox(width: 5.w),
                         Container(width: 30.w, height: 3.h, color: kSecondary),
@@ -173,7 +181,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading:
             Image.asset(iconName, height: 20.h, width: 20.w, color: kPrimary),
         trailing: const Icon(Icons.arrow_forward_ios, size: 18, color: kGray),
-        title: Text(title, style: appStyle(13, kDark, FontWeight.normal)),
+        title: Text(title,
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(13, kDark, FontWeight.normal)),
         // onTap: onTap,
       ),
     );
@@ -182,7 +193,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 //================================ top Profile section =============================
   Container buildTopProfileSection() {
     return Container(
-      height: 120.h,
+      height: kIsWeb ? 180.h : 120.h,
       width: double.maxFinite,
       padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.w),
       decoration: BoxDecoration(
@@ -219,7 +230,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: profilePictureUrl.isEmpty
                     ? Text(
                         userName.isNotEmpty ? userName[0] : '',
-                        style: appStyle(20, kWhite, FontWeight.bold),
+                        style: kIsWeb
+                            ? TextStyle(color: kWhite)
+                            : appStyle(20, kWhite, FontWeight.bold),
                       )
                     : CircleAvatar(
                         radius: 33.r,
@@ -234,16 +247,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     ReusableText(
                       text: userName.isNotEmpty ? userName : '',
-                      style: appStyle(15, kDark, FontWeight.bold),
+                      style: kIsWeb
+                          ? TextStyle(color: kDark)
+                          : appStyle(15, kDark, FontWeight.bold),
                     ),
                     ReusableText(
                       text: email.isNotEmpty ? email : '',
-                      style: appStyle(12, kDark, FontWeight.normal),
+                      style: kIsWeb
+                          ? TextStyle(color: kDark)
+                          : appStyle(12, kDark, FontWeight.normal),
                     ),
                     Spacer(),
                     Container(
                       height: 30.h,
-                      width: 140.w,
+                      width: kIsWeb ? 80.w : 140.w,
                       // padding: EdgeInsets.only(left: 10.w),
                       decoration: BoxDecoration(
                           color: kSuccess.withOpacity(0.8),
@@ -256,7 +273,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           SizedBox(width: 5.w),
                           ReusableText(
                             text: "\$${wallet.toString()}",
-                            style: appStyle(17, kWhite, FontWeight.bold),
+                            style: kIsWeb
+                                ? TextStyle(color: kWhite)
+                                : appStyle(17, kWhite, FontWeight.bold),
                           ),
                         ],
                       ),

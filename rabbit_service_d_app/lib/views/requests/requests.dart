@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -39,7 +40,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
         elevation: 0,
         centerTitle: true,
         title: ReusableText(
-            text: "Requests", style: appStyle(20, kDark, FontWeight.normal)),
+            text: "Requests",
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(20, kDark, FontWeight.normal)),
         actions: [
           GestureDetector(
             onTap: () => Get.to(() => const ProfileScreen(),
@@ -71,7 +75,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   if (userPhoto.isEmpty) {
                     return Text(
                       userName.isNotEmpty ? userName[0] : '',
-                      style: appStyle(20, kWhite, FontWeight.w500),
+                      style: kIsWeb
+                          ? TextStyle(color: kWhite)
+                          : appStyle(20, kWhite, FontWeight.w500),
                     );
                   } else {
                     return ClipOval(
@@ -152,7 +158,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                             SizedBox(width: 4.w),
                             Text(
                               _selectedSortOption, // Show the selected option
-                              style: appStyle(16.sp, kPrimary, FontWeight.w500),
+                              style: kIsWeb
+                                  ? TextStyle(color: kPrimary)
+                                  : appStyle(16.sp, kPrimary, FontWeight.w500),
                             ),
                           ],
                         ),
@@ -266,7 +274,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
       ),
       child: Text(
         text,
-        style: appStyle(12.sp, color, FontWeight.normal),
+        style: kIsWeb
+            ? TextStyle(color: color)
+            : appStyle(12.sp, color, FontWeight.normal),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -215,12 +216,16 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                 child: ListTile(
                                   title: Text(
                                     name,
-                                    style: appStyle(16, kDark, FontWeight.bold),
+                                    style: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(16, kDark, FontWeight.bold),
                                   ),
                                   subtitle: Text(
                                     vehicleDetails,
-                                    style:
-                                        appStyle(14, kDark, FontWeight.normal),
+                                    style: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(
+                                            14, kDark, FontWeight.normal),
                                   ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/app_styles.dart';
@@ -22,11 +23,13 @@ class RatingBoxWidget extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(iconData, color: Colors.green, size: 16.w),
+          Icon(iconData, color: Colors.green, size: kIsWeb ? 0 : 16.w),
           SizedBox(width: 4.w),
           Text(
             rating,
-            style: appStyle(13.sp, kDark, FontWeight.bold),
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(13.sp, kDark, FontWeight.bold),
           ),
         ],
       ),

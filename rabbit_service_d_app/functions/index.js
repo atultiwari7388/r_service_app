@@ -23,7 +23,8 @@ const calculateDistance = (startLat, startLng, endLat, endLng) => {
 const toRadians = (degrees) => {
   return degrees * (Math.PI / 180)
 }
-// Function to send a new notification to the nearby Mechanics..
+
+// Function to send a new notification to the nearby Mechanics when a job is created
 exports.sendNewMechanicNotification = functions.firestore
   .document('jobs/{jobId}')
   .onCreate(async (snapshot, context) => {
@@ -31,6 +32,7 @@ exports.sendNewMechanicNotification = functions.firestore
       const job = snapshot.data()
       const userLat = job.userLat // Assuming these fields exist in the job document
       const userLng = job.userLong
+      const nearByDistance = job.nearByDistance || 5.0 // Fetching nearbyDistance from the job document, with a default fallback value
 
       console.log('New job request. Job:', job)
 
@@ -40,24 +42,7 @@ exports.sendNewMechanicNotification = functions.firestore
       }
 
       console.log('Job Location:', jobLocation)
-
-      // Fetch the dynamic nearby distance value from the metadata collection
-      const metadataDoc = await admin
-        .firestore()
-        .collection('metadata')
-        .doc('nearByDistance')
-        .get()
-      let nearByDistance = 5.0 // Default value
-
-      if (metadataDoc.exists) {
-        nearByDistance = metadataDoc.data().value || nearByDistance
-        console.log('Fetched nearByDistance:', nearByDistance)
-      } else {
-        console.log(
-          'Metadata document not found. Using default nearByDistance:',
-          nearByDistance
-        )
-      }
+      console.log('Using nearbyDistance from the job:', nearByDistance)
 
       const mechanicsSnapshot = await admin
         .firestore()
@@ -90,7 +75,7 @@ exports.sendNewMechanicNotification = functions.firestore
           `Mechanic ID: ${mechanicDoc.id}, Distance to job: ${distance} kms`
         )
 
-        // Check if the distance is within a specified range (e.g., 5 km)
+        // Check if the distance is within the range defined by nearbyDistance
         if (distance < nearByDistance) {
           console.log('Mechanic is in range. Sending notification...')
 
@@ -140,6 +125,29 @@ exports.sendNewMechanicNotification = functions.firestore
       console.error('Error:', error)
       return null
     }
+  })
+
+// Function to re-send notifications when nearbyDistance is updated in the job
+exports.updateMechanicNotifications = functions.firestore
+  .document('jobs/{jobId}')
+  .onUpdate(async (change, context) => {
+    const beforeData = change.before.data()
+    const afterData = change.after.data()
+
+    const previousNearbyDistance = beforeData.nearByDistance
+    const newNearbyDistance = afterData.nearByDistance
+
+    // Check if nearbyDistance has changed
+    if (previousNearbyDistance !== newNearbyDistance) {
+      console.log(
+        `nearByDistance updated from ${previousNearbyDistance} km to ${newNearbyDistance} km for job ${context.params.jobId}`
+      )
+
+      // Trigger sending notifications again with the new nearbyDistance value
+      return exports.sendNewMechanicNotification(change.after, context)
+    }
+
+    return null
   })
 
 // Function to send a notification to the user when the mechanic accepts the job

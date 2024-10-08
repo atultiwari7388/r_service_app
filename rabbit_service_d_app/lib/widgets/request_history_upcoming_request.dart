@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -91,7 +92,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                   children: [
                     Text(
                       widget.shopName,
-                      style: appStyle(16.sp, kDark, FontWeight.w500),
+                      style: kIsWeb
+                          ? TextStyle(color: kDark)
+                          : appStyle(16.sp, kDark, FontWeight.w500),
                     ),
                     SizedBox(height: 4.h),
                     Row(
@@ -121,10 +124,13 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                               ),
                               child: Text(
                                 widget.languages[i],
-                                style: appStyle(
-                                    13.sp,
-                                    i.isEven ? kPrimary : kSecondary,
-                                    FontWeight.bold),
+                                style: kIsWeb
+                                    ? TextStyle(
+                                        color: i.isEven ? kPrimary : kSecondary)
+                                    : appStyle(
+                                        13.sp,
+                                        i.isEven ? kPrimary : kSecondary,
+                                        FontWeight.bold),
                               ),
                             ),
                           ]
@@ -154,7 +160,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                             width: 145.w,
                             child: Text(
                               "Fix Charges",
-                              style: appStyle(16.sp, kDark, FontWeight.w500),
+                              style: kIsWeb
+                                  ? TextStyle(color: kDark)
+                                  : appStyle(16.sp, kDark, FontWeight.w500),
                             ),
                           ),
                           Container(
@@ -165,7 +173,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                           ),
                           Text(
                             "\$${widget.fixCharges}",
-                            style: appStyle(16.sp, kDark, FontWeight.w500),
+                            style: kIsWeb
+                                ? TextStyle(color: kDark)
+                                : appStyle(16.sp, kDark, FontWeight.w500),
                           ),
                         ],
                       )
@@ -176,7 +186,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                             width: 145.w,
                             child: Text(
                               "Arrival Charges",
-                              style: appStyle(16.sp, kDark, FontWeight.w500),
+                              style: kIsWeb
+                                  ? TextStyle(color: kDark)
+                                  : appStyle(16.sp, kDark, FontWeight.w500),
                             ),
                           ),
                           Container(
@@ -187,7 +199,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                           ),
                           Text(
                             "\$${widget.arrivalCharges}",
-                            style: appStyle(16.sp, kDark, FontWeight.w500),
+                            style: kIsWeb
+                                ? TextStyle(color: kDark)
+                                : appStyle(16.sp, kDark, FontWeight.w500),
                           ),
                         ],
                       ),
@@ -207,8 +221,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 width: 145.w,
                                 child: Text(
                                   "Per Hour Charges",
-                                  style:
-                                      appStyle(16.sp, kDark, FontWeight.w500),
+                                  style: kIsWeb
+                                      ? TextStyle(color: kDark)
+                                      : appStyle(16.sp, kDark, FontWeight.w500),
                                 ),
                               ),
                               Container(
@@ -219,7 +234,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                               ),
                               Text(
                                 "\$${widget.perHourCharges}",
-                                style: appStyle(16.sp, kDark, FontWeight.w500),
+                                style: kIsWeb
+                                    ? TextStyle(color: kDark)
+                                    : appStyle(16.sp, kDark, FontWeight.w500),
                               ),
                             ],
                           ),
@@ -271,10 +288,12 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                         child: Center(
                           child: Text("Ongoing",
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: kSecondary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w500)),
+                              style: kIsWeb
+                                  ? TextStyle(color: kSecondary)
+                                  : TextStyle(
+                                      color: kSecondary,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w500)),
                         ),
                       ),
                     widget.currentStatus == 4
@@ -291,8 +310,10 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 onPressed: widget.onCallTap,
                                 child: Text(
                                   "Need to talk",
-                                  style: appStyle(
-                                      13.sp, Colors.white, FontWeight.bold),
+                                  style: kIsWeb
+                                      ? TextStyle(color: kWhite)
+                                      : appStyle(
+                                          13.sp, Colors.white, FontWeight.bold),
                                 ),
                               ),
                     widget.currentStatus == 5
@@ -309,10 +330,12 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 child: Center(
                                   child: Text("Completed",
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          color: kSecondary,
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.w500)),
+                                      style: kIsWeb
+                                          ? TextStyle(color: kSecondary)
+                                          : TextStyle(
+                                              color: kSecondary,
+                                              fontSize: 16.sp,
+                                              fontWeight: FontWeight.w500)),
                                 ),
                               ),
                               SizedBox(width: 15.w),
@@ -359,7 +382,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
       onPressed: onTap,
       child: Text(
         text,
-        style: appStyle(13.sp, Colors.white, FontWeight.bold),
+        style: kIsWeb
+            ? TextStyle(color: kWhite)
+            : appStyle(13.sp, Colors.white, FontWeight.bold),
       ),
     );
   }
@@ -509,7 +534,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
       ),
       child: Text(
         text,
-        style: appStyle(13.sp, color, FontWeight.bold),
+        style: kIsWeb
+            ? TextStyle(color: color)
+            : appStyle(13.sp, color, FontWeight.bold),
       ),
     );
   }
@@ -527,7 +554,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
           SizedBox(width: 4.w),
           Text(
             rating,
-            style: appStyle(13.sp, kDark, FontWeight.bold),
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(13.sp, kDark, FontWeight.bold),
           ),
         ],
       ),

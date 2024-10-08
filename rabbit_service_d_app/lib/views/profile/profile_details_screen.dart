@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
@@ -451,10 +452,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                         SizedBox(width: 10.w),
                         Text(
                           title,
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: kIsWeb
+                              ? TextStyle()
+                              : TextStyle(
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
                         ),
                       ],
                     ),

@@ -1,11 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import '../../../services/get_month_string.dart';
-import '../../myJobs/widgets/my_jobs_card.dart';
-import '../../requests/requests.dart';
 import 'memebr_jobs_card.dart';
 
 class MemberJobsHistoryScreen extends StatelessWidget {

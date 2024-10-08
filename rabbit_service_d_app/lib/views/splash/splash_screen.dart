@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -31,10 +32,17 @@ class _SplashScreenState extends State<SplashScreen> {
             duration: const Duration(milliseconds: 900));
         log("User is authenticated");
       } else {
-        Get.offAll(() => const OnBoardingScreen(),
-            transition: Transition.cupertino,
-            duration: const Duration(milliseconds: 900));
-        log("User is null");
+        if (kIsWeb) {
+          Get.offAll(() => const LoginScreen(),
+              transition: Transition.cupertino,
+              duration: const Duration(milliseconds: 900));
+          log("User is null");
+        } else {
+          Get.offAll(() => const OnBoardingScreen(),
+              transition: Transition.cupertino,
+              duration: const Duration(milliseconds: 900));
+          log("User is null");
+        }
       }
     });
   }

@@ -543,7 +543,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           margin: EdgeInsets.only(left: 8, right: 8, bottom: 8, top: 8),
           padding: EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: kPrimary,
+            color: kSecondary,
             borderRadius: BorderRadius.circular(8), // Optional: rounded corners
           ),
           child: Column(

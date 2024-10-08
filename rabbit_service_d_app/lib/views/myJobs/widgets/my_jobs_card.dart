@@ -1,523 +1,13 @@
-// import 'dart:async';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_screenutil/flutter_screenutil.dart';
-// import 'package:get/get.dart';
-// import 'package:intl/intl.dart';
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:geolocator/geolocator.dart';
-// import 'package:geoflutterfire2/geoflutterfire2.dart';
-// import '../../../utils/app_styles.dart';
-// import '../../../utils/constants.dart';
-// import '../../../widgets/rating_box_widgets.dart';
-// import '../../history/widgets/history_completed_screen.dart';
-
-// class MyJobsCard extends StatefulWidget {
-//   const MyJobsCard({
-//     super.key,
-//     required this.companyNameAndVehicleName,
-//     required this.address,
-//     required this.serviceName,
-//     this.cancelationReason = "",
-//     required this.jobId,
-//     this.imagePath = "",
-//     required this.dateTime,
-//     this.isStatusCompleted = false,
-//     this.onButtonTap,
-//     this.onCancelBtnTap,
-//     required this.currentStatus,
-//     this.nearByDistance = 0,
-//     this.onDistanceChanged,
-//   });
-
-//   final String companyNameAndVehicleName;
-//   final String address;
-//   final String serviceName;
-//   final String cancelationReason;
-//   final String jobId;
-//   final String imagePath;
-//   final DateTime dateTime;
-//   final bool isStatusCompleted;
-//   final void Function()? onButtonTap;
-//   final void Function()? onCancelBtnTap;
-//   final int currentStatus;
-//   final num nearByDistance;
-//   final Function(num)? onDistanceChanged;
-
-//   @override
-//   State<MyJobsCard> createState() => _MyJobsCardState();
-// }
-
-// class _MyJobsCardState extends State<MyJobsCard> {
-//   Timer? _timer;
-//   int _remainingTime = 5 * 60; // 5 minutes in seconds
-//   bool _showTimer = true;
-//   num? _selectedDistance;
-//   List<Map<String, dynamic>> _mechanics = [];
-//   bool _isFetchingMechanics = false;
-//   String _mechanicFetchError = '';
-
-//   final Geoflutterfire geo = Geoflutterfire();
-//   StreamSubscription? _mechanicsSubscription;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     calculateRemainingTime();
-//     if (_remainingTime > 0 && widget.currentStatus == 0) {
-//       startTimer();
-//     } else {
-//       _showTimer = false;
-//     }
-//     _selectedDistance = widget.nearByDistance;
-//     if (widget.currentStatus == 0) {
-//       fetchMechanics(_selectedDistance!);
-//     }
-//   }
-
-//   /// Calculates the remaining time based on job creation time.
-//   void calculateRemainingTime() {
-//     DateTime jobTime = widget.dateTime;
-//     DateTime now = DateTime.now();
-
-//     // Calculate the difference in seconds
-//     int elapsedSeconds = now.difference(jobTime).inSeconds;
-
-//     // Set remaining time
-//     _remainingTime = 5 * 60 - elapsedSeconds;
-
-//     if (_remainingTime <= 0) {
-//       _remainingTime = 0;
-//       _showTimer = false;
-//     }
-//   }
-
-//   /// Starts the countdown timer.
-//   void startTimer() {
-//     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-//       if (_remainingTime > 0) {
-//         setState(() {
-//           _remainingTime--;
-//         });
-//       } else {
-//         _timer?.cancel();
-//         setState(() {
-//           _showTimer = false;
-//         });
-//       }
-//     });
-//   }
-
-//   /// Formats the remaining time as MM:SS.
-//   String getFormattedTime() {
-//     int minutes = _remainingTime ~/ 60;
-//     int seconds = _remainingTime % 60;
-//     String formattedMinutes = minutes.toString().padLeft(2, '0');
-//     String formattedSeconds = seconds.toString().padLeft(2, '0');
-//     return '$formattedMinutes:$formattedSeconds';
-//   }
-
-//   @override
-//   void dispose() {
-//     _timer?.cancel();
-//     _mechanicsSubscription?.cancel();
-//     super.dispose();
-//   }
-
-//   @override
-//   void didUpdateWidget(covariant MyJobsCard oldWidget) {
-//     super.didUpdateWidget(oldWidget);
-//     if (oldWidget.nearByDistance != widget.nearByDistance) {
-//       setState(() {
-//         _selectedDistance = widget.nearByDistance;
-//       });
-//       if (widget.currentStatus == 0) {
-//         fetchMechanics(_selectedDistance!);
-//       }
-//     }
-//   }
-
-//   /// Gets the user's current location.
-//   Future<Position?> _getCurrentLocation() async {
-//     bool serviceEnabled;
-//     LocationPermission permission;
-
-//     // Check if location services are enabled.
-//     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-//     if (!serviceEnabled) {
-//       Get.snackbar("Location Error", "Location services are disabled.",
-//           snackPosition: SnackPosition.BOTTOM,
-//           backgroundColor: Colors.red,
-//           colorText: Colors.white);
-//       return null;
-//     }
-
-//     // Check for location permissions.
-//     permission = await Geolocator.checkPermission();
-//     if (permission == LocationPermission.denied) {
-//       permission = await Geolocator.requestPermission();
-//       if (permission == LocationPermission.denied) {
-//         Get.snackbar("Permission Denied", "Location permissions are denied.",
-//             snackPosition: SnackPosition.BOTTOM,
-//             backgroundColor: Colors.red,
-//             colorText: Colors.white);
-//         return null;
-//       }
-//     }
-
-//     if (permission == LocationPermission.deniedForever) {
-//       Get.snackbar(
-//           "Permission Denied", "Location permissions are permanently denied.",
-//           snackPosition: SnackPosition.BOTTOM,
-//           backgroundColor: Colors.red,
-//           colorText: Colors.white);
-//       return null;
-//     }
-
-//     // If permissions are granted, get the position.
-//     return await Geolocator.getCurrentPosition(
-//         desiredAccuracy: LocationAccuracy.high);
-//   }
-
-//   /// Fetches available mechanics within the selected distance.
-//   void fetchMechanics(num distanceKm) async {
-//     setState(() {
-//       _isFetchingMechanics = true;
-//       _mechanics = [];
-//       _mechanicFetchError = '';
-//     });
-
-//     Position? position = await _getCurrentLocation();
-
-//     if (position == null) {
-//       setState(() {
-//         _isFetchingMechanics = false;
-//         _mechanicFetchError = 'Unable to get current location.';
-//       });
-//       return;
-//     }
-
-//     GeoFirePoint center =
-//         geo.point(latitude: position.latitude, longitude: position.longitude);
-
-//     // Firestore collection reference
-//     CollectionReference mechanicsRef =
-//         FirebaseFirestore.instance.collection('mechanics');
-
-//     // Query Firestore using GeoFlutterFire
-//     Stream<List<DocumentSnapshot>> stream =
-//         geo.collection(collectionRef: mechanicsRef).within(
-//               center: center,
-//               radius: distanceKm,
-//               field: 'location',
-//               strictMode: true,
-//             );
-
-//     // Listen to the stream
-//     _mechanicsSubscription?.cancel();
-//     _mechanicsSubscription = stream.listen((List<DocumentSnapshot> documents) {
-//       List<Map<String, dynamic>> mechanicsList = [];
-//       for (var doc in documents) {
-//         if (doc.exists) {
-//           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-//           if (data['active'] == true) {
-//             mechanicsList.add(data);
-//           }
-//         }
-//       }
-
-//       setState(() {
-//         _mechanics = mechanicsList;
-//         _isFetchingMechanics = false;
-//       });
-//     }, onError: (error) {
-//       setState(() {
-//         _mechanicFetchError = 'Error fetching mechanics: $error';
-//         _isFetchingMechanics = false;
-//       });
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // Ensure unique distance options
-//     List<num> distanceOptions =
-//         {widget.nearByDistance, 10, 15, 20, 25, 30}.toList();
-
-//     return Container(
-//       padding: EdgeInsets.all(5.w),
-//       margin: EdgeInsets.all(2.h),
-//       decoration: BoxDecoration(
-//         color: kWhite,
-//         borderRadius: BorderRadius.circular(12.w),
-//         boxShadow: [
-//           BoxShadow(
-//             color: kSecondary.withOpacity(0.1),
-//             blurRadius: 6.w,
-//             offset: Offset(0, 2.h),
-//           ),
-//         ],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Row(
-//             children: [
-//               // Shop image
-//               CircleAvatar(
-//                 radius: 24.w,
-//                 backgroundImage: widget.imagePath.isNotEmpty
-//                     ? NetworkImage(widget.imagePath)
-//                     : const AssetImage('assets/images/default_avatar.png')
-//                         as ImageProvider,
-//                 backgroundColor: kSecondary.withOpacity(0.1),
-//               ),
-//               SizedBox(width: 12.w),
-//               Expanded(
-//                 child: Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     // Job ID and DateTime
-//                     Row(
-//                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                       children: [
-//                         Text(
-//                           widget.jobId,
-//                           style: appStyle(12, kSecondary, FontWeight.bold),
-//                         ),
-//                         Text(
-//                           DateFormat('dd MMM yyyy, hh:mm a')
-//                               .format(widget.dateTime),
-//                           style: appStyle(13, kGray, FontWeight.bold),
-//                         ),
-//                       ],
-//                     ),
-//                     SizedBox(height: 4.h),
-//                     // Company Name and Vehicle Name
-//                     Text(
-//                       widget.companyNameAndVehicleName,
-//                       style: appStyle(16.sp, kDark, FontWeight.w500),
-//                     ),
-//                     SizedBox(height: 4.h),
-//                     // Address
-//                     SizedBox(
-//                       width: double.infinity,
-//                       child: Text(
-//                         widget.address,
-//                         maxLines: 2,
-//                         style: appStyle(15.sp, kGray, FontWeight.bold),
-//                       ),
-//                     ),
-//                     if (widget.currentStatus == 0)
-//                       Padding(
-//                         padding: EdgeInsets.only(bottom: 12.h),
-//                         child: DropdownButton<num>(
-//                           isExpanded: true,
-//                           value: _selectedDistance,
-//                           icon: Icon(Icons.arrow_downward),
-//                           elevation: 16,
-//                           style: appStyle(16, kDark, FontWeight.normal),
-//                           underline: Container(
-//                             height: 2.h,
-//                             color: kPrimary,
-//                           ),
-//                           onChanged: (num? newValue) {
-//                             if (newValue != null &&
-//                                 newValue != _selectedDistance) {
-//                               setState(() {
-//                                 _selectedDistance = newValue;
-//                               });
-//                               widget.onDistanceChanged?.call(newValue);
-//                               fetchMechanics(newValue);
-//                             }
-//                           },
-//                           items: distanceOptions
-//                               .map<DropdownMenuItem<num>>((num value) {
-//                             return DropdownMenuItem<num>(
-//                               value: value,
-//                               child: Text("$value km"),
-//                             );
-//                           }).toList(),
-//                         ),
-//                       ),
-//                     SizedBox(height: 4.h),
-//                     // Timer
-//                     if (widget.currentStatus == 0 && _showTimer)
-//                       RatingBoxWidget(
-//                         rating: getFormattedTime(),
-//                         iconData: Icons.timer,
-//                       ),
-//                   ],
-//                 ),
-//               ),
-//             ],
-//           ),
-//           SizedBox(height: 12.h),
-//           // Service Details and Actions
-//           Container(
-//             padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),
-//             margin: EdgeInsets.symmetric(horizontal: 5.w, vertical: 5.h),
-//             decoration: BoxDecoration(
-//               color: kSecondary.withOpacity(0.1),
-//               borderRadius: BorderRadius.circular(12.r),
-//             ),
-//             child: Column(
-//               children: [
-//                 buildReusableRow("Selected Service", widget.serviceName),
-//                 if (widget.currentStatus == -1)
-//                   buildReusableRow("Cancel Reason", widget.cancelationReason),
-//                 SizedBox(height: 15.h),
-//                 // Action Buttons
-//                 if (widget.currentStatus == -1)
-//                   Container(
-//                     height: 40.h,
-//                     width: double.infinity,
-//                     decoration: BoxDecoration(
-//                       color: kPrimary,
-//                       borderRadius: BorderRadius.circular(12.r),
-//                     ),
-//                     child: Center(
-//                       child: Text(
-//                         "Canceled",
-//                         style: appStyle(15.sp, kWhite, FontWeight.bold),
-//                       ),
-//                     ),
-//                   )
-//                 else if (widget.currentStatus == 5)
-//                   SizedBox(
-//                     width: double.infinity,
-//                     child: ElevatedButton(
-//                       style: ElevatedButton.styleFrom(
-//                         backgroundColor: kSuccess,
-//                         shape: RoundedRectangleBorder(
-//                           borderRadius: BorderRadius.circular(12.0.r),
-//                         ),
-//                       ),
-//                       onPressed: () => Get.to(
-//                           () => HistoryCompletedScreen(orderId: widget.jobId)),
-//                       child: Text(
-//                         "Completed",
-//                         style: appStyle(15.sp, kWhite, FontWeight.bold),
-//                       ),
-//                     ),
-//                   )
-//                 else
-//                   Row(
-//                     children: [
-//                       if (widget.currentStatus == 0 && _showTimer)
-//                         buildButton(kRed, "Cancel", widget.onCancelBtnTap),
-//                       if (widget.currentStatus == 0 && _showTimer)
-//                         SizedBox(width: 20.w),
-//                       buildButton(kSecondary, "View", widget.onButtonTap),
-//                     ],
-//                   )
-//               ],
-//             ),
-//           ),
-//           SizedBox(height: 12.h),
-//           // Mechanics List
-//           if (widget.currentStatus == 0)
-//             _isFetchingMechanics
-//                 ? Center(child: CircularProgressIndicator())
-//                 : _mechanicFetchError.isNotEmpty
-//                     ? Text(
-//                         _mechanicFetchError,
-//                         style: TextStyle(color: Colors.red),
-//                       )
-//                     : _mechanics.isEmpty
-//                         ? Text(
-//                             "No mechanics available within selected distance.")
-//                         : Column(
-//                             crossAxisAlignment: CrossAxisAlignment.start,
-//                             children: [
-//                               Text(
-//                                 "Available Mechanics:",
-//                                 style: appStyle(16.sp, kDark, FontWeight.bold),
-//                               ),
-//                               SizedBox(height: 8.h),
-//                               ListView.builder(
-//                                 shrinkWrap: true,
-//                                 physics: NeverScrollableScrollPhysics(),
-//                                 itemCount: _mechanics.length,
-//                                 itemBuilder: (context, index) {
-//                                   final mechanic = _mechanics[index];
-//                                   final mechanicName =
-//                                       mechanic['name'] ?? 'N/A';
-//                                   final mechanicPhoto =
-//                                       mechanic['profilePicture'] ?? '';
-//                                   return ListTile(
-//                                     leading: CircleAvatar(
-//                                       backgroundImage: mechanicPhoto.isNotEmpty
-//                                           ? NetworkImage(mechanicPhoto)
-//                                           : AssetImage(
-//                                                   'assets/images/default_avatar.png')
-//                                               as ImageProvider,
-//                                       backgroundColor:
-//                                           kSecondary.withOpacity(0.1),
-//                                     ),
-//                                     title: Text(
-//                                       mechanicName,
-//                                       style: appStyle(
-//                                           14.sp, kDark, FontWeight.w500),
-//                                     ),
-//                                     // You can add more details or actions here
-//                                   );
-//                                 },
-//                               ),
-//                             ],
-//                           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Expanded buildButton(Color color, String text, void Function()? onTap) {
-//     return Expanded(
-//       child: ElevatedButton(
-//         style: ElevatedButton.styleFrom(
-//           backgroundColor: color, // Button color
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(12.0.r),
-//           ),
-//         ),
-//         onPressed: onTap,
-//         child: Text(
-//           text,
-//           style: appStyle(13.sp, Colors.white, FontWeight.bold),
-//         ),
-//       ),
-//     );
-//   }
-
-//   Row buildReusableRow(String label, String value) {
-//     return Row(
-//       children: [
-//         Expanded(
-//           flex: 3,
-//           child: Text(
-//             label,
-//             style: appStyle(16.sp, kDark, FontWeight.w500),
-//           ),
-//         ),
-//         Expanded(
-//           flex: 5,
-//           child: Text(
-//             value,
-//             maxLines: 2,
-//             overflow: TextOverflow.ellipsis,
-//             style: appStyle(13.sp, kSecondary, FontWeight.w500),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
-// }
-
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:regal_service_d_app/views/history/widgets/history_completed_screen.dart';
+import '../../../services/find_mechanic.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
 import '../../../widgets/rating_box_widgets.dart';
@@ -538,6 +28,8 @@ class MyJobsCard extends StatefulWidget {
     required this.currentStatus,
     this.nearByDistance = 0,
     this.onDistanceChanged,
+    required this.userLat,
+    required this.userLong,
   });
 
   final String companyNameAndVehicleName;
@@ -553,6 +45,8 @@ class MyJobsCard extends StatefulWidget {
   final int currentStatus;
   final num nearByDistance;
   final Function(num)? onDistanceChanged;
+  final num userLat;
+  final num userLong;
 
   @override
   State<MyJobsCard> createState() => _MyJobsCardState();
@@ -563,6 +57,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
   int _remainingTime = 5 * 60; // 5 minutes in seconds
   bool _showTimer = true;
   num? _selectedDistance;
+  List<num> _distanceOptions = [];
+  List<Map<String, dynamic>> _availableMechanics = [];
+  StreamSubscription<DocumentSnapshot>? _distanceSubscription;
 
   @override
   void initState() {
@@ -574,6 +71,78 @@ class _MyJobsCardState extends State<MyJobsCard> {
       _showTimer = false;
     }
     _selectedDistance = widget.nearByDistance;
+
+    fetchDistanceOptions(); // Fetch distance options from Firestore
+    fetchAvailableMechanics();
+  }
+
+  void fetchDistanceOptions() {
+    _distanceSubscription = FirebaseFirestore.instance
+        .collection('metadata')
+        .doc('nearByDisstanceList')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        List<dynamic> distances = snapshot.get('value');
+        setState(() {
+          print(distances);
+          _distanceOptions = distances.cast<num>();
+          // Ensure the current distance is included
+          if (!_distanceOptions.contains(widget.nearByDistance)) {
+            _distanceOptions.insert(0, widget.nearByDistance);
+          }
+        });
+      }
+    }, onError: (error) {
+      print("Error fetching distance options: $error");
+      // Optionally set a default list or handle the error
+      setState(() {
+        _distanceOptions = [widget.nearByDistance, 10, 15, 20, 25, 30];
+      });
+    });
+  }
+
+  /// Fetches available mechanics based on nearby distance.
+  Future<void> fetchAvailableMechanics() async {
+    // Replace with your user's current location coordinates
+    final userLocation =
+        LatLng(widget.userLat.toDouble(), widget.userLong.toDouble());
+
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('Mechanics') // Your mechanics collection name
+          .get();
+
+      List<Map<String, dynamic>> mechanics = snapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'name': doc['userName'], // Mechanic's name
+          'location': doc['location'], // Mechanic's location
+        };
+      }).toList();
+
+      // Calculate distances and filter based on nearby distance
+      setState(() {
+        _availableMechanics = mechanics.where((mechanic) {
+          double distance = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            mechanic['location']['latitude'],
+            mechanic['location']['longitude'],
+          );
+          return distance <= widget.nearByDistance; // Check if within range
+        }).toList();
+      });
+    } catch (e) {
+      print("Error fetching mechanics: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _distanceSubscription?.cancel(); // Cancel the Firestore subscription
+    super.dispose();
   }
 
   /// Calculates the remaining time based on job creation time.
@@ -619,30 +188,30 @@ class _MyJobsCardState extends State<MyJobsCard> {
   }
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   void didUpdateWidget(covariant MyJobsCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.nearByDistance != widget.nearByDistance) {
       setState(() {
         _selectedDistance = widget.nearByDistance;
       });
+      fetchAvailableMechanics();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // List<num> distanceOptions = [widget.nearByDistance, 10, 15, 20, 25, 30];
-    List<num> distanceOptions =
-        {widget.nearByDistance, 10, 15, 20, 25, 30}.toList();
+    // Use the fetched distance options or a default list if not yet fetched
+    List<num> distanceOptions = _distanceOptions.isNotEmpty
+        ? _distanceOptions
+        : [widget.nearByDistance, 10, 15, 20, 25, 30];
 
     return Container(
-      padding: EdgeInsets.all(5.w),
-      margin: EdgeInsets.all(2.h),
+      padding: kIsWeb
+          ? EdgeInsets.only(left: 10.w, right: 10.w)
+          : EdgeInsets.all(5.w),
+      margin: kIsWeb
+          ? EdgeInsets.only(left: 50.w, right: 50.w)
+          : EdgeInsets.all(2.h),
       decoration: BoxDecoration(
         color: kWhite,
         borderRadius: BorderRadius.circular(12.w),
@@ -661,7 +230,7 @@ class _MyJobsCardState extends State<MyJobsCard> {
             children: [
               // Shop image
               CircleAvatar(
-                radius: 24.w,
+                radius: kIsWeb ? 12.w : 24.w,
                 backgroundImage: widget.imagePath.isNotEmpty
                     ? NetworkImage(widget.imagePath)
                     : const AssetImage('assets/images/default_avatar.png')
@@ -679,12 +248,16 @@ class _MyJobsCardState extends State<MyJobsCard> {
                       children: [
                         Text(
                           widget.jobId,
-                          style: appStyle(12, kSecondary, FontWeight.bold),
+                          style: kIsWeb
+                              ? TextStyle(color: kSecondary)
+                              : appStyle(12, kSecondary, FontWeight.bold),
                         ),
                         Text(
                           DateFormat('dd MMM yyyy, hh:mm a')
                               .format(widget.dateTime),
-                          style: appStyle(13, kGray, FontWeight.bold),
+                          style: kIsWeb
+                              ? TextStyle(color: kGray)
+                              : appStyle(13, kGray, FontWeight.bold),
                         ),
                       ],
                     ),
@@ -692,7 +265,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
                     // Company Name and Vehicle Name
                     Text(
                       widget.companyNameAndVehicleName,
-                      style: appStyle(16.sp, kDark, FontWeight.w500),
+                      style: kIsWeb
+                          ? TextStyle(color: kDark)
+                          : appStyle(16.sp, kDark, FontWeight.w500),
                     ),
                     SizedBox(height: 4.h),
                     // Address
@@ -701,50 +276,67 @@ class _MyJobsCardState extends State<MyJobsCard> {
                       child: Text(
                         widget.address,
                         maxLines: 2,
-                        style: appStyle(15.sp, kGray, FontWeight.bold),
+                        style: kIsWeb
+                            ? TextStyle(color: kGray)
+                            : appStyle(15.sp, kGray, FontWeight.bold),
                       ),
                     ),
                     if (widget.currentStatus == 0)
                       Row(
                         children: [
-                          Text("Distance"),
+                          // Timer
+                          if (widget.currentStatus == 0 && _showTimer)
+                            RatingBoxWidget(
+                              rating: getFormattedTime(),
+                              iconData: Icons.timer,
+                            ),
                           Spacer(),
                           Expanded(
                             child: Padding(
                               padding: EdgeInsets.only(bottom: 12.h),
-                              child: DropdownButton<num>(
-                                isExpanded: true,
-                                value: _selectedDistance,
-                                icon: Icon(Icons.keyboard_arrow_down_rounded),
-                                elevation: 16,
-                                style: appStyle(16, kDark, FontWeight.normal),
-                                onChanged: (num? newValue) {
-                                  if (newValue != null &&
-                                      newValue != _selectedDistance) {
-                                    setState(() {
-                                      _selectedDistance = newValue;
-                                    });
-                                    widget.onDistanceChanged!(newValue);
-                                  }
-                                },
-                                items: distanceOptions
-                                    .map<DropdownMenuItem<num>>((num value) {
-                                  return DropdownMenuItem<num>(
-                                    value: value,
-                                    child: Text("$value miles"),
-                                  );
-                                }).toList(),
-                              ),
+                              child: _distanceOptions.isNotEmpty
+                                  ? DropdownButton<num>(
+                                      isExpanded: true,
+                                      value: _selectedDistance,
+                                      icon: Icon(
+                                          Icons.keyboard_arrow_down_rounded),
+                                      elevation: kIsWeb ? 0 : 16,
+                                      style: kIsWeb
+                                          ? TextStyle(color: kDark)
+                                          : appStyle(
+                                              16, kDark, FontWeight.normal),
+                                      onChanged: (num? newValue) {
+                                        if (newValue != null &&
+                                            newValue != _selectedDistance) {
+                                          setState(() {
+                                            _selectedDistance = newValue;
+                                          });
+                                          if (widget.onDistanceChanged !=
+                                              null) {
+                                            widget.onDistanceChanged!(newValue);
+                                          }
+                                        }
+                                      },
+                                      items: distanceOptions
+                                          .map<DropdownMenuItem<num>>(
+                                              (num value) {
+                                        return DropdownMenuItem<num>(
+                                          value: value,
+                                          child: Text("$value miles"),
+                                        );
+                                      }).toList(),
+                                    )
+                                  : DropdownButton<num>(
+                                      isExpanded: true,
+                                      value: null,
+                                      hint: Text("Loading distances..."),
+                                      items: [],
+                                      onChanged:
+                                          null, // Disable the dropdown while loading
+                                    ),
                             ),
                           ),
                         ],
-                      ),
-                    SizedBox(height: 4.h),
-                    // Timer
-                    if (widget.currentStatus == 0 && _showTimer)
-                      RatingBoxWidget(
-                        rating: getFormattedTime(),
-                        iconData: Icons.timer,
                       ),
                   ],
                 ),
@@ -763,6 +355,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
             child: Column(
               children: [
                 buildReusableRow("Selected Service", widget.serviceName),
+                if (widget.currentStatus == 0)
+                  buildReusableRow(
+                      "Available Mechanics", "${_availableMechanics.length}"),
                 if (widget.currentStatus == -1)
                   buildReusableRow("Cancel Reason", widget.cancelationReason),
                 SizedBox(height: 15.h),
@@ -778,7 +373,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
                     child: Center(
                       child: Text(
                         "Canceled",
-                        style: appStyle(15.sp, kWhite, FontWeight.bold),
+                        style: kIsWeb
+                            ? TextStyle()
+                            : appStyle(15.sp, kWhite, FontWeight.bold),
                       ),
                     ),
                   )
@@ -809,7 +406,25 @@ class _MyJobsCardState extends State<MyJobsCard> {
                         SizedBox(width: 20.w),
                       buildButton(kSecondary, "View", widget.onButtonTap),
                     ],
-                  )
+                  ),
+                // Mechanics List Header
+                // Text(
+                //   'Available Mechanics',
+                //   style: appStyle(12, kDark, FontWeight.normal),
+                // ),
+                // SizedBox(height: 10.h),
+                // // Mechanics List
+                // if (_availableMechanics.isNotEmpty)
+                //   ..._availableMechanics.map((mechanic) {
+                //     return ListTile(
+                //       title: Text(mechanic['name']),
+                //       subtitle: Text(
+                //           'Distance: ${calculateDistance(widget.userLat.toDouble(), widget.userLong.toDouble(), mechanic['location']['latitude'], mechanic['location']['longitude'])} km'),
+                //     );
+                //   }).toList()
+                // else
+                //   Text('No mechanics available within selected distance.'),
+                // SizedBox(height: 4.h),
               ],
             ),
           ),
@@ -833,7 +448,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
         onPressed: onTap,
         child: Text(
           text,
-          style: appStyle(13.sp, Colors.white, FontWeight.bold),
+          style: kIsWeb
+              ? TextStyle(color: kWhite)
+              : appStyle(13.sp, Colors.white, FontWeight.bold),
         ),
       ),
     );
@@ -846,7 +463,9 @@ class _MyJobsCardState extends State<MyJobsCard> {
           flex: 3,
           child: Text(
             label,
-            style: appStyle(16.sp, kDark, FontWeight.w500),
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(16.sp, kDark, FontWeight.w500),
           ),
         ),
         Expanded(
@@ -855,10 +474,78 @@ class _MyJobsCardState extends State<MyJobsCard> {
             value,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: appStyle(13.sp, kSecondary, FontWeight.w500),
+            style: kIsWeb
+                ? TextStyle(color: kSecondary)
+                : appStyle(13.sp, kSecondary, FontWeight.w500),
           ),
         ),
       ],
     );
   }
+
+  // List<Widget> _buildMechanicsAvatars() {
+  //   List<Widget> avatars = [];
+  //   int count = _availableMechanics.length;
+
+  //   if (count == 1) {
+  //     // Show one avatar for a single mechanic
+  //     avatars.add(
+  //       CircleAvatar(
+  //         radius: 40,
+  //         backgroundImage: NetworkImage(_availableMechanics[0]['imageUrl'] ??
+  //             'https://via.placeholder.com/150'), // Replace with the mechanic's image URL
+  //       ),
+  //     );
+  //   } else if (count == 2) {
+  //     // Show two avatars for two mechanics
+  //     for (int i = 0; i < count; i++) {
+  //       avatars.add(
+  //         Positioned(
+  //           left: i * 30.0, // Adjusts the horizontal spacing between avatars
+  //           child: CircleAvatar(
+  //             radius: 40,
+  //             backgroundImage: NetworkImage(_availableMechanics[i]
+  //                     ['imageUrl'] ??
+  //                 'https://via.placeholder.com/150'), // Replace with the mechanic's image URL
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //   } else if (count > 2) {
+  //     // Show "5+" if more than 5 mechanics are available
+  //     for (int i = 0; i < 2; i++) {
+  //       avatars.add(
+  //         Positioned(
+  //           left: i * 30.0,
+  //           child: CircleAvatar(
+  //             radius: 40,
+  //             backgroundImage: NetworkImage(_availableMechanics[i]
+  //                     ['imageUrl'] ??
+  //                 'https://via.placeholder.com/150'), // Replace with the mechanic's image URL
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //     // Add a CircleAvatar with the count of remaining mechanics
+  //     avatars.add(
+  //       Positioned(
+  //         left: 60.0, // Adjust position based on the number of shown avatars
+  //         child: CircleAvatar(
+  //           radius: 40,
+  //           backgroundColor: Colors.blueAccent,
+  //           child: Text(
+  //             '+${count - 2}', // Show the count of additional mechanics
+  //             style: TextStyle(
+  //               color: Colors.white,
+  //               fontSize: 20.sp,
+  //               fontWeight: FontWeight.bold,
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     );
+  //   }
+
+  //   return avatars;
+  // }
 }

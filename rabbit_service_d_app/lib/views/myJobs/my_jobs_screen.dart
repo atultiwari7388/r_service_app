@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -10,6 +11,7 @@ import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 import '../profile/profile_screen.dart';
 import '../requests/requests.dart';
+import 'package:geolocator/geolocator.dart'; // Add geolocator for distance calculations
 
 class MyJobsScreen extends StatefulWidget {
   const MyJobsScreen({super.key});
@@ -21,45 +23,6 @@ class MyJobsScreen extends StatefulWidget {
 class _MyJobsScreenState extends State<MyJobsScreen> {
   String _selectedSortOption = "Sort";
   int? _selectedCardIndex;
-  num nearbyDistance = 0;
-  bool isLoadingDistance = true;
-
-  @override
-  void initState() {
-    super.initState();
-    fetchNearByDistance();
-  }
-
-  Future<num> fetchNearByDistance() async {
-    try {
-      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-          .instance
-          .collection('metadata')
-          .doc('nearByDistance')
-          .get();
-
-      if (snapshot.exists) {
-        setState(() {
-          nearbyDistance = snapshot.get("value") ?? 0;
-          isLoadingDistance = false;
-        });
-        log('Nearby Distance: $nearbyDistance km');
-        return nearbyDistance;
-      } else {
-        log('Document does not exist.');
-        setState(() {
-          isLoadingDistance = false;
-        });
-        return 0;
-      }
-    } catch (e) {
-      log('Error fetching nearbyDistance: $e');
-      setState(() {
-        isLoadingDistance = false;
-      });
-      return 0;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +32,10 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         elevation: 0,
         centerTitle: true,
         title: ReusableText(
-            text: "My Jobs", style: appStyle(20, kDark, FontWeight.normal)),
+            text: "My Jobs",
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(20, kDark, FontWeight.normal)),
         actions: [
           GestureDetector(
             onTap: () => Get.to(() => const ProfileScreen(),
@@ -101,7 +67,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                   if (userPhoto.isEmpty) {
                     return Text(
                       userName.isNotEmpty ? userName[0] : '',
-                      style: appStyle(20, kWhite, FontWeight.w500),
+                      style: kIsWeb
+                          ? TextStyle(color: kWhite)
+                          : appStyle(20, kWhite, FontWeight.w500),
                     );
                   } else {
                     return ClipOval(
@@ -227,10 +195,13 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                 );
                               },
                               currentStatus: job["status"],
-                              nearByDistance: nearbyDistance,
+                              nearByDistance: job["nearByDistance"],
                               onDistanceChanged: (newDistance) {
-                                _updateNearbyDistance(newDistance);
+                                _updateNearbyDistance(newDistance,
+                                    job["nearByDistance"], job['orderId']);
                               },
+                              userLat: job["userLat"],
+                              userLong: job["userLong"],
                             );
                           },
                         );
@@ -244,15 +215,39 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
     );
   }
 
-  void _updateNearbyDistance(num newDistance) async {
+  void _updateNearbyDistance(
+      num newDistance, num nearByDistance, String jobId) async {
     try {
+      var data = {
+        "nearByDistance": newDistance,
+      };
+
+      // Update the Firestore `jobs` collection
       await FirebaseFirestore.instance
-          .collection('metadata')
-          .doc('nearByDistance')
-          .update({'value': newDistance});
+          .collection('jobs')
+          .doc(jobId)
+          .update(data);
+
+      // Check if the history document exists
+      DocumentReference historyDoc = await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(currentUId)
+          .collection("history")
+          .doc(jobId);
+
+      // Get the history document snapshot
+      DocumentSnapshot docSnapshot = await historyDoc.get();
+
+      if (docSnapshot.exists) {
+        // If document exists, update it
+        await historyDoc.update(data);
+      } else {
+        // If document does not exist, create it
+        await historyDoc.set(data);
+      }
 
       setState(() {
-        nearbyDistance = newDistance;
+        nearByDistance = newDistance;
       });
 
       Get.snackbar("Success", "Nearby distance updated to $newDistance km.",

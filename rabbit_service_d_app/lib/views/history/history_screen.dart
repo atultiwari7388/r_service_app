@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/views/myJobs/widgets/my_jobs_card.dart';
 import '../../services/collection_references.dart';
-import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
@@ -29,7 +29,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         elevation: 0,
         centerTitle: true,
         title: ReusableText(
-            text: "History", style: appStyle(20, kDark, FontWeight.normal)),
+            text: "History",
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(20, kDark, FontWeight.normal)),
         actions: [
           GestureDetector(
             onTap: () => Get.to(() => const ProfileScreen(),
@@ -69,7 +72,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       child: Image.network(
                         userPhoto,
                         width: 38.r,
-                        // Set appropriate size for the image
                         height: 35.r,
                         fit: BoxFit.cover,
                       ),
@@ -121,7 +123,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             SizedBox(width: 4.w),
                             Text(
                               _selectedSortOption,
-                              style: appStyle(16.sp, kPrimary, FontWeight.w500),
+                              style: kIsWeb
+                                  ? TextStyle(color: kPrimary)
+                                  : appStyle(16.sp, kPrimary, FontWeight.w500),
                             ),
                           ],
                         ),
@@ -179,6 +183,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   : job["userPhoto"].toString(),
                               dateTime: orderDateTime,
                               currentStatus: job["status"],
+                              userLat: job["userLat"],
+                              userLong: job["userLong"],
                             );
                           });
                 },

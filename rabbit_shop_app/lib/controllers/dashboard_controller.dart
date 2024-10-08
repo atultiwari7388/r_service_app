@@ -31,26 +31,55 @@ class DashboardController extends GetxController {
   Map<String, bool> languages = {};
   List<String> selectedLanguages = [];
 
-  Future<num> fetchNearByDistance() async {
-    try {
-      DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-          .instance
-          .collection('metadata')
-          .doc('nearByDistance')
-          .get();
+  // Future<num> fetchNearByDistance() async {
+  //   try {
+  //     DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
+  //         .instance
+  //         .collection('metadata')
+  //         .doc('nearByDistance')
+  //         .get();
 
-      if (snapshot.exists) {
-        nearbyDistance = snapshot.get("value") ?? 0;
-        update();
-        log('Nearby Distance: $nearbyDistance km');
-        return nearbyDistance;
-      } else {
-        log('Document does not exist.');
-        return 0;
+  //     if (snapshot.exists) {
+  //       nearbyDistance = snapshot.get("value") ?? 0;
+  //       update();
+  //       log('Nearby Distance: $nearbyDistance km');
+  //       return nearbyDistance;
+  //     } else {
+  //       log('Document does not exist.');
+  //       return 0;
+  //     }
+  //   } catch (e) {
+  //     log('Error fetching nearbyDistance: $e');
+  //     return 0;
+  //   }
+  // }
+
+  Future<List<num>> fetchNearByDistance() async {
+    try {
+      // Fetch all documents in the 'jobs' collection
+      QuerySnapshot<Map<String, dynamic>> snapshot =
+          await FirebaseFirestore.instance.collection('jobs').get();
+
+      List<num> nearbyDistances = [];
+
+      // Loop through each document and extract the 'nearByDistance' field
+      for (var doc in snapshot.docs) {
+        if (doc.exists) {
+          nearbyDistance = doc.data()['nearByDistance'] ?? 0;
+          nearbyDistances.add(nearbyDistance);
+
+          // Log the nearbyDistance for each job
+          log('Job ID: ${doc.id} - Nearby Distance: $nearbyDistance km');
+        }
       }
+
+      // Update if needed (if you're using a state management solution)
+      update();
+
+      return nearbyDistances;
     } catch (e) {
-      log('Error fetching nearbyDistance: $e');
-      return 0;
+      log('Error fetching nearbyDistances from jobs collection: $e');
+      return [];
     }
   }
 
@@ -193,16 +222,6 @@ class DashboardController extends GetxController {
     });
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    fetchOnlineStatus();
-    fetchUserCurrentLocationAndUpdateToFirebase();
-    fetchJobData();
-    fetchLanguagesFromDatabase();
-    fetchNearByDistance();
-  }
-
   void showConfirmDialog(int index, dynamic data, String userId, String jobId,
       bool isShowImage, bool isPriceTypeEnable) {
     if (isShowImage) {
@@ -310,10 +329,6 @@ class DashboardController extends GetxController {
               if (docSnapshot.exists) {
                 // If document exists, update it
                 await historyDoc.update(jobData);
-                await FirebaseFirestore.instance
-                    .collection('metadata')
-                    .doc('nearByDistance')
-                    .update({'value': 5});
               } else {
                 // If document does not exist, create it
                 await historyDoc.set(jobData);
@@ -457,5 +472,15 @@ class DashboardController extends GetxController {
         ),
       ),
     );
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchOnlineStatus();
+    fetchUserCurrentLocationAndUpdateToFirebase();
+    fetchJobData();
+    fetchLanguagesFromDatabase();
+    fetchNearByDistance();
   }
 }
