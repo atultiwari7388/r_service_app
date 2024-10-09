@@ -25,7 +25,8 @@ class _UpcomingAndCompletedJobsScreenState
     extends State<UpcomingAndCompletedJobsScreen>
     with SingleTickerProviderStateMixin {
   late TextEditingController searchController;
-  late Stream<QuerySnapshot> jobsStream;
+  // late Stream<QuerySnapshot> jobsStream;
+  late Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> jobsStream;
   bool isVendorActive = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabsController;
@@ -41,9 +42,21 @@ class _UpcomingAndCompletedJobsScreenState
     _tabsController = TabController(length: 2, vsync: this);
     jobsStream = FirebaseFirestore.instance
         .collection('jobs')
-        .where("mId", isEqualTo: currentUId)
         .orderBy("orderDate", descending: true)
-        .snapshots();
+        .snapshots()
+        .map((snapshot) {
+      // Filter out the documents where mechanicsOffer exists and contains mId matching currentUId
+      final filteredDocs = snapshot.docs.where((doc) {
+        // Check if the mechanicsOffer field exists
+        if (doc.data().containsKey('mechanicsOffer')) {
+          List mechanicsOffers = doc['mechanicsOffer'] ?? [];
+          return mechanicsOffers.any((offer) => offer['mId'] == currentUId);
+        }
+        return false; // If mechanicsOffer doesn't exist, exclude this document
+      }).toList();
+      // Return the filtered list of documents
+      return filteredDocs;
+    });
   }
 
   @override
@@ -66,17 +79,20 @@ class _UpcomingAndCompletedJobsScreenState
     );
   }
 
-  StreamBuilder<QuerySnapshot<Object?>> buildOrderStreamSection() {
-    return StreamBuilder<QuerySnapshot>(
+  StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+      buildOrderStreamSection() {
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
       stream: jobsStream,
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+      builder: (BuildContext context,
+          AsyncSnapshot<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+              snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
           return Text('Error: ${snapshot.error}');
         }
-        if (snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -90,19 +106,16 @@ class _UpcomingAndCompletedJobsScreenState
             ),
           );
         }
-        // Filter orders based on status
-        List<Map<String, dynamic>> ongoingOrders = [];
-        List<Map<String, dynamic>> completedOrders = [];
 
         // Extract orders data from the snapshot
-        List<Map<String, dynamic>> orders = snapshot.data!.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
+        List<Map<String, dynamic>> orders =
+            snapshot.data!.map((doc) => doc.data()).toList();
 
-        ongoingOrders = orders
-            .where((order) => order['status'] >= 1 && order['status'] <= 4)
+        // Filter orders based on status
+        List<Map<String, dynamic>> ongoingOrders = orders
+            .where((order) => order['status'] >= 0 && order['status'] <= 4)
             .toList();
-        completedOrders =
+        List<Map<String, dynamic>> completedOrders =
             orders.where((order) => order['status'] == 5).toList();
 
         return DefaultTabController(
@@ -197,7 +210,6 @@ class _UpcomingAndCompletedJobsScreenState
             itemCount: filteredOrders.length,
             itemBuilder: (ctx, index) {
               final jobs = filteredOrders[index];
-              final userName = jobs['userName'] ?? "N/A";
               final userPhoneNumber = jobs['userPhoneNumber'] ?? "N/A";
               final imagePath = jobs['userPhoto'] ?? "";
               final currentStatus = jobs["status"] ?? 0;
@@ -216,16 +228,35 @@ class _UpcomingAndCompletedJobsScreenState
               final payMode = jobs["payMode"].toString();
               final userLat = (jobs["userLat"] as num).toDouble();
               final userLng = (jobs["userLong"] as num).toDouble();
-              final mecLatitude = (jobs["mecLatitude"] as num).toDouble();
-              final mecLongtitude = (jobs["mecLongtitude"] as num).toDouble();
+
+              // Retrieve mecLatitude and mecLongitude from mechanicsOffer array
+              double mecLatitude = 0.0;
+              double mecLongitude = 0.0;
+
+              // Check if mechanicsOffer exists and is a list
+              if (jobs['mechanicsOffer'] is List) {
+                // Find the mechanic whose mId matches currentUId
+                final mechanic =
+                    (jobs['mechanicsOffer'] as List<dynamic>).firstWhere(
+                  (offer) => offer['mId'] == currentUId,
+                  orElse: () => null, // Return null if not found
+                );
+
+                if (mechanic != null) {
+                  mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ??
+                      0.0; // Update with your field name
+                  mecLongitude = (mechanic['longitude'] as num?)?.toDouble() ??
+                      0.0; // Update with your field name
+                }
+              }
 
               // Print to check values
               print('User Latitude: $userLat, User Longitude: $userLng');
               print(
-                  'Mechanic Latitude: $mecLatitude, Mechanic Longitude: $mecLongtitude');
+                  'Mechanic Latitude: $mecLatitude, Mechanic Longitude: $mecLongitude');
 
               double distance = calculateDistance(
-                  userLat, userLng, mecLatitude, mecLongtitude);
+                  userLat, userLng, mecLatitude, mecLongitude);
               print('Calculated Distance: $distance');
 
               if (distance < 1) {
@@ -235,7 +266,7 @@ class _UpcomingAndCompletedJobsScreenState
               return UpcomingRequestCard(
                 orderId: jobs["orderId"].toString(),
                 userName: jobs["userName"],
-                vehicleName: jobs['vehicleNumber'] ?? "N/A",
+                vehicleName: vehicleNumber,
                 address: jobs['userDeliveryAddress'] ?? "N/A",
                 serviceName: jobs['selectedService'] ?? "N/A",
                 jobId: jobs['orderId'] ?? "#Unknown",
@@ -264,8 +295,6 @@ class _UpcomingAndCompletedJobsScreenState
                             onPressed: () {
                               // If "Yes" is pressed, proceed to select the reason
                               Navigator.pop(context); // Close the first dialog
-
-                              // Step 2: Show the reason selection dialog
                               _showReasonDialog(jobs[
                                   'orderId']); // Pass the job ID to update status later
                             },
@@ -311,6 +340,7 @@ class _UpcomingAndCompletedJobsScreenState
               );
             },
           ),
+
           SizedBox(height: 80.h),
         ],
       ),

@@ -5,7 +5,7 @@ String googleApiKey = '';
 
 // const kPrimary = Color(0xffE33E35);
 // const kSecondary = Color(0xff2E3093);
-const kPrimary = Color(0xffEF687C);
+const kPrimary = Color(0xffF96176);
 const kSecondary = Color(0xff58BB87);
 const kSplashBackground = Color(0xffFFEBF3);
 const kHoverColor = Color(0xffFFC9A7);

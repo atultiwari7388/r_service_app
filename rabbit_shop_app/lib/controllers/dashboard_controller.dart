@@ -31,29 +31,7 @@ class DashboardController extends GetxController {
   Map<String, bool> languages = {};
   List<String> selectedLanguages = [];
 
-  // Future<num> fetchNearByDistance() async {
-  //   try {
-  //     DocumentSnapshot<Map<String, dynamic>> snapshot = await FirebaseFirestore
-  //         .instance
-  //         .collection('metadata')
-  //         .doc('nearByDistance')
-  //         .get();
-
-  //     if (snapshot.exists) {
-  //       nearbyDistance = snapshot.get("value") ?? 0;
-  //       update();
-  //       log('Nearby Distance: $nearbyDistance km');
-  //       return nearbyDistance;
-  //     } else {
-  //       log('Document does not exist.');
-  //       return 0;
-  //     }
-  //   } catch (e) {
-  //     log('Error fetching nearbyDistance: $e');
-  //     return 0;
-  //   }
-  // }
-
+// Remove or comment out the fetchNearByDistance method
   Future<List<num>> fetchNearByDistance() async {
     try {
       // Fetch all documents in the 'jobs' collection
@@ -72,8 +50,6 @@ class DashboardController extends GetxController {
           log('Job ID: ${doc.id} - Nearby Distance: $nearbyDistance km');
         }
       }
-
-      // Update if needed (if you're using a state management solution)
       update();
 
       return nearbyDistances;
@@ -240,7 +216,8 @@ class DashboardController extends GetxController {
         title: "Confirm",
         content: Column(
           children: [
-            Text("Please enter the arrival and per-hour charges:",
+            Text(
+                "Kindly reach within time  to get more jobs and avoid negative feedback",
                 style: TextStyle(fontSize: 16)),
             SizedBox(height: 20.h),
             TextField(
@@ -292,29 +269,31 @@ class DashboardController extends GetxController {
               loc.Location location = loc.Location();
               loc.LocationData locationData = await location.getLocation();
 
-              var jobData = {
-                "status": 1,
-                "rating": "4.3",
-                "time": time,
+              // Create a new offer for the mechanic
+              var mechanicOffer = {
                 "mId": currentUId.toString(),
                 "mName": userName.toString(),
                 "mNumber": phoneNumber.toString(),
-                "mDp": userPhoto.toString(),
-                'arrivalCharges': arrivalCharges,
-                'perHourCharges': perHourCharges,
-                "fixPrice": 0,
+                "arrivalCharges": arrivalCharges,
+                "perHourCharges": perHourCharges,
+                "time": time,
+                "latitude": locationData.latitude,
+                "longitude": locationData.longitude,
+                "status": 1,
+                "rating": "4.3",
                 "reviewSubmitted": false,
                 "languages": selectedLanguages,
-                'mechanicAddress': appbarTitle,
-                'mecLatitude': locationData.latitude,
-                'mecLongtitude': locationData.longitude,
+                "mechanicAddress": appbarTitle,
+                "offerAcceptedDate": DateTime.now(),
               };
 
               // Update the Firestore `jobs` collection
               await FirebaseFirestore.instance
                   .collection('jobs')
                   .doc(jobId)
-                  .update(jobData);
+                  .update({
+                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+              });
 
               // Check if the history document exists
               DocumentReference historyDoc = await FirebaseFirestore.instance
@@ -328,10 +307,14 @@ class DashboardController extends GetxController {
 
               if (docSnapshot.exists) {
                 // If document exists, update it
-                await historyDoc.update(jobData);
+                await historyDoc.update({
+                  "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+                });
               } else {
                 // If document does not exist, create it
-                await historyDoc.set(jobData);
+                await historyDoc.set({
+                  "mechanicsOffer": [mechanicOffer],
+                });
               }
 
               // Optional: Show a confirmation message or navigate to another screen
@@ -358,7 +341,7 @@ class DashboardController extends GetxController {
       content: Column(
         children: [
           Text(
-            "Please enter the fix price:",
+            "Kindly reach within time  to get more jobs and avoid negative feedback",
             style: TextStyle(fontSize: 16),
           ),
           SizedBox(height: 20.h),
@@ -424,7 +407,9 @@ class DashboardController extends GetxController {
             await FirebaseFirestore.instance
                 .collection('jobs')
                 .doc(jobId)
-                .update(jobData);
+                .update({
+              "mechanicsOffer": FieldValue.arrayUnion([jobData]),
+            });
 
             // Check if the history document exists
             DocumentReference historyDoc = await FirebaseFirestore.instance
@@ -438,30 +423,21 @@ class DashboardController extends GetxController {
 
             if (docSnapshot.exists) {
               // If document exists, update it
-              await historyDoc.update(jobData).then((value) {
-                Get.back();
+              await historyDoc.update({
+                "mechanicsOffer": FieldValue.arrayUnion([jobData]),
               });
             } else {
               // If document does not exist, create it
-              await historyDoc.set(jobData).then((value) {
-                Get.back();
+              await historyDoc.set({
+                "mechanicsOffer": [jobData],
               });
             }
 
             // Optional: Show a confirmation message or navigate to another screen
             Get.snackbar("Success", "Request Sent Successfully.");
-            // You can handle the arrival charges here, like saving them to a database
-            print("Fix Charges: $fixCharge");
-            Get.snackbar("Success", "Request Sent Successfully.");
-
-            // Close the dialog after submission
-            // Further actions can be taken here, like navigating to another screen
           } else {
-            // Optionally show a message if the input is empty
-            Get.snackbar("Error", "Please enter arrival charges.");
+            Get.snackbar("Error", "Please enter all required charges.");
           }
-
-          Get.back();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green, // Custom color for "Submit" button

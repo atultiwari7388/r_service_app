@@ -11,7 +11,6 @@ import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
 import '../profile/profile_screen.dart';
 import '../requests/requests.dart';
-import 'package:geolocator/geolocator.dart'; // Add geolocator for distance calculations
 
 class MyJobsScreen extends StatefulWidget {
   const MyJobsScreen({super.key});

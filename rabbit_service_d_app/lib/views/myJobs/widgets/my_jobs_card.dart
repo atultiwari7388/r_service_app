@@ -10,7 +10,6 @@ import 'package:regal_service_d_app/views/history/widgets/history_completed_scre
 import '../../../services/find_mechanic.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
-import '../../../widgets/rating_box_widgets.dart';
 
 class MyJobsCard extends StatefulWidget {
   const MyJobsCard({
@@ -53,9 +52,9 @@ class MyJobsCard extends StatefulWidget {
 }
 
 class _MyJobsCardState extends State<MyJobsCard> {
-  Timer? _timer;
-  int _remainingTime = 5 * 60; // 5 minutes in seconds
-  bool _showTimer = true;
+  // Timer? _timer;
+  // int _remainingTime = 5 * 60; // 5 minutes in seconds
+  // bool _showTimer = true;
   num? _selectedDistance;
   List<num> _distanceOptions = [];
   List<Map<String, dynamic>> _availableMechanics = [];
@@ -64,12 +63,12 @@ class _MyJobsCardState extends State<MyJobsCard> {
   @override
   void initState() {
     super.initState();
-    calculateRemainingTime();
-    if (_remainingTime > 0 && widget.currentStatus == 0) {
-      startTimer();
-    } else {
-      _showTimer = false;
-    }
+    // calculateRemainingTime();
+    // if (_remainingTime > 0 && widget.currentStatus == 0) {
+    //   startTimer();
+    // } else {
+    //   _showTimer = false;
+    // }
     _selectedDistance = widget.nearByDistance;
 
     fetchDistanceOptions(); // Fetch distance options from Firestore
@@ -140,52 +139,52 @@ class _MyJobsCardState extends State<MyJobsCard> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    // _timer?.cancel();
     _distanceSubscription?.cancel(); // Cancel the Firestore subscription
     super.dispose();
   }
 
   /// Calculates the remaining time based on job creation time.
-  void calculateRemainingTime() {
-    DateTime jobTime = widget.dateTime;
-    DateTime now = DateTime.now();
+  // void calculateRemainingTime() {
+  //   DateTime jobTime = widget.dateTime;
+  //   DateTime now = DateTime.now();
 
-    // Calculate the difference in seconds
-    int elapsedSeconds = now.difference(jobTime).inSeconds;
+  //   // Calculate the difference in seconds
+  //   int elapsedSeconds = now.difference(jobTime).inSeconds;
 
-    // Set remaining time
-    _remainingTime = 5 * 60 - elapsedSeconds;
+  //   // Set remaining time
+  //   _remainingTime = 5 * 60 - elapsedSeconds;
 
-    if (_remainingTime <= 0) {
-      _remainingTime = 0;
-      _showTimer = false;
-    }
-  }
+  //   if (_remainingTime <= 0) {
+  //     _remainingTime = 0;
+  //     _showTimer = false;
+  //   }
+  // }
 
-  /// Starts the countdown timer.
-  void startTimer() {
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (_remainingTime > 0) {
-        setState(() {
-          _remainingTime--;
-        });
-      } else {
-        _timer?.cancel();
-        setState(() {
-          _showTimer = false;
-        });
-      }
-    });
-  }
+  // /// Starts the countdown timer.
+  // void startTimer() {
+  //   _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+  //     if (_remainingTime > 0) {
+  //       setState(() {
+  //         _remainingTime--;
+  //       });
+  //     } else {
+  //       _timer?.cancel();
+  //       setState(() {
+  //         _showTimer = false;
+  //       });
+  //     }
+  //   });
+  // }
 
-  /// Formats the remaining time as MM:SS.
-  String getFormattedTime() {
-    int minutes = _remainingTime ~/ 60;
-    int seconds = _remainingTime % 60;
-    String formattedMinutes = minutes.toString().padLeft(2, '0');
-    String formattedSeconds = seconds.toString().padLeft(2, '0');
-    return '$formattedMinutes:$formattedSeconds';
-  }
+  // /// Formats the remaining time as MM:SS.
+  // String getFormattedTime() {
+  //   int minutes = _remainingTime ~/ 60;
+  //   int seconds = _remainingTime % 60;
+  //   String formattedMinutes = minutes.toString().padLeft(2, '0');
+  //   String formattedSeconds = seconds.toString().padLeft(2, '0');
+  //   return '$formattedMinutes:$formattedSeconds';
+  // }
 
   @override
   void didUpdateWidget(covariant MyJobsCard oldWidget) {
@@ -285,11 +284,31 @@ class _MyJobsCardState extends State<MyJobsCard> {
                       Row(
                         children: [
                           // Timer
-                          if (widget.currentStatus == 0 && _showTimer)
-                            RatingBoxWidget(
-                              rating: getFormattedTime(),
-                              iconData: Icons.timer,
+                          SizedBox(),
+                          Expanded(
+                            child: Container(
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12.r),
+                                color: kSecondary.withOpacity(0.1),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    "Available \nMechanics",
+                                    style:
+                                        appStyle(10, kPrimary, FontWeight.bold),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  Text(
+                                    "${_availableMechanics.length}",
+                                    style:
+                                        appStyle(15, kPrimary, FontWeight.bold),
+                                  )
+                                ],
+                              ),
                             ),
+                          ),
                           Spacer(),
                           Expanded(
                             child: Padding(
@@ -304,7 +323,7 @@ class _MyJobsCardState extends State<MyJobsCard> {
                                       style: kIsWeb
                                           ? TextStyle(color: kDark)
                                           : appStyle(
-                                              16, kDark, FontWeight.normal),
+                                              13, kDark, FontWeight.normal),
                                       onChanged: (num? newValue) {
                                         if (newValue != null &&
                                             newValue != _selectedDistance) {
@@ -356,10 +375,8 @@ class _MyJobsCardState extends State<MyJobsCard> {
               children: [
                 buildReusableRow("Selected Service", widget.serviceName),
                 if (widget.currentStatus == 0)
-                  buildReusableRow(
-                      "Available Mechanics", "${_availableMechanics.length}"),
-                if (widget.currentStatus == -1)
-                  buildReusableRow("Cancel Reason", widget.cancelationReason),
+                  if (widget.currentStatus == -1)
+                    buildReusableRow("Cancel Reason", widget.cancelationReason),
                 SizedBox(height: 15.h),
                 // Action Buttons
                 if (widget.currentStatus == -1)
@@ -400,31 +417,12 @@ class _MyJobsCardState extends State<MyJobsCard> {
                 else
                   Row(
                     children: [
-                      if (widget.currentStatus == 0 && _showTimer)
+                      if (widget.currentStatus == 0)
                         buildButton(kRed, "Cancel", widget.onCancelBtnTap),
-                      if (widget.currentStatus == 0 && _showTimer)
-                        SizedBox(width: 20.w),
+                      if (widget.currentStatus == 0) SizedBox(width: 20.w),
                       buildButton(kSecondary, "View", widget.onButtonTap),
                     ],
                   ),
-                // Mechanics List Header
-                // Text(
-                //   'Available Mechanics',
-                //   style: appStyle(12, kDark, FontWeight.normal),
-                // ),
-                // SizedBox(height: 10.h),
-                // // Mechanics List
-                // if (_availableMechanics.isNotEmpty)
-                //   ..._availableMechanics.map((mechanic) {
-                //     return ListTile(
-                //       title: Text(mechanic['name']),
-                //       subtitle: Text(
-                //           'Distance: ${calculateDistance(widget.userLat.toDouble(), widget.userLong.toDouble(), mechanic['location']['latitude'], mechanic['location']['longitude'])} km'),
-                //     );
-                //   }).toList()
-                // else
-                //   Text('No mechanics available within selected distance.'),
-                // SizedBox(height: 4.h),
               ],
             ),
           ),

@@ -50,7 +50,7 @@ class DashBoardSearchTextField extends StatelessWidget {
           hintStyle:
               kIsWeb ? TextStyle() : appStyle(14, kDark, FontWeight.normal),
           labelStyle:
-              kIsWeb ? TextStyle() : appStyle(14, kSecondary, FontWeight.bold),
+              kIsWeb ? TextStyle() : appStyle(14, kPrimary, FontWeight.bold),
         ),
       ),
     );

@@ -30,19 +30,25 @@ exports.sendNewMechanicNotification = functions.firestore
   .onCreate(async (snapshot, context) => {
     try {
       const job = snapshot.data()
-      const userLat = job.userLat // Assuming these fields exist in the job document
+      const userLat = job.userLat
       const userLng = job.userLong
-      const nearByDistance = job.nearByDistance || 5.0 // Fetching nearbyDistance from the job document, with a default fallback value
+      const nearByDistance = job.nearByDistance || 5.0 // Default to 5 km if not provided
 
-      console.log('New job request. Job:', job)
+      // Debugging nearby distance
+      console.log('Initial Job Creation. Nearby Distance:', nearByDistance)
+
+      if (!userLat || !userLng) {
+        console.error('userLat or userLong is missing in the job data.')
+        return null
+      }
 
       const jobLocation = {
         latitude: userLat,
         longitude: userLng,
       }
 
+      // Debugging job location
       console.log('Job Location:', jobLocation)
-      console.log('Using nearbyDistance from the job:', nearByDistance)
 
       const mechanicsSnapshot = await admin
         .firestore()
@@ -63,7 +69,7 @@ exports.sendNewMechanicNotification = functions.firestore
         const mechanicData = mechanicDoc.data()
         const mechanicLocation = mechanicData.location
 
-        // Calculate the distance between mechanic and job location
+        // Calculate the distance between the mechanic and job location
         const distance = calculateDistance(
           mechanicLocation.latitude,
           mechanicLocation.longitude,
@@ -75,7 +81,7 @@ exports.sendNewMechanicNotification = functions.firestore
           `Mechanic ID: ${mechanicDoc.id}, Distance to job: ${distance} kms`
         )
 
-        // Check if the distance is within the range defined by nearbyDistance
+        // Check if the mechanic is within the nearby distance range
         if (distance < nearByDistance) {
           console.log('Mechanic is in range. Sending notification...')
 
@@ -86,16 +92,12 @@ exports.sendNewMechanicNotification = functions.firestore
             },
             data: {
               jobId: context.params.jobId,
-              type: 'new_job', // Added type field
+              type: 'new_job',
             },
           }
 
           const token = mechanicData.fcmToken
-          console.log('Mechanic Token:', token)
-          console.log('Payload:', payload)
-
           if (token) {
-            // Send notification to the mechanic and add the promise to the array
             notificationPromises.push(
               admin.messaging().send({
                 data: payload.data,
@@ -103,23 +105,19 @@ exports.sendNewMechanicNotification = functions.firestore
                 token: token,
               })
             )
-
             console.log('Notification sent to mechanic:', mechanicData)
           } else {
             console.error('Invalid token for mechanic:', mechanicData)
           }
         } else {
           console.log(
-            `Mechanic ${mechanicData.name} is not in range. Distance: ${distance} km`
+            `Mechanic ${mechanicData.userName} is not in range. Distance: ${distance} km`
           )
         }
       })
 
-      // Wait for all notifications to be sent
       await Promise.all(notificationPromises)
-
       console.log('Notifications sent to nearby mechanics.')
-
       return null
     } catch (error) {
       console.error('Error:', error)
@@ -127,7 +125,111 @@ exports.sendNewMechanicNotification = functions.firestore
     }
   })
 
-// Function to re-send notifications when nearbyDistance is updated in the job
+//Function to Again send a new notification to the nearby mechanics when nearbyDistance value changed
+exports.sendAgainNewMechanicNotification = async (
+  snapshot,
+  context,
+  jobData = null
+) => {
+  try {
+    const job = jobData || snapshot.data() // Use passed data or snapshot
+    const userLat = job.userLat
+    const userLong = job.userLong
+    const nearByDistance = job.nearByDistance || 5.0
+
+    if (!userLat || !userLong) {
+      console.error('userLat or userLong is missing in the job data.')
+      return null
+    }
+
+    console.log('New job request. Job:', job)
+
+    const jobLocation = {
+      latitude: userLat,
+      longitude: userLong,
+    }
+
+    console.log('Job Location:', jobLocation)
+    console.log('Using nearbyDistance from the job:', nearByDistance)
+
+    const mechanicsSnapshot = await admin
+      .firestore()
+      .collection('Mechanics')
+      .where('active', '==', true)
+      .get()
+
+    if (mechanicsSnapshot.empty) {
+      console.log('No active mechanics found.')
+      return null
+    }
+
+    console.log('Found active mechanics:', mechanicsSnapshot.size)
+
+    const notificationPromises = []
+
+    mechanicsSnapshot.forEach((mechanicDoc) => {
+      const mechanicData = mechanicDoc.data()
+      const mechanicLocation = mechanicData.location
+
+      const distance = calculateDistance(
+        mechanicLocation.latitude,
+        mechanicLocation.longitude,
+        jobLocation.latitude,
+        jobLocation.longitude
+      )
+
+      console.log(
+        `Mechanic ID: ${mechanicDoc.id}, Distance to job: ${distance} kms`
+      )
+
+      if (distance < nearByDistance) {
+        console.log('Mechanic is in range. Sending notification...')
+
+        const payload = {
+          notification: {
+            title: 'New Job Request 🔧',
+            body: `Hey ${mechanicData.userName}, there's a new job request available!`,
+          },
+          data: {
+            jobId: context.params.jobId,
+            type: 'new_job',
+          },
+        }
+
+        const token = mechanicData.fcmToken
+        console.log('Mechanic Token:', token)
+        console.log('Payload:', payload)
+
+        if (token) {
+          notificationPromises.push(
+            admin.messaging().send({
+              data: payload.data,
+              notification: payload.notification,
+              token: token,
+            })
+          )
+
+          console.log('Notification sent to mechanic:', mechanicData)
+        } else {
+          console.error('Invalid token for mechanic:', mechanicData)
+        }
+      } else {
+        console.log(
+          `Mechanic ${mechanicData.name} is not in range. Distance: ${distance} km`
+        )
+      }
+    })
+
+    await Promise.all(notificationPromises)
+
+    console.log('Notifications sent to nearby mechanics.')
+    return null
+  } catch (error) {
+    console.error('Error:', error)
+    return null
+  }
+}
+
 exports.updateMechanicNotifications = functions.firestore
   .document('jobs/{jobId}')
   .onUpdate(async (change, context) => {
@@ -137,14 +239,25 @@ exports.updateMechanicNotifications = functions.firestore
     const previousNearbyDistance = beforeData.nearByDistance
     const newNearbyDistance = afterData.nearByDistance
 
+    console.log('Before data:', beforeData)
+    console.log('After data:', afterData)
+
     // Check if nearbyDistance has changed
     if (previousNearbyDistance !== newNearbyDistance) {
       console.log(
         `nearByDistance updated from ${previousNearbyDistance} km to ${newNearbyDistance} km for job ${context.params.jobId}`
       )
 
-      // Trigger sending notifications again with the new nearbyDistance value
-      return exports.sendNewMechanicNotification(change.after, context)
+      // Check if userLat and userLong exist in the afterData
+      if (!afterData.userLat || !afterData.userLong) {
+        console.error(
+          'userLat or userLong is missing in the updated job document.'
+        )
+        return null
+      }
+
+      // Pass afterData directly to sendNewMechanicNotification
+      return exports.sendAgainNewMechanicNotification(null, context, afterData)
     }
 
     return null

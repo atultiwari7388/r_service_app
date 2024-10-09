@@ -50,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kWhite,
+      backgroundColor: kSplashBackground,
       body: Center(
         child: TweenAnimationBuilder(
           tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -63,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
             );
           },
           child: Image.asset(
-            "assets/no-background-logo.png",
+            "assets/new_splash_logo.png",
             height: 300.h,
             fit: BoxFit.cover,
           ),

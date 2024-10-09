@@ -25,8 +25,6 @@ class DashBoardScreen extends StatefulWidget {
 }
 
 class _DashBoardScreenState extends State<DashBoardScreen> {
-  // final DashboardController dashboardController = Get.find();
-
   @override
   Widget build(BuildContext context) {
     return GetBuilder<DashboardController>(
@@ -44,8 +42,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     elevation: 0,
                     centerTitle: true,
                     title: Image.asset(
-                      'assets/appbar_logo.png', // Replace with your logo asset path
-                      height: 60.h, // Adjust the height as needed
+                      'assets/h_n_logo.png', // Replace with your logo asset path
+                      height: 50.h, // Adjust the height as needed
                     ),
                     actions: [
                       GestureDetector(
@@ -550,11 +548,16 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(
-                item["icon"],
-                color: Colors.white,
-                height: 30.h, // Image height
-                width: 30.w, // Image width
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: kWhite, borderRadius: BorderRadius.circular(12.r)),
+                child: Image.asset(
+                  item["icon"],
+                  color: Colors.black,
+                  height: 30.h, // Image height
+                  width: 30.w, // Image width
+                ),
               ),
               // Space between image and text
               Flexible(

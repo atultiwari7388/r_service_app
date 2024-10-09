@@ -272,11 +272,6 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                   setState);
                               // updateStatus(3);
                             }),
-                    if (widget.currentStatus == 3)
-                      buildButton(kPrimary, "Confirm to Start", () {
-                        // updateStatus(4);
-                        _showConfirmStartDialog();
-                      }),
                     if (widget.currentStatus == 4)
                       Container(
                         height: 40.h,
@@ -300,22 +295,23 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                         ? SizedBox()
                         : widget.currentStatus == 5
                             ? SizedBox()
-                            : ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xff88532B),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12.0.r),
-                                  ),
-                                ),
-                                onPressed: widget.onCallTap,
-                                child: Text(
-                                  "Need to talk",
-                                  style: kIsWeb
-                                      ? TextStyle(color: kWhite)
-                                      : appStyle(
-                                          13.sp, Colors.white, FontWeight.bold),
-                                ),
-                              ),
+                            : Spacer(),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0.r),
+                        ),
+                      ),
+                      onPressed: widget.onCallTap,
+                      child: Text(
+                        "Need to talk",
+                        style: kIsWeb
+                            ? TextStyle(color: kWhite)
+                            : appStyle(13.sp, Colors.white, FontWeight.bold),
+                      ),
+                    ),
+                    Spacer(),
                     widget.currentStatus == 5
                         ? Row(
                             // mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -364,6 +360,22 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
               ],
             ),
           ),
+          if (widget.currentStatus == 3)
+            // Center(
+            //   child: buildButton(kPrimary, "Confirm to Start", () {
+            //     _showConfirmStartDialog();
+            //   }),
+            // ),
+            ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.maxFinite, 45),
+                  backgroundColor: kSecondary,
+                  foregroundColor: kWhite,
+                ),
+                onPressed: () {
+                  _showConfirmStartDialog();
+                },
+                child: Text("Confirm to Start")),
           SizedBox(height: 12.h),
         ],
       ),

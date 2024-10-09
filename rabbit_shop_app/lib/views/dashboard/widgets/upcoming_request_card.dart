@@ -103,7 +103,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                 radius: 24.w,
                 backgroundImage: NetworkImage(widget.imagePath),
               ),
-              SizedBox(width: 12.w),
+              SizedBox(width: 5.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,14 +118,17 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                         // widget.currentStatus == 0
                         //     ? SizedBox()
                         // :
-                        Row(
-                          children: [
-                            InfoBoxWidget(text: widget.km, color: kPrimary),
-                            RatingBoxWidget(rating: widget.rating),
-                            SizedBox(width: 5.w),
-                            Text(widget.date,
-                                style: appStyle(13, kGray, FontWeight.bold)),
-                          ],
+                        SizedBox(
+                          // width: 250.w,
+                          child: Row(
+                            children: [
+                              InfoBoxWidget(text: widget.km, color: kPrimary),
+                              RatingBoxWidget(rating: widget.rating),
+                              SizedBox(width: 5.w),
+                              Text(widget.date,
+                                  style: appStyle(10, kGray, FontWeight.bold)),
+                            ],
+                          ),
                         ),
                       ],
                     ),
