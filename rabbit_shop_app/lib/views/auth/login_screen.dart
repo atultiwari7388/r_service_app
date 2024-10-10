@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             children: [
                               Image.asset(
-                                'assets/no-background-logo.png',
+                                'assets/app_icon_new_logo.png',
                                 height: 270.h,
                                 width: double.maxFinite,
                                 // color: kWhite,
@@ -147,19 +147,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                   onPress: controller.isUserAcCreated
                                       ? null
                                       : () {
-                                    if (_formKey.currentState !=
-                                        null &&
-                                        _formKey.currentState!
-                                            .validate()) {
-                                      controller
-                                          .signInWithEmailAndPassword();
-                                    } else {
-                                      showToastMessage(
-                                          "Error",
-                                          "Please enter valid inputs",
-                                          Colors.red);
-                                    }
-                                  },
+                                          if (_formKey.currentState != null &&
+                                              _formKey.currentState!
+                                                  .validate()) {
+                                            controller
+                                                .signInWithEmailAndPassword();
+                                          } else {
+                                            showToastMessage(
+                                                "Error",
+                                                "Please enter valid inputs",
+                                                Colors.red);
+                                          }
+                                        },
                                   color: kPrimary,
                                 ),
                                 // CustomGradientButton(text: "Login", onPress: () {}),
@@ -202,13 +201,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   TextFieldInputWidget buildTextFieldInputWidget(
-      String hintText,
-      TextInputType type,
-      TextEditingController controller,
-      IconData icon, {
-        bool isPass = false,
-        String? Function(String?)? validator,
-      }) {
+    String hintText,
+    TextInputType type,
+    TextEditingController controller,
+    IconData icon, {
+    bool isPass = false,
+    String? Function(String?)? validator,
+  }) {
     return TextFieldInputWidget(
       hintText: hintText,
       textInputType: type,

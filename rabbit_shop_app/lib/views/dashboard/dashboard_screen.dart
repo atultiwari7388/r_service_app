@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -22,6 +21,34 @@ class DashBoardScreen extends StatefulWidget {
 }
 
 class _DashBoardScreenState extends State<DashBoardScreen> {
+  List<String> selectedServices = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchSelectedServices();
+  }
+
+  Future<void> fetchSelectedServices() async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> mechanicSnapshot =
+          await FirebaseFirestore.instance
+              .collection('Mechanics')
+              .doc(currentUId)
+              .get();
+
+      if (mechanicSnapshot.exists) {
+        List<dynamic> services =
+            mechanicSnapshot.data()?['selected_services'] ?? [];
+        selectedServices =
+            List<String>.from(services); // Convert to List<String>
+        print(selectedServices);
+      }
+    } catch (e) {
+      print('Error fetching selected services: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetBuilder<DashboardController>(
@@ -49,7 +76,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                         GestureDetector(
                           // onTap: () => Get.to(() => OrderHistoryScreen()),
                           child: _compactDashboardItem("Ongoing Jobs",
-                              controller.ongoingJobs.toString(), kRed),
+                              controller.ongoingJobs.toString(), kPrimary),
                         ),
                       ],
                     ),
@@ -131,9 +158,12 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                         child: CircularProgressIndicator());
                                   }
 
+                                  // Get the list of jobs
                                   final data = snapshot.data!.docs;
+                                  List<dynamic> mechanicServices =
+                                      selectedServices;
 
-                                  // Filter the data based on mechanicsOffers
+                                  // Filter the data based on mechanicsOffers and selectedServices
                                   final filteredData = data.where((doc) {
                                     final job =
                                         doc.data() as Map<String, dynamic>;
@@ -145,33 +175,41 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                         mechanicsOffers.isEmpty) {
                                       print(
                                           'Job ${job['orderId']} has no offers. Showing this job.');
-                                      return true; // Show the job if offers are empty
-                                    }
+                                    } else {
+                                      bool shouldShowJob =
+                                          true; // Flag to determine if the job should be shown
 
-                                    bool shouldShowJob =
-                                        true; // Flag to determine if the job should be shown
-
-                                    // Check if mId is not equal to currentUId or if the status is 0
-                                    for (var offer in mechanicsOffers) {
-                                      if (offer['mId'] == currentUId) {
-                                        // If the mechanic's ID matches, check the offer status
-                                        if (offer['status'] == 1) {
-                                          print(
-                                              'Hiding job ${job['orderId']} because status is 1 (accepted).');
-                                          shouldShowJob =
-                                              false; // Hide the job if the mechanic's offer status is 1
-                                          break; // No need to check other offers
+                                      // Check if mId is not equal to currentUId or if the status is 0
+                                      for (var offer in mechanicsOffers) {
+                                        if (offer['mId'] == currentUId) {
+                                          // If the mechanic's ID matches, check the offer status
+                                          if (offer['status'] == 1) {
+                                            print(
+                                                'Hiding job ${job['orderId']} because status is 1 (accepted).');
+                                            shouldShowJob =
+                                                false; // Hide the job if the mechanic's offer status is 1
+                                            break; // No need to check other offers
+                                          }
                                         }
-                                        // If the mechanic's offer status is 0, we want to show this job
-                                        // So we continue checking the other offers
+                                      }
+
+                                      if (!shouldShowJob) {
+                                        return false; // Skip this job if it should not be shown
                                       }
                                     }
 
-                                    if (shouldShowJob) {
-                                      print('Showing job ${job['orderId']}');
+                                    // Now check if the selectedService matches any mechanic's selected services
+                                    final jobService = job[
+                                        'selectedService']; // Single string service for the job
+                                    if (!mechanicServices
+                                        .contains(jobService)) {
+                                      print(
+                                          'Job ${job['orderId']} does not match any selected service of the mechanic.');
+                                      return false; // Hide this job if the service does not match
                                     }
 
-                                    return shouldShowJob; // Return the final decision
+                                    print('Showing job ${job['orderId']}');
+                                    return true; // Show the job if all conditions are met
                                   }).toList();
 
                                   if (filteredData.isEmpty) {
@@ -224,69 +262,52 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                       // Logic to ensure job is nearby
                                       if (distance <=
                                           (job['nearByDistance'] ?? 0)) {
-                                        return FutureBuilder(
-                                          future: getAverageUserRating(
-                                              job["userId"]),
-                                          builder: (ctx, snapshot) {
-                                            double rating = 4.5;
-                                            if (snapshot.hasData) {
-                                              rating = snapshot.data ?? 4.5;
+                                        return UpcomingRequestCard(
+                                          orderId: job["orderId"].toString(),
+                                          userName: job["userName"].toString(),
+                                          vehicleName:
+                                              "${job["companyName"]} (${job['vehicleNumber']})",
+                                          address: job['userDeliveryAddress'] ??
+                                              "N/A",
+                                          serviceName:
+                                              job['selectedService'] ?? "N/A",
+                                          jobId: job['orderId'] ?? "#Unknown",
+                                          imagePath: imagePath.isEmpty
+                                              ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                              : imagePath,
+                                          date: dateString,
+                                          buttonName: "Interested",
+                                          onButtonTap: () =>
+                                              controller.showConfirmDialog(
+                                            index,
+                                            filteredData,
+                                            job["userId"].toString(),
+                                            job["orderId"].toString(),
+                                            isImage,
+                                            job["fixPriceEnabled"] ?? false,
+                                          ),
+                                          onDasMapButton: () async {
+                                            final Uri googleMapsUri = Uri.parse(
+                                                'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                            if (await canLaunch(
+                                                googleMapsUri.toString())) {
+                                              await launch(
+                                                  googleMapsUri.toString());
+                                            } else {
+                                              print(
+                                                  'Could not launch Google Maps');
                                             }
-
-                                            return UpcomingRequestCard(
-                                              orderId:
-                                                  job["orderId"].toString(),
-                                              userName:
-                                                  job["userName"].toString(),
-                                              vehicleName:
-                                                  "${job["companyName"]} (${job['vehicleNumber']})",
-                                              address:
-                                                  job['userDeliveryAddress'] ??
-                                                      "N/A",
-                                              serviceName:
-                                                  job['selectedService'] ??
-                                                      "N/A",
-                                              jobId:
-                                                  job['orderId'] ?? "#Unknown",
-                                              imagePath: imagePath.isEmpty
-                                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                                  : imagePath,
-                                              date: dateString,
-                                              buttonName: "Interested",
-                                              onButtonTap: () =>
-                                                  controller.showConfirmDialog(
-                                                index,
-                                                filteredData,
-                                                job["userId"].toString(),
-                                                job["orderId"].toString(),
-                                                isImage,
-                                                job["fixPriceEnabled"] ?? false,
-                                              ),
-                                              onDasMapButton: () async {
-                                                final Uri googleMapsUri = Uri.parse(
-                                                    'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
-                                                if (await canLaunch(
-                                                    googleMapsUri.toString())) {
-                                                  await launch(
-                                                      googleMapsUri.toString());
-                                                } else {
-                                                  print(
-                                                      'Could not launch Google Maps');
-                                                }
-                                              },
-                                              currentStatus: mechanicStatus,
-                                              rating: rating.toStringAsFixed(1),
-                                              arrivalCharges: "30",
-                                              km: "${distance.toStringAsFixed(0)} miles",
-                                              isImage: isImage,
-                                              images: images,
-                                              fixCharge:
-                                                  job["fixPrice"].toString(),
-                                              reviewSubmitted:
-                                                  job["reviewSubmitted"] ??
-                                                      false,
-                                            );
                                           },
+                                          currentStatus: mechanicStatus,
+                                          rating:
+                                              "4.5", // Assuming you will fetch or calculate this elsewhere
+                                          arrivalCharges: "30",
+                                          km: "${distance.toStringAsFixed(0)} miles",
+                                          isImage: isImage,
+                                          images: images,
+                                          fixCharge: job["fixPrice"].toString(),
+                                          reviewSubmitted:
+                                              job["reviewSubmitted"] ?? false,
                                         );
                                       } else {
                                         return Container(); // Return an empty container if distance is greater than nearbyDistance
@@ -484,32 +505,3 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     );
   }
 }
-
-// StreamBuilder(
-//   stream: FirebaseFirestore.instance
-//       .collection('jobs')
-//       .where('status', isEqualTo: 0)
-//       .where('mechanicOffers',
-//           arrayContains: {'status': 0})
-//       .orderBy("orderDate", descending: true)
-//       .snapshots(),
-//   builder: (BuildContext context,
-//       AsyncSnapshot<QuerySnapshot> snapshot) {
-//     if (snapshot.hasError) {
-//       return Text('Error: ${snapshot.error}');
-//     }
-
-//     if (snapshot.connectionState ==
-//         ConnectionState.waiting) {
-//       return const CircularProgressIndicator();
-//     }
-
-//     final data = snapshot.data!.docs;
-
-//     if (data.isEmpty) {
-//       return Center(
-//           child: Text("No Request Available"));
-//     }
-
-//   },
-// ),

@@ -218,7 +218,10 @@ class DashboardController extends GetxController {
           children: [
             Text(
                 "Kindly reach within time  to get more jobs and avoid negative feedback",
-                style: TextStyle(fontSize: 16)),
+                style: TextStyle(
+                    fontSize: 16.sp,
+                    color: kPrimary,
+                    fontWeight: FontWeight.bold)),
             SizedBox(height: 20.h),
             TextField(
               controller: arrivalChargesController,
@@ -274,8 +277,10 @@ class DashboardController extends GetxController {
                 "mId": currentUId.toString(),
                 "mName": userName.toString(),
                 "mNumber": phoneNumber.toString(),
+                "mDp": userPhoto.toString(),
                 "arrivalCharges": arrivalCharges,
                 "perHourCharges": perHourCharges,
+                "fixPrice": 0,
                 "time": time,
                 "latitude": locationData.latitude,
                 "longitude": locationData.longitude,
@@ -342,7 +347,8 @@ class DashboardController extends GetxController {
         children: [
           Text(
             "Kindly reach within time  to get more jobs and avoid negative feedback",
-            style: TextStyle(fontSize: 16),
+            style: TextStyle(
+                fontSize: 16.sp, color: kPrimary, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 20.h),
           TextField(

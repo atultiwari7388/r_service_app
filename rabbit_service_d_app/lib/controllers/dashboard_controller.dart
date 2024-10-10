@@ -565,111 +565,6 @@ class DashboardController extends GetxController {
   }
 
 //=============================== Order Generation =====================================
-  // Future<void> findMechanic(
-  //   String address,
-  //   String userPhoto,
-  //   String name,
-  //   String phoneNumber,
-  //   double userLatitude,
-  //   double userLongitude,
-  //   String selectedService,
-  //   String companyName,
-  //   String vehicleNumber,
-  //   bool isImageSelected,
-  //   List<File> images,
-  // ) async {
-  //   try {
-  //     setLoading(true);
-  //     // Generate order ID
-  //     final orderId = await generateOrderId();
-
-  //     // List to store image URLs
-  //     List<String> imageUrls = [];
-
-  //     // Upload images to Firebase Storage
-  //     if (isImageSelected) {
-  //       for (File image in images) {
-  //         String fileName =
-  //             DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
-  //         Reference storageRef = FirebaseStorage.instance
-  //             .ref()
-  //             .child('order_images')
-  //             .child(fileName);
-
-  //         // Upload the image
-  //         UploadTask uploadTask = storageRef.putFile(image);
-
-  //         // Get the download URL
-  //         String imageUrl = await (await uploadTask).ref.getDownloadURL();
-  //         imageUrls.add(imageUrl);
-  //       }
-  //     }
-
-  //     var data = {
-  //       'orderId': orderId.toString(),
-  //       "cancelReason": "",
-  //       'userId': currentUId,
-  //       "userPhoto": userPhoto,
-  //       'userName': name,
-  //       'selectedService': selectedService,
-  //       "companyName": companyName,
-  //       "vehicleNumber": vehicleNumber,
-  //       'userPhoneNumber': phoneNumber,
-  //       'userDeliveryAddress': address,
-  //       'userLat': userLatitude,
-  //       "isImageSelected": isImageSelected,
-  //       "fixPriceEnabled": fixPriceEnabled,
-  //       "images": imageUrls,
-  //       'userLong': userLongitude,
-  //       'orderDate': DateTime.now(),
-  //       "role": role.toString(),
-  //       "ownerId": ownerId.toString(),
-  //       "payMode": "",
-  //       "status": 0,
-  //       "rating": "4.3",
-  //       "time": "",
-  //       "mId": "",
-  //       "mName": "",
-  //       "mNumber": "",
-  //       "mDp": "",
-  //       'arrivalCharges': "",
-  //       "fixPrice": "",
-  //       'perHourCharges': "",
-  //       'mechanicAddress': "",
-  //       'mecLatitude': "",
-  //       'mecLongtitude': "",
-  //       'nearByDistance': 5,
-  //     };
-
-  //     // Save order details to user's history subcollection
-  //     await FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .doc(currentUId)
-  //         .collection("history")
-  //         .doc(orderId.toString())
-  //         .set(data);
-
-  //     // Save order details to admin-accessible collection
-  //     await FirebaseFirestore.instance
-  //         .collection("jobs")
-  //         .doc(orderId.toString())
-  //         .set(data);
-  //     showToast('Job created successfully');
-  //     // Order placed successfully
-  //     // showToastMessage("Success", "Order placed successfully!", kSuccess);
-  //     print('Order placed successfully!');
-  //   } catch (e) {
-  //     // Error handling
-  //     print('Failed to place order: $e');
-  //     showToastMessage("Error", "Failed to Submit request: $e", kRed);
-  //   } finally {
-  //     images.clear();
-  //     isImageSelected = false;
-  //     isImageMandatory = false;
-  //     update();
-  //     setLoading(false);
-  //   }
-  // }
 
   Future<void> findMechanic(
     String address,
@@ -736,24 +631,7 @@ class DashboardController extends GetxController {
         "rating": "4.3",
         "reviewSubmitted": false,
         'nearByDistance': 5,
-        'mechanicsOffer': [
-          // {
-          //   "status": 0,
-          //   "rating": "4.3",
-          //   "time": "",
-          //   "mId": "",
-          //   "mName": "",
-          //   "mNumber": "",
-          //   "mDp": "",
-          //   "languages": [],
-          //   'arrivalCharges': 0,
-          //   'perHourCharges': 0,
-          //   "fixPrice": 0,
-          //   'mechanicAddress': "",
-          //   'mecLatitude': 0.0,
-          //   'mecLongtitude': 0.0,
-          // }
-        ],
+        'mechanicsOffer': [],
       };
 
       // Save order details to user's history subcollection

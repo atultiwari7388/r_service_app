@@ -20,10 +20,8 @@ class CompletedJobsHistoryScreen extends StatefulWidget {
 
 class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
     with SingleTickerProviderStateMixin {
-  late Stream<QuerySnapshot> jobsStream;
-
+  late Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> jobsStream;
   TextEditingController searchController = TextEditingController();
-
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -31,9 +29,21 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
     super.initState();
     jobsStream = FirebaseFirestore.instance
         .collection('jobs')
-        .where("mId", isEqualTo: currentUId)
-        .where("status", isEqualTo: 5)
-        .snapshots();
+        .orderBy("orderDate", descending: true)
+        .snapshots()
+        .map((snapshot) {
+      // Filter out the documents where mechanicsOffer exists and contains mId matching currentUId
+      final filteredDocs = snapshot.docs.where((doc) {
+        // Check if the mechanicsOffer field exists
+        if (doc.data().containsKey('mechanicsOffer')) {
+          List mechanicsOffers = doc['mechanicsOffer'] ?? [];
+          return mechanicsOffers.any((offer) => offer['mId'] == currentUId);
+        }
+        return false; // If mechanicsOffer doesn't exist, exclude this document
+      }).toList();
+      // Return the filtered list of documents
+      return filteredDocs;
+    });
   }
 
   @override
@@ -50,26 +60,24 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
         body: buildOrderStreamSection());
   }
 
-  StreamBuilder<QuerySnapshot<Object?>> buildOrderStreamSection() {
-    return StreamBuilder<QuerySnapshot>(
+  StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+      buildOrderStreamSection() {
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
       stream: jobsStream,
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+      builder: (BuildContext context,
+          AsyncSnapshot<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+              snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
           return Text('Error: ${snapshot.error}');
         }
-        if (snapshot.data!.docs.isEmpty) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // const Icon(
-                //   Icons.shopping_cart_outlined,
-                //   size: 100,
-                //   color: kPrimary,
-                // ),
                 const SizedBox(height: 20),
                 ReusableText(
                   text: "No Jobs Found",
@@ -80,16 +88,9 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
           );
         }
 
-        List<Map<String, dynamic>> completedOrders = [];
-
         // Extract orders data from the snapshot
-        List<Map<String, dynamic>> orders = snapshot.data!.docs
-            .map((doc) => doc.data() as Map<String, dynamic>)
-            .toList();
-
-        completedOrders =
-            orders.where((order) => order['status'] == 5).toList();
-
+        List<Map<String, dynamic>> orders =
+            snapshot.data!.map((doc) => doc.data()).toList();
         return _buildOrdersList(orders, 5);
       },
     );
@@ -109,15 +110,15 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
       child: Column(
         children: [
           //filter and search bar section
-          // Container(
-          //   margin: const EdgeInsets.only(left: 10, right: 10),
-          //   child: Row(
-          //     children: [
-          //       Expanded(child: buildTopSearchBar()),
-          //       SizedBox(width: 5.w),
-          //     ],
-          //   ),
-          // ),
+          Container(
+            margin: const EdgeInsets.only(left: 10, right: 10),
+            child: Row(
+              children: [
+                Expanded(child: buildTopSearchBar()),
+                SizedBox(width: 5.w),
+              ],
+            ),
+          ),
 
           ListView.builder(
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
@@ -126,17 +127,14 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
             itemCount: filteredOrders.length,
             itemBuilder: (ctx, index) {
               final jobs = filteredOrders[index];
-              final userName = jobs['userName'] ?? "N/A";
               final userPhoneNumber = jobs['userPhoneNumber'] ?? "N/A";
               final imagePath = jobs['userPhoto'] ?? "";
-              final userLat = jobs["userLat"] ?? 00;
-              final userLng = jobs["userLong"] ?? 00;
-              final mecLatitude = jobs["mecLatitude"] ?? 00;
-              final mecLongtitude = jobs["mecLongtitude"] ?? 00;
               final currentStatus = jobs["status"] ?? 0;
               final dId = jobs["userId"];
               final bool isImage = jobs["isImageSelected"] ?? false;
               final List<dynamic> images = jobs['images'] ?? [];
+              final vehicleNumber =
+                  jobs['vehicleNumber'] ?? "N/A"; // Fetch the vehicle number
 
               String dateString = '';
               if (jobs['date'] is Timestamp) {
@@ -144,9 +142,43 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 dateString =
                     "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
               }
-              double distance = calculateDistance(
-                  userLat, userLng, mecLatitude, mecLongtitude);
+              final payMode = jobs["payMode"].toString();
+              final userLat = (jobs["userLat"] as num).toDouble();
+              final userLng = (jobs["userLong"] as num).toDouble();
 
+              // Retrieve mecLatitude and mecLongitude from mechanicsOffer array
+              double mecLatitude = 0.0;
+              double mecLongitude = 0.0;
+
+              // Check if mechanicsOffer exists and is a list
+              if (jobs['mechanicsOffer'] is List) {
+                // Find the mechanic whose mId matches currentUId
+                final mechanic =
+                    (jobs['mechanicsOffer'] as List<dynamic>).firstWhere(
+                  (offer) => offer['mId'] == currentUId,
+                  orElse: () => null, // Return null if not found
+                );
+
+                if (mechanic != null) {
+                  mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ??
+                      0.0; // Update with your field name
+                  mecLongitude = (mechanic['longitude'] as num?)?.toDouble() ??
+                      0.0; // Update with your field name
+                }
+              }
+
+              // Print to check values
+              print('User Latitude: $userLat, User Longitude: $userLng');
+              print(
+                  'Mechanic Latitude: $mecLatitude, Mechanic Longitude: $mecLongitude');
+
+              double distance = calculateDistance(
+                  userLat, userLng, mecLatitude, mecLongitude);
+              print('Calculated Distance: $distance');
+
+              if (distance < 1) {
+                distance = 1;
+              }
               return UpcomingRequestCard(
                 orderId: jobs["orderId"].toString(),
                 userName: jobs["userName"],
@@ -182,6 +214,8 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
               );
             },
           ),
+
+          SizedBox(height: 80.h),
         ],
       ),
     );

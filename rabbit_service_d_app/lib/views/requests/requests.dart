@@ -7,7 +7,6 @@ import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/widgets/request_history_upcoming_request.dart';
 import '../../services/collection_references.dart';
 import '../../services/find_mechanic.dart';
-import '../../services/get_month_string.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
 import '../../widgets/reusable_text.dart';
@@ -175,7 +174,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     .doc(currentUId)
                     .collection("history")
                     .where("orderId", isEqualTo: widget.id)
-                    .where("status", whereIn: [1, 2, 3, 4, 5]).snapshots(),
+                    .where("status", whereIn: [0, 1, 2, 3, 4, 5]).snapshots(),
                 builder: (BuildContext context,
                     AsyncSnapshot<QuerySnapshot> snapshot) {
                   if (snapshot.hasError) {
@@ -186,75 +185,98 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     return const CircularProgressIndicator();
                   }
 
-                  final data = snapshot
-                      .data!.docs; // List of documents in the 'jobs' collection
+                  final data = snapshot.data!.docs; // List of job documents
 
-                  return data.isEmpty
-                      ? Center(child: Text("No Mechanic Found"))
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: data.length,
-                          itemBuilder: (context, index) {
-                            final job =
-                                data[index].data() as Map<String, dynamic>;
-                            final userName = job['userName'] ?? "N/A";
-                            final imagePath = job['userPhoto'] ?? "";
-                            final vehicleNumber = job['vehicleNumber'] ??
-                                "N/A"; // Fetch the vehicle number
+                  if (data.isEmpty) {
+                    return Center(child: Text("No Mechanic Found"));
+                  }
 
-                            String dateString = '';
-                            if (job['orderDate'] is Timestamp) {
-                              DateTime dateTime =
-                                  (job['orderDate'] as Timestamp).toDate();
-                              dateString =
-                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
-                            }
-                            final userLat = (job["userLat"] as num).toDouble();
-                            final userLng = (job["userLong"] as num).toDouble();
-                            final mecLatitude =
-                                (job["mecLatitude"] as num).toDouble();
-                            final mecLongtitude =
-                                (job["mecLongtitude"] as num).toDouble();
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: data.length,
+                    itemBuilder: (context, index) {
+                      final job = data[index].data() as Map<String, dynamic>;
+                      final userLat = (job["userLat"] as num).toDouble();
+                      final userLng = (job["userLong"] as num).toDouble();
+                      final orderId = job["orderId"].toString();
+                      final userId = job["userId"].toString();
+                      final jobStatus = job["status"];
+                      final mechanicsOffer =
+                          job["mechanicsOffer"] as List<dynamic>? ?? [];
 
-                            // Print to check values
-                            print(
-                                'User Latitude: $userLat, User Longitude: $userLng');
-                            print(
-                                'Mechanic Latitude: $mecLatitude, Mechanic Longitude: $mecLongtitude');
+                      // Check if any mechanic has an accepted offer (status between 2 and 5)
+                      final hasAcceptedOffer = mechanicsOffer.any((offer) =>
+                          offer['status'] >= 2 && offer['status'] <= 5);
 
-                            double distance = calculateDistance(
-                                userLat, userLng, mecLatitude, mecLongtitude);
-                            print('Calculated Distance: $distance');
+                      // Show "No Mechanic Found" if no offers exist
+                      if (mechanicsOffer.isEmpty) {
+                        return Center(child: Text("No Mechanic Found"));
+                      }
 
-                            if (distance < 1) {
-                              distance = 1;
-                            }
-                            return RequestAcceptHistoryCard(
-                              shopName: job["mName"].toString(),
-                              time: job["time"].toString(),
-                              distance: "${distance.toStringAsFixed(0)} miles",
-                              rating: "4.5",
-                              jobId: job["orderId"].toString(),
-                              userId: job["userId"].toString(),
-                              mId: job["mId"].toString(),
-                              arrivalCharges: job["arrivalCharges"].toString(),
-                              fixCharges: job["fixPrice"].toString(),
-                              perHourCharges: job["perHourCharges"].toString(),
-                              imagePath: job["mDp"].toString().isEmpty
-                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                  : job["mDp"].toString(),
-                              currentStatus: job["status"],
-                              isHidden: _selectedCardIndex != null &&
-                                  _selectedCardIndex != index,
-                              languages: job["languages"] ?? [],
-                              isImage: job["isImageSelected"],
-                              reviewSubmitted: job["reviewSubmitted"] ?? false,
-                              onCallTap: () {
-                                makePhoneCall(job["mNumber"].toString());
-                              },
-                            );
-                          });
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: mechanicsOffer.length,
+                        itemBuilder: (context, mecIndex) {
+                          final mechanic = mechanicsOffer[mecIndex];
+                          final mName = mechanic["mName"].toString();
+                          final arrivalCharges =
+                              mechanic["arrivalCharges"].toString();
+                          final fixPrice = mechanic["fixPrice"].toString();
+                          final perHourCharges =
+                              mechanic["perHourCharges"].toString();
+                          final mId = mechanic["mId"].toString();
+                          final time = mechanic["time"].toString();
+                          final mDp = mechanic["mDp"].toString();
+                          final languages = mechanic["languages"] ?? [];
+                          final mNumber = mechanic["mNumber"];
+                          final mStatus = mechanic["status"];
+                          final mecLatitude =
+                              (mechanic['latitude'] as num?)?.toDouble() ?? 0.0;
+                          final mecLongitude =
+                              (mechanic['longitude'] as num?)?.toDouble() ??
+                                  0.0;
+
+                          double distance = calculateDistance(
+                              userLat, userLng, mecLatitude, mecLongitude);
+                          distance = distance < 1 ? 1 : distance;
+
+                          // If there's an accepted offer, only display the accepted mechanic
+                          if (hasAcceptedOffer &&
+                              !(mStatus >= 2 && mStatus <= 5)) {
+                            return SizedBox.shrink();
+                          }
+
+                          return RequestAcceptHistoryCard(
+                            shopName: mName,
+                            time: time,
+                            distance: "${distance.toStringAsFixed(0)} miles",
+                            rating: "4.5",
+                            jobId: orderId,
+                            userId: userId,
+                            mId: mId,
+                            arrivalCharges: arrivalCharges,
+                            fixCharges: fixPrice,
+                            perHourCharges: perHourCharges,
+                            imagePath: mDp.isEmpty
+                                ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                : mDp,
+                            jobStatus: jobStatus,
+                            mStatus: mStatus,
+                            isHidden: _selectedCardIndex != null &&
+                                _selectedCardIndex != index,
+                            languages: languages,
+                            isImage: job["isImageSelected"] ?? false,
+                            reviewSubmitted: job["reviewSubmitted"] ?? false,
+                            onCallTap: () {
+                              makePhoneCall(mNumber.toString());
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
                 },
               ),
               SizedBox(height: 50.h)
@@ -281,3 +303,105 @@ class _RequestsScreenState extends State<RequestsScreen> {
     );
   }
 }
+
+
+
+// StreamBuilder(
+//   stream: FirebaseFirestore.instance
+//       .collection('Users')
+//       .doc(currentUId)
+//       .collection("history")
+//       .where("orderId", isEqualTo: widget.id)
+//       .where("status", whereIn: [0, 1, 2, 3, 4, 5])
+//       .snapshots(),
+//   builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+//     if (snapshot.hasError) {
+//       return Text('Error: ${snapshot.error}');
+//     }
+
+//     if (snapshot.connectionState == ConnectionState.waiting) {
+//       return const CircularProgressIndicator();
+//     }
+
+//     final data = snapshot.data!.docs; // List of documents in the 'jobs' collection
+
+//     return data.isEmpty
+//         ? Center(child: Text("No Mechanic Found"))
+//         : ListView.builder(
+//             shrinkWrap: true,
+//             physics: NeverScrollableScrollPhysics(),
+//             itemCount: data.length,
+//             itemBuilder: (context, index) {
+//               final job = data[index].data() as Map<String, dynamic>;
+//               final userLat = (job["userLat"] as num).toDouble();
+//               final userLng = (job["userLong"] as num).toDouble();
+//               final orderId = job["orderId"].toString();
+//               final userId = job["userId"].toString();
+//               final jobStatus = job["status"];
+//               final mechanicsOffer = job["mechanicsOffer"] as List<dynamic>? ?? [];
+
+//               // Check if the job status is 2 (accepted) or not
+//               final hasAcceptedOffer = mechanicsOffer.any((offer) => offer['status'] == 2);
+
+//               return mechanicsOffer.isEmpty
+//                   ? Center(child: Text("No Mechanic Found"))
+//                   : ListView.builder(
+//                       shrinkWrap: true,
+//                       physics: NeverScrollableScrollPhysics(),
+//                       itemCount: mechanicsOffer.length,
+//                       itemBuilder: (context, mecIndex) {
+//                         final mechanic = mechanicsOffer[mecIndex];
+//                         final mName = mechanic["mName"].toString();
+//                         final arrivalCharges = mechanic["arrivalCharges"].toString();
+//                         final fixPrice = mechanic["fixPrice"].toString() ?? "";
+//                         final perHourCharges = mechanic["perHourCharges"].toString();
+//                         final mId = mechanic["mId"].toString();
+//                         final time = mechanic["time"].toString();
+//                         final mDp = mechanic["mDp"].toString();
+//                         final languages = mechanic["languages"];
+//                         final mNumber = mechanic["mNumber"];
+//                         final mStatus = mechanic["status"];
+//                         final mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ?? 0.0;
+//                         final mecLongitude = (mechanic['longitude'] as num?)?.toDouble() ?? 0.0;
+
+//                         double distance = calculateDistance(userLat, userLng, mecLatitude, mecLongitude);
+//                         if (distance < 1) {
+//                           distance = 1;
+//                         }
+
+//                         // Only show the accepted offer if one has been accepted, else show all offers
+//                         if (hasAcceptedOffer && mStatus != 2) {
+//                           // Hide this offer since it's not the accepted one
+//                           return SizedBox.shrink();
+//                         }
+
+//                         return RequestAcceptHistoryCard(
+//                           shopName: mName,
+//                           time: time,
+//                           distance: "${distance.toStringAsFixed(0)} miles",
+//                           rating: "4.5",
+//                           jobId: orderId,
+//                           userId: userId,
+//                           mId: mId,
+//                           arrivalCharges: arrivalCharges,
+//                           fixCharges: fixPrice,
+//                           perHourCharges: perHourCharges,
+//                           imagePath: mDp.isEmpty
+//                               ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+//                               : mechanic["mDp"].toString(),
+//                           jobStatus: jobStatus,
+//                           mStatus: mStatus,
+//                           isHidden: _selectedCardIndex != null && _selectedCardIndex != index,
+//                           languages: languages ?? [],
+//                           isImage: job["isImageSelected"],
+//                           reviewSubmitted: job["reviewSubmitted"] ?? false,
+//                           onCallTap: () {
+//                             makePhoneCall(mNumber.toString());
+//                           },
+//                         );
+//                       },
+//                     );
+//             },
+//           );
+//   },
+// ),

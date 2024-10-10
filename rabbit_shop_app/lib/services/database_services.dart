@@ -32,6 +32,7 @@ class DatabaseServices {
       "isNotificationOn": true,
       "wallet": 0,
       "active": true,
+      "selected_services": [],
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),
     });

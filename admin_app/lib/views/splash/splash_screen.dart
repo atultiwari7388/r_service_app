@@ -85,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen>
             );
           },
           child: Image.asset(
-            "assets/no-background-logo.png",
+            "assets/new_splash_logo.png",
             height: 300.h,
             fit: BoxFit.cover,
           ),

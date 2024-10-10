@@ -7,6 +7,7 @@ import 'package:regal_shop_app/views/helpContact/help_center.dart';
 import 'package:regal_shop_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:regal_shop_app/views/profile/profile_detail_screen.dart';
 import 'package:regal_shop_app/views/termsCondition/terms_conditions.dart';
+import 'package:regal_shop_app/views/yourServices/add_your_service.dart';
 import '../../services/collection_references.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
@@ -66,6 +67,10 @@ class ProfileScreen extends StatelessWidget {
                     SizedBox(height: 10.h),
                     buildListTile("assets/bookings_bw.png", "My History", () {
                       Get.to(() => CompletedJobsHistoryScreen());
+                    }),
+                    buildListTile("assets/services_your.png", "Your Services",
+                        () {
+                      Get.to(() => AddYourServices());
                     }),
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());

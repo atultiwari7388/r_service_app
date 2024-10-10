@@ -6,6 +6,7 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:regal_shop_app/services/collection_references.dart';
 import 'package:regal_shop_app/widgets/info_box.dart';
 import 'package:regal_shop_app/widgets/rating_box.dart';
 import '../../../utils/app_styles.dart';
@@ -458,28 +459,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          // child: Container(
-          //   height: 400,
-          //   child: Column(
-          //     mainAxisSize: MainAxisSize.min,
-          //     children: [
-          //       PhotoView(
-          //         imageProvider: NetworkImage(imageUrl),
-          //         minScale: PhotoViewComputedScale.covered,
-          //         maxScale: PhotoViewComputedScale.covered,
-          //       ),
-          //       // SizedBox(height: 10.h),
-          //       // ElevatedButton(
-          //       //   onPressed: () async {
-          //       //     // Implement your download logic here
-          //       //     // Example: using Dio or any other method to download
-          //       //     await _downloadImage(imageUrl);
-          //       //   },
-          //       //   child: Text('Download'),
-          //       // ),
-          //     ],
-          //   ),
-          // ),
           child: Container(
             // Set a fixed height and width, or use MediaQuery for dynamic sizing
             height: MediaQuery.of(context).size.height * 0.8,
@@ -542,7 +521,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
     );
   }
 
-  // Firestore update function
   Future<void> updateStatus(int status, String dId) async {
     final userHistoryRef = FirebaseFirestore.instance
         .collection('Users')
@@ -553,8 +531,58 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
         FirebaseFirestore.instance.collection('jobs').doc(widget.jobId);
 
     try {
+      // Step 1: Update the general status for both user history and the job document
       await userHistoryRef.update({'status': status});
       await jobRef.update({'status': status});
+
+      // Step 2: Update the mechanicsOffer array in the job document
+      final jobSnapshot = await jobRef.get();
+      final jobData = jobSnapshot.data();
+
+      if (jobData != null) {
+        final List<dynamic> mechanicsOffer = jobData['mechanicsOffer'] ?? [];
+
+        // Find the index of the mechanic offer by mId in jobRef
+        int mechanicIndex =
+            mechanicsOffer.indexWhere((offer) => offer['mId'] == currentUId);
+
+        if (mechanicIndex != -1) {
+          // Update the status of the specific mechanic offer in jobRef
+          mechanicsOffer[mechanicIndex]['status'] = status;
+
+          // Update the job document with the modified mechanicsOffer array
+          await jobRef.update({
+            'mechanicsOffer': mechanicsOffer,
+          });
+        } else {
+          print("Mechanic with mId: $currentUId not found in jobRef.");
+        }
+      }
+
+      // Step 3: Update the mechanicsOffer array in the userHistoryRef document
+      final historySnapshot = await userHistoryRef.get();
+      final historyData = historySnapshot.data();
+
+      if (historyData != null) {
+        final List<dynamic> historyMechanicsOffer =
+            historyData['mechanicsOffer'] ?? [];
+
+        // Find the index of the mechanic offer by mId in userHistoryRef
+        int historyMechanicIndex = historyMechanicsOffer
+            .indexWhere((offer) => offer['mId'] == currentUId);
+
+        if (historyMechanicIndex != -1) {
+          // Update the status of the specific mechanic offer in userHistoryRef
+          historyMechanicsOffer[historyMechanicIndex]['status'] = status;
+
+          // Update the userHistory document with the modified mechanicsOffer array
+          await userHistoryRef.update({
+            'mechanicsOffer': historyMechanicsOffer,
+          });
+        } else {
+          print("Mechanic with mId: $currentUId not found in userHistoryRef.");
+        }
+      }
     } catch (e) {
       print('Error updating status: $e');
     }

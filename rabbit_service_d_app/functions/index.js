@@ -64,10 +64,12 @@ exports.sendNewMechanicNotification = functions.firestore
       console.log('Found active mechanics:', mechanicsSnapshot.size)
 
       const notificationPromises = []
+      const jobService = job.selectedService // Fetching the selected service from the job
 
       mechanicsSnapshot.forEach((mechanicDoc) => {
         const mechanicData = mechanicDoc.data()
         const mechanicLocation = mechanicData.location
+        const selectedServices = mechanicData.selected_services || [] // Assuming the field name is 'selected_services'
 
         // Calculate the distance between the mechanic and job location
         const distance = calculateDistance(
@@ -83,31 +85,42 @@ exports.sendNewMechanicNotification = functions.firestore
 
         // Check if the mechanic is within the nearby distance range
         if (distance < nearByDistance) {
-          console.log('Mechanic is in range. Sending notification...')
+          console.log('Mechanic is in range.')
 
-          const payload = {
-            notification: {
-              title: 'New Job Request 🔧',
-              body: `Hey ${mechanicData.userName}, there's a new job request available!`,
-            },
-            data: {
-              jobId: context.params.jobId,
-              type: 'new_job',
-            },
-          }
-
-          const token = mechanicData.fcmToken
-          if (token) {
-            notificationPromises.push(
-              admin.messaging().send({
-                data: payload.data,
-                notification: payload.notification,
-                token: token,
-              })
+          // Check if the job's selected service matches any of the mechanic's selected services
+          if (selectedServices.includes(jobService)) {
+            console.log(
+              'Mechanic has the matching service. Sending notification...'
             )
-            console.log('Notification sent to mechanic:', mechanicData)
+
+            const payload = {
+              notification: {
+                title: 'New Job Request 🔧',
+                body: `Hey ${mechanicData.userName}, there's a new job request available!`,
+              },
+              data: {
+                jobId: context.params.jobId,
+                type: 'new_job',
+              },
+            }
+
+            const token = mechanicData.fcmToken
+            if (token) {
+              notificationPromises.push(
+                admin.messaging().send({
+                  data: payload.data,
+                  notification: payload.notification,
+                  token: token,
+                })
+              )
+              console.log('Notification sent to mechanic:', mechanicData)
+            } else {
+              console.error('Invalid token for mechanic:', mechanicData)
+            }
           } else {
-            console.error('Invalid token for mechanic:', mechanicData)
+            console.log(
+              `Mechanic ${mechanicData.userName} does not have the required service.`
+            )
           }
         } else {
           console.log(
@@ -126,6 +139,7 @@ exports.sendNewMechanicNotification = functions.firestore
   })
 
 //Function to Again send a new notification to the nearby mechanics when nearbyDistance value changed
+// Function to Again send a new notification to the nearby mechanics when nearbyDistance value changed
 exports.sendAgainNewMechanicNotification = async (
   snapshot,
   context,
@@ -136,6 +150,7 @@ exports.sendAgainNewMechanicNotification = async (
     const userLat = job.userLat
     const userLong = job.userLong
     const nearByDistance = job.nearByDistance || 5.0
+    const jobService = job.selectedService // Fetching the selected service from the job
 
     if (!userLat || !userLong) {
       console.error('userLat or userLong is missing in the job data.')
@@ -170,6 +185,7 @@ exports.sendAgainNewMechanicNotification = async (
     mechanicsSnapshot.forEach((mechanicDoc) => {
       const mechanicData = mechanicDoc.data()
       const mechanicLocation = mechanicData.location
+      const selectedServices = mechanicData.selected_services || [] // Assuming the field name is 'selected_services'
 
       const distance = calculateDistance(
         mechanicLocation.latitude,
@@ -182,40 +198,52 @@ exports.sendAgainNewMechanicNotification = async (
         `Mechanic ID: ${mechanicDoc.id}, Distance to job: ${distance} kms`
       )
 
+      // Check if the mechanic is within the nearby distance range
       if (distance < nearByDistance) {
-        console.log('Mechanic is in range. Sending notification...')
+        console.log('Mechanic is in range.')
 
-        const payload = {
-          notification: {
-            title: 'New Job Request 🔧',
-            body: `Hey ${mechanicData.userName}, there's a new job request available!`,
-          },
-          data: {
-            jobId: context.params.jobId,
-            type: 'new_job',
-          },
-        }
-
-        const token = mechanicData.fcmToken
-        console.log('Mechanic Token:', token)
-        console.log('Payload:', payload)
-
-        if (token) {
-          notificationPromises.push(
-            admin.messaging().send({
-              data: payload.data,
-              notification: payload.notification,
-              token: token,
-            })
+        // Check if the job's selected service matches any of the mechanic's selected services
+        if (selectedServices.includes(jobService)) {
+          console.log(
+            'Mechanic has the matching service. Sending notification...'
           )
 
-          console.log('Notification sent to mechanic:', mechanicData)
+          const payload = {
+            notification: {
+              title: 'New Job Request 🔧',
+              body: `Hey ${mechanicData.userName}, there's a new job request available!`,
+            },
+            data: {
+              jobId: context.params.jobId,
+              type: 'new_job',
+            },
+          }
+
+          const token = mechanicData.fcmToken
+          console.log('Mechanic Token:', token)
+          console.log('Payload:', payload)
+
+          if (token) {
+            notificationPromises.push(
+              admin.messaging().send({
+                data: payload.data,
+                notification: payload.notification,
+                token: token,
+              })
+            )
+
+            console.log('Notification sent to mechanic:', mechanicData)
+          } else {
+            console.error('Invalid token for mechanic:', mechanicData)
+          }
         } else {
-          console.error('Invalid token for mechanic:', mechanicData)
+          console.log(
+            `Mechanic ${mechanicData.userName} does not have the required service.`
+          )
         }
       } else {
         console.log(
-          `Mechanic ${mechanicData.name} is not in range. Distance: ${distance} km`
+          `Mechanic ${mechanicData.userName} is not in range. Distance: ${distance} km`
         )
       }
     })
@@ -384,110 +412,5 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
       }
     }
 
-    return null
-  })
-
-// Cloud Function to handle job completion and update mechanic's wallet
-exports.jobCompletionPayment = functions.firestore
-  .document('jobs/{jobId}')
-  .onUpdate(async (change, context) => {
-    const newValue = change.after.data()
-    const previousValue = change.before.data()
-    const jobId = context.params.jobId
-
-    // Check if the status has been updated to 5
-    if (previousValue.status !== 5 && newValue.status === 5) {
-      // Check if payMode is 'Online'
-      const payMode = newValue.payMode
-      if (payMode === 'Online') {
-        // Determine the price to add
-        const fixPrice = parseFloat(newValue.fixPrice) || 0
-        const arrivalCharges = parseFloat(newValue.arrivalCharges) || 0
-
-        const totalPrice = fixPrice + arrivalCharges
-
-        // Get the Mechanic's ID
-        const mechanicId = newValue.mId
-        if (!mechanicId) {
-          console.error(`Mechanic ID (mId) is missing in job ${jobId}`)
-          return null
-        }
-
-        try {
-          // Reference to the Mechanic's document
-          const mechanicRef = admin
-            .firestore()
-            .collection('Mechanics')
-            .doc(mechanicId)
-          const mechanicDoc = await mechanicRef.get()
-
-          // Initialize wallet to 0 if it doesn't exist yet
-          let currentWallet = 0
-          if (mechanicDoc.exists) {
-            const mechanicData = mechanicDoc.data()
-            currentWallet = mechanicData.wallet || 0 // Default to 0 if wallet field doesn't exist
-          }
-
-          // Update the wallet with the total price
-          await mechanicRef.update({
-            wallet: admin.firestore.FieldValue.increment(totalPrice),
-          })
-
-          console.log(
-            `Successfully added ₹${totalPrice} to mechanic ${mechanicId}'s wallet for job ${jobId}.`
-          )
-
-          // Send a notification to the mechanic about the wallet update
-          const updatedMechanicDoc = await mechanicRef.get()
-          if (updatedMechanicDoc.exists) {
-            const updatedMechanicData = updatedMechanicDoc.data()
-            const mechanicToken = updatedMechanicData.fcmToken
-
-            if (mechanicToken) {
-              const notificationPayload = {
-                notification: {
-                  title: '💰 Wallet Updated!',
-                  body: '',
-                  // body: `Your wallet has been credited with $${totalPrice} for job ID: ${jobId}. Total Balance: $${updatedMechanicData.wallet}`,
-                },
-                data: {
-                  jobId: jobId,
-                  type: 'default_sound',
-                },
-              }
-
-              // Send notification
-              await admin.messaging().send({
-                token: mechanicToken,
-                notification: notificationPayload.notification,
-                data: notificationPayload.data,
-              })
-
-              console.log(
-                `Notification sent to mechanic ${mechanicId} about wallet update.`
-              )
-            } else {
-              console.error(
-                `Mechanic ${mechanicId} does not have a valid FCM token.`
-              )
-            }
-          } else {
-            console.error(`Mechanic document not found for ID: ${mechanicId}`)
-          }
-        } catch (error) {
-          console.error(
-            `Error updating wallet for mechanic ${mechanicId}:`,
-            error
-          )
-        }
-      } else {
-        console.log(
-          `Job ${jobId} completed but payMode is not 'Online'. No wallet update required.`
-        )
-      }
-    } else {
-      // Status did not change to 5; do nothing
-      return null
-    }
     return null
   })
