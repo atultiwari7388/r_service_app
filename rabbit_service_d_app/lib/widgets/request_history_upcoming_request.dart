@@ -58,325 +58,319 @@ class RequestAcceptHistoryCard extends StatefulWidget {
 }
 
 class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
+  bool isStatusUpdating = false;
+
   @override
   Widget build(BuildContext context) {
     if (widget.isHidden) return SizedBox.shrink();
 
     String? _selectedPaymentMode;
 
-    return Container(
-      padding: EdgeInsets.all(5.w),
-      margin: EdgeInsets.all(2.h),
-      decoration: BoxDecoration(
-        color: kWhite,
-        borderRadius: BorderRadius.circular(12.w),
-        boxShadow: [
-          BoxShadow(
-            color: kSecondary.withOpacity(0.1),
-            blurRadius: 6.w,
-            offset: Offset(0, 2.h),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Job and Mechanic Details Row
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 24.w,
-                backgroundImage: NetworkImage(widget.imagePath),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.shopName,
-                      style: kIsWeb
-                          ? TextStyle(color: kDark)
-                          : appStyle(16.sp, kDark, FontWeight.w500),
-                    ),
-                    SizedBox(height: 4.h),
-                    Row(
-                      children: [
-                        _buildInfoBox("${widget.time} mins", Colors.red),
-                        SizedBox(width: 6.w),
-                        _buildInfoBox(widget.distance, kPrimary),
-                        SizedBox(width: 6.w),
-                        _buildRatingBox(widget.rating),
-                      ],
-                    ),
-                    SizedBox(height: 5.h),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (var language in widget.languages) ...[
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 10.w, vertical: 4.h),
-                              margin: EdgeInsets.only(right: 4.w),
-                              decoration: BoxDecoration(
-                                color: kPrimary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8.0.r),
-                              ),
-                              child: Text(
-                                language.toString(),
-                                style: kIsWeb
-                                    ? TextStyle(color: kPrimary)
-                                    : appStyle(
-                                        13.sp, kPrimary, FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          // Charges Details Container
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),
-            margin: EdgeInsets.symmetric(horizontal: 5.w, vertical: 5.h),
+    return isStatusUpdating
+        ? SizedBox(
+            height: MediaQuery.of(context).size.height,
+            width: double.maxFinite,
+            child: Center(child: CircularProgressIndicator()))
+        : Container(
+            padding: EdgeInsets.all(5.w),
+            margin: EdgeInsets.all(2.h),
             decoration: BoxDecoration(
-              color: kSecondary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Column(
-              children: [
-                // Display Fix Charges or Arrival Charges
-                widget.isImage
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          SizedBox(
-                            width: 145.w,
-                            child: Text(
-                              "Fix Charges",
-                              style: kIsWeb
-                                  ? TextStyle(color: kDark)
-                                  : appStyle(16.sp, kDark, FontWeight.w500),
-                            ),
-                          ),
-                          Container(
-                            height: 20.h,
-                            width: 1.w,
-                            color: kDark,
-                            margin: EdgeInsets.symmetric(horizontal: 10.w),
-                          ),
-                          Text(
-                            "\$${widget.fixCharges}",
-                            style: kIsWeb
-                                ? TextStyle(color: kDark)
-                                : appStyle(16.sp, kDark, FontWeight.w500),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          SizedBox(
-                            width: 145.w,
-                            child: Text(
-                              "Arrival Charges",
-                              style: kIsWeb
-                                  ? TextStyle(color: kDark)
-                                  : appStyle(16.sp, kDark, FontWeight.w500),
-                            ),
-                          ),
-                          Container(
-                            height: 20.h,
-                            width: 1.w,
-                            color: kDark,
-                            margin: EdgeInsets.symmetric(horizontal: 10.w),
-                          ),
-                          Text(
-                            "\$${widget.arrivalCharges}",
-                            style: kIsWeb
-                                ? TextStyle(color: kDark)
-                                : appStyle(16.sp, kDark, FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                // Conditional Divider and Per Hour Charges
-                if (widget.mStatus != 2 && !widget.isImage) Divider(),
-                if (widget.mStatus != 2 && !widget.isImage)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      SizedBox(
-                        width: 145.w,
-                        child: Text(
-                          "Per Hour Charges",
-                          style: kIsWeb
-                              ? TextStyle(color: kDark)
-                              : appStyle(16.sp, kDark, FontWeight.w500),
-                        ),
-                      ),
-                      Container(
-                        height: 20.h,
-                        width: 1.w,
-                        color: kDark,
-                        margin: EdgeInsets.symmetric(horizontal: 10.w),
-                      ),
-                      Text(
-                        "\$${widget.perHourCharges}",
-                        style: kIsWeb
-                            ? TextStyle(color: kDark)
-                            : appStyle(16.sp, kDark, FontWeight.w500),
-                      ),
-                    ],
-                  ),
-                SizedBox(height: 15.h),
-                // Action Buttons
-                Row(
-                  mainAxisAlignment: widget.mStatus == 1
-                      ? MainAxisAlignment.center
-                      : MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Accept Button (only if mStatus == 1)
-                    if (widget.mStatus == 1)
-                      buildButton(kSuccess, "Accept", () {
-                        _showConfirmDialog(widget.mId);
-                      }),
-
-                    // Pay Button (only if mStatus == 2)
-                    if (widget.mStatus == 2)
-                      buildButton(
-                        kSecondary,
-                        widget.isImage
-                            ? "Pay \$${widget.fixCharges}"
-                            : "Pay \$${widget.arrivalCharges}",
-                        () {
-                          // _showPayDialog(
-                          //   context,
-                          //   widget.isImage
-                          //       ? widget.fixCharges
-                          //       : widget.arrivalCharges,
-                          //   widget.isImage,
-                          //   _selectedPaymentMode,
-                          //   widget.mId,
-                          // );
-
-                          _showPayDialog(
-                            context,
-                            "${widget.fixCharges}",
-                            widget.isImage,
-                            _selectedPaymentMode,
-                            setState,
-                            widget.mId,
-                          );
-                        },
-                      ),
-
-                    // Ongoing Status (only if mStatus == 4)
-                    if (widget.mStatus == 4)
-                      Container(
-                        height: 40.h,
-                        width: 220.w,
-                        decoration: BoxDecoration(
-                          color: kSecondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Center(
-                          child: Text(
-                            "Ongoing",
-                            textAlign: TextAlign.center,
-                            style: kIsWeb
-                                ? TextStyle(color: kSecondary)
-                                : TextStyle(
-                                    color: kSecondary,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ),
-                    if (widget.mStatus == [1, 2, 3])
-                      // Need to Talk Button (always visible)
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.0.r),
-                          ),
-                        ),
-                        onPressed: widget.onCallTap,
-                        child: Text(
-                          "Need to talk",
-                          style: kIsWeb
-                              ? TextStyle(color: kWhite)
-                              : appStyle(13.sp, Colors.white, FontWeight.bold),
-                        ),
-                      ),
-
-                    // Completed Status and Rate Now/Edit Rating Button (only if mStatus == 5)
-                    if (widget.mStatus == 5)
-                      Row(
-                        children: [
-                          Container(
-                            height: 40.h,
-                            width: 120.w,
-                            decoration: BoxDecoration(
-                              color: kSecondary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Completed",
-                                textAlign: TextAlign.center,
-                                style: kIsWeb
-                                    ? TextStyle(color: kSecondary)
-                                    : TextStyle(
-                                        color: kSecondary,
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 15.w),
-                          buildButton(
-                            widget.reviewSubmitted ? kPrimary : kSuccess,
-                            widget.reviewSubmitted ? "Edit Rating" : "Rate Now",
-                            () => showRatingDialog(
-                              context,
-                              widget.mId,
-                              widget.jobId,
-                              widget.reviewSubmitted,
-                              widget.userId,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                    // Confirm to Start Button (only if mStatus == 3)
-                    if (widget.mStatus == 3)
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: Size(double.maxFinite, 45),
-                          backgroundColor: kSecondary,
-                          foregroundColor: kWhite,
-                        ),
-                        onPressed: () {
-                          _showConfirmStartDialog(widget.mId);
-                        },
-                        child: Text("Confirm to Start"),
-                      ),
-                  ],
+              color: kWhite,
+              borderRadius: BorderRadius.circular(12.w),
+              boxShadow: [
+                BoxShadow(
+                  color: kSecondary.withOpacity(0.1),
+                  blurRadius: 6.w,
+                  offset: Offset(0, 2.h),
                 ),
               ],
             ),
-          ),
-          SizedBox(height: 12.h),
-        ],
-      ),
-    );
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Job and Mechanic Details Row
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24.w,
+                      backgroundImage: NetworkImage(widget.imagePath),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.shopName,
+                            style: kIsWeb
+                                ? TextStyle(color: kDark)
+                                : appStyle(16.sp, kDark, FontWeight.w500),
+                          ),
+                          SizedBox(height: 4.h),
+                          Row(
+                            children: [
+                              _buildInfoBox("${widget.time} mins", Colors.red),
+                              SizedBox(width: 6.w),
+                              _buildInfoBox(widget.distance, kPrimary),
+                              SizedBox(width: 6.w),
+                              _buildRatingBox(widget.rating),
+                            ],
+                          ),
+                          SizedBox(height: 5.h),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (var language in widget.languages) ...[
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10.w, vertical: 4.h),
+                                    margin: EdgeInsets.only(right: 4.w),
+                                    decoration: BoxDecoration(
+                                      color: kPrimary.withOpacity(0.1),
+                                      borderRadius:
+                                          BorderRadius.circular(8.0.r),
+                                    ),
+                                    child: Text(
+                                      language.toString(),
+                                      style: kIsWeb
+                                          ? TextStyle(color: kPrimary)
+                                          : appStyle(
+                                              13.sp, kPrimary, FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                // Charges Details Container
+                Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),
+                  margin: EdgeInsets.symmetric(horizontal: 5.w, vertical: 5.h),
+                  decoration: BoxDecoration(
+                    color: kSecondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Column(
+                    children: [
+                      // Display Fix Charges or Arrival Charges
+                      widget.isImage
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                SizedBox(
+                                  width: 145.w,
+                                  child: Text(
+                                    "Fix Charges",
+                                    style: kIsWeb
+                                        ? TextStyle(color: kDark)
+                                        : appStyle(
+                                            16.sp, kDark, FontWeight.w500),
+                                  ),
+                                ),
+                                Container(
+                                  height: 20.h,
+                                  width: 1.w,
+                                  color: kDark,
+                                  margin:
+                                      EdgeInsets.symmetric(horizontal: 10.w),
+                                ),
+                                Text(
+                                  "\$${widget.fixCharges}",
+                                  style: kIsWeb
+                                      ? TextStyle(color: kDark)
+                                      : appStyle(16.sp, kDark, FontWeight.w500),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                SizedBox(
+                                  width: 145.w,
+                                  child: Text(
+                                    "Arrival Charges",
+                                    style: kIsWeb
+                                        ? TextStyle(color: kDark)
+                                        : appStyle(
+                                            16.sp, kDark, FontWeight.w500),
+                                  ),
+                                ),
+                                Container(
+                                  height: 20.h,
+                                  width: 1.w,
+                                  color: kDark,
+                                  margin:
+                                      EdgeInsets.symmetric(horizontal: 10.w),
+                                ),
+                                Text(
+                                  "\$${widget.arrivalCharges}",
+                                  style: kIsWeb
+                                      ? TextStyle(color: kDark)
+                                      : appStyle(16.sp, kDark, FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                      Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          SizedBox(
+                            width: 145.w,
+                            child: Text(
+                              "Per Hour Charges",
+                              style: kIsWeb
+                                  ? TextStyle(color: kDark)
+                                  : appStyle(16.sp, kDark, FontWeight.w500),
+                            ),
+                          ),
+                          Container(
+                            height: 20.h,
+                            width: 1.w,
+                            color: kDark,
+                            margin: EdgeInsets.symmetric(horizontal: 10.w),
+                          ),
+                          Text(
+                            "\$${widget.perHourCharges}",
+                            style: kIsWeb
+                                ? TextStyle(color: kDark)
+                                : appStyle(16.sp, kDark, FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 15.h),
+                      // Action Buttons
+                      Row(
+                        mainAxisAlignment: widget.mStatus == 1
+                            ? MainAxisAlignment.center
+                            : MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Accept Button (only if mStatus == 1)
+                          if (widget.mStatus == 1)
+                            buildButton(kSuccess, "Accept", () {
+                              _showConfirmDialog(widget.mId);
+                            }),
+
+                          // Pay Button (only if mStatus == 2)
+                          if (widget.jobStatus == 2)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                buildButton(
+                                    kPrimary, "Need to talk", widget.onCallTap),
+                                SizedBox(width: 10.w),
+                                buildButton(
+                                  kSecondary,
+                                  widget.isImage
+                                      ? "Pay \$${widget.fixCharges}"
+                                      : "Pay \$${widget.arrivalCharges}",
+                                  () {
+                                    _showPayDialog(
+                                      context,
+                                      "${widget.fixCharges}",
+                                      widget.isImage,
+                                      _selectedPaymentMode,
+                                      setState,
+                                      widget.mId,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          // Ongoing Status (only if mStatus == 4)
+                          if (widget.jobStatus == 4)
+                            Container(
+                              height: 40.h,
+                              width: 220.w,
+                              decoration: BoxDecoration(
+                                color: kSecondary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Ongoing",
+                                  textAlign: TextAlign.center,
+                                  style: kIsWeb
+                                      ? TextStyle(color: kSecondary)
+                                      : TextStyle(
+                                          color: kSecondary,
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ),
+
+                          if (widget.jobStatus == 5)
+                            Row(
+                              children: [
+                                Container(
+                                  height: 40.h,
+                                  width: 120.w,
+                                  decoration: BoxDecoration(
+                                    color: kSecondary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      "Completed",
+                                      textAlign: TextAlign.center,
+                                      style: kIsWeb
+                                          ? TextStyle(color: kSecondary)
+                                          : TextStyle(
+                                              color: kSecondary,
+                                              fontSize: 16.sp,
+                                              fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 15.w),
+                                buildButton(
+                                  widget.reviewSubmitted
+                                      ? kSecondary
+                                      : kSuccess,
+                                  widget.reviewSubmitted
+                                      ? "Edit Rating"
+                                      : "Rate Now",
+                                  () => showRatingDialog(
+                                    context,
+                                    widget.mId,
+                                    widget.jobId,
+                                    widget.reviewSubmitted,
+                                    widget.userId,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      // Confirm to Start Button (only if mStatus == 3)
+                      if (widget.jobStatus == 3)
+                        buildButton(kPrimary, "Need to talk", widget.onCallTap),
+                    ],
+                  ),
+                ),
+                if (widget.jobStatus == 3)
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(double.maxFinite, 45),
+                      backgroundColor: kSecondary,
+                      foregroundColor: kWhite,
+                    ),
+                    onPressed: () {
+                      _showConfirmStartDialog(widget.mId);
+                    },
+                    child: Text("Confirm to Start"),
+                  ),
+              ],
+            ),
+          );
   }
 
   Widget buildButton(Color color, String text, void Function()? onTap) {
@@ -496,6 +490,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
   }
 
   Future<void> updateStatus(int status, String mechanicId) async {
+    setState(() {
+      isStatusUpdating = true;
+    });
     final userHistoryRef = FirebaseFirestore.instance
         .collection('Users')
         .doc(widget.userId)
@@ -511,7 +508,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
 
       // Step 2: Update the mechanicsOffer array in the job document
       final jobSnapshot = await jobRef.get();
-      final jobData = jobSnapshot.data() as Map<String, dynamic>?;
+      final jobData = jobSnapshot.data();
 
       if (jobData != null) {
         final List<dynamic> mechanicsOffer = jobData['mechanicsOffer'] ?? [];
@@ -535,7 +532,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
 
       // Step 3: Update the mechanicsOffer array in the userHistoryRef document
       final historySnapshot = await userHistoryRef.get();
-      final historyData = historySnapshot.data() as Map<String, dynamic>?;
+      final historyData = historySnapshot.data();
 
       if (historyData != null) {
         final List<dynamic> historyMechanicsOffer =
@@ -554,11 +551,21 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
             'mechanicsOffer': historyMechanicsOffer,
           });
         } else {
+          setState(() {
+            isStatusUpdating = false;
+          });
           print("Mechanic with mId: $mechanicId not found in userHistoryRef.");
         }
       }
     } catch (e) {
+      setState(() {
+        isStatusUpdating = false;
+      });
       print('Error updating status: $e');
+    } finally {
+      setState(() {
+        isStatusUpdating = false;
+      });
     }
   }
 
@@ -681,7 +688,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
   void showRatingDialog(BuildContext context, String mId, String orderId,
       bool isEdit, String uId) async {
     double _rating = 0;
-    String _review = '';
+    String _review = 'Write a review';
 
     if (isEdit) {
       // Fetch existing rating and review from Firestore
@@ -691,7 +698,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
           .get();
 
       _rating = jobSnapshot.get('rating')?.toDouble() ?? 0;
-      _review = jobSnapshot.get('review') ?? '';
+      _review = jobSnapshot.get('review')?.toString() ?? '';
     }
 
     showDialog(
@@ -718,7 +725,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                 },
               ),
               TextField(
-                decoration: InputDecoration(hintText: 'Write a review'),
+                decoration: InputDecoration(hintText: _review.toString()),
                 onChanged: (value) {
                   _review = value; // Update review when it changes
                 },
@@ -744,7 +751,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
               },
               child: Text('Submit'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: kSuccess,
+                backgroundColor: kSecondary,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -789,7 +796,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
         "timestamp": DateTime.now(),
         "orderId": orderId.toString(),
       });
-      showToastMessage('Rating', 'Review Submitted.', Colors.red);
+      showToastMessage('Rating', 'Review Submitted.', kSecondary);
       log('Rating and review updated successfully.');
     } catch (error) {
       log('Error updating rating and review: $error');

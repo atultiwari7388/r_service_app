@@ -40,7 +40,7 @@ class AuthenticationController extends GetxController {
             isLoading = false;
             update();
           } else {
-            if (auth.currentUser!.email == "adminmylex@gmail.com") {
+            if (auth.currentUser!.email == "adminrabbit@gmail.com") {
               log("Welcome  Admin");
               if (kIsWeb) {
                 Get.off(() => const AdminHomeScreen(),
@@ -52,16 +52,20 @@ class AuthenticationController extends GetxController {
               update();
             } else {
               showToastMessage("Error", "Something went wrong", Colors.red);
+
               isLoading = false;
               update();
             }
           }
         }).onError((error, stackTrace) {
           showToastMessage("Error", error.toString(), Colors.red);
+          log(error.toString());
           isLoading = false;
           update();
         });
       }).onError((error, stackTrace) {
+        log(error.toString());
+
         showToastMessage("Error", error.toString(), Colors.red);
         isLoading = false;
         update();
@@ -69,10 +73,51 @@ class AuthenticationController extends GetxController {
     } catch (e) {
       log(e.toString());
       showToastMessage("Error", e.toString(), Colors.red);
+      log(e.toString());
+
       isLoading = false;
       update();
     }
   }
+
+  // Future<void> loginWithEmailAndPassword() async {
+  //   isLoading = true;
+  //   update();
+
+  //   try {
+  //     final userCredential = await auth.signInWithEmailAndPassword(
+  //       email: emailController.text.trim(),
+  //       password: passwordController.text.trim(),
+  //     );
+
+  //     final DocumentSnapshot snapshot = await FirebaseFirestore.instance
+  //         .collection("admin")
+  //         .doc(userCredential.user!.uid)
+  //         .get();
+
+  //     if (snapshot.exists) {
+  //       // User exists, navigate to Admin Home
+  //       Get.off(() => const AdminHomeScreen(),
+  //           transition: Transition.leftToRightWithFade,
+  //           duration: const Duration(seconds: 2));
+  //       log("Login Successfully");
+  //       showToastMessage("Success", "Login Successfully", Colors.green);
+  //     } else {
+  //       // Handle non-admin users or user not found
+  //       showToastMessage("Error", "User not authorized", Colors.red);
+  //     }
+  //   } on FirebaseAuthException catch (authError) {
+  //     log(authError.message ?? "Authentication error");
+  //     showToastMessage(
+  //         "Error", authError.message ?? "Authentication error", Colors.red);
+  //   } catch (e) {
+  //     log(e.toString());
+  //     showToastMessage("Error", e.toString(), Colors.red);
+  //   } finally {
+  //     isLoading = false;
+  //     update();
+  //   }
+  // }
 
   Future<void> resetPasswordWithEmail() async {
     forgotPass = true;

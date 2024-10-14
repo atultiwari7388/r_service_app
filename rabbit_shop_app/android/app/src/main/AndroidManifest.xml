@@ -14,18 +14,17 @@
         android:label="Rabbit Mechanic App"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
-            </intent-filter>
-        </receiver>
-        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+    <receiver
+        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+        android:exported="false"
+        android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+        </intent-filter>
+    </receiver>
+
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/ic_launcher" />
-        <!-- <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="rabbit_services_mechanic"/>
-        <meta-data 
-            android:name="com.google.firebase.messaging.default_notification_sound"         android:value="default_sound" /> -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -64,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         children: [
                           Image.asset(
-                            'assets/no-background-logo.png',
+                            'assets/app_icon_new_logo.png',
                             height: 270.h,
                             width: double.maxFinite,
                             // color: kWhite,
@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               buildTextFieldInputWidget(
                                 "Password",
                                 TextInputType.visiblePassword,
-                               controller.passwordController,
+                                controller.passwordController,
                                 MaterialCommunityIcons.security,
                                 isPass: true,
                                 validator: (value) {

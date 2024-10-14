@@ -1,5 +1,8 @@
+import 'dart:developer';
+
 import 'package:admin_app/services/collection_references.dart';
 import 'package:admin_app/views/all_jobs/all_jobs_screen.dart';
+import 'package:admin_app/views/auth/login_screen.dart';
 import 'package:admin_app/views/drivers/drivers_screen.dart';
 import 'package:admin_app/views/help/help_screen.dart';
 import 'package:admin_app/views/languages/languages_screen.dart';
@@ -13,6 +16,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../utils/app_styles.dart';
 import '../../utils/constants.dart';
+import '../../utils/show_toast_msg.dart';
 import '../../widgets/reusable_text.dart';
 import '../aboutUs/about_us.dart';
 import '../shops/shops_screen.dart';
@@ -159,26 +163,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             child: Container(
               decoration: BoxDecoration(
                   image: DecorationImage(
-                      image: AssetImage("assets/playstore.png"),
-                      fit: BoxFit.fitWidth)),
+                      image: AssetImage("assets/app_icon_new_logo.png"),
+                      fit: BoxFit.contain)),
             ), //BoxDecoration
-            // child: UserAccountsDrawerHeader(
-            //   decoration: BoxDecoration(color: kPrimary),
-            //   accountName: Text(
-            //     "Mylex Infotech",
-            //     style: TextStyle(fontSize: 18),
-            //   ),
-            //   accountEmail: Text("mylexinfotech@gmail.com"),
-            //   currentAccountPictureSize: Size.square(50),
-            //   currentAccountPicture: CircleAvatar(
-            //     backgroundColor: kWhite,
-            //     child: Text(
-            //       "M",
-            //       style: TextStyle(fontSize: 30.0, color: Colors.blue),
-            //     ), //Text
-            //   ),
-            // ),
-            //
           ),
           buildListTile("assets/order-history.png", "All Jobs",
               () => Get.to(() => AllJobsScreen())),
@@ -198,7 +185,26 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               () => Get.to(() => TermsAndConditionsScreen())),
           buildListTile("assets/privacy-policy.png", "Privacy Policy",
               () => Get.to(() => PrivacyPolicyScreen())),
-          buildListTile("assets/logout.png", "Logout", () {}),
+          buildListTile(
+            "assets/logout.png",
+            "Logout",
+            () async {
+              try {
+                // Sign out the user
+                await auth.signOut();
+                // Navigate to the LoginScreen
+                Get.offAll(() => LoginScreen());
+                // Optionally, show a success message
+                showToastMessage(
+                    "Success", "Logged out successfully", Colors.green);
+              } catch (e) {
+                // Handle any errors that may occur during sign-out
+                log(e.toString());
+                showToastMessage(
+                    "Error", "Logout failed: ${e.toString()}", Colors.red);
+              }
+            },
+          ),
         ],
       ),
     );

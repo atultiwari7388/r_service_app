@@ -257,7 +257,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         ),
         SingleChildScrollView(
           child: Form(
-            key: _formKey,
+            key: controller.formKey,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 20.h),
               child: Column(

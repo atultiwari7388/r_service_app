@@ -116,9 +116,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                       children: [
                         Text(widget.jobId,
                             style: appStyle(12, kSecondary, FontWeight.bold)),
-                        // widget.currentStatus == 0
-                        //     ? SizedBox()
-                        // :
                         SizedBox(
                           // width: 250.w,
                           child: Row(
@@ -293,11 +290,12 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      buildButton(kPrimary, widget.buttonName,
-                                          widget.onButtonTap),
                                       SizedBox(width: 10.w),
                                       buildButton(kSecondary, "Call",
                                           widget.onPhoneCallTap),
+                                      SizedBox(width: 10.w),
+                                      buildButton(kPrimary, widget.buttonName,
+                                          widget.onButtonTap),
                                       SizedBox(width: 10.w),
                                       GestureDetector(
                                         onTap: widget.onDirectionTapButton,
@@ -406,14 +404,17 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                                   buildButton(
                                                       widget.reviewSubmitted
                                                           ? kSecondary
-                                                          : kSuccess,
+                                                          : kSecondary,
                                                       widget.reviewSubmitted
                                                           ? "Edit Review"
                                                           : "Rate Now",
                                                       () => showRatingDialog(
-                                                          context,
-                                                          widget.dId,
-                                                          widget.orderId))
+                                                            context,
+                                                            widget.dId,
+                                                            widget.orderId,
+                                                            widget
+                                                                .reviewSubmitted,
+                                                          ))
                                                 ],
                                               )
                                             : SizedBox()
@@ -629,10 +630,21 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
     );
   }
 
-  void showRatingDialog(BuildContext context, String dId, String orderId) {
+  void showRatingDialog(
+      BuildContext context, String dId, String orderId, bool isEdit) async {
     double _rating = 0;
-    String _review = '';
+    String _review = 'Write a review';
 
+    if (isEdit) {
+      // Fetch existing rating and review from Firestore
+      DocumentSnapshot jobSnapshot = await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(widget.jobId)
+          .get();
+
+      _rating = jobSnapshot.get('rating')?.toDouble() ?? 0;
+      _review = jobSnapshot.get('review')?.toString() ?? '';
+    }
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -657,7 +669,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                 },
               ),
               TextField(
-                decoration: InputDecoration(hintText: 'Write a review'),
+                decoration: InputDecoration(hintText: _review.toString()),
                 onChanged: (value) {
                   _review = value; // Update review when it changes
                 },
@@ -682,7 +694,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
               },
               child: Text('Submit'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: kSuccess,
+                backgroundColor: kSecondary,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -699,6 +711,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
         'rating': rating,
         'review': review,
         "mId": FirebaseAuth.instance.currentUser!.uid,
+        "reviewSubmitted": true,
         "orderId": orderId,
         "timestamp": DateTime.now(),
       };
@@ -706,7 +719,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           .collection('Users')
           .doc(dId)
           .collection('ratings')
-          .doc()
+          .doc(orderId)
           .set(data);
 
       // Update the Firestore `jobs` collection
@@ -723,7 +736,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           .doc(orderId)
           .update(data);
 
-      showToastMessage('Rating', 'Review Submitted.', Colors.red);
+      showToastMessage('Rating', 'Review Submitted.', kSecondary);
       log('Rating and review updated successfully.');
     } catch (error) {
       log('Error updating rating and review: $error');

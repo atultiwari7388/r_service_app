@@ -212,7 +212,6 @@ class _UpcomingAndCompletedJobsScreenState
               final jobs = filteredOrders[index];
               final userPhoneNumber = jobs['userPhoneNumber'] ?? "N/A";
               final imagePath = jobs['userPhoto'] ?? "";
-              final currentStatus = jobs["status"] ?? 0;
               final dId = jobs["userId"];
               final bool isImage = jobs["isImageSelected"] ?? false;
               final List<dynamic> images = jobs['images'] ?? [];
@@ -232,22 +231,33 @@ class _UpcomingAndCompletedJobsScreenState
               // Retrieve mecLatitude and mecLongitude from mechanicsOffer array
               double mecLatitude = 0.0;
               double mecLongitude = 0.0;
+              int mechanicStatus = 0;
+              String arrivalCharges = "";
+              String fixCharges = "";
+
+              final mechanicsOffer =
+                  jobs["mechanicsOffer"] as List<dynamic>? ?? [];
 
               // Check if mechanicsOffer exists and is a list
-              if (jobs['mechanicsOffer'] is List) {
-                // Find the mechanic whose mId matches currentUId
-                final mechanic =
-                    (jobs['mechanicsOffer'] as List<dynamic>).firstWhere(
-                  (offer) => offer['mId'] == currentUId,
-                  orElse: () => null, // Return null if not found
-                );
+              // Find the mechanic whose mId matches currentUId
+              final mechanic =
+                  (jobs['mechanicsOffer'] as List<dynamic>).firstWhere(
+                (offer) => offer['mId'] == currentUId,
+                orElse: () => null, // Return null if not found
+              );
+              // Find the mechanic whose mId matches currentUId and status 1 to 5 then show the Upcoming Request Card otherwise hide the card..
+              // Check if any mechanic has an accepted offer (status between 2 and 5)
+              final hasAcceptedOffer = mechanicsOffer
+                  .any((offer) => offer['status'] >= 2 && offer['status'] <= 5);
 
-                if (mechanic != null) {
-                  mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ??
-                      0.0; // Update with your field name
-                  mecLongitude = (mechanic['longitude'] as num?)?.toDouble() ??
-                      0.0; // Update with your field name
-                }
+              if (mechanic != null) {
+                mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ??
+                    0.0; // Update with your field name
+                mecLongitude = (mechanic['longitude'] as num?)?.toDouble() ??
+                    0.0; // Update with your field name
+                mechanicStatus = mechanic["status"];
+                arrivalCharges = mechanic["arrivalCharges"].toString();
+                fixCharges = mechanic["fixPrice"].toString();
               }
 
               // Print to check values
@@ -261,6 +271,12 @@ class _UpcomingAndCompletedJobsScreenState
 
               if (distance < 1) {
                 distance = 1;
+              }
+
+              // If there's an accepted offer, only display the accepted mechanic
+              if (hasAcceptedOffer &&
+                  !(mechanicStatus >= 2 && mechanicStatus <= 5)) {
+                return SizedBox.shrink();
               }
 
               return UpcomingRequestCard(
@@ -324,19 +340,19 @@ class _UpcomingAndCompletedJobsScreenState
                     print('Could not launch Google Maps');
                   }
                 },
-                currentStatus: currentStatus,
+                currentStatus: mechanicStatus,
                 companyNameAndVehicleName:
                     "${jobs["companyName"]} (${vehicleNumber})",
                 onCompletedButtonTap: () {},
                 rating: jobs["rating"].toString(),
-                arrivalCharges: jobs["arrivalCharges"].toString(),
-                fixCharge: jobs["fixPrice"].toString(),
+                arrivalCharges: arrivalCharges,
+                fixCharge: fixCharges,
                 km: "${distance.toStringAsFixed(0)} miles",
                 dId: dId.toString(),
                 isImage: isImage,
                 images: images,
                 payMode: payMode,
-                reviewSubmitted: jobs["reviewSubmitted"],
+                reviewSubmitted: jobs["reviewSubmitted"] ?? false,
               );
             },
           ),

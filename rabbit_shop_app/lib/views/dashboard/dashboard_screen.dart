@@ -12,9 +12,11 @@ import '../../services/calculate_distance.dart';
 import '../../services/collection_references.dart';
 import '../../services/get_month_string.dart';
 import '../../widgets/reusable_text.dart';
+import 'package:location/location.dart' as loc;
 
 class DashBoardScreen extends StatefulWidget {
-  const DashBoardScreen({super.key});
+  const DashBoardScreen({super.key, required this.setTab});
+  final Function? setTab;
 
   @override
   State<DashBoardScreen> createState() => _DashBoardScreenState();
@@ -22,6 +24,7 @@ class DashBoardScreen extends StatefulWidget {
 
 class _DashBoardScreenState extends State<DashBoardScreen> {
   List<String> selectedServices = [];
+  bool isStatusUpdating = false;
 
   @override
   void initState() {
@@ -139,183 +142,207 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                 ],
                               ),
                               SizedBox(height: 10.h),
-                              StreamBuilder<QuerySnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection('jobs')
-                                    .where('status', isEqualTo: 0)
-                                    .snapshots(),
-                                builder: (BuildContext context,
-                                    AsyncSnapshot<QuerySnapshot> snapshot) {
-                                  if (snapshot.hasError) {
-                                    return Center(
-                                        child:
-                                            Text('Error: ${snapshot.error}'));
-                                  }
-
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return Center(
-                                        child: CircularProgressIndicator());
-                                  }
-
-                                  // Get the list of jobs
-                                  final data = snapshot.data!.docs;
-                                  List<dynamic> mechanicServices =
-                                      selectedServices;
-
-                                  // Filter the data based on mechanicsOffers and selectedServices
-                                  final filteredData = data.where((doc) {
-                                    final job =
-                                        doc.data() as Map<String, dynamic>;
-                                    final mechanicsOffers =
-                                        job['mechanicsOffer'] as List<dynamic>?;
-
-                                    // Check if mechanicsOffers is null or empty
-                                    if (mechanicsOffers == null ||
-                                        mechanicsOffers.isEmpty) {
-                                      print(
-                                          'Job ${job['orderId']} has no offers. Showing this job.');
-                                    } else {
-                                      bool shouldShowJob =
-                                          true; // Flag to determine if the job should be shown
-
-                                      // Check if mId is not equal to currentUId or if the status is 0
-                                      for (var offer in mechanicsOffers) {
-                                        if (offer['mId'] == currentUId) {
-                                          // If the mechanic's ID matches, check the offer status
-                                          if (offer['status'] == 1) {
-                                            print(
-                                                'Hiding job ${job['orderId']} because status is 1 (accepted).');
-                                            shouldShowJob =
-                                                false; // Hide the job if the mechanic's offer status is 1
-                                            break; // No need to check other offers
-                                          }
+                              isStatusUpdating
+                                  ? Center(child: CircularProgressIndicator())
+                                  : StreamBuilder<QuerySnapshot>(
+                                      stream: FirebaseFirestore.instance
+                                          .collection('jobs')
+                                          .where('status', isEqualTo: 0)
+                                          .snapshots(),
+                                      builder: (BuildContext context,
+                                          AsyncSnapshot<QuerySnapshot>
+                                              snapshot) {
+                                        if (snapshot.hasError) {
+                                          return Center(
+                                              child: Text(
+                                                  'Error: ${snapshot.error}'));
                                         }
-                                      }
 
-                                      if (!shouldShowJob) {
-                                        return false; // Skip this job if it should not be shown
-                                      }
-                                    }
+                                        if (snapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return Center(
+                                              child:
+                                                  CircularProgressIndicator());
+                                        }
 
-                                    // Now check if the selectedService matches any mechanic's selected services
-                                    final jobService = job[
-                                        'selectedService']; // Single string service for the job
-                                    if (!mechanicServices
-                                        .contains(jobService)) {
-                                      print(
-                                          'Job ${job['orderId']} does not match any selected service of the mechanic.');
-                                      return false; // Hide this job if the service does not match
-                                    }
+                                        // Get the list of jobs
+                                        final data = snapshot.data!.docs;
+                                        List<dynamic> mechanicServices =
+                                            selectedServices;
 
-                                    print('Showing job ${job['orderId']}');
-                                    return true; // Show the job if all conditions are met
-                                  }).toList();
+                                        // Filter the data based on mechanicsOffers and selectedServices
+                                        final filteredData = data.where((doc) {
+                                          final job = doc.data()
+                                              as Map<String, dynamic>;
+                                          final mechanicsOffers =
+                                              job['mechanicsOffer']
+                                                  as List<dynamic>?;
 
-                                  if (filteredData.isEmpty) {
-                                    return Center(
-                                        child: Text("No Request Available"));
-                                  }
+                                          // Check if mechanicsOffers is null or empty
+                                          if (mechanicsOffers == null ||
+                                              mechanicsOffers.isEmpty) {
+                                            print(
+                                                'Job ${job['orderId']} has no offers. Showing this job.');
+                                          } else {
+                                            bool shouldShowJob =
+                                                true; // Flag to determine if the job should be shown
 
-                                  return ListView.builder(
-                                    shrinkWrap: true,
-                                    physics: NeverScrollableScrollPhysics(),
-                                    itemCount: filteredData.length,
-                                    itemBuilder: (context, index) {
-                                      final job = filteredData[index].data()
-                                          as Map<String, dynamic>;
+                                            // Check if mId is not equal to currentUId or if the status is 0
+                                            for (var offer in mechanicsOffers) {
+                                              if (offer['mId'] == currentUId) {
+                                                // If the mechanic's ID matches, check the offer status
+                                                if (offer['status'] == 1) {
+                                                  print(
+                                                      'Hiding job ${job['orderId']} because status is 1 (accepted).');
+                                                  shouldShowJob =
+                                                      false; // Hide the job if the mechanic's offer status is 1
+                                                  break; // No need to check other offers
+                                                }
+                                              }
+                                            }
 
-                                      // Initialize the mechanic's status
-                                      int mechanicStatus = job['status'] ?? 0;
+                                            if (!shouldShowJob) {
+                                              return false; // Skip this job if it should not be shown
+                                            }
+                                          }
 
-                                      // Extract job details
-                                      final userLat =
-                                          (job["userLat"] as num).toDouble();
-                                      final userLng =
-                                          (job["userLong"] as num).toDouble();
-                                      final bool isImage =
-                                          job["isImageSelected"] ?? false;
-                                      final imagePath = job['userPhoto'] ?? "";
-                                      final List<dynamic> images =
-                                          job['images'] ?? [];
+                                          // Now check if the selectedService matches any mechanic's selected services
+                                          final jobService = job[
+                                              'selectedService']; // Single string service for the job
+                                          if (!mechanicServices
+                                              .contains(jobService)) {
+                                            print(
+                                                'Job ${job['orderId']} does not match any selected service of the mechanic.');
+                                            return false; // Hide this job if the service does not match
+                                          }
 
-                                      // Date Formatting
-                                      String dateString = '';
-                                      if (job['orderDate'] is Timestamp) {
-                                        DateTime dateTime =
-                                            (job['orderDate'] as Timestamp)
-                                                .toDate();
-                                        dateString =
-                                            "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
-                                      }
+                                          print(
+                                              'Showing job ${job['orderId']}');
+                                          return true; // Show the job if all conditions are met
+                                        }).toList();
 
-                                      double distance = calculateDistance(
-                                          userLat,
-                                          userLng,
-                                          controller.mecLat,
-                                          controller.mecLng);
+                                        if (filteredData.isEmpty) {
+                                          return Center(
+                                              child:
+                                                  Text("No Request Available"));
+                                        }
 
-                                      if (distance < 1) {
-                                        distance = 1;
-                                      }
+                                        return ListView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              NeverScrollableScrollPhysics(),
+                                          itemCount: filteredData.length,
+                                          itemBuilder: (context, index) {
+                                            final job = filteredData[index]
+                                                .data() as Map<String, dynamic>;
 
-                                      // Logic to ensure job is nearby
-                                      if (distance <=
-                                          (job['nearByDistance'] ?? 0)) {
-                                        return UpcomingRequestCard(
-                                          orderId: job["orderId"].toString(),
-                                          userName: job["userName"].toString(),
-                                          vehicleName:
-                                              "${job["companyName"]} (${job['vehicleNumber']})",
-                                          address: job['userDeliveryAddress'] ??
-                                              "N/A",
-                                          serviceName:
-                                              job['selectedService'] ?? "N/A",
-                                          jobId: job['orderId'] ?? "#Unknown",
-                                          imagePath: imagePath.isEmpty
-                                              ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                              : imagePath,
-                                          date: dateString,
-                                          buttonName: "Interested",
-                                          onButtonTap: () =>
-                                              controller.showConfirmDialog(
-                                            index,
-                                            filteredData,
-                                            job["userId"].toString(),
-                                            job["orderId"].toString(),
-                                            isImage,
-                                            job["fixPriceEnabled"] ?? false,
-                                          ),
-                                          onDasMapButton: () async {
-                                            final Uri googleMapsUri = Uri.parse(
-                                                'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
-                                            if (await canLaunch(
-                                                googleMapsUri.toString())) {
-                                              await launch(
-                                                  googleMapsUri.toString());
+                                            // Initialize the mechanic's status
+                                            int mechanicStatus =
+                                                job['status'] ?? 0;
+
+                                            // Extract job details
+                                            final userLat =
+                                                (job["userLat"] as num)
+                                                    .toDouble();
+                                            final userLng =
+                                                (job["userLong"] as num)
+                                                    .toDouble();
+                                            final bool isImage =
+                                                job["isImageSelected"] ?? false;
+                                            final imagePath =
+                                                job['userPhoto'] ?? "";
+                                            final List<dynamic> images =
+                                                job['images'] ?? [];
+
+                                            // Date Formatting
+                                            String dateString = '';
+                                            if (job['orderDate'] is Timestamp) {
+                                              DateTime dateTime =
+                                                  (job['orderDate']
+                                                          as Timestamp)
+                                                      .toDate();
+                                              dateString =
+                                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                                            }
+
+                                            double distance = calculateDistance(
+                                                userLat,
+                                                userLng,
+                                                controller.mecLat,
+                                                controller.mecLng);
+
+                                            if (distance < 1) {
+                                              distance = 1;
+                                            }
+
+                                            // Logic to ensure job is nearby
+                                            if (distance <=
+                                                (job['nearByDistance'] ?? 0)) {
+                                              return UpcomingRequestCard(
+                                                orderId:
+                                                    job["orderId"].toString(),
+                                                userName:
+                                                    job["userName"].toString(),
+                                                vehicleName:
+                                                    "${job["companyName"]} (${job['vehicleNumber']})",
+                                                address:
+                                                    job['userDeliveryAddress'] ??
+                                                        "N/A",
+                                                serviceName:
+                                                    job['selectedService'] ??
+                                                        "N/A",
+                                                jobId: job['orderId'] ??
+                                                    "#Unknown",
+                                                imagePath: imagePath.isEmpty
+                                                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                                    : imagePath,
+                                                date: dateString,
+                                                buttonName: "Interested",
+                                                onButtonTap: () =>
+                                                    showConfirmDialog(
+                                                  index,
+                                                  filteredData,
+                                                  job["userId"].toString(),
+                                                  job["orderId"].toString(),
+                                                  isImage,
+                                                  job["fixPriceEnabled"] ??
+                                                      false,
+                                                  controller,
+                                                ),
+                                                onDasMapButton: () async {
+                                                  final Uri googleMapsUri =
+                                                      Uri.parse(
+                                                          'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                                  if (await canLaunch(
+                                                      googleMapsUri
+                                                          .toString())) {
+                                                    await launch(googleMapsUri
+                                                        .toString());
+                                                  } else {
+                                                    print(
+                                                        'Could not launch Google Maps');
+                                                  }
+                                                },
+                                                currentStatus: mechanicStatus,
+                                                rating:
+                                                    "4.5", // Assuming you will fetch or calculate this elsewhere
+                                                arrivalCharges: "30",
+                                                km: "${distance.toStringAsFixed(0)} miles",
+                                                isImage: isImage,
+                                                images: images,
+                                                fixCharge:
+                                                    job["fixPrice"].toString(),
+                                                reviewSubmitted:
+                                                    job["reviewSubmitted"] ??
+                                                        false,
+                                              );
                                             } else {
-                                              print(
-                                                  'Could not launch Google Maps');
+                                              return Container(); // Return an empty container if distance is greater than nearbyDistance
                                             }
                                           },
-                                          currentStatus: mechanicStatus,
-                                          rating:
-                                              "4.5", // Assuming you will fetch or calculate this elsewhere
-                                          arrivalCharges: "30",
-                                          km: "${distance.toStringAsFixed(0)} miles",
-                                          isImage: isImage,
-                                          images: images,
-                                          fixCharge: job["fixPrice"].toString(),
-                                          reviewSubmitted:
-                                              job["reviewSubmitted"] ?? false,
                                         );
-                                      } else {
-                                        return Container(); // Return an empty container if distance is greater than nearbyDistance
-                                      }
-                                    },
-                                  );
-                                },
-                              ),
+                                      },
+                                    ),
                               SizedBox(height: 70.h),
                             ],
                           )
@@ -501,6 +528,300 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           SizedBox(height: 10.h),
           Text(value, style: appStyle(12, kWhite, FontWeight.w400)),
         ],
+      ),
+    );
+  }
+
+  Future<void> showConfirmDialog(
+      int index,
+      dynamic data,
+      String userId,
+      String jobId,
+      bool isShowImage,
+      bool isPriceTypeEnable,
+      DashboardController controller) async {
+    if (isShowImage) {
+      showAddArrivalChargesDialog2(userId, jobId, controller);
+    } else if (isPriceTypeEnable) {
+      showAddArrivalChargesDialog2(userId, jobId, controller);
+    } else {
+      final TextEditingController arrivalChargesController =
+          TextEditingController();
+      final TextEditingController timeController =
+          TextEditingController(text: "10");
+      final TextEditingController perHourChargesController =
+          TextEditingController(text: controller.perHourCharges.toString());
+
+      Get.defaultDialog(
+        title: "Confirm",
+        content: Column(
+          children: [
+            Text(
+                "Kindly reach within time  to get more jobs and avoid negative feedback",
+                style: TextStyle(
+                    fontSize: 16.sp,
+                    color: kPrimary,
+                    fontWeight: FontWeight.bold)),
+            SizedBox(height: 20.h),
+            TextField(
+              controller: arrivalChargesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Enter your Arrival Charges",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextField(
+              controller: timeController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Arrival Time",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextField(
+              controller: perHourChargesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Per Hour Charges",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        textCancel: "Cancel",
+        textConfirm: "Submit",
+        cancel: OutlinedButton(
+          onPressed: () {
+            Get.back(); // Close the dialog if "Cancel" is pressed
+          },
+          child: Text("Cancel", style: TextStyle(color: Colors.red)),
+        ),
+        confirm: ElevatedButton(
+          onPressed: () async {
+            setState(() {
+              isStatusUpdating = true;
+            });
+
+            final arrivalCharges = arrivalChargesController.text;
+            final perHourCharges = perHourChargesController.text;
+            final time = timeController.text;
+
+            if (arrivalCharges.isNotEmpty && perHourCharges.isNotEmpty) {
+              Get.back(); // Close the current dialog
+
+              // Get the current mechanic location
+              loc.Location location = loc.Location();
+              loc.LocationData locationData = await location.getLocation();
+
+              // Create a new offer for the mechanic
+              var mechanicOffer = {
+                "mId": currentUId.toString(),
+                "mName": controller.userName.toString(),
+                "mNumber": controller.phoneNumber.toString(),
+                "mDp": controller.userPhoto.toString(),
+                "arrivalCharges": arrivalCharges,
+                "perHourCharges": perHourCharges,
+                "fixPrice": 0,
+                "time": time,
+                "latitude": locationData.latitude,
+                "longitude": locationData.longitude,
+                "status": 1,
+                "rating": "4.3",
+                "reviewSubmitted": false,
+                "languages": controller.selectedLanguages,
+                "mechanicAddress": controller.appbarTitle,
+                "offerAcceptedDate": DateTime.now(),
+              };
+
+              // Update the Firestore `jobs` collection
+              await FirebaseFirestore.instance
+                  .collection('jobs')
+                  .doc(jobId)
+                  .update({
+                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+              });
+
+              // Check if the history document exists
+              DocumentReference historyDoc = await FirebaseFirestore.instance
+                  .collection("Users")
+                  .doc(userId)
+                  .collection("history")
+                  .doc(jobId);
+
+              // Get the history document snapshot
+              DocumentSnapshot docSnapshot = await historyDoc.get();
+
+              if (docSnapshot.exists) {
+                // If document exists, update it
+                await historyDoc.update({
+                  "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+                }).then((value) {
+                  widget.setTab?.call(1);
+                  setState(() {
+                    isStatusUpdating = false;
+                  });
+                });
+              } else {
+                // If document does not exist, create it
+                await historyDoc.set({
+                  "mechanicsOffer": [mechanicOffer],
+                });
+                setState(() {
+                  isStatusUpdating = false;
+                });
+              }
+
+              // Optional: Show a confirmation message or navigate to another screen
+              Get.snackbar("Success", "Request Sent Successfully.");
+            } else {
+              setState(() {
+                isStatusUpdating = false;
+              });
+              Get.snackbar("Error", "Please enter all required charges.");
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          child: Text("Submit", style: TextStyle(color: Colors.white)),
+        ),
+      );
+    }
+  }
+
+  void showAddArrivalChargesDialog2(
+      String userId, String jobId, DashboardController controller) {
+    final TextEditingController fixPriceController =
+        TextEditingController(text: "150");
+    final TextEditingController timeController =
+        TextEditingController(text: "10 ");
+
+    Get.defaultDialog(
+      title: "Add Fix Price",
+      content: Column(
+        children: [
+          Text(
+            "Kindly reach within time  to get more jobs and avoid negative feedback",
+            style: TextStyle(
+                fontSize: 16.sp, color: kPrimary, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20.h),
+          TextField(
+            controller: timeController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: "Arrival Time",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          TextField(
+            controller: fixPriceController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: "Enter Fix Price",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 10.h),
+        ],
+      ),
+      textCancel: "Cancel",
+      textConfirm: "Submit",
+      cancel: OutlinedButton(
+        onPressed: () {
+          Get.back(); // Close the dialog if "Cancel" is pressed
+        },
+        child: Text(
+          "Cancel",
+          style:
+              TextStyle(color: Colors.red), // Custom color for "Cancel" button
+        ),
+      ),
+      confirm: ElevatedButton(
+        onPressed: () async {
+          setState(() {
+            isStatusUpdating = true;
+          });
+          final fixCharge = fixPriceController.text;
+          final time = timeController.text;
+          if (fixCharge.isNotEmpty) {
+            loc.Location location = loc.Location();
+            loc.LocationData locationData = await location.getLocation();
+
+            var jobData = {
+              "status": 1,
+              "rating": "4.3",
+              "time": time,
+              "mId": currentUId.toString(),
+              "mName": controller.userName.toString(),
+              "mNumber": controller.phoneNumber.toString(),
+              "mDp": controller.userPhoto.toString(),
+              "languages": controller.selectedLanguages,
+              'arrivalCharges': 0,
+              'perHourCharges': 0,
+              "reviewSubmitted": false,
+              "fixPrice": fixCharge,
+              'mechanicAddress': controller.appbarTitle,
+              'mecLatitude': locationData.latitude,
+              'mecLongtitude': locationData.longitude,
+            };
+
+            // Update the Firestore `jobs` collection
+            await FirebaseFirestore.instance
+                .collection('jobs')
+                .doc(jobId)
+                .update({
+              "mechanicsOffer": FieldValue.arrayUnion([jobData]),
+            });
+
+            // Check if the history document exists
+            DocumentReference historyDoc = await FirebaseFirestore.instance
+                .collection("Users")
+                .doc(userId)
+                .collection("history")
+                .doc(jobId);
+
+            // Get the history document snapshot
+            DocumentSnapshot docSnapshot = await historyDoc.get();
+
+            if (docSnapshot.exists) {
+              // If document exists, update it
+              await historyDoc.update({
+                "mechanicsOffer": FieldValue.arrayUnion([jobData]),
+              }).then((value) {
+                widget.setTab?.call(1);
+                setState(() {
+                  isStatusUpdating = false;
+                });
+              });
+            } else {
+              // If document does not exist, create it
+              await historyDoc.set({
+                "mechanicsOffer": [jobData],
+              });
+              setState(() {
+                isStatusUpdating = false;
+              });
+            }
+
+            // Optional: Show a confirmation message or navigate to another screen
+            Get.snackbar("Success", "Request Sent Successfully.");
+          } else {
+            setState(() {
+              isStatusUpdating = false;
+            });
+            Get.snackbar("Error", "Please enter all required charges.");
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.green, // Custom color for "Submit" button
+        ),
+        child: Text(
+          "Submit",
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }

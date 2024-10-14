@@ -124,11 +124,11 @@ class MyApp extends StatelessWidget {
           themeMode: ThemeMode.system,
           debugShowCheckedModeBanner: false,
           title: appName,
-          theme: ThemeData(
-            scaffoldBackgroundColor: kOffWhite,
-            iconTheme: const IconThemeData(color: kDark),
-            primarySwatch: Colors.grey,
-          ),
+          // theme: ThemeData(
+          //   scaffoldBackgroundColor: kOffWhite,
+          //   iconTheme: const IconThemeData(color: kDark),
+          //   primarySwatch: Colors.grey,
+          // ),
           home: SplashScreen(),
         );
       },

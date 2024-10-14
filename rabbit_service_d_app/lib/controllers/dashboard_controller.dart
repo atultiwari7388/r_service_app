@@ -629,6 +629,7 @@ class DashboardController extends GetxController {
         "payMode": "",
         "status": 0,
         "rating": "4.3",
+        "review": "",
         "reviewSubmitted": false,
         'nearByDistance': 5,
         'mechanicsOffer': [],

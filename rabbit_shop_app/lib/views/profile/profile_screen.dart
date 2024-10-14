@@ -55,7 +55,7 @@ class ProfileScreen extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          "Manage Orders",
+                          "My Details",
                           style: appStyle(18, kPrimary, FontWeight.normal),
                         ),
                         SizedBox(width: 5.w),
@@ -68,11 +68,11 @@ class ProfileScreen extends StatelessWidget {
                     buildListTile("assets/bookings_bw.png", "My History", () {
                       Get.to(() => CompletedJobsHistoryScreen());
                     }),
-                    buildListTile("assets/services_your.png", "Your Services",
+                    buildListTile("assets/services_your.png", "My Services",
                         () {
                       Get.to(() => AddYourServices());
                     }),
-                    buildListTile("assets/rating_bw.png", "Ratings", () {
+                    buildListTile("assets/rating_bw.png", "My Ratings", () {
                       Get.to(() => RatingsScreen());
                     }),
                     buildListTile("assets/profile_bw.png", "My Profile", () {

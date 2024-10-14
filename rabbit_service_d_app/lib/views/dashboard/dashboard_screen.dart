@@ -38,8 +38,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               : Scaffold(
                   // appBar: buildCustomAppBar(context),
                   appBar: AppBar(
-                    backgroundColor: kLightWhite,
-                    elevation: 0,
+                    backgroundColor: kWhite,
+                    elevation: 1,
                     centerTitle: true,
                     title: Image.asset(
                       'assets/h_n_logo.png', // Replace with your logo asset path
