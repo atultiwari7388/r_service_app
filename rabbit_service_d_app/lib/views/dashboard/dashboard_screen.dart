@@ -42,7 +42,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     elevation: 1,
                     centerTitle: true,
                     title: Image.asset(
-                      'assets/h_n_logo.png', // Replace with your logo asset path
+                      'assets/h_n_logo-removebg.png', // Replace with your logo asset path
                       height: 50.h, // Adjust the height as needed
                     ),
                     actions: [
@@ -223,8 +223,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                 SizedBox(height: 20.h),
                                 GestureDetector(
                                   onTap: () {
-                                    controller
-                                        .showServiceAndNetworkOptions(context);
+                                    showServiceAndNetworkOptions(
+                                        context, controller);
                                   },
                                   child: AbsorbPointer(
                                     child: DashBoardSearchTextField(
@@ -574,5 +574,158 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         ),
       );
     }).toList();
+  }
+
+  void showServiceAndNetworkOptions(
+      BuildContext context, DashboardController serviceController) {
+    // Initialize filtered options
+    serviceController.filteredServiceAndNetworkOptions =
+        List<Map<String, dynamic>>.from(
+            serviceController.allServiceAndNetworkOptions);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 1.0,
+          builder: (BuildContext context, ScrollController scrollController) {
+            return GetBuilder<DashboardController>(
+              builder: (controller) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20.0),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Drag handle
+                      Container(
+                        margin: EdgeInsets.symmetric(vertical: 10),
+                        width: 60,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      // Search bar
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: TextField(
+                          decoration: InputDecoration(
+                            labelText: "Search Service or Network",
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onChanged: (value) {
+                            controller.filterServiceAndNetwork(value);
+                          },
+                          autofocus: true,
+                        ),
+                      ),
+                      // List of filtered services
+                      Expanded(
+                        child: controller
+                                .filteredServiceAndNetworkOptions.isNotEmpty
+                            ? ListView.builder(
+                                padding: EdgeInsets.zero,
+                                controller: scrollController,
+                                itemCount: controller
+                                    .filteredServiceAndNetworkOptions.length,
+                                itemBuilder: (context, index) {
+                                  final item = controller
+                                      .filteredServiceAndNetworkOptions[index];
+                                  String title = item['title'];
+                                  int imageType = item['image_type'];
+                                  int priceType = item['price_type'];
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      log("Selected Service Name $title and imageType is ${imageType.toString()} and  priceType is ${priceType.toString()}");
+                                      controller.serviceAndNetworkController
+                                          .text = title;
+                                      controller.isServiceSelected =
+                                          true; // Service selected
+                                      controller.checkIfAllSelected();
+                                      setState(() {});
+
+                                      if (imageType == 0) {
+                                        controller.imageUploadEnabled = true;
+                                        controller.isImageMandatory = false;
+                                        setState(() {});
+                                      } else if (imageType == 1) {
+                                        controller.imageUploadEnabled = true;
+                                        controller.isImageMandatory = true;
+                                        setState(() {});
+                                        ;
+                                      } else {
+                                        controller.imageUploadEnabled = false;
+                                        controller.isImageMandatory = false;
+                                        setState(() {});
+                                        ;
+                                      }
+
+                                      if (priceType == 1) {
+                                        controller.fixPriceEnabled = true;
+                                        setState(() {});
+                                      } else {
+                                        controller.fixPriceEnabled = false;
+                                        setState(() {});
+                                        ;
+                                      }
+                                      Navigator.pop(context);
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(2),
+                                      margin: EdgeInsets.all(1),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 14.0),
+                                            child: Text(
+                                              title,
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.normal,
+                                              ),
+                                            ),
+                                          ),
+                                          Divider(
+                                              color:
+                                                  Colors.grey.withOpacity(0.1)),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Center(
+                                child: Text(
+                                  "No services found",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }

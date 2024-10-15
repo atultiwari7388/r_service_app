@@ -43,7 +43,7 @@ android {
 
     defaultConfig {
         applicationId "com.rabbit_service.admin_rabbit_app"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

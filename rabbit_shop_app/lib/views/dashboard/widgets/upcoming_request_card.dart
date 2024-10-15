@@ -642,8 +642,8 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           .doc(widget.jobId)
           .get();
 
-      _rating = jobSnapshot.get('rating')?.toDouble() ?? 0;
-      _review = jobSnapshot.get('review')?.toString() ?? '';
+      _rating = jobSnapshot.get('mRating')?.toDouble() ?? 0;
+      _review = jobSnapshot.get('mReview')?.toString() ?? '';
     }
     showDialog(
       context: context,

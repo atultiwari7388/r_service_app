@@ -344,7 +344,7 @@ class _UpcomingAndCompletedJobsScreenState
                 companyNameAndVehicleName:
                     "${jobs["companyName"]} (${vehicleNumber})",
                 onCompletedButtonTap: () {},
-                rating: jobs["rating"].toString(),
+                rating: jobs["mRating"].toString(),
                 arrivalCharges: arrivalCharges,
                 fixCharge: fixCharges,
                 km: "${distance.toStringAsFixed(0)} miles",
@@ -352,7 +352,7 @@ class _UpcomingAndCompletedJobsScreenState
                 isImage: isImage,
                 images: images,
                 payMode: payMode,
-                reviewSubmitted: jobs["reviewSubmitted"] ?? false,
+                reviewSubmitted: jobs["mReviewSubmitted"] ?? false,
               );
             },
           ),

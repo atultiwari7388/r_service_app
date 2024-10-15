@@ -132,120 +132,26 @@ class DashboardController extends GetxController {
   }
 
 //============================ Filter Services and Network Options =============================
+
   void filterServiceAndNetwork(String query) {
-    final filteredList = allServiceAndNetworkOptions
-        .where((item) => (item['title'] as String)
-            .toLowerCase()
-            .contains(query.toLowerCase()))
-        .toList();
+    // Log query to see what's happening
+    print('Searching for: $query');
 
-    filteredServiceAndNetworkOptions = filteredList;
+    if (query.isNotEmpty) {
+      // Filter the list based on the start of the title
+      final filteredList = allServiceAndNetworkOptions
+          .where((item) => (item['title'] as String).toLowerCase().startsWith(
+              query.toLowerCase())) // Show items that start with the query
+          .toList();
+
+      filteredServiceAndNetworkOptions = filteredList;
+    } else {
+      // If the search query is empty, show all options
+      filteredServiceAndNetworkOptions = List.from(allServiceAndNetworkOptions);
+    }
+
     print('New Filter List: $filteredServiceAndNetworkOptions');
-    update();
-  }
-
-//=============================== Select Services ==================================
-  void showServiceAndNetworkOptions(BuildContext context) {
-    // Ensure filteredServiceAndNetworkOptions is a List<Map<String, dynamic>>
-    filteredServiceAndNetworkOptions =
-        List<Map<String, dynamic>>.from(allServiceAndNetworkOptions);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 1.0,
-          builder: (BuildContext context, ScrollController scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(20.0),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: EdgeInsets.symmetric(vertical: 10),
-                    width: 60,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: "Search Service or Network",
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onChanged: (value) {
-                        filterServiceAndNetwork(value);
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: filteredServiceAndNetworkOptions.length,
-                      itemBuilder: (context, index) {
-                        final item = filteredServiceAndNetworkOptions[index];
-                        String title =
-                            filteredServiceAndNetworkOptions[index]['title'];
-                        int imageType = filteredServiceAndNetworkOptions[index]
-                            ['image_type'];
-                        int priceType = filteredServiceAndNetworkOptions[index]
-                            ['price_type'];
-                        return ListTile(
-                          title: Text(item[
-                              'title']), // Assuming 'title' is the field name
-                          onTap: () {
-                            log("Selected Service Name $title and imageType is ${imageType.toString()} and  priceType is ${priceType.toString()}");
-                            serviceAndNetworkController.text = title;
-                            isServiceSelected = true; // Service selected
-                            checkIfAllSelected();
-                            update();
-
-                            if (imageType == 0) {
-                              imageUploadEnabled = true;
-                              isImageMandatory = false;
-                              update();
-                            } else if (imageType == 1) {
-                              imageUploadEnabled = true;
-                              isImageMandatory = true;
-                              update();
-                            } else {
-                              imageUploadEnabled = false;
-                              isImageMandatory = false;
-                              update();
-                            }
-
-                            if (priceType == 1) {
-                              fixPriceEnabled = true;
-                              update();
-                            } else {
-                              fixPriceEnabled = false;
-                              update();
-                            }
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+    update(); // Use your state management (like GetX) to update the UI
   }
 
   Future<void> fetchByDefaultUserVehicle() async {
@@ -631,6 +537,9 @@ class DashboardController extends GetxController {
         "rating": "4.3",
         "review": "",
         "reviewSubmitted": false,
+        "mRating": "4.3",
+        "mReview": "",
+        "mReviewSubmitted": false,
         'nearByDistance': 5,
         'mechanicsOffer': [],
       };

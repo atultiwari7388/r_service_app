@@ -89,7 +89,9 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
         selectedLng = selectedLocation.longitude;
       });
       String address = await getAddressFromLatLng(selectedLat!, selectedLng!);
-      _addressController.text = address;
+      setState(() {
+        _addressController.text = address;
+      });
     }
   }
 
@@ -109,6 +111,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
           'longitude': selectedLng,
         },
         'addressType': selectedAddressType,
+        'date': DateTime.now(),
       });
 
       // Retrieve the document ID
@@ -133,11 +136,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       children: [
         ListTile(
           leading: CircleAvatar(
-            radius: 18.r,
+            radius: 14.r,
             child: Text((index + 1).toString()),
           ),
           title: Text(address['address'],
-              style: appStyle(12, kDark, FontWeight.normal)),
+              style: appStyle(11, kDark, FontWeight.normal)),
           subtitle: Text(
               '${address['addressType']} - (${address['location']['latitude']}, ${address['location']['longitude']})',
               style: appStyle(8, kGray, FontWeight.normal)),
@@ -248,12 +251,13 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 2,
+                    flex: 5,
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('Users')
                           .doc(currentUId)
                           .collection('Addresses')
+                          .orderBy("date", descending: true)
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (!snapshot.hasData) {
@@ -271,8 +275,14 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                       },
                     ),
                   ),
+                  Divider(),
+                  Center(
+                    child: Text("Add Address",
+                        style: appStyle(16, kDark, FontWeight.bold)),
+                  ),
+                  SizedBox(height: 20.h),
                   Text("Address Type",
-                      style: appStyle(16, kDark, FontWeight.bold)),
+                      style: appStyle(16, kDark, FontWeight.w500)),
                   DropdownButton<String>(
                     value: selectedAddressType,
                     items: ['Home', 'Office', 'Other']
@@ -287,15 +297,17 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                       });
                     },
                   ),
-                  SizedBox(height: 16.h),
-                  Text("Address", style: appStyle(16, kDark, FontWeight.bold)),
-                  TextField(
-                    controller: _addressController,
-                    decoration: const InputDecoration(
-                      hintText: "Enter your address",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
+                  SizedBox(height: 5.h),
+                  Text("Address", style: appStyle(16, kDark, FontWeight.w500)),
+                  _addressController.text.isEmpty
+                      ? SizedBox()
+                      : TextField(
+                          controller: _addressController,
+                          decoration: const InputDecoration(
+                            hintText: "Enter your address",
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                   SizedBox(height: 16.h),
                   CustomButton(
                       color: kSecondary.withOpacity(0.8),

@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:regal_shop_app/utils/constants.dart';
 import '../services/database_services.dart';
 import '../utils/show_toast_msg.dart';
 import '../views/auth/login_screen.dart';
@@ -52,6 +51,65 @@ class AuthController extends GetxController {
 
 //========================== Create account with email and password =================
 
+  // Future<void> createUserWithEmailAndPassword() async {
+  //   isUserAcCreated = true;
+  //   update();
+  //   try {
+  //     var user = await _auth.createUserWithEmailAndPassword(
+  //         email: _emailController.text, password: _passController.text);
+
+  //     await DatabaseServices(uid: user.user!.uid).savingUserData(
+  //       _emailController.text,
+  //       _nameController.text,
+  //       _phoneNumberController.text,
+  //       _addressController.text,
+  //       int.parse(_perHourCharge.text),
+  //       selectedLanguages,
+  //     );
+
+  //     // Send email verification
+  //     await user.user!.sendEmailVerification();
+
+  //     isUserAcCreated = false;
+  //     update();
+
+  //     // Inform the user to verify their email before logging in
+  //     showToastMessage(
+  //         "Verification Required",
+  //         "A verification email has been sent to your email address. Please verify it before logging in.",
+  //         Colors.orange);
+
+  //     // Sign out the user immediately after account creation, to prevent unverified access
+  //     await _auth.signOut();
+
+  //     Get.offAll(() => const LoginScreen()); // Redirect to login screen
+  //   } on FirebaseAuthException catch (e) {
+  //     String errorMessage;
+  //     switch (e.code) {
+  //       case 'email-already-in-use':
+  //         errorMessage = "The email is already in use by another account.";
+  //         showToastMessage("Error", errorMessage.toString(), kRed);
+  //         break;
+  //       case 'invalid-email':
+  //         errorMessage = "The email address is invalid.";
+  //         showToastMessage("Invalid", errorMessage.toString(), kRed);
+
+  //         break;
+  //       case 'weak-password':
+  //         errorMessage = "The password is too weak.";
+  //         showToastMessage("Weak", errorMessage.toString(), kRed);
+
+  //         break;
+  //       default:
+  //         errorMessage = e.message ?? "An unknown error occurred.";
+  //         showToastMessage("Error", errorMessage, Colors.red);
+  //     }
+  //   } finally {
+  //     isUserAcCreated = false;
+  //     update();
+  //   }
+  // }
+
   Future<void> createUserWithEmailAndPassword() async {
     isUserAcCreated = true;
     update();
@@ -89,17 +147,15 @@ class AuthController extends GetxController {
       switch (e.code) {
         case 'email-already-in-use':
           errorMessage = "The email is already in use by another account.";
-          showToastMessage("Error", errorMessage.toString(), kRed);
+          showToastMessage("Error", errorMessage, Colors.red);
           break;
         case 'invalid-email':
           errorMessage = "The email address is invalid.";
-          showToastMessage("Invalid", errorMessage.toString(), kRed);
-
+          showToastMessage("Error", errorMessage, Colors.red);
           break;
         case 'weak-password':
           errorMessage = "The password is too weak.";
-          showToastMessage("Weak", errorMessage.toString(), kRed);
-
+          showToastMessage("Error", errorMessage, Colors.red);
           break;
         default:
           errorMessage = e.message ?? "An unknown error occurred.";
@@ -112,6 +168,50 @@ class AuthController extends GetxController {
   }
 
 //========================== SignIn with email and Password ===============================
+
+  // Future<void> signInWithEmailAndPassword() async {
+  //   isUserSign = true;
+  //   update();
+  //   try {
+  //     var signInUser = await _auth.signInWithEmailAndPassword(
+  //         email: _emailController.text, password: _passController.text);
+
+  //     final User? user = signInUser.user;
+  //     if (user != null) {
+  //       if (!user.emailVerified) {
+  //         // If the email is not verified, prompt the user to verify
+  //         showToastMessage("Email Not Verified",
+  //             "Please verify your email before logging in.", Colors.orange);
+
+  //         // Send another verification email
+  //         await user.sendEmailVerification();
+
+  //         // Optionally sign out the user
+  //         await _auth.signOut();
+
+  //         isUserSign = false;
+  //         update();
+  //         return;
+  //       }
+
+  //       var doc =
+  //           await FirebaseFirestore.instance.doc("Mechanics/${user.uid}").get();
+  //       if (doc.exists && doc['uid'] == user.uid) {
+  //         isUserSign = false;
+  //         update();
+  //         Get.offAll(() => EntryScreen());
+  //         showToastMessage("Success", "Login Successful", Colors.green);
+  //       } else {
+  //         Get.to(() => RegistrationScreen());
+  //       }
+  //     }
+  //   } on FirebaseAuthException catch (e) {
+  //     handleAuthError(e);
+  //   } finally {
+  //     isUserSign = false;
+  //     update();
+  //   }
+  // }
 
   Future<void> signInWithEmailAndPassword() async {
     isUserSign = true;
@@ -138,8 +238,10 @@ class AuthController extends GetxController {
           return;
         }
 
-        var doc =
-            await FirebaseFirestore.instance.doc("Mechanics/${user.uid}").get();
+        var doc = await FirebaseFirestore.instance
+            .collection("Mechanics")
+            .doc(user.uid)
+            .get();
         if (doc.exists && doc['uid'] == user.uid) {
           isUserSign = false;
           update();
@@ -151,6 +253,7 @@ class AuthController extends GetxController {
       }
     } on FirebaseAuthException catch (e) {
       handleAuthError(e);
+      showToastMessage("Error", e.toString(), Colors.red);
     } finally {
       isUserSign = false;
       update();

@@ -84,7 +84,7 @@ class _RatingsScreenState extends State<RatingsScreen> {
         title: const Text('Ratings'),
       ),
       body: ratings.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: Text("No Rating found"))
           : ListView.builder(
               itemCount: ratings.length,
               itemBuilder: (context, index) {
