@@ -111,8 +111,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // SizedBox(height: 20.h),
-
                           Container(
                             padding: EdgeInsets.symmetric(
                                 horizontal: 8.w, vertical: 15.h),
@@ -121,6 +119,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                 borderRadius: BorderRadius.circular(12.r)),
                             child: Column(
                               children: [
+//================================ Select Your Vehicles ==========================================
                                 StreamBuilder<QuerySnapshot>(
                                   stream: FirebaseFirestore.instance
                                       .collection('Users')
@@ -221,6 +220,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                   },
                                 ),
                                 SizedBox(height: 20.h),
+//================================ Select Your Service ==========================================
                                 GestureDetector(
                                   onTap: () {
                                     showServiceAndNetworkOptions(
@@ -229,7 +229,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                   child: AbsorbPointer(
                                     child: DashBoardSearchTextField(
                                       label: "Select Service",
-                                      // hint: "Service or Network",
                                       controller: controller
                                           .serviceAndNetworkController,
                                       enable: true,
@@ -576,6 +575,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     }).toList();
   }
 
+//=========================== Show Services options==================
   void showServiceAndNetworkOptions(
       BuildContext context, DashboardController serviceController) {
     // Initialize filtered options
@@ -644,7 +644,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                   int imageType = item['image_type'];
                                   int priceType = item['price_type'];
 
-                                  return GestureDetector(
+                                  return InkWell(
                                     onTap: () {
                                       log("Selected Service Name $title and imageType is ${imageType.toString()} and  priceType is ${priceType.toString()}");
                                       controller.serviceAndNetworkController
@@ -681,22 +681,23 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                       Navigator.pop(context);
                                     },
                                     child: Container(
-                                      padding: EdgeInsets.all(2),
-                                      margin: EdgeInsets.all(1),
+                                      padding: EdgeInsets.only(
+                                        left: 14.w,
+                                        top: 5.h,
+                                        right: 5.w,
+                                        bottom: 5.w,
+                                      ),
+                                      // margin: EdgeInsets.all(3),
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 14.0),
-                                            child: Text(
-                                              title,
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.normal,
-                                              ),
+                                          Text(
+                                            title,
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.normal,
                                             ),
                                           ),
                                           Divider(

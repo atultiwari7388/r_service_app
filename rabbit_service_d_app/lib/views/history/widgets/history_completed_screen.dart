@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../services/collection_references.dart';
 import '../../../services/find_mechanic.dart';
-import '../../../services/get_month_string.dart';
 import '../../../services/make_call.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
@@ -78,8 +77,6 @@ class _HistoryCompletedScreenState extends State<HistoryCompletedScreen> {
                       final job = data[index].data() as Map<String, dynamic>;
                       final userLat = (job["userLat"] as num).toDouble();
                       final userLng = (job["userLong"] as num).toDouble();
-                      final orderId = job["orderId"].toString();
-                      final userId = job["userId"].toString();
                       final jobStatus = job["status"];
                       final mechanicsOffer =
                           job["mechanicsOffer"] as List<dynamic>? ?? [];
@@ -109,7 +106,6 @@ class _HistoryCompletedScreenState extends State<HistoryCompletedScreen> {
                           final time = mechanic["time"].toString();
                           final mDp = mechanic["mDp"].toString();
                           final languages = mechanic["languages"] ?? [];
-                          final mNumber = mechanic["mNumber"];
                           final mStatus = mechanic["status"];
                           final mecLatitude =
                               (mechanic['latitude'] as num?)?.toDouble() ?? 0.0;

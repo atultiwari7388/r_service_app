@@ -314,7 +314,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                   height: 40.h,
                                   width: 120.w,
                                   decoration: BoxDecoration(
-                                    color: kSecondary.withOpacity(0.1),
+                                    color: kPrimary.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12.r),
                                   ),
                                   child: Center(
@@ -322,9 +322,9 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                       "Completed",
                                       textAlign: TextAlign.center,
                                       style: kIsWeb
-                                          ? TextStyle(color: kSecondary)
+                                          ? TextStyle(color: kPrimary)
                                           : TextStyle(
-                                              color: kSecondary,
+                                              color: kPrimary,
                                               fontSize: 16.sp,
                                               fontWeight: FontWeight.w500),
                                     ),
@@ -334,7 +334,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 buildButton(
                                   widget.reviewSubmitted
                                       ? kSecondary
-                                      : kSuccess,
+                                      : kSecondary,
                                   widget.reviewSubmitted
                                       ? "Edit Rating"
                                       : "Rate Now",
@@ -404,7 +404,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
         },
         child: Text(
           "No",
-          style: TextStyle(color: Colors.red), // Custom color for "No" button
+          style: TextStyle(color: kPrimary), // Custom color for "No" button
         ),
       ),
       confirm: ElevatedButton(
@@ -472,7 +472,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
     Get.defaultDialog(
       title: "Start Job Confirmation ",
       middleText:
-          "Are you sure Mechanic is arrived and you want to start this job?",
+          "Are you sure the Mechanic has arrived and you want to start this job?",
       confirm: ElevatedButton(
         onPressed: () {
           updateStatus(4, mId);

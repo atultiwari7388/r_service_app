@@ -238,7 +238,7 @@ class _ViewAllMechanicsOrdersState extends State<ViewAllMechanicsOrders> {
                         streamData[index].data() as Map<String, dynamic>;
                     final orderId = data["orderId"] ?? "";
                     final dName = data["userName"] ?? "";
-                    final mName = data["mName"] ?? "";
+                    // final mName = data["mName"] ?? "";
                     final cNumber = data["userPhoneNumber"] ?? "";
                     final serviceName = data["selectedService"] ?? "";
                     final status = data["status"] ?? "";
@@ -250,6 +250,26 @@ class _ViewAllMechanicsOrdersState extends State<ViewAllMechanicsOrders> {
                     final orderDate = DateTime.fromMillisecondsSinceEpoch(
                         data['orderDate'].millisecondsSinceEpoch);
 
+                    // Extract mechanic's name and number from the mechanicsOffers array
+                    List mechanicsOffers = data["mechanicsOffer"] ?? [];
+                    String mechanicName = "Unknown";
+                    String mechanicNumber = "Unknown";
+                    int fixPrice = 0;
+                    String arrivalCharges = "0";
+
+                    if (mechanicsOffers.isNotEmpty) {
+                      for (var offer in mechanicsOffers) {
+                        if (offer is Map<String, dynamic>) {
+                          // Extract first mechanic with the desired conditions (you can adjust this logic)
+                          mechanicName = offer["mName"] ?? "Unknown";
+                          mechanicNumber = offer["mNumber"] ?? "Unknown";
+                          fixPrice = offer["fixPrice"] ?? 0;
+                          arrivalCharges = offer["arrivalCharges"] ?? "0";
+                          break; // If you only need the first valid mechanic, otherwise adjust the loop
+                        }
+                      }
+                    }
+
                     return InkWell(
                       onTap: () {
                         Get.to(
@@ -260,22 +280,22 @@ class _ViewAllMechanicsOrdersState extends State<ViewAllMechanicsOrders> {
                             driverDeliveryAddress: driverAddress.toString(),
                             serviceName: serviceName,
                             // servicePrice: servicePrice,
-                            mechanicName: mName,
-                            mechanicNumber: mNumber,
+                            mechanicName: mechanicName,
+                            mechanicNumber: mechanicNumber,
                             status: status,
                             orderDate: orderDate,
                             payMode: data["payMode"],
                             isImageSelected: data["isImageSelected"] ?? false,
                             isPriceEnabled: data["fixPriceEnabled"] ?? false,
-                            fixPrice: data["arrivalCharges"].toString(),
-                            arrivingCharges: data["fixPrice"].toString(),
+                            fixPrice: fixPrice.toString(),
+                            arrivingCharges: arrivalCharges.toString(),
                           ),
                         );
                       },
                       child: reusableRowWidget(
                         orderId,
                         dName,
-                        mName,
+                        mechanicName,
                         serviceName,
                         stringStatus,
                       ),

@@ -7,6 +7,7 @@ import 'package:regal_shop_app/utils/app_styles.dart';
 import 'package:regal_shop_app/utils/constants.dart';
 import 'package:regal_shop_app/views/dashboard/widgets/upcoming_request_card.dart';
 import 'package:regal_shop_app/views/profile/profile_screen.dart';
+import 'package:regal_shop_app/views/yourServices/add_your_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/calculate_distance.dart';
 import '../../services/collection_references.dart';
@@ -67,22 +68,53 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   children: [
                     SizedBox(height: 15.h),
                     // Total jobs and Ongoing jobs section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        GestureDetector(
-                          // onTap: () => Get.to(() => OrderHistoryScreen()),
-                          child: _compactDashboardItem("Total Jobs",
-                              controller.totalJobs.toString(), kSecondary),
+                    if (selectedServices.isEmpty)
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              "You haven't selected any services yet!",
+                              style:
+                                  appStyle(17.sp, Colors.red, FontWeight.w600),
+                            ),
+                            SizedBox(height: 10.h),
+                            ElevatedButton(
+                              onPressed: () {
+                                Get.to(() => AddYourServices());
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kPrimary,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 24.w,
+                                  vertical: 12.h,
+                                ),
+                              ),
+                              child: Text(
+                                "Add Services",
+                                style: appStyle(
+                                    16.sp, Colors.white, FontWeight.w500),
+                              ),
+                            ),
+                          ],
                         ),
-                        // SizedBox(width: 10.w),
-                        GestureDetector(
-                          // onTap: () => Get.to(() => OrderHistoryScreen()),
-                          child: _compactDashboardItem("Ongoing Jobs",
-                              controller.ongoingJobs.toString(), kPrimary),
-                        ),
-                      ],
-                    ),
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          GestureDetector(
+                            // onTap: () => Get.to(() => OrderHistoryScreen()),
+                            child: _compactDashboardItem("Total Jobs",
+                                controller.totalJobs.toString(), kSecondary),
+                          ),
+                          // SizedBox(width: 10.w),
+                          GestureDetector(
+                            // onTap: () => Get.to(() => OrderHistoryScreen()),
+                            child: _compactDashboardItem("Ongoing Jobs",
+                                controller.ongoingJobs.toString(), kPrimary),
+                          ),
+                        ],
+                      ),
 
                     SizedBox(height: 20.h),
                     // New jobs section

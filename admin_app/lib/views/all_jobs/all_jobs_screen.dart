@@ -328,6 +328,80 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
                   },
                 ),
                 SizedBox(height: 10),
+                // StreamBuilder<List<DocumentSnapshot>>(
+                //   stream: _ordersStream,
+                //   builder: (context, snapshot) {
+                //     if (snapshot.hasData) {
+                //       final streamData = snapshot.data!;
+                //       return Table(
+                //         border: TableBorder.all(color: kDark, width: 1.0),
+                //         children: [
+                //           TableRow(
+                //             decoration: BoxDecoration(color: kSecondary),
+                //             children: [
+                //               buildTableHeaderCell("OrderId"),
+                //               buildTableHeaderCell("D'Name"),
+                //               buildTableHeaderCell("M'Name"),
+                //               buildTableHeaderCell("S'Name"),
+                //               buildTableHeaderCell("Status"),
+                //             ],
+                //           ),
+
+                //           for (var data in streamData) ...[
+                //             TableRow(
+                //               children: [
+                //                 buildTableCellWithGesture(
+                //                   data["orderId"] ?? "",
+                //                   data,
+                //                 ),
+                //                 buildTableCell(data["userName"] ?? ""),
+                //                 buildTableCell(data["mName"] ?? ""),
+                //                 buildTableCell(
+                //                     data["selectedService"].toString()),
+                //                 buildTableCell(getStatusString(data["status"])),
+                //               ],
+                //             ),
+                //           ],
+
+                //           // Pagination Button
+                //           TableRow(
+                //             children: [
+                //               TableCell(
+                //                 child:
+                //                     SizedBox(), // This cell is for the pagination button
+                //               ),
+                //               TableCell(
+                //                 child: SizedBox(),
+                //               ),
+                //               TableCell(
+                //                 child: SizedBox(),
+                //               ),
+                //               TableCell(
+                //                 child: SizedBox(),
+                //               ),
+                //               TableCell(
+                //                 child: Padding(
+                //                   padding: const EdgeInsets.all(8.0),
+                //                   child: Center(
+                //                     child: TextButton(
+                //                       onPressed: _loadNextPage,
+                //                       child: const Text("Next"),
+                //                     ),
+                //                   ),
+                //                 ),
+                //               ),
+                //             ],
+                //           ),
+                //         ],
+                //       );
+                //     } else if (snapshot.hasError) {
+                //       return Center(child: Text("Error: ${snapshot.error}"));
+                //     } else {
+                //       return const Center(child: CircularProgressIndicator());
+                //     }
+                //   },
+                // ),
+
                 StreamBuilder<List<DocumentSnapshot>>(
                   stream: _ordersStream,
                   builder: (context, snapshot) {
@@ -347,6 +421,7 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
                             ],
                           ),
 
+                          // Loop through the streamData and build table rows
                           for (var data in streamData) ...[
                             TableRow(
                               children: [
@@ -355,7 +430,14 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
                                   data,
                                 ),
                                 buildTableCell(data["userName"] ?? ""),
-                                buildTableCell(data["mName"] ?? ""),
+                                // buildTableCell(data["userName"] ?? ""),
+
+                                // Safely fetch mName from the mechanicsOffers array
+                                buildTableCell(
+                                  _getMechanicName(
+                                      List.from(data["mechanicsOffer"] ?? [])),
+                                ),
+
                                 buildTableCell(
                                     data["selectedService"].toString()),
                                 buildTableCell(getStatusString(data["status"])),
@@ -363,22 +445,13 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
                             ),
                           ],
 
-                          // Pagination Button
+                          // Pagination Button Row
                           TableRow(
                             children: [
-                              TableCell(
-                                child:
-                                    SizedBox(), // This cell is for the pagination button
-                              ),
-                              TableCell(
-                                child: SizedBox(),
-                              ),
-                              TableCell(
-                                child: SizedBox(),
-                              ),
-                              TableCell(
-                                child: SizedBox(),
-                              ),
+                              TableCell(child: SizedBox()), // Empty cells
+                              TableCell(child: SizedBox()),
+                              TableCell(child: SizedBox()),
+                              TableCell(child: SizedBox()),
                               TableCell(
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
@@ -409,20 +482,110 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
     }
   }
 
+  String _getMechanicName(List<dynamic> mechanicsOffer) {
+    if (mechanicsOffer.isEmpty) {
+      return "No Mechanic"; // Return default if the array is empty
+    }
+
+    for (var offer in mechanicsOffer) {
+      // Ensure that 'offer' is a Map and contains the fields we need
+      if (offer is Map<String, dynamic>) {
+        // Check if status is between 2 and 5
+        if (offer["status"] != null &&
+            offer["status"] >= 1 &&
+            offer["status"] <= 5) {
+          // Check if mName exists and return it
+          if (offer.containsKey("mName") &&
+              offer["mName"] != null &&
+              offer["mName"].isNotEmpty) {
+            return offer["mName"];
+          }
+        }
+      }
+    }
+
+    return "No Mechanic"; // Default return if no valid mechanic found
+  }
+
+  // Widget buildTableCellWithGesture(String text, dynamic data) {
+  //   final orderId = data["orderId"] ?? "";
+  //   final dName = data["userName"] ?? "";
+  //   // final mName = data["mName"] ?? "";
+  //   final cNumber = data["userPhoneNumber"] ?? "";
+  //   final serviceName = data["selectedService"] ?? "";
+  //   final status = data["status"] ?? "";
+  //   final stringStatus = getStatusString(status);
+  //   final date = data["orderDate"];
+  //   final driverAddress = data["userDeliveryAddress"];
+  //   // final mNumber = data["mNumber"];
+
+  //   final orderDate = DateTime.fromMillisecondsSinceEpoch(
+  //       data['orderDate'].millisecondsSinceEpoch);
+
+  //   return TableCell(
+  //     child: GestureDetector(
+  //       onTap: () {
+  //         Get.to(
+  //           () => JobDetailsScreen(
+  //             orderId: orderId,
+  //             driverName: dName,
+  //             driverNumber: cNumber,
+  //             driverDeliveryAddress: driverAddress,
+  //             serviceName: serviceName,
+  //             mechanicName: "mName",
+  //             mechanicNumber: "mNumber",
+  //             status: status,
+  //             orderDate: orderDate,
+  //             payMode: data["payMode"],
+  //             isImageSelected: data["isImageSelected"] ?? false,
+  //             isPriceEnabled: data["fixPriceEnabled"] ?? false,
+  //             fixPrice: data["fixPrice"].toString(),
+  //             arrivingCharges: data["arrivalCharges"].toString(),
+  //           ),
+  //         );
+  //       },
+  //       child: Padding(
+  //         padding: const EdgeInsets.all(8.0),
+  //         child: Text(
+  //           text,
+  //           style: appStyle(12, kDark, FontWeight.normal),
+  //           textAlign: TextAlign.center,
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
   Widget buildTableCellWithGesture(String text, dynamic data) {
     final orderId = data["orderId"] ?? "";
     final dName = data["userName"] ?? "";
-    final mName = data["mName"] ?? "";
     final cNumber = data["userPhoneNumber"] ?? "";
     final serviceName = data["selectedService"] ?? "";
     final status = data["status"] ?? "";
     final stringStatus = getStatusString(status);
-    final date = data["orderDate"];
     final driverAddress = data["userDeliveryAddress"];
-    final mNumber = data["mNumber"];
-
     final orderDate = DateTime.fromMillisecondsSinceEpoch(
         data['orderDate'].millisecondsSinceEpoch);
+
+    // Extract mechanic's name and number from the mechanicsOffers array
+    List mechanicsOffers = data["mechanicsOffer"] ?? [];
+    String mechanicName = "Unknown";
+    String mechanicNumber = "Unknown";
+    int fixPrice = 0;
+    String arrivalCharges = "0";
+
+    if (mechanicsOffers.isNotEmpty) {
+      for (var offer in mechanicsOffers) {
+        if (offer is Map<String, dynamic>) {
+          // Extract first mechanic with the desired conditions (you can adjust this logic)
+          mechanicName = offer["mName"] ?? "Unknown";
+          mechanicNumber = offer["mNumber"] ?? "Unknown";
+          fixPrice = offer["fixPrice"] ?? 0;
+          arrivalCharges = offer["arrivalCharges"] ?? "0";
+          break; // If you only need the first valid mechanic, otherwise adjust the loop
+        }
+      }
+    }
 
     return TableCell(
       child: GestureDetector(
@@ -434,15 +597,15 @@ class _AllJobsScreenState extends State<AllJobsScreen> {
               driverNumber: cNumber,
               driverDeliveryAddress: driverAddress,
               serviceName: serviceName,
-              mechanicName: mName,
-              mechanicNumber: mNumber,
+              mechanicName: mechanicName, // Pass extracted mechanic name
+              mechanicNumber: mechanicNumber, // Pass extracted mechanic number
               status: status,
               orderDate: orderDate,
               payMode: data["payMode"],
               isImageSelected: data["isImageSelected"] ?? false,
               isPriceEnabled: data["fixPriceEnabled"] ?? false,
-              fixPrice: data["fixPrice"].toString(),
-              arrivingCharges: data["arrivalCharges"].toString(),
+              fixPrice: fixPrice.toString(),
+              arrivingCharges: arrivalCharges.toString(),
             ),
           );
         },

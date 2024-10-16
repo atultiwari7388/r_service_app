@@ -8,8 +8,6 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/entry_screen.dart';
-import 'package:regal_service_d_app/widgets/background_lottie.dart';
-
 import '../onBoard/on_boarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -64,38 +62,11 @@ class _SplashScreenState extends State<SplashScreen> {
           },
           child: Image.asset(
             "assets/new_splash_logo.png",
-            height: 300.h,
+            height: 200.h,
             fit: BoxFit.cover,
           ),
         ),
       ),
     );
-    // return Scaffold(
-    //   backgroundColor: kWhite,
-    //   body: Container(
-    //     child: Column(
-    //       mainAxisAlignment: MainAxisAlignment.center,
-    //       children: [
-    //         Center(
-    //           child: Image.asset(
-    //             "assets/no-background-logo.png",
-    //             height: 300.h,
-    //             fit: BoxFit.cover,
-    //           ),
-    //         ),
-    //         SizedBox(height: 30.h),
-    //       ],
-    //     ),
-    //   ),
-    //
-    // body: BackgroundLottieContainer(
-    //   child: Image.asset(
-    //     "assets/no-background-logo.png",
-    //     height: 300.h,
-    //     fit: BoxFit.cover,
-    //   ),
-    //   color: kWhite,
-    // ),
-    // );
   }
 }

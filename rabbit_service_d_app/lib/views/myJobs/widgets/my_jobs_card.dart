@@ -29,6 +29,7 @@ class MyJobsCard extends StatefulWidget {
     this.onDistanceChanged,
     required this.userLat,
     required this.userLong,
+    this.mechanicOffers = const [],
   });
 
   final String companyNameAndVehicleName;
@@ -46,6 +47,7 @@ class MyJobsCard extends StatefulWidget {
   final Function(num)? onDistanceChanged;
   final num userLat;
   final num userLong;
+  final List<dynamic> mechanicOffers;
 
   @override
   State<MyJobsCard> createState() => _MyJobsCardState();
@@ -418,9 +420,11 @@ class _MyJobsCardState extends State<MyJobsCard> {
                   Row(
                     children: [
                       if (widget.currentStatus == 0)
-                        buildButton(kRed, "Cancel", widget.onCancelBtnTap),
+                        buildButton(kPrimary, "Cancel", widget.onCancelBtnTap),
                       if (widget.currentStatus == 0) SizedBox(width: 20.w),
-                      buildButton(kSecondary, "View", widget.onButtonTap),
+                      widget.mechanicOffers.isEmpty
+                          ? SizedBox()
+                          : buildButton(kSecondary, "View", widget.onButtonTap),
                     ],
                   ),
               ],

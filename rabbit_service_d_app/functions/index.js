@@ -138,7 +138,6 @@ exports.sendNewMechanicNotification = functions.firestore
     }
   })
 
-//Function to Again send a new notification to the nearby mechanics when nearbyDistance value changed
 // Function to Again send a new notification to the nearby mechanics when nearbyDistance value changed
 exports.sendAgainNewMechanicNotification = async (
   snapshot,

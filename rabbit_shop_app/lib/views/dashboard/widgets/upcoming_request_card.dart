@@ -382,7 +382,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                                     height: 40.h,
                                                     width: 120.w,
                                                     decoration: BoxDecoration(
-                                                      color: kSecondary
+                                                      color: kPrimary
                                                           .withOpacity(0.1),
                                                       borderRadius:
                                                           BorderRadius.circular(
@@ -393,7 +393,7 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                                           textAlign:
                                                               TextAlign.center,
                                                           style: TextStyle(
-                                                              color: kSecondary,
+                                                              color: kPrimary,
                                                               fontSize: 16.sp,
                                                               fontWeight:
                                                                   FontWeight
@@ -474,12 +474,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
         );
       },
     );
-  }
-
-  Future<void> _downloadImage(String imageUrl) async {
-    // Your download logic (e.g., using Dio or another package)
-    showToastMessage('Download', 'Downloading image...', Colors.blue);
-    // Implement the actual download logic here
   }
 
   void _showConfirmStartDialog() {
@@ -723,10 +717,14 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           .set(data);
 
       // Update the Firestore `jobs` collection
-      await FirebaseFirestore.instance
-          .collection('jobs')
-          .doc(orderId)
-          .update(data);
+      await FirebaseFirestore.instance.collection('jobs').doc(orderId).update({
+        'mRating': rating,
+        'mReview': review,
+        "mId": FirebaseAuth.instance.currentUser!.uid,
+        "mReviewSubmitted": true,
+        "orderId": orderId,
+        "timestamp": DateTime.now(),
+      });
 
       // Check if the history document exists
       await FirebaseFirestore.instance

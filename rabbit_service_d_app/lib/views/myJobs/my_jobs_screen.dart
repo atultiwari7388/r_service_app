@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,9 +19,6 @@ class MyJobsScreen extends StatefulWidget {
 }
 
 class _MyJobsScreenState extends State<MyJobsScreen> {
-  String _selectedSortOption = "Sort";
-  int? _selectedCardIndex;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,7 +57,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                   final data = snapshot.data!.data() as Map<String, dynamic>;
                   final userPhoto = data['profilePicture'] ?? '';
                   final userName = data['userName'] ?? '';
-                  final phoneNumber = data['phoneNumber'] ?? '';
+                  // final phoneNumber = data['phoneNumber'] ?? '';
 
                   if (userPhoto.isEmpty) {
                     return Text(
@@ -112,8 +108,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                     return const CircularProgressIndicator();
                   }
 
-                  final data = snapshot
-                      .data!.docs; // List of documents in the 'jobs' collection
+                  final data = snapshot.data!.docs;
 
                   return data.isEmpty
                       ? Center(child: Text("No Jobs Created"))
@@ -124,10 +119,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                           itemBuilder: (context, index) {
                             final job =
                                 data[index].data() as Map<String, dynamic>;
-                            final userName = job['userName'] ?? "N/A";
-                            final imagePath = job['userPhoto'] ?? "";
-                            final vehicleNumber = job['vehicleNumber'] ??
-                                "N/A"; // Fetch the vehicle number
+                            final vehicleNumber = job['vehicleNumber'] ?? "N/A";
 
                             DateTime orderDateTime;
                             if (job['orderDate'] is Timestamp) {
@@ -135,10 +127,10 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                   .toDate()
                                   .toLocal();
                             } else {
-                              // Handle cases where 'orderDate' is not a Timestamp
-                              orderDateTime = DateTime
-                                  .now(); // Fallback to current time or handle appropriately
+                              orderDateTime = DateTime.now();
                             }
+                            final mechanicsOffer =
+                                job["mechanicsOffer"] as List<dynamic>? ?? [];
 
                             return MyJobsCard(
                               companyNameAndVehicleName:
@@ -178,13 +170,8 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                         ),
                                         TextButton(
                                           onPressed: () {
-                                            // If "Yes" is pressed, proceed to select the reason
-                                            Navigator.pop(
-                                                context); // Close the first dialog
-
-                                            // Step 2: Show the reason selection dialog
-                                            _showReasonDialog(job[
-                                                'orderId']); // Pass the job ID to update status later
+                                            Navigator.pop(context);
+                                            _showReasonDialog(job['orderId']);
                                           },
                                           child: Text("Yes"),
                                         ),
@@ -201,6 +188,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                               },
                               userLat: job["userLat"],
                               userLong: job["userLong"],
+                              mechanicOffers: mechanicsOffer,
                             );
                           },
                         );

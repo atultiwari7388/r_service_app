@@ -157,8 +157,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           itemBuilder: (context, index) {
                             final job =
                                 data[index].data() as Map<String, dynamic>;
-                            final userName = job['userName'] ?? "N/A";
-                            final imagePath = job['userPhoto'] ?? "";
                             final vehicleNumber = job['vehicleNumber'] ?? "N/A";
 
                             DateTime orderDateTime;
