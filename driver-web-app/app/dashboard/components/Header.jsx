@@ -24,7 +24,7 @@ export default function Header() {
         <img className='h-12 md:h-5' src='/logo.png' alt='Logo' />
       </Link>
       <div className='hidden md:flex gap-2 items-center font-semibold'>
-        {menuList?.map((item) => {
+        {/* {menuList?.map((item) => {
           return (
             <Link href={item?.link} key={item?.name}>
               <button className='text-sm px-4 py-2 rounded-lg hover:bg-gray-50'>
@@ -32,7 +32,7 @@ export default function Header() {
               </button>
             </Link>
           )
-        })}
+        })} */}
         {/* Profile Icon */}
         <Link href='/profile'>
           <button className='flex items-center text-sm px-4 py-2 rounded-lg hover:bg-gray-50'>

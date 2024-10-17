@@ -1,15 +1,89 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { db } from '@/lib/firebase'
 import { doc, collection, addDoc, updateDoc, getDoc } from 'firebase/firestore'
 import toast from 'react-hot-toast'
 import Footer from './components/Footer'
 import Header from './components/Header'
+import FindMechanicForm from './components/FindMechanicForm'
+import OurServicesComponent from './components/OurServices'
+
+const kPrimary = '#F96176' // Define primary color
+const kSecondary = '#58bb87' //Define secondary color
 
 export default function Page() {
+  const [allServices, setAllServices] = useState([])
+  const [vehicles, setVehicles] = useState([])
+  const [filteredServices, setFilteredServices] = useState([])
+  const [query, setQuery] = useState('')
   const { user } = useAuth()
+
+  // Fetch services from Firestore
+  const fetchServices = async () => {
+    try {
+      const servicesSnapshot = await getDoc(
+        doc(collection(db, 'metadata'), 'servicesList')
+      )
+      const servicesData = servicesSnapshot.data()?.data || []
+
+      // Process services
+      const servicesList = servicesData.map((service) => ({
+        title: service.title,
+        imageType: Number(service.image_type),
+        priceType: Number(service.price_type),
+      }))
+
+      setAllServices(servicesList)
+      setFilteredServices(servicesList)
+    } catch (error) {
+      console.error('Error fetching services:', error)
+    }
+  }
+
+  // Fetch vehicles from Firestore
+  const fetchVehicles = async () => {
+    try {
+      const userId = user.uid
+      const vehiclesSnapshot = await getDocs(
+        collection(db, `Users/${userId}/Vehicles`)
+      )
+      const vehiclesList = vehiclesSnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(), // This will spread the vehicle data into the object
+        }))
+        .filter((vehicle) => vehicle.companyName) // Filter out any vehicles without company name
+
+      setVehicles(vehiclesList) // Set the fetched vehicles into state
+    } catch (error) {
+      console.error('Error fetching vehicles:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchServices()
+    fetchVehicles()
+  }, [])
+
+  // Debounced search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (query) {
+        const filtered = allServices.filter((service) =>
+          service.title.toLowerCase().startsWith(query.toLowerCase())
+        )
+        setFilteredServices(filtered)
+      } else {
+        setFilteredServices(allServices)
+      }
+    }, 300) // 300ms debounce time
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [query, allServices])
 
   // Function to get user's current location using Geolocation API
   const getUserLocation = () => {
@@ -78,7 +152,7 @@ export default function Page() {
       const locationSet = await isLocationAlreadySet()
 
       if (locationSet) {
-        toast.info('Location already set. No need to store again.')
+        // toast.info('Location already set. No need to store again.')
         return
       }
 
@@ -137,15 +211,20 @@ export default function Page() {
   }, [user])
 
   return (
-    <main className='flex flex-col min-h-screen'>
-      {' '}
-      {/* Flex column to stretch to full height */}
+    <main className='flex flex-col min-h-screen bg-gradient-to-b from-gray-50 to-white'>
       <Header />
-      <div className='flex-grow'>
-        {' '}
-        {/* This div takes up the remaining space */}
-        {/** Some body section text */}
-        <p>Your main content goes here.</p>
+      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+          {/* Left side (Find Mechanic form) */}
+          <FindMechanicForm
+            allServices={allServices}
+            filteredServices={filteredServices}
+            filteredvehicles={vehicles}
+            setQuery={setQuery}
+          />
+          {/* Right side (Our Services) */}
+          <OurServicesComponent />
+        </div>
       </div>
       <Footer />
     </main>

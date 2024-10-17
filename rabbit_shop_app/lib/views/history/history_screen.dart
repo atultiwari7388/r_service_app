@@ -353,6 +353,7 @@ class _UpcomingAndCompletedJobsScreenState
                 images: images,
                 payMode: payMode,
                 reviewSubmitted: jobs["mReviewSubmitted"] ?? false,
+                dateTime: jobs["orderDate"].toDate(),
               );
             },
           ),

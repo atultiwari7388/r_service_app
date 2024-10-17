@@ -223,6 +223,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 images: images,
                 payMode: jobs["payMode"].toString(),
                 reviewSubmitted: jobs["reviewSubmitted"],
+                dateTime: jobs["orderDate"].toDate(),
               );
             },
           ),

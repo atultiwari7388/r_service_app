@@ -219,6 +219,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                     );
                                   },
                                 ),
+
                                 SizedBox(height: 20.h),
 //================================ Select Your Service ==========================================
                                 GestureDetector(

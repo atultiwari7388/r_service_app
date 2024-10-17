@@ -26,6 +26,7 @@ class DashBoardScreen extends StatefulWidget {
 class _DashBoardScreenState extends State<DashBoardScreen> {
   List<String> selectedServices = [];
   bool isStatusUpdating = false;
+  bool isServicesLoading = false;
 
   @override
   void initState() {
@@ -34,6 +35,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   }
 
   Future<void> fetchSelectedServices() async {
+    setState(() {
+      isServicesLoading = true;
+    });
     try {
       DocumentSnapshot<Map<String, dynamic>> mechanicSnapshot =
           await FirebaseFirestore.instance
@@ -47,9 +51,19 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         selectedServices =
             List<String>.from(services); // Convert to List<String>
         print(selectedServices);
+        setState(() {
+          isServicesLoading = false;
+        });
       }
     } catch (e) {
       print('Error fetching selected services: $e');
+      setState(() {
+        isServicesLoading = false;
+      });
+    } finally {
+      setState(() {
+        isServicesLoading = false;
+      });
     }
   }
 
@@ -58,332 +72,605 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     return GetBuilder<DashboardController>(
         init: DashboardController(),
         builder: (controller) {
-          return Scaffold(
-            appBar: buildAppBar(controller),
-            body: SingleChildScrollView(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 15.h),
-                    // Total jobs and Ongoing jobs section
-                    if (selectedServices.isEmpty)
-                      Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              "You haven't selected any services yet!",
-                              style:
-                                  appStyle(17.sp, Colors.red, FontWeight.w600),
-                            ),
-                            SizedBox(height: 10.h),
-                            ElevatedButton(
-                              onPressed: () {
-                                Get.to(() => AddYourServices());
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: kPrimary,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 24.w,
-                                  vertical: 12.h,
-                                ),
-                              ),
-                              child: Text(
-                                "Add Services",
-                                style: appStyle(
-                                    16.sp, Colors.white, FontWeight.w500),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          return isServicesLoading
+              ? Center(child: CircularProgressIndicator())
+              : Scaffold(
+                  appBar: buildAppBar(controller),
+                  body: SingleChildScrollView(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          GestureDetector(
-                            // onTap: () => Get.to(() => OrderHistoryScreen()),
-                            child: _compactDashboardItem("Total Jobs",
-                                controller.totalJobs.toString(), kSecondary),
-                          ),
-                          // SizedBox(width: 10.w),
-                          GestureDetector(
-                            // onTap: () => Get.to(() => OrderHistoryScreen()),
-                            child: _compactDashboardItem("Ongoing Jobs",
-                                controller.ongoingJobs.toString(), kPrimary),
-                          ),
-                        ],
-                      ),
-
-                    SizedBox(height: 20.h),
-                    // New jobs section
-
-                    controller.online
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                          SizedBox(height: 15.h),
+                          // Total jobs and Ongoing jobs section
+                          if (selectedServices.isEmpty)
+                            Center(
+                              child: Column(
                                 children: [
-                                  ReusableText(
-                                      text: "New Jobs",
-                                      style:
-                                          appStyle(17, kDark, FontWeight.w500)),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 8.w, vertical: 4.h),
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.1),
-                                      borderRadius:
-                                          BorderRadius.circular(8.0.r),
-                                    ),
-                                    child: PopupMenuButton<String>(
-                                      onSelected: (value) {
-                                        setState(() {
-                                          controller.selectedSortOption = value;
-                                        });
-                                        // Implement your sorting logic here if needed
-                                        print('Selected sort option: $value');
-                                      },
-                                      itemBuilder: (context) => [
-                                        PopupMenuItem(
-                                          value: "Near by",
-                                          child: Text("Near by"),
-                                        ),
-                                        PopupMenuItem(
-                                          value: "Rating",
-                                          child: Text("Rating"),
-                                        ),
-                                      ],
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.sort, color: kPrimary),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            controller
-                                                .selectedSortOption, // Show the selected option
-                                            style: appStyle(16.sp, kPrimary,
-                                                FontWeight.w500),
-                                          ),
-                                        ],
+                                  Text(
+                                    "You haven't selected any services yet!",
+                                    style: appStyle(
+                                        17.sp, Colors.red, FontWeight.w600),
+                                  ),
+                                  SizedBox(height: 10.h),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      // Navigate to AddYourServices page and wait for the result
+                                      final result =
+                                          await Get.to(() => AddYourServices());
+
+                                      // If result is true, refresh the dashboard services
+                                      if (result == true) {
+                                        fetchSelectedServices(); // Fetch updated services
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kPrimary,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 24.w,
+                                        vertical: 12.h,
                                       ),
+                                    ),
+                                    child: Text(
+                                      "Add Services",
+                                      style: appStyle(
+                                          16.sp, Colors.white, FontWeight.w500),
                                     ),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 10.h),
-                              isStatusUpdating
-                                  ? Center(child: CircularProgressIndicator())
-                                  : StreamBuilder<QuerySnapshot>(
-                                      stream: FirebaseFirestore.instance
-                                          .collection('jobs')
-                                          .where('status', isEqualTo: 0)
-                                          .snapshots(),
-                                      builder: (BuildContext context,
-                                          AsyncSnapshot<QuerySnapshot>
-                                              snapshot) {
-                                        if (snapshot.hasError) {
-                                          return Center(
-                                              child: Text(
-                                                  'Error: ${snapshot.error}'));
-                                        }
+                            )
+                          else
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                GestureDetector(
+                                  // onTap: () => Get.to(() => OrderHistoryScreen()),
+                                  child: _compactDashboardItem(
+                                      "Total Jobs",
+                                      controller.totalJobs.toString(),
+                                      kSecondary),
+                                ),
+                                // SizedBox(width: 10.w),
+                                GestureDetector(
+                                  // onTap: () => Get.to(() => OrderHistoryScreen()),
+                                  child: _compactDashboardItem(
+                                      "Ongoing Jobs",
+                                      controller.ongoingJobs.toString(),
+                                      kPrimary),
+                                ),
+                              ],
+                            ),
 
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return Center(
-                                              child:
-                                                  CircularProgressIndicator());
-                                        }
+                          SizedBox(height: 20.h),
+                          // New jobs section
 
-                                        // Get the list of jobs
-                                        final data = snapshot.data!.docs;
-                                        List<dynamic> mechanicServices =
-                                            selectedServices;
-
-                                        // Filter the data based on mechanicsOffers and selectedServices
-                                        final filteredData = data.where((doc) {
-                                          final job = doc.data()
-                                              as Map<String, dynamic>;
-                                          final mechanicsOffers =
-                                              job['mechanicsOffer']
-                                                  as List<dynamic>?;
-
-                                          // Check if mechanicsOffers is null or empty
-                                          if (mechanicsOffers == null ||
-                                              mechanicsOffers.isEmpty) {
-                                            print(
-                                                'Job ${job['orderId']} has no offers. Showing this job.');
-                                          } else {
-                                            bool shouldShowJob =
-                                                true; // Flag to determine if the job should be shown
-
-                                            // Check if mId is not equal to currentUId or if the status is 0
-                                            for (var offer in mechanicsOffers) {
-                                              if (offer['mId'] == currentUId) {
-                                                // If the mechanic's ID matches, check the offer status
-                                                if (offer['status'] == 1) {
-                                                  print(
-                                                      'Hiding job ${job['orderId']} because status is 1 (accepted).');
-                                                  shouldShowJob =
-                                                      false; // Hide the job if the mechanic's offer status is 1
-                                                  break; // No need to check other offers
-                                                }
-                                              }
-                                            }
-
-                                            if (!shouldShowJob) {
-                                              return false; // Skip this job if it should not be shown
-                                            }
-                                          }
-
-                                          // Now check if the selectedService matches any mechanic's selected services
-                                          final jobService = job[
-                                              'selectedService']; // Single string service for the job
-                                          if (!mechanicServices
-                                              .contains(jobService)) {
-                                            print(
-                                                'Job ${job['orderId']} does not match any selected service of the mechanic.');
-                                            return false; // Hide this job if the service does not match
-                                          }
-
-                                          print(
-                                              'Showing job ${job['orderId']}');
-                                          return true; // Show the job if all conditions are met
-                                        }).toList();
-
-                                        if (filteredData.isEmpty) {
-                                          return Center(
-                                              child:
-                                                  Text("No Request Available"));
-                                        }
-
-                                        return ListView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              NeverScrollableScrollPhysics(),
-                                          itemCount: filteredData.length,
-                                          itemBuilder: (context, index) {
-                                            final job = filteredData[index]
-                                                .data() as Map<String, dynamic>;
-
-                                            // Initialize the mechanic's status
-                                            int mechanicStatus =
-                                                job['status'] ?? 0;
-
-                                            // Extract job details
-                                            final userLat =
-                                                (job["userLat"] as num)
-                                                    .toDouble();
-                                            final userLng =
-                                                (job["userLong"] as num)
-                                                    .toDouble();
-                                            final bool isImage =
-                                                job["isImageSelected"] ?? false;
-                                            final imagePath =
-                                                job['userPhoto'] ?? "";
-                                            final List<dynamic> images =
-                                                job['images'] ?? [];
-
-                                            // Date Formatting
-                                            String dateString = '';
-                                            if (job['orderDate'] is Timestamp) {
-                                              DateTime dateTime =
-                                                  (job['orderDate']
-                                                          as Timestamp)
-                                                      .toDate();
-                                              dateString =
-                                                  "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
-                                            }
-
-                                            double distance = calculateDistance(
-                                                userLat,
-                                                userLng,
-                                                controller.mecLat,
-                                                controller.mecLng);
-
-                                            if (distance < 1) {
-                                              distance = 1;
-                                            }
-
-                                            // Logic to ensure job is nearby
-                                            if (distance <=
-                                                (job['nearByDistance'] ?? 0)) {
-                                              return UpcomingRequestCard(
-                                                orderId:
-                                                    job["orderId"].toString(),
-                                                userName:
-                                                    job["userName"].toString(),
-                                                vehicleName:
-                                                    "${job["companyName"]} (${job['vehicleNumber']})",
-                                                address:
-                                                    job['userDeliveryAddress'] ??
-                                                        "N/A",
-                                                serviceName:
-                                                    job['selectedService'] ??
-                                                        "N/A",
-                                                jobId: job['orderId'] ??
-                                                    "#Unknown",
-                                                imagePath: imagePath.isEmpty
-                                                    ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                                    : imagePath,
-                                                date: dateString,
-                                                buttonName: "Interested",
-                                                onButtonTap: () =>
-                                                    showConfirmDialog(
-                                                  index,
-                                                  filteredData,
-                                                  job["userId"].toString(),
-                                                  job["orderId"].toString(),
-                                                  isImage,
-                                                  job["fixPriceEnabled"] ??
-                                                      false,
-                                                  controller,
+                          controller.online
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        ReusableText(
+                                            text: "New Jobs",
+                                            style: appStyle(
+                                                17, kDark, FontWeight.w500)),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8.w, vertical: 4.h),
+                                          decoration: BoxDecoration(
+                                            color: kPrimary.withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(8.0.r),
+                                          ),
+                                          child: PopupMenuButton<String>(
+                                            onSelected: (value) {
+                                              setState(() {
+                                                controller.selectedSortOption =
+                                                    value;
+                                              });
+                                              // Implement your sorting logic here if needed
+                                              print(
+                                                  'Selected sort option: $value');
+                                            },
+                                            itemBuilder: (context) => [
+                                              PopupMenuItem(
+                                                value: "Near by",
+                                                child: Text("Near by"),
+                                              ),
+                                              PopupMenuItem(
+                                                value: "Rating",
+                                                child: Text("Rating"),
+                                              ),
+                                            ],
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.sort,
+                                                    color: kPrimary),
+                                                SizedBox(width: 4.w),
+                                                Text(
+                                                  controller
+                                                      .selectedSortOption, // Show the selected option
+                                                  style: appStyle(
+                                                      16.sp,
+                                                      kPrimary,
+                                                      FontWeight.w500),
                                                 ),
-                                                onDasMapButton: () async {
-                                                  final Uri googleMapsUri =
-                                                      Uri.parse(
-                                                          'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
-                                                  if (await canLaunch(
-                                                      googleMapsUri
-                                                          .toString())) {
-                                                    await launch(googleMapsUri
-                                                        .toString());
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 10.h),
+                                    isStatusUpdating
+                                        ? Center(
+                                            child: CircularProgressIndicator())
+                                        :
+                                        //  StreamBuilder<QuerySnapshot>(
+                                        //     stream: FirebaseFirestore.instance
+                                        //         .collection('jobs')
+                                        //         .where('status', isEqualTo: 0)
+                                        //         .snapshots(),
+                                        //     builder: (BuildContext context,
+                                        //         AsyncSnapshot<QuerySnapshot>
+                                        //             snapshot) {
+                                        //       if (snapshot.hasError) {
+                                        //         return Center(
+                                        //             child: Text(
+                                        //                 'Error: ${snapshot.error}'));
+                                        //       }
+
+                                        //       if (snapshot.connectionState ==
+                                        //           ConnectionState.waiting) {
+                                        //         return Center(
+                                        //             child:
+                                        //                 CircularProgressIndicator());
+                                        //       }
+
+                                        //       // Get the list of jobs
+                                        //       final data = snapshot.data!.docs;
+                                        //       List<dynamic> mechanicServices =
+                                        //           selectedServices;
+
+                                        //       // Filter the data based on mechanicsOffers and selectedServices
+                                        //       final filteredData =
+                                        //           data.where((doc) {
+                                        //         final job = doc.data()
+                                        //             as Map<String, dynamic>;
+                                        //         final mechanicsOffers =
+                                        //             job['mechanicsOffer']
+                                        //                 as List<dynamic>?;
+
+                                        //         // Check if mechanicsOffers is null or empty
+                                        //         if (mechanicsOffers == null ||
+                                        //             mechanicsOffers.isEmpty) {
+                                        //           print(
+                                        //               'Job ${job['orderId']} has no offers. Showing this job.');
+                                        //         } else {
+                                        //           bool shouldShowJob =
+                                        //               true; // Flag to determine if the job should be shown
+
+                                        //           // Check if mId is not equal to currentUId or if the status is 0
+                                        //           for (var offer
+                                        //               in mechanicsOffers) {
+                                        //             if (offer['mId'] ==
+                                        //                 currentUId) {
+                                        //               // If the mechanic's ID matches, check the offer status
+                                        //               if (offer['status'] ==
+                                        //                   1) {
+                                        //                 print(
+                                        //                     'Hiding job ${job['orderId']} because status is 1 (accepted).');
+                                        //                 shouldShowJob =
+                                        //                     false; // Hide the job if the mechanic's offer status is 1
+                                        //                 break; // No need to check other offers
+                                        //               }
+                                        //             }
+                                        //           }
+
+                                        //           if (!shouldShowJob) {
+                                        //             return false; // Skip this job if it should not be shown
+                                        //           }
+                                        //         }
+
+                                        //         // Now check if the selectedService matches any mechanic's selected services
+                                        //         final jobService = job[
+                                        //             'selectedService']; // Single string service for the job
+                                        //         if (!mechanicServices
+                                        //             .contains(jobService)) {
+                                        //           print(
+                                        //               'Job ${job['orderId']} does not match any selected service of the mechanic.');
+                                        //           return false; // Hide this job if the service does not match
+                                        //         }
+
+                                        //         print(
+                                        //             'Showing job ${job['orderId']}');
+                                        //         return true; // Show the job if all conditions are met
+                                        //       }).toList();
+
+                                        //       if (filteredData.isEmpty) {
+                                        //         return Center(
+                                        //             child: Text(
+                                        //                 "No Request Available"));
+                                        //       }
+
+                                        //       return ListView.builder(
+                                        //         shrinkWrap: true,
+                                        //         physics:
+                                        //             NeverScrollableScrollPhysics(),
+                                        //         itemCount: filteredData.length,
+                                        //         itemBuilder: (context, index) {
+                                        //           final job =
+                                        //               filteredData[index].data()
+                                        //                   as Map<String,
+                                        //                       dynamic>;
+
+                                        //           // Initialize the mechanic's status
+                                        //           int mechanicStatus =
+                                        //               job['status'] ?? 0;
+
+                                        //           // Extract job details
+                                        //           final userLat =
+                                        //               (job["userLat"] as num)
+                                        //                   .toDouble();
+                                        //           final userLng =
+                                        //               (job["userLong"] as num)
+                                        //                   .toDouble();
+                                        //           final bool isImage =
+                                        //               job["isImageSelected"] ??
+                                        //                   false;
+                                        //           final imagePath =
+                                        //               job['userPhoto'] ?? "";
+                                        //           final List<dynamic> images =
+                                        //               job['images'] ?? [];
+
+                                        //           // Date Formatting
+                                        //           String dateString = '';
+                                        //           if (job['orderDate']
+                                        //               is Timestamp) {
+                                        //             DateTime dateTime =
+                                        //                 (job['orderDate']
+                                        //                         as Timestamp)
+                                        //                     .toDate();
+                                        //             dateString =
+                                        //                 "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                                        //           }
+
+                                        //           double distance =
+                                        //               calculateDistance(
+                                        //                   userLat,
+                                        //                   userLng,
+                                        //                   controller.mecLat,
+                                        //                   controller.mecLng);
+
+                                        //           if (distance < 1) {
+                                        //             distance = 1;
+                                        //           }
+
+                                        //           // Logic to ensure job is nearby
+                                        //           if (distance <=
+                                        //               (job['nearByDistance'] ??
+                                        //                   0)) {
+                                        //             return UpcomingRequestCard(
+                                        //               orderId: job["orderId"]
+                                        //                   .toString(),
+                                        //               userName: job["userName"]
+                                        //                   .toString(),
+                                        //               vehicleName:
+                                        //                   "${job["companyName"]} (${job['vehicleNumber']})",
+                                        //               address:
+                                        //                   job['userDeliveryAddress'] ??
+                                        //                       "N/A",
+                                        //               serviceName:
+                                        //                   job['selectedService'] ??
+                                        //                       "N/A",
+                                        //               jobId: job['orderId'] ??
+                                        //                   "#Unknown",
+                                        //               imagePath: imagePath
+                                        //                       .isEmpty
+                                        //                   ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                        //                   : imagePath,
+                                        //               date: dateString,
+                                        //               buttonName: "Interested",
+                                        //               onButtonTap: () =>
+                                        //                   showConfirmDialog(
+                                        //                 index,
+                                        //                 filteredData,
+                                        //                 job["userId"]
+                                        //                     .toString(),
+                                        //                 job["orderId"]
+                                        //                     .toString(),
+                                        //                 isImage,
+                                        //                 job["fixPriceEnabled"] ??
+                                        //                     false,
+                                        //                 controller,
+                                        //               ),
+                                        //               onDasMapButton: () async {
+                                        //                 final Uri
+                                        //                     googleMapsUri =
+                                        //                     Uri.parse(
+                                        //                         'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                        //                 if (await canLaunch(
+                                        //                     googleMapsUri
+                                        //                         .toString())) {
+                                        //                   await launch(
+                                        //                       googleMapsUri
+                                        //                           .toString());
+                                        //                 } else {
+                                        //                   print(
+                                        //                       'Could not launch Google Maps');
+                                        //                 }
+                                        //               },
+                                        //               currentStatus:
+                                        //                   mechanicStatus,
+                                        //               rating:
+                                        //                   "4.5", // Assuming you will fetch or calculate this elsewhere
+                                        //               arrivalCharges: "30",
+                                        //               km: "${distance.toStringAsFixed(0)} miles",
+                                        //               isImage: isImage,
+                                        //               images: images,
+                                        //               fixCharge: job["fixPrice"]
+                                        //                   .toString(),
+                                        //               reviewSubmitted:
+                                        //                   job["reviewSubmitted"] ??
+                                        //                       false,
+                                        //               dateTime: job["orderDate"]
+                                        //                   .toDate(),
+                                        //             );
+                                        //           } else {
+                                        //             return Container(); // Return an empty container if distance is greater than nearbyDistance
+                                        //           }
+                                        //         },
+                                        //       );
+                                        //     },
+                                        //   ),
+
+                                        StreamBuilder<QuerySnapshot>(
+                                            stream: FirebaseFirestore.instance
+                                                .collection('jobs')
+                                                .where('status', isEqualTo: 0)
+                                                .snapshots(),
+                                            builder: (BuildContext context,
+                                                AsyncSnapshot<QuerySnapshot>
+                                                    snapshot) {
+                                              if (snapshot.hasError) {
+                                                return Center(
+                                                    child: Text(
+                                                        'Error: ${snapshot.error}'));
+                                              }
+
+                                              if (snapshot.connectionState ==
+                                                  ConnectionState.waiting) {
+                                                return Center(
+                                                    child:
+                                                        CircularProgressIndicator());
+                                              }
+
+                                              // Get the list of jobs
+                                              final data = snapshot.data!.docs;
+                                              List<dynamic> mechanicServices =
+                                                  selectedServices;
+
+                                              // Filter the data based on mechanicsOffers and selectedServices
+                                              final filteredData =
+                                                  data.where((doc) {
+                                                final job = doc.data()
+                                                    as Map<String, dynamic>;
+                                                final mechanicsOffers =
+                                                    job['mechanicsOffer']
+                                                        as List<dynamic>?;
+
+                                                // Check if mechanicsOffers is null or empty
+                                                if (mechanicsOffers == null ||
+                                                    mechanicsOffers.isEmpty) {
+                                                  print(
+                                                      'Job ${job['orderId']} has no offers. Showing this job.');
+                                                } else {
+                                                  bool shouldShowJob =
+                                                      true; // Flag to determine if the job should be shown
+
+                                                  // Check if mId is not equal to currentUId or if the status is 0
+                                                  for (var offer
+                                                      in mechanicsOffers) {
+                                                    if (offer['mId'] ==
+                                                        currentUId) {
+                                                      // If the mechanic's ID matches, check the offer status
+                                                      if (offer['status'] ==
+                                                          1) {
+                                                        print(
+                                                            'Hiding job ${job['orderId']} because status is 1 (accepted).');
+                                                        shouldShowJob =
+                                                            false; // Hide the job if the mechanic's offer status is 1
+                                                        break; // No need to check other offers
+                                                      }
+                                                    }
+                                                  }
+
+                                                  if (!shouldShowJob) {
+                                                    return false; // Skip this job if it should not be shown
+                                                  }
+                                                }
+
+                                                // Now check if the selectedService matches any mechanic's selected services
+                                                final jobService = job[
+                                                    'selectedService']; // Single string service for the job
+                                                if (!mechanicServices
+                                                    .contains(jobService)) {
+                                                  print(
+                                                      'Job ${job['orderId']} does not match any selected service of the mechanic.');
+                                                  return false; // Hide this job if the service does not match
+                                                }
+
+                                                // Time check logic for job creation and hiding it after 5 minutes
+                                                final jobCreationTime =
+                                                    (job['orderDate']
+                                                            as Timestamp)
+                                                        .toDate();
+                                                final currentTime =
+                                                    DateTime.now();
+                                                final timeElapsed = currentTime
+                                                    .difference(jobCreationTime)
+                                                    .inMinutes;
+
+                                                // If time elapsed is more than 5 minutes, hide the job
+                                                if (timeElapsed >= 5) {
+                                                  print(
+                                                      'Hiding job ${job['orderId']} because 5 minutes have passed.');
+                                                  return false;
+                                                }
+
+                                                return true; // Show the job if all conditions are met
+                                              }).toList();
+
+                                              if (filteredData.isEmpty) {
+                                                return Center(
+                                                    child: Text(
+                                                        "No Request Available"));
+                                              }
+
+                                              return ListView.builder(
+                                                shrinkWrap: true,
+                                                physics:
+                                                    NeverScrollableScrollPhysics(),
+                                                itemCount: filteredData.length,
+                                                itemBuilder: (context, index) {
+                                                  final job =
+                                                      filteredData[index].data()
+                                                          as Map<String,
+                                                              dynamic>;
+
+                                                  // Initialize the mechanic's status
+                                                  int mechanicStatus =
+                                                      job['status'] ?? 0;
+
+                                                  // Extract job details
+                                                  final userLat =
+                                                      (job["userLat"] as num)
+                                                          .toDouble();
+                                                  final userLng =
+                                                      (job["userLong"] as num)
+                                                          .toDouble();
+                                                  final bool isImage =
+                                                      job["isImageSelected"] ??
+                                                          false;
+                                                  final imagePath =
+                                                      job['userPhoto'] ?? "";
+                                                  final List<dynamic> images =
+                                                      job['images'] ?? [];
+
+                                                  // Date Formatting
+                                                  String dateString = '';
+                                                  if (job['orderDate']
+                                                      is Timestamp) {
+                                                    DateTime dateTime =
+                                                        (job['orderDate']
+                                                                as Timestamp)
+                                                            .toDate();
+                                                    dateString =
+                                                        "${dateTime.day} ${getMonthName(dateTime.month)} ${dateTime.year}";
+                                                  }
+
+                                                  double distance =
+                                                      calculateDistance(
+                                                    userLat,
+                                                    userLng,
+                                                    controller.mecLat,
+                                                    controller.mecLng,
+                                                  );
+
+                                                  if (distance < 1) {
+                                                    distance = 1;
+                                                  }
+
+                                                  // Logic to ensure job is nearby
+                                                  if (distance <=
+                                                      (job['nearByDistance'] ??
+                                                          0)) {
+                                                    return UpcomingRequestCard(
+                                                      orderId: job["orderId"]
+                                                          .toString(),
+                                                      userName: job["userName"]
+                                                          .toString(),
+                                                      vehicleName:
+                                                          "${job["companyName"]} (${job['vehicleNumber']})",
+                                                      address:
+                                                          job['userDeliveryAddress'] ??
+                                                              "N/A",
+                                                      serviceName:
+                                                          job['selectedService'] ??
+                                                              "N/A",
+                                                      jobId: job['orderId'] ??
+                                                          "#Unknown",
+                                                      imagePath: imagePath
+                                                              .isEmpty
+                                                          ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                                          : imagePath,
+                                                      date: dateString,
+                                                      buttonName: "Interested",
+                                                      onButtonTap: () =>
+                                                          showConfirmDialog(
+                                                        index,
+                                                        filteredData,
+                                                        job["userId"]
+                                                            .toString(),
+                                                        job["orderId"]
+                                                            .toString(),
+                                                        isImage,
+                                                        job["fixPriceEnabled"] ??
+                                                            false,
+                                                        controller,
+                                                      ),
+                                                      onDasMapButton: () async {
+                                                        final Uri
+                                                            googleMapsUri =
+                                                            Uri.parse(
+                                                                'https://www.google.com/maps/dir/?api=1&destination=$userLat,$userLng');
+                                                        if (await canLaunch(
+                                                            googleMapsUri
+                                                                .toString())) {
+                                                          await launch(
+                                                              googleMapsUri
+                                                                  .toString());
+                                                        } else {
+                                                          print(
+                                                              'Could not launch Google Maps');
+                                                        }
+                                                      },
+                                                      currentStatus:
+                                                          mechanicStatus,
+                                                      rating:
+                                                          "4.5", // Assuming you will fetch or calculate this elsewhere
+                                                      arrivalCharges: "30",
+                                                      km: "${distance.toStringAsFixed(0)} miles",
+                                                      isImage: isImage,
+                                                      images: images,
+                                                      fixCharge: job["fixPrice"]
+                                                          .toString(),
+                                                      reviewSubmitted:
+                                                          job["reviewSubmitted"] ??
+                                                              false,
+                                                      dateTime: job["orderDate"]
+                                                          .toDate(),
+                                                    );
                                                   } else {
-                                                    print(
-                                                        'Could not launch Google Maps');
+                                                    return Container(); // Return an empty container if distance is greater than nearbyDistance
                                                   }
                                                 },
-                                                currentStatus: mechanicStatus,
-                                                rating:
-                                                    "4.5", // Assuming you will fetch or calculate this elsewhere
-                                                arrivalCharges: "30",
-                                                km: "${distance.toStringAsFixed(0)} miles",
-                                                isImage: isImage,
-                                                images: images,
-                                                fixCharge:
-                                                    job["fixPrice"].toString(),
-                                                reviewSubmitted:
-                                                    job["reviewSubmitted"] ??
-                                                        false,
                                               );
-                                            } else {
-                                              return Container(); // Return an empty container if distance is greater than nearbyDistance
-                                            }
-                                          },
-                                        );
-                                      },
-                                    ),
-                              SizedBox(height: 70.h),
-                            ],
-                          )
-                        : buildInactiveMechanicScreen()
-                  ],
-                ),
-              ),
-            ),
-          );
+                                            },
+                                          ),
+                                    SizedBox(height: 70.h),
+                                  ],
+                                )
+                              : buildInactiveMechanicScreen()
+                        ],
+                      ),
+                    ),
+                  ),
+                );
         });
   }
 

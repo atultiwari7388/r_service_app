@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -43,6 +44,7 @@ class UpcomingRequestCard extends StatefulWidget {
     this.payMode = "",
     this.onCancelBtnTap,
     required this.reviewSubmitted, // New parameter
+    required this.dateTime,
   });
 
   final String userName;
@@ -72,12 +74,70 @@ class UpcomingRequestCard extends StatefulWidget {
   final List images;
   final String payMode;
   final bool reviewSubmitted; // New parameter
+  final DateTime dateTime;
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
 }
 
 class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
+  Timer? _timer;
+  int _remainingTime = 5 * 60; // 5 minutes in seconds
+  bool _showTimer = true;
+
+  @override
+  void initState() {
+    super.initState();
+    calculateRemainingTime();
+    if (_remainingTime > 0 && widget.currentStatus == 0) {
+      startTimer();
+    } else {
+      _showTimer = false;
+    }
+  }
+
+  // Calculates the remaining time based on job creation time.
+  void calculateRemainingTime() {
+    DateTime jobTime = widget.dateTime;
+    DateTime now = DateTime.now();
+
+    // Calculate the difference in seconds
+    int elapsedSeconds = now.difference(jobTime).inSeconds;
+
+    // Set remaining time
+    _remainingTime = 5 * 60 - elapsedSeconds;
+
+    if (_remainingTime <= 0) {
+      _remainingTime = 0;
+      _showTimer = false;
+    }
+  }
+
+  /// Starts the countdown timer.
+  void startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_remainingTime > 0) {
+        setState(() {
+          _remainingTime--;
+        });
+      } else {
+        _timer?.cancel();
+        setState(() {
+          _showTimer = false;
+        });
+      }
+    });
+  }
+
+  /// Formats the remaining time as MM:SS.
+  String getFormattedTime() {
+    int minutes = _remainingTime ~/ 60;
+    int seconds = _remainingTime % 60;
+    String formattedMinutes = minutes.toString().padLeft(2, '0');
+    String formattedSeconds = seconds.toString().padLeft(2, '0');
+    return '$formattedMinutes:$formattedSeconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -147,6 +207,13 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                         style: appStyle(15.sp, kGray, FontWeight.bold),
                       ),
                     ),
+
+                    // Display the timer here if it's enabled and currentStatus is 0
+                    if (_showTimer && widget.currentStatus == 0)
+                      Text(
+                        'Time Remaining: ${getFormattedTime()}',
+                        style: appStyle(14.sp, kPrimary, FontWeight.bold),
+                      ),
                   ],
                 ),
               ),
@@ -741,5 +808,11 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
       showToastMessage(
           'Error', 'Failed to submit rating and review.', Colors.red);
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 }

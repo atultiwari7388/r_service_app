@@ -113,6 +113,7 @@ class _AddYourServicesState extends State<AddYourServices> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Services saved successfully!')),
       );
+      Navigator.pop(context, true); // This sends the result back
     } catch (e) {
       print('Error saving selected services: $e');
       ScaffoldMessenger.of(context).showSnackBar(
