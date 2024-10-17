@@ -63,6 +63,7 @@ export default function Page() {
         address: data.address,
         wallet: 0,
         isNotificationOn: true,
+        isLocationSet: false,
         active: true,
         isTeamMember: false,
         role: 'Owner',
