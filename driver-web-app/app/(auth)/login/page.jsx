@@ -5,7 +5,10 @@ import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import {
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+} from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 
 const kPrimary = '#F96176' // Define primary color
@@ -28,7 +31,7 @@ export default function Page() {
   }
 
   const handleLogin = async (event) => {
-    event.preventDefault() // Prevents the default form submission
+    event.preventDefault() // Prevent default form submission
     setIsLoading(true)
 
     if (!data.email || !data.password) {
@@ -39,12 +42,36 @@ export default function Page() {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, data?.email, data?.password)
-      toast.success('Logged In Successfully')
+      // Attempt to sign in the user
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        data?.email,
+        data?.password
+      )
+      const user = userCredential.user
+
+      // Check if the user's email is verified
+      if (!user.emailVerified) {
+        // If email is not verified, send a verification email
+        await sendEmailVerification(user)
+        toast.error(
+          'Your email is not verified. A verification email has been sent.'
+        )
+
+        // Sign the user out to prevent unverified access
+        await auth.signOut()
+        setIsLoading(false)
+        return
+      }
+
+      // If verified, log the user in
+      toast.success('Logged in successfully')
+      router.push('/dashboard') // Redirect to dashboard
     } catch (error) {
       toast.error(error?.message)
+    } finally {
+      setIsLoading(false)
     }
-    setIsLoading(false)
   }
 
   useEffect(() => {
