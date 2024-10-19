@@ -13,10 +13,6 @@ class DashboardController extends GetxController {
   String appbarTitle = "";
   int totalJobs = 0;
   int ongoingJobs = 0;
-
-  bool firstTimeAppLaunch = true; // Boolean flag to track first app launch
-  bool isLocationSet = false;
-  // bool requestCardVisible = false;
   double mecLat = 0.0;
   double mecLng = 0.0;
   LocationData? currentLocation;
@@ -85,25 +81,75 @@ class DashboardController extends GetxController {
     }
   }
 
-  Future<void> fetchJobData() async {
+  // Future<void> fetchJobData() async {
+  //   try {
+  //     // Fetch all jobs from the 'jobs' collection
+  //     QuerySnapshot jobSnapshot =
+  //         await FirebaseFirestore.instance.collection('jobs').get();
+
+  //     // Retrieve all job documents
+  //     var allJobs = jobSnapshot.docs;
+
+  //     // Total Jobs where mechanicsOffer contains currentUId and status is 5
+  //     var totalJobsCount = allJobs.where((job) {
+  //       List<dynamic> mechanicsOffer = job['mechanicsOffer'] ?? [];
+  //       return mechanicsOffer
+  //           .any((offer) => offer['mId'] == currentUId && offer['status'] == 5);
+  //     }).length;
+  //     totalJobs = totalJobsCount;
+
+  //     // Ongoing Jobs where mechanicsOffer contains currentUId and status is 1 to 4
+  //     var ongoingJobsCount = allJobs.where((job) {
+  //       List<dynamic> mechanicsOffer = job['mechanicsOffer'] ?? [];
+  //       return mechanicsOffer.any((offer) =>
+  //           offer['mId'] == currentUId &&
+  //           [1, 2, 3, 4].contains(offer['status']));
+  //     }).length;
+  //     ongoingJobs = ongoingJobsCount;
+
+  //     // Filtering jobs where the mechanic hasn't made an offer yet
+  //     var jobsWithNoOffers = allJobs.where((job) {
+  //       List<dynamic> mechanicsOffer = job['mechanicsOffer'] ?? [];
+  //       return mechanicsOffer.isEmpty;
+  //     }).toList();
+
+  //     // Log the number of jobs with no offers
+  //     print("Jobs with no offers: ${jobsWithNoOffers.length}");
+  //   } catch (e) {
+  //     print('Error fetching job data: $e');
+  //   }
+  // }
+
+  void fetchJobData() {
     try {
-      // Fetch all jobs for the current user
-      QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
+      // Listen to real-time changes in the 'jobs' collection
+      FirebaseFirestore.instance
           .collection('jobs')
-          .where("mId", isEqualTo: currentUId)
-          .get();
+          .snapshots()
+          .listen((jobSnapshot) {
+        // Retrieve all job documents
+        var allJobs = jobSnapshot.docs;
 
-      // Filter jobs based on status
-      var allJobs = jobSnapshot.docs;
+        // Total Jobs where mechanicsOffer contains currentUId and status is 5
+        var totalJobsCount = allJobs.where((job) {
+          List<dynamic> mechanicsOffer = job['mechanicsOffer'] ?? [];
+          return mechanicsOffer.any(
+              (offer) => offer['mId'] == currentUId && offer['status'] == 5);
+        }).length;
+        totalJobs = totalJobsCount;
 
-      // Total Jobs where status is 5
-      var totalJobsCount = allJobs.where((job) => job['status'] == 5).length;
-      totalJobs = totalJobsCount;
+        // Ongoing Jobs where mechanicsOffer contains currentUId and status is 1 to 4
+        var ongoingJobsCount = allJobs.where((job) {
+          List<dynamic> mechanicsOffer = job['mechanicsOffer'] ?? [];
+          return mechanicsOffer.any((offer) =>
+              offer['mId'] == currentUId &&
+              [1, 2, 3, 4].contains(offer['status']));
+        }).length;
+        ongoingJobs = ongoingJobsCount;
 
-      // Ongoing Jobs where status is [1, 2, 3, 4]
-      var ongoingJobsCount =
-          allJobs.where((job) => [1, 2, 3, 4].contains(job['status'])).length;
-      ongoingJobs = ongoingJobsCount;
+        // Update the UI
+        update();
+      });
     } catch (e) {
       print('Error fetching job data: $e');
     }

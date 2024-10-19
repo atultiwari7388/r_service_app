@@ -46,7 +46,7 @@ export default function Page() {
   const fetchVehicles = async () => {
     try {
       const userId = user.uid
-      const vehiclesSnapshot = await getDocs(
+      const vehiclesSnapshot = await getDoc(
         collection(db, `Users/${userId}/Vehicles`)
       )
       const vehiclesList = vehiclesSnapshot.docs

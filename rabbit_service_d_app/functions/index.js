@@ -257,6 +257,7 @@ exports.sendAgainNewMechanicNotification = async (
   }
 }
 
+//update the mechanic when distance is updated
 exports.updateMechanicNotifications = functions.firestore
   .document('jobs/{jobId}')
   .onUpdate(async (change, context) => {
@@ -286,6 +287,30 @@ exports.updateMechanicNotifications = functions.firestore
       // Pass afterData directly to sendNewMechanicNotification
       return exports.sendAgainNewMechanicNotification(null, context, afterData)
     }
+
+    return null
+  })
+
+//when mechanic uninstall mechanic app then deactivate the mechanic
+exports.checkInactiveMechanics = functions.pubsub
+  .schedule('every 10 minutes')
+  .onRun(async (context) => {
+    const now = admin.firestore.Timestamp.now()
+    const cutoffTime = new Date(now.toDate().getTime() - 10 * 60 * 1000) // 10 minutes ago
+
+    const mechanicsSnapshot = await admin
+      .firestore()
+      .collection('Mechanics')
+      .where('lastActive', '<=', cutoffTime)
+      .where('active', '==', true) // Only check active mechanics
+      .get()
+
+    mechanicsSnapshot.forEach(async (doc) => {
+      await doc.ref.update({
+        active: false, // Mark mechanic as inactive
+      })
+      console.log(`Marked mechanic ${doc.id} as inactive`)
+    })
 
     return null
   })

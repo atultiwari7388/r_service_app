@@ -57,7 +57,6 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                   final data = snapshot.data!.data() as Map<String, dynamic>;
                   final userPhoto = data['profilePicture'] ?? '';
                   final userName = data['userName'] ?? '';
-                  // final phoneNumber = data['phoneNumber'] ?? '';
 
                   if (userPhoto.isEmpty) {
                     return Text(

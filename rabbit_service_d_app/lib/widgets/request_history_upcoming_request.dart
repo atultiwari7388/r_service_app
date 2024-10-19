@@ -789,7 +789,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
           .doc(mId)
           .collection('ratings')
           .doc(orderId)
-          .set({
+          .update({
         'rating': rating,
         'review': review,
         "uId": FirebaseAuth.instance.currentUser!.uid,

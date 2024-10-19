@@ -103,7 +103,8 @@ class _MyJobsCardState extends State<MyJobsCard> {
     });
   }
 
-  /// Fetches available mechanics based on nearby distance.
+  /// Fetches available mechanics based on nearby distance and selected service.
+  /// Fetches available mechanics based on nearby distance, selected service, and active status.
   Future<void> fetchAvailableMechanics() async {
     // Replace with your user's current location coordinates
     final userLocation =
@@ -119,10 +120,13 @@ class _MyJobsCardState extends State<MyJobsCard> {
           'id': doc.id,
           'name': doc['userName'], // Mechanic's name
           'location': doc['location'], // Mechanic's location
+          'selected_services':
+              doc['selected_services'], // Mechanic's selected services
+          'active': doc['active'], // Mechanic's active status
         };
       }).toList();
 
-      // Calculate distances and filter based on nearby distance
+      // Calculate distances, filter based on nearby distance, selected services, and active status
       setState(() {
         _availableMechanics = mechanics.where((mechanic) {
           double distance = calculateDistance(
@@ -131,7 +135,13 @@ class _MyJobsCardState extends State<MyJobsCard> {
             mechanic['location']['latitude'],
             mechanic['location']['longitude'],
           );
-          return distance <= widget.nearByDistance; // Check if within range
+
+          // Check if the mechanic provides the service, is within the distance range, and is active
+          bool serviceMatch =
+              mechanic['selected_services'].contains(widget.serviceName);
+          bool isActive = mechanic['active'] == true;
+
+          return distance <= widget.nearByDistance && serviceMatch && isActive;
         }).toList();
       });
     } catch (e) {
@@ -484,70 +494,4 @@ class _MyJobsCardState extends State<MyJobsCard> {
       ],
     );
   }
-
-  // List<Widget> _buildMechanicsAvatars() {
-  //   List<Widget> avatars = [];
-  //   int count = _availableMechanics.length;
-
-  //   if (count == 1) {
-  //     // Show one avatar for a single mechanic
-  //     avatars.add(
-  //       CircleAvatar(
-  //         radius: 40,
-  //         backgroundImage: NetworkImage(_availableMechanics[0]['imageUrl'] ??
-  //             'https://via.placeholder.com/150'), // Replace with the mechanic's image URL
-  //       ),
-  //     );
-  //   } else if (count == 2) {
-  //     // Show two avatars for two mechanics
-  //     for (int i = 0; i < count; i++) {
-  //       avatars.add(
-  //         Positioned(
-  //           left: i * 30.0, // Adjusts the horizontal spacing between avatars
-  //           child: CircleAvatar(
-  //             radius: 40,
-  //             backgroundImage: NetworkImage(_availableMechanics[i]
-  //                     ['imageUrl'] ??
-  //                 'https://via.placeholder.com/150'), // Replace with the mechanic's image URL
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   } else if (count > 2) {
-  //     // Show "5+" if more than 5 mechanics are available
-  //     for (int i = 0; i < 2; i++) {
-  //       avatars.add(
-  //         Positioned(
-  //           left: i * 30.0,
-  //           child: CircleAvatar(
-  //             radius: 40,
-  //             backgroundImage: NetworkImage(_availableMechanics[i]
-  //                     ['imageUrl'] ??
-  //                 'https://via.placeholder.com/150'), // Replace with the mechanic's image URL
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //     // Add a CircleAvatar with the count of remaining mechanics
-  //     avatars.add(
-  //       Positioned(
-  //         left: 60.0, // Adjust position based on the number of shown avatars
-  //         child: CircleAvatar(
-  //           radius: 40,
-  //           backgroundColor: Colors.blueAccent,
-  //           child: Text(
-  //             '+${count - 2}', // Show the count of additional mechanics
-  //             style: TextStyle(
-  //               color: Colors.white,
-  //               fontSize: 20.sp,
-  //               fontWeight: FontWeight.bold,
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     );
-  //   }
-
-  //   return avatars;
-  // }
 }

@@ -799,7 +799,14 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
           .doc(dId)
           .collection("history")
           .doc(orderId)
-          .update(data);
+          .update({
+        'mRating': rating,
+        'mReview': review,
+        "mId": FirebaseAuth.instance.currentUser!.uid,
+        "mReviewSubmitted": true,
+        "orderId": orderId,
+        "timestamp": DateTime.now(),
+      });
 
       showToastMessage('Rating', 'Review Submitted.', kSecondary);
       log('Rating and review updated successfully.');
