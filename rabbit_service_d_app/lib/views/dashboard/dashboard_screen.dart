@@ -647,7 +647,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
                                   return InkWell(
                                     onTap: () {
-                                      log("Selected Service Name $title and imageType is ${imageType.toString()} and  priceType is ${priceType.toString()}");
                                       controller.serviceAndNetworkController
                                           .text = title;
                                       controller.isServiceSelected =
@@ -663,7 +662,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                         controller.imageUploadEnabled = true;
                                         controller.isImageMandatory = true;
                                         setState(() {});
-                                        ;
                                       } else {
                                         controller.imageUploadEnabled = false;
                                         controller.isImageMandatory = false;
@@ -680,6 +678,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                         ;
                                       }
                                       Navigator.pop(context);
+                                      log("Selected Service Name $title and imageType is ${imageType.toString()} and  priceType is ${priceType.toString()}");
                                     },
                                     child: Container(
                                       padding: EdgeInsets.only(

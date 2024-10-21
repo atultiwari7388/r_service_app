@@ -51,65 +51,6 @@ class AuthController extends GetxController {
 
 //========================== Create account with email and password =================
 
-  // Future<void> createUserWithEmailAndPassword() async {
-  //   isUserAcCreated = true;
-  //   update();
-  //   try {
-  //     var user = await _auth.createUserWithEmailAndPassword(
-  //         email: _emailController.text, password: _passController.text);
-
-  //     await DatabaseServices(uid: user.user!.uid).savingUserData(
-  //       _emailController.text,
-  //       _nameController.text,
-  //       _phoneNumberController.text,
-  //       _addressController.text,
-  //       int.parse(_perHourCharge.text),
-  //       selectedLanguages,
-  //     );
-
-  //     // Send email verification
-  //     await user.user!.sendEmailVerification();
-
-  //     isUserAcCreated = false;
-  //     update();
-
-  //     // Inform the user to verify their email before logging in
-  //     showToastMessage(
-  //         "Verification Required",
-  //         "A verification email has been sent to your email address. Please verify it before logging in.",
-  //         Colors.orange);
-
-  //     // Sign out the user immediately after account creation, to prevent unverified access
-  //     await _auth.signOut();
-
-  //     Get.offAll(() => const LoginScreen()); // Redirect to login screen
-  //   } on FirebaseAuthException catch (e) {
-  //     String errorMessage;
-  //     switch (e.code) {
-  //       case 'email-already-in-use':
-  //         errorMessage = "The email is already in use by another account.";
-  //         showToastMessage("Error", errorMessage.toString(), kRed);
-  //         break;
-  //       case 'invalid-email':
-  //         errorMessage = "The email address is invalid.";
-  //         showToastMessage("Invalid", errorMessage.toString(), kRed);
-
-  //         break;
-  //       case 'weak-password':
-  //         errorMessage = "The password is too weak.";
-  //         showToastMessage("Weak", errorMessage.toString(), kRed);
-
-  //         break;
-  //       default:
-  //         errorMessage = e.message ?? "An unknown error occurred.";
-  //         showToastMessage("Error", errorMessage, Colors.red);
-  //     }
-  //   } finally {
-  //     isUserAcCreated = false;
-  //     update();
-  //   }
-  // }
-
   Future<void> createUserWithEmailAndPassword() async {
     isUserAcCreated = true;
     update();
@@ -194,8 +135,10 @@ class AuthController extends GetxController {
   //         return;
   //       }
 
-  //       var doc =
-  //           await FirebaseFirestore.instance.doc("Mechanics/${user.uid}").get();
+  //       var doc = await FirebaseFirestore.instance
+  //           .collection("Mechanics")
+  //           .doc(user.uid)
+  //           .get();
   //       if (doc.exists && doc['uid'] == user.uid) {
   //         isUserSign = false;
   //         update();
@@ -207,6 +150,7 @@ class AuthController extends GetxController {
   //     }
   //   } on FirebaseAuthException catch (e) {
   //     handleAuthError(e);
+  //     showToastMessage("Error", e.toString(), Colors.red);
   //   } finally {
   //     isUserSign = false;
   //     update();
@@ -238,17 +182,40 @@ class AuthController extends GetxController {
           return;
         }
 
-        var doc = await FirebaseFirestore.instance
+        // Check if the UID exists in the Mechanics collection
+        var mechanicDoc = await FirebaseFirestore.instance
             .collection("Mechanics")
             .doc(user.uid)
             .get();
-        if (doc.exists && doc['uid'] == user.uid) {
+
+        // If the user is not found in the Mechanics collection, check the Users collection
+        if (!mechanicDoc.exists) {
+          // Check if the email exists in the Users collection (Customer App)
+          var userDoc = await FirebaseFirestore.instance
+              .collection("Users")
+              .where('email', isEqualTo: _emailController.text)
+              .get();
+
+          // If email exists in Users collection, show error
+          if (userDoc.docs.isNotEmpty) {
+            showToastMessage(
+                "Error",
+                "This email is already registered with the customer app.",
+                Colors.red);
+            await _auth.signOut(); // Sign out the user if email exists in Users
+            isUserSign = false;
+            update();
+            return;
+          } else {
+            // Proceed to RegistrationScreen if email is not found in Users
+            Get.to(() => RegistrationScreen());
+          }
+        } else if (mechanicDoc['uid'] == user.uid) {
+          // If user UID exists in the Mechanics collection, login success
           isUserSign = false;
           update();
           Get.offAll(() => EntryScreen());
           showToastMessage("Success", "Login Successful", Colors.green);
-        } else {
-          Get.to(() => RegistrationScreen());
         }
       }
     } on FirebaseAuthException catch (e) {

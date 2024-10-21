@@ -267,6 +267,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                 _selectedCardIndex != index,
                             languages: languages,
                             isImage: job["isImageSelected"] ?? false,
+                            isPriceEnabled: job["fixPriceEnabled"] ?? false,
                             reviewSubmitted: job["reviewSubmitted"] ?? false,
                             onCallTap: () {
                               makePhoneCall(mNumber.toString());

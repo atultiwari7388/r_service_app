@@ -103,7 +103,6 @@ class _MyJobsCardState extends State<MyJobsCard> {
     });
   }
 
-  /// Fetches available mechanics based on nearby distance and selected service.
   /// Fetches available mechanics based on nearby distance, selected service, and active status.
   Future<void> fetchAvailableMechanics() async {
     // Replace with your user's current location coordinates
@@ -118,11 +117,10 @@ class _MyJobsCardState extends State<MyJobsCard> {
       List<Map<String, dynamic>> mechanics = snapshot.docs.map((doc) {
         return {
           'id': doc.id,
-          'name': doc['userName'], // Mechanic's name
-          'location': doc['location'], // Mechanic's location
-          'selected_services':
-              doc['selected_services'], // Mechanic's selected services
-          'active': doc['active'], // Mechanic's active status
+          'name': doc['userName'],
+          'location': doc['location'],
+          'selected_services': doc['selected_services'],
+          'active': doc['active'],
         };
       }).toList();
 
@@ -428,10 +426,17 @@ class _MyJobsCardState extends State<MyJobsCard> {
                   )
                 else
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       if (widget.currentStatus == 0)
                         buildButton(kPrimary, "Cancel", widget.onCancelBtnTap),
-                      if (widget.currentStatus == 0) SizedBox(width: 20.w),
+                      if (widget.currentStatus == 2)
+                        buildButton(kPrimary, "Cancel", widget.onCancelBtnTap),
+                      SizedBox(width: 10.w),
+                      if (widget.currentStatus == 3)
+                        buildButton(kPrimary, "Cancel", widget.onCancelBtnTap),
+                      SizedBox(width: 10.w),
+                      if (widget.currentStatus == 0) SizedBox(width: 10.w),
                       widget.mechanicOffers.isEmpty
                           ? SizedBox()
                           : buildButton(kSecondary, "View", widget.onButtonTap),

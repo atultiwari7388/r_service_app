@@ -115,8 +115,13 @@ class _UpcomingAndCompletedJobsScreenState
         List<Map<String, dynamic>> ongoingOrders = orders
             .where((order) => order['status'] >= 0 && order['status'] <= 4)
             .toList();
-        List<Map<String, dynamic>> completedOrders =
-            orders.where((order) => order['status'] == 5).toList();
+
+        // List<Map<String, dynamic>> completedOrders =
+        //     orders.where((order) => order['status'] == 5).toList();
+        // Include both completed (status == 5) and canceled (status == -1) jobs
+        List<Map<String, dynamic>> completedAndCancelOrders = orders
+            .where((order) => order['status'] == 5 || order['status'] == -1)
+            .toList();
 
         return DefaultTabController(
           length: 2,
@@ -145,7 +150,7 @@ class _UpcomingAndCompletedJobsScreenState
                   controller: _tabsController,
                   children: [
                     _buildOrdersList(ongoingOrders, 1),
-                    _buildOrdersList(completedOrders, 2),
+                    _buildOrdersList(completedAndCancelOrders, 2),
                   ],
                 ),
               ),
@@ -311,8 +316,8 @@ class _UpcomingAndCompletedJobsScreenState
                             onPressed: () {
                               // If "Yes" is pressed, proceed to select the reason
                               Navigator.pop(context); // Close the first dialog
-                              _showReasonDialog(jobs[
-                                  'orderId']); // Pass the job ID to update status later
+                              _showReasonDialog(
+                                  jobs['orderId'], jobs["userId"]);
                             },
                             child: Text("Yes"),
                           ),
@@ -350,10 +355,12 @@ class _UpcomingAndCompletedJobsScreenState
                 km: "${distance.toStringAsFixed(0)} miles",
                 dId: dId.toString(),
                 isImage: isImage,
+                isPriceEnabled: jobs["fixPriceEnabled"] ?? false,
                 images: images,
                 payMode: payMode,
                 reviewSubmitted: jobs["mReviewSubmitted"] ?? false,
                 dateTime: jobs["orderDate"].toDate(),
+                cancelationReason: jobs["cancelReason"].toString(),
               );
             },
           ),
@@ -383,65 +390,105 @@ class _UpcomingAndCompletedJobsScreenState
     );
   }
 
-  void _showReasonDialog(String orderId) {
-    // List of reasons for canceling the job
-    List<String> reasons = [
-      'Driver Late',
-      'Mis-Communication',
-      'Language Problem',
-      'Other'
-    ];
+  void _showReasonDialog(String orderId, String userId) async {
+    // Fetch the reasons from Firestore first
+    List<String> reasons = [];
+
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('metadata')
+          .doc('mechanicJobCancelReasons')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        reasons = List<String>.from(doc['list']);
+      }
+    } catch (e) {
+      print("Failed to fetch cancel reasons: $e");
+      reasons = [
+        'Driver Late',
+        'Mis-Communication',
+        'Language Problem',
+        'Others'
+      ]; // Fallback reasons in case of error
+    }
 
     String? selectedReason;
 
+    // Show the dialog with dynamic reasons
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text("Select Reason:"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: reasons.map((reason) {
-              return RadioListTile<String>(
-                title: Text(reason),
-                value: reason,
-                groupValue: selectedReason,
-                onChanged: (value) {
-                  setState(() {
-                    selectedReason = value!;
-                  });
-                  Navigator.pop(context); // Close the reason selection dialog
-                  _updateJobStatus(orderId,
-                      selectedReason!); // Proceed to update the job status
-                },
-              );
-            }).toList(),
-          ),
+          content: reasons.isNotEmpty
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: reasons.map((reason) {
+                    return RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedReason = value!;
+                        });
+                        Navigator.pop(context); // Close the dialog
+                        _updateJobStatus(orderId, userId,
+                            selectedReason!); // Update the job status
+                      },
+                    );
+                  }).toList(),
+                )
+              : Center(
+                  child: Text("No reasons available"),
+                ),
         );
       },
     );
   }
 
-  void _updateJobStatus(String orderId, String reason) async {
+  void _updateJobStatus(String orderId, String userId, String reason) async {
     try {
       // Update the job document in Firestore with the new status and reason
-
       final data = {
         'status': -1, // Update status to cancelled
         'cancelReason': reason, // Store the selected reason
         'cancelBy': 'Mechanic',
       };
+
+      // Update the job in the 'jobs' collection
       await FirebaseFirestore.instance
           .collection('jobs')
           .doc(orderId)
           .update(data);
 
+      // Update the job in the user's 'history' subcollection
       await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(userId)
           .collection('history')
           .doc(orderId)
           .update(data);
+
+      // Retrieve the job document to get the mechanicsOffer array
+      DocumentSnapshot jobDoc = await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(orderId)
+          .get();
+      List<dynamic> mechanicsOffer = jobDoc['mechanicsOffer'] ?? [];
+
+      // Check if there is a matching mechanic offer and update its status
+      for (int i = 0; i < mechanicsOffer.length; i++) {
+        if (mechanicsOffer[i]['mId'] == currentUId) {
+          mechanicsOffer[i]['status'] = -1; // Set status to cancelled
+        }
+      }
+
+      // Update the mechanicsOffer array in the job document
+      await FirebaseFirestore.instance.collection('jobs').doc(orderId).update({
+        'mechanicsOffer': mechanicsOffer,
+      });
 
       // Show a success message
       Get.snackbar("Job Cancelled", "The job was cancelled due to: $reason",

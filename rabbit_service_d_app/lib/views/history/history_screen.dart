@@ -60,7 +60,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   final data = snapshot.data!.data() as Map<String, dynamic>;
                   final userPhoto = data['profilePicture'] ?? '';
                   final userName = data['userName'] ?? '';
-                  final phoneNumber = data['phoneNumber'] ?? '';
 
                   if (userPhoto.isEmpty) {
                     return Text(
@@ -200,7 +199,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final collection = FirebaseFirestore.instance
         .collection('Users')
         .doc(currentUId)
-        .collection("history");
+        .collection("history")
+        .orderBy("orderDate", descending: true);
 
     if (_selectedSortOption == "Cancelled") {
       return collection.where("status", isEqualTo: -1).snapshots();

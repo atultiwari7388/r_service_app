@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -40,11 +41,13 @@ class UpcomingRequestCard extends StatefulWidget {
     this.dId = "",
     required this.orderId,
     required this.isImage,
+    required this.isPriceEnabled,
     this.images = const [],
     this.payMode = "",
     this.onCancelBtnTap,
     required this.reviewSubmitted, // New parameter
     required this.dateTime,
+    required this.cancelationReason,
   });
 
   final String userName;
@@ -71,10 +74,12 @@ class UpcomingRequestCard extends StatefulWidget {
   final String dId;
   final String orderId;
   final bool isImage;
+  final bool isPriceEnabled;
   final List images;
   final String payMode;
   final bool reviewSubmitted; // New parameter
   final DateTime dateTime;
+  final String cancelationReason;
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
@@ -234,6 +239,9 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                 widget.currentStatus == 5
                     ? buildReusableRow("Payment Mode", "${widget.payMode}")
                     : SizedBox(),
+                if (widget.currentStatus == -1)
+                  buildReusableRow("Cancel Reason", widget.cancelationReason),
+
                 SizedBox(height: 5.h),
                 widget.currentStatus == 0
                     ? Column(
@@ -246,11 +254,17 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                             children: [
                               buildReusableRow("Vehicle",
                                   "${widget.companyNameAndVehicleName}"),
-                              widget.isImage
+                              widget.isImage && widget.isPriceEnabled
                                   ? buildReusableRow(
                                       "Fix Charge", "\$${widget.fixCharge}")
-                                  : buildReusableRow("Arrival Charges",
-                                      "\$${widget.arrivalCharges}"),
+                                  : widget.isPriceEnabled
+                                      ? buildReusableRow(
+                                          "Fix Charge", "\$${widget.fixCharge}")
+                                      : widget.isImage
+                                          ? buildReusableRow("Arrival Charges",
+                                              "\$${widget.arrivalCharges}")
+                                          : buildReusableRow("Arrival Charges",
+                                              "\$${widget.arrivalCharges}"),
                             ],
                           )
                         : widget.currentStatus == 2
@@ -278,6 +292,24 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                     //images section
                     _buildSelectedImages()
                     : SizedBox(),
+
+                if (widget.currentStatus == -1)
+                  Container(
+                    height: 40.h,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: kPrimary,
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Center(
+                      child: Text(
+                        "Canceled",
+                        style: kIsWeb
+                            ? TextStyle()
+                            : appStyle(15.sp, kWhite, FontWeight.bold),
+                      ),
+                    ),
+                  ),
 
                 SizedBox(height: 10.h),
                 //Interested Button
@@ -342,12 +374,12 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                             ? Container(
                                 height: 45.h,
                                 decoration: BoxDecoration(
-                                  color: kPrimary,
+                                  color: kSecondary,
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Center(
                                   child: Text(
-                                      "Waiting for driver to pay the price",
+                                      "Driver is selecting payment mode",
                                       style: appStyle(
                                           14, kWhite, FontWeight.normal)),
                                 ),
@@ -358,10 +390,10 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       SizedBox(width: 10.w),
-                                      buildButton(kSecondary, "Call",
+                                      buildButton(kPrimary, "Call",
                                           widget.onPhoneCallTap),
                                       SizedBox(width: 10.w),
-                                      buildButton(kPrimary, widget.buttonName,
+                                      buildButton(kSecondary, widget.buttonName,
                                           widget.onButtonTap),
                                       SizedBox(width: 10.w),
                                       GestureDetector(
@@ -488,10 +520,6 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
               ],
             ),
           ),
-          SizedBox(height: 12.h),
-
-          SizedBox(height: 10.h),
-          // Call button
         ],
       ),
     );

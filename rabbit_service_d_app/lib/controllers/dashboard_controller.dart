@@ -494,22 +494,21 @@ class DashboardController extends GetxController {
       List<String> imageUrls = [];
 
       // Upload images to Firebase Storage
-      if (isImageSelected) {
-        for (File image in images) {
-          String fileName =
-              DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
-          Reference storageRef = FirebaseStorage.instance
-              .ref()
-              .child('order_images')
-              .child(fileName);
 
-          // Upload the image
-          UploadTask uploadTask = storageRef.putFile(image);
+      for (File image in images) {
+        String fileName =
+            DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
+        Reference storageRef = FirebaseStorage.instance
+            .ref()
+            .child('order_images')
+            .child(fileName);
 
-          // Get the download URL
-          String imageUrl = await (await uploadTask).ref.getDownloadURL();
-          imageUrls.add(imageUrl);
-        }
+        // Upload the image
+        UploadTask uploadTask = storageRef.putFile(image);
+
+        // Get the download URL
+        String imageUrl = await (await uploadTask).ref.getDownloadURL();
+        imageUrls.add(imageUrl);
       }
 
       // Prepare data for the job document
@@ -525,7 +524,7 @@ class DashboardController extends GetxController {
         'userPhoneNumber': phoneNumber,
         'userDeliveryAddress': address,
         'userLat': userLatitude,
-        "isImageSelected": isImageSelected,
+        "isImageSelected": images.isNotEmpty ? true : isImageSelected,
         "fixPriceEnabled": fixPriceEnabled,
         "images": imageUrls,
         'userLong': userLongitude,
@@ -559,7 +558,7 @@ class DashboardController extends GetxController {
           .set(data);
 
       showToast('Job created successfully');
-      print('Order placed successfully!');
+      print('Order placed successfully! ${data}');
     } catch (e) {
       // Error handling
       print('Failed to place order: $e');

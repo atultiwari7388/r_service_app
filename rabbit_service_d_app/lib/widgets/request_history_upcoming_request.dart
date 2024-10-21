@@ -30,6 +30,7 @@ class RequestAcceptHistoryCard extends StatefulWidget {
     required this.jobStatus, //job status
     required this.mStatus,
     required this.isImage,
+    required this.isPriceEnabled,
     required this.reviewSubmitted,
   });
 
@@ -50,6 +51,7 @@ class RequestAcceptHistoryCard extends StatefulWidget {
   final int jobStatus;
   final int mStatus;
   final bool isImage;
+  final bool isPriceEnabled;
   final bool reviewSubmitted;
 
   @override
@@ -161,7 +163,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                   child: Column(
                     children: [
                       // Display Fix Charges or Arrival Charges
-                      widget.isImage
+                      widget.isImage && widget.isPriceEnabled
                           ? Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -190,34 +192,99 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                 ),
                               ],
                             )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                SizedBox(
-                                  width: 145.w,
-                                  child: Text(
-                                    "Arrival Charges",
-                                    style: kIsWeb
-                                        ? TextStyle(color: kDark)
-                                        : appStyle(
-                                            16.sp, kDark, FontWeight.w500),
-                                  ),
-                                ),
-                                Container(
-                                  height: 20.h,
-                                  width: 1.w,
-                                  color: kDark,
-                                  margin:
-                                      EdgeInsets.symmetric(horizontal: 10.w),
-                                ),
-                                Text(
-                                  "\$${widget.arrivalCharges}",
-                                  style: kIsWeb
-                                      ? TextStyle(color: kDark)
-                                      : appStyle(16.sp, kDark, FontWeight.w500),
-                                ),
-                              ],
-                            ),
+                          : widget.isPriceEnabled
+                              ? Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    SizedBox(
+                                      width: 145.w,
+                                      child: Text(
+                                        "Fix Charges",
+                                        style: kIsWeb
+                                            ? TextStyle(color: kDark)
+                                            : appStyle(
+                                                16.sp, kDark, FontWeight.w500),
+                                      ),
+                                    ),
+                                    Container(
+                                      height: 20.h,
+                                      width: 1.w,
+                                      color: kDark,
+                                      margin: EdgeInsets.symmetric(
+                                          horizontal: 10.w),
+                                    ),
+                                    Text(
+                                      "\$${widget.fixCharges}",
+                                      style: kIsWeb
+                                          ? TextStyle(color: kDark)
+                                          : appStyle(
+                                              16.sp, kDark, FontWeight.w500),
+                                    ),
+                                  ],
+                                )
+                              : widget.isImage
+                                  ? Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        SizedBox(
+                                          width: 145.w,
+                                          child: Text(
+                                            "Arrival Charges",
+                                            style: kIsWeb
+                                                ? TextStyle(color: kDark)
+                                                : appStyle(16.sp, kDark,
+                                                    FontWeight.w500),
+                                          ),
+                                        ),
+                                        Container(
+                                          height: 20.h,
+                                          width: 1.w,
+                                          color: kDark,
+                                          margin: EdgeInsets.symmetric(
+                                              horizontal: 10.w),
+                                        ),
+                                        Text(
+                                          "\$${widget.arrivalCharges}",
+                                          style: kIsWeb
+                                              ? TextStyle(color: kDark)
+                                              : appStyle(16.sp, kDark,
+                                                  FontWeight.w500),
+                                        ),
+                                      ],
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        SizedBox(
+                                          width: 145.w,
+                                          child: Text(
+                                            "Arrival Charges",
+                                            style: kIsWeb
+                                                ? TextStyle(color: kDark)
+                                                : appStyle(16.sp, kDark,
+                                                    FontWeight.w500),
+                                          ),
+                                        ),
+                                        Container(
+                                          height: 20.h,
+                                          width: 1.w,
+                                          color: kDark,
+                                          margin: EdgeInsets.symmetric(
+                                              horizontal: 10.w),
+                                        ),
+                                        Text(
+                                          "\$${widget.arrivalCharges}",
+                                          style: kIsWeb
+                                              ? TextStyle(color: kDark)
+                                              : appStyle(16.sp, kDark,
+                                                  FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+
                       Divider(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -772,6 +839,18 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
         'review': review,
         "reviewSubmitted": true,
       });
+      await FirebaseFirestore.instance
+          .collection('Mechanics')
+          .doc(mId)
+          .collection('ratings')
+          .doc(orderId)
+          .set({
+        'rating': rating,
+        'review': review,
+        "uId": FirebaseAuth.instance.currentUser!.uid,
+        "timestamp": DateTime.now(),
+        "orderId": orderId.toString(),
+      });
 
       await FirebaseFirestore.instance
           .collection('Users')
@@ -784,6 +863,7 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
         "reviewSubmitted": true,
       });
 
+// Check if the history document exists
       await FirebaseFirestore.instance
           .collection('Mechanics')
           .doc(mId)

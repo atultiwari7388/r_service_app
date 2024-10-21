@@ -140,6 +140,7 @@ class _HistoryCompletedScreenState extends State<HistoryCompletedScreen> {
                             mStatus: mStatus,
                             languages: languages ?? [],
                             isImage: job["isImageSelected"],
+                            isPriceEnabled: job["fixPriceEnabled"],
                             reviewSubmitted: job["reviewSubmitted"],
                             onCallTap: () {
                               makePhoneCall(job["mNumber"].toString());

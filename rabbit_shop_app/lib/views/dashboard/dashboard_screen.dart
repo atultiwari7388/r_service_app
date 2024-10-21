@@ -424,6 +424,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                       arrivalCharges: "30",
                                                       km: "${distance.toStringAsFixed(0)} miles",
                                                       isImage: isImage,
+                                                      isPriceEnabled:
+                                                          job["fixPriceEnabled"] ??
+                                                              false,
                                                       images: images,
                                                       fixCharge: job["fixPrice"]
                                                           .toString(),
@@ -432,6 +435,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                               false,
                                                       dateTime: job["orderDate"]
                                                           .toDate(),
+                                                      cancelationReason:
+                                                          job["cancelReason"]
+                                                              .toString(),
                                                     );
                                                   } else {
                                                     return Container(); // Return an empty container if distance is greater than nearbyDistance
@@ -637,10 +643,153 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
       bool isShowImage,
       bool isPriceTypeEnable,
       DashboardController controller) async {
-    if (isShowImage) {
+    if (isShowImage && isPriceTypeEnable) {
       showAddArrivalChargesDialog2(userId, jobId, controller);
     } else if (isPriceTypeEnable) {
       showAddArrivalChargesDialog2(userId, jobId, controller);
+    } else if (isShowImage) {
+      final TextEditingController arrivalChargesController =
+          TextEditingController();
+      final TextEditingController timeController =
+          TextEditingController(text: "10");
+      final TextEditingController perHourChargesController =
+          TextEditingController(text: controller.perHourCharges.toString());
+
+      Get.defaultDialog(
+        title: "Confirm",
+        content: Column(
+          children: [
+            Text(
+                "Kindly reach within time  to get more jobs and avoid negative feedback",
+                style: TextStyle(
+                    fontSize: 16.sp,
+                    color: kPrimary,
+                    fontWeight: FontWeight.bold)),
+            SizedBox(height: 20.h),
+            TextField(
+              controller: arrivalChargesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Enter your Arrival Charges",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextField(
+              controller: timeController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Arrival Time",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextField(
+              controller: perHourChargesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Per Hour Charges",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        textCancel: "Cancel",
+        textConfirm: "Submit",
+        cancel: OutlinedButton(
+          onPressed: () {
+            Get.back(); // Close the dialog if "Cancel" is pressed
+          },
+          child: Text("Cancel", style: TextStyle(color: Colors.red)),
+        ),
+        confirm: ElevatedButton(
+          onPressed: () async {
+            setState(() {
+              isStatusUpdating = true;
+            });
+
+            final arrivalCharges = arrivalChargesController.text;
+            final perHourCharges = perHourChargesController.text;
+            final time = timeController.text;
+
+            if (arrivalCharges.isNotEmpty && perHourCharges.isNotEmpty) {
+              Get.back(); // Close the current dialog
+
+              // Get the current mechanic location
+              loc.Location location = loc.Location();
+              loc.LocationData locationData = await location.getLocation();
+
+              // Create a new offer for the mechanic
+              var mechanicOffer = {
+                "mId": currentUId.toString(),
+                "mName": controller.userName.toString(),
+                "mNumber": controller.phoneNumber.toString(),
+                "mDp": controller.userPhoto.toString(),
+                "arrivalCharges": arrivalCharges,
+                "perHourCharges": perHourCharges,
+                "fixPrice": 0,
+                "time": time,
+                "latitude": locationData.latitude,
+                "longitude": locationData.longitude,
+                "status": 1,
+                "rating": "4.3",
+                "reviewSubmitted": false,
+                "languages": controller.selectedLanguages,
+                "mechanicAddress": controller.appbarTitle,
+                "offerAcceptedDate": DateTime.now(),
+              };
+
+              // Update the Firestore `jobs` collection
+              await FirebaseFirestore.instance
+                  .collection('jobs')
+                  .doc(jobId)
+                  .update({
+                "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+              });
+
+              // Check if the history document exists
+              DocumentReference historyDoc = await FirebaseFirestore.instance
+                  .collection("Users")
+                  .doc(userId)
+                  .collection("history")
+                  .doc(jobId);
+
+              // Get the history document snapshot
+              DocumentSnapshot docSnapshot = await historyDoc.get();
+
+              if (docSnapshot.exists) {
+                // If document exists, update it
+                await historyDoc.update({
+                  "mechanicsOffer": FieldValue.arrayUnion([mechanicOffer]),
+                }).then((value) {
+                  widget.setTab?.call(1);
+                  setState(() {
+                    isStatusUpdating = false;
+                  });
+                });
+              } else {
+                // If document does not exist, create it
+                await historyDoc.set({
+                  "mechanicsOffer": [mechanicOffer],
+                });
+                setState(() {
+                  isStatusUpdating = false;
+                });
+              }
+
+              // Optional: Show a confirmation message or navigate to another screen
+              Get.snackbar("Success", "Request Sent Successfully.");
+            } else {
+              setState(() {
+                isStatusUpdating = false;
+              });
+              Get.snackbar("Error", "Please enter all required charges.");
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          child: Text("Submit", style: TextStyle(color: Colors.white)),
+        ),
+      );
     } else {
       final TextEditingController arrivalChargesController =
           TextEditingController();

@@ -93,6 +93,50 @@ class AuthController extends GetxController {
 
 //========================== SignIn with email and Password ===============================
 
+  // Future<void> signInWithEmailAndPassword() async {
+  //   isUserSign = true;
+  //   update();
+  //   try {
+  //     var signInUser = await _auth.signInWithEmailAndPassword(
+  //         email: _emailController.text, password: _passController.text);
+
+  //     final User? user = signInUser.user;
+  //     if (user != null) {
+  //       if (!user.emailVerified) {
+  //         // If the email is not verified, prompt the user to verify
+  //         showToastMessage("Email Not Verified",
+  //             "Please verify your email before logging in.", Colors.orange);
+
+  //         // Send another verification email
+  //         await user.sendEmailVerification();
+
+  //         // Optionally sign out the user
+  //         await _auth.signOut();
+
+  //         isUserSign = false;
+  //         update();
+  //         return;
+  //       }
+
+  //       var doc =
+  //           await FirebaseFirestore.instance.doc("Users/${user.uid}").get();
+  //       if (doc.exists && doc['uid'] == user.uid) {
+  //         isUserSign = false;
+  //         update();
+  //         Get.offAll(() => EntryScreen());
+  //         showToastMessage("Success", "Login Successful", Colors.green);
+  //       } else {
+  //         Get.to(() => RegistrationScreen());
+  //       }
+  //     }
+  //   } on FirebaseAuthException catch (e) {
+  //     handleAuthError(e);
+  //   } finally {
+  //     isUserSign = false;
+  //     update();
+  //   }
+  // }
+
   Future<void> signInWithEmailAndPassword() async {
     isUserSign = true;
     update();
@@ -103,24 +147,40 @@ class AuthController extends GetxController {
       final User? user = signInUser.user;
       if (user != null) {
         if (!user.emailVerified) {
-          // If the email is not verified, prompt the user to verify
           showToastMessage("Email Not Verified",
               "Please verify your email before logging in.", Colors.orange);
 
-          // Send another verification email
           await user.sendEmailVerification();
-
-          // Optionally sign out the user
           await _auth.signOut();
-
           isUserSign = false;
           update();
           return;
         }
 
-        var doc =
-            await FirebaseFirestore.instance.doc("Users/${user.uid}").get();
-        if (doc.exists && doc['uid'] == user.uid) {
+        // Fetch both Mechanics and Users docs in parallel
+        var mechanicsDocFuture =
+            FirebaseFirestore.instance.doc("Mechanics/${user.uid}").get();
+        var usersDocFuture =
+            FirebaseFirestore.instance.doc("Users/${user.uid}").get();
+
+        var docs = await Future.wait([mechanicsDocFuture, usersDocFuture]);
+
+        var mechanicDoc = docs[0];
+        var userDoc = docs[1];
+
+        if (mechanicDoc.exists && mechanicDoc['uid'] == user.uid) {
+          showToastMessage(
+              "Error",
+              "Please try with another email... this email already exists with Mechanic app",
+              Colors.red);
+
+          await _auth.signOut();
+          isUserSign = false;
+          update();
+          return;
+        }
+
+        if (userDoc.exists && userDoc['uid'] == user.uid) {
           isUserSign = false;
           update();
           Get.offAll(() => EntryScreen());
