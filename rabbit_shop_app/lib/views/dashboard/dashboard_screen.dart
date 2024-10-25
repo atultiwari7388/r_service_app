@@ -438,6 +438,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                                       cancelationReason:
                                                           job["cancelReason"]
                                                               .toString(),
+                                                      description:
+                                                          job["description"]
+                                                              .toString(),
                                                     );
                                                   } else {
                                                     return Container(); // Return an empty container if distance is greater than nearbyDistance
@@ -1051,7 +1054,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 isStatusUpdating = false;
               });
             }
-
+            Navigator.pop(context);
             // Optional: Show a confirmation message or navigate to another screen
             Get.snackbar("Success", "Request Sent Successfully.");
           } else {

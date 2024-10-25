@@ -182,6 +182,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               currentStatus: job["status"],
                               userLat: job["userLat"],
                               userLong: job["userLong"],
+                              description: job["description"].toString(),
                             );
                           });
                 },

@@ -8,7 +8,6 @@ import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'dart:developer';
-
 import '../../../services/collection_references.dart';
 import '../../../widgets/dashboard_search_text_field.dart';
 import '../../address/address_management_screen.dart';
@@ -247,6 +246,11 @@ class _FindMechanicState extends State<FindMechanic> {
               );
             },
           ),
+          SizedBox(height: 20.h),
+          DashBoardSearchTextField(
+              label: "Enter Description",
+              controller: widget.controller.descriptionController,
+              enable: true),
           SizedBox(height: 20.h),
           widget.controller.imageUploadEnabled
               ? GestureDetector(

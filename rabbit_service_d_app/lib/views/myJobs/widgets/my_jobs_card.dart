@@ -2,11 +2,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:regal_service_d_app/views/history/widgets/history_completed_screen.dart';
+import 'package:photo_view/photo_view.dart';
 import '../../../services/find_mechanic.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
@@ -30,6 +29,9 @@ class MyJobsCard extends StatefulWidget {
     required this.userLat,
     required this.userLong,
     this.mechanicOffers = const [],
+    required this.description,
+    this.images = const [],
+    this.isImage = false,
   });
 
   final String companyNameAndVehicleName;
@@ -48,6 +50,9 @@ class MyJobsCard extends StatefulWidget {
   final num userLat;
   final num userLong;
   final List<dynamic> mechanicOffers;
+  final String description;
+  final List images;
+  final bool isImage;
 
   @override
   State<MyJobsCard> createState() => _MyJobsCardState();
@@ -373,6 +378,8 @@ class _MyJobsCardState extends State<MyJobsCard> {
             ],
           ),
           SizedBox(height: 12.h),
+          widget.isImage ? Center(child: _buildSelectedImages()) : SizedBox(),
+          SizedBox(height: 10),
           // Service Details and Actions
           Container(
             padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),
@@ -383,46 +390,164 @@ class _MyJobsCardState extends State<MyJobsCard> {
             ),
             child: Column(
               children: [
-                buildReusableRow("Selected Service", widget.serviceName),
-                if (widget.currentStatus == 0)
-                  if (widget.currentStatus == -1)
-                    buildReusableRow("Cancel Reason", widget.cancelationReason),
-                SizedBox(height: 15.h),
-                // Action Buttons
-                if (widget.currentStatus == -1)
-                  Container(
-                    height: 40.h,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: kPrimary,
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Center(
+                // buildReusableRow("Selected Service", widget.serviceName),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
                       child: Text(
-                        "Canceled",
+                        "Selected Service",
                         style: kIsWeb
-                            ? TextStyle()
-                            : appStyle(15.sp, kWhite, FontWeight.bold),
+                            ? TextStyle(color: kDark)
+                            : appStyle(14.sp, kDark, FontWeight.w500),
                       ),
                     ),
-                  )
-                else if (widget.currentStatus == 5)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kSuccess,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0.r),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        widget.serviceName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: kIsWeb
+                            ? TextStyle(color: kSecondary)
+                            : appStyle(14.sp, kSecondary, FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+
+                Divider(),
+                if (widget.currentStatus == -1)
+                  // buildReusableRow("Cancel Reason", widget.cancelationReason),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          "Cancel Reason",
+                          style: kIsWeb
+                              ? TextStyle(color: kDark)
+                              : appStyle(14.sp, kDark, FontWeight.w500),
                         ),
                       ),
-                      onPressed: () => Get.to(
-                          () => HistoryCompletedScreen(orderId: widget.jobId)),
-                      child: Text(
-                        "Completed",
-                        style: appStyle(15.sp, kWhite, FontWeight.bold),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        flex: 5,
+                        child: Text(
+                          widget.cancelationReason,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: kIsWeb
+                              ? TextStyle(color: kSecondary)
+                              : appStyle(14.sp, kDark, FontWeight.w300),
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
+
+                if (widget.currentStatus == -1) Divider(),
+
+                widget.description.isEmpty
+                    ? Container()
+                    : Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              "Description",
+                              style: kIsWeb
+                                  ? TextStyle(color: kDark)
+                                  : appStyle(14.sp, kDark, FontWeight.w500),
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              widget.description,
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: kIsWeb
+                                  ? TextStyle(color: kSecondary)
+                                  : appStyle(14.sp, kDark, FontWeight.w300),
+                            ),
+                          ),
+                        ],
+                      ),
+                widget.description.isEmpty ? Container() : Divider(),
+
+                // SizedBox(height: 15.h),
+                // Action Buttons
+                if (widget.currentStatus == -1)
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          "Status",
+                          style: kIsWeb
+                              ? TextStyle(color: kDark)
+                              : appStyle(14.sp, kDark, FontWeight.w500),
+                        ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        flex: 5,
+                        child: Text(
+                          "Cancelled",
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: kIsWeb
+                              ? TextStyle(color: kSecondary)
+                              : appStyle(14.sp, kPrimary, FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  )
+                else if (widget.currentStatus == 5)
+                  // SizedBox(
+                  //   width: double.infinity,
+                  //   child: ElevatedButton(
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: kSuccess,
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(12.0.r),
+                  //       ),
+                  //     ),
+                  //     onPressed: () => Get.to(
+                  //         () => HistoryCompletedScreen(orderId: widget.jobId)),
+                  //     child: Text(
+                  //       "Completed",
+                  //       style: appStyle(15.sp, kWhite, FontWeight.bold),
+                  //     ),
+                  //   ),
+                  // )
+
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          "Status",
+                          style: kIsWeb
+                              ? TextStyle(color: kDark)
+                              : appStyle(14.sp, kDark, FontWeight.w500),
+                        ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        flex: 5,
+                        child: Text(
+                          "Completed",
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: kIsWeb
+                              ? TextStyle(color: kSecondary)
+                              : appStyle(14.sp, kSecondary, FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   )
                 else
                   Row(
@@ -482,9 +607,10 @@ class _MyJobsCardState extends State<MyJobsCard> {
             label,
             style: kIsWeb
                 ? TextStyle(color: kDark)
-                : appStyle(16.sp, kDark, FontWeight.w500),
+                : appStyle(14.sp, kDark, FontWeight.w500),
           ),
         ),
+        SizedBox(width: 10.w),
         Expanded(
           flex: 5,
           child: Text(
@@ -493,10 +619,56 @@ class _MyJobsCardState extends State<MyJobsCard> {
             overflow: TextOverflow.ellipsis,
             style: kIsWeb
                 ? TextStyle(color: kSecondary)
-                : appStyle(13.sp, kSecondary, FontWeight.w500),
+                : appStyle(14.sp, kSecondary, FontWeight.w500),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSelectedImages() {
+    return widget.images.isNotEmpty
+        ? Wrap(
+            spacing: 10.w,
+            runSpacing: 10.h,
+            children: widget.images.map((image) {
+              return GestureDetector(
+                onTap: () => _showImageViewer(image),
+                child: Container(
+                  width: 50.w,
+                  height: 50.h,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12.r),
+                    image: DecorationImage(
+                      image: NetworkImage(image),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          )
+        : Container(); // Empty container when no images are selected
+  }
+
+  void _showImageViewer(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            // Set a fixed height and width, or use MediaQuery for dynamic sizing
+            height: MediaQuery.of(context).size.height * 0.8,
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: PhotoView(
+              imageProvider: NetworkImage(imageUrl),
+              minScale:
+                  PhotoViewComputedScale.contained, // Adjust this as needed
+              maxScale: PhotoViewComputedScale.covered, // Adjust this as needed
+            ),
+          ),
+        );
+      },
     );
   }
 }

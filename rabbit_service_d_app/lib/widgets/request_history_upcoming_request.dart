@@ -32,6 +32,8 @@ class RequestAcceptHistoryCard extends StatefulWidget {
     required this.isImage,
     required this.isPriceEnabled,
     required this.reviewSubmitted,
+    this.onDirectionTapButton,
+    required this.description,
   });
 
   final String shopName;
@@ -53,6 +55,8 @@ class RequestAcceptHistoryCard extends StatefulWidget {
   final bool isImage;
   final bool isPriceEnabled;
   final bool reviewSubmitted;
+  final Future<void> Function()? onDirectionTapButton;
+  final String description;
 
   @override
   State<RequestAcceptHistoryCard> createState() =>
@@ -286,11 +290,12 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                                     ),
 
                       Divider(),
+                      //==============Per hour charges========================
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           SizedBox(
-                            width: 145.w,
+                            width: 142.w,
                             child: Text(
                               "Per Hour Charges",
                               style: kIsWeb
@@ -313,6 +318,44 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                         ],
                       ),
                       SizedBox(height: 15.h),
+                      //=============Descripition section ====================
+                      // widget.description.isEmpty
+                      //     ? Container()
+                      //     : Column(
+                      //         children: [
+                      //           Divider(),
+                      //           Row(
+                      //             mainAxisAlignment:
+                      //                 MainAxisAlignment.spaceEvenly,
+                      //             children: [
+                      //               SizedBox(
+                      //                 width: 145.w,
+                      //                 child: Text(
+                      //                   "Description :",
+                      //                   style: kIsWeb
+                      //                       ? TextStyle(color: kDark)
+                      //                       : appStyle(
+                      //                           16.sp, kDark, FontWeight.w500),
+                      //                 ),
+                      //               ),
+                      //               SizedBox(width: 40.w),
+                      //               Container()
+                      //             ],
+                      //           ),
+                      //           SizedBox(height: 10.h),
+                      //           SizedBox(
+                      //             width: 250.w,
+                      //             child: Text(
+                      //               widget.description,
+                      //               maxLines: 4,
+                      //               overflow: TextOverflow.ellipsis,
+                      //               style: appStyle(
+                      //                   11, kDarkGray, FontWeight.normal),
+                      //             ),
+                      //           ),
+                      //           SizedBox(height: 20.h),
+                      //         ],
+                      //       ),
                       // Action Buttons
                       Row(
                         mainAxisAlignment: widget.mStatus == 1
@@ -419,7 +462,21 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                       ),
                       // Confirm to Start Button (only if mStatus == 3)
                       if (widget.jobStatus == 3)
-                        buildButton(kPrimary, "Need to talk", widget.onCallTap),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            buildButton(
+                                kPrimary, "Need to talk", widget.onCallTap),
+                            SizedBox(width: 20.w),
+                            GestureDetector(
+                                onTap: widget.onDirectionTapButton,
+                                child: CircleAvatar(
+                                    radius: 25.r,
+                                    backgroundColor: kSuccess,
+                                    child:
+                                        Icon(Icons.directions, color: kWhite))),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -435,6 +492,21 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                     },
                     child: Text("Confirm to Start"),
                   ),
+                SizedBox(height: 10.h),
+                Container(
+                  padding:
+                      EdgeInsets.only(left: 8, right: 8, top: 5, bottom: 5),
+                  margin: EdgeInsets.only(left: 5, right: 5),
+                  decoration: BoxDecoration(
+                      color: kPrimary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.r)),
+                  child: Center(
+                    child: Text(
+                      "*Mechanic accepted your Job. Wait for Mechanic*",
+                      style: appStyle(11, kSecondary, FontWeight.normal),
+                    ),
+                  ),
+                )
               ],
             ),
           );

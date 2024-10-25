@@ -226,6 +226,7 @@ class _CompletedJobsHistoryScreenState extends State<CompletedJobsHistoryScreen>
                 reviewSubmitted: jobs["reviewSubmitted"],
                 dateTime: jobs["orderDate"].toDate(),
                 cancelationReason: jobs["cancelReason"].toString(),
+                description: jobs["description"].toString(),
               );
             },
           ),

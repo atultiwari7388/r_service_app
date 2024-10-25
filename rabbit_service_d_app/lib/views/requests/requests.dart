@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/widgets/request_history_upcoming_request.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/collection_references.dart';
 import '../../services/find_mechanic.dart';
 import '../../utils/app_styles.dart';
@@ -201,6 +202,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       final orderId = job["orderId"].toString();
                       final userId = job["userId"].toString();
                       final jobStatus = job["status"];
+                      final List<dynamic> images = job['images'] ?? [];
                       final mechanicsOffer =
                           job["mechanicsOffer"] as List<dynamic>? ?? [];
 
@@ -231,6 +233,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                           final languages = mechanic["languages"] ?? [];
                           final mNumber = mechanic["mNumber"];
                           final mStatus = mechanic["status"];
+                          final mLatitude = mechanic["latitude"];
+                          final mLongitude = mechanic["longitude"];
                           final mecLatitude =
                               (mechanic['latitude'] as num?)?.toDouble() ?? 0.0;
                           final mecLongitude =
@@ -248,31 +252,43 @@ class _RequestsScreenState extends State<RequestsScreen> {
                           }
 
                           return RequestAcceptHistoryCard(
-                            shopName: mName,
-                            time: time,
-                            distance: "${distance.toStringAsFixed(0)} miles",
-                            rating: "4.5",
-                            jobId: orderId,
-                            userId: userId,
-                            mId: mId,
-                            arrivalCharges: arrivalCharges,
-                            fixCharges: fixPrice,
-                            perHourCharges: perHourCharges,
-                            imagePath: mDp.isEmpty
-                                ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                : mDp,
-                            jobStatus: jobStatus,
-                            mStatus: mStatus,
-                            isHidden: _selectedCardIndex != null &&
-                                _selectedCardIndex != index,
-                            languages: languages,
-                            isImage: job["isImageSelected"] ?? false,
-                            isPriceEnabled: job["fixPriceEnabled"] ?? false,
-                            reviewSubmitted: job["reviewSubmitted"] ?? false,
-                            onCallTap: () {
-                              makePhoneCall(mNumber.toString());
-                            },
-                          );
+                              shopName: mName,
+                              time: time,
+                              distance: "${distance.toStringAsFixed(0)} miles",
+                              rating: "4.5",
+                              jobId: orderId,
+                              userId: userId,
+                              mId: mId,
+                              arrivalCharges: arrivalCharges,
+                              fixCharges: fixPrice,
+                              perHourCharges: perHourCharges,
+                              imagePath: mDp.isEmpty
+                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                  : mDp,
+                              jobStatus: jobStatus,
+                              mStatus: mStatus,
+                              isHidden: _selectedCardIndex != null &&
+                                  _selectedCardIndex != index,
+                              languages: languages,
+                              isImage: job["isImageSelected"] ?? false,
+                              isPriceEnabled: job["fixPriceEnabled"] ?? false,
+                              reviewSubmitted: job["reviewSubmitted"] ?? false,
+                              onCallTap: () {
+                                makePhoneCall(mNumber.toString());
+                              },
+                              onDirectionTapButton: () async {
+                                final Uri googleMapsUri = Uri.parse(
+                                    'https://www.google.com/maps/dir/?api=1&destination=$mLatitude,$mLongitude');
+                                // ignore: deprecated_member_use
+                                if (await canLaunch(googleMapsUri.toString())) {
+                                  // ignore: deprecated_member_use
+                                  await launch(googleMapsUri.toString());
+                                } else {
+                                  // Handle the error if the URL cannot be launched
+                                  print('Could not launch Google Maps');
+                                }
+                              },
+                              description: job["description"].toString());
                         },
                       );
                     },

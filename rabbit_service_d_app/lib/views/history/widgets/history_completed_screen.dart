@@ -123,29 +123,31 @@ class _HistoryCompletedScreenState extends State<HistoryCompletedScreen> {
                             return SizedBox.shrink();
                           }
                           return RequestAcceptHistoryCard(
-                            shopName: mName,
-                            time: time,
-                            distance: "${distance.toStringAsFixed(0)} miles",
-                            rating: "4.5",
-                            jobId: job["orderId"].toString(),
-                            userId: job["userId"].toString(),
-                            mId: mId,
-                            arrivalCharges: arrivalCharges,
-                            fixCharges: fixPrice,
-                            perHourCharges: perHourCharges,
-                            imagePath: mDp.isEmpty
-                                ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
-                                : mDp.toString(),
-                            jobStatus: jobStatus,
-                            mStatus: mStatus,
-                            languages: languages ?? [],
-                            isImage: job["isImageSelected"],
-                            isPriceEnabled: job["fixPriceEnabled"],
-                            reviewSubmitted: job["reviewSubmitted"],
-                            onCallTap: () {
-                              makePhoneCall(job["mNumber"].toString());
-                            },
-                          );
+                              shopName: mName,
+                              time: time,
+                              distance: "${distance.toStringAsFixed(0)} miles",
+                              rating: "4.5",
+                              jobId: job["orderId"].toString(),
+                              userId: job["userId"].toString(),
+                              mId: mId,
+                              arrivalCharges: arrivalCharges,
+                              fixCharges: fixPrice,
+                              perHourCharges: perHourCharges,
+                              imagePath: mDp.isEmpty
+                                  ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
+                                  : mDp.toString(),
+                              jobStatus: jobStatus,
+                              mStatus: mStatus,
+                              languages: languages ?? [],
+                              isImage: job["isImageSelected"],
+                              isPriceEnabled: job["fixPriceEnabled"],
+                              reviewSubmitted: job["reviewSubmitted"],
+                              onCallTap: () {
+                                makePhoneCall(job["mNumber"].toString());
+                              },
+                              description: job["description"].isEmpty
+                                  ? ""
+                                  : job["description"].toString());
                         },
                       );
                     },

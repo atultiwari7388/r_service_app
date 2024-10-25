@@ -48,6 +48,7 @@ class UpcomingRequestCard extends StatefulWidget {
     required this.reviewSubmitted, // New parameter
     required this.dateTime,
     required this.cancelationReason,
+    required this.description,
   });
 
   final String userName;
@@ -80,6 +81,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final bool reviewSubmitted; // New parameter
   final DateTime dateTime;
   final String cancelationReason;
+  final String description;
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
@@ -292,6 +294,36 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                     //images section
                     _buildSelectedImages()
                     : SizedBox(),
+                widget.description.isEmpty ? Container() : Divider(),
+
+                widget.description.isEmpty
+                    ? Container()
+                    : Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              "Description",
+                              style: kIsWeb
+                                  ? TextStyle(color: kDark)
+                                  : appStyle(14.sp, kDark, FontWeight.w500),
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              widget.description,
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: kIsWeb
+                                  ? TextStyle(color: kSecondary)
+                                  : appStyle(14.sp, kDark, FontWeight.w300),
+                            ),
+                          ),
+                        ],
+                      ),
+                widget.description.isEmpty ? Container() : Divider(),
 
                 if (widget.currentStatus == -1)
                   Container(
@@ -385,25 +417,43 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                 ),
                               )
                             : widget.currentStatus == 3
-                                ? Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                ? Column(
                                     children: [
-                                      SizedBox(width: 10.w),
-                                      buildButton(kPrimary, "Call",
-                                          widget.onPhoneCallTap),
-                                      SizedBox(width: 10.w),
-                                      buildButton(kSecondary, widget.buttonName,
-                                          widget.onButtonTap),
-                                      SizedBox(width: 10.w),
-                                      GestureDetector(
-                                        onTap: widget.onDirectionTapButton,
-                                        child: CircleAvatar(
-                                            radius: 25.r,
-                                            backgroundColor: kSuccess,
-                                            child: Icon(Icons.directions,
-                                                color: kWhite)),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          SizedBox(width: 10.w),
+                                          buildButton(kPrimary, "Call",
+                                              widget.onPhoneCallTap),
+                                          SizedBox(width: 10.w),
+                                          buildButton(
+                                              kSecondary,
+                                              widget.buttonName,
+                                              widget.onButtonTap),
+                                          SizedBox(width: 10.w),
+                                          GestureDetector(
+                                            onTap: widget.onDirectionTapButton,
+                                            child: CircleAvatar(
+                                                radius: 25.r,
+                                                backgroundColor: kSuccess,
+                                                child: Icon(Icons.directions,
+                                                    color: kWhite)),
+                                          ),
+                                        ],
                                       ),
+                                      SizedBox(height: 10.h),
+                                      Container(
+                                        padding: EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                            color: kPrimary.withOpacity(0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12.r)),
+                                        child: Text(
+                                            "*Driver confirmed your Job. Click map button and reach to vehicle  location timely",
+                                            style: appStyle(11, kSecondary,
+                                                FontWeight.normal)),
+                                      )
                                     ],
                                   )
                                 : widget.currentStatus == 3

@@ -130,6 +130,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             }
                             final mechanicsOffer =
                                 job["mechanicsOffer"] as List<dynamic>? ?? [];
+                            final List<dynamic> images = job['images'] ?? [];
 
                             return MyJobsCard(
                               companyNameAndVehicleName:
@@ -188,6 +189,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                               userLat: job["userLat"],
                               userLong: job["userLong"],
                               mechanicOffers: mechanicsOffer,
+                              description: job["description"].toString(),
+                              images: images,
+                              isImage: job["isImageSelected"] ?? false,
                             );
                           },
                         );

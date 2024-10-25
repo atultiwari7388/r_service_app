@@ -250,8 +250,6 @@ class _UpcomingAndCompletedJobsScreenState
                 (offer) => offer['mId'] == currentUId,
                 orElse: () => null, // Return null if not found
               );
-              // Find the mechanic whose mId matches currentUId and status 1 to 5 then show the Upcoming Request Card otherwise hide the card..
-              // Check if any mechanic has an accepted offer (status between 2 and 5)
               final hasAcceptedOffer = mechanicsOffer
                   .any((offer) => offer['status'] >= 2 && offer['status'] <= 5);
 
@@ -361,6 +359,7 @@ class _UpcomingAndCompletedJobsScreenState
                 reviewSubmitted: jobs["mReviewSubmitted"] ?? false,
                 dateTime: jobs["orderDate"].toDate(),
                 cancelationReason: jobs["cancelReason"].toString(),
+                description: jobs["description"].toString(),
               );
             },
           ),

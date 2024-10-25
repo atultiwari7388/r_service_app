@@ -51,14 +51,6 @@ class DashboardController extends GetxController {
   bool get isLoading => _isLoading;
 
   Timer? _debounce;
-
-  void onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      filterselectedCompanyAndvehicle(query);
-    });
-  }
-
   // Method to set loading state
   void setLoading(bool loading) {
     _isLoading = loading;
@@ -72,6 +64,7 @@ class DashboardController extends GetxController {
   TextEditingController selectedCompanyAndVehcileNameController =
       new TextEditingController();
   TextEditingController companyNameController = TextEditingController();
+  TextEditingController descriptionController = TextEditingController();
   int currentIndex = 0;
   String? selectedCompanyAndVehcileName;
   List<Map<String, dynamic>> allServiceAndNetworkOptions = [];
@@ -91,7 +84,6 @@ class DashboardController extends GetxController {
     fetchUserVehicles();
     fetchByDefaultUserVehicle();
     fetchUserDetails();
-    // fetchFeaturedServicesNameAndImage();
   }
 
 //======================== Fetch Services Name=============================
@@ -136,47 +128,6 @@ class DashboardController extends GetxController {
       print('Error fetching services names: $e');
     }
   }
-
-  // Future<void> fetchFeaturedServicesNameAndImage() async {
-  //   try {
-  //     DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
-  //         await FirebaseFirestore.instance
-  //             .collection('metadata')
-  //             .doc('servicesList')
-  //             .get();
-
-  //     if (metadataSnapshot.exists) {
-  //       List<dynamic> servicesList = metadataSnapshot.data()?['data'] ?? [];
-
-  //       // Extract titles, image_type, and price_type from each service map
-  //       allFeaturedServiceAndNetworkOptions = servicesList.map((service) {
-  //         String title = service['title'].toString();
-  //         int imageType = int.tryParse(service['image_type'].toString()) ?? 0;
-  //         int priceType = int.tryParse(service['price_type'].toString()) ?? 0;
-  //         String image = service["image"].toString();
-  //         bool isFeatured = service["isFeatured"] ?? false;
-
-  //         // Return a map or object with title, imageType, and priceType
-  //         return {
-  //           'title': title,
-  //           'image_type': imageType,
-  //           'price_type': priceType,
-  //           'image': image,
-  //           'isFeatured': isFeatured,
-  //         };
-  //       }).toList();
-
-  //       // Initialize filtered list with all options
-  //       filteredFeaturedServiceAndNetworkOptions =
-  //           List.from(allFeaturedServiceAndNetworkOptions);
-
-  //       print('Filter List: $filteredFeaturedServiceAndNetworkOptions');
-  //       update();
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching services names: $e');
-  //   }
-  // }
 
 //============================ Filter Services and Network Options =============================
 
@@ -270,6 +221,13 @@ class DashboardController extends GetxController {
     } catch (e) {
       log("Error fetching user vehicles: $e");
     }
+  }
+
+  void onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      filterselectedCompanyAndvehicle(query);
+    });
   }
 
   Future<void> fetchUserDetails() async {
@@ -557,11 +515,13 @@ class DashboardController extends GetxController {
       var data = {
         'orderId': orderId.toString(),
         "cancelReason": "",
+        "cancelBy": "",
         'userId': currentUId,
         "userPhoto": userPhoto,
         'userName': name,
         'selectedService': selectedService,
         "companyName": companyName,
+        "description": descriptionController.text.toString(),
         "vehicleNumber": vehicleNumber,
         'userPhoneNumber': phoneNumber,
         'userDeliveryAddress': address,

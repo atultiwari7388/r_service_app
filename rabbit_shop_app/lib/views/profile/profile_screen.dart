@@ -236,7 +236,14 @@ class ProfileScreen extends StatelessWidget {
   //====================== signOut from app =====================
   void signOut(BuildContext context) async {
     try {
-      await auth.signOut().then((value) {
+      await auth.signOut().then((value) async {
+        await FirebaseFirestore.instance
+            .collection('Mechanics')
+            .doc(currentUId)
+            .update({
+          'active': false,
+          'fcmToken': '',
+        });
         Get.offAll(() => LoginScreen());
       });
     } catch (e) {
