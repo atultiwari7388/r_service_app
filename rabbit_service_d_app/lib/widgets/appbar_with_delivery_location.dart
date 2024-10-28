@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../utils/app_styles.dart';
 import '../utils/constants.dart';
-import '../views/profile/profile_screen.dart';
+import '../views/app/profile/profile_screen.dart';
 import 'reusable_text.dart';
 
 class CustomAppBar extends StatelessWidget {

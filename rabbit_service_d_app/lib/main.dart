@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
-import 'package:regal_service_d_app/views/splash/splash_screen.dart';
+import 'package:regal_service_d_app/views/app/splash/splash_screen.dart';
 import 'services/push_notification.dart';
-import 'views/entry_screen.dart';
+import 'entry_screen.dart';
 
 // Initialize the navigator key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

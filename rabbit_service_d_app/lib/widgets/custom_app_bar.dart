@@ -6,7 +6,7 @@ import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../services/collection_references.dart';
 import '../utils/app_styles.dart';
 import '../utils/constants.dart';
-import '../views/profile/profile_screen.dart';
+import '../views/app/profile/profile_screen.dart';
 
 PreferredSizeWidget appBar = AppBar(
   backgroundColor: kLightWhite,

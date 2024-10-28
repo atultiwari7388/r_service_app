@@ -1,26 +1,64 @@
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:regal_shop_app/views/aboutUs/about_us_screen.dart';
-import 'package:regal_shop_app/views/adminContact/admin_contact_screen.dart';
-import 'package:regal_shop_app/views/helpContact/help_center.dart';
-import 'package:regal_shop_app/views/privacyPolicy/privacy_policy.dart';
-import 'package:regal_shop_app/views/profile/profile_detail_screen.dart';
-import 'package:regal_shop_app/views/termsCondition/terms_conditions.dart';
-import 'package:regal_shop_app/views/yourServices/add_your_service.dart';
-import '../../services/collection_references.dart';
-import '../../utils/app_styles.dart';
-import '../../utils/constants.dart';
-import '../../utils/show_toast_msg.dart';
-import '../../widgets/dashed_divider.dart';
-import '../../widgets/reusable_text.dart';
-import '../auth/login_screen.dart';
-import '../history/completed_history_screen.dart';
-import '../ratings/ratings_screen.dart';
+import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
+import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
+import 'package:regal_service_d_app/views/app/history/history_screen.dart';
+import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
+import 'package:regal_service_d_app/views/app/privacyPolicy/privacy_policy.dart';
+import 'package:regal_service_d_app/views/app/profile/profile_details_screen.dart';
+import 'package:regal_service_d_app/views/app/ratings/ratings_screen.dart';
+import 'package:regal_service_d_app/views/app/termsCondition/terms_conditions.dart';
+import '../../../services/collection_references.dart';
+import '../../../utils/app_styles.dart';
+import '../../../utils/constants.dart';
+import '../../../utils/show_toast_msg.dart';
+import '../../../widgets/dashed_divider.dart';
+import '../../../widgets/reusable_text.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late String role = "";
+
+  Future<void> fetchUserDetails() async {
+    try {
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+
+      if (userSnapshot.exists) {
+        // Cast the document data to a map
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          role = userData["role"] ?? "";
+        });
+        log("Role set to " + role);
+      } else {
+        log("No user document found for ID: $currentUId");
+      }
+    } catch (e) {
+      log("Error fetching user details: $e");
+      setState(() {});
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserDetails();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +67,10 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: kLightWhite,
         elevation: 0,
         title: ReusableText(
-            text: "Menu", style: appStyle(20, kDark, FontWeight.normal)),
+            text: "Menu",
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(20, kDark, FontWeight.normal)),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -56,8 +97,10 @@ class ProfileScreen extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          "My Details",
-                          style: appStyle(18, kPrimary, FontWeight.normal),
+                          "Manage Orders",
+                          style: kIsWeb
+                              ? TextStyle(color: kPrimary)
+                              : appStyle(18, kPrimary, FontWeight.normal),
                         ),
                         SizedBox(width: 5.w),
                         Container(width: 30.w, height: 3.h, color: kSecondary),
@@ -66,18 +109,19 @@ class ProfileScreen extends StatelessWidget {
                     SizedBox(height: 15.h),
                     const DashedDivider(color: kGrayLight),
                     SizedBox(height: 10.h),
-                    buildListTile("assets/bookings_bw.png", "My History", () {
-                      Get.to(() => CompletedJobsHistoryScreen());
-                    }),
-                    buildListTile("assets/services_your.png", "My Services",
-                        () {
-                      Get.to(() => AddYourServices());
-                    }),
-                    buildListTile("assets/rating_bw.png", "My Ratings", () {
-                      Get.to(() => RatingsScreen());
+                    buildListTile("assets/bookings_bw.png", "History", () {
+                      Get.to(() => HistoryScreen());
                     }),
                     buildListTile("assets/profile_bw.png", "My Profile", () {
                       Get.to(() => ProfileDetailsScreen());
+                    }),
+                    role == "Owner"
+                        ? buildListTile("assets/team.png", "Manage Team", () {
+                            Get.to(() => MyTeamScreen());
+                          })
+                        : SizedBox(),
+                    buildListTile("assets/rating_bw.png", "Ratings", () {
+                      Get.to(() => RatingsScreen());
                     }),
                   ],
                 ),
@@ -98,7 +142,9 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         Text(
                           "More",
-                          style: appStyle(18, kPrimary, FontWeight.normal),
+                          style: kIsWeb
+                              ? TextStyle(color: kPrimary)
+                              : appStyle(18, kPrimary, FontWeight.normal),
                         ),
                         SizedBox(width: 5.w),
                         Container(width: 30.w, height: 3.h, color: kSecondary),
@@ -111,15 +157,12 @@ class ProfileScreen extends StatelessWidget {
                         () => Get.to(() => AboutUsScreen())),
                     buildListTile("assets/help_bw.png", "Help",
                         () => Get.to(() => EmergencyContactsScreen())),
-                    // buildListTile("assets/help_bw.png", "Help",
-                    //     () => Get.to(() => AdminContactScreen())),
                     buildListTile("assets/t_c_bw.png", "Terms & Conditions",
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
                     buildListTile(
                         "assets/out_bw.png", "Logout", () => signOut(context)),
-                    SizedBox(height: 50.h),
                   ],
                 ),
               ),
@@ -137,7 +180,10 @@ class ProfileScreen extends StatelessWidget {
         leading:
             Image.asset(iconName, height: 20.h, width: 20.w, color: kPrimary),
         trailing: const Icon(Icons.arrow_forward_ios, size: 18, color: kGray),
-        title: Text(title, style: appStyle(13, kDark, FontWeight.normal)),
+        title: Text(title,
+            style: kIsWeb
+                ? TextStyle(color: kDark)
+                : appStyle(13, kDark, FontWeight.normal)),
         // onTap: onTap,
       ),
     );
@@ -146,7 +192,7 @@ class ProfileScreen extends StatelessWidget {
 //================================ top Profile section =============================
   Container buildTopProfileSection() {
     return Container(
-      height: 120.h,
+      height: kIsWeb ? 180.h : 120.h,
       width: double.maxFinite,
       padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.w),
       decoration: BoxDecoration(
@@ -155,7 +201,7 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('Mechanics')
+            .collection('Users')
             .doc(currentUId)
             .snapshots(),
         builder:
@@ -165,14 +211,14 @@ class ProfileScreen extends StatelessWidget {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Container();
+            return Center(child: CircularProgressIndicator());
           }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final profilePictureUrl = data['profilePicture'] ?? '';
           final userName = data['userName'] ?? '';
           final email = data['email'] ?? '';
-          final wallet = data["wallet"] ?? 0;
+          final wallet = data["wallet"] ?? "";
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +229,9 @@ class ProfileScreen extends StatelessWidget {
                 child: profilePictureUrl.isEmpty
                     ? Text(
                         userName.isNotEmpty ? userName[0] : '',
-                        style: appStyle(20, kWhite, FontWeight.bold),
+                        style: kIsWeb
+                            ? TextStyle(color: kWhite)
+                            : appStyle(20, kWhite, FontWeight.bold),
                       )
                     : CircleAvatar(
                         radius: 33.r,
@@ -198,16 +246,20 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     ReusableText(
                       text: userName.isNotEmpty ? userName : '',
-                      style: appStyle(15, kDark, FontWeight.bold),
+                      style: kIsWeb
+                          ? TextStyle(color: kDark)
+                          : appStyle(15, kDark, FontWeight.bold),
                     ),
                     ReusableText(
                       text: email.isNotEmpty ? email : '',
-                      style: appStyle(12, kDark, FontWeight.normal),
+                      style: kIsWeb
+                          ? TextStyle(color: kDark)
+                          : appStyle(12, kDark, FontWeight.normal),
                     ),
                     Spacer(),
                     Container(
                       height: 30.h,
-                      width: 140.w,
+                      width: kIsWeb ? 80.w : 140.w,
                       // padding: EdgeInsets.only(left: 10.w),
                       decoration: BoxDecoration(
                           color: kSuccess.withOpacity(0.8),
@@ -220,7 +272,9 @@ class ProfileScreen extends StatelessWidget {
                           SizedBox(width: 5.w),
                           ReusableText(
                             text: "\$${wallet.toString()}",
-                            style: appStyle(17, kWhite, FontWeight.bold),
+                            style: kIsWeb
+                                ? TextStyle(color: kWhite)
+                                : appStyle(17, kWhite, FontWeight.bold),
                           ),
                         ],
                       ),
@@ -239,14 +293,7 @@ class ProfileScreen extends StatelessWidget {
   //====================== signOut from app =====================
   void signOut(BuildContext context) async {
     try {
-      await auth.signOut().then((value) async {
-        await FirebaseFirestore.instance
-            .collection('Mechanics')
-            .doc(currentUId)
-            .update({
-          'active': false,
-          'fcmToken': '',
-        });
+      await auth.signOut().then((value) {
         Get.offAll(() => LoginScreen());
       });
     } catch (e) {

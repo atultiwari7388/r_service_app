@@ -3,8 +3,10 @@ import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get.dart'; 
+import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../utils/show_toast_msg.dart';
+import '../adminContact/admin_contact_screen.dart';
 import '../auth/login_screen.dart';
 import '../entry_screen.dart';
 import '../auth/registration_screen.dart';
@@ -31,11 +33,18 @@ class _SplashScreenState extends State<SplashScreen> {
             .get();
 
         if (mechanicDoc.exists && mechanicDoc['uid'] == user!.uid) {
-          // User is authenticated as a mechanic
-          Get.offAll(() => EntryScreen(),
-              transition: Transition.cupertino,
-              duration: const Duration(milliseconds: 900));
-          log("User authenticated as a mechanic");
+          if (mechanicDoc['isEnabled'] == true) {
+            Get.offAll(() => EntryScreen());
+            showToastMessage("Welcome", "Welcome", Colors.green);
+          } else {
+            // If isEnabled is false, redirect to AdminContactScreen
+
+            Get.to(() => AdminContactScreen());
+            showToastMessage(
+                "Account Deactivated",
+                "Your account is deactivated. Please contact admin.",
+                Colors.red);
+          }
         } else {
           // If the user is not found in Mechanics, go to RegistrationScreen
           Get.offAll(() => RegistrationScreen(),
@@ -78,4 +87,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-

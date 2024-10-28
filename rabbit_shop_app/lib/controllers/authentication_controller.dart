@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../services/database_services.dart';
 import '../utils/show_toast_msg.dart';
+import '../views/adminContact/admin_contact_screen.dart';
 import '../views/auth/login_screen.dart';
 import '../views/auth/registration_screen.dart';
 import '../views/entry_screen.dart';
@@ -135,17 +136,40 @@ class AuthController extends GetxController {
   //         return;
   //       }
 
-  //       var doc = await FirebaseFirestore.instance
+  //       // Check if the UID exists in the Mechanics collection
+  //       var mechanicDoc = await FirebaseFirestore.instance
   //           .collection("Mechanics")
   //           .doc(user.uid)
   //           .get();
-  //       if (doc.exists && doc['uid'] == user.uid) {
+
+  //       // If the user is not found in the Mechanics collection, check the Users collection
+  //       if (!mechanicDoc.exists) {
+  //         // Check if the email exists in the Users collection (Customer App)
+  //         var userDoc = await FirebaseFirestore.instance
+  //             .collection("Users")
+  //             .where('email', isEqualTo: _emailController.text)
+  //             .get();
+
+  //         // If email exists in Users collection, show error
+  //         if (userDoc.docs.isNotEmpty) {
+  //           showToastMessage(
+  //               "Error",
+  //               "This email is already registered with the customer app.",
+  //               Colors.red);
+  //           await _auth.signOut(); // Sign out the user if email exists in Users
+  //           isUserSign = false;
+  //           update();
+  //           return;
+  //         } else {
+  //           // Proceed to RegistrationScreen if email is not found in Users
+  //           Get.to(() => RegistrationScreen());
+  //         }
+  //       } else if (mechanicDoc['uid'] == user.uid) {
+  //         // If user UID exists in the Mechanics collection, login success
   //         isUserSign = false;
   //         update();
   //         Get.offAll(() => EntryScreen());
   //         showToastMessage("Success", "Login Successful", Colors.green);
-  //       } else {
-  //         Get.to(() => RegistrationScreen());
   //       }
   //     }
   //   } on FirebaseAuthException catch (e) {
@@ -211,11 +235,23 @@ class AuthController extends GetxController {
             Get.to(() => RegistrationScreen());
           }
         } else if (mechanicDoc['uid'] == user.uid) {
-          // If user UID exists in the Mechanics collection, login success
-          isUserSign = false;
-          update();
-          Get.offAll(() => EntryScreen());
-          showToastMessage("Success", "Login Successful", Colors.green);
+          // Check if the mechanic's account is enabled
+          if (mechanicDoc['isEnabled'] == true) {
+            // If user UID exists and isEnabled is true, login success
+            isUserSign = false;
+            update();
+            Get.offAll(() => EntryScreen());
+            showToastMessage("Success", "Login Successful", Colors.green);
+          } else {
+            // If isEnabled is false, redirect to AdminContactScreen
+            isUserSign = false;
+            update();
+            Get.to(() => AdminContactScreen());
+            showToastMessage(
+                "Account Deactivated",
+                "Your account is deactivated. Please contact admin.",
+                Colors.red);
+          }
         }
       }
     } on FirebaseAuthException catch (e) {

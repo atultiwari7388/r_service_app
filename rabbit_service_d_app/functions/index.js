@@ -389,8 +389,10 @@ exports.updateMechanicNotifications = functions.firestore
   });
 
 //when mechanic uninstall mechanic app then deactivate the mechanic
+
 exports.checkInactiveMechanics = functions.pubsub
-  .schedule("every 10 minutes")
+  .schedule("0 0 * * *") // Runs every day at midnight
+  .timeZone("America/Los_Angeles") // Set to Pacific Time Zone
   .onRun(async (context) => {
     const now = admin.firestore.Timestamp.now();
     const cutoffTime = new Date(now.toDate().getTime() - 10 * 60 * 1000); // 10 minutes ago
@@ -418,73 +420,88 @@ exports.mechanicAcceptJobNotification = functions.firestore
   .onUpdate(async (change, context) => {
     const newValue = change.after.data();
     const previousValue = change.before.data();
+    const jobId = context.params.jobId;
 
-    // Check if the status changed from something else to 1 (Mechanic accepted the job)
-    if (previousValue.status !== 1 && newValue.status === 1) {
+    // Check if any mechanic's offer status changed to accepted (status 1)
+    const newOffers = newValue.mechanicsOffer || [];
+    const previousOffers = previousValue.mechanicsOffer || [];
+
+    // Find out if any mechanic has just accepted the offer
+    const acceptedOffer = newOffers.find(
+      (offer, index) =>
+        offer.status === 1 &&
+        (!previousOffers[index] || previousOffers[index].status !== 1)
+    );
+
+    if (acceptedOffer) {
       const userId = newValue.userId; // Get userId from job document
-      const jobId = context.params.jobId;
-      const mechanicName = newValue.mName; // Assuming mechanicName is stored in the job document
+      const mechanicName = acceptedOffer.mName || "Mechanic"; // Assuming mechanic's name is stored in the offer
+      const userDoc = await admin
+        .firestore()
+        .collection("Users")
+        .doc(userId)
+        .get();
 
-      try {
-        // Fetch the user document to get the FCM token and userName
-        const userDoc = await admin
-          .firestore()
-          .collection("Users")
-          .doc(userId)
-          .get();
-        if (!userDoc.exists) {
-          console.error("User not found:", userId);
-          return null;
-        }
-
-        const userData = userDoc.data();
-        const userToken = userData.fcmToken;
-        const userName = userData.userName || "User"; // Assuming userName is stored in the Users document
-
-        // Prepare notification payload with emojis and personalized text
-        const payload = {
-          notification: {
-            title: "🔧 Mechanic Accepted Your Job!",
-            body: `Hey ${userName}, ${mechanicName} has accepted your job request! 🚗🔧`,
-          },
-          data: {
-            jobId: jobId,
-            type: "default_sound",
-          },
-        };
-
-        // Send notification to the user
-        if (userToken) {
-          await admin.messaging().send({
-            token: userToken,
-            notification: payload.notification,
-            data: payload.data,
-          });
-
-          console.log(`Notification sent to user: ${userId} for job: ${jobId}`);
-        } else {
-          console.error(`User does not have a valid token: ${userId}`);
-        }
-      } catch (error) {
-        console.error("Error sending notification to user:", error);
+      if (!userDoc.exists) {
+        console.error("User not found:", userId);
+        return null;
       }
+
+      const userData = userDoc.data();
+      const userToken = userData.fcmToken;
+      const userName = userData.userName || "User"; // Default userName
+
+      // Prepare notification payload
+      const payload = {
+        notification: {
+          title: "🔧 Mechanic Accepted Your Job!",
+          body: `Hey ${userName}, ${mechanicName} has accepted your job request! 🚗🔧`,
+        },
+        data: {
+          jobId: jobId,
+          type: "default_sound",
+        },
+      };
+
+      // Send notification to the user
+      if (userToken) {
+        await admin.messaging().send({
+          token: userToken,
+          notification: payload.notification,
+          data: payload.data,
+        });
+
+        console.log(`Notification sent to user: ${userId} for job: ${jobId}`);
+      } else {
+        console.error(`User does not have a valid token: ${userId}`);
+      }
+    } else {
+      console.log("No new mechanic offer was accepted.");
     }
 
     return null;
   });
 
 // Function to send a notification to the mechanic when the user accepts the offer
+// Function to send a notification to the mechanic when the user accepts their offer
 exports.userAcceptMechanicOfferNotification = functions.firestore
   .document("jobs/{jobId}")
   .onUpdate(async (change, context) => {
     const newValue = change.after.data();
     const previousValue = change.before.data();
+    const jobId = context.params.jobId;
 
-    // Check if the status changed from something else to 2 (User accepted the mechanic's offer)
+    // Check if the user's job status changed to 2 (User accepted the mechanic's offer)
     if (previousValue.status !== 2 && newValue.status === 2) {
-      const mechanicId = newValue.mId; // Get mechanic's ID from job document
-      const jobId = context.params.jobId;
-      const userName = newValue.userName; // Assuming userName is stored in the job document
+      const userName = newValue.userName || "User"; // Get user name from the job document
+      const mechanicId = newValue.mechanicsOffer.find(
+        (offer) => offer.status === 2
+      )?.mId; // Get mechanic ID from accepted offer
+
+      if (!mechanicId) {
+        console.error("No mechanic offer was accepted.");
+        return null;
+      }
 
       try {
         // Fetch the mechanic document to get the FCM token and mechanicName
@@ -531,6 +548,108 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
       } catch (error) {
         console.error("Error sending notification to mechanic:", error);
       }
+    }
+
+    return null;
+  });
+
+//Update LatLng value in jobs collection and users sub-history collection
+// Scheduled function to run every 5 minutes
+exports.updateMechanicLocation = functions.pubsub
+  .schedule("every 5 minutes")
+  .onRun(async (context) => {
+    try {
+      // Fetch jobs with status 2
+      const jobsSnapshot = await admin
+        .firestore()
+        .collection("jobs")
+        .where("status", "==", 2)
+        .get();
+
+      const updates = [];
+
+      // Iterate through each job document
+      for (const jobDoc of jobsSnapshot.docs) {
+        const jobData = jobDoc.data();
+        const mechanicsOffers = jobData.mechanicsOffer;
+
+        // Find mechanics with status 2
+        for (const offer of mechanicsOffers) {
+          if (offer.status === 2) {
+            const mechanicId = offer.mId;
+            const userId = jobData.userId; // Get the userId from the job document
+
+            // Fetch the mechanic's real-time location
+            const mechanicDoc = await admin
+              .firestore()
+              .collection("Mechanics")
+              .doc(mechanicId)
+              .get();
+
+            if (mechanicDoc.exists) {
+              const mechanicData = mechanicDoc.data();
+              const { latitude: newLatitude, longitude: newLongitude } =
+                mechanicData.location || {};
+
+              // Update job's mechanicsOffer with new location
+              const offerIndex = mechanicsOffers.findIndex(
+                (o) => o.mId === mechanicId
+              );
+              if (offerIndex !== -1) {
+                // Update mechanics offer with new latitude and longitude
+                mechanicsOffers[offerIndex].mecLatitude = newLatitude;
+                mechanicsOffers[offerIndex].mecLongitude = newLongitude;
+
+                // Update the jobs collection
+                updates.push(
+                  jobDoc.ref.update({
+                    mechanicsOffer: mechanicsOffers,
+                  })
+                );
+
+                // Update the mechanic's location in the Mechanics collection (if needed)
+                updates.push(
+                  admin
+                    .firestore()
+                    .collection("Mechanics")
+                    .doc(mechanicId)
+                    .update({
+                      location: {
+                        latitude: newLatitude,
+                        longitude: newLongitude,
+                      },
+                    })
+                );
+
+                // Update the user's history as well
+                updates.push(
+                  admin
+                    .firestore()
+                    .collection("Users")
+                    .doc(userId)
+                    .collection("history")
+                    .doc(jobDoc.id) // Assuming you want to update the same job document in history
+                    .update({
+                      mechanicsOffer: mechanicsOffers, // Update the mechanicsOffer in user's history
+                    })
+                );
+              }
+            } else {
+              console.error("Mechanic not found:", mechanicId);
+            }
+          }
+        }
+      }
+
+      // Wait for all updates to complete
+      await Promise.all(updates);
+
+      console.log("Mechanic locations and user history updated successfully.");
+    } catch (error) {
+      console.error(
+        "Error updating mechanic locations and user history:",
+        error
+      );
     }
 
     return null;

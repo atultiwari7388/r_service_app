@@ -477,7 +477,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
     final driverName = driverData["userName"] ?? "";
     final driverPhone = driverData["phoneNumber"] ?? "";
     final driverEmail = driverData["email"] ?? "";
-    final bool approved = driverData["active"];
+    final bool approved = driverData["isEnabled"];
     final docId = data.id;
 
     return TableRow(
@@ -493,7 +493,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
             onChanged: (value) {
               if (value) {
                 data.reference.update({
-                  'active': value,
+                  'isEnabled': value,
                 }).then((value) {
                   showToastMessage("Success", "Value updated", Colors.green);
                 }).catchError((error) {
@@ -504,7 +504,7 @@ class _ShopsScreenState extends State<ShopsScreen> {
               } else {
                 // Update Firestore document when switch is turned off
                 data.reference.update({
-                  'active': value,
+                  'isEnabled': value,
                 }).then((value) {
                   showToastMessage("Success", "Value updated", Colors.green);
                 }).catchError((error) {

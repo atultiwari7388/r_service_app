@@ -3,9 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/database_services.dart';
-import 'package:regal_service_d_app/views/auth/login_screen.dart';
-import 'package:regal_service_d_app/views/auth/registration_screen.dart';
-import 'package:regal_service_d_app/views/entry_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
+import 'package:regal_service_d_app/entry_screen.dart';
 import '../utils/show_toast_msg.dart';
 
 class AuthController extends GetxController {
@@ -92,50 +92,6 @@ class AuthController extends GetxController {
   }
 
 //========================== SignIn with email and Password ===============================
-
-  // Future<void> signInWithEmailAndPassword() async {
-  //   isUserSign = true;
-  //   update();
-  //   try {
-  //     var signInUser = await _auth.signInWithEmailAndPassword(
-  //         email: _emailController.text, password: _passController.text);
-
-  //     final User? user = signInUser.user;
-  //     if (user != null) {
-  //       if (!user.emailVerified) {
-  //         // If the email is not verified, prompt the user to verify
-  //         showToastMessage("Email Not Verified",
-  //             "Please verify your email before logging in.", Colors.orange);
-
-  //         // Send another verification email
-  //         await user.sendEmailVerification();
-
-  //         // Optionally sign out the user
-  //         await _auth.signOut();
-
-  //         isUserSign = false;
-  //         update();
-  //         return;
-  //       }
-
-  //       var doc =
-  //           await FirebaseFirestore.instance.doc("Users/${user.uid}").get();
-  //       if (doc.exists && doc['uid'] == user.uid) {
-  //         isUserSign = false;
-  //         update();
-  //         Get.offAll(() => EntryScreen());
-  //         showToastMessage("Success", "Login Successful", Colors.green);
-  //       } else {
-  //         Get.to(() => RegistrationScreen());
-  //       }
-  //     }
-  //   } on FirebaseAuthException catch (e) {
-  //     handleAuthError(e);
-  //   } finally {
-  //     isUserSign = false;
-  //     update();
-  //   }
-  // }
 
   Future<void> signInWithEmailAndPassword() async {
     isUserSign = true;
