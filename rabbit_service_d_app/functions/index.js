@@ -482,7 +482,6 @@ exports.mechanicAcceptJobNotification = functions.firestore
     return null;
   });
 
-// Function to send a notification to the mechanic when the user accepts the offer
 // Function to send a notification to the mechanic when the user accepts their offer
 exports.userAcceptMechanicOfferNotification = functions.firestore
   .document("jobs/{jobId}")
@@ -553,104 +552,103 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
     return null;
   });
 
-//Update LatLng value in jobs collection and users sub-history collection
 // Scheduled function to run every 5 minutes
-exports.updateMechanicLocation = functions.pubsub
-  .schedule("every 5 minutes")
-  .onRun(async (context) => {
-    try {
-      // Fetch jobs with status 2
-      const jobsSnapshot = await admin
-        .firestore()
-        .collection("jobs")
-        .where("status", "==", 2)
-        .get();
+// exports.updateMechanicLocation = functions.pubsub
+//   .schedule("every 5 minutes")
+//   .onRun(async (context) => {
+//     try {
+//       // Fetch jobs with status 2
+//       const jobsSnapshot = await admin
+//         .firestore()
+//         .collection("jobs")
+//         .where("status", "==", 2)
+//         .get();
 
-      const updates = [];
+//       const updates = [];
 
-      // Iterate through each job document
-      for (const jobDoc of jobsSnapshot.docs) {
-        const jobData = jobDoc.data();
-        const mechanicsOffers = jobData.mechanicsOffer;
+//       // Iterate through each job document
+//       for (const jobDoc of jobsSnapshot.docs) {
+//         const jobData = jobDoc.data();
+//         const mechanicsOffers = jobData.mechanicsOffer;
 
-        // Find mechanics with status 2
-        for (const offer of mechanicsOffers) {
-          if (offer.status === 2) {
-            const mechanicId = offer.mId;
-            const userId = jobData.userId; // Get the userId from the job document
+//         // Find mechanics with status 2
+//         for (const offer of mechanicsOffers) {
+//           if (offer.status === 2) {
+//             const mechanicId = offer.mId;
+//             const userId = jobData.userId; // Get the userId from the job document
 
-            // Fetch the mechanic's real-time location
-            const mechanicDoc = await admin
-              .firestore()
-              .collection("Mechanics")
-              .doc(mechanicId)
-              .get();
+//             // Fetch the mechanic's real-time location
+//             const mechanicDoc = await admin
+//               .firestore()
+//               .collection("Mechanics")
+//               .doc(mechanicId)
+//               .get();
 
-            if (mechanicDoc.exists) {
-              const mechanicData = mechanicDoc.data();
-              const { latitude: newLatitude, longitude: newLongitude } =
-                mechanicData.location || {};
+//             if (mechanicDoc.exists) {
+//               const mechanicData = mechanicDoc.data();
+//               const { latitude: newLatitude, longitude: newLongitude } =
+//                 mechanicData.location || {};
 
-              // Update job's mechanicsOffer with new location
-              const offerIndex = mechanicsOffers.findIndex(
-                (o) => o.mId === mechanicId
-              );
-              if (offerIndex !== -1) {
-                // Update mechanics offer with new latitude and longitude
-                mechanicsOffers[offerIndex].mecLatitude = newLatitude;
-                mechanicsOffers[offerIndex].mecLongitude = newLongitude;
+//               // Update job's mechanicsOffer with new location
+//               const offerIndex = mechanicsOffers.findIndex(
+//                 (o) => o.mId === mechanicId
+//               );
+//               if (offerIndex !== -1) {
+//                 // Update mechanics offer with new latitude and longitude
+//                 mechanicsOffers[offerIndex].mecLatitude = newLatitude;
+//                 mechanicsOffers[offerIndex].mecLongitude = newLongitude;
 
-                // Update the jobs collection
-                updates.push(
-                  jobDoc.ref.update({
-                    mechanicsOffer: mechanicsOffers,
-                  })
-                );
+//                 // Update the jobs collection
+//                 updates.push(
+//                   jobDoc.ref.update({
+//                     mechanicsOffer: mechanicsOffers,
+//                   })
+//                 );
 
-                // Update the mechanic's location in the Mechanics collection (if needed)
-                updates.push(
-                  admin
-                    .firestore()
-                    .collection("Mechanics")
-                    .doc(mechanicId)
-                    .update({
-                      location: {
-                        latitude: newLatitude,
-                        longitude: newLongitude,
-                      },
-                    })
-                );
+//                 // Update the mechanic's location in the Mechanics collection (if needed)
+//                 updates.push(
+//                   admin
+//                     .firestore()
+//                     .collection("Mechanics")
+//                     .doc(mechanicId)
+//                     .update({
+//                       location: {
+//                         latitude: newLatitude,
+//                         longitude: newLongitude,
+//                       },
+//                     })
+//                 );
 
-                // Update the user's history as well
-                updates.push(
-                  admin
-                    .firestore()
-                    .collection("Users")
-                    .doc(userId)
-                    .collection("history")
-                    .doc(jobDoc.id) // Assuming you want to update the same job document in history
-                    .update({
-                      mechanicsOffer: mechanicsOffers, // Update the mechanicsOffer in user's history
-                    })
-                );
-              }
-            } else {
-              console.error("Mechanic not found:", mechanicId);
-            }
-          }
-        }
-      }
+//                 // Update the user's history as well
+//                 updates.push(
+//                   admin
+//                     .firestore()
+//                     .collection("Users")
+//                     .doc(userId)
+//                     .collection("history")
+//                     .doc(jobDoc.id) // Assuming you want to update the same job document in history
+//                     .update({
+//                       mechanicsOffer: mechanicsOffers, // Update the mechanicsOffer in user's history
+//                     })
+//                 );
+//               }
+//             } else {
+//               console.error("Mechanic not found:", mechanicId);
+//             }
+//           }
+//         }
+//       }
 
-      // Wait for all updates to complete
-      await Promise.all(updates);
+//       // Wait for all updates to complete
+//       await Promise.all(updates);
 
-      console.log("Mechanic locations and user history updated successfully.");
-    } catch (error) {
-      console.error(
-        "Error updating mechanic locations and user history:",
-        error
-      );
-    }
+//       console.log("Mechanic locations and user history updated successfully.");
+//     } catch (error) {
+//       console.error(
+//         "Error updating mechanic locations and user history:",
+//         error
+//       );
+//     }
 
-    return null;
-  });
+//     return null;
+//   });

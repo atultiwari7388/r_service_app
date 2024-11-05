@@ -291,32 +291,37 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
 
                       Divider(),
                       //==============Per hour charges========================
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          SizedBox(
-                            width: 142.w,
-                            child: Text(
-                              "Per Hour Charges",
-                              style: kIsWeb
-                                  ? TextStyle(color: kDark)
-                                  : appStyle(16.sp, kDark, FontWeight.w500),
+                      widget.isImage && widget.isPriceEnabled
+                          ? Container()
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                SizedBox(
+                                  width: 142.w,
+                                  child: Text(
+                                    "Per Hour Charges",
+                                    style: kIsWeb
+                                        ? TextStyle(color: kDark)
+                                        : appStyle(
+                                            16.sp, kDark, FontWeight.w500),
+                                  ),
+                                ),
+                                Container(
+                                  height: 20.h,
+                                  width: 1.w,
+                                  color: kDark,
+                                  margin:
+                                      EdgeInsets.symmetric(horizontal: 10.w),
+                                ),
+                                Text(
+                                  "\$${widget.perHourCharges}",
+                                  style: kIsWeb
+                                      ? TextStyle(color: kDark)
+                                      : appStyle(16.sp, kDark, FontWeight.w500),
+                                ),
+                              ],
                             ),
-                          ),
-                          Container(
-                            height: 20.h,
-                            width: 1.w,
-                            color: kDark,
-                            margin: EdgeInsets.symmetric(horizontal: 10.w),
-                          ),
-                          Text(
-                            "\$${widget.perHourCharges}",
-                            style: kIsWeb
-                                ? TextStyle(color: kDark)
-                                : appStyle(16.sp, kDark, FontWeight.w500),
-                          ),
-                        ],
-                      ),
+
                       SizedBox(height: 15.h),
                       //=============Descripition section ====================
                       // widget.description.isEmpty
@@ -493,20 +498,21 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                     child: Text("Confirm to Start"),
                   ),
                 SizedBox(height: 10.h),
-                Container(
-                  padding:
-                      EdgeInsets.only(left: 8, right: 8, top: 5, bottom: 5),
-                  margin: EdgeInsets.only(left: 5, right: 5),
-                  decoration: BoxDecoration(
-                      color: kPrimary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12.r)),
-                  child: Center(
-                    child: Text(
-                      "*Mechanic accepted your Job. Wait for Mechanic*",
-                      style: appStyle(11, kSecondary, FontWeight.normal),
+                if (widget.jobStatus == 3)
+                  Container(
+                    padding:
+                        EdgeInsets.only(left: 8, right: 8, top: 5, bottom: 5),
+                    margin: EdgeInsets.only(left: 5, right: 5),
+                    decoration: BoxDecoration(
+                        color: kPrimary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12.r)),
+                    child: Center(
+                      child: Text(
+                        "*Mechanic accepted your Job. Wait for Mechanic*",
+                        style: appStyle(11, kSecondary, FontWeight.normal),
+                      ),
                     ),
-                  ),
-                )
+                  )
               ],
             ),
           );

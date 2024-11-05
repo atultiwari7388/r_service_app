@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/database_services.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
+import 'package:regal_service_d_app/views/web/web_dashboard_screen.dart';
 import '../utils/show_toast_msg.dart';
 
 class AuthController extends GetxController {
@@ -139,7 +141,12 @@ class AuthController extends GetxController {
         if (userDoc.exists && userDoc['uid'] == user.uid) {
           isUserSign = false;
           update();
-          Get.offAll(() => EntryScreen());
+          if (kIsWeb) {
+            Get.offAll(() => WebDashboardScreen(setTab: () {}));
+          } else {
+            //navigate to mobile view
+            Get.offAll(() => EntryScreen());
+          }
           showToastMessage("Success", "Login Successful", Colors.green);
         } else {
           Get.to(() => RegistrationScreen());

@@ -779,7 +779,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   isStatusUpdating = false;
                 });
               }
-
               // Optional: Show a confirmation message or navigate to another screen
               Get.snackbar("Success", "Request Sent Successfully.");
             } else {
@@ -922,7 +921,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   isStatusUpdating = false;
                 });
               }
-
               // Optional: Show a confirmation message or navigate to another screen
               Get.snackbar("Success", "Request Sent Successfully.");
             } else {
@@ -996,6 +994,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           final fixCharge = fixPriceController.text;
           final time = timeController.text;
           if (fixCharge.isNotEmpty) {
+            Get.back();
             loc.Location location = loc.Location();
             loc.LocationData locationData = await location.getLocation();
 
@@ -1013,8 +1012,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               "reviewSubmitted": false,
               "fixPrice": fixCharge,
               'mechanicAddress': controller.appbarTitle,
-              'mecLatitude': locationData.latitude,
-              'mecLongtitude': locationData.longitude,
+              "latitude": locationData.latitude,
+              "longitude": locationData.longitude,
             };
 
             // Update the Firestore `jobs` collection
@@ -1054,7 +1053,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 isStatusUpdating = false;
               });
             }
-            Navigator.pop(context);
+
             // Optional: Show a confirmation message or navigate to another screen
             Get.snackbar("Success", "Request Sent Successfully.");
           } else {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -34,7 +35,7 @@ class AboutUsScreen extends StatelessWidget {
           } else {
             // Show the description from Firestore
             return Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: kIsWeb ? EdgeInsets.all(60) : EdgeInsets.all(16.0),
               child: Text(
                 snapshot.data!,
                 style: const TextStyle(fontSize: 16.0),

@@ -49,6 +49,7 @@ class UpcomingRequestCard extends StatefulWidget {
     required this.dateTime,
     required this.cancelationReason,
     required this.description,
+    this.perHourCharges = "",
   });
 
   final String userName;
@@ -82,6 +83,7 @@ class UpcomingRequestCard extends StatefulWidget {
   final DateTime dateTime;
   final String cancelationReason;
   final String description;
+  final String perHourCharges;
 
   @override
   State<UpcomingRequestCard> createState() => _UpcomingRequestCardState();
@@ -238,6 +240,38 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
             child: Column(
               children: [
                 buildReusableRow("Selected Service", "${widget.serviceName}"),
+
+                widget.currentStatus == 5
+                    ? Column(
+                        children: [
+                          buildReusableRow(
+                              "Vehicle", "${widget.companyNameAndVehicleName}"),
+                          widget.isImage && widget.isPriceEnabled
+                              ? buildReusableRow(
+                                  "Fix Charge", "\$${widget.fixCharge}")
+                              : widget.isPriceEnabled
+                                  ? buildReusableRow(
+                                      "Fix Charge", "\$${widget.fixCharge}")
+                                  : widget.isImage
+                                      ? Column(
+                                          children: [
+                                            buildReusableRow("Arrival Charges",
+                                                "\$${widget.arrivalCharges}"),
+                                            buildReusableRow("PerHour Charges",
+                                                "\$${widget.perHourCharges}")
+                                          ],
+                                        )
+                                      : Column(
+                                          children: [
+                                            buildReusableRow("Arrival Charges",
+                                                "\$${widget.arrivalCharges}"),
+                                            buildReusableRow("PerHour Charges",
+                                                "\$${widget.perHourCharges}")
+                                          ],
+                                        ),
+                        ],
+                      )
+                    : SizedBox(),
                 widget.currentStatus == 5
                     ? buildReusableRow("Payment Mode", "${widget.payMode}")
                     : SizedBox(),
@@ -263,10 +297,26 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                       ? buildReusableRow(
                                           "Fix Charge", "\$${widget.fixCharge}")
                                       : widget.isImage
-                                          ? buildReusableRow("Arrival Charges",
-                                              "\$${widget.arrivalCharges}")
-                                          : buildReusableRow("Arrival Charges",
-                                              "\$${widget.arrivalCharges}"),
+                                          ? Column(
+                                              children: [
+                                                buildReusableRow(
+                                                    "Arrival Charges",
+                                                    "\$${widget.arrivalCharges}"),
+                                                buildReusableRow(
+                                                    "PerHour Charges",
+                                                    "\$${widget.perHourCharges}")
+                                              ],
+                                            )
+                                          : Column(
+                                              children: [
+                                                buildReusableRow(
+                                                    "Arrival Charges",
+                                                    "\$${widget.arrivalCharges}"),
+                                                buildReusableRow(
+                                                    "PerHour Charges",
+                                                    "\$${widget.perHourCharges}")
+                                              ],
+                                            ),
                             ],
                           )
                         : widget.currentStatus == 2
@@ -274,8 +324,33 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                 children: [
                                   buildReusableRow("Vehicle",
                                       "${widget.companyNameAndVehicleName}"),
-                                  buildReusableRow("Arrival Charges",
-                                      "\$${widget.arrivalCharges}"),
+                                  widget.isImage && widget.isPriceEnabled
+                                      ? buildReusableRow(
+                                          "Fix Charge", "\$${widget.fixCharge}")
+                                      : widget.isPriceEnabled
+                                          ? buildReusableRow("Fix Charge",
+                                              "\$${widget.fixCharge}")
+                                          : widget.isImage
+                                              ? Column(
+                                                  children: [
+                                                    buildReusableRow(
+                                                        "Arrival Charges",
+                                                        "\$${widget.arrivalCharges}"),
+                                                    buildReusableRow(
+                                                        "PerHour Charges",
+                                                        "\$${widget.perHourCharges}")
+                                                  ],
+                                                )
+                                              : Column(
+                                                  children: [
+                                                    buildReusableRow(
+                                                        "Arrival Charges",
+                                                        "\$${widget.arrivalCharges}"),
+                                                    buildReusableRow(
+                                                        "PerHour Charges",
+                                                        "\$${widget.perHourCharges}")
+                                                  ],
+                                                ),
                                 ],
                               )
                             : widget.currentStatus == 3
@@ -283,11 +358,58 @@ class _UpcomingRequestCardState extends State<UpcomingRequestCard> {
                                     children: [
                                       buildReusableRow("Vehicle",
                                           "${widget.companyNameAndVehicleName}"),
-                                      buildReusableRow("Arrival Charges",
-                                          "\$${widget.arrivalCharges}"),
+                                      widget.isImage && widget.isPriceEnabled
+                                          ? buildReusableRow("Fix Charge",
+                                              "\$${widget.fixCharge}")
+                                          : widget.isPriceEnabled
+                                              ? buildReusableRow(
+                                                  "Arrival Charges",
+                                                  "\$${widget.arrivalCharges}")
+                                              : Column(
+                                                  children: [
+                                                    buildReusableRow(
+                                                        "Arrival Charges",
+                                                        "\$${widget.arrivalCharges}"),
+                                                    buildReusableRow(
+                                                        "PerHour Charges",
+                                                        "\$${widget.perHourCharges}")
+                                                  ],
+                                                ),
                                     ],
                                   )
                                 : SizedBox(),
+
+                widget.currentStatus == 4
+                    ? Column(
+                        children: [
+                          buildReusableRow(
+                              "Vehicle", "${widget.companyNameAndVehicleName}"),
+                          widget.isImage && widget.isPriceEnabled
+                              ? buildReusableRow(
+                                  "Fix Charge", "\$${widget.fixCharge}")
+                              : widget.isPriceEnabled
+                                  ? buildReusableRow(
+                                      "Fix Charge", "\$${widget.fixCharge}")
+                                  : widget.isImage
+                                      ? Column(
+                                          children: [
+                                            buildReusableRow("Arrival Charges",
+                                                "\$${widget.arrivalCharges}"),
+                                            buildReusableRow("PerHour Charges",
+                                                "\$${widget.perHourCharges}")
+                                          ],
+                                        )
+                                      : Column(
+                                          children: [
+                                            buildReusableRow("Arrival Charges",
+                                                "\$${widget.arrivalCharges}"),
+                                            buildReusableRow("PerHour Charges",
+                                                "\$${widget.perHourCharges}")
+                                          ],
+                                        ),
+                        ],
+                      )
+                    : SizedBox(),
 
                 widget.isImage
                     ?

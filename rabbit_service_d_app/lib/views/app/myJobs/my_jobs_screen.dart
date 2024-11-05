@@ -293,18 +293,44 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
 
   void _updateJobStatus(String orderId, String reason) async {
     try {
-      // Update the job document in Firestore with the new status and reason
+      // Fetch the job document to access the mechanicsOffer list
+      DocumentSnapshot jobSnapshot = await FirebaseFirestore.instance
+          .collection('jobs')
+          .doc(orderId)
+          .get();
 
+      // Cast job data to Map<String, dynamic>
+      Map<String, dynamic>? jobData =
+          jobSnapshot.data() as Map<String, dynamic>?;
+
+      // Access mechanicsOffer from jobData, if it exists
+      List<dynamic> mechanicsOffer = jobData?['mechanicsOffer'] ?? [];
+
+      // Update the status in each mechanic's offer if mechanicsOffer is not empty
+      if (mechanicsOffer.isNotEmpty) {
+        mechanicsOffer = mechanicsOffer.map((offer) {
+          final offerData = offer as Map<String, dynamic>;
+          offerData['status'] = -1;
+          return offerData;
+        }).toList();
+      }
+
+      // Data to update in the main job document and in the user's history
       final data = {
         'status': -1, // Update status to cancelled
         'cancelReason': reason, // Store the selected reason
         'cancelBy': 'Driver',
+        'mechanicsOffer':
+            mechanicsOffer, // Update the mechanicsOffer with new statuses
       };
+
+      // Update the job document in Firestore
       await FirebaseFirestore.instance
           .collection('jobs')
           .doc(orderId)
           .update(data);
 
+      // Update the job in the user's history subcollection
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
@@ -312,17 +338,61 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           .doc(orderId)
           .update(data);
 
+      // Print the updated mechanicsOffer list
+      print("Updated mechanicsOffer: $mechanicsOffer");
+
       // Show a success message
-      Get.snackbar("Job Cancelled", "The job was cancelled due to: $reason",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white);
+      Get.snackbar(
+        "Job Cancelled",
+        "The job was cancelled due to: $reason",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
     } catch (error) {
       // Handle any errors
-      Get.snackbar("Error", "Failed to cancel job: $error",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
+      Get.snackbar(
+        "Error",
+        "Failed to cancel job: $error",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
+
+  // void _updateJobStatus(String orderId, String reason) async {
+  //   try {
+  //     // Update the job document in Firestore with the new status and reason
+
+  //     final data = {
+  //       'status': -1, // Update status to cancelled
+  //       'cancelReason': reason, // Store the selected reason
+  //       'cancelBy': 'Driver',
+  //     };
+  //     await FirebaseFirestore.instance
+  //         .collection('jobs')
+  //         .doc(orderId)
+  //         .update(data);
+
+  //     await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('history')
+  //         .doc(orderId)
+  //         .update(data);
+
+  //     // Show a success message
+  //     Get.snackbar("Job Cancelled", "The job was cancelled due to: $reason",
+  //         snackPosition: SnackPosition.BOTTOM,
+  //         backgroundColor: Colors.green,
+  //         colorText: Colors.white);
+  //   } catch (error) {
+  //     // Handle any errors
+  //     Get.snackbar("Error", "Failed to cancel job: $error",
+  //         snackPosition: SnackPosition.BOTTOM,
+  //         backgroundColor: Colors.red,
+  //         colorText: Colors.white);
+  //   }
+  // }
 }

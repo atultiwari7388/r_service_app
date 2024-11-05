@@ -389,8 +389,8 @@ class _MyJobsCardState extends State<MyJobsCard> {
               borderRadius: BorderRadius.circular(12.r),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // buildReusableRow("Selected Service", widget.serviceName),
                 Row(
                   children: [
                     Expanded(

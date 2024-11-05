@@ -8,9 +8,10 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
+import 'package:regal_service_d_app/views/web/web_dashboard_screen.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../onBoard/on_boarding_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore package
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -68,9 +69,16 @@ class _SplashScreenState extends State<SplashScreen> {
         if (userDoc.exists && userDoc['uid'] == user!.uid) {
           // User exists in Users collection
           log("User exists in Users collection, navigating to EntryScreen");
-          Get.offAll(() => EntryScreen(),
-              transition: Transition.cupertino,
-              duration: const Duration(milliseconds: 900));
+          if (kIsWeb) {
+            Get.offAll(() => WebDashboardScreen(setTab: () {}),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900));
+          } else {
+            //navigate to mobile screen
+            Get.offAll(() => EntryScreen(),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900));
+          }
         } else {
           // If the user does not exist in the Users collection, navigate to Registration
           log("User does not exist in Users collection, navigating to RegistrationScreen");

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -26,7 +27,9 @@ class _FindMechanicState extends State<FindMechanic> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
+      padding: kIsWeb
+          ? EdgeInsets.all(5)
+          : EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
       decoration: BoxDecoration(
           color: kSecondary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12.r)),
@@ -69,7 +72,7 @@ class _FindMechanicState extends State<FindMechanic> {
                           .showSelectedVehicleAndCompanyOptions(context);
                     },
                     child: SizedBox(
-                      width: 270.w,
+                      width: kIsWeb ? 620 : 270.w,
                       child: AbsorbPointer(
                         child: DashBoardSearchTextField(
                           label: "Select your Vehicle",

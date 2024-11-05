@@ -116,9 +116,6 @@ class _UpcomingAndCompletedJobsScreenState
             .where((order) => order['status'] >= 0 && order['status'] <= 4)
             .toList();
 
-        // List<Map<String, dynamic>> completedOrders =
-        //     orders.where((order) => order['status'] == 5).toList();
-        // Include both completed (status == 5) and canceled (status == -1) jobs
         List<Map<String, dynamic>> completedAndCancelOrders = orders
             .where((order) => order['status'] == 5 || order['status'] == -1)
             .toList();
@@ -239,6 +236,7 @@ class _UpcomingAndCompletedJobsScreenState
               int mechanicStatus = 0;
               String arrivalCharges = "";
               String fixCharges = "";
+              String perHourCharges = "";
 
               final mechanicsOffer =
                   jobs["mechanicsOffer"] as List<dynamic>? ?? [];
@@ -254,13 +252,13 @@ class _UpcomingAndCompletedJobsScreenState
                   .any((offer) => offer['status'] >= 2 && offer['status'] <= 5);
 
               if (mechanic != null) {
-                mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ??
-                    0.0; // Update with your field name
-                mecLongitude = (mechanic['longitude'] as num?)?.toDouble() ??
-                    0.0; // Update with your field name
+                mecLatitude = (mechanic['latitude'] as num?)?.toDouble() ?? 0.0;
+                mecLongitude =
+                    (mechanic['longitude'] as num?)?.toDouble() ?? 0.0;
                 mechanicStatus = mechanic["status"];
                 arrivalCharges = mechanic["arrivalCharges"].toString();
                 fixCharges = mechanic["fixPrice"].toString();
+                perHourCharges = mechanic["perHourCharges"].toString();
               }
 
               // Print to check values
@@ -360,6 +358,7 @@ class _UpcomingAndCompletedJobsScreenState
                 dateTime: jobs["orderDate"].toDate(),
                 cancelationReason: jobs["cancelReason"].toString(),
                 description: jobs["description"].toString(),
+                perHourCharges: perHourCharges,
               );
             },
           ),
