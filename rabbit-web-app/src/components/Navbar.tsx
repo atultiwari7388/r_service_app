@@ -1,23 +1,32 @@
+"use client";
+
 import Image from "next/image";
-import React from "react";
+import React, { useState } from "react";
+import { FaBars, FaTimes } from "react-icons/fa";
 
 export default function NavBar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return (
-    <nav className="flex items-center justify-between bg-white shadow-md py-4 px-6">
+    <nav className="flex items-center justify-between bg-white shadow-md py-4 px-6 relative">
       {/* Left Section: Logo */}
       <div className="flex items-center">
         <Image
           src="/Logo_Topbar.png"
           alt="logo"
-          className="h-10 w-full rounded-lg"
+          className="h-10 w-auto rounded-lg"
           height={0}
           width={0}
           sizes="100vw"
         />
       </div>
 
-      {/* Center Section: Navigation Links */}
-      <div className="space-x-8 text-gray-700">
+      {/* Desktop Navigation Links (on screens larger than sm) */}
+      <div className="hidden sm:flex sm:items-center sm:space-x-8 text-gray-700 ml-auto">
         <a href="#home" className="hover:text-[#F96176]">
           Home
         </a>
@@ -29,11 +38,61 @@ export default function NavBar() {
         </a>
       </div>
 
-      {/* Right Section: Login Button */}
-      <div>
+      {/* Desktop Login Button */}
+      <div className="hidden sm:block ml-4">
         <button className="bg-[#F96176] text-white px-4 py-2 rounded hover:bg-[#e05065]">
           Login
         </button>
+      </div>
+
+      {/* Hamburger Icon (Mobile only) */}
+      <div className="sm:hidden flex items-center">
+        <button onClick={toggleMenu}>
+          {isMenuOpen ? (
+            <FaTimes className="text-2xl text-[#F96176]" />
+          ) : (
+            <FaBars className="text-2xl text-[#F96176]" />
+          )}
+        </button>
+      </div>
+
+      {/* Mobile Navigation Links (Dropdown style) */}
+      <div
+        className={`${
+          isMenuOpen ? "block" : "hidden"
+        } sm:hidden absolute top-0 left-0 w-full bg-white shadow-lg py-4 px-6 mt-16 z-10`}
+      >
+        <a
+          href="#home"
+          className="block py-2 text-gray-700 hover:text-[#F96176]"
+          onClick={() => setIsMenuOpen(false)}
+        >
+          Home
+        </a>
+        <a
+          href="#about"
+          className="block py-2 text-gray-700 hover:text-[#F96176]"
+          onClick={() => setIsMenuOpen(false)}
+        >
+          About Us
+        </a>
+        <a
+          href="#contact"
+          className="block py-2 text-gray-700 hover:text-[#F96176]"
+          onClick={() => setIsMenuOpen(false)}
+        >
+          Contact Us
+        </a>
+
+        {/* Mobile Login Button */}
+        <div className="mt-4">
+          <button
+            className="block w-full bg-[#F96176] text-white py-2 rounded hover:bg-[#e05065]"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            Login
+          </button>
+        </div>
       </div>
     </nav>
   );

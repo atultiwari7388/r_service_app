@@ -58,6 +58,22 @@ const CustomCarousel = () => {
     arrows: true,
     autoplay: true,
     autoplaySpeed: 3000,
+    responsive: [
+      {
+        breakpoint: 1024,
+        settings: {
+          slidesToShow: 1, // One slide per view in tablets and below
+          slidesToScroll: 1,
+        },
+      },
+      {
+        breakpoint: 768,
+        settings: {
+          slidesToShow: 1, // One slide per view in mobile
+          slidesToScroll: 1,
+        },
+      },
+    ],
   };
 
   if (!isClient) {
@@ -71,32 +87,32 @@ const CustomCarousel = () => {
           <div key={index}>
             <div
               className="flex flex-col md:flex-row gap-4 bg-[#f8f8f8] p-5 md:px-24 md:py-20 w-full items-center"
-              style={{ height: "500px" }}
+              style={{ height: "auto" }}
             >
-              {/* Centered Image */}
-              <div className="w-full lg:w-1/2 flex justify-center items-center h-full p-4">
+              {/* Image */}
+              <div className="w-full flex justify-center items-center h-full p-4">
                 <Image
                   src={slide.imageSrc}
                   alt={slide.title}
                   layout="intrinsic"
-                  width={450} // Reduced size for better fit
-                  height={450} // Reduced size for better fit
+                  width={300} // Adjusted for mobile view
+                  height={300} // Adjusted for mobile view
                   objectFit="contain"
                   className="max-w-full h-auto"
                 />
               </div>
 
-              {/* Content */}
-              <div className="w-full lg:w-1/2 text-black flex flex-col justify-center items-start pl-8 space-y-6">
-                <h2 className="text-4xl font-bold tracking-tight leading-tight mb-4 text-black">
+              {/* Content (Title, Description, Button) */}
+              <div className="w-full text-black flex flex-col justify-center items-start px-4 md:px-8 space-y-6">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight mb-4 text-black">
                   {slide.title}
                 </h2>
-                <p className="text-lg leading-relaxed mb-6">
+                <p className="text-base sm:text-lg leading-relaxed mb-6">
                   {slide.description}
                 </p>
                 <a
                   href={slide.buttonLink}
-                  className="bg-[#F96176] text-white px-8 py-4 rounded text-lg font-medium hover:bg-[#F96176] transition-transform transform hover:scale-105"
+                  className="bg-[#F96176] text-white px-6 py-3 rounded text-lg font-medium hover:bg-[#F96176] transition-transform transform hover:scale-105"
                 >
                   {slide.buttonText}
                 </a>
