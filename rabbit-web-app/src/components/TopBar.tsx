@@ -15,13 +15,13 @@ export default function TopBar() {
         <div className="flex items-center space-x-2">
           <FaPhone />
           <a href="">
-            <span>+91 9569368066</span>
+            <span>(+1)202 555 088</span>
           </a>
         </div>
         <div className="flex items-center space-x-2">
           <FaEnvelope />
           <a href="">
-            <span>mylexinfotech@gmail.com</span>
+            <span>info@rabbitmechanicservices.com</span>
           </a>
         </div>
         <div className="flex items-center space-x-2">
