@@ -2,6 +2,8 @@ import TopBar from "./../../components/TopBar";
 import CustomCarousel from "./components/CustomCarosuel";
 import NavBar from "../../components/Navbar";
 import ServiceComponent from "./components/ServiceComponent";
+import AboutSection from "./components/AboutComp";
+import BookingSection from "./components/BookService";
 
 export default function Home() {
   return (
@@ -12,6 +14,8 @@ export default function Home() {
         <CustomCarousel />
       </main>
       <ServiceComponent />
+      <AboutSection />
+      <BookingSection />
     </div>
   );
 }

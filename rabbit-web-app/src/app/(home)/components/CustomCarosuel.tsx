@@ -61,15 +61,18 @@ const CustomCarousel = () => {
       <Slider {...settings}>
         {sliderData.map((slide, index) => (
           <div key={index}>
-            <div className="flex md:flex-row flex-col gap-4 bg-[#f8f8f8] p-5 md:px-24 md:py-20 w-full">
+            <div
+              className="flex md:flex-row flex-col gap-4 bg-[#f8f8f8] p-5 md:px-24 md:py-20 w-full"
+              style={{ height: "500px" }}
+            >
               {/* Image on the left */}
               <div className="w-full lg:w-1/2 h-full overflow-hidden rounded-lg shadow-lg">
                 <Image
                   src={slide.imageSrc}
                   alt={slide.title}
-                  layout="responsive"
+                  layout="intrinsic"
                   width={800}
-                  height={600}
+                  height={500} // fixed height for the image
                   objectFit="cover"
                   className="w-full h-full"
                 />
