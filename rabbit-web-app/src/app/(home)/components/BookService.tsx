@@ -15,7 +15,7 @@ const BookingSection = () => {
           {/* Left Section (Text Content) */}
           <div className="lg:w-1/2 text-white space-y-6">
             <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
-              Certified & Award-Winning Car Repair Services
+              Certified & Award-Winning Truck Repair Services
             </h1>
             <p className="text-lg sm:text-xl text-gray-200">
               Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd
@@ -54,7 +54,9 @@ const BookingSection = () => {
                 {/* Service Select */}
                 <div className="col-span-1">
                   <select className="w-full h-14 p-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-                    <option selected>Select A Service</option>
+                    <option defaultValue={"Select A Service"}>
+                      Select A Service
+                    </option>
                     <option value="1">Service 1</option>
                     <option value="2">Service 2</option>
                     <option value="3">Service 3</option>

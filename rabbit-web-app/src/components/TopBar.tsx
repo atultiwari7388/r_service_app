@@ -26,7 +26,7 @@ export default function TopBar() {
         </div>
         <div className="flex items-center space-x-2">
           <FaMapMarkerAlt />
-          <span>Sahibzada Ajit Singh Nagar, Punjab 160071</span>
+          <span>New York, NY 10001, USA</span>
         </div>
       </div>
 

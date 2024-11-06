@@ -9,7 +9,7 @@ import "slick-carousel/slick/slick-theme.css";
 // Slider data
 const sliderData = [
   {
-    imageSrc: "/truck-image-2.jpg",
+    imageSrc: "/slider_1_n.png",
     title: "Premium Truck Services",
     description:
       "Fast, reliable, and quality truck servicing with a personal touch.",
@@ -17,7 +17,7 @@ const sliderData = [
     buttonLink: "#",
   },
   {
-    imageSrc: "/truck-image-3.jpg",
+    imageSrc: "/slider_2_n.png",
     title: "24/7 Roadside Assistance",
     description:
       "We're always ready to assist you, day or night, wherever you are.",
@@ -25,8 +25,16 @@ const sliderData = [
     buttonLink: "#",
   },
   {
-    imageSrc: "/truck-image-4.jpg",
+    imageSrc: "/slider_3_n.png",
     title: "Affordable Truck Repairs",
+    description:
+      "High-quality repairs that won't break the bank. Get back on the road quickly!",
+    buttonText: "Get a Quote",
+    buttonLink: "#",
+  },
+  {
+    imageSrc: "/slider_4_n.png",
+    title: "Truck Tire Repairs",
     description:
       "High-quality repairs that won't break the bank. Get back on the road quickly!",
     buttonText: "Get a Quote",
@@ -62,23 +70,23 @@ const CustomCarousel = () => {
         {sliderData.map((slide, index) => (
           <div key={index}>
             <div
-              className="flex md:flex-row flex-col gap-4 bg-[#f8f8f8] p-5 md:px-24 md:py-20 w-full"
+              className="flex flex-col md:flex-row gap-4 bg-[#f8f8f8] p-5 md:px-24 md:py-20 w-full items-center"
               style={{ height: "500px" }}
             >
-              {/* Image on the left */}
-              <div className="w-full lg:w-1/2 h-full overflow-hidden rounded-lg shadow-lg">
+              {/* Centered Image */}
+              <div className="w-full lg:w-1/2 flex justify-center items-center h-full p-4">
                 <Image
                   src={slide.imageSrc}
                   alt={slide.title}
                   layout="intrinsic"
-                  width={800}
-                  height={500} // fixed height for the image
-                  objectFit="cover"
-                  className="w-full h-full"
+                  width={450} // Reduced size for better fit
+                  height={450} // Reduced size for better fit
+                  objectFit="contain"
+                  className="max-w-full h-auto"
                 />
               </div>
 
-              {/* Content on the right */}
+              {/* Content */}
               <div className="w-full lg:w-1/2 text-black flex flex-col justify-center items-start pl-8 space-y-6">
                 <h2 className="text-4xl font-bold tracking-tight leading-tight mb-4 text-black">
                   {slide.title}

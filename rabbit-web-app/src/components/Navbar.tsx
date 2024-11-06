@@ -1,4 +1,5 @@
 import Image from "next/image";
+import React from "react";
 
 export default function NavBar() {
   return (
@@ -6,9 +7,9 @@ export default function NavBar() {
       {/* Left Section: Logo */}
       <div className="flex items-center">
         <Image
-          src="/app_bar_logo.png"
+          src="/Logo_Topbar.png"
           alt="logo"
-          className="h-22 w-full rounded-lg"
+          className="h-10 w-full rounded-lg"
           height={0}
           width={0}
           sizes="100vw"

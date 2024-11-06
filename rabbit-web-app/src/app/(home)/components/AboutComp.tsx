@@ -16,9 +16,12 @@ const AboutSection = () => {
               className="absolute top-0 left-0 w-full h-full object-cover"
               src="/about.jpg"
               alt="About"
-              layout="fill"
+              layout="intrinsic"
+              width={450}
+              height={450}
               objectFit="cover"
             />
+
             <div
               className="absolute top-0 right-0 mt-n4 mr-n4 py-4 px-5"
               style={{ background: "rgba(0, 0, 0, .08)" }}

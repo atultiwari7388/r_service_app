@@ -4,6 +4,7 @@ import NavBar from "../../components/Navbar";
 import ServiceComponent from "./components/ServiceComponent";
 import AboutSection from "./components/AboutComp";
 import BookingSection from "./components/BookService";
+import Footer from "./../../components/Footer";
 
 export default function Home() {
   return (
@@ -16,6 +17,7 @@ export default function Home() {
       <ServiceComponent />
       <AboutSection />
       <BookingSection />
+      <Footer />
     </div>
   );
 }
