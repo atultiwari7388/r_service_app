@@ -36,7 +36,9 @@ const AboutSection = () => {
           <div className="lg:w-2/3 mt-6">
             {" "}
             {/* Added margin-top for spacing */}
-            <h6 className="text-primary text-uppercase font-bold">About Us</h6>
+            <h6 className="text-black text-2xl text-uppercase font-bold">
+              About Us
+            </h6>
             <h1 className="mb-4 text-3xl">
               <span className="text-[#F96176] font-bold">Rabbit Service</span>{" "}
               Is The Best Place For Your Auto Care

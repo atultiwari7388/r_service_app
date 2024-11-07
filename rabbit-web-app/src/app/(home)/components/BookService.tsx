@@ -82,7 +82,7 @@ const BookingSection = () => {
 
                 {/* Book Now Button */}
                 <div className="col-span-1">
-                  <button className="w-full bg-gradient-to-r from-[#F96176] to-[#58BB87] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105">
+                  <button className="w-full bg-[#F96176] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105">
                     Book Now
                   </button>
                 </div>

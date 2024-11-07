@@ -2,6 +2,9 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
+import TopBar from "./../components/TopBar";
+import NavBar from "./../components/Navbar";
+import Footer from "./../components/Footer";
 
 export const metadata: Metadata = {
   title: "Rabbit-Truck Repair Services",
@@ -13,7 +16,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <TopBar />
+        <NavBar />
+        {children}
+        <Footer />
+      </body>
     </html>
   );
 }

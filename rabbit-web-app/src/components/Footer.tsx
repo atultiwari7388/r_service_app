@@ -44,18 +44,29 @@ const Footer: React.FC = () => {
               </a>
             </div>
           </div>
-
-          {/* Opening Hours Section */}
+          {/* Quick links Section */}
           <div>
             <h4 className="text-white text-lg font-semibold mb-4">
-              Opening Hours
+              Quick Links
             </h4>
-            <p className="text-gray-300">Monday - Friday:</p>
-            <p className="text-gray-400">09.00 AM - 09.00 PM</p>
-            <p className="text-gray-300 mt-4">Saturday - Sunday:</p>
-            <p className="text-gray-400">09.00 AM - 12.00 PM</p>
+            <ul className="space-y-2">
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white">
+                  Home
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white">
+                  About us
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-gray-300 hover:text-white">
+                  Contact us
+                </a>
+              </li>
+            </ul>
           </div>
-
           {/* Services Section */}
           <div>
             <h4 className="text-white text-lg font-semibold mb-4">Services</h4>
@@ -87,7 +98,6 @@ const Footer: React.FC = () => {
               </li>
             </ul>
           </div>
-
           {/* Newsletter Section */}
           <div>
             <h4 className="text-white text-lg font-semibold mb-4">
@@ -131,20 +141,6 @@ const Footer: React.FC = () => {
                 Mylex Infotech
               </a>
             </p>
-          </div>
-          <div className="flex justify-center space-x-4 mt-4 text-gray-300 text-sm">
-            <a href="#" className="hover:underline">
-              Home
-            </a>
-            <a href="#" className="hover:underline">
-              Cookies
-            </a>
-            <a href="#" className="hover:underline">
-              Help
-            </a>
-            <a href="#" className="hover:underline">
-              FAQs
-            </a>
           </div>
         </div>
       </div>
