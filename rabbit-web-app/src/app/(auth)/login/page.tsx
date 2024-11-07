@@ -2,10 +2,9 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { LoginFormValues } from "../../../types/auth"; // Make sure your path is correct
+import { LoginFormValues } from "../../../types/auth";
 
 const Login: React.FC = () => {
-  // Step 1: Initialize form values state
   const [formValues, setFormValues] = useState<LoginFormValues>({
     email: "",
     password: "",

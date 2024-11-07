@@ -29,15 +29,16 @@ export default function NavBar() {
       </Link>
       {/* Desktop Navigation Links (on screens larger than sm) */}
       <div className="hidden sm:flex sm:items-center sm:space-x-8 text-gray-700 ml-auto font-semibold">
-        <a href="#home" className="hover:text-[#F96176]">
+        <Link href={`/`} className="hover:text-[#F96176]">
           Home
-        </a>
-        <a href="#about" className="hover:text-[#F96176]">
-          About Us
-        </a>
-        <a href="#contact" className="hover:text-[#F96176]">
-          Contact Us
-        </a>
+        </Link>
+
+        <Link href={`/about-us`} className="hover:text-[#F96176]">
+          About us
+        </Link>
+        <Link href={`/`} className="hover:text-[#F96176]">
+          Contact us
+        </Link>
       </div>
 
       {/* Desktop Login Button */}
@@ -89,14 +90,17 @@ export default function NavBar() {
         </a>
 
         {/* Mobile Login Button */}
-        <div className="mt-4">
-          <button
-            className="block w-full bg-[#F96176] text-white py-2 rounded hover:bg-[#e05065]"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Login
-          </button>
-        </div>
+
+        <Link href={`/login`}>
+          <div className="mt-4">
+            <button
+              className="block w-full bg-[#F96176] text-white py-2 rounded hover:bg-[#e05065]"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Login
+            </button>
+          </div>
+        </Link>
       </div>
     </nav>
   );
