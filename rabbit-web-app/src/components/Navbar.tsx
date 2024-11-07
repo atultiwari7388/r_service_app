@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import React, { useState } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 
@@ -39,11 +40,13 @@ export default function NavBar() {
       </div>
 
       {/* Desktop Login Button */}
-      <div className="hidden sm:block ml-4">
-        <button className="bg-[#F96176] text-white px-4 py-2 rounded hover:bg-[#e05065]">
-          Login
-        </button>
-      </div>
+      <Link href={`/login`}>
+        <div className="hidden sm:block ml-4">
+          <button className="bg-[#F96176] text-white px-4 py-2 rounded hover:bg-[#e05065]">
+            Login
+          </button>
+        </div>
+      </Link>
 
       {/* Hamburger Icon (Mobile only) */}
       <div className="sm:hidden flex items-center">
