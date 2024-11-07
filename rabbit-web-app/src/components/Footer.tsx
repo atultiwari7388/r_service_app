@@ -29,20 +29,6 @@ const Footer: React.FC = () => {
               <FaEnvelope className="mr-2 text-[#F96176]" />
               info@rabbitmechanicservices.com
             </p>
-            <div className="flex space-x-3 mt-4">
-              <a href="#" className="text-gray-300 hover:text-white">
-                <FaTwitter />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-white">
-                <FaFacebookF />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-white">
-                <FaYoutube />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-white">
-                <FaLinkedinIn />
-              </a>
-            </div>
           </div>
           {/* Quick links Section */}
           <div>
@@ -69,45 +55,33 @@ const Footer: React.FC = () => {
           </div>
           {/* Services Section */}
           <div>
-            <h4 className="text-white text-lg font-semibold mb-4">Services</h4>
+            <h4 className="text-white text-lg font-semibold mb-4">Our Terms</h4>
             <ul className="space-y-2">
               <li>
                 <a href="#" className="text-gray-300 hover:text-white">
-                  Diagnostic Test
+                  Terms & Conditions
                 </a>
               </li>
               <li>
                 <a href="#" className="text-gray-300 hover:text-white">
-                  Engine Servicing
+                  Privacy Policy
                 </a>
               </li>
               <li>
                 <a href="#" className="text-gray-300 hover:text-white">
-                  Tires Replacement
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Oil Changing
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  Vacuum Cleaning
+                  Refund Policy
                 </a>
               </li>
             </ul>
           </div>
           {/* Newsletter Section */}
           <div>
-            <h4 className="text-white text-lg font-semibold mb-4">
-              Newsletter
-            </h4>
-            <p className="text-gray-300 mb-4">
+            <h4 className="text-white text-lg font-semibold mb-4">Reach Us</h4>
+            {/* <p className="text-gray-300 mb-4">
               Stay updated with our latest services and offers.
-            </p>
+            </p> */}
             <div className="relative max-w-xs">
-              <input
+              {/* <input
                 type="email"
                 placeholder="Your email"
                 className="w-full p-3 pl-4 pr-20 bg-gray-800 text-gray-300 border-none focus:ring-2 focus:ring-[#F96176] outline-none rounded"
@@ -118,6 +92,34 @@ const Footer: React.FC = () => {
               >
                 Sign Up
               </button>
+            */}
+
+              <div className="flex space-x-4 mt-4">
+                <a
+                  href="#"
+                  className="text-[#F96176] hover:text-[#F96176] rounded bg-white py-2 px-2"
+                >
+                  <FaTwitter />
+                </a>
+                <a
+                  href="#"
+                  className="text-[#F96176] hover:text-[#F96176] rounded bg-white py-2 px-2"
+                >
+                  <FaFacebookF />
+                </a>
+                <a
+                  href="#"
+                  className="text-[#F96176] hover:text-[#F96176] rounded bg-white py-2 px-2"
+                >
+                  <FaYoutube />
+                </a>
+                <a
+                  href="#"
+                  className="text-[#F96176] hover:text-[#F96176] rounded bg-white py-2 px-2"
+                >
+                  <FaLinkedinIn />
+                </a>
+              </div>
             </div>
           </div>
         </div>

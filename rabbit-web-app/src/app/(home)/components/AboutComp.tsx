@@ -36,7 +36,7 @@ const AboutSection = () => {
           <div className="lg:w-2/3 mt-6">
             {" "}
             {/* Added margin-top for spacing */}
-            <h6 className="text-black text-2xl text-uppercase font-bold">
+            <h6 className="text-[#F96176] text-2xl text-uppercase font-bold text-center">
               About Us
             </h6>
             <h1 className="mb-4 text-3xl">
@@ -51,10 +51,10 @@ const AboutSection = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-3 pb-3">
               {/* Point 1: Professional & Expert */}
               <div className="bg-white shadow-lg rounded-lg p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-                <div className="bg-primary text-white text-4xl p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                <div className="bg-white text-white text-4xl p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
                   <FaCheckCircle className="text-[#F96176] " />
                 </div>
-                <h6 className="text-xl font-semibold text-primary text-center mt-4">
+                <h6 className="text-xl font-semibold text-black text-center mt-4">
                   Professional & Expert
                 </h6>
                 <p className="text-gray-600 text-center mt-2">
@@ -65,10 +65,10 @@ const AboutSection = () => {
 
               {/* Point 2: Quality Assurance */}
               <div className="bg-white shadow-lg rounded-lg p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-                <div className="bg-primary text-white text-4xl p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                <div className="bg-white text-white text-4xl p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
                   <FaAward className="text-[#F96176] " />
                 </div>
-                <h6 className="text-xl font-semibold text-primary text-center mt-4">
+                <h6 className="text-xl font-semibold text-black text-center mt-4">
                   Quality Assurance
                 </h6>
                 <p className="text-gray-600 text-center mt-2">
@@ -79,10 +79,10 @@ const AboutSection = () => {
 
               {/* Point 3: Award-Winning Workers */}
               <div className="bg-white shadow-lg rounded-lg p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-                <div className="bg-primary text-white text-4xl p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                <div className="bg-white text-white text-4xl p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
                   <FaUsers className="text-[#F96176]" />
                 </div>
-                <h6 className="text-xl font-semibold text-primary text-center mt-4">
+                <h6 className="text-xl font-semibold text-black text-center mt-4">
                   Award-Winning Workers
                 </h6>
                 <p className="text-gray-600 text-center mt-2">
@@ -91,13 +91,15 @@ const AboutSection = () => {
                 </p>
               </div>
             </div>
-            <a
-              href="#"
-              className="bg-[#F96176] text-white py-3 px-5 inline-block mt-4 hover:bg-opacity-80 rounded transition-all duration-300"
-            >
-              Read More
-              <i className="fa fa-arrow-right ml-3"></i>
-            </a>
+            <div className="flex justify-center">
+              <a
+                href="#"
+                className="bg-[#F96176] text-white py-3 px-5 inline-block mt-4 hover:bg-opacity-80 rounded transition-all duration-300"
+              >
+                Read More
+                <i className="fa fa-arrow-right ml-3"></i>
+              </a>
+            </div>
           </div>
         </div>
       </div>

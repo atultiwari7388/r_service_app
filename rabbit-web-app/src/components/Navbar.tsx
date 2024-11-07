@@ -15,19 +15,20 @@ export default function NavBar() {
   return (
     <nav className="flex items-center justify-between bg-white shadow-md py-4 px-6 relative">
       {/* Left Section: Logo */}
-      <div className="flex items-center">
-        <Image
-          src="/Logo_Topbar.png"
-          alt="logo"
-          className="h-10 w-auto rounded-lg"
-          height={0}
-          width={0}
-          sizes="100vw"
-        />
-      </div>
-
+      <Link href={`/`}>
+        <div className="flex items-center">
+          <Image
+            src="/Logo_Topbar.png"
+            alt="logo"
+            className="h-10 w-auto rounded-lg"
+            height={0}
+            width={0}
+            sizes="100vw"
+          />
+        </div>
+      </Link>
       {/* Desktop Navigation Links (on screens larger than sm) */}
-      <div className="hidden sm:flex sm:items-center sm:space-x-8 text-gray-700 ml-auto">
+      <div className="hidden sm:flex sm:items-center sm:space-x-8 text-gray-700 ml-auto font-semibold">
         <a href="#home" className="hover:text-[#F96176]">
           Home
         </a>

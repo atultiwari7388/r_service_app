@@ -2,22 +2,29 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { LoginFormValues } from "./../../../types/auth";
+import { LoginFormValues } from "../../../types/auth"; // Make sure your path is correct
 
 const Login: React.FC = () => {
+  // Step 1: Initialize form values state
   const [formValues, setFormValues] = useState<LoginFormValues>({
     email: "",
     password: "",
   });
 
+  // Step 2: Handle form input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      [name]: value,
+    }));
+  };
+
+  // Step 3: Handle form submission
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Login Data:", formValues);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormValues({ ...formValues, [name]: value });
+    // Here you can add logic to send data to your backend or authentication service
   };
 
   return (
@@ -26,6 +33,7 @@ const Login: React.FC = () => {
         <h2 className="text-2xl font-bold text-center text-gray-800">Login</h2>
 
         <form onSubmit={handleLogin} className="space-y-4">
+          {/* Email Input */}
           <div className="form-control w-full">
             <label htmlFor="email" className="label">
               <span className="label-text text-gray-700">Email</span>
@@ -33,13 +41,15 @@ const Login: React.FC = () => {
             <input
               type="email"
               id="email"
-              value={formValues.email}
-              onChange={handleChange}
+              name="email" // Make sure name is set to "email"
+              value={formValues.email} // Bind to state
+              onChange={handleChange} // Update state on change
               className="input input-bordered w-full bg-gray-50 text-gray-900"
               required
             />
           </div>
 
+          {/* Password Input */}
           <div className="form-control w-full">
             <label htmlFor="password" className="label">
               <span className="label-text text-gray-700">Password</span>
@@ -47,8 +57,9 @@ const Login: React.FC = () => {
             <input
               type="password"
               id="password"
-              value={formValues.password}
-              onChange={handleChange}
+              name="password" // Make sure name is set to "password"
+              value={formValues.password} // Bind to state
+              onChange={handleChange} // Update state on change
               className="input input-bordered w-full bg-gray-50 text-gray-900"
               required
             />
@@ -62,6 +73,7 @@ const Login: React.FC = () => {
             </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             className="btn w-full"
@@ -75,6 +87,7 @@ const Login: React.FC = () => {
           </button>
         </form>
 
+        {/* Sign-up Link */}
         <p className="text-sm text-center text-gray-600 mt-4">
           Don’t have an account?{" "}
           <Link

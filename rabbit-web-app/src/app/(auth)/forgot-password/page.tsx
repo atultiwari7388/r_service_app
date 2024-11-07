@@ -9,9 +9,32 @@ const ForgotPassword: React.FC = () => {
     email: "",
   });
 
-  const handleForgotPassword = (e: React.FormEvent) => {
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Forgot Password Data:", formValues);
+
+    // Basic validation
+    if (!formValues.email) {
+      setError("Email is required.");
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(formValues.email)) {
+      setError("Please enter a valid email.");
+      return;
+    }
+
+    setError(null); // Clear previous errors
+    setLoading(true); // Show loading state
+
+    // Simulate an API request
+    setTimeout(() => {
+      console.log("Forgot Password Data:", formValues);
+      setLoading(false); // Hide loading state
+      alert("Password reset link sent to your email.");
+    }, 2000); // Simulate API delay
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,11 +61,13 @@ const ForgotPassword: React.FC = () => {
             <input
               type="email"
               id="email"
+              name="email"
               value={formValues.email}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
               required
             />
+            {error && <p className="text-xs text-red-500">{error}</p>}
           </div>
 
           <button
@@ -53,8 +78,9 @@ const ForgotPassword: React.FC = () => {
               borderColor: "#F96176",
               color: "white",
             }}
+            disabled={loading}
           >
-            Send Reset Link
+            {loading ? "Sending Reset Link..." : "Send Reset Link"}
           </button>
         </form>
 

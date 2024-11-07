@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SignupFormValues } from "@/types/auth";
 
 const Signup: React.FC = () => {
+  // Step 1: Initialize form values state
   const [formValues, setFormValues] = useState<SignupFormValues>({
     name: "",
     email: "",
@@ -13,14 +14,20 @@ const Signup: React.FC = () => {
     password: "",
   });
 
+  // Step 2: Handle form input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      [name]: value,
+    }));
+  };
+
+  // Step 3: Handle form submission
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Signup Data:", formValues);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormValues({ ...formValues, [name]: value });
+    // You can replace the console log with the API call to submit data to your backend
   };
 
   return (
@@ -31,6 +38,7 @@ const Signup: React.FC = () => {
         </h2>
 
         <form onSubmit={handleSignup} className="space-y-3">
+          {/* Name Input */}
           <div className="form-control w-full">
             <label htmlFor="name" className="label text-sm">
               <span className="label-text text-gray-700">Name</span>
@@ -38,6 +46,7 @@ const Signup: React.FC = () => {
             <input
               type="text"
               id="name"
+              name="name" // Ensure 'name' is used for correct mapping
               value={formValues.name}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -45,6 +54,7 @@ const Signup: React.FC = () => {
             />
           </div>
 
+          {/* Email Input */}
           <div className="form-control w-full">
             <label htmlFor="email" className="label text-sm">
               <span className="label-text text-gray-700">Email</span>
@@ -52,6 +62,7 @@ const Signup: React.FC = () => {
             <input
               type="email"
               id="email"
+              name="email" // Ensure 'name' is used for correct mapping
               value={formValues.email}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -59,6 +70,7 @@ const Signup: React.FC = () => {
             />
           </div>
 
+          {/* Address Input */}
           <div className="form-control w-full">
             <label htmlFor="address" className="label text-sm">
               <span className="label-text text-gray-700">Address</span>
@@ -66,6 +78,7 @@ const Signup: React.FC = () => {
             <input
               type="text"
               id="address"
+              name="address" // Ensure 'name' is used for correct mapping
               value={formValues.address}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -73,6 +86,7 @@ const Signup: React.FC = () => {
             />
           </div>
 
+          {/* Phone Number Input */}
           <div className="form-control w-full">
             <label htmlFor="phone-number" className="label text-sm">
               <span className="label-text text-gray-700">Phone Number</span>
@@ -80,6 +94,7 @@ const Signup: React.FC = () => {
             <input
               type="tel"
               id="phone-number"
+              name="phoneNumber" // Ensure 'name' is used for correct mapping
               value={formValues.phoneNumber}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -87,6 +102,7 @@ const Signup: React.FC = () => {
             />
           </div>
 
+          {/* Password Input */}
           <div className="form-control w-full">
             <label htmlFor="password" className="label text-sm">
               <span className="label-text text-gray-700">Password</span>
@@ -94,6 +110,7 @@ const Signup: React.FC = () => {
             <input
               type="password"
               id="password"
+              name="password" // Ensure 'name' is used for correct mapping
               value={formValues.password}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -101,10 +118,11 @@ const Signup: React.FC = () => {
             />
           </div>
 
+          {/* Terms and Privacy */}
           <p className="text-xs text-center text-gray-600 mt-2">
             By continuing, you agree to our{" "}
             <Link href="/terms" className="text-[#F96176] hover:underline">
-              Terms of Services
+              Terms of Service
             </Link>{" "}
             and{" "}
             <Link href="/privacy" className="text-[#F96176] hover:underline">
@@ -113,6 +131,7 @@ const Signup: React.FC = () => {
             .
           </p>
 
+          {/* Submit Button */}
           <button
             type="submit"
             className="btn w-full mt-3"
@@ -126,8 +145,9 @@ const Signup: React.FC = () => {
           </button>
         </form>
 
+        {/* Login Link */}
         <p className="text-sm text-center text-gray-600 mt-4">
-          Joined us before?{" "}
+          Already have an account?{" "}
           <Link
             href="/login"
             className="font-medium text-[#F96176] hover:underline"
