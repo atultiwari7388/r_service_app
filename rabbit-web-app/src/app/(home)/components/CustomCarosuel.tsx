@@ -86,7 +86,7 @@ const CustomCarousel = () => {
         {sliderData.map((slide, index) => (
           <div key={index}>
             <div
-              className="flex flex-col md:flex-row gap-4 bg-[#a6e2c2] p-9 md:px-24 md:py-20 w-full items-center"
+              className="flex flex-col md:flex-row gap-4 bg-[#f0f2f1] p-9 md:px-24 md:py-20 w-full items-center"
               style={{ height: "auto" }}
             >
               {/* Image */}

@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
               New York, NY 10001, USA
             </p>
             <p className="mb-2 flex items-center">
-              <FaPhoneAlt className="mr-2 text-[#58BB87]" />
+              <FaPhoneAlt className="mr-2 text-[#F96176]" />
               (+1)202 555 088
             </p>
             <p className="mb-2 flex items-center">
