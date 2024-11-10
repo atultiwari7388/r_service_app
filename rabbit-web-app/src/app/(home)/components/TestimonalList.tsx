@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Testimonial from "./Testimonal";
 
 // Dummy data for testimonials
@@ -37,22 +37,6 @@ const testimonialsData = [
 
 // Testimonials list component
 const TestimonialsList: React.FC = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Handle left arrow click
-  const handlePrev = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? testimonialsData.length - 1 : prevIndex - 1
-    );
-  };
-
-  // Handle right arrow click
-  const handleNext = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === testimonialsData.length - 1 ? 0 : prevIndex + 1
-    );
-  };
-
   return (
     <div className="container-xxl py-5">
       <div className="container">
@@ -61,45 +45,21 @@ const TestimonialsList: React.FC = () => {
           <h1 className="mb-5">Our Clients Say!</h1>
         </div>
 
-        {/* Testimonial carousel with left and right buttons */}
-        <div className="relative">
-          {/* Left Arrow */}
-          <button
-            onClick={handlePrev}
-            className="absolute top-1/2 left-0 transform -translate-y-1/2 p-3 bg-white text-primary border-2 border-primary rounded-full hover:bg-primary hover:text-white transition-all duration-300 shadow-lg"
-          >
-            <span className="text-3xl font-semibold">&#10094;</span>
-          </button>
-
-          {/* Testimonial Cards */}
-          <div
-            className="flex gap-8 transition-transform duration-300 ease-in-out"
-            style={{
-              transform: `translateX(-${currentIndex * 100}%)`,
-            }}
-          >
-            {testimonialsData.map((testimonial, index) => (
-              <div
-                key={index}
-                className="w-80 bg-white shadow-lg rounded-lg p-6"
-              >
-                <Testimonial
-                  avatarUrl={testimonial.avatarUrl}
-                  name={testimonial.name}
-                  profession={testimonial.profession}
-                  message={testimonial.message}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Right Arrow */}
-          <button
-            onClick={handleNext}
-            className="absolute top-1/2 right-0 transform -translate-y-1/2 p-3 bg-white text-primary border-2 border-primary rounded-full hover:bg-primary hover:text-white transition-all duration-300 shadow-lg"
-          >
-            <span className="text-3xl font-semibold">&#10095;</span>
-          </button>
+        {/* Testimonial Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {testimonialsData.map((testimonial, index) => (
+            <div
+              key={index}
+              className="w-full bg-white shadow-lg rounded-lg p-6 flex flex-col items-center"
+            >
+              <Testimonial
+                avatarUrl={testimonial.avatarUrl}
+                name={testimonial.name}
+                profession={testimonial.profession}
+                message={testimonial.message}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-// backgroundImage: "linear-gradient(to right, #F96176, #F96176)",
 import React from "react";
 
 const BookingSection = () => {
@@ -7,6 +6,7 @@ const BookingSection = () => {
       className="py-24 bg-cover bg-center"
       style={{
         background: "url('/testimonial_bg_1.jpg')",
+        // backgroundImage: "linear-gradient(to right, #F96176, #58BB87)",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
