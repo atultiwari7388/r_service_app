@@ -8,6 +8,7 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import SelectService from "./SelectService";
 import FetchSelectVehicle from "./FetchSelectVehicle";
 import { VehicleTypes } from "@/types/vehicles";
+import { AddressType } from "@/types/address";
 
 interface Service {
   title: string;
@@ -25,6 +26,7 @@ const BookingSection: React.FC = () => {
 
   const [services, setServices] = useState<ServiceType[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
+  const [location, setLocation] = useState<AddressType[]>([]);
 
   useEffect(() => {
     const fetchServices = async (): Promise<ServiceType[]> => {
@@ -73,13 +75,42 @@ const BookingSection: React.FC = () => {
       return [];
     };
 
+    const fetchUserAddress = async (): Promise<AddressType[]> => {
+      try {
+        const addressesSnapshot = await getDocs(
+          collection(db, "Users", user?.uid as string, "Addresses")
+        );
+        if (!addressesSnapshot.empty) {
+          return addressesSnapshot.docs.map((doc) => {
+            const data = doc.data() as AddressType;
+            return {
+              address: data.address,
+              addressType: data.addressType,
+              date: data.date,
+              id: data.id,
+              isAddressSelected: data.isAddressSelected,
+              location: {
+                latitude: data.location.latitude,
+                longitude: data.location.longitude,
+              },
+            };
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching vehicles:", error);
+      }
+      return [];
+    };
+
     const loadData = async () => {
-      const [servicesData, vehicleData] = await Promise.all([
+      const [servicesData, vehicleData, location] = await Promise.all([
         fetchServices(),
         fetchUserVehicles(),
+        fetchUserAddress(),
       ]);
       setServices(servicesData);
       setVehicles(vehicleData);
+      setLocation(location);
     };
 
     if (user?.uid) loadData();
@@ -126,12 +157,12 @@ const BookingSection: React.FC = () => {
                 {/* Select Location */}
                 <div className="col-span-1">
                   <select className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition">
-                    <option defaultValue={"Select Your Location"}>
-                      Select Your Location
-                    </option>
-                    <option value="1">Location 1</option>
-                    <option value="2">Location 2</option>
-                    <option value="3">Location 3</option>
+                    <option value="">Select Your Location</option>
+                    {location.map((location, index) => (
+                      <option key={index} value={location.address}>
+                        {location.address}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
