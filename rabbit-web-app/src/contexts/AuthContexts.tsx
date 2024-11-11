@@ -12,12 +12,14 @@ import {
 
 // Define types for the context value
 interface AuthContextType {
-  user: User | null; // User is either a User object or null
+  user: User | undefined | null; // User is either a User object or null
   isLoading: boolean; // Is the app still loading user data?
 }
 
 // Create the context with an initial value
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null | undefined>(
+  undefined
+);
 
 interface AuthContextProviderProps {
   children: ReactNode; // Type for React children
