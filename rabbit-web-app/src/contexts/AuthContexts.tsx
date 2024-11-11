@@ -4,45 +4,45 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
   createContext,
+  ReactNode,
   useContext,
   useEffect,
   useState,
-  ReactNode,
 } from "react";
 
 // Define types for the context value
 interface AuthContextType {
-  user: User | undefined | null; // User is either a User object or null
-  isLoading: boolean; // Is the app still loading user data?
+  user: User | undefined | null;
+  isLoading: boolean;
 }
 
-// Create the context with an initial value
-const AuthContext = createContext<AuthContextType | null | undefined>(
-  undefined
-);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthContextProviderProps {
-  children: ReactNode; // Type for React children
+  children: ReactNode;
 }
 
 export default function AuthContextProvider({
   children,
 }: AuthContextProviderProps) {
-  const [user, setUser] = useState<User | null | undefined>(undefined); // We allow undefined initially
+  const [user, setUser] = useState<User | undefined | null>(undefined);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      setUser(user || null); // If user exists, set user, otherwise set null
+      if (user) {
+        setUser(user);
+      } else {
+        setUser(null);
+      }
     });
-
-    return () => unsub(); // Cleanup on unmount
+    return () => unsub();
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading: user === undefined, // If user is undefined, it's still loading
+        isLoading: user === undefined,
       }}
     >
       {children}
@@ -50,13 +50,4 @@ export default function AuthContextProvider({
   );
 }
 
-// Custom hook to use the auth context
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthContextProvider");
-  }
-
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);

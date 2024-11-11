@@ -21,38 +21,44 @@ export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null); // User data state
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const { user } = useAuth(); // Fetch the user from the useAuth hook
+  const { user } = useAuth() || { user: null }; // Safely fallback to null
 
   useEffect(() => {
-    if (user) {
+    if (user !== null && user !== undefined) {
+      // User is logged in, fetch user data
       setIsLoggedIn(true);
       const fetchUserData = async () => {
         try {
-          const docRef = doc(db, "Users", user.uid); // Assuming user data is stored in the "Users" collection
+          const docRef = doc(db, "Users", user.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            setUserData(docSnap.data() as UserData); // Set the user data
+            setUserData(docSnap.data() as UserData);
           } else {
             console.log("No such document!");
           }
         } catch (error) {
           console.error("Error fetching user data: ", error);
+        } finally {
+          setIsLoading(false); // Ensure loading is false after fetching
         }
       };
 
       fetchUserData();
     } else {
-      setIsLoggedIn(false); // If user is not logged in
+      // No user, so logged out
+      setIsLoggedIn(false);
+      setIsLoading(false); // Set loading to false if no user is logged in
     }
   }, [user]);
 
-  if (!userData) {
+  if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
         <span className="loading loading-spinner text-error"></span>
