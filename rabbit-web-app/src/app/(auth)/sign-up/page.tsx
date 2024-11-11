@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { SignupFormValues } from "@/types/auth";
+import { Button } from "@nextui-org/react";
 
 const Signup: React.FC = () => {
   // Step 1: Initialize form values state
@@ -132,7 +133,7 @@ const Signup: React.FC = () => {
           </p>
 
           {/* Submit Button */}
-          <button
+          <Button
             type="submit"
             className="btn w-full mt-3"
             style={{
@@ -142,7 +143,7 @@ const Signup: React.FC = () => {
             }}
           >
             Next
-          </button>
+          </Button>
         </form>
 
         {/* Login Link */}

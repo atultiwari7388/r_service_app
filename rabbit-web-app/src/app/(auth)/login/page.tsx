@@ -2,16 +2,21 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { LoginFormValues } from "../../../types/auth";
+import { useRouter } from "next/navigation";
+import {
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  signOut,
+} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { Button } from "@nextui-org/react";
+import { auth, db } from "../../../lib/firebase";
 
 const Login: React.FC = () => {
-  const [formValues, setFormValues] = useState<LoginFormValues>({
-    email: "",
-    password: "",
-  });
+  const [formValues, setFormValues] = useState({ email: "", password: "" });
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  // Step 2: Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormValues((prevValues) => ({
@@ -20,11 +25,59 @@ const Login: React.FC = () => {
     }));
   };
 
-  // Step 3: Handle form submission
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login Data:", formValues);
-    // Here you can add logic to send data to your backend or authentication service
+    setIsLoading(true);
+
+    try {
+      const { email, password } = formValues;
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      if (user) {
+        if (!user.emailVerified) {
+          alert("Email not verified. Please verify your email.");
+          await sendEmailVerification(user);
+          await signOut(auth);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check both 'Mechanics' and 'Users' collections
+        const mechanicsDocRef = doc(db, "Mechanics", user.uid);
+        const usersDocRef = doc(db, "Users", user.uid);
+
+        const [mechanicDoc, userDoc] = await Promise.all([
+          getDoc(mechanicsDocRef),
+          getDoc(usersDocRef),
+        ]);
+
+        if (mechanicDoc.exists()) {
+          alert(
+            "This email already exists with the Mechanic app. Please try with another email."
+          );
+          await signOut(auth);
+          setIsLoading(false);
+          return;
+        }
+
+        if (userDoc.exists()) {
+          router.push("/");
+          alert("Login Successful");
+        } else {
+          router.push("/sign-up");
+        }
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,9 +94,9 @@ const Login: React.FC = () => {
             <input
               type="email"
               id="email"
-              name="email" // Make sure name is set to "email"
-              value={formValues.email} // Bind to state
-              onChange={handleChange} // Update state on change
+              name="email"
+              value={formValues.email}
+              onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900"
               required
             />
@@ -57,9 +110,9 @@ const Login: React.FC = () => {
             <input
               type="password"
               id="password"
-              name="password" // Make sure name is set to "password"
-              value={formValues.password} // Bind to state
-              onChange={handleChange} // Update state on change
+              name="password"
+              value={formValues.password}
+              onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900"
               required
             />
@@ -77,6 +130,8 @@ const Login: React.FC = () => {
           <Button
             type="submit"
             className="btn w-full"
+            isLoading={isLoading}
+            isDisabled={isLoading}
             style={{
               backgroundColor: "#F96176",
               borderColor: "#F96176",
