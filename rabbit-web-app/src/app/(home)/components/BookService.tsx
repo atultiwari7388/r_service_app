@@ -1,12 +1,71 @@
-import React from "react";
+import { useAuth } from "@/contexts/AuthContexts";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { ServiceType } from "@/types/services";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import SelectService from "./SelectService";
 
-const BookingSection = () => {
+interface Service {
+  title: string;
+  image_type: number;
+  price_type: number;
+  image: string;
+  isFeatured: boolean;
+}
+
+const BookingSection: React.FC = () => {
+  const { user } = useAuth() || { user: null };
+  const router = useRouter();
+
+  const [services, setServices] = useState<ServiceType[]>([]);
+
+  // Fetch services data
+  const fetchServices = async () => {
+    try {
+      const metadataDocRef = doc(db, "metadata", "servicesList");
+      const metadataSnapshot = await getDoc(metadataDocRef);
+
+      if (metadataSnapshot.exists()) {
+        const servicesList = metadataSnapshot.data()?.data || [];
+
+        const fetchedServices = servicesList.map((service: Service) => ({
+          title: service.title || "",
+          imageType: service.image_type || 0,
+          priceType: service.price_type || 0,
+          image: service.image || "",
+          isFeatured: service.isFeatured || false,
+        }));
+
+        console.log(fetchServices);
+
+        setServices(fetchedServices);
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchServices();
+  });
+
+  const handleFindMechanicClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error("Please log in first to book your service");
+      router.push("/login");
+      return;
+    } else {
+    }
+  };
+
   return (
     <div
       className="py-24 bg-cover bg-center"
       style={{
         background: "url('/testimonial_bg_1.jpg')",
-        // backgroundImage: "linear-gradient(to right, #F96176, #58BB87)",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -34,14 +93,7 @@ const BookingSection = () => {
 
                 {/* Service Select */}
                 <div className="col-span-1">
-                  <select className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition">
-                    <option defaultValue={"Select A Service"}>
-                      Select A Service
-                    </option>
-                    <option value="1">Service 1</option>
-                    <option value="2">Service 2</option>
-                    <option value="3">Service 3</option>
-                  </select>
+                  <SelectService services={services} />
                 </div>
 
                 {/* Select Location */}
@@ -80,7 +132,10 @@ const BookingSection = () => {
 
                 {/* Book Now Button */}
                 <div className="col-span-1">
-                  <button className="w-full bg-[#F96176] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105">
+                  <button
+                    className="w-full bg-[#F96176] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105"
+                    onClick={handleFindMechanicClick}
+                  >
                     Find Mechanic
                   </button>
                 </div>

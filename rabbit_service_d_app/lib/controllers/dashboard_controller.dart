@@ -209,8 +209,6 @@ class DashboardController extends GetxController {
 
         hasVehicles = true;
         allVehicleAndCompanyName = vehicleNames;
-        // _companyNameController = companyNames[0];
-        // _selectedCompanyAndVehcileName =vehicleNames;
         filterSelectedCompanyAndvehicleName =
             List.from(allVehicleAndCompanyName);
         update();
