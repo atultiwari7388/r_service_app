@@ -9,6 +9,8 @@ import { Button } from "@nextui-org/react";
 import { useAuth } from "@/contexts/AuthContexts";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface UserData {
   profilePicture: string;
@@ -24,11 +26,28 @@ export default function NavBar() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const router = useRouter();
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const { user } = useAuth() || { user: null }; // Safely fallback to null
+  const { user, logout = async () => {} } = useAuth() || { user: null };
+
+  // Function to handle the logout logic
+  const handleLogout = async () => {
+    if (logout) {
+      try {
+        await logout();
+        toast.success("Logout Successful");
+        router.push("/login");
+      } catch (error) {
+        console.error("Error during logout:", error);
+      }
+    } else {
+      console.error("Logout function is undefined.");
+    }
+  };
 
   useEffect(() => {
     if (user !== null && user !== undefined) {
@@ -46,7 +65,7 @@ export default function NavBar() {
         } catch (error) {
           console.error("Error fetching user data: ", error);
         } finally {
-          setIsLoading(false); // Ensure loading is false after fetching
+          setIsLoading(false);
         }
       };
 
@@ -54,7 +73,7 @@ export default function NavBar() {
     } else {
       // No user, so logged out
       setIsLoggedIn(false);
-      setIsLoading(false); // Set loading to false if no user is logged in
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -183,7 +202,10 @@ export default function NavBar() {
               <Link href="/logout">
                 <button
                   className="block w-full bg-[#F96176] text-white py-2 rounded hover:bg-[#e05065] mt-4"
-                  onClick={toggleMenu}
+                  onClick={() => {
+                    handleLogout();
+                    toggleMenu();
+                  }}
                 >
                   Logout
                 </button>

@@ -4,6 +4,10 @@ import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { CiStar } from "react-icons/ci";
 import Link from "next/link";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+import toast from "react-hot-toast";
 
 type MenuItems = {
   icon: JSX.Element;
@@ -22,6 +26,9 @@ type ProfileProps = {
 };
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
+  const router = useRouter(); // To programmatically navigate after logout
+
+  // Menu items, including the logout button
   const menuItems: MenuItems[] = [
     {
       icon: <FaHistory className="mr-2" />,
@@ -46,9 +53,20 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     {
       icon: <FaSignOutAlt className="mr-2" />,
       label: "Logout",
-      path: "/logout",
+      path: "/logout", // This will be used for the link but we will handle logout onClick
     },
   ];
+
+  // Function to handle the logout logic
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast.success("Logout Successfull");
+      router.push("/login");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -71,13 +89,25 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         <ul className="space-y-4">
           {menuItems?.map((item) => (
             <li className="mb-1 block" key={item.label}>
-              <Link
-                href={item.path}
-                className="flex items-center text-[#F96176]"
-              >
-                {item.icon}
-                <span className="ms-2 text-black">{item.label}</span>
-              </Link>
+              {item.label === "Logout" ? (
+                // Logout button triggers the handleLogout function
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center text-[#F96176]"
+                >
+                  {item.icon}
+                  <span className="ms-2 text-black">{item.label}</span>
+                </button>
+              ) : (
+                // Regular link for other menu items
+                <Link
+                  href={item.path}
+                  className="flex items-center text-[#F96176]"
+                >
+                  {item.icon}
+                  <span className="ms-2 text-black">{item.label}</span>
+                </Link>
+              )}
             </li>
           ))}
         </ul>

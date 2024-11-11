@@ -1,7 +1,7 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import {
   createContext,
   ReactNode,
@@ -14,6 +14,7 @@ import {
 interface AuthContextType {
   user: User | undefined | null;
   isLoading: boolean;
+  logout: () => Promise<void>; // Add logout function type
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,11 +39,18 @@ export default function AuthContextProvider({
     return () => unsub();
   }, []);
 
+  // Define the logout function
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading: user === undefined,
+        logout,
       }}
     >
       {children}

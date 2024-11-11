@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { SignupFormValues } from "@/types/types";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/react";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+} from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { useAuth } from "@/contexts/AuthContexts";
 
 const Signup: React.FC = () => {
-  // Step 1: Initialize form values state
-  const [formValues, setFormValues] = useState<SignupFormValues>({
+  const [formValues, setFormValues] = useState({
     name: "",
     email: "",
     address: "",
@@ -15,7 +20,10 @@ const Signup: React.FC = () => {
     password: "",
   });
 
-  // Step 2: Handle form input changes
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormValues((prevValues) => ({
@@ -24,12 +32,79 @@ const Signup: React.FC = () => {
     }));
   };
 
-  // Step 3: Handle form submission
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signup Data:", formValues);
-    // You can replace the console log with the API call to submit data to your backend
+
+    if (
+      !formValues.name ||
+      !formValues.email ||
+      !formValues.address ||
+      !formValues.phoneNumber ||
+      !formValues.password
+    ) {
+      setError("All fields are required.");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      // Firebase Auth: Create a new user with email and password
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formValues.email,
+        formValues.password
+      );
+      const user = userCredential.user;
+
+      if (user) {
+        // Store additional user details in Firestore
+        const uid = user.uid;
+        const userData = {
+          uid: uid,
+          email: formValues.email,
+          active: true,
+          userName: formValues.name,
+          phoneNumber: formValues.phoneNumber,
+          address: formValues.address,
+          profilePicture:
+            "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+          wallet: 0,
+          created_at: new Date(),
+          updated_at: new Date(),
+          createdBy: uid,
+          role: "Owner",
+        };
+
+        // Save user data in Firestore (replace with your Firestore collection name)
+        await setDoc(doc(db, "Users", uid), userData);
+
+        // Send email verification
+        await sendEmailVerification(user);
+
+        setLoading(false);
+        alert("Signup successful! Please check your email for verification.");
+        router.push("/login"); // Redirect to login page
+      }
+    } catch (error) {
+      console.error("Error during signup:", error);
+      setError("An error occurred during signup. Please try again.");
+      setLoading(false);
+    }
   };
+
+  {
+    /** Auth State check */
+  }
+  const { user } = useAuth() || { user: null };
+  useEffect(() => {
+    if (user?.emailVerified) {
+      router.push("/");
+    } else {
+      router.push("/login");
+    }
+  }, [router, user]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4 py-8">
@@ -39,7 +114,6 @@ const Signup: React.FC = () => {
         </h2>
 
         <form onSubmit={handleSignup} className="space-y-3">
-          {/* Name Input */}
           <div className="form-control w-full">
             <label htmlFor="name" className="label text-sm">
               <span className="label-text text-gray-700">Name</span>
@@ -47,7 +121,7 @@ const Signup: React.FC = () => {
             <input
               type="text"
               id="name"
-              name="name" // Ensure 'name' is used for correct mapping
+              name="name"
               value={formValues.name}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -55,7 +129,6 @@ const Signup: React.FC = () => {
             />
           </div>
 
-          {/* Email Input */}
           <div className="form-control w-full">
             <label htmlFor="email" className="label text-sm">
               <span className="label-text text-gray-700">Email</span>
@@ -63,7 +136,7 @@ const Signup: React.FC = () => {
             <input
               type="email"
               id="email"
-              name="email" // Ensure 'name' is used for correct mapping
+              name="email"
               value={formValues.email}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -71,7 +144,6 @@ const Signup: React.FC = () => {
             />
           </div>
 
-          {/* Address Input */}
           <div className="form-control w-full">
             <label htmlFor="address" className="label text-sm">
               <span className="label-text text-gray-700">Address</span>
@@ -79,7 +151,7 @@ const Signup: React.FC = () => {
             <input
               type="text"
               id="address"
-              name="address" // Ensure 'name' is used for correct mapping
+              name="address"
               value={formValues.address}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -87,7 +159,6 @@ const Signup: React.FC = () => {
             />
           </div>
 
-          {/* Phone Number Input */}
           <div className="form-control w-full">
             <label htmlFor="phone-number" className="label text-sm">
               <span className="label-text text-gray-700">Phone Number</span>
@@ -95,7 +166,7 @@ const Signup: React.FC = () => {
             <input
               type="tel"
               id="phone-number"
-              name="phoneNumber" // Ensure 'name' is used for correct mapping
+              name="phoneNumber"
               value={formValues.phoneNumber}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -103,7 +174,6 @@ const Signup: React.FC = () => {
             />
           </div>
 
-          {/* Password Input */}
           <div className="form-control w-full">
             <label htmlFor="password" className="label text-sm">
               <span className="label-text text-gray-700">Password</span>
@@ -111,7 +181,7 @@ const Signup: React.FC = () => {
             <input
               type="password"
               id="password"
-              name="password" // Ensure 'name' is used for correct mapping
+              name="password"
               value={formValues.password}
               onChange={handleChange}
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
@@ -119,20 +189,6 @@ const Signup: React.FC = () => {
             />
           </div>
 
-          {/* Terms and Privacy */}
-          <p className="text-xs text-center text-gray-600 mt-2">
-            By continuing, you agree to our{" "}
-            <Link href="/terms" className="text-[#F96176] hover:underline">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="text-[#F96176] hover:underline">
-              Privacy Policy
-            </Link>
-            .
-          </p>
-
-          {/* Submit Button */}
           <Button
             type="submit"
             className="btn w-full mt-3"
@@ -141,21 +197,13 @@ const Signup: React.FC = () => {
               borderColor: "#F96176",
               color: "white",
             }}
+            disabled={loading}
           >
-            Next
+            {loading ? "Signing Up..." : "Sign Up"}
           </Button>
         </form>
 
-        {/* Login Link */}
-        <p className="text-sm text-center text-gray-600 mt-4">
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="font-medium text-[#F96176] hover:underline"
-          >
-            Login
-          </Link>
-        </p>
+        {error && <p className="text-red-500 text-center mt-2">{error}</p>}
       </div>
     </div>
   );
