@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { ServiceType } from "@/types/services";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import SelectService from "./SelectService";
+import FetchSelectVehicle from "./FetchSelectVehicle";
+import { VehicleTypes } from "@/types/vehicles";
 
 interface Service {
   title: string;
@@ -19,37 +21,69 @@ const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
   const router = useRouter();
 
+  console.log(user?.uid);
+
   const [services, setServices] = useState<ServiceType[]>([]);
-
-  // Fetch services data
-  const fetchServices = async () => {
-    try {
-      const metadataDocRef = doc(db, "metadata", "servicesList");
-      const metadataSnapshot = await getDoc(metadataDocRef);
-
-      if (metadataSnapshot.exists()) {
-        const servicesList = metadataSnapshot.data()?.data || [];
-
-        const fetchedServices = servicesList.map((service: Service) => ({
-          title: service.title || "",
-          imageType: service.image_type || 0,
-          priceType: service.price_type || 0,
-          image: service.image || "",
-          isFeatured: service.isFeatured || false,
-        }));
-
-        console.log(fetchServices);
-
-        setServices(fetchedServices);
-      }
-    } catch (error) {
-      console.error("Error fetching services:", error);
-    }
-  };
+  const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
 
   useEffect(() => {
-    fetchServices();
-  });
+    const fetchServices = async (): Promise<ServiceType[]> => {
+      try {
+        const metadataDocRef = doc(db, "metadata", "servicesList");
+        const metadataSnapshot = await getDoc(metadataDocRef);
+
+        if (metadataSnapshot.exists()) {
+          const servicesList = metadataSnapshot.data()?.data || [];
+          return servicesList.map((service: Service) => ({
+            title: service.title || "",
+            imageType: service.image_type || 0,
+            priceType: service.price_type || 0,
+            image: service.image || "",
+            isFeatured: service.isFeatured || false,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+      }
+      return [];
+    };
+
+    const fetchUserVehicles = async (): Promise<VehicleTypes[]> => {
+      try {
+        const vehiclesSnapshot = await getDocs(
+          collection(db, "Users", user?.uid as string, "Vehicles")
+        );
+        if (!vehiclesSnapshot.empty) {
+          return vehiclesSnapshot.docs.map((doc) => {
+            const data = doc.data() as VehicleTypes;
+            return {
+              vehicleNumber: data.vehicleNumber,
+              companyName: data.companyName,
+              createdAt: data.createdAt,
+              isSet: data.isSet,
+              licensePlate: data.licensePlate,
+              vin: data.vin,
+              year: data.year,
+            };
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching vehicles:", error);
+      }
+      return [];
+    };
+
+    const loadData = async () => {
+      const [servicesData, vehicleData] = await Promise.all([
+        fetchServices(),
+        fetchUserVehicles(),
+      ]);
+      setServices(servicesData);
+      setVehicles(vehicleData);
+    };
+
+    if (user?.uid) loadData();
+  }, [user]);
 
   const handleFindMechanicClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -81,14 +115,7 @@ const BookingSection: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Vehicle Select */}
                 <div className="col-span-1">
-                  <select className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition">
-                    <option defaultValue={"Select Your Vehicle"}>
-                      Select Your Vehicle
-                    </option>
-                    <option value="1">Vehicle 1</option>
-                    <option value="2">Vehicle 2</option>
-                    <option value="3">Vehicle 3</option>
-                  </select>
+                  <FetchSelectVehicle vehicles={vehicles} />
                 </div>
 
                 {/* Service Select */}
