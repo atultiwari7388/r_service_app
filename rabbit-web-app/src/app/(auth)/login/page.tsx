@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { LoginFormValues } from "../../../types/auth";
+import { Button } from "@nextui-org/react";
 
 const Login: React.FC = () => {
   const [formValues, setFormValues] = useState<LoginFormValues>({
@@ -73,7 +74,7 @@ const Login: React.FC = () => {
           </div>
 
           {/* Submit Button */}
-          <button
+          <Button
             type="submit"
             className="btn w-full"
             style={{
@@ -83,7 +84,7 @@ const Login: React.FC = () => {
             }}
           >
             Login
-          </button>
+          </Button>
         </form>
 
         {/* Sign-up Link */}

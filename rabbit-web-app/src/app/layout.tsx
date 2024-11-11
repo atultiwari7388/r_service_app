@@ -1,5 +1,5 @@
 // app/layout.tsx
-
+import { NextUIProvider } from "@nextui-org/react";
 import type { Metadata } from "next";
 import "./globals.css";
 import TopBar from "./../components/TopBar";
@@ -17,10 +17,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <TopBar />
-        <NavBar />
-        {children}
-        <Footer />
+        <NextUIProvider>
+          <TopBar />
+          <NavBar />
+          {children}
+          <Footer />
+        </NextUIProvider>
       </body>
     </html>
   );

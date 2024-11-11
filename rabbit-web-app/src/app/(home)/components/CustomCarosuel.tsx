@@ -10,26 +10,26 @@ import "slick-carousel/slick/slick-theme.css";
 const sliderData = [
   {
     imageSrc: "/slider_1_n.png",
-    title: "Premium Truck Services",
+    title: "5th Wheel",
     description:
       "Fast, reliable, and quality truck servicing with a personal touch.",
-    buttonText: "Get Started",
+    buttonText: "Book Now",
     buttonLink: "#",
   },
   {
     imageSrc: "/slider_2_n.png",
-    title: "24/7 Roadside Assistance",
+    title: "Battery Repair",
     description:
       "We're always ready to assist you, day or night, wherever you are.",
-    buttonText: "Learn More",
+    buttonText: "Book Now",
     buttonLink: "#",
   },
   {
     imageSrc: "/slider_3_n.png",
-    title: "Affordable Truck Repairs",
+    title: "Air Pressure",
     description:
       "High-quality repairs that won't break the bank. Get back on the road quickly!",
-    buttonText: "Get a Quote",
+    buttonText: "Book Now",
     buttonLink: "#",
   },
   {
@@ -37,7 +37,7 @@ const sliderData = [
     title: "Truck Tire Repairs",
     description:
       "High-quality repairs that won't break the bank. Get back on the road quickly!",
-    buttonText: "Get a Quote",
+    buttonText: "Book Now",
     buttonLink: "#",
   },
 ];
@@ -86,7 +86,7 @@ const CustomCarousel = () => {
         {sliderData.map((slide, index) => (
           <div key={index}>
             <div
-              className="flex flex-col md:flex-row gap-4 bg-[#f0f2f1] p-9 md:px-24 md:py-20 w-full items-center"
+              className="flex flex-col md:flex-row gap-4 bg-white p-9 md:px-24 md:py-20 w-full items-center"
               style={{ height: "auto" }}
             >
               {/* Image */}
