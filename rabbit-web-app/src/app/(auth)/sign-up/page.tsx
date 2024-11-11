@@ -24,6 +24,19 @@ const Signup: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Auth state check
+  const { user } = useAuth() || { user: null };
+
+  useEffect(() => {
+    if (user) {
+      if (user.emailVerified) {
+        router.push("/"); // Redirect if user is already verified
+      } else {
+        router.push("/login"); // Redirect if user is not verified
+      }
+    }
+  }, [router, user]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormValues((prevValues) => ({
@@ -93,18 +106,6 @@ const Signup: React.FC = () => {
       setLoading(false);
     }
   };
-
-  {
-    /** Auth State check */
-  }
-  const { user } = useAuth() || { user: null };
-  useEffect(() => {
-    if (user?.emailVerified) {
-      router.push("/");
-    } else {
-      router.push("/login");
-    }
-  }, [router, user]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4 py-8">
