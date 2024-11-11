@@ -10,11 +10,18 @@ import { useAuth } from "@/contexts/AuthContexts";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+interface UserData {
+  profilePicture: string;
+  userName: string;
+  phoneNumber: string;
+  email: string;
+}
+
 export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [userData, setUserData] = useState<any | null>(null); // User data state
+  const [userData, setUserData] = useState<UserData | null>(null); // User data state
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -30,7 +37,7 @@ export default function NavBar() {
           const docRef = doc(db, "Users", user.uid); // Assuming user data is stored in the "Users" collection
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            setUserData(docSnap.data()); // Set the user data
+            setUserData(docSnap.data() as UserData); // Set the user data
           } else {
             console.log("No such document!");
           }
