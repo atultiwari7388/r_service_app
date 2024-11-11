@@ -92,8 +92,7 @@ const Login: React.FC = () => {
   {
     /** Auth State check */
   }
-
-  const { user } = useAuth();
+  const { user } = useAuth() || { user: null };
   useEffect(() => {
     if (user) {
       router.push("/");
