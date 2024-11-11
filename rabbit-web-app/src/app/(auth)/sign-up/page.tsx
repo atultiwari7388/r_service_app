@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { SignupFormValues } from "@/types/auth";
+import { SignupFormValues } from "@/types/types";
 import { Button } from "@nextui-org/react";
 
 const Signup: React.FC = () => {

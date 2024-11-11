@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ForgotPasswordFormValues } from "@/types/auth";
+import { ForgotPasswordFormValues } from "@/types/types";
 import Link from "next/link";
 
 const ForgotPassword: React.FC = () => {

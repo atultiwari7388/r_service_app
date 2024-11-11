@@ -13,7 +13,7 @@ import { Button } from "@nextui-org/react";
 import { auth, db } from "../../../lib/firebase";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContexts";
-import { LoginFormValues } from "@/types/auth";
+import { LoginFormValues } from "@/types/types";
 
 const Login: React.FC = () => {
   const [formValues, setFormValues] = useState<LoginFormValues>({
