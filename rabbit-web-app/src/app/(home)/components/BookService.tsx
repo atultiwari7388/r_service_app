@@ -2,21 +2,9 @@ import { useAuth } from "@/contexts/AuthContexts";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { ServiceType } from "@/types/services";
+import { ServiceType, VehicleTypes, AddressType } from "@/types/types";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
-import SelectService from "./SelectService";
-import FetchSelectVehicle from "./FetchSelectVehicle";
-import { VehicleTypes } from "@/types/vehicles";
-import { AddressType } from "@/types/address";
-
-interface Service {
-  title: string;
-  image_type: number;
-  price_type: number;
-  image: string;
-  isFeatured: boolean;
-}
 
 const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
@@ -28,6 +16,30 @@ const BookingSection: React.FC = () => {
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [location, setLocation] = useState<AddressType[]>([]);
 
+  // State for selected values
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+
+  // Handle selection changes
+  const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const service = e.target.value;
+    setSelectedService(service);
+    console.log("Selected Service:", service);
+  };
+
+  const handleVehicleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const vehicle = e.target.value;
+    setSelectedVehicle(vehicle);
+    console.log("Selected Vehicle:", vehicle);
+  };
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const location = e.target.value;
+    setSelectedLocation(location);
+    console.log("Selected Location:", location);
+  };
+
   useEffect(() => {
     const fetchServices = async (): Promise<ServiceType[]> => {
       try {
@@ -36,11 +48,12 @@ const BookingSection: React.FC = () => {
 
         if (metadataSnapshot.exists()) {
           const servicesList = metadataSnapshot.data()?.data || [];
-          return servicesList.map((service: Service) => ({
+          return servicesList.map((service: ServiceType) => ({
             title: service.title || "",
             imageType: service.image_type || 0,
             priceType: service.price_type || 0,
             image: service.image || "",
+            priority: service.priority || 0,
             isFeatured: service.isFeatured || false,
           }));
         }
@@ -118,12 +131,18 @@ const BookingSection: React.FC = () => {
 
   const handleFindMechanicClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
     if (!user) {
       toast.error("Please log in first to book your service");
       router.push("/login");
       return;
-    } else {
     }
+
+    // Log selected values to console
+    console.log("Selected Service:", selectedService);
+    console.log("Selected Vehicle:", selectedVehicle);
+    console.log("Selected Location:", selectedLocation);
+    console.log("Selected Location:", selectedLocation);
   };
 
   return (
@@ -146,17 +165,40 @@ const BookingSection: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Vehicle Select */}
                 <div className="col-span-1">
-                  <FetchSelectVehicle vehicles={vehicles} />
+                  <select
+                    onChange={handleVehicleChange}
+                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                  >
+                    <option value="">Select A Service</option>
+                    {vehicles.map((vehicle, index) => (
+                      <option key={index} value={vehicle.vehicleNumber}>
+                        {vehicle.vehicleNumber}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Service Select */}
                 <div className="col-span-1">
-                  <SelectService services={services} />
+                  <select
+                    onChange={handleServiceChange}
+                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                  >
+                    <option value="">Select A Service</option>
+                    {services.map((service, index) => (
+                      <option key={index} value={service.title}>
+                        {service.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Select Location */}
                 <div className="col-span-1">
-                  <select className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition">
+                  <select
+                    onChange={handleLocationChange}
+                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                  >
                     <option value="">Select Your Location</option>
                     {location.map((location, index) => (
                       <option key={index} value={location.address}>
