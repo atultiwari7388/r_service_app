@@ -26,11 +26,11 @@ interface AuthContextProviderProps {
 export default function AuthContextProvider({
   children,
 }: AuthContextProviderProps) {
-  const [user, setUser] = useState<User | null>(null); // Initial state is null, indicating no user is logged in
+  const [user, setUser] = useState<User | null | undefined>(undefined); // We allow undefined initially
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
-      setUser(user); // Set the user or null based on the authentication state
+      setUser(user || null); // If user exists, set user, otherwise set null
     });
 
     return () => unsub(); // Cleanup on unmount
@@ -40,7 +40,7 @@ export default function AuthContextProvider({
     <AuthContext.Provider
       value={{
         user,
-        isLoading: user === null, // If user is null, it's still loading
+        isLoading: user === undefined, // If user is undefined, it's still loading
       }}
     >
       {children}

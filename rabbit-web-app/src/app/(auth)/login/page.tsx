@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,9 +11,15 @@ import {
 import { doc, getDoc } from "firebase/firestore";
 import { Button } from "@nextui-org/react";
 import { auth, db } from "../../../lib/firebase";
+import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContexts";
+import { LoginFormValues } from "@/types/auth";
 
 const Login: React.FC = () => {
-  const [formValues, setFormValues] = useState({ email: "", password: "" });
+  const [formValues, setFormValues] = useState<LoginFormValues>({
+    email: "",
+    password: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -60,6 +66,9 @@ const Login: React.FC = () => {
           alert(
             "This email already exists with the Mechanic app. Please try with another email."
           );
+          toast.error(
+            "This email already exists with the Mechanic app. Please try with another email."
+          );
           await signOut(auth);
           setIsLoading(false);
           return;
@@ -67,18 +76,29 @@ const Login: React.FC = () => {
 
         if (userDoc.exists()) {
           router.push("/");
-          alert("Login Successful");
+          toast.success("Login Successfull");
         } else {
           router.push("/sign-up");
         }
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert("Login failed. Please check your credentials.");
+      toast.error("Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  {
+    /** Auth State check */
+  }
+
+  const { user } = useAuth();
+  useEffect(() => {
+    if (user) {
+      router.push("/");
+    }
+  }, [router, user]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">

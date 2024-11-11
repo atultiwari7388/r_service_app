@@ -1,20 +1,20 @@
+/* eslint-disable @next/next/no-img-element */
 import { FaHistory, FaSignOutAlt } from "react-icons/fa";
 import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { CiStar } from "react-icons/ci";
-import Image from "next/image";
 import Link from "next/link";
 
 type MenuItems = {
   icon: JSX.Element;
   label: string;
-  path: string; // Added path for each item
+  path: string;
 };
 
 type User = {
-  avatarUrl: string;
-  name: string;
-  phone: string;
+  profilePicture: string;
+  userName: string;
+  phoneNumber: string;
 };
 
 type ProfileProps = {
@@ -54,8 +54,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     <div className="w-full">
       <div className="flex space-x-4 items-center">
         <div>
-          <Image
-            src={user.avatarUrl}
+          <img
+            src={user.profilePicture}
             alt="User Avatar"
             height={32}
             width={32}
@@ -63,8 +63,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">{user.name}</h2>
-          <p className="text-sm text-gray-500">{user.phone}</p>
+          <h2 className="text-lg font-semibold">{user.userName}</h2>
+          <p className="text-sm text-gray-500">{user.phoneNumber}</p>
         </div>
       </div>
       <div className="mt-4">

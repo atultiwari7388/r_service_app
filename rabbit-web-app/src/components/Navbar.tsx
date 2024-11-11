@@ -2,19 +2,56 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FaBars, FaTimes, FaUserCircle } from "react-icons/fa";
 import Profile from "./Layout/Profile";
 import { Button } from "@nextui-org/react";
+import { useAuth } from "@/contexts/AuthContexts";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [userData, setUserData] = useState<any | null>(null); // User data state
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  const { user } = useAuth(); // Fetch the user from the useAuth hook
+
+  useEffect(() => {
+    if (user) {
+      setIsLoggedIn(true);
+      const fetchUserData = async () => {
+        try {
+          const docRef = doc(db, "Users", user.uid); // Assuming user data is stored in the "Users" collection
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setUserData(docSnap.data()); // Set the user data
+          } else {
+            console.log("No such document!");
+          }
+        } catch (error) {
+          console.error("Error fetching user data: ", error);
+        }
+      };
+
+      fetchUserData();
+    } else {
+      setIsLoggedIn(false); // If user is not logged in
+    }
+  }, [user]);
+
+  if (!userData) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
+        <span className="loading loading-spinner text-error"></span>
+      </div>
+    );
+  }
 
   return (
     <nav className="flex items-center justify-between bg-white shadow-md py-4 px-6 relative">
@@ -44,7 +81,7 @@ export default function NavBar() {
           <Link href="/" className="hover:text-[#F96176]">
             Contact us
           </Link>
-          {isLoggedIn && (
+          {isLoggedIn && userData && (
             <>
               <Link href="/" className="hover:text-[#F96176]">
                 My Jobs
@@ -61,13 +98,8 @@ export default function NavBar() {
                 <FaUserCircle className="text-3xl text-[#F96176] cursor-pointer" />
                 {isProfileOpen && (
                   <div className="absolute top-full right-0 mt-1 w-48 bg-white shadow-lg p-2 rounded-lg z-10">
-                    <Profile
-                      user={{
-                        name: "Sachin Minhas",
-                        phone: "9569368066",
-                        avatarUrl: "/profile.png",
-                      }}
-                    />
+                    {/* Pass the user data to Profile component */}
+                    <Profile user={userData} />
                   </div>
                 )}
               </div>
@@ -118,7 +150,7 @@ export default function NavBar() {
           >
             Contact Us
           </Link>
-          {isLoggedIn && (
+          {isLoggedIn && userData && (
             <>
               <Link
                 href="/"

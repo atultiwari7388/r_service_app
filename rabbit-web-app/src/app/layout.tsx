@@ -1,10 +1,10 @@
-// app/layout.tsx
 import { NextUIProvider } from "@nextui-org/react";
 import type { Metadata } from "next";
 import "./globals.css";
 import TopBar from "./../components/TopBar";
 import NavBar from "./../components/Navbar";
 import Footer from "./../components/Footer";
+import AuthContextProvider from "@/contexts/AuthContexts";
 
 export const metadata: Metadata = {
   title: "Rabbit-Truck Repair Services",
@@ -17,12 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <NextUIProvider>
-          <TopBar />
-          <NavBar />
-          {children}
-          <Footer />
-        </NextUIProvider>
+        <AuthContextProvider>
+          <NextUIProvider>
+            <TopBar />
+            <NavBar />
+            {children}
+            <Footer />
+          </NextUIProvider>
+        </AuthContextProvider>
       </body>
     </html>
   );
