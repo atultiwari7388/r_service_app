@@ -5,6 +5,7 @@ import TopBar from "./../components/TopBar";
 import NavBar from "./../components/Navbar";
 import Footer from "./../components/Footer";
 import AuthContextProvider from "@/contexts/AuthContexts";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "Rabbit-Truck Repair Services",
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthContextProvider>
+          <Toaster />
           <NextUIProvider>
             <TopBar />
             <NavBar />
