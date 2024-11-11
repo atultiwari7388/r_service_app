@@ -1,16 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ForgotPasswordFormValues } from "@/types/types";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContexts";
+import toast from "react-hot-toast";
 
 const ForgotPassword: React.FC = () => {
   const [formValues, setFormValues] = useState<ForgotPasswordFormValues>({
     email: "",
   });
-
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const router = useRouter();
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,18 +34,32 @@ const ForgotPassword: React.FC = () => {
     setError(null); // Clear previous errors
     setLoading(true); // Show loading state
 
-    // Simulate an API request
-    setTimeout(() => {
-      console.log("Forgot Password Data:", formValues);
-      setLoading(false); // Hide loading state
+    try {
+      // Call the Firebase method to send the password reset email
+      await sendPasswordResetEmail(auth, formValues.email);
+      setLoading(false);
       alert("Password reset link sent to your email.");
-    }, 2000); // Simulate API delay
+      toast.success("Password reset link sent to your email.");
+    } catch (error) {
+      setLoading(false);
+      setError("Failed to send reset email. Please try again.");
+      toast.error("Failed to send reset email. Please try again.");
+      console.error("Error resetting password: ", error);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormValues({ ...formValues, [name]: value });
   };
+
+  // Check if the user is already logged in and redirect them
+  const { user } = useAuth() || { user: null };
+  useEffect(() => {
+    if (user) {
+      router.push("/");
+    }
+  }, [router, user]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4 py-8">
