@@ -1,5 +1,5 @@
 import {
-  FaPhone,
+  FaPhoneAlt,
   FaEnvelope,
   FaMapMarkerAlt,
   FaFacebook,
@@ -15,7 +15,7 @@ export default function TopBar() {
         {/* Left Section: Contact Info */}
         <div className="flex flex-col sm:flex-row items-center sm:space-x-6 space-y-2 sm:space-y-0">
           <div className="flex items-center space-x-2">
-            <FaPhone />
+            <FaPhoneAlt />
             <a href="">
               <span>(+1)202 555 088</span>
             </a>

@@ -118,7 +118,7 @@ export default function NavBar() {
               <Link href="/" className="hover:text-[#F96176]">
                 My Jobs
               </Link>
-              <Link href="/" className="hover:text-[#F96176]">
+              <Link href="/history" className="hover:text-[#F96176]">
                 History
               </Link>
               {/* Profile Icon with Hover Effect */}

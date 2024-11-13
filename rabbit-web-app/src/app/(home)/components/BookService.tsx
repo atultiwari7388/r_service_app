@@ -156,7 +156,21 @@ const BookingSection: React.FC = () => {
     >
       <div className="container mx-auto px-6 lg:px-24">
         <div className="flex flex-col lg:flex-row gap-16 items-center">
-          {/* Left Section (Booking Form) */}
+          {/* Left Section (Text Content) */}
+          <div className="lg:w-1/2 text-white space-y-6">
+            <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+              Certified & Award-Winning Vehicle Repair Services
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-200">
+              Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd
+              ipsum. Dolor ea et dolore et at sea ea at dolor, justo ipsum duo
+              rebum sea invidunt voluptua. Eos vero eos vero ea et dolore eirmod
+              et. Dolores diam duo invidunt lorem. Elitr ut dolores magna sit.
+              Sea dolore sanctus sed et.
+            </p>
+          </div>
+
+          {/* Right Section (Booking Form) */}
           <div className="lg:w-1/2 bg-white rounded-xl shadow-lg p-8 sm:p-12 flex flex-col justify-center space-y-6">
             <h1 className="text-3xl font-semibold text-center text-gray-800">
               Book a Service
@@ -164,18 +178,25 @@ const BookingSection: React.FC = () => {
             <form>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Vehicle Select */}
-                <div className="col-span-1">
+                <div className="col-span-1 flex gap-2">
                   <select
                     onChange={handleVehicleChange}
                     className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
                   >
-                    <option value="">Select A Service</option>
+                    <option value="">Select A Vehicle</option>
                     {vehicles.map((vehicle, index) => (
                       <option key={index} value={vehicle.vehicleNumber}>
                         {vehicle.vehicleNumber}
                       </option>
                     ))}
                   </select>
+
+                  <button
+                    className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                    title="Add Vehicle"
+                  >
+                    +
+                  </button>
                 </div>
 
                 {/* Service Select */}
@@ -212,7 +233,7 @@ const BookingSection: React.FC = () => {
                 <div className="col-span-1">
                   <input
                     type="file"
-                    className="file-input w-full border border-gray-700 focus:ring-2 focus:ring-[#F96176] transition text-black"
+                    className="file-input file-input-gray w-full max-w-xs bg-gray-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
                     accept="image/*"
                     onChange={(e) => {
                       e.preventDefault();
@@ -233,7 +254,7 @@ const BookingSection: React.FC = () => {
                 {/* Book Now Button */}
                 <div className="col-span-1">
                   <button
-                    className="w-full bg-[#F96176] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105"
+                    className="w-full bg-[#F96176] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105 mt-5"
                     onClick={handleFindMechanicClick}
                   >
                     Find Mechanic
@@ -241,20 +262,6 @@ const BookingSection: React.FC = () => {
                 </div>
               </div>
             </form>
-          </div>
-
-          {/* Right Section (Text Content) */}
-          <div className="lg:w-1/2 text-white space-y-6">
-            <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
-              Certified & Award-Winning Vehicle Repair Services
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-200">
-              Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd
-              ipsum. Dolor ea et dolore et at sea ea at dolor, justo ipsum duo
-              rebum sea invidunt voluptua. Eos vero eos vero ea et dolore eirmod
-              et. Dolores diam duo invidunt lorem. Elitr ut dolores magna sit.
-              Sea dolore sanctus sed et.
-            </p>
           </div>
         </div>
       </div>

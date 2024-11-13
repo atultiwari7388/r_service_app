@@ -98,7 +98,7 @@ const Signup: React.FC = () => {
 
         setLoading(false);
         alert("Signup successful! Please check your email for verification.");
-        router.push("/login"); // Redirect to login page
+        router.push("/login"); 
       }
     } catch (error) {
       console.error("Error during signup:", error);

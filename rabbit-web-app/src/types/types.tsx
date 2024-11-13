@@ -75,3 +75,58 @@ export interface VehicleTypes {
   vin: string | null;
   year: Timestamp;
 }
+
+/** Mechanics Offer and User History Interface */
+
+export interface MechanicsOffer {
+  arrivalCharges: string;
+  fixPrice: number;
+  languages: string[];
+  latitude: number;
+  longitude: number;
+  mDp: string;
+  mId: string;
+  mName: string;
+  mNumber: string;
+  mechanicAddress: string;
+  offerAcceptedDate: Timestamp;
+  perHourCharges: string;
+  rating: string;
+  reviewSubmitted: boolean;
+  status: number;
+  time: 10;
+}
+
+export interface HistoryItem {
+  cancelBy: string;
+  cancelReason: string;
+  companyName: string;
+  description: string;
+  fixPriceEnabled: boolean;
+  id: string;
+  images: string[];
+  isImageSelected: boolean;
+  mRating: string;
+  mReview: string;
+  mReviewSubmitted: boolean;
+  mechanicsOffer: MechanicsOffer[];
+  nearByDistance: number;
+  orderDate: Timestamp;
+  orderId: string;
+  ownerId: string;
+  payMode: string;
+  rating: string;
+  review: string;
+  reviewSubmitted: boolean;
+  role: string;
+  selectedService: string;
+  status: number;
+  userDeliveryAddress: string;
+  userId: string;
+  userLat: number;
+  userLong: number;
+  userName: string;
+  userPhoneNumber: string;
+  userPhoto: string;
+  vehicleNumber: string;
+}
