@@ -11,6 +11,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { HashLoader } from "react-spinners";
 
 interface UserData {
   profilePicture: string;
@@ -80,7 +81,7 @@ export default function NavBar() {
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
-        <span className="loading loading-spinner text-error"></span>
+        <HashLoader color="#F96176" />
       </div>
     );
   }
