@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { FaHistory, FaSignOutAlt } from "react-icons/fa";
+import { FaSignOutAlt } from "react-icons/fa";
 import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { CiStar } from "react-icons/ci";
@@ -31,19 +31,14 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   // Menu items, including the logout button
   const menuItems: MenuItems[] = [
     {
-      icon: <FaHistory className="mr-2" />,
-      label: "History",
-      path: "/account/order-history",
-    },
-    {
       icon: <CgProfile className="mr-2" />,
       label: "My Profile",
-      path: "/account/return-orders",
+      path: "/account/my-profile",
     },
     {
       icon: <RiTeamLine className="mr-2" />,
       label: "Manage Team",
-      path: "/account/manage-teams",
+      path: "/account/manage-team",
     },
     {
       icon: <CiStar className="mr-2" />,
