@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { ServiceType, VehicleTypes, AddressType } from "@/types/types";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import Link from "next/link";
 
 const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
@@ -191,12 +192,14 @@ const BookingSection: React.FC = () => {
                     ))}
                   </select>
 
-                  <button
-                    className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
-                    title="Add Vehicle"
-                  >
-                    +
-                  </button>
+                  <Link href="/add-vehicle">
+                    <button
+                      className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                      title="Add Vehicle"
+                    >
+                      +
+                    </button>
+                  </Link>
                 </div>
 
                 {/* Service Select */}
