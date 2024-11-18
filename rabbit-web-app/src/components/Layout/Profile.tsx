@@ -26,7 +26,7 @@ type ProfileProps = {
 };
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
-  const router = useRouter(); // To programmatically navigate after logout
+  const router = useRouter();
 
   // Menu items, including the logout button
   const menuItems: MenuItems[] = [
@@ -48,7 +48,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     {
       icon: <FaSignOutAlt className="mr-2" />,
       label: "Logout",
-      path: "/logout", // This will be used for the link but we will handle logout onClick
+      path: "/logout",
     },
   ];
 

@@ -28,7 +28,7 @@ export default function HistoryPage(): JSX.Element {
   const [firstDoc, setFirstDoc] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const fetchUserHistory = async (direction: "next" | "prev" | "initial") => {
     setLoading(true);

@@ -116,7 +116,7 @@ export default function NavBar() {
           </Link>
           {isLoggedIn && userData && (
             <>
-              <Link href="/" className="hover:text-[#F96176]">
+              <Link href="/my-jobs" className="hover:text-[#F96176]">
                 My Jobs
               </Link>
               <Link href="/history" className="hover:text-[#F96176]">
@@ -186,14 +186,14 @@ export default function NavBar() {
           {isLoggedIn && userData && (
             <>
               <Link
-                href="/"
+                href="/my-jobs"
                 className="block py-2 text-gray-700 hover:text-[#F96176]"
                 onClick={toggleMenu}
               >
                 My Jobs
               </Link>
               <Link
-                href="/"
+                href="/history"
                 className="block py-2 text-gray-700 hover:text-[#F96176]"
                 onClick={toggleMenu}
               >

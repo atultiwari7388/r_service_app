@@ -9,13 +9,24 @@ import usePlacesAutocomplete, {
 } from "use-places-autocomplete";
 import toast from "react-hot-toast";
 
+import {
+  collection,
+  doc,
+  writeBatch,
+  query,
+  getDocs,
+} from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+
+const libraries: ["places"] = ["places"];
+
 const AddLocation = () => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [markerPosition, setMarkerPosition] =
     useState<google.maps.LatLngLiteral | null>(null);
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY as string,
-    libraries: ["places"] as ["places"],
+    libraries,
   });
 
   const {
@@ -105,12 +116,53 @@ const AddLocation = () => {
     }
   };
 
-  const handleAddLocation = () => {
-    if (!selectedLocation) {
+  const handleAddLocation = async () => {
+    if (!selectedLocation || !markerPosition) {
       toast.error("Please select a location first");
       return;
     }
-    alert(`Location Added: ${selectedLocation}`);
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error("Please login first");
+        return;
+      }
+
+      const batch = writeBatch(db);
+      const userAddressesRef = collection(db, "Users", user.uid, "Addresses");
+
+      // First set all existing addresses' isAddressSelected to false
+      const existingAddresses = await getDocs(query(userAddressesRef));
+      existingAddresses.forEach((doc) => {
+        batch.update(doc.ref, { isAddressSelected: false });
+      });
+
+      // Add new address document
+      const newAddressRef = doc(userAddressesRef);
+      batch.set(newAddressRef, {
+        address: selectedLocation,
+        addressType: "Home",
+        date: new Date().toISOString(),
+        id: newAddressRef.id,
+        isAddressSelected: true,
+        location: {
+          latitude: markerPosition.lat,
+          longitude: markerPosition.lng,
+        },
+      });
+
+      await batch.commit();
+      toast.success("Location added successfully!");
+
+      // Clear form
+      setMarkerPosition(null);
+      setSelectedLocation("");
+      setValue("");
+    } catch (error) {
+      console.error("Error adding location:", error);
+      toast.error("Failed to add location. Please try again.");
+    }
   };
 
   const mapCenter = useMemo(
@@ -123,7 +175,7 @@ const AddLocation = () => {
     mapRef.current = map;
   }, []);
 
-  if (!isLoaded)
+  if (!isLoaded || !ready)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-pink-50 to-purple-50">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#F96176]"></div>
