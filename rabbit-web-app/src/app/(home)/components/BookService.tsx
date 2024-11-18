@@ -2,20 +2,32 @@ import { useAuth } from "@/contexts/AuthContexts";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { ServiceType, VehicleTypes, AddressType } from "@/types/types";
-import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import {
+  ServiceType,
+  VehicleTypes,
+  AddressType,
+  ProfileValues,
+} from "@/types/types";
+import { db, storage } from "@/lib/firebase";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
+import { HashLoader } from "react-spinners";
+import { generateOrderId } from "@/utils/generateOrderId";
 
 const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
   const router = useRouter();
 
-  console.log(user?.uid);
-
+  const [loading, setLoading] = useState(false);
   const [services, setServices] = useState<ServiceType[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [location, setLocation] = useState<AddressType[]>([]);
+  const [userData, setUserData] = useState<ProfileValues | null>(null);
+  const [description, setDescription] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedServiceData, setSelectedServiceData] =
+    useState<ServiceType | null>(null);
 
   // State for selected values
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -26,6 +38,8 @@ const BookingSection: React.FC = () => {
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const service = e.target.value;
     setSelectedService(service);
+    const serviceData = services.find((s) => s.title === service);
+    setSelectedServiceData(serviceData || null);
     console.log("Selected Service:", service);
   };
 
@@ -51,8 +65,8 @@ const BookingSection: React.FC = () => {
           const servicesList = metadataSnapshot.data()?.data || [];
           return servicesList.map((service: ServiceType) => ({
             title: service.title || "",
-            imageType: service.image_type || 0,
-            priceType: service.price_type || 0,
+            image_type: service.image_type || 0,
+            price_type: service.price_type || 0,
             image: service.image || "",
             priority: service.priority || 0,
             isFeatured: service.isFeatured || false,
@@ -111,26 +125,59 @@ const BookingSection: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error("Error fetching vehicles:", error);
+        console.error("Error fetching addresses:", error);
       }
       return [];
     };
 
-    const loadData = async () => {
-      const [servicesData, vehicleData, location] = await Promise.all([
-        fetchServices(),
-        fetchUserVehicles(),
-        fetchUserAddress(),
-      ]);
-      setServices(servicesData);
-      setVehicles(vehicleData);
-      setLocation(location);
+    const fetchUserData = async (): Promise<ProfileValues | null> => {
+      try {
+        const userDocRef = doc(db, "Users", user?.uid as string);
+        console.log("Fetching user data for uid:", user?.uid);
+        const userSnapshot = await getDoc(userDocRef);
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.data() as ProfileValues;
+          console.log("User data fetched successfully:", userData);
+          return userData;
+        } else {
+          console.log("No user document found for uid:", user?.uid);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+      return null;
     };
 
-    if (user?.uid) loadData();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [servicesData, vehicleData, locationData, userProfileData] =
+          await Promise.all([
+            fetchServices(),
+            fetchUserVehicles(),
+            fetchUserAddress(),
+            fetchUserData(),
+          ]);
+        setServices(servicesData);
+        setVehicles(vehicleData);
+        setLocation(locationData);
+        setUserData(userProfileData);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.uid) {
+      loadData();
+    }
   }, [user]);
 
-  const handleFindMechanicClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleFindMechanicClick = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.preventDefault();
 
     if (!user) {
@@ -139,12 +186,104 @@ const BookingSection: React.FC = () => {
       return;
     }
 
-    // Log selected values to console
-    console.log("Selected Service:", selectedService);
-    console.log("Selected Vehicle:", selectedVehicle);
-    console.log("Selected Location:", selectedLocation);
-    console.log("Selected Location:", selectedLocation);
+    if (!selectedService || !selectedVehicle || !selectedLocation) {
+      toast.error("Please select all required fields");
+      return;
+    }
+
+    // Check if image is required but not selected
+    if (selectedServiceData?.image_type === 1 && !selectedImage) {
+      toast.error("Image upload is mandatory for this service");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Generate order ID
+      const orderId = await generateOrderId();
+
+      // Get selected location details
+      const selectedLocationData = location.find(
+        (loc) => loc.address === selectedLocation
+      );
+
+      // Get selected vehicle details
+      const selectedVehicleData = vehicles.find(
+        (v) => v.vehicleNumber === selectedVehicle
+      );
+
+      if (!userData || !selectedLocationData || !selectedVehicleData) {
+        throw new Error("Required data missing");
+      }
+
+      const imageUrls: string[] = [];
+
+      // Upload image if selected
+      if (selectedImage) {
+        const imageRef = ref(storage, `jobs/${orderId}/${selectedImage.name}`);
+        await uploadBytes(imageRef, selectedImage);
+        const imageUrl = await getDownloadURL(imageRef);
+        imageUrls.push(imageUrl);
+      }
+
+      // Prepare job data
+      const jobData = {
+        orderId: orderId,
+        cancelReason: "",
+        cancelBy: "",
+        userId: user.uid,
+        userPhoto: userData.profilePicture,
+        userName: userData.userName,
+        selectedService: selectedService,
+        companyName: selectedVehicleData.companyName,
+        description: description,
+        vehicleNumber: selectedVehicle,
+        userPhoneNumber: userData.phoneNumber,
+        userDeliveryAddress: selectedLocation,
+        userLat: selectedLocationData.location.latitude,
+        userLong: selectedLocationData.location.longitude,
+        isImageSelected: Boolean(imageUrls.length > 0),
+        fixPriceEnabled: Boolean(selectedServiceData?.price_type === 1),
+        images: imageUrls,
+        orderDate: new Date(),
+        role: userData.role,
+        ownerId: user.uid,
+        payMode: "",
+        status: 0,
+        rating: "4.3",
+        review: "",
+        reviewSubmitted: false,
+        mRating: "4.3",
+        mReview: "",
+        mReviewSubmitted: false,
+        nearByDistance: 5,
+        mechanicsOffer: [],
+      };
+
+      // Store in Users/uid/history
+      await setDoc(doc(db, "Users", user.uid, "history", orderId), jobData);
+
+      // Store in jobs collection
+      await setDoc(doc(db, "jobs", orderId), jobData);
+
+      toast.success("Service booked successfully!");
+      router.push("/history");
+    } catch (error) {
+      console.error("Error creating job:", error);
+      toast.error("Failed to book service");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
+        <HashLoader color="#F96176" />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -218,7 +357,7 @@ const BookingSection: React.FC = () => {
                 </div>
 
                 {/* Select Location */}
-                <div className="col-span-1">
+                <div className="col-span-1 flex gap-2">
                   <select
                     onChange={handleLocationChange}
                     className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
@@ -230,6 +369,14 @@ const BookingSection: React.FC = () => {
                       </option>
                     ))}
                   </select>
+                  <Link href="/add-location">
+                    <button
+                      className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                      title="Add Vehicle"
+                    >
+                      +
+                    </button>
+                  </Link>
                 </div>
 
                 {/* Select Image */}
@@ -239,11 +386,17 @@ const BookingSection: React.FC = () => {
                     className="file-input file-input-gray w-full max-w-xs bg-gray-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
                     accept="image/*"
                     onChange={(e) => {
-                      e.preventDefault();
-                      // setImage(e.target.files[0]);
+                      if (e.target.files && e.target.files[0]) {
+                        setSelectedImage(e.target.files[0]);
+                      }
                     }}
-                    required
+                    required={selectedServiceData?.image_type === 1}
                   />
+                  {selectedServiceData?.image_type === 1 && (
+                    <p className="text-red-500 text-sm mt-1">
+                      * Image upload is mandatory for this service
+                    </p>
+                  )}
                 </div>
 
                 {/* Special Request Textarea */}
@@ -251,6 +404,8 @@ const BookingSection: React.FC = () => {
                   <textarea
                     className="w-full p-4 h-22 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
                     placeholder="Description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
                   ></textarea>
                 </div>
 
