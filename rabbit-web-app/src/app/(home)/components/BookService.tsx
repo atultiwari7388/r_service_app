@@ -12,8 +12,8 @@ import { db, storage } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
-import { HashLoader } from "react-spinners";
 import { generateOrderId } from "@/utils/generateOrderId";
+import { LoadingIndicator } from "@/utils/LoadinIndicator";
 
 const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
@@ -278,11 +278,7 @@ const BookingSection: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
-        <HashLoader color="#F96176" />
-      </div>
-    );
+    return <LoadingIndicator />;
   }
 
   return (

@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import HistoryCard from "./components/HistoryCard";
 import { HashLoader } from "react-spinners";
+import { GlobalToastError } from "@/utils/globalErrorToast";
 
 export default function HistoryPage(): JSX.Element {
   const { user } = useAuth() || { user: null };
@@ -81,9 +82,7 @@ export default function HistoryPage(): JSX.Element {
           console.log("No history items found for initial load.");
         }
       } catch (error) {
-        toast.error(
-          "Failed to fetch history. Please try again. Error: " + error
-        );
+        GlobalToastError(error);
       } finally {
         setLoading(false);
       }
