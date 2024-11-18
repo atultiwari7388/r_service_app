@@ -22,7 +22,6 @@ export default function HistoryPage(): JSX.Element {
   const { user } = useAuth() || { user: null };
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
-
   const [lastDoc, setLastDoc] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [firstDoc, setFirstDoc] =

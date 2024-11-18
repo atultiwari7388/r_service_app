@@ -268,7 +268,7 @@ const BookingSection: React.FC = () => {
       await setDoc(doc(db, "jobs", orderId), jobData);
 
       toast.success("Service booked successfully!");
-      router.push("/history");
+      router.push("/my-jobs");
     } catch (error) {
       console.error("Error creating job:", error);
       toast.error("Failed to book service");
