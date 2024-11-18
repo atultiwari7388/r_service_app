@@ -25,7 +25,7 @@ const AddLocation = () => {
   const [markerPosition, setMarkerPosition] =
     useState<google.maps.LatLngLiteral | null>(null);
   const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY as string,
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
     libraries,
   });
 
@@ -175,7 +175,7 @@ const AddLocation = () => {
     mapRef.current = map;
   }, []);
 
-  if (!isLoaded || !ready)
+  if (!isLoaded)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-pink-50 to-purple-50">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#F96176]"></div>
