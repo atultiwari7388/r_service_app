@@ -87,6 +87,7 @@ const BookingSection: React.FC = () => {
           return vehiclesSnapshot.docs.map((doc) => {
             const data = doc.data() as VehicleTypes;
             return {
+              id: doc.id,
               vehicleNumber: data.vehicleNumber,
               companyName: data.companyName,
               createdAt: data.createdAt,
