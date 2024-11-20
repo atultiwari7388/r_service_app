@@ -12,6 +12,8 @@ import {
   startAfter,
   endBefore,
   Timestamp,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import Link from "next/link";
@@ -44,6 +46,29 @@ export default function ManageTeam(): JSX.Element {
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 
   const itemsPerPage = 5;
+
+  const handleToggleActive = async (
+    memberId: string,
+    currentActive: boolean
+  ) => {
+    if (!user) return;
+    try {
+      const memberRef = doc(db, "Users", memberId);
+      await updateDoc(memberRef, {
+        active: !currentActive,
+      });
+      toast.success(
+        `Team member ${
+          currentActive ? "deactivated" : "activated"
+        } successfully`
+      );
+      // Refresh the list
+      fetchTeamMembers("initial");
+    } catch (error) {
+      console.error("Error toggling member status:", error);
+      toast.error("Failed to update member status");
+    }
+  };
 
   const fetchTeamMembers = async (direction: "next" | "prev" | "initial") => {
     setLoading(true);
@@ -212,12 +237,14 @@ export default function ManageTeam(): JSX.Element {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button className="text-indigo-600 hover:text-indigo-900 mr-3">
-                        Edit
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        Delete
-                      </button>
+                      <input
+                        type="checkbox"
+                        className="toggle toggle-success"
+                        checked={member.active}
+                        onChange={() =>
+                          handleToggleActive(member.uid, member.active)
+                        }
+                      />
                     </td>
                   </tr>
                 ))
@@ -276,13 +303,15 @@ export default function ManageTeam(): JSX.Element {
                     {member.phoneNumber}
                   </p>
                 </div>
-                <div className="mt-4 flex justify-end space-x-3">
-                  <button className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
-                    Edit
-                  </button>
-                  <button className="text-red-600 hover:text-red-900 text-sm font-medium">
-                    Delete
-                  </button>
+                <div className="mt-4 flex justify-end">
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-success"
+                    checked={member.active}
+                    onChange={() =>
+                      handleToggleActive(member.uid, member.active)
+                    }
+                  />
                 </div>
               </div>
             ))

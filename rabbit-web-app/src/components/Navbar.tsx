@@ -111,7 +111,7 @@ export default function NavBar() {
           <Link href="/about-us" className="hover:text-[#F96176]">
             About us
           </Link>
-          <Link href="/" className="hover:text-[#F96176]">
+          <Link href="/contact-us" className="hover:text-[#F96176]">
             Contact us
           </Link>
           {isLoggedIn && userData && (
@@ -177,7 +177,7 @@ export default function NavBar() {
             About Us
           </Link>
           <Link
-            href="/"
+            href="/contact-us"
             className="block py-2 text-gray-700 hover:text-[#F96176]"
             onClick={toggleMenu}
           >
