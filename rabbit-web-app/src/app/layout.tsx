@@ -8,7 +8,7 @@ import AuthContextProvider from "@/contexts/AuthContexts";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "Rabbit-Truck Repair Services",
+  title: "Rabbit-Welcome to Rabbit Mechanic Services",
   description: "Created by Mylex infotech",
 };
 

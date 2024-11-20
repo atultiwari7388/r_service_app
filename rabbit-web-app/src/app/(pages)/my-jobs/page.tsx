@@ -65,21 +65,21 @@ export default function MyJobsPage() {
         <table className="min-w-full bg-white border border-gray-200 rounded-lg">
           <thead>
             <tr>
-              <th className="px-4 py-2 border-b bg-blue-100">ID</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Distance</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Rating</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Name</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Address</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Service</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Vehicle</th>
-              <th className="px-4 py-2 border-b bg-blue-100">
+              <th className="px-4 py-2 border-b bg-green-100">ID</th>
+              <th className="px-4 py-2 border-b bg-green-100">Distance</th>
+              <th className="px-4 py-2 border-b bg-green-100">Rating</th>
+              <th className="px-4 py-2 border-b bg-green-100">Name</th>
+              <th className="px-4 py-2 border-b bg-green-100">Address</th>
+              <th className="px-4 py-2 border-b bg-green-100">Service</th>
+              <th className="px-4 py-2 border-b bg-green-100">Vehicle</th>
+              <th className="px-4 py-2 border-b bg-green-100">
                 Arrival Charges
               </th>
-              <th className="px-4 py-2 border-b bg-blue-100">
+              <th className="px-4 py-2 border-b bg-green-100">
                 Per Hour Charges
               </th>
-              <th className="px-4 py-2 border-b bg-blue-100">Payment Mode</th>
-              <th className="px-4 py-2 border-b bg-blue-100">Status</th>
+              <th className="px-4 py-2 border-b bg-green-100">Payment Mode</th>
+              <th className="px-4 py-2 border-b bg-green-100">Status</th>
             </tr>
           </thead>
           <tbody className="text-center bg-gray-100">
@@ -87,7 +87,7 @@ export default function MyJobsPage() {
               historyItems.map((item, index) => (
                 <tr
                   key={item.id}
-                  className={index % 2 === 0 ? "bg-red-100" : "bg-green-100"}
+                  className={index % 2 === 0 ? "bg-white" : "bg-red-50"}
                 >
                   <td className="px-4 py-2 border-b">{item.id}</td>
                   <td className="px-4 py-2 border-b">

@@ -67,6 +67,7 @@ export interface ServiceType {
 /** Vehicles */
 
 export interface VehicleTypes {
+  id: string;
   companyName: string;
   createdAt: Timestamp;
   isSet: boolean;
