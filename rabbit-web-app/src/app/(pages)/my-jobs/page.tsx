@@ -3,17 +3,63 @@
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { HistoryItem } from "@/types/types";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  getDoc,
+} from "firebase/firestore";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { HashLoader } from "react-spinners";
 import HistoryCard from "../history/components/HistoryCard";
+import { GlobalToastError } from "@/utils/globalErrorToast";
 
 export default function MyJobsPage() {
   const { user } = useAuth() || { user: null };
   const [loading, setLoading] = useState(false);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [distanceOptions, setDistanceOptions] = useState<number[]>([]);
 
+  // const distanceOptions = [10, 15, 20, 25, 30, 50, 100];
+
+  //handle distance change
+  const handleDistanceChange = async (jobId: string, newDistance: number) => {
+    try {
+      // Update history collection
+      const jobRef = doc(db, "Users", user!.uid, "history", jobId);
+      await updateDoc(jobRef, {
+        nearByDistance: newDistance,
+      });
+
+      // Update jobs collection
+      const historyDoc = historyItems.find((item) => item.id === jobId);
+      if (historyDoc?.orderId) {
+        const jobsRef = doc(db, "jobs", historyDoc.orderId);
+        await updateDoc(jobsRef, {
+          nearByDistance: newDistance,
+        });
+      }
+
+      // Update local state
+      setHistoryItems((prev) =>
+        prev.map((item) => {
+          if (item.id === jobId) {
+            return { ...item, nearByDistance: newDistance };
+          }
+          return item;
+        })
+      );
+
+      toast.success("Distance updated successfully");
+    } catch (error) {
+      toast.error("Failed to update distance");
+      console.error(error);
+    }
+  };
+
+  //fetch user ongoing history
   const fetchUserOngoingHistory = async () => {
     setLoading(true);
     if (user) {
@@ -42,8 +88,28 @@ export default function MyJobsPage() {
     }
   };
 
+  //fetch distance options
+  const fetchDistanceOptions = async () => {
+    setLoading(true);
+    try {
+      const distanceRef = doc(db, "metadata", "nearByDisstanceList");
+      const distanceSnapshot = await getDoc(distanceRef);
+
+      if (distanceSnapshot.exists()) {
+        const distanceData = distanceSnapshot.data()?.value;
+        console.log("Distance Data", distanceData);
+        setDistanceOptions(distanceData);
+      }
+    } catch (error) {
+      return GlobalToastError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUserOngoingHistory();
+    fetchDistanceOptions();
   }, [user]);
 
   if (!user) {
@@ -91,7 +157,22 @@ export default function MyJobsPage() {
                 >
                   <td className="px-4 py-2 border-b">{item.id}</td>
                   <td className="px-4 py-2 border-b">
-                    {item.nearByDistance} miles
+                    <div className="flex items-center justify-center gap-2">
+                      <span>{item.nearByDistance} miles</span>
+                      <select
+                        className="ml-2 border rounded p-1"
+                        value={item.nearByDistance}
+                        onChange={(e) =>
+                          handleDistanceChange(item.id, Number(e.target.value))
+                        }
+                      >
+                        {distanceOptions.map((distance) => (
+                          <option key={distance} value={distance}>
+                            {distance} miles
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
                   <td className="px-4 py-2 border-b">{item.rating}</td>
                   <td className="px-4 py-2 border-b">{item.userName}</td>
