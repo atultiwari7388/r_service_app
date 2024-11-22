@@ -15,8 +15,10 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { updatePassword } from "firebase/auth";
 
 export default function MyProfile() {
   const { user } = useAuth() || { user: null };
@@ -24,6 +26,14 @@ export default function MyProfile() {
   const [userData, setUserData] = useState<ProfileValues | null>(null);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [imageUploadLoading, setImageUploadLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedData, setEditedData] = useState({
+    userName: "",
+    email: "",
+    address: "",
+  });
+  const [newPassword, setNewPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -38,6 +48,11 @@ export default function MyProfile() {
         if (doc.exists()) {
           const userProfile = doc.data() as ProfileValues;
           setUserData(userProfile);
+          setEditedData({
+            userName: userProfile.userName || "",
+            email: userProfile.email || "",
+            address: userProfile.address || "",
+          });
         } else {
           GlobalToastError("User document not found");
         }
@@ -64,7 +79,7 @@ export default function MyProfile() {
       const vehiclesList = vehiclesSnapshot.docs.map((doc) => {
         const data = doc.data();
         return {
-          id: doc.id, // Store the document ID
+          id: doc.id,
           companyName: data.companyName,
           createdAt: data.createdAt,
           isSet: data.isSet,
@@ -108,14 +123,45 @@ export default function MyProfile() {
     });
   };
 
-  const handleDeleteVehicle = async (docId: string) => {
+  const handleSaveChanges = async () => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, "Users", user.uid, "Vehicles", docId));
-      toast.success("Vehicle deleted successfully!");
-      fetchVehicles();
+      const userRef = doc(db, "Users", user.uid);
+      await updateDoc(userRef, {
+        userName: editedData.userName,
+        email: editedData.email,
+        address: editedData.address,
+      });
+      setIsEditing(false);
+      toast.success("Profile updated successfully!");
     } catch (error) {
       GlobalToastError(error);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+    try {
+      await updatePassword(user, newPassword);
+      setIsChangingPassword(false);
+      setNewPassword("");
+      toast.success("Password changed successfully!");
+    } catch (error) {
+      GlobalToastError(error);
+    }
+  };
+
+  const handleDeleteVehicle = async (docId: string) => {
+    if (!user) return;
+
+    if (window.confirm("Are you sure you want to delete this vehicle?")) {
+      try {
+        await deleteDoc(doc(db, "Users", user.uid, "Vehicles", docId));
+        toast.success("Vehicle deleted successfully!");
+        fetchVehicles();
+      } catch (error) {
+        GlobalToastError(error);
+      }
     }
   };
 
@@ -146,7 +192,7 @@ export default function MyProfile() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <label className="absolute bottom-0 right-0 bg-pink-500 rounded-full p-2 cursor-pointer shadow-lg">
+            <label className="absolute bottom-0 right-0 bg-[#F96176] rounded-full p-2 cursor-pointer shadow-lg">
               <input
                 type="file"
                 className="hidden"
@@ -183,25 +229,139 @@ export default function MyProfile() {
 
         {/* Personal Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-pink-500 to-red-500 px-6 py-4">
+          <div className="bg-[#F96176] px-6 py-4 flex justify-between items-center">
             <h3 className="text-xl font-semibold text-white">
               Personal Details
             </h3>
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="bg-white text-[#F96176] px-4 py-2 rounded-full"
+              >
+                Edit Details
+              </button>
+            )}
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ProfileField label="Full Name" value={userData?.userName} />
-            <ProfileField label="Email" value={userData?.email} />
-            <ProfileField label="Phone" value={userData?.phoneNumber} />
-            <ProfileField label="Address" value={userData?.address} />
+            {isEditing ? (
+              <>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-500">Full Name</p>
+                  <input
+                    type="text"
+                    value={editedData.userName}
+                    onChange={(e) =>
+                      setEditedData({ ...editedData, userName: e.target.value })
+                    }
+                    className="mt-1 w-full p-2 border rounded"
+                  />
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-500">Email</p>
+                  <input
+                    type="email"
+                    value={editedData.email}
+                    onChange={(e) =>
+                      setEditedData({ ...editedData, email: e.target.value })
+                    }
+                    className="mt-1 w-full p-2 border rounded"
+                  />
+                </div>
+                <ProfileField label="Phone" value={userData?.phoneNumber} />
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm font-medium text-gray-500">Address</p>
+                  <input
+                    type="text"
+                    value={editedData.address}
+                    onChange={(e) =>
+                      setEditedData({ ...editedData, address: e.target.value })
+                    }
+                    className="mt-1 w-full p-2 border rounded"
+                  />
+                </div>
+                <div className="col-span-2 flex justify-end gap-4">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-full"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveChanges}
+                    className="bg-[#F96176] text-white px-4 py-2 rounded-full"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <ProfileField label="Full Name" value={userData?.userName} />
+                <ProfileField label="Email" value={userData?.email} />
+                <ProfileField label="Phone" value={userData?.phoneNumber} />
+                <ProfileField label="Address" value={userData?.address} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Change Password Section */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+          <div className="bg-[#F96176] px-6 py-4">
+            <h3 className="text-xl font-semibold text-white">
+              Change Password
+            </h3>
+          </div>
+          <div className="p-6">
+            {isChangingPassword ? (
+              <div className="space-y-4">
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full p-2 border rounded"
+                />
+                <div className="flex justify-end gap-4">
+                  <button
+                    onClick={() => {
+                      setIsChangingPassword(false);
+                      setNewPassword("");
+                    }}
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-full"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleChangePassword}
+                    className="bg-[#F96176] text-white px-4 py-2 rounded-full"
+                  >
+                    Change Password
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsChangingPassword(true)}
+                className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-200"
+              >
+                Change Password
+              </button>
+            )}
           </div>
         </div>
 
         {/* Vehicle Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-pink-500 to-red-500 px-6 py-4">
+          <div className="bg-[#F96176] px-6 py-4 flex justify-between items-center">
             <h3 className="text-xl font-semibold text-white">
               Vehicle Details
             </h3>
+            <Link href="/add-vehicle">
+              <button className="bg-white text-[#F96176] px-4 py-2 rounded-full">
+                Add Vehicle
+              </button>
+            </Link>
           </div>
           <div className="p-6">
             {vehicles.length > 0 ? (
