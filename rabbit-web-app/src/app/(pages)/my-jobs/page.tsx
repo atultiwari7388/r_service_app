@@ -15,14 +15,13 @@ import toast from "react-hot-toast";
 import { HashLoader } from "react-spinners";
 import HistoryCard from "../history/components/HistoryCard";
 import { GlobalToastError } from "@/utils/globalErrorToast";
+import Link from "next/link";
 
 export default function MyJobsPage() {
   const { user } = useAuth() || { user: null };
   const [loading, setLoading] = useState(false);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [distanceOptions, setDistanceOptions] = useState<number[]>([]);
-
-  // const distanceOptions = [10, 15, 20, 25, 30, 50, 100];
 
   //handle distance change
   const handleDistanceChange = async (jobId: string, newDistance: number) => {
@@ -146,6 +145,7 @@ export default function MyJobsPage() {
               </th>
               <th className="px-4 py-2 border-b bg-green-100">Payment Mode</th>
               <th className="px-4 py-2 border-b bg-green-100">Status</th>
+              <th className="px-4 py-2 border-b bg-green-100">Action</th>
             </tr>
           </thead>
           <tbody className="text-center bg-gray-100">
@@ -198,6 +198,14 @@ export default function MyJobsPage() {
                     ) : (
                       <span className="text-yellow-500">In Progress</span>
                     )}
+                  </td>
+                  <td className="px-4 py-2 border-b">
+                    <Link
+                      href={`/my-jobs/${item.id.replace("#", "")}`}
+                      className="bg-[#F96176] text-white px-2 py-2 rounded-sm"
+                    >
+                      View
+                    </Link>
                   </td>
                 </tr>
               ))

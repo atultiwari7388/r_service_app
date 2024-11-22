@@ -323,45 +323,6 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                             ),
 
                       SizedBox(height: 15.h),
-                      //=============Descripition section ====================
-                      // widget.description.isEmpty
-                      //     ? Container()
-                      //     : Column(
-                      //         children: [
-                      //           Divider(),
-                      //           Row(
-                      //             mainAxisAlignment:
-                      //                 MainAxisAlignment.spaceEvenly,
-                      //             children: [
-                      //               SizedBox(
-                      //                 width: 145.w,
-                      //                 child: Text(
-                      //                   "Description :",
-                      //                   style: kIsWeb
-                      //                       ? TextStyle(color: kDark)
-                      //                       : appStyle(
-                      //                           16.sp, kDark, FontWeight.w500),
-                      //                 ),
-                      //               ),
-                      //               SizedBox(width: 40.w),
-                      //               Container()
-                      //             ],
-                      //           ),
-                      //           SizedBox(height: 10.h),
-                      //           SizedBox(
-                      //             width: 250.w,
-                      //             child: Text(
-                      //               widget.description,
-                      //               maxLines: 4,
-                      //               overflow: TextOverflow.ellipsis,
-                      //               style: appStyle(
-                      //                   11, kDarkGray, FontWeight.normal),
-                      //             ),
-                      //           ),
-                      //           SizedBox(height: 20.h),
-                      //         ],
-                      //       ),
-                      // Action Buttons
                       Row(
                         mainAxisAlignment: widget.mStatus == 1
                             ? MainAxisAlignment.center
