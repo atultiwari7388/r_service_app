@@ -131,18 +131,13 @@ export default function MyJobsPage() {
           <thead>
             <tr>
               <th className="px-4 py-2 border-b bg-green-100">ID</th>
+              <th className="px-4 py-2 border-b bg-green-100">Date & Time</th>
               <th className="px-4 py-2 border-b bg-green-100">Distance</th>
-              <th className="px-4 py-2 border-b bg-green-100">Rating</th>
               <th className="px-4 py-2 border-b bg-green-100">Name</th>
               <th className="px-4 py-2 border-b bg-green-100">Address</th>
               <th className="px-4 py-2 border-b bg-green-100">Service</th>
               <th className="px-4 py-2 border-b bg-green-100">Vehicle</th>
-              <th className="px-4 py-2 border-b bg-green-100">
-                Arrival Charges
-              </th>
-              <th className="px-4 py-2 border-b bg-green-100">
-                Per Hour Charges
-              </th>
+              <th className="px-4 py-2 border-b bg-green-100">Charges</th>
               <th className="px-4 py-2 border-b bg-green-100">Payment Mode</th>
               <th className="px-4 py-2 border-b bg-green-100">Status</th>
               <th className="px-4 py-2 border-b bg-green-100">Action</th>
@@ -156,6 +151,9 @@ export default function MyJobsPage() {
                   className={index % 2 === 0 ? "bg-white" : "bg-red-50"}
                 >
                   <td className="px-4 py-2 border-b">{item.id}</td>
+                  <td className="px-4 py-2 border-b">
+                    {item.orderDate?.toDate().toLocaleString()}
+                  </td>
                   <td className="px-4 py-2 border-b">
                     <div className="flex items-center justify-center gap-2">
                       <span>{item.nearByDistance} miles</span>
@@ -174,7 +172,6 @@ export default function MyJobsPage() {
                       </select>
                     </div>
                   </td>
-                  <td className="px-4 py-2 border-b">{item.rating}</td>
                   <td className="px-4 py-2 border-b">{item.userName}</td>
                   <td className="px-4 py-2 border-b">
                     {item.userDeliveryAddress}
@@ -182,13 +179,14 @@ export default function MyJobsPage() {
                   <td className="px-4 py-2 border-b">{item.selectedService}</td>
                   <td className="px-4 py-2 border-b">{item.vehicleNumber}</td>
                   <td className="px-4 py-2 border-b">
-                    {item.mechanicsOffer &&
-                      item.mechanicsOffer[0]?.arrivalCharges}
+                    {/* {item.mechanicsOffer &&
+                      item.mechanicsOffer[0]?.arrivalCharges} */}
+
+                    {item.fixPriceEnabled == true
+                      ? `$${item.mechanicsOffer[0]?.fixPrice} (Fix Price  )`
+                      : `$${item.mechanicsOffer[0]?.arrivalCharges} (Arrival Charges)`}
                   </td>
-                  <td className="px-4 py-2 border-b">
-                    {item.mechanicsOffer &&
-                      item.mechanicsOffer[0]?.perHourCharges}
-                  </td>
+
                   <td className="px-4 py-2 border-b">{item.payMode}</td>
                   <td className="px-4 py-2 border-b">
                     {item.status === 5 ? (

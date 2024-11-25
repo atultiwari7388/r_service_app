@@ -12,6 +12,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { HashLoader } from "react-spinners";
@@ -20,11 +21,13 @@ export default function AddVehiclePage() {
   const [companyList, setCompanyList] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { user } = useAuth() || { user: null };
-  const [selectedCompany, setSelectedCompany] = useState("");
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [vin, setVin] = useState("");
-  const [licensePlate, setLicensePlate] = useState("");
-  const [year, setYear] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState<string>("");
+  const [vehicleNumber, setVehicleNumber] = useState<string>("");
+  const [vin, setVin] = useState<string>("");
+  const [licensePlate, setLicensePlate] = useState<string>("");
+  const [year, setYear] = useState<string>("");
+
+  const router = useRouter();
 
   const fetchCompanyList = async () => {
     setLoading(true);
@@ -95,9 +98,7 @@ export default function AddVehiclePage() {
         createdAt: serverTimestamp(),
       });
 
-      // toast.success("Vehicle added successfully!");
-      // console.log("Vehicle added successfully!", vehiclesRef);
-      // console.log("User ID:", user.uid);
+      router.push("/account/my-profile");
 
       // Reset form
       setSelectedCompany("");

@@ -18,6 +18,7 @@ interface UserData {
   userName: string;
   phoneNumber: string;
   email: string;
+  wallet: number;
 }
 
 export default function NavBar() {

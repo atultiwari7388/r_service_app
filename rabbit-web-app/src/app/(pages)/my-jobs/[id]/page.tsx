@@ -82,14 +82,13 @@ export default function JobIdDetails({
     try {
       const updates = {
         status: 3,
-        payMode: selectedPaymentMode, // Add payment mode
+        payMode: selectedPaymentMode,
         mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
           ...offer,
           status: offer.mId === mechanicId ? 3 : offer.status,
         })),
       };
 
-      // Update both user history and jobs collection
       const userHistoryRef = doc(db, "Users", user.uid, "history", `#${id}`);
       const jobRef = doc(db, "jobs", `#${id}`);
 
@@ -142,7 +141,7 @@ export default function JobIdDetails({
           ...offer,
           status: offer.mId === mechanicId ? 5 : offer.status,
         })),
-        reviewSubmitted: false, // Add review status
+        reviewSubmitted: false,
       };
 
       const userHistoryRef = doc(db, "Users", user.uid, "history", `#${id}`);
@@ -176,38 +175,136 @@ export default function JobIdDetails({
     return <div>Job not found</div>;
   }
 
+  // Find if any mechanic has been accepted (status 2 or higher)
+  const acceptedMechanic = jobDetails.mechanicsOffer?.find(
+    (mechanic) => mechanic.status >= 2
+  );
+
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2">
-          <span className="bg-pink-100 text-pink-600 px-3 py-1 rounded">
-            #{jobDetails.orderId}
+    <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
+      {/* Job Details Section */}
+      <div className="bg-white rounded-xl shadow-lg p-8 mb-8 hover:shadow-xl transition-shadow duration-300">
+        <div className="flex items-center mb-2 gap-2">
+          {/** Top Section */}
+          <div className="flex gap-4">
+            <span className="bg-pink-100 text-pink-600 px-4 py-2 rounded-lg font-semibold">
+              {jobDetails.orderId}
+            </span>
+            <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg font-semibold">
+              {jobDetails.orderDate.toDate().toLocaleDateString()}
+            </span>
+          </div>
+          <span
+            className={`px-6 py-2 rounded-lg font-semibold ${
+              jobDetails.status === 5
+                ? "bg-green-100 text-green-600"
+                : jobDetails.status === -1
+                ? "bg-red-100 text-red-600"
+                : "bg-yellow-100 text-yellow-600"
+            }`}
+          >
+            {jobDetails.status === 5
+              ? "Completed"
+              : jobDetails.status === -1
+              ? "Cancelled"
+              : "In Progress"}
           </span>
-          <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded">
-            {jobDetails.companyName} ({jobDetails.vehicleNumber})
-          </span>
+        </div>
+
+        {/** Image sectiion and vehicle details section */}
+
+        <div className="flex gap-8">
+          {/** Vehicle Details Section */}
+          <div className="">
+            <p className="text-gray-600 text-lg font-bold">
+              Vehicle: {jobDetails.companyName} ({jobDetails.vehicleNumber})
+            </p>
+            <div className="grid grid-cols-1">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-black">
+                  Service :{" "}
+                  <span className="font-semibold">
+                    {jobDetails.selectedService}
+                  </span>
+                </p>
+
+                {jobDetails.description.length > 0 ? (
+                  <p className="text-black ">
+                    Description :{" "}
+                    <span className="font-semibold">
+                      {jobDetails.description}
+                    </span>
+                  </p>
+                ) : null}
+
+                <p className="text-black ">
+                  Location :{" "}
+                  <span className="font-semibold">
+                    {jobDetails.userDeliveryAddress}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {jobDetails.images && jobDetails.images.length > 0 && (
+            <div className="">
+              <div className="grid grid-cols-3 gap-6">
+                {jobDetails.images.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`Job image ${index + 1}`}
+                    height={100}
+                    width={100}
+                    className="rounded-xl hover:opacity-90 transition-opacity duration-300 shadow-md"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {!jobDetails.mechanicsOffer || jobDetails.mechanicsOffer.length === 0 ? (
-        <div className="text-center py-8">No Mechanic Found</div>
-      ) : (
-        <div className="space-y-4">
-          {jobDetails.mechanicsOffer.map((mechanic, index) => (
-            <RequestAcceptHistoryCard
-              key={index}
-              mechanic={mechanic}
-              jobDetails={jobDetails}
-              onAcceptOffer={() => handleAcceptOffer(mechanic.mId)}
-              onPayment={() => handlePayment(mechanic.mId)}
-              onStartJob={() => handleStartJob(mechanic.mId)}
-              onCompleteJob={() => handleCompleteJob(mechanic.mId)}
-              selectedPaymentMode={selectedPaymentMode}
-              setSelectedPaymentMode={setSelectedPaymentMode}
-            />
-          ))}
-        </div>
-      )}
+      {/* Mechanics Offers Section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">
+          Mechanic Offers
+        </h2>
+        {!jobDetails.mechanicsOffer ||
+        jobDetails.mechanicsOffer.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl shadow-md">
+            <p className="text-gray-500 text-lg">No Mechanic Offers Found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {jobDetails.mechanicsOffer
+              .filter(
+                (mechanic) =>
+                  // Show all offers if no mechanic is accepted yet
+                  // Otherwise only show the accepted mechanic
+                  !acceptedMechanic || mechanic.mId === acceptedMechanic.mId
+              )
+              .map((mechanic, index) => (
+                <div
+                  key={index}
+                  className="transform hover:scale-[1.02] transition-transform duration-300"
+                >
+                  <RequestAcceptHistoryCard
+                    mechanic={mechanic}
+                    jobDetails={jobDetails}
+                    onAcceptOffer={() => handleAcceptOffer(mechanic.mId)}
+                    onPayment={() => handlePayment(mechanic.mId)}
+                    onStartJob={() => handleStartJob(mechanic.mId)}
+                    onCompleteJob={() => handleCompleteJob(mechanic.mId)}
+                    selectedPaymentMode={selectedPaymentMode}
+                    setSelectedPaymentMode={setSelectedPaymentMode}
+                  />
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

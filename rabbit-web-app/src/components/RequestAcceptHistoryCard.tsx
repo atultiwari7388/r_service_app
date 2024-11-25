@@ -69,9 +69,6 @@ export default function RequestAcceptHistoryCard({
               </svg>
               {mechanic.rating}
             </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-3">
             {mechanic.languages.map((lang, i) => (
               <span
                 key={i}
@@ -84,37 +81,39 @@ export default function RequestAcceptHistoryCard({
         </div>
       </div>
 
-      <div className="mt-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5">
-        {jobDetails.fixPriceEnabled ? (
-          <div className="flex justify-between items-center">
-            <span className="font-semibold text-gray-700">Fix Price</span>
-            <span className="text-xl font-bold text-green-600">
-              ${mechanic.fixPrice}
-            </span>
-          </div>
-        ) : (
-          <>
+      <div className="flex justify-between gap-4">
+        <div className="mt-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 flex-1">
+          {jobDetails.fixPriceEnabled ? (
             <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-700">
-                Arrival Charges
-              </span>
-              <span className="text-lg font-bold text-green-600">
-                ${mechanic.arrivalCharges}
+              <span className="font-semibold text-gray-700">Fix Price</span>
+              <span className="text-xl font-bold text-green-600">
+                ${mechanic.fixPrice}
               </span>
             </div>
-            <div className="border-t border-gray-200 my-3" />
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-700">
-                Per Hour Charges
-              </span>
-              <span className="text-lg font-bold text-green-600">
-                ${mechanic.perHourCharges}
-              </span>
-            </div>
-          </>
-        )}
+          ) : (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-700">
+                  Arrival Charges
+                </span>
+                <span className="text-lg font-bold text-green-600">
+                  ${mechanic.arrivalCharges}
+                </span>
+              </div>
+              <div className="border-t border-gray-200 my-3" />
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-700">
+                  Per Hour Charges
+                </span>
+                <span className="text-lg font-bold text-green-600">
+                  ${mechanic.perHourCharges}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
 
-        <div className="mt-5 flex justify-center">
+        <div className="mt-6 flex items-center">
           {mechanic.status === 1 && (
             <button
               onClick={onAcceptOffer}
@@ -125,13 +124,13 @@ export default function RequestAcceptHistoryCard({
           )}
 
           {mechanic.status === 2 && (
-            <div className="space-y-4 w-full">
-              <div className="flex gap-4 justify-center">
+            <div className="space-y-4">
+              <div className="flex gap-4">
                 <button
                   onClick={() => setSelectedPaymentMode("cash")}
                   className={`px-6 py-2 rounded-full ${
                     selectedPaymentMode === "cash"
-                      ? "bg-blue-600 text-white"
+                      ? "bg-[#F96176] text-white"
                       : "bg-gray-200 text-gray-700"
                   }`}
                 >
@@ -141,7 +140,7 @@ export default function RequestAcceptHistoryCard({
                   onClick={() => setSelectedPaymentMode("online")}
                   className={`px-6 py-2 rounded-full ${
                     selectedPaymentMode === "online"
-                      ? "bg-blue-600 text-white"
+                      ? "bg-[#F96176] text-white"
                       : "bg-gray-200 text-gray-700"
                   }`}
                 >
@@ -151,7 +150,7 @@ export default function RequestAcceptHistoryCard({
               {selectedPaymentMode && (
                 <button
                   onClick={onPayment}
-                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white px-8 py-2.5 rounded-full"
+                  className="w-full bg-gradient-to-r from-[#F96176] to-[#F96176] text-white px-8 py-2.5 rounded-full hover:from-[#F96176] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200"
                 >
                   Process Payment
                 </button>
@@ -162,7 +161,7 @@ export default function RequestAcceptHistoryCard({
           {mechanic.status === 3 && (
             <button
               onClick={onStartJob}
-              className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-8 py-2.5 rounded-full"
+              className="bg-gradient-to-r from-[#F96176] to-[#F96176] text-white px-8 py-2.5 rounded-full hover:from-[#F96176] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200"
             >
               Start Job
             </button>
@@ -171,14 +170,16 @@ export default function RequestAcceptHistoryCard({
           {mechanic.status === 4 && (
             <button
               onClick={onCompleteJob}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-2.5 rounded-full"
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-2.5 rounded-full hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-200"
             >
               Complete Job
             </button>
           )}
 
           {mechanic.status === 5 && (
-            <div className="text-green-600 font-medium">Job Completed</div>
+            <div className="text-green-600 font-medium text-lg">
+              Job Completed
+            </div>
           )}
         </div>
       </div>

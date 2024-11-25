@@ -1,9 +1,19 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
 
 admin.initializeApp();
 
 const db = admin.firestore();
+
+// Initialize Nodemailer transporter
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
 
 const calculateDistance = (startLat, startLng, endLat, endLng) => {
   const radius = 6371.0; // Earth's radius in kilometers
@@ -25,6 +35,53 @@ const calculateDistance = (startLat, startLng, endLat, endLng) => {
 const toRadians = (degrees) => {
   return degrees * (Math.PI / 180);
 };
+
+// Send contact email
+exports.sendContactEmail = functions.https.onCall(async (data, context) => {
+  // Input validation
+  if (!data.name || !data.email || !data.message || !data.recipientEmail) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Missing required fields"
+    );
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(data.email) || !emailRegex.test(data.recipientEmail)) {
+    throw new functions.https.HttpsError(
+      "invalid-argument",
+      "Invalid email format"
+    );
+  }
+
+  const { name, email, phone, message, recipientEmail } = data;
+
+  const mailOptions = {
+    from: `"Rabbit Mechanic Contact" <${process.env.EMAIL_USER}>`, // Use consistent sender
+    replyTo: email, // Allow replying to contact submitter
+    to: recipientEmail,
+    subject: "New Contact Form Submission - Rabbit Mechanic",
+    html: `
+      <h2>New Contact Form Submission</h2>
+      <p><strong>Name:</strong> ${name}</p>
+      <p><strong>Email:</strong> ${email}</p>
+      ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ""}
+      <p><strong>Message:</strong> ${message}</p>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true, message: "Email sent successfully!" };
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw new functions.https.HttpsError(
+      "internal",
+      "Failed to send email. Please try again later."
+    );
+  }
+});
 
 // Function to send a new notification to the nearby Mechanics when a job is created
 exports.sendNewMechanicNotification = functions.firestore

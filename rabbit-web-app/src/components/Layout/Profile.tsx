@@ -19,6 +19,7 @@ type User = {
   profilePicture: string;
   userName: string;
   phoneNumber: string;
+  wallet: number;
 };
 
 type ProfileProps = {
@@ -78,6 +79,9 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         <div>
           <h2 className="text-lg font-semibold">{user.userName}</h2>
           <p className="text-sm text-gray-500">{user.phoneNumber}</p>
+          <p className="text-sm font-medium bg-gradient-to-r from-[#F96176] to-[#ff8c9a] text-transparent bg-clip-text">
+            Wallet: ${user.wallet?.toLocaleString()}
+          </p>
         </div>
       </div>
       <div className="mt-4">

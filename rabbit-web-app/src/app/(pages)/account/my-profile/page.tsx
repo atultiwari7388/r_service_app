@@ -351,6 +351,14 @@ export default function MyProfile() {
           </div>
         </div>
 
+        {/* Wallet Balance Section */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+          <div className="bg-[#F96176] px-6 py-4">
+            <h3 className="text-xl font-semibold text-white">Wallet Balance</h3>
+          </div>
+          <div className="p-6">{userData?.wallet}</div>
+        </div>
+
         {/* Vehicle Details Section */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="bg-[#F96176] px-6 py-4 flex justify-between items-center">

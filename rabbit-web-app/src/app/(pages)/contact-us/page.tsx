@@ -8,12 +8,14 @@ import { doc, getDoc, addDoc, collection } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { FaEnvelope, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 export default function ContactUsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [contactInfo, setContactInfo] = useState<{
     contactMail?: string;
     contactNumber?: string;
+    address?: string;
   }>({});
   const [formData, setFormData] = useState({
     name: "",
@@ -33,7 +35,8 @@ export default function ContactUsPage() {
         if (contactUsSnapshot.exists()) {
           const contactMail = contactUsSnapshot.data()?.mail || "";
           const contactNumber = contactUsSnapshot.data()?.phone || "";
-          setContactInfo({ contactMail, contactNumber });
+          const address = contactUsSnapshot.data()?.address || "";
+          setContactInfo({ contactMail, contactNumber, address });
         }
       } catch (error) {
         GlobalToastError(error);
@@ -48,10 +51,19 @@ export default function ContactUsPage() {
     setIsLoading(true);
 
     try {
+      // Store in database
       await addDoc(collection(db, "contactSubmissions"), {
         ...formData,
         userId: user?.uid,
         timestamp: new Date(),
+      });
+
+      // Send email to admin
+      const functions = getFunctions();
+      const sendContactEmail = httpsCallable(functions, "sendContactEmail");
+      await sendContactEmail({
+        ...formData,
+        recipientEmail: contactInfo.contactMail,
       });
 
       toast.success("Message sent successfully!");
@@ -133,7 +145,7 @@ export default function ContactUsPage() {
                   <FaMapMarkerAlt className="text-[#F96176] text-xl" />
                   <div>
                     <p className="font-semibold">Address</p>
-                    <p>New York, NY 10001, USA</p>
+                    <p>{contactInfo.address}</p>
                   </div>
                 </div>
               </div>
