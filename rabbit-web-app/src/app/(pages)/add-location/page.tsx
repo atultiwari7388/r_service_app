@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
-import { FaSearch, FaMapMarkerAlt } from "react-icons/fa";
+import { FaSearch, FaMapMarkerAlt, FaMapMarked } from "react-icons/fa";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
 } from "use-places-autocomplete";
 import toast from "react-hot-toast";
-
 import {
   collection,
   doc,
@@ -24,7 +23,7 @@ const AddLocation = () => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [markerPosition, setMarkerPosition] =
     useState<google.maps.LatLngLiteral | null>(null);
-  const { isLoaded } = useLoadScript({
+  const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
     libraries,
   });
@@ -37,23 +36,35 @@ const AddLocation = () => {
     clearSuggestions,
   } = usePlacesAutocomplete({
     requestOptions: {
-      types: ["address", "establishment"],
+      types: ["geocode", "establishment"],
     },
     debounce: 300,
     cache: 24 * 60 * 60,
-    initOnMount: true,
   });
+
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  const mapCenter = useMemo(
+    () => ({ lat: 28.55708594953468, lng: 77.10011534431322 }),
+    []
+  );
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
 
   const handleMapClick = async (event: google.maps.MapMouseEvent) => {
     if (!event.latLng) return;
 
-    try {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      setMarkerPosition({ lat, lng });
+    const lat = event.latLng.lat();
+    const lng = event.latLng.lng();
+    setMarkerPosition({ lat, lng });
 
-      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`;
-      const response = await fetch(geocodeUrl);
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`
+      );
+
       if (!response.ok) throw new Error("Failed to fetch address");
 
       const data = await response.json();
@@ -62,8 +73,8 @@ const AddLocation = () => {
       setValue(address, false);
       toast.success(`Location selected: ${address}`);
     } catch (error) {
-      console.error("Error fetching geocode data:", error);
-      toast.error("Unable to fetch location. Please try again.");
+      console.error("Error fetching address:", error);
+      toast.error("Failed to retrieve location. Please try again.");
     }
   };
 
@@ -81,10 +92,8 @@ const AddLocation = () => {
         mapRef.current.panTo({ lat, lng });
         mapRef.current.setZoom(15);
       }
-
-      toast.success("Location selected successfully!");
     } catch (error) {
-      console.error("Error: ", error);
+      console.error("Error selecting location:", error);
       toast.error("Failed to select location. Please try again.");
     }
   };
@@ -94,9 +103,7 @@ const AddLocation = () => {
     if (!value) return;
 
     try {
-      const results = await getGeocode({
-        address: value,
-      });
+      const results = await getGeocode({ address: value });
       const { lat, lng } = await getLatLng(results[0]);
       setMarkerPosition({ lat, lng });
       setSelectedLocation(value);
@@ -108,8 +115,8 @@ const AddLocation = () => {
 
       toast.success("Location found successfully!");
     } catch (error) {
-      console.error("Error: ", error);
-      toast.error("Failed to find location. Please try again.");
+      console.error("Error finding location:", error);
+      toast.error("Unable to locate. Please refine your search.");
     }
   };
 
@@ -129,13 +136,11 @@ const AddLocation = () => {
       const batch = writeBatch(db);
       const userAddressesRef = collection(db, "Users", user.uid, "Addresses");
 
-      // First set all existing addresses' isAddressSelected to false
       const existingAddresses = await getDocs(query(userAddressesRef));
       existingAddresses.forEach((doc) => {
         batch.update(doc.ref, { isAddressSelected: false });
       });
 
-      // Add new address document
       const newAddressRef = doc(userAddressesRef);
       batch.set(newAddressRef, {
         address: selectedLocation,
@@ -151,8 +156,6 @@ const AddLocation = () => {
 
       await batch.commit();
       toast.success("Location added successfully!");
-
-      // Clear form
       setMarkerPosition(null);
       setSelectedLocation("");
       setValue("");
@@ -162,52 +165,48 @@ const AddLocation = () => {
     }
   };
 
-  const mapCenter = useMemo(
-    () => ({ lat: 28.55708594953468, lng: 77.10011534431322 }),
-    []
-  );
-  const mapRef = React.useRef<google.maps.Map | null>(null);
+  if (loadError) {
+    return <div>Error loading Google Maps. Please try again later.</div>;
+  }
 
-  const onMapLoad = React.useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-  }, []);
-
-  if (!isLoaded)
+  if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-pink-50 to-purple-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#F96176]"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-pulse text-xl font-semibold">
+          Loading Maps...
+        </div>
       </div>
     );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-pink-50 to-purple-50 p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 space-y-4 md:space-y-0">
-          <h1 className="text-3xl md:text-4xl font-bold  bg-clip-text text-black">
-            Add New Location
-          </h1>
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative w-full md:w-1/3"
-          >
+    <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h1 className="text-2xl font-bold mb-4 text-gray-800 flex items-center">
+          <FaMapMarked className="mr-2 text-[#F96176]" />
+          Add New Location
+        </h1>
+
+        <div className="mb-6">
+          <form onSubmit={handleSearchSubmit} className="relative">
             <input
               value={value}
               onChange={(e) => setValue(e.target.value)}
               disabled={!ready}
               placeholder="Search for a location..."
-              className="w-full px-4 py-3 pl-12 rounded-lg border-2 border-gray-200 focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176] focus:ring-opacity-50 transition duration-200"
+              className="w-full px-12 py-3 border-2 border-gray-200 rounded-lg focus:border-[#F96176] focus:outline-none transition-colors"
             />
-            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FaSearch className="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400" />
             {status === "OK" && (
-              <ul className="absolute z-50 w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
+              <ul className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-2 max-h-60 overflow-y-auto">
                 {data.map(({ place_id, description }) => (
                   <li
                     key={place_id}
                     onClick={() => handleSelect(description)}
-                    className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center"
+                    className="p-3 flex items-center hover:bg-blue-50 cursor-pointer transition-colors"
                   >
-                    <FaMapMarkerAlt className="text-[#F96176] mr-2 flex-shrink-0" />
-                    <span className="truncate">{description}</span>
+                    <FaMapMarkerAlt className="mr-3 text-[#F96176]" />
+                    {description}
                   </li>
                 ))}
               </ul>
@@ -215,70 +214,50 @@ const AddLocation = () => {
           </form>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
-          <div className="relative">
-            <GoogleMap
-              onClick={handleMapClick}
-              onLoad={onMapLoad}
-              center={markerPosition || mapCenter}
-              zoom={12}
-              mapContainerClassName="w-full h-[300px] md:h-[600px]"
-              options={{
-                mapTypeControl: false,
-                streetViewControl: false,
-                fullscreenControl: true,
-                zoomControl: true,
-                styles: [
-                  {
-                    featureType: "all",
-                    elementType: "geometry",
-                    stylers: [{ saturation: -80 }],
-                  },
-                ],
-              }}
-            >
-              {markerPosition && (
-                <Marker
-                  position={markerPosition}
-                  animation={google.maps.Animation.DROP}
-                />
-              )}
-            </GoogleMap>
+        {selectedLocation && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h2 className="font-semibold text-gray-700 mb-2">
+              Selected Location:
+            </h2>
+            <p className="text-[#F96176] flex items-center">
+              <FaMapMarkerAlt className="mr-2" />
+              {selectedLocation}
+            </p>
           </div>
+        )}
 
-          <div className="p-4 md:p-8 space-y-4 md:space-y-6 bg-gradient-to-r from-pink-50 to-purple-50">
-            <div>
-              <label className="block text-lg font-semibold text-gray-700 mb-3">
-                Selected Location
-              </label>
-              <input
-                type="text"
-                value={selectedLocation}
-                readOnly
-                className="w-full p-3 md:p-4 border-2 border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition duration-200"
-                placeholder="Click on the map or search to select a location"
+        <div className="rounded-lg overflow-hidden shadow-lg mb-6">
+          <GoogleMap
+            onClick={handleMapClick}
+            onLoad={onMapLoad}
+            center={markerPosition || mapCenter}
+            zoom={12}
+            mapContainerStyle={{ height: "500px", width: "100%" }}
+            options={{
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: true,
+              zoomControl: true,
+            }}
+          >
+            {markerPosition && (
+              <Marker
+                position={markerPosition}
+                animation={google.maps.Animation.DROP}
               />
-            </div>
+            )}
+          </GoogleMap>
+        </div>
 
-            <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-4 md:space-y-0 md:space-x-4">
-              <button
-                onClick={handleAddLocation}
-                className="flex-1 bg-[#F96176] text-white font-bold py-3 md:py-4 px-6 md:px-8 rounded-lg hover:opacity-90 transform hover:scale-105 transition duration-200 shadow-lg"
-              >
-                Add Location
-              </button>
-              <button
-                onClick={() => {
-                  setMarkerPosition(null);
-                  setSelectedLocation("");
-                  setValue("");
-                }}
-                className="px-6 md:px-8 py-3 md:py-4 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold transition duration-200 hover:border-[#F96176]"
-              >
-                Clear Selection
-              </button>
-            </div>
-          </div>
+        <div className="flex justify-center">
+          <button
+            onClick={handleAddLocation}
+            className="px-8 py-3 bg-[#F96176] text-white rounded-lg hover:bg-[#F96176] transition-colors duration-200 flex items-center font-semibold"
+            disabled={!selectedLocation}
+          >
+            <FaMapMarkerAlt className="mr-2" />
+            Save Location
+          </button>
         </div>
       </div>
     </div>
