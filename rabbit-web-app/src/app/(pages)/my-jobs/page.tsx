@@ -5,10 +5,11 @@ import { db } from "@/lib/firebase";
 import { HistoryItem } from "@/types/types";
 import {
   collection,
-  getDocs,
   doc,
   updateDoc,
-  getDoc,
+  onSnapshot,
+  query,
+  where,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -41,16 +42,6 @@ export default function MyJobsPage() {
         });
       }
 
-      // Update local state
-      setHistoryItems((prev) =>
-        prev.map((item) => {
-          if (item.id === jobId) {
-            return { ...item, nearByDistance: newDistance };
-          }
-          return item;
-        })
-      );
-
       toast.success("Distance updated successfully");
     } catch (error) {
       toast.error("Failed to update distance");
@@ -58,61 +49,70 @@ export default function MyJobsPage() {
     }
   };
 
-  //fetch user ongoing history
-  const fetchUserOngoingHistory = async () => {
+  //fetch user ongoing history with real-time updates
+  useEffect(() => {
+    if (!user) return;
+
     setLoading(true);
-    if (user) {
-      try {
-        const historyRef = collection(db, "Users", user.uid, "history");
-        const historySnapshot = await getDocs(historyRef);
-        const historyData = historySnapshot.docs.map((doc) => ({
+    const historyRef = collection(db, "Users", user.uid, "history");
+    const q = query(
+      historyRef,
+      where("status", ">=", 0),
+      where("status", "<=", 4)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const historyData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as HistoryItem[];
-        // Filter for only ongoing jobs (status 0-4)
-        const ongoingJobs = historyData.filter(
-          (job) => job.status >= 0 && job.status <= 4
-        );
-        console.log(ongoingJobs);
-        setHistoryItems(ongoingJobs);
-      } catch (error) {
+
+        setHistoryItems(historyData);
+        setLoading(false);
+      },
+      (error) => {
         toast.error(
           `Something went wrong. Error: ${
             error instanceof Error ? error.message : String(error)
           }`
         );
-      } finally {
         setLoading(false);
       }
-    }
-  };
+    );
 
-  //fetch distance options
-  const fetchDistanceOptions = async () => {
-    setLoading(true);
-    try {
-      const distanceRef = doc(db, "metadata", "nearByDisstanceList");
-      const distanceSnapshot = await getDoc(distanceRef);
-
-      if (distanceSnapshot.exists()) {
-        const distanceData = distanceSnapshot.data()?.value;
-        console.log("Distance Data", distanceData);
-        setDistanceOptions(distanceData);
-      }
-    } catch (error) {
-      return GlobalToastError(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUserOngoingHistory();
-    fetchDistanceOptions();
+    return () => unsubscribe();
   }, [user]);
 
+  //fetch distance options with real-time updates
+  useEffect(() => {
+    const distanceRef = doc(db, "metadata", "nearByDisstanceList");
+
+    const unsubscribe = onSnapshot(
+      distanceRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const distanceData = snapshot.data()?.value;
+          setDistanceOptions(distanceData);
+        }
+      },
+      (error) => {
+        GlobalToastError(error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
   if (!user) {
-    return <h1 className="">Please Login to access the page..</h1>;
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <h1 className="text-xl font-semibold text-gray-700">
+          Please Login to access the page..
+        </h1>
+      </div>
+    );
   }
 
   if (loading) {
@@ -177,16 +177,16 @@ export default function MyJobsPage() {
                     {item.userDeliveryAddress}
                   </td>
                   <td className="px-4 py-2 border-b">{item.selectedService}</td>
-                  <td className="px-4 py-2 border-b">{item.vehicleNumber}</td>
                   <td className="px-4 py-2 border-b">
-                    {/* {item.mechanicsOffer &&
-                      item.mechanicsOffer[0]?.arrivalCharges} */}
-
-                    {item.fixPriceEnabled == true
-                      ? `$${item.mechanicsOffer[0]?.fixPrice} (Fix Price  )`
-                      : `$${item.mechanicsOffer[0]?.arrivalCharges} (Arrival Charges)`}
+                    {item.vehicleNumber} ({item.companyName})
                   </td>
-
+                  <td className="px-4 py-2 border-b">
+                    {item.mechanicsOffer.some((offer) => offer.status === 1)
+                      ? item.fixPriceEnabled
+                        ? `$${item.mechanicsOffer[0]?.fixPrice} (Fix Price)`
+                        : `$${item.mechanicsOffer[0]?.arrivalCharges} (Arrival Charges)`
+                      : "0"}
+                  </td>
                   <td className="px-4 py-2 border-b">{item.payMode}</td>
                   <td className="px-4 py-2 border-b">
                     {item.status === 5 ? (
@@ -198,12 +198,16 @@ export default function MyJobsPage() {
                     )}
                   </td>
                   <td className="px-4 py-2 border-b">
-                    <Link
-                      href={`/my-jobs/${item.id.replace("#", "")}`}
-                      className="bg-[#F96176] text-white px-2 py-2 rounded-sm"
-                    >
-                      View
-                    </Link>
+                    {item.mechanicsOffer.some((offer) => offer.status === 1) ? (
+                      <Link
+                        href={`/my-jobs/${item.id.replace("#", "")}`}
+                        className="bg-[#F96176] text-white px-2 py-2 rounded-sm"
+                      >
+                        View
+                      </Link>
+                    ) : (
+                      ""
+                    )}
                   </td>
                 </tr>
               ))
@@ -219,11 +223,41 @@ export default function MyJobsPage() {
       </div>
 
       {/* Card Layout for mobile screens */}
-      <div className="lg:hidden">
+      <div className="lg:hidden space-y-4">
         {historyItems.length > 0 ? (
-          historyItems.map((item) => <HistoryCard key={item.id} items={item} />)
+          historyItems.map((item) => (
+            <div key={item.id} className="bg-white p-4 rounded-lg shadow">
+              <HistoryCard items={item} />
+              <div className="mt-4 flex items-center justify-between border-t pt-4">
+                <span className="text-sm font-medium">Distance:</span>
+                <div className="flex items-center gap-4">
+                  <select
+                    className="border rounded p-2 bg-white"
+                    value={item.nearByDistance}
+                    onChange={(e) =>
+                      handleDistanceChange(item.id, Number(e.target.value))
+                    }
+                  >
+                    {distanceOptions.map((distance) => (
+                      <option key={distance} value={distance}>
+                        {distance} miles
+                      </option>
+                    ))}
+                  </select>
+                  {item.mechanicsOffer.some((offer) => offer.status === 1) && (
+                    <Link
+                      href={`/my-jobs/${item.id.replace("#", "")}`}
+                      className="bg-[#F96176] text-white px-4 py-2 rounded-sm"
+                    >
+                      View
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
         ) : (
-          <p>No history items found.</p>
+          <p className="text-center text-gray-500">No history items found.</p>
         )}
       </div>
     </div>

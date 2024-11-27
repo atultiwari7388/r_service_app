@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import Link from "next/link";
 import React from "react";
 import {
   FaMapMarkerAlt,
@@ -59,19 +60,28 @@ const Footer: React.FC = () => {
             <h4 className="text-black text-lg font-semibold mb-4">Our Terms</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#" className="text-black hover:text-[#F96176]">
+                <Link
+                  href="/terms-condition"
+                  className="text-black hover:text-[#F96176]"
+                >
                   Terms & Conditions
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-black hover:text-[#F96176]">
+                <Link
+                  href="/privacy-policy"
+                  className="text-black hover:text-[#F96176]"
+                >
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="text-black hover:text-[#F96176]">
+                <Link
+                  href="/refund-policy"
+                  className="text-black hover:text-[#F96176]"
+                >
                   Refund Policy
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

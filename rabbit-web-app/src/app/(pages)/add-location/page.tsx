@@ -37,7 +37,6 @@ const AddLocation = () => {
     clearSuggestions,
   } = usePlacesAutocomplete({
     requestOptions: {
-      componentRestrictions: { country: "in" },
       types: ["address", "establishment"],
     },
     debounce: 300,
@@ -78,7 +77,6 @@ const AddLocation = () => {
       setMarkerPosition({ lat, lng });
       setSelectedLocation(address);
 
-      // Pan map to the selected location
       if (mapRef.current) {
         mapRef.current.panTo({ lat, lng });
         mapRef.current.setZoom(15);
@@ -98,7 +96,6 @@ const AddLocation = () => {
     try {
       const results = await getGeocode({
         address: value,
-        componentRestrictions: { country: "in" },
       });
       const { lat, lng } = await getLatLng(results[0]);
       setMarkerPosition({ lat, lng });
@@ -183,13 +180,16 @@ const AddLocation = () => {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-pink-50 to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-r from-pink-50 to-purple-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 bg-clip-text text-transparent bg-gradient-to-r from-[#F96176] to-purple-600">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 space-y-4 md:space-y-0">
+          <h1 className="text-3xl md:text-4xl font-bold  bg-clip-text text-black">
             Add New Location
           </h1>
-          <form onSubmit={handleSearchSubmit} className="relative w-1/3">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative w-full md:w-1/3"
+          >
             <input
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -199,15 +199,15 @@ const AddLocation = () => {
             />
             <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
             {status === "OK" && (
-              <ul className="absolute z-50 w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-200">
+              <ul className="absolute z-50 w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto">
                 {data.map(({ place_id, description }) => (
                   <li
                     key={place_id}
                     onClick={() => handleSelect(description)}
                     className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center"
                   >
-                    <FaMapMarkerAlt className="text-[#F96176] mr-2" />
-                    {description}
+                    <FaMapMarkerAlt className="text-[#F96176] mr-2 flex-shrink-0" />
+                    <span className="truncate">{description}</span>
                   </li>
                 ))}
               </ul>
@@ -222,7 +222,7 @@ const AddLocation = () => {
               onLoad={onMapLoad}
               center={markerPosition || mapCenter}
               zoom={12}
-              mapContainerClassName="w-full h-[600px]"
+              mapContainerClassName="w-full h-[300px] md:h-[600px]"
               options={{
                 mapTypeControl: false,
                 streetViewControl: false,
@@ -246,7 +246,7 @@ const AddLocation = () => {
             </GoogleMap>
           </div>
 
-          <div className="p-8 space-y-6 bg-gradient-to-r from-pink-50 to-purple-50">
+          <div className="p-4 md:p-8 space-y-4 md:space-y-6 bg-gradient-to-r from-pink-50 to-purple-50">
             <div>
               <label className="block text-lg font-semibold text-gray-700 mb-3">
                 Selected Location
@@ -255,15 +255,15 @@ const AddLocation = () => {
                 type="text"
                 value={selectedLocation}
                 readOnly
-                className="w-full p-4 border-2 border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition duration-200"
+                className="w-full p-3 md:p-4 border-2 border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition duration-200"
                 placeholder="Click on the map or search to select a location"
               />
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-4 md:space-y-0 md:space-x-4">
               <button
                 onClick={handleAddLocation}
-                className="flex-1 bg-gradient-to-r from-[#F96176] to-purple-600 text-white font-bold py-4 px-8 rounded-lg hover:opacity-90 transform hover:scale-105 transition duration-200 shadow-lg"
+                className="flex-1 bg-[#F96176] text-white font-bold py-3 md:py-4 px-6 md:px-8 rounded-lg hover:opacity-90 transform hover:scale-105 transition duration-200 shadow-lg"
               >
                 Add Location
               </button>
@@ -273,7 +273,7 @@ const AddLocation = () => {
                   setSelectedLocation("");
                   setValue("");
                 }}
-                className="px-8 py-4 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold transition duration-200 hover:border-[#F96176]"
+                className="px-6 md:px-8 py-3 md:py-4 border-2 border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold transition duration-200 hover:border-[#F96176]"
               >
                 Clear Selection
               </button>
