@@ -91,8 +91,8 @@ class _EntryScreenState extends State<EntryScreen>
       DashBoardScreen(setTab: setTab),
       MyJobsScreen(),
       HistoryScreen(),
-      // ReportsScreen(),
-      AddServicesData(),
+      ReportsScreen(),
+      // AddServicesData(),
     ];
 
     return Scaffold(

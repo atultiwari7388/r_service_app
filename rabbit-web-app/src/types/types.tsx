@@ -70,9 +70,14 @@ export interface VehicleTypes {
   id: string;
   companyName: string;
   createdAt: Timestamp;
+  currentReading: string;
+  dot: string;
+  engineNumber: string;
+  iccms: string;
   isSet: boolean;
   licensePlate: string | null;
   vehicleNumber: string;
+  vehicleType: string;
   vin: string | null;
   year: Timestamp;
 }

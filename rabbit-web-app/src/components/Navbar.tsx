@@ -123,6 +123,12 @@ export default function NavBar() {
               <Link href="/history" className="hover:text-[#F96176]">
                 History
               </Link>
+              <Link
+                href="/records"
+                className="hover:text-[#F96176] transition-all duration-300 transform hover:scale-105 animate-fadeIn"
+              >
+                Records
+              </Link>
               {/* Profile Icon with Hover Effect */}
               <div
                 className="relative"
@@ -199,6 +205,13 @@ export default function NavBar() {
                 onClick={toggleMenu}
               >
                 History
+              </Link>
+              <Link
+                href="/records"
+                className="block py-2 text-gray-700 hover:text-[#F96176]"
+                onClick={toggleMenu}
+              >
+                Records
               </Link>
               {/* Mobile-only Logout Button */}
               <Link href="/logout">
