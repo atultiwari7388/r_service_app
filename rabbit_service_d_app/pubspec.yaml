@@ -45,6 +45,7 @@ dependencies:
   logger:
   google_maps_place_picker_mb:
   photo_view:
+  flutter_animate:
 
 dev_dependencies:
   flutter_test:

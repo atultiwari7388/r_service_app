@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/addServiceData/add_service_data.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/dashboard/dashboard_screen.dart';
 import 'utils/app_styles.dart';
 import 'views/app/history/history_screen.dart';
 import 'views/app/myJobs/my_jobs_screen.dart';
+import 'views/app/reports/reports_screen.dart';
 
 class EntryScreen extends StatefulWidget {
   const EntryScreen({super.key});
@@ -19,14 +21,26 @@ class EntryScreen extends StatefulWidget {
   _EntryScreenState createState() => _EntryScreenState();
 }
 
-class _EntryScreenState extends State<EntryScreen> {
+class _EntryScreenState extends State<EntryScreen>
+    with SingleTickerProviderStateMixin {
   int tab = 0;
   bool loading = false;
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
     checkUserAuthentication();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> checkUserAuthentication() async {
@@ -77,6 +91,8 @@ class _EntryScreenState extends State<EntryScreen> {
       DashBoardScreen(setTab: setTab),
       MyJobsScreen(),
       HistoryScreen(),
+      // ReportsScreen(),
+      AddServicesData(),
     ];
 
     return Scaffold(
@@ -101,6 +117,17 @@ class _EntryScreenState extends State<EntryScreen> {
           const BottomNavigationBarItem(
             icon: Icon(AntDesign.book),
             label: "History",
+          ),
+          BottomNavigationBarItem(
+            icon: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Icon(AntDesign.barschart,
+                    color: Color.lerp(
+                        kPrimary, kSecondary, _animationController.value));
+              },
+            ),
+            label: "Records",
           ),
         ],
         currentIndex: tab,
