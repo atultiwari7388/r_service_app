@@ -95,6 +95,11 @@ const BookingSection: React.FC = () => {
               licensePlate: data.licensePlate,
               vin: data.vin,
               year: data.year,
+              currentReading: data.currentReading,
+              dot: data.dot,
+              engineNumber: data.engineNumber,
+              iccms: data.iccms,
+              vehicleType: data.vehicleType,
             };
           });
         }
