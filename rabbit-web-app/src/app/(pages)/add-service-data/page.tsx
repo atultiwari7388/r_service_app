@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { db } from "@/lib/firebase";
 import { RiDeleteBack2Fill } from "react-icons/ri";
+import { HashLoader } from "react-spinners";
 
 interface Vehicle {
   brand: string;
@@ -99,11 +100,7 @@ export default function AddServiceData() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
-      </div>
-    );
+    <HashLoader />;
   }
 
   return (
@@ -129,19 +126,25 @@ export default function AddServiceData() {
           }
         />
 
-        <TextField
-          fullWidth
-          label="Value Type"
-          value={serviceData.vType}
-          onChange={(e) =>
-            setServiceData((prev) => ({ ...prev, vType: e.target.value }))
-          }
-        />
+        <FormControl fullWidth>
+          <InputLabel>Value Type</InputLabel>
+          <Select
+            value={serviceData.vType}
+            label="Value Type"
+            onChange={(e) =>
+              setServiceData((prev) => ({ ...prev, vType: e.target.value }))
+            }
+          >
+            <MenuItem value="Truck">Truck</MenuItem>
+            <MenuItem value="Trailer">Trailer</MenuItem>
+          </Select>
+        </FormControl>
 
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold">Vehicle Details</h2>
           <Button
             variant="contained"
+            className="bg-[#F96176] text-white"
             startIcon={<span>+</span>}
             onClick={addNewVehicle}
             disabled={serviceData.dValues.length >= maxVehicles}
@@ -221,7 +224,7 @@ export default function AddServiceData() {
           <Button
             variant="contained"
             onClick={saveData}
-            className="px-8 py-3 text-lg"
+            className="px-8 py-3 text-lg bg-[#F96176] text-white"
           >
             Save to Firebase
           </Button>
