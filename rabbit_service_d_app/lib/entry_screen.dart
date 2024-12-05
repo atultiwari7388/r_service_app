@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/main.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/addServiceData/add_service_data.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
@@ -119,25 +120,34 @@ class _EntryScreenState extends State<EntryScreen>
             label: "History",
           ),
           BottomNavigationBarItem(
+            backgroundColor: kPrimary,
+            tooltip: "Records",
             icon: AnimatedBuilder(
               animation: _animationController,
               builder: (context, child) {
-                return Icon(AntDesign.barschart,
-                    color: Color.lerp(
-                        kPrimary, kSecondary, _animationController.value));
+                return Container(
+                    padding: EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Color.lerp(
+                            kPrimary, kSecondary, _animationController.value)),
+                    child: Icon(AntDesign.barschart, color: kWhite));
               },
             ),
-            label: "Records",
+            label: "RECORDS",
           ),
         ],
         currentIndex: tab,
         selectedItemColor: kPrimary,
         showSelectedLabels: true,
         showUnselectedLabels: true,
-        unselectedIconTheme: const IconThemeData(color: kGray),
+        unselectedIconTheme: tab == 3
+            ? IconThemeData(color: kDark)
+            : IconThemeData(color: kGray),
         selectedIconTheme: const IconThemeData(color: kPrimary),
-        selectedLabelStyle:
-            kIsWeb ? TextStyle() : appStyle(12, kSecondary, FontWeight.bold),
+        selectedLabelStyle: tab == 3
+            ? appStyle(14, kPrimary, FontWeight.bold)
+            : appStyle(12, kSecondary, FontWeight.bold),
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
