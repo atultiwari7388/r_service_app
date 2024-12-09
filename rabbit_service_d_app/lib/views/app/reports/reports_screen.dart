@@ -19,6 +19,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   // State variables
   String? selectedVehicle;
   String? selectedService;
+  int selectedVehicleDefaultValue = 0;
   final TextEditingController milesController = TextEditingController();
   final TextEditingController hoursController = TextEditingController();
   final TextEditingController workshopController = TextEditingController();
@@ -26,9 +27,6 @@ class _ReportsScreenState extends State<ReportsScreen>
   DateTime? selectedDate;
   late AnimationController _animationController;
 
-  // Animation related variables
-  // late AnimationController _controller;
-  // late Animation<double> _scaleAnimation;
   bool showAddRecords = false;
   bool showSearchFilter = false;
   bool showAddMiles = false;
@@ -102,6 +100,24 @@ class _ReportsScreenState extends State<ReportsScreen>
                   'vType': service['vType'],
                   'dValues': service['dValues']
                 }));
+
+            // Set default value if vehicle and service are selected
+            if (selectedVehicle != null && selectedService != null) {
+              final selectedService = services.firstWhere(
+                (service) => service['sId'] == this.selectedService,
+                orElse: () => <String, dynamic>{},
+              );
+
+              final dValues = selectedService['dValues'] as List<dynamic>?;
+              if (dValues != null) {
+                for (var dValue in dValues) {
+                  if (dValue['brand'] == selectedVehicleData?['vehicleName']) {
+                    selectedVehicleDefaultValue = dValue['value'];
+                    break;
+                  }
+                }
+              }
+            }
           });
         }
       }
@@ -188,6 +204,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         "serviceId": selectedService,
         "invoice": invoiceController.text,
         "vehicleDetails": selectedVehicleData,
+        "vehicleDefaultValue": selectedVehicleDefaultValue,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
                 selectedServiceData?['vType'] == "Truck"
             ? int.tryParse(milesController.text) ?? 0

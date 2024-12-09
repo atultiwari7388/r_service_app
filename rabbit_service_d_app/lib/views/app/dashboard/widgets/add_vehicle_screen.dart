@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
+import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
@@ -15,7 +18,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _vehicleNumberController = TextEditingController();
   final _vinController = TextEditingController();
   final _licensePlateController = TextEditingController();
-  final _engineController = TextEditingController();
   final _currentReadingController = TextEditingController();
   final _hoursReadingController = TextEditingController();
   final _dotController = TextEditingController();
@@ -25,8 +27,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   DateTime? _oilChangeDate;
   String? _selectedCompany;
   String? _selectedVehicleType;
+  String? _selectedEngineName;
   List<String> _companies = [];
   List<String> _vehicleTypes = [];
+  List<String> _engineNameList = [];
+  StreamSubscription<DocumentSnapshot>? _engineNameSubscription;
 
   Future<void> _selectYear(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -63,6 +68,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     _fetchVehicleTypes();
   }
 
+  @override
+  void dispose() {
+    _engineNameSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _fetchCompanyNames() async {
     try {
       DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
@@ -74,7 +85,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       if (metadataSnapshot.exists) {
         List<dynamic> companyList = metadataSnapshot.data()?['data'] ?? [];
         setState(() {
-          _companies = List<String>.from(companyList);
+          _companies = List<String>.from(
+              companyList.map((company) => company.toString().toUpperCase()));
         });
       }
     } catch (e) {
@@ -101,6 +113,63 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
+  void _setupEngineNameListener() {
+    print('Setting up engine name listener');
+    _engineNameSubscription?.cancel();
+
+    if (_selectedVehicleType == null || _selectedCompany == null) {
+      print('Vehicle type or company not selected');
+      setState(() {
+        _engineNameList = [];
+        _selectedEngineName = null;
+      });
+      return;
+    }
+
+    print('Subscribing to engine name list updates');
+    _engineNameSubscription = FirebaseFirestore.instance
+        .collection('metadata')
+        .doc('engineNameList')
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        print('Received engine name list snapshot');
+        List<dynamic> engineNameList = snapshot.data()?['data'] ?? [];
+        print('Raw engine name list: $engineNameList');
+
+        String selectedCompanyUpper = _selectedCompany!.toUpperCase().trim();
+        String selectedType = _selectedVehicleType!.trim();
+        print(
+            'Filtering for company: $selectedCompanyUpper, type: $selectedType');
+
+        List<String> filteredList = engineNameList
+            .where((engine) {
+              String engineCompany =
+                  (engine['cName'] as String).toUpperCase().trim();
+              String engineType = (engine['type'] as String).trim();
+
+              return engineCompany == selectedCompanyUpper &&
+                  engineType == selectedType;
+            })
+            .map((engine) => engine['eName'].toString().toUpperCase())
+            .toList();
+
+        print('Filtered engine list: $filteredList');
+
+        setState(() {
+          _engineNameList = filteredList;
+          if (!_engineNameList.contains(_selectedEngineName)) {
+            print(
+                'Previously selected engine name no longer valid, resetting selection');
+            _selectedEngineName = null;
+          }
+        });
+      } else {
+        print('Engine name list snapshot does not exist');
+      }
+    });
+  }
+
   Future<void> _saveVehicleData() async {
     try {
       CollectionReference vehiclesRef = FirebaseFirestore.instance
@@ -117,8 +186,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       Map<String, dynamic> vehicleData = {
         'vehicleType': _selectedVehicleType,
-        'companyName': _selectedCompany,
-        'engineNumber': _engineController.text,
+        'companyName': _selectedCompany?.toUpperCase(),
+        'engineName': _selectedEngineName?.toUpperCase(),
         'vehicleNumber': _vehicleNumberController.text,
         'vin': _vinController.text,
         'dot': _dotController.text,
@@ -177,78 +246,238 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   padding: EdgeInsets.all(16.0),
                   child: Column(
                     children: [
-                      DropdownButtonFormField<String>(
-                        value: _selectedVehicleType,
-                        hint: Text('Select Vehicle Type'),
-                        decoration: InputDecoration(
-                          labelText: 'Vehicle Type *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
                         ),
-                        items: _vehicleTypes.map((String type) {
-                          return DropdownMenuItem<String>(
-                            value: type,
-                            child: Text(type),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedVehicleType = newValue;
-                          });
-                        },
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedVehicleType,
+                          hint: Text('Select Vehicle Type'),
+                          decoration: InputDecoration(
+                            labelText: 'Vehicle Type *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
+                          ),
+                          items: _vehicleTypes.map((String type) {
+                            return DropdownMenuItem<String>(
+                              value: type,
+                              child: Text(type),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedVehicleType = newValue;
+                              _selectedEngineName = null;
+                              _setupEngineNameListener();
+                            });
+                          },
+                        ),
                       ),
                       SizedBox(height: 16.h),
-                      DropdownButtonFormField<String>(
-                        value: _selectedCompany,
-                        hint: Text('Select Company Name'),
-                        decoration: InputDecoration(
-                          labelText: 'Company Name *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
                         ),
-                        items: _companies.map((String company) {
-                          return DropdownMenuItem<String>(
-                            value: company,
-                            child: Text(company),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedCompany = newValue;
-                          });
-                        },
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedCompany,
+                          hint: Text('Select Company Name'),
+                          decoration: InputDecoration(
+                            labelText: 'Company Name *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
+                          ),
+                          items: _companies.map((String company) {
+                            return DropdownMenuItem<String>(
+                              value: company,
+                              child: Text(company),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedCompany = newValue;
+                              _selectedEngineName = null;
+                              _setupEngineNameListener();
+                            });
+                          },
+                        ),
                       ),
                       SizedBox(height: 16.h),
-                      TextFormField(
-                        controller: _engineController,
-                        decoration: InputDecoration(
-                          labelText: 'Engine Number *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
+                        ),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedEngineName,
+                          hint: Text('Select Engine'),
+                          decoration: InputDecoration(
+                            labelText: 'Select Engine Name *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
+                          items: _engineNameList.isEmpty
+                              ? []
+                              : _engineNameList.map((String engineName) {
+                                  return DropdownMenuItem<String>(
+                                    value: engineName,
+                                    child: Text(engineName),
+                                  );
+                                }).toList(),
+                          onChanged: _engineNameList.isEmpty
+                              ? null
+                              : (String? newValue) {
+                                  setState(() {
+                                    _selectedEngineName = newValue;
+                                  });
+                                },
                         ),
                       ),
                       if (_selectedVehicleType == 'Truck') ...[
                         SizedBox(height: 16.h),
-                        TextFormField(
-                          controller: _currentReadingController,
-                          decoration: InputDecoration(
-                            labelText: 'Current Reading *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[100],
+                        Container(
+                          margin: kIsWeb
+                              ? EdgeInsets.symmetric(vertical: 4.0.h)
+                              : EdgeInsets.symmetric(vertical: 4.0.h),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: kIsWeb
+                                ? BorderRadius.circular(12.r)
+                                : BorderRadius.circular(12.0.r),
                           ),
-                          keyboardType: TextInputType.number,
+                          child: TextField(
+                            controller: _currentReadingController,
+                            decoration: InputDecoration(
+                              labelText: 'Current Reading *',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.0,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.0,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.0,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: kIsWeb
+                                  ? EdgeInsets.all(2)
+                                  : const EdgeInsets.all(8),
+                              labelStyle: kIsWeb
+                                  ? TextStyle()
+                                  : appStyle(14, kPrimary, FontWeight.bold),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
                         ),
                       ],
                       if (_selectedVehicleType == 'Trailer') ...[
@@ -256,115 +485,395 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         GestureDetector(
                           onTap: () => _selectOilChangeDate(context),
                           child: AbsorbPointer(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                labelText: 'Oil Change Date *',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: Colors.grey[100],
+                            child: Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
                               ),
-                              controller: TextEditingController(
-                                text: _oilChangeDate == null
-                                    ? ''
-                                    : DateFormat('yyyy-MM-dd')
-                                        .format(_oilChangeDate!),
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  labelText: 'Oil Change Date *',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                                controller: TextEditingController(
+                                  text: _oilChangeDate == null
+                                      ? ''
+                                      : DateFormat('yyyy-MM-dd')
+                                          .format(_oilChangeDate!),
+                                ),
                               ),
                             ),
                           ),
                         ),
                         SizedBox(height: 16.h),
-                        TextFormField(
-                          controller: _hoursReadingController,
-                          decoration: InputDecoration(
-                            labelText: 'Hours Reading *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[100],
+                        Container(
+                          margin: kIsWeb
+                              ? EdgeInsets.symmetric(vertical: 4.0.h)
+                              : EdgeInsets.symmetric(vertical: 4.0.h),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: kIsWeb
+                                ? BorderRadius.circular(12.r)
+                                : BorderRadius.circular(12.0.r),
                           ),
-                          keyboardType: TextInputType.number,
+                          child: TextField(
+                            controller: _hoursReadingController,
+                            decoration: InputDecoration(
+                              labelText: 'Hours Reading *',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.0,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.0,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.0,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: kIsWeb
+                                  ? EdgeInsets.all(2)
+                                  : const EdgeInsets.all(8),
+                              labelStyle: kIsWeb
+                                  ? TextStyle()
+                                  : appStyle(14, kPrimary, FontWeight.bold),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
                         ),
                       ],
                       SizedBox(height: 16.h),
-                      TextFormField(
-                        controller: _vehicleNumberController,
-                        decoration: InputDecoration(
-                          labelText: 'Vehicle Number *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
+                        ),
+                        child: TextField(
+                          controller: _vehicleNumberController,
+                          decoration: InputDecoration(
+                            labelText: 'Vehicle Number *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
                         ),
                       ),
                       SizedBox(height: 16.h),
-                      TextFormField(
-                        controller: _vinController,
-                        decoration: InputDecoration(
-                          labelText: 'VIN *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
+                        ),
+                        child: TextField(
+                          controller: _vinController,
+                          decoration: InputDecoration(
+                            labelText: 'VIN *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
                         ),
                       ),
                       SizedBox(height: 16.h),
-                      TextFormField(
-                        controller: _dotController,
-                        decoration: InputDecoration(
-                          labelText: 'DOT (Optional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
+                        ),
+                        child: TextField(
+                          controller: _dotController,
+                          decoration: InputDecoration(
+                            labelText: 'DOT (Optional)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
                         ),
                       ),
                       SizedBox(height: 16.h),
-                      TextFormField(
-                        controller: _iccmsController,
-                        decoration: InputDecoration(
-                          labelText: 'ICCMS (Optional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
+                        ),
+                        child: TextField(
+                          controller: _iccmsController,
+                          decoration: InputDecoration(
+                            labelText: 'ICCMS (Optional)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
                         ),
                       ),
                       SizedBox(height: 16.h),
-                      TextFormField(
-                        controller: _licensePlateController,
-                        decoration: InputDecoration(
-                          labelText: 'License Plate *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
+                      Container(
+                        margin: kIsWeb
+                            ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            : EdgeInsets.symmetric(vertical: 4.0.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: kIsWeb
+                              ? BorderRadius.circular(12.r)
+                              : BorderRadius.circular(12.0.r),
+                        ),
+                        child: TextField(
+                          controller: _licensePlateController,
+                          decoration: InputDecoration(
+                            labelText: 'License Plate *',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                                width: 1.0,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: kIsWeb
+                                ? EdgeInsets.all(2)
+                                : const EdgeInsets.all(8),
+                            labelStyle: kIsWeb
+                                ? TextStyle()
+                                : appStyle(14, kPrimary, FontWeight.bold),
                           ),
-                          filled: true,
-                          fillColor: Colors.grey[100],
                         ),
                       ),
                       SizedBox(height: 16.h),
                       GestureDetector(
                         onTap: () => _selectYear(context),
                         child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'Year *',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey[100],
+                          child: Container(
+                            margin: kIsWeb
+                                ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                : EdgeInsets.symmetric(vertical: 4.0.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: kIsWeb
+                                  ? BorderRadius.circular(12.r)
+                                  : BorderRadius.circular(12.0.r),
                             ),
-                            controller: TextEditingController(
-                              text: _selectedYear == null
-                                  ? ''
-                                  : DateFormat('yyyy').format(_selectedYear!),
+                            child: TextField(
+                              decoration: InputDecoration(
+                                labelText: 'Year *',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1.0,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1.0,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1.0,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: kIsWeb
+                                    ? EdgeInsets.all(2)
+                                    : const EdgeInsets.all(8),
+                                labelStyle: kIsWeb
+                                    ? TextStyle()
+                                    : appStyle(14, kPrimary, FontWeight.bold),
+                              ),
+                              controller: TextEditingController(
+                                text: _selectedYear == null
+                                    ? ''
+                                    : DateFormat('yyyy').format(_selectedYear!),
+                              ),
                             ),
                           ),
                         ),
@@ -375,7 +884,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         onPress: () {
                           if (_selectedVehicleType != null &&
                               _selectedCompany != null &&
-                              _engineController.text.isNotEmpty &&
+                              _selectedEngineName != null &&
                               _vehicleNumberController.text.isNotEmpty &&
                               _vinController.text.isNotEmpty &&
                               _licensePlateController.text.isNotEmpty &&
