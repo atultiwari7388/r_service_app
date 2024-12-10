@@ -18,7 +18,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _vehicleNumberController = TextEditingController();
   final _vinController = TextEditingController();
   final _licensePlateController = TextEditingController();
-  final _currentReadingController = TextEditingController();
+  final _currentMilesController = TextEditingController();
   final _hoursReadingController = TextEditingController();
   final _dotController = TextEditingController();
   final _iccmsController = TextEditingController();
@@ -64,7 +64,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchCompanyNames();
     _fetchVehicleTypes();
   }
 
@@ -72,26 +71,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   void dispose() {
     _engineNameSubscription?.cancel();
     super.dispose();
-  }
-
-  Future<void> _fetchCompanyNames() async {
-    try {
-      DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
-          await FirebaseFirestore.instance
-              .collection('metadata')
-              .doc('companyName')
-              .get();
-
-      if (metadataSnapshot.exists) {
-        List<dynamic> companyList = metadataSnapshot.data()?['data'] ?? [];
-        setState(() {
-          _companies = List<String>.from(
-              companyList.map((company) => company.toString().toUpperCase()));
-        });
-      }
-    } catch (e) {
-      print('Error fetching company names: $e');
-    }
   }
 
   Future<void> _fetchVehicleTypes() async {
@@ -110,6 +89,37 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       }
     } catch (e) {
       print('Error fetching vehicle types: $e');
+    }
+  }
+
+  Future<void> _fetchCompanyNames() async {
+    try {
+      if (_selectedVehicleType == null) return;
+
+      DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
+          await FirebaseFirestore.instance
+              .collection('metadata')
+              .doc('companyNameL')
+              .get();
+
+      if (metadataSnapshot.exists) {
+        List<dynamic> companyList = metadataSnapshot.data()?['data'] ?? [];
+
+        // Filter companies based on vehicle type
+        List<String> filteredCompanies = companyList
+            .where((company) => company['type'] == _selectedVehicleType)
+            .map((company) => company['cName'].toString().toUpperCase())
+            .toList();
+
+        setState(() {
+          _companies = filteredCompanies;
+          // Reset company selection when vehicle type changes
+          _selectedCompany = null;
+          _selectedEngineName = null;
+        });
+      }
+    } catch (e) {
+      print('Error fetching company names: $e');
     }
   }
 
@@ -201,13 +211,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       };
 
       if (_selectedVehicleType == 'Truck') {
-        vehicleData['currentReading'] = _currentReadingController.text;
+        vehicleData['currentMiles'] = _currentMilesController.text;
         vehicleData['oilChangeDate'] = '';
         vehicleData['hoursReading'] = '';
       }
 
       if (_selectedVehicleType == 'Trailer') {
-        vehicleData['currentReading'] = '';
+        vehicleData['currentMiles'] = '';
         vehicleData['oilChangeDate'] = _oilChangeDate != null
             ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
             : null;
@@ -300,8 +310,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           onChanged: (String? newValue) {
                             setState(() {
                               _selectedVehicleType = newValue;
-                              _selectedEngineName = null;
-                              _setupEngineNameListener();
+                              // Fetch companies when vehicle type changes
+                              _fetchCompanyNames();
                             });
                           },
                         ),
@@ -358,13 +368,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               child: Text(company),
                             );
                           }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedCompany = newValue;
-                              _selectedEngineName = null;
-                              _setupEngineNameListener();
-                            });
-                          },
+                          onChanged: _selectedVehicleType == null
+                              ? null
+                              : (String? newValue) {
+                                  setState(() {
+                                    _selectedCompany = newValue;
+                                    _setupEngineNameListener();
+                                  });
+                                },
                         ),
                       ),
                       SizedBox(height: 16.h),
@@ -443,9 +454,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 : BorderRadius.circular(12.0.r),
                           ),
                           child: TextField(
-                            controller: _currentReadingController,
+                            controller: _currentMilesController,
                             decoration: InputDecoration(
-                              labelText: 'Current Reading *',
+                              labelText: 'Current Miles *',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12.0),
                                 borderSide: BorderSide(
