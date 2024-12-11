@@ -22,15 +22,16 @@ import { HashLoader } from "react-spinners";
 export default function AddVehiclePage() {
   const [companyList, setCompanyList] = useState<string[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<string[]>([]);
+  const [engineNameList, setEngineNameList] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { user } = useAuth() || { user: null };
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [selectedVehicleType, setSelectedVehicleType] = useState<string>("");
+  const [selectedEngineName, setSelectedEngineName] = useState<string>("");
   const [vehicleNumber, setVehicleNumber] = useState<string>("");
   const [vin, setVin] = useState<string>("");
   const [licensePlate, setLicensePlate] = useState<string>("");
   const [year, setYear] = useState<string>("");
-  const [engineNumber, setEngineNumber] = useState<string>("");
   const [currentReading, setCurrentReading] = useState<string>("");
   const [hoursReading, setHoursReading] = useState<string>("");
   const [oilChangeDate, setOilChangeDate] = useState<string>("");
@@ -39,36 +40,84 @@ export default function AddVehiclePage() {
 
   const router = useRouter();
 
-  const fetchCompanyList = async () => {
-    setLoading(true);
+  const fetchVehicleTypes = async () => {
     try {
-      const companyNameRef = collection(db, "metadata");
-      const companyNameDoc = await getDocs(companyNameRef);
-      const companyNameData = companyNameDoc.docs.find(
-        (doc) => doc.id === "companyName"
-      );
-
-      if (companyNameData) {
-        const companies = companyNameData.data()?.data || [];
-        if (Array.isArray(companies)) {
-          setCompanyList(companies);
-        }
-      }
-
       const vehicleTypeDoc = await getDoc(doc(db, "metadata", "vehicleType"));
       if (vehicleTypeDoc.exists()) {
         setVehicleTypes(vehicleTypeDoc.data()?.type || []);
       }
     } catch (error) {
-      toast.error("Error fetching metadata: " + error);
-    } finally {
-      setLoading(false);
+      toast.error("Error fetching vehicle types: " + error);
+    }
+  };
+
+  const fetchCompanyList = async () => {
+    if (!selectedVehicleType) return;
+
+    try {
+      const companyDoc = await getDoc(doc(db, "metadata", "companyNameL"));
+      if (companyDoc.exists()) {
+        interface Company {
+          type: string;
+          cName: string;
+        }
+        const companies = companyDoc.data()?.data || [];
+        const filteredCompanies = companies
+          .filter((company: Company) => company.type === selectedVehicleType)
+          .map((company: Company) => company.cName.toString().toUpperCase());
+        setCompanyList(filteredCompanies);
+        setSelectedCompany("");
+        setSelectedEngineName("");
+      }
+    } catch (error) {
+      toast.error("Error fetching companies: " + error);
+    }
+  };
+
+  const fetchEngineNames = async () => {
+    if (!selectedVehicleType || !selectedCompany) {
+      setEngineNameList([]);
+      setSelectedEngineName("");
+      return;
+    }
+
+    try {
+      const engineDoc = await getDoc(doc(db, "metadata", "engineNameList"));
+      if (engineDoc.exists()) {
+        const engineData = engineDoc.data()?.data || [];
+        interface Engine {
+          type: string;
+          cName: string;
+          eName: string;
+        }
+        const filteredEngines = engineData
+          .filter(
+            (engine: Engine) =>
+              engine.type === selectedVehicleType &&
+              engine.cName.toUpperCase() === selectedCompany.toUpperCase()
+          )
+          .map((engine: Engine) => engine.eName.toString().toUpperCase());
+        setEngineNameList(filteredEngines);
+        if (!filteredEngines.includes(selectedEngineName)) {
+          setSelectedEngineName("");
+        }
+      }
+    } catch (error) {
+      toast.error("Error fetching engine names: " + error);
     }
   };
 
   useEffect(() => {
-    fetchCompanyList();
+    fetchVehicleTypes();
   }, []);
+
+  useEffect(() => {
+    fetchCompanyList();
+  }, [selectedVehicleType]);
+
+  useEffect(() => {
+    fetchEngineNames();
+  }, [selectedVehicleType, selectedCompany]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +133,7 @@ export default function AddVehiclePage() {
         !selectedCompany ||
         !vehicleNumber ||
         !selectedVehicleType ||
-        !engineNumber ||
+        !selectedEngineName ||
         !vin ||
         !licensePlate ||
         !year
@@ -107,8 +156,8 @@ export default function AddVehiclePage() {
 
       const vehicleData = {
         vehicleType: selectedVehicleType,
-        companyName: selectedCompany,
-        engineNumber,
+        companyName: selectedCompany.toUpperCase(),
+        engineName: selectedEngineName.toUpperCase(),
         vehicleNumber,
         vin,
         dot: dot || null,
@@ -142,11 +191,11 @@ export default function AddVehiclePage() {
       // Reset form
       setSelectedCompany("");
       setSelectedVehicleType("");
+      setSelectedEngineName("");
       setVehicleNumber("");
       setVin("");
       setLicensePlate("");
       setYear("");
-      setEngineNumber("");
       setCurrentReading("");
       setHoursReading("");
       setOilChangeDate("");
@@ -215,32 +264,39 @@ export default function AddVehiclePage() {
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+              disabled={!selectedVehicleType}
             >
               <option value="">Select a company</option>
               {companyList.map((company, index) => (
-                <option value={company} key={index}>
+                <option key={index} value={company}>
                   {company}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Engine Number */}
+          {/* Engine Name Selection */}
           <div>
             <label
-              htmlFor="engineNumber"
+              htmlFor="engineName"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Engine Number *
+              Engine Name *
             </label>
-            <input
-              type="text"
-              id="engineNumber"
-              value={engineNumber}
-              onChange={(e) => setEngineNumber(e.target.value)}
+            <select
+              id="engineName"
+              value={selectedEngineName}
+              onChange={(e) => setSelectedEngineName(e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-              placeholder="Enter engine number"
-            />
+              disabled={!selectedCompany}
+            >
+              <option value="">Select engine name</option>
+              {engineNameList.map((engine, index) => (
+                <option key={index} value={engine}>
+                  {engine}
+                </option>
+              ))}
+            </select>
           </div>
 
           {selectedVehicleType === "Truck" && (
@@ -426,3 +482,4 @@ export default function AddVehiclePage() {
     </div>
   );
 }
+// End of Selection
