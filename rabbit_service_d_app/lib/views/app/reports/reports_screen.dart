@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -14,12 +16,14 @@ class ReportsScreen extends StatefulWidget {
   State<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProviderStateMixin {
+class _ReportsScreenState extends State<ReportsScreen>
+    with SingleTickerProviderStateMixin {
   // State variables
   String? selectedVehicle;
   Set<String> selectedServices = {};
   Map<String, List<String>> selectedSubServices = {};
-  int selectedVehicleDefaultValue = 0;
+  Map<String, int> serviceDefaultValues =
+      {}; // Added to store per-service default values
   final TextEditingController milesController = TextEditingController();
   final TextEditingController hoursController = TextEditingController();
   final TextEditingController workshopController = TextEditingController();
@@ -69,13 +73,16 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           .get();
 
       if (vehicleSnapshot.docs.isEmpty) {
+        debugPrint('No vehicles found for user');
         return;
       }
 
       setState(() {
         vehicles.clear();
-        vehicles.addAll(vehicleSnapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+        vehicles.addAll(
+            vehicleSnapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
       });
+      debugPrint('Fetched ${vehicles.length} vehicles');
     } catch (e) {
       debugPrint('Error fetching vehicles: ${e.toString()}');
     }
@@ -83,8 +90,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   void fetchServices() async {
     try {
-      final serviceSnapshot =
-          await FirebaseFirestore.instance.collection('metadata').doc('servicesData').get();
+      final serviceSnapshot = await FirebaseFirestore.instance
+          .collection('metadata')
+          .doc('servicesData')
+          .get();
 
       if (serviceSnapshot.exists) {
         final servicesData = serviceSnapshot.data()?['data'] as List<dynamic>?;
@@ -99,7 +108,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   'subServices': service['subServices'] ?? []
                 }));
 
-            // Set default value if vehicle and services are selected
+            // Update default values for each selected service
             if (selectedVehicle != null && selectedServices.isNotEmpty) {
               for (var serviceId in selectedServices) {
                 final selectedService = services.firstWhere(
@@ -110,8 +119,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 final dValues = selectedService['dValues'] as List<dynamic>?;
                 if (dValues != null) {
                   for (var dValue in dValues) {
-                    if (dValue['brand'] == selectedVehicleData?['vehicleName']) {
-                      selectedVehicleDefaultValue = dValue['value'];
+                    if (dValue['brand'].toString().toUpperCase() ==
+                        selectedVehicleData?['companyName']
+                            .toString()
+                            .toUpperCase()) {
+                      serviceDefaultValues[serviceId] =
+                          int.parse(dValue['value'].toString().split(',')[0]) *
+                              1000;
+                      debugPrint(
+                          'Set default notification value for service $serviceId to: ${serviceDefaultValues[serviceId]}');
                       break;
                     }
                   }
@@ -119,6 +135,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               }
             }
           });
+          debugPrint('Fetched ${services.length} services');
         }
       }
     } catch (e) {
@@ -136,8 +153,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
       setState(() {
         records.clear();
-        records.addAll(recordSnapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+        records.addAll(
+            recordSnapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
       });
+      debugPrint('Fetched ${records.length} records');
     } catch (e) {
       debugPrint('Error fetching records: ${e.toString()}');
     }
@@ -149,21 +168,33 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         (vehicle) => vehicle['id'] == selectedVehicle,
         orElse: () => <String, dynamic>{},
       );
+      log('Selected vehicle: ${selectedVehicleData?['companyName']}');
     }
 
-    selectedServiceData =
-        services.where((service) => selectedServices.contains(service['sId'])).toList();
+    selectedServiceData = services
+        .where((service) => selectedServices.contains(service['sId']))
+        .toList();
+    log('Selected services: ${selectedServiceData.map((s) => s['sName']).join(', ')}');
 
-    // Update default value based on vehicle name match
+    // Update default values for each service
+    serviceDefaultValues.clear(); // Reset default values
     for (var service in selectedServiceData) {
       final dValues = service['dValues'] as List<dynamic>?;
       if (dValues != null) {
         for (var dValue in dValues) {
-          if (dValue['brand'] == selectedVehicleData?['vehicleName']) {
-            selectedVehicleDefaultValue = dValue['value'];
+          log('Checking dValue: ${dValue.toString()}');
+          log('Comparing brands: ${dValue['brand'].toString().toUpperCase()} == ${selectedVehicleData?['companyName'].toString().toUpperCase()}');
+
+          if (dValue['brand'].toString().toUpperCase() ==
+              selectedVehicleData?['companyName'].toString().toUpperCase()) {
+            serviceDefaultValues[service['sId']] =
+                int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+            log('Updated default notification value for service ${service['sId']} to: ${serviceDefaultValues[service['sId']]}');
             break;
           }
         }
+      } else {
+        log('dValues is null for service: ${service['sName']}');
       }
     }
 
@@ -172,17 +203,21 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   List<Map<String, dynamic>> getFilteredRecords() {
     return records.where((record) {
-      final matchesVehicle =
-          filterVehicle.isEmpty || record['vehicleDetails']['vehicleNumber'] == filterVehicle;
-      final matchesService = filterService.isEmpty || record['serviceId'] == filterService;
-      final matchesMiles =
-          filterMiles.isEmpty || record['miles'] >= (int.tryParse(filterMiles) ?? 0);
+      final matchesVehicle = filterVehicle.isEmpty ||
+          record['vehicleDetails']['vehicleNumber'] == filterVehicle;
+      final matchesService =
+          filterService.isEmpty || record['serviceId'] == filterService;
+      final matchesMiles = filterMiles.isEmpty ||
+          record['miles'] >= (int.tryParse(filterMiles) ?? 0);
       final matchesDateRange = startDate == null ||
           endDate == null ||
           (DateTime.parse(record['date']).isAfter(startDate!) &&
               DateTime.parse(record['date']).isBefore(endDate!));
 
-      return matchesVehicle && matchesService && matchesMiles && matchesDateRange;
+      return matchesVehicle &&
+          matchesService &&
+          matchesMiles &&
+          matchesDateRange;
     }).toList();
   }
 
@@ -190,40 +225,88 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     try {
       if (selectedVehicle == null || selectedServices.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select vehicle and at least one service')),
+          const SnackBar(
+              content: Text('Please select vehicle and at least one service')),
         );
         return;
       }
 
-      final dataServicesUserRef =
-          FirebaseFirestore.instance.collection('Users').doc(currentUId).collection('DataServices');
-      final dataServicesRef = FirebaseFirestore.instance.collection("DataServicesRecords");
+      final dataServicesUserRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('DataServices');
+      final dataServicesRef =
+          FirebaseFirestore.instance.collection("DataServicesRecords");
+
+      // Calculate notification values for all services
+      List<Map<String, dynamic>> servicesData = [];
+      List<int> allNextNotificationValues = [];
 
       for (var serviceId in selectedServices) {
-        final recordData = {
-          "userId": currentUId,
-          "vehicleId": selectedVehicle,
-          "serviceId": serviceId,
-          "subServices": selectedSubServices[serviceId] ?? [],
-          "invoice": invoiceController.text,
-          "vehicleDetails": selectedVehicleData,
-          "vehicleDefaultValue": selectedVehicleDefaultValue,
-          "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-                  selectedServiceData.any((s) => s['vType'] == "Truck")
-              ? int.tryParse(milesController.text) ?? 0
-              : 0,
-          "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-                  selectedServiceData.any((s) => s['vType'] == "Trailer")
-              ? int.tryParse(hoursController.text) ?? 0
-              : 0,
-          "date": selectedDate?.toIso8601String() ?? "",
-          "workshopName": workshopController.text,
-          "createdAt": DateTime.now().toIso8601String(),
-        };
+        final service = services.firstWhere((s) => s['sId'] == serviceId);
 
-        await dataServicesUserRef.add(recordData);
-        await dataServicesRef.add(recordData);
+        final dValues = service['dValues'] as List<dynamic>?;
+        List<int> nextNotificationValues = [];
+
+        if (dValues != null) {
+          for (var dValue in dValues) {
+            if (dValue['brand'] == selectedVehicleData?['companyName']) {
+              final values = dValue['value'].toString().split(',');
+              nextNotificationValues =
+                  values.map((v) => int.parse(v.trim()) * 1000).toList();
+              allNextNotificationValues.addAll(nextNotificationValues);
+              break;
+            }
+          }
+        }
+
+        servicesData.add({
+          "serviceId": serviceId,
+          "serviceName": service['sName'],
+          "defaultNotificationValue": serviceDefaultValues[serviceId] ??
+              0, // Added default value per service
+          "subServices": selectedSubServices[serviceId]
+                  ?.map((subService) => {
+                        "name": subService,
+                        "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+                      })
+                  .toList() ??
+              [],
+          "nextNotificationValues": nextNotificationValues,
+        });
       }
+
+      // Create single record with all services
+      final recordData = {
+        "userId": currentUId,
+        "vehicleId": selectedVehicle,
+        "vehicleDetails": selectedVehicleData,
+        "services": servicesData,
+        "invoice": invoiceController.text,
+        "currentMilesArray": [
+          {
+            "miles": int.tryParse(milesController.text) ?? 0,
+            "date": DateTime.now().toIso8601String()
+          }
+        ],
+        "allNextNotificationValues": allNextNotificationValues,
+        "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
+                selectedServiceData.any((s) => s['vType'] == "Truck")
+            ? int.tryParse(milesController.text) ?? 0
+            : 0,
+        "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
+                selectedServiceData.any((s) => s['vType'] == "Trailer")
+            ? int.tryParse(hoursController.text) ?? 0
+            : 0,
+        "date":
+            selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        "workshopName": workshopController.text,
+        "createdAt": DateTime.now().toIso8601String(),
+      };
+
+      // Save single record
+      await dataServicesUserRef.add(recordData);
+      await dataServicesRef.add(recordData);
 
       fetchRecords();
 
@@ -231,6 +314,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         selectedVehicle = null;
         selectedServices.clear();
         selectedSubServices.clear();
+        serviceDefaultValues.clear(); // Clear service default values
         milesController.clear();
         hoursController.clear();
         workshopController.clear();
@@ -413,7 +497,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                   ),
                                   child: Text(
                                     startDate != null
-                                        ? startDate!.toLocal().toString().split(' ')[0]
+                                        ? startDate!
+                                            .toLocal()
+                                            .toString()
+                                            .split(' ')[0]
                                         : 'Select Start Date',
                                   ),
                                 ),
@@ -442,7 +529,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                   ),
                                   child: Text(
                                     endDate != null
-                                        ? endDate!.toLocal().toString().split(' ')[0]
+                                        ? endDate!
+                                            .toLocal()
+                                            .toString()
+                                            .split(' ')[0]
                                         : 'Select End Date',
                                   ),
                                 ),
@@ -472,8 +562,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                           items: vehicles.map((vehicle) {
                             return DropdownMenuItem<String>(
                               value: vehicle['id'],
-                              child:
-                                  Text('${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
+                              child: Text(
+                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
                             );
                           }).toList(),
                           onChanged: (value) {
@@ -486,13 +576,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                         SizedBox(height: 16.h),
 
                         // Services Selection
-                        Text('Select Services', style: appStyle(16, kDark, FontWeight.w500)),
+                        Text('Select Services',
+                            style: appStyle(16, kDark, FontWeight.w500)),
                         SizedBox(height: 8.h),
                         Wrap(
                           spacing: 8.w,
                           runSpacing: 8.h,
                           children: services.map((service) {
-                            bool isSelected = selectedServices.contains(service['sId']);
+                            bool isSelected =
+                                selectedServices.contains(service['sId']);
                             List<dynamic> subServices =
                                 service['subServices'] as List<dynamic>? ?? [];
 
@@ -506,10 +598,12 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                     setState(() {
                                       if (selected) {
                                         selectedServices.add(service['sId']);
-                                        selectedSubServices[service['sId']] = [];
+                                        selectedSubServices[service['sId']] =
+                                            [];
                                       } else {
                                         selectedServices.remove(service['sId']);
-                                        selectedSubServices.remove(service['sId']);
+                                        selectedSubServices
+                                            .remove(service['sId']);
                                       }
                                       updateSelectedVehicleAndService();
                                     });
@@ -517,31 +611,41 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                 ),
                                 if (isSelected && subServices.isNotEmpty)
                                   Padding(
-                                    padding: EdgeInsets.only(left: 16.w, top: 4.h),
+                                    padding:
+                                        EdgeInsets.only(left: 16.w, top: 4.h),
                                     child: Wrap(
                                       spacing: 8.w,
                                       runSpacing: 4.h,
                                       children: subServices.map((subService) {
-                                        List<String> sNames =
-                                            List<String>.from(subService['sName'] ?? []);
+                                        List<String> sNames = List<String>.from(
+                                            subService['sName'] ?? []);
                                         return Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: sNames.map((subServiceName) {
-                                            if (subServiceName.isEmpty) return Container();
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children:
+                                              sNames.map((subServiceName) {
+                                            if (subServiceName.isEmpty)
+                                              return Container();
                                             return FilterChip(
                                               label: Text(subServiceName),
-                                              selected: selectedSubServices[service['sId']]
-                                                      ?.contains(subServiceName) ??
+                                              selected: selectedSubServices[
+                                                          service['sId']]
+                                                      ?.contains(
+                                                          subServiceName) ??
                                                   false,
                                               onSelected: (bool selected) {
                                                 setState(() {
                                                   if (selected) {
-                                                    selectedSubServices[service['sId']] ??= [];
-                                                    selectedSubServices[service['sId']]!
+                                                    selectedSubServices[
+                                                        service['sId']] ??= [];
+                                                    selectedSubServices[
+                                                            service['sId']]!
                                                         .add(subServiceName);
                                                   } else {
-                                                    selectedSubServices[service['sId']]
-                                                        ?.remove(subServiceName);
+                                                    selectedSubServices[
+                                                            service['sId']]
+                                                        ?.remove(
+                                                            subServiceName);
                                                   }
                                                 });
                                               },
@@ -559,7 +663,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
                         // Conditional Fields based on vehicle type
                         if (selectedVehicleData?['vehicleType'] == "Truck" &&
-                            selectedServiceData.any((s) => s['vType'] == "Truck"))
+                            selectedServiceData
+                                .any((s) => s['vType'] == "Truck"))
                           TextField(
                             controller: milesController,
                             decoration: const InputDecoration(
@@ -570,7 +675,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                           ),
 
                         if (selectedVehicleData?['vehicleType'] == "Trailer" &&
-                            selectedServiceData.any((s) => s['vType'] == "Trailer")) ...[
+                            selectedServiceData
+                                .any((s) => s['vType'] == "Trailer")) ...[
                           TextField(
                             controller: hoursController,
                             decoration: const InputDecoration(
@@ -601,7 +707,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                               ),
                               child: Text(
                                 selectedDate != null
-                                    ? selectedDate!.toLocal().toString().split(' ')[0]
+                                    ? selectedDate!
+                                        .toLocal()
+                                        .toString()
+                                        .split(' ')[0]
                                     : 'Select Date',
                               ),
                             ),
@@ -669,7 +778,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               Text("My Records", style: appStyle(20, kDark, FontWeight.w500)),
               SizedBox(height: 20.h),
 
-              // Records List
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -682,10 +790,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       itemCount: filteredRecords.length,
                       itemBuilder: (context, index) {
                         final record = filteredRecords[index];
-                        final service = services.firstWhere(
-                          (s) => s['sId'] == record['serviceId'],
-                          orElse: () => {'sName': 'Unknown Service'},
-                        );
+                        final services = record['services'] as List<dynamic>;
+                        final serviceNames = services
+                            .map((s) => s['serviceName'].toString())
+                            .join(', ');
 
                         final date =
                             "${DateTime.parse(record['createdAt']).toString().split('.')[0]}";
@@ -693,42 +801,49 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                         return Card(
                           elevation: 2,
                           child: Padding(
-                            padding:
-                                const EdgeInsets.only(left: 8.0, top: 8.0, right: 8.0, bottom: 5),
+                            padding: const EdgeInsets.only(
+                                left: 8.0, top: 8.0, right: 8.0, bottom: 5),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Container(
                                         padding: EdgeInsets.all(1),
                                         decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8.r),
+                                            borderRadius:
+                                                BorderRadius.circular(8.r),
                                             color: kSecondary.withOpacity(0.2)),
                                         child: Text(date,
-                                            style: appStyle(18, kDark, FontWeight.normal))),
+                                            style: appStyle(
+                                                18, kDark, FontWeight.normal))),
                                     Container(
                                       padding: EdgeInsets.all(4),
                                       decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12.r),
+                                        borderRadius:
+                                            BorderRadius.circular(12.r),
                                         color: kPrimary.withOpacity(0.2),
                                       ),
                                       child: Row(
                                         children: [
                                           Text("1,70,000",
-                                              style: appStyle(14, kDark, FontWeight.w500)),
+                                              style: appStyle(
+                                                  14, kDark, FontWeight.w500)),
                                           SizedBox(width: 5.w),
                                           AnimatedBuilder(
                                             animation: _animationController,
                                             builder: (context, child) {
-                                              return Icon(Icons.notifications_active,
-                                                  color: Color.lerp(kPrimary, kSecondary,
-                                                      _animationController.value));
+                                              return Icon(
+                                                  Icons.notifications_active,
+                                                  color: Color.lerp(
+                                                      kPrimary,
+                                                      kSecondary,
+                                                      _animationController
+                                                          .value));
                                             },
                                           ),
-
-                                          // Icon(Icons.notifications_active)
                                         ],
                                       ),
                                     ),
@@ -738,23 +853,35 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                                 buildReusableRowTextWidget("Vehicle :",
                                     ' ${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
                                 SizedBox(height: 6.h),
-                                buildReusableRowTextWidget("Service :", " ${service['sName']}"),
-                                if ((record['subServices'] as List?)?.isNotEmpty ?? false) ...[
-                                  SizedBox(height: 6.h),
-                                  buildReusableRowTextWidget("Sub Services :",
-                                      " ${(record['subServices'] as List).join(', ')}"),
+                                buildReusableRowTextWidget(
+                                    "Services :", " $serviceNames"),
+                                for (var service in services) ...[
+                                  if ((service['subServices'] as List?)
+                                          ?.isNotEmpty ??
+                                      false) ...[
+                                    SizedBox(height: 6.h),
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: buildReusableRowTextWidget(
+                                          "${service['serviceName']} Sub Services :",
+                                          " ${(service['subServices'] as List).map((s) => s['name']).join(', ')}"),
+                                    ),
+                                  ],
                                 ],
                                 SizedBox(height: 6.h),
-                                buildReusableRowTextWidget(
-                                    "Workshop :", "${record['workshopName'] ?? 'N/A'}"),
+                                buildReusableRowTextWidget("Workshop :",
+                                    "${record['workshopName'] ?? 'N/A'}"),
                                 SizedBox(height: 6.h),
                                 if (record['miles'] > 0)
-                                  buildReusableRowTextWidget("Miles :", "${record['miles']}"),
+                                  buildReusableRowTextWidget(
+                                      "Miles :", "${record['miles']}"),
                                 SizedBox(height: 6.h),
                                 if (record['hours'] > 0)
-                                  buildReusableRowTextWidget("Hours :", "${record["hours"]}"),
+                                  buildReusableRowTextWidget(
+                                      "Hours :", "${record["hours"]}"),
                                 if (record['invoice'].isEmpty) SizedBox(),
-                                buildReusableRowTextWidget("Invoice :", "${record["invoice"]}"),
+                                buildReusableRowTextWidget(
+                                    "Invoice :", "${record["invoice"]}"),
                                 SizedBox(height: 6.h),
                               ],
                             ),
@@ -775,9 +902,14 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     return Row(
       children: [
         Text(hText, style: appStyle(15, kDark, FontWeight.w500)),
-        Text(
-          vText,
-          style: appStyle(15, kDarkGray, FontWeight.w400),
+        SizedBox(
+          width: 250.w,
+          child: Text(
+            vText,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: appStyle(15, kDarkGray, FontWeight.w400),
+          ),
         ),
       ],
     );
@@ -790,7 +922,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
       child: Container(
         height: 45.h,
         width: 93.w,
-        decoration: BoxDecoration(color: boxColor, borderRadius: BorderRadius.circular(10.r)),
+        decoration: BoxDecoration(
+            color: boxColor, borderRadius: BorderRadius.circular(10.r)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
