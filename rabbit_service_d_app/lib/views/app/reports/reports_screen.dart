@@ -1,12 +1,13 @@
 import 'dart:developer';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/reports/records_details_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -20,11 +21,13 @@ class _ReportsScreenState extends State<ReportsScreen>
     with SingleTickerProviderStateMixin {
   // State variables
   String? selectedVehicle;
+  String? selectedRecordsVehicle;
   Set<String> selectedServices = {};
   Map<String, List<String>> selectedSubServices = {};
   Map<String, int> serviceDefaultValues =
       {}; // Added to store per-service default values
   final TextEditingController milesController = TextEditingController();
+  final TextEditingController todayMilesController = TextEditingController();
   final TextEditingController hoursController = TextEditingController();
   final TextEditingController workshopController = TextEditingController();
   final TextEditingController invoiceController = TextEditingController();
@@ -39,6 +42,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   final List<Map<String, dynamic>> vehicles = [];
   final List<Map<String, dynamic>> services = [];
   final List<Map<String, dynamic>> records = [];
+  final List<Map<String, dynamic>> milesToAddInRecords = [];
 
   // Selected data
   Map<String, dynamic>? selectedVehicleData;
@@ -58,10 +62,10 @@ class _ReportsScreenState extends State<ReportsScreen>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     )..repeat();
-
     fetchVehicles();
     fetchServices();
     fetchRecords();
+    fetchServicesVehiclesToAddMiles();
   }
 
   void fetchVehicles() async {
@@ -153,12 +157,35 @@ class _ReportsScreenState extends State<ReportsScreen>
 
       setState(() {
         records.clear();
-        records.addAll(
-            recordSnapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+        records.addAll(recordSnapshot.docs.map((doc) => {
+              ...doc.data(),
+              'id': doc.id,
+              'vehicle': doc['vehicleDetails']['companyName']
+            }));
       });
       debugPrint('Fetched ${records.length} records');
     } catch (e) {
       debugPrint('Error fetching records: ${e.toString()}');
+    }
+  }
+
+  void fetchServicesVehiclesToAddMiles() async {
+    try {
+      final recordSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('DataServices')
+          .get();
+
+      setState(() {
+        milesToAddInRecords.clear();
+        milesToAddInRecords.addAll(recordSnapshot.docs.map((doc) => {
+              ...doc.data(),
+              'id': doc.id,
+            }));
+      });
+    } catch (e) {
+      log('Error fetching records: ${e.toString()}');
     }
   }
 
@@ -573,6 +600,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                             });
                           },
                         ),
+
                         SizedBox(height: 16.h),
 
                         // Services Selection
@@ -758,15 +786,126 @@ class _ReportsScreenState extends State<ReportsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'Add Miles',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        // Vehicle Dropdown
+                        DropdownButtonFormField<String>(
+                          value: selectedRecordsVehicle,
+                          hint: const Text('Select Vehicle'),
+                          items: milesToAddInRecords.map((vehicle) {
+                            final vehicleDetails = vehicle['vehicleDetails'];
+                            return DropdownMenuItem<String>(
+                              value: vehicle['id'],
+                              child: Text(
+                                '${vehicleDetails['companyName']} (${vehicleDetails['vehicleNumber'] ?? 'N/A'})',
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedRecordsVehicle = value;
+                              updateSelectedVehicleAndService();
+                            });
+                          },
                         ),
                         SizedBox(height: 16.h),
-                        // Add your miles form widgets here
+                        TextField(
+                          controller: todayMilesController,
+                          decoration: const InputDecoration(
+                            labelText: 'Enter Today\'s Miles',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                        SizedBox(height: 16.h),
+                        // Save Button
+                        CustomButton(
+                          onPress: () {
+                            if (selectedRecordsVehicle != null &&
+                                todayMilesController.text.isNotEmpty) {
+                              // Show confirmation dialog
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text('Confirm Save'),
+                                    content: Text(
+                                      'Are you sure you want to save ${todayMilesController.text} miles?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(
+                                              context); // Close dialog
+                                        },
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          // Perform update if user confirms
+                                          Navigator.pop(
+                                              context); // Close dialog
+                                          try {
+                                            final int todayMiles = int.parse(
+                                                todayMilesController.text);
+                                            final vehicleId =
+                                                selectedRecordsVehicle;
+
+                                            // Update Firestore
+                                            await FirebaseFirestore.instance
+                                                .collection('Users')
+                                                .doc(currentUId)
+                                                .collection('DataServices')
+                                                .doc(vehicleId)
+                                                .update({
+                                              'currentMilesArray':
+                                                  FieldValue.arrayUnion([
+                                                {
+                                                  "miles": todayMiles,
+                                                  "date": DateTime.now()
+                                                      .toIso8601String()
+                                                }
+                                              ]),
+                                            });
+
+                                            debugPrint(
+                                                'Miles updated successfully!');
+                                            todayMilesController.clear();
+                                            setState(() {
+                                              selectedRecordsVehicle = null;
+                                            });
+
+                                            // Show success message
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                    'Miles saved successfully!'),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            debugPrint(
+                                                'Error updating miles: ${e.toString()}');
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    'Failed to save miles: $e'),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        child: const Text('Confirm'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }
+                          },
+                          color: kPrimary,
+                          text: 'Save Mile',
+                        ),
                       ],
                     ),
                   ),
@@ -798,92 +937,97 @@ class _ReportsScreenState extends State<ReportsScreen>
                         final date =
                             "${DateTime.parse(record['createdAt']).toString().split('.')[0]}";
 
-                        return Card(
-                          elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                left: 8.0, top: 8.0, right: 8.0, bottom: 5),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                        padding: EdgeInsets.all(1),
+                        return GestureDetector(
+                          onTap: () => Get.to(
+                              () => RecordsDetailsScreen(record: record)),
+                          child: Card(
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                  left: 8.0, top: 8.0, right: 8.0, bottom: 5),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                          padding: EdgeInsets.all(1),
+                                          decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(8.r),
+                                              color:
+                                                  kSecondary.withOpacity(0.2)),
+                                          child: Text(date,
+                                              style: appStyle(18, kDark,
+                                                  FontWeight.normal))),
+                                      Container(
+                                        padding: EdgeInsets.all(4),
                                         decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(8.r),
-                                            color: kSecondary.withOpacity(0.2)),
-                                        child: Text(date,
-                                            style: appStyle(
-                                                18, kDark, FontWeight.normal))),
-                                    Container(
-                                      padding: EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        borderRadius:
-                                            BorderRadius.circular(12.r),
-                                        color: kPrimary.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(12.r),
+                                          color: kPrimary.withOpacity(0.2),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Text("1,70,000",
+                                                style: appStyle(14, kDark,
+                                                    FontWeight.w500)),
+                                            SizedBox(width: 5.w),
+                                            AnimatedBuilder(
+                                              animation: _animationController,
+                                              builder: (context, child) {
+                                                return Icon(
+                                                    Icons.notifications_active,
+                                                    color: Color.lerp(
+                                                        kPrimary,
+                                                        kSecondary,
+                                                        _animationController
+                                                            .value));
+                                              },
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Text("1,70,000",
-                                              style: appStyle(
-                                                  14, kDark, FontWeight.w500)),
-                                          SizedBox(width: 5.w),
-                                          AnimatedBuilder(
-                                            animation: _animationController,
-                                            builder: (context, child) {
-                                              return Icon(
-                                                  Icons.notifications_active,
-                                                  color: Color.lerp(
-                                                      kPrimary,
-                                                      kSecondary,
-                                                      _animationController
-                                                          .value));
-                                            },
-                                          ),
-                                        ],
+                                    ],
+                                  ),
+                                  SizedBox(height: 6.h),
+                                  buildReusableRowTextWidget("Vehicle :",
+                                      ' ${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
+                                  SizedBox(height: 6.h),
+                                  buildReusableRowTextWidget(
+                                      "Services :", " $serviceNames"),
+                                  for (var service in services) ...[
+                                    if ((service['subServices'] as List?)
+                                            ?.isNotEmpty ??
+                                        false) ...[
+                                      SizedBox(height: 6.h),
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: buildReusableRowTextWidget(
+                                            "${service['serviceName']} Sub Services :",
+                                            " ${(service['subServices'] as List).map((s) => s['name']).join(', ')}"),
                                       ),
-                                    ),
+                                    ],
                                   ],
-                                ),
-                                SizedBox(height: 6.h),
-                                buildReusableRowTextWidget("Vehicle :",
-                                    ' ${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
-                                SizedBox(height: 6.h),
-                                buildReusableRowTextWidget(
-                                    "Services :", " $serviceNames"),
-                                for (var service in services) ...[
-                                  if ((service['subServices'] as List?)
-                                          ?.isNotEmpty ??
-                                      false) ...[
-                                    SizedBox(height: 6.h),
-                                    SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: buildReusableRowTextWidget(
-                                          "${service['serviceName']} Sub Services :",
-                                          " ${(service['subServices'] as List).map((s) => s['name']).join(', ')}"),
-                                    ),
-                                  ],
+                                  SizedBox(height: 6.h),
+                                  buildReusableRowTextWidget("Workshop :",
+                                      "${record['workshopName'] ?? 'N/A'}"),
+                                  SizedBox(height: 6.h),
+                                  if (record['miles'] > 0)
+                                    buildReusableRowTextWidget(
+                                        "Miles :", "${record['miles']}"),
+                                  SizedBox(height: 6.h),
+                                  if (record['hours'] > 0)
+                                    buildReusableRowTextWidget(
+                                        "Hours :", "${record["hours"]}"),
+                                  if (record['invoice'].isEmpty) SizedBox(),
+                                  buildReusableRowTextWidget(
+                                      "Invoice :", "${record["invoice"]}"),
+                                  SizedBox(height: 6.h),
                                 ],
-                                SizedBox(height: 6.h),
-                                buildReusableRowTextWidget("Workshop :",
-                                    "${record['workshopName'] ?? 'N/A'}"),
-                                SizedBox(height: 6.h),
-                                if (record['miles'] > 0)
-                                  buildReusableRowTextWidget(
-                                      "Miles :", "${record['miles']}"),
-                                SizedBox(height: 6.h),
-                                if (record['hours'] > 0)
-                                  buildReusableRowTextWidget(
-                                      "Hours :", "${record["hours"]}"),
-                                if (record['invoice'].isEmpty) SizedBox(),
-                                buildReusableRowTextWidget(
-                                    "Invoice :", "${record["invoice"]}"),
-                                SizedBox(height: 6.h),
-                              ],
+                              ),
                             ),
                           ),
                         );
