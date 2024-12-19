@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:regal_service_d_app/main.dart';
-
+import 'package:intl/intl.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
 
@@ -13,7 +12,11 @@ class RecordsDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentMiles = record['currentMilesArray'] as List<dynamic>? ?? [];
+    // final currentMiles = record['currentMilesArray'] as List<dynamic>? ?? [];
+
+    final services = record['services'] as List<dynamic>;
+    final date =
+        DateFormat('dd-MM-yy').format(DateTime.parse(record['createdAt']));
 
     return Scaffold(
       appBar: AppBar(
@@ -21,64 +24,184 @@ class RecordsDetailsScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            buildReusableRowTextWidget("Vehicle :",
-                ' ${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
-            const SizedBox(height: 16),
-            buildReusableRowTextWidget(
-                "Workshop :", "${record['workshopName'] ?? 'N/A'}"),
-            const SizedBox(height: 16),
-            buildReusableRowTextWidget(
-                "Invoice :", "${record['invoice'] ?? 'N/A'}"),
-            const SizedBox(height: 16),
-            if (currentMiles.isNotEmpty) ...[
-              const Text(
-                "Miles History:",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 8.h),
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15.r),
+              side: BorderSide(
+                color: kPrimary.withOpacity(0.2),
+                width: 1,
               ),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: currentMiles.length,
-                itemBuilder: (context, index) {
-                  final mileEntry = currentMiles[index];
-                  final date = mileEntry['date'] != null
-                      ? mileEntry['date'].toString()
-                      : 'Unknown Date';
-                  return ListTile(
-                    leading: const Icon(Icons.speed),
-                    title: Text("Miles: ${mileEntry['miles']}"),
-                    subtitle: Text("Date: $date"),
-                  );
-                },
-              ),
-            ] else
-              const Text("No miles data available."),
-            const SizedBox(height: 16),
-            const Text(
-              "Services:",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            ...record['services'].map<Widget>((service) {
-              final subServices = service['subServices'] as List<dynamic>?;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Service: ${service['serviceName']}"),
-                  if (subServices != null && subServices.isNotEmpty)
-                    Text(
-                        "Sub Services: ${subServices.map((s) => s['name']).join(', ')}"),
-                  const SizedBox(height: 8),
-                ],
-              );
-            }).toList(),
-          ],
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15.r),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (record['invoice'].isNotEmpty)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 6.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: kPrimary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.receipt_outlined,
+                                    size: 20, color: kPrimary),
+                                SizedBox(width: 8.w),
+                                Text("#${record['invoice']}",
+                                    style:
+                                        appStyle(16, kDark, FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 6.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: kSecondary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.calendar_today,
+                                  size: 18, color: kSecondary),
+                              SizedBox(width: 8.w),
+                              Text(date,
+                                  style: appStyle(16, kDark, FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+                    buildInfoRow(
+                      Icons.directions_car_outlined,
+                      '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                    ),
+                    Divider(height: 24.h),
+                    buildInfoRow(
+                      Icons.build_outlined,
+                      services.map((service) {
+                        String serviceName = service['serviceName'];
+                        if ((service['subServices'] as List?)?.isNotEmpty ??
+                            false) {
+                          String subServices = (service['subServices'] as List)
+                              .map((s) => s['name'])
+                              .join(', ');
+                          return "$serviceName ($subServices)";
+                        }
+                        return serviceName;
+                      }).join(", "),
+                    ),
+                    Divider(height: 24.h),
+                    buildInfoRow(
+                      Icons.store_outlined,
+                      record['workshopName'] ?? 'N/A',
+                    ),
+                    if (record["description"].isNotEmpty) ...[
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.description_outlined,
+                        record['description'],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
+        // child: Column(
+        //   crossAxisAlignment: CrossAxisAlignment.start,
+        //   children: [
+        //     buildReusableRowTextWidget("Vehicle :",
+        //         ' ${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
+        //     const SizedBox(height: 16),
+        //     buildReusableRowTextWidget(
+        //         "Workshop :", "${record['workshopName'] ?? 'N/A'}"),
+        //     const SizedBox(height: 16),
+        //     buildReusableRowTextWidget(
+        //         "Invoice :", "${record['invoice'] ?? 'N/A'}"),
+        //     const SizedBox(height: 16),
+        //     // if (currentMiles.isNotEmpty) ...[
+        //     //   const Text(
+        //     //     "Miles History:",
+        //     //     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        //     //   ),
+        //     //   const SizedBox(height: 8),
+        //     //   ListView.builder(
+        //     //     shrinkWrap: true,
+        //     //     physics: const NeverScrollableScrollPhysics(),
+        //     //     itemCount: currentMiles.length,
+        //     //     itemBuilder: (context, index) {
+        //     //       final mileEntry = currentMiles[index];
+        //     //       final date = mileEntry['date'] != null
+        //     //           ? mileEntry['date'].toString()
+        //     //           : 'Unknown Date';
+        //     //       return ListTile(
+        //     //         leading: const Icon(Icons.speed),
+        //     //         title: Text("Miles: ${mileEntry['miles']}"),
+        //     //         subtitle: Text("Date: $date"),
+        //     //       );
+        //     //     },
+        //     //   ),
+        //     // ] else
+        //     //   const Text("No miles data available."),
+        //     const Text(
+        //       "Services:",
+        //       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        //     ),
+        //     const SizedBox(height: 8),
+        //     ...record['services'].map<Widget>((service) {
+        //       final subServices = service['subServices'] as List<dynamic>?;
+        //       return Column(
+        //         crossAxisAlignment: CrossAxisAlignment.start,
+        //         children: [
+        //           Text("Service: ${service['serviceName']}"),
+        //           if (subServices != null && subServices.isNotEmpty)
+        //             Text(
+        //                 "Sub Services: ${subServices.map((s) => s['name']).join(', ')}"),
+        //           const SizedBox(height: 8),
+        //         ],
+        //       );
+        //     }).toList(),
+        //   ],
+        // ),
       ),
+    );
+  }
+
+  Widget buildInfoRow(IconData icon, String vText) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: kSecondary),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            vText,
+            style: appStyle(16, kDarkGray, FontWeight.w400),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 

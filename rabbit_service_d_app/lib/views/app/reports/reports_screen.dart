@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
@@ -24,19 +25,26 @@ class _ReportsScreenState extends State<ReportsScreen>
   String? selectedRecordsVehicle;
   Set<String> selectedServices = {};
   Map<String, List<String>> selectedSubServices = {};
-  Map<String, int> serviceDefaultValues =
-      {}; // Added to store per-service default values
+  Map<String, int> serviceDefaultValues = {};
   final TextEditingController milesController = TextEditingController();
   final TextEditingController todayMilesController = TextEditingController();
   final TextEditingController hoursController = TextEditingController();
   final TextEditingController workshopController = TextEditingController();
   final TextEditingController invoiceController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
+  final TextEditingController serviceSearchController = TextEditingController();
+  final TextEditingController vehicleSearchController = TextEditingController();
+  final TextEditingController dateSearchController = TextEditingController();
   DateTime? selectedDate;
   late AnimationController _animationController;
 
   bool showAddRecords = false;
   bool showSearchFilter = false;
   bool showAddMiles = false;
+  bool showVehicleSearch = false;
+  bool showServiceSearch = false;
+  bool showDateSearch = false;
+  bool showCombinedSearch = false;
 
   // Data storage
   final List<Map<String, dynamic>> vehicles = [];
@@ -104,13 +112,21 @@ class _ReportsScreenState extends State<ReportsScreen>
         if (servicesData != null) {
           setState(() {
             services.clear();
-            services.addAll(servicesData.map((service) => {
-                  'sId': service['sId'],
-                  'sName': service['sName'],
-                  'vType': service['vType'],
-                  'dValues': service['dValues'],
-                  'subServices': service['subServices'] ?? []
-                }));
+            // Convert to list and sort by service name before adding
+            List<Map<String, dynamic>> sortedServices = servicesData
+                .map((service) => {
+                      'sId': service['sId'],
+                      'sName': service['sName'],
+                      'vType': service['vType'],
+                      'dValues': service['dValues'],
+                      'subServices': service['subServices'] ?? []
+                    })
+                .toList();
+
+            sortedServices.sort((a, b) =>
+                (a['sName'] as String).compareTo(b['sName'] as String));
+
+            services.addAll(sortedServices);
 
             // Update default values for each selected service
             if (selectedVehicle != null && selectedServices.isNotEmpty) {
@@ -231,20 +247,23 @@ class _ReportsScreenState extends State<ReportsScreen>
   List<Map<String, dynamic>> getFilteredRecords() {
     return records.where((record) {
       final matchesVehicle = filterVehicle.isEmpty ||
-          record['vehicleDetails']['vehicleNumber'] == filterVehicle;
-      final matchesService =
-          filterService.isEmpty || record['serviceId'] == filterService;
-      final matchesMiles = filterMiles.isEmpty ||
-          record['miles'] >= (int.tryParse(filterMiles) ?? 0);
+          record['vehicleDetails']['vehicleNumber']
+              .toString()
+              .toLowerCase()
+              .contains(filterVehicle.toLowerCase());
+
+      final matchesService = filterService.isEmpty ||
+          (record['services'] as List).any((service) => service['serviceName']
+              .toString()
+              .toLowerCase()
+              .contains(filterService.toLowerCase()));
+
       final matchesDateRange = startDate == null ||
           endDate == null ||
           (DateTime.parse(record['date']).isAfter(startDate!) &&
               DateTime.parse(record['date']).isBefore(endDate!));
 
-      return matchesVehicle &&
-          matchesService &&
-          matchesMiles &&
-          matchesDateRange;
+      return matchesVehicle && matchesService && matchesDateRange;
     }).toList();
   }
 
@@ -310,6 +329,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         "vehicleDetails": selectedVehicleData,
         "services": servicesData,
         "invoice": invoiceController.text,
+        "description": descriptionController.text.toString(),
         "currentMilesArray": [
           {
             "miles": int.tryParse(milesController.text) ?? 0,
@@ -346,6 +366,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         hoursController.clear();
         workshopController.clear();
         invoiceController.clear();
+        descriptionController.clear();
         selectedDate = null;
         showAddRecords = false;
         selectedVehicleData = null;
@@ -369,8 +390,25 @@ class _ReportsScreenState extends State<ReportsScreen>
     hoursController.dispose();
     workshopController.dispose();
     invoiceController.dispose();
+    serviceSearchController.dispose();
+    vehicleSearchController.dispose();
+    dateSearchController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  void resetFilters() {
+    setState(() {
+      filterVehicle = '';
+      filterService = '';
+      startDate = null;
+      endDate = null;
+      showSearchFilter = false;
+      showVehicleSearch = false;
+      showServiceSearch = false;
+      showDateSearch = false;
+      showCombinedSearch = false;
+    });
   }
 
   @override
@@ -397,13 +435,54 @@ class _ReportsScreenState extends State<ReportsScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  buildCustomRowButton(Icons.search, "Search", kPrimary, () {
-                    setState(() {
-                      showSearchFilter = !showSearchFilter;
-                      showAddRecords = false;
-                      showAddMiles = false;
-                    });
-                  }),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      setState(() {
+                        showSearchFilter = true;
+                        showAddRecords = false;
+                        showAddMiles = false;
+                        showVehicleSearch = value == 'vehicle';
+                        showServiceSearch = value == 'service';
+                        showDateSearch = value == 'date';
+                        showCombinedSearch = value == 'combined';
+                      });
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'vehicle',
+                        child: Text('Search by Vehicle'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'service',
+                        child: Text('Search by Service'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'date',
+                        child: Text('Search by Date'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'combined',
+                        child: Text('Search All'),
+                      ),
+                    ],
+                    child: Container(
+                      height: 45.h,
+                      width: 93.w,
+                      decoration: BoxDecoration(
+                        color: kPrimary,
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.search, color: Colors.white),
+                          Text('Search',
+                              style:
+                                  appStyle(14, Colors.white, FontWeight.w500)),
+                        ],
+                      ),
+                    ),
+                  ),
                   buildCustomRowButton(Icons.add, "Records", kSecondary, () {
                     setState(() {
                       showAddRecords = !showAddRecords;
@@ -439,134 +518,143 @@ class _ReportsScreenState extends State<ReportsScreen>
                           ),
                         ),
                         SizedBox(height: 16.h),
-                        // Vehicle Filter
-                        DropdownButtonFormField<String>(
-                          value: filterVehicle.isEmpty ? null : filterVehicle,
-                          hint: const Text('Filter by Vehicle'),
-                          items: [
-                            const DropdownMenuItem(
-                              value: '',
-                              child: Text('All'),
+                        if (showVehicleSearch || showCombinedSearch)
+                          DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Search by Vehicle',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              prefixIcon:
+                                  Icon(Icons.directions_car, color: kPrimary),
                             ),
-                            ...vehicles.map((vehicle) {
+                            items: vehicles.map((vehicle) {
                               return DropdownMenuItem<String>(
                                 value: vehicle['vehicleNumber'],
-                                child: Text(vehicle['vehicleNumber'] ?? ''),
+                                child: Text(
+                                    "${vehicle['vehicleNumber']} (${vehicle['companyName']}) "),
                               );
                             }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              filterVehicle = value ?? '';
-                            });
-                          },
-                        ),
-                        SizedBox(height: 16.h),
-                        // Service Filter
-                        DropdownButtonFormField<String>(
-                          value: filterService.isEmpty ? null : filterService,
-                          hint: const Text('Filter by Service'),
-                          items: [
-                            const DropdownMenuItem(
-                              value: '',
-                              child: Text('All'),
-                            ),
-                            ...services.map((service) {
-                              return DropdownMenuItem<String>(
-                                value: service['sId'],
-                                child: Text(service['sName'] ?? ''),
-                              );
-                            }).toList(),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              filterService = value ?? '';
-                            });
-                          },
-                        ),
-                        SizedBox(height: 16.h),
-                        // Miles Filter
-                        TextField(
-                          decoration: const InputDecoration(
-                            labelText: 'Minimum Miles',
-                            border: OutlineInputBorder(),
+                            onChanged: (value) {
+                              setState(() {
+                                filterVehicle = value ?? '';
+                              });
+                            },
+                            value: filterVehicle.isEmpty ? null : filterVehicle,
+                            hint: Text('Select Vehicle'),
                           ),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            setState(() {
-                              filterMiles = value;
-                            });
-                          },
-                        ),
                         SizedBox(height: 16.h),
-                        // Date Range Filter
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: startDate ?? DateTime.now(),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      startDate = picked;
-                                    });
-                                  }
-                                },
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Start Date',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  child: Text(
-                                    startDate != null
-                                        ? startDate!
-                                            .toLocal()
-                                            .toString()
-                                            .split(' ')[0]
-                                        : 'Select Start Date',
+                        if ((showVehicleSearch || showCombinedSearch) &&
+                            (showServiceSearch || showDateSearch))
+                          SizedBox(height: 16.h),
+                        if (showServiceSearch || showCombinedSearch)
+                          DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Search by Service',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              prefixIcon: Icon(Icons.build, color: kPrimary),
+                            ),
+                            items: services.map((service) {
+                              return DropdownMenuItem<String>(
+                                value: service['sName'],
+                                child: Text(service['sName']),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                filterService = value ?? '';
+                              });
+                            },
+                            value: filterService.isEmpty ? null : filterService,
+                            hint: Text('Select Service'),
+                          ),
+                        SizedBox(height: 16.h),
+                        if ((showServiceSearch || showCombinedSearch) &&
+                            showDateSearch)
+                          SizedBox(height: 16.h),
+                        if (showDateSearch || showCombinedSearch) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                      context: context,
+                                      initialDate: startDate ?? DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        startDate = picked;
+                                      });
+                                    }
+                                  },
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Start Date',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      prefixIcon: Icon(Icons.calendar_today,
+                                          color: kPrimary),
+                                    ),
+                                    child: Text(
+                                      startDate != null
+                                          ? DateFormat('dd-MM-yyyy')
+                                              .format(startDate!)
+                                          : 'Select Start Date',
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            SizedBox(width: 16.w),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: endDate ?? DateTime.now(),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      endDate = picked;
-                                    });
-                                  }
-                                },
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'End Date',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  child: Text(
-                                    endDate != null
-                                        ? endDate!
-                                            .toLocal()
-                                            .toString()
-                                            .split(' ')[0]
-                                        : 'Select End Date',
+                              SizedBox(width: 16.w),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                      context: context,
+                                      initialDate: endDate ?? DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        endDate = picked;
+                                      });
+                                    }
+                                  },
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'End Date',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      prefixIcon: Icon(Icons.calendar_today,
+                                          color: kPrimary),
+                                    ),
+                                    child: Text(
+                                      endDate != null
+                                          ? DateFormat('dd-MM-yyyy')
+                                              .format(endDate!)
+                                          : 'Select End Date',
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                        ],
+                        SizedBox(height: 16.h),
+                        CustomButton(
+                            text: "Reset",
+                            onPress: resetFilters,
+                            color: kPrimary),
+                        SizedBox(height: 16.h),
                       ],
                     ),
                   ),
@@ -578,7 +666,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 Card(
                   elevation: 4,
                   child: Padding(
-                    padding: EdgeInsets.all(16.0.w),
+                    padding: EdgeInsets.all(8.0.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -596,6 +684,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                           onChanged: (value) {
                             setState(() {
                               selectedVehicle = value;
+                              selectedServices
+                                  .clear(); // Clear selected services when vehicle changes
                               updateSelectedVehicleAndService();
                             });
                           },
@@ -603,14 +693,58 @@ class _ReportsScreenState extends State<ReportsScreen>
 
                         SizedBox(height: 16.h),
 
-                        // Services Selection
+                        // Services Selection with Search
                         Text('Select Services',
                             style: appStyle(16, kDark, FontWeight.w500)),
                         SizedBox(height: 8.h),
+
+                        // Search Bar for Services
+                        TextField(
+                          controller: serviceSearchController,
+                          decoration: InputDecoration(
+                            labelText: 'Search Services',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade400),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              borderSide: BorderSide(color: kPrimary, width: 1),
+                            ),
+                            prefixIcon: Icon(Icons.search, color: kPrimary),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                          ),
+                          onChanged: (value) {
+                            setState(() {});
+                          },
+                        ),
+                        SizedBox(height: 8.h),
+
                         Wrap(
-                          spacing: 8.w,
-                          runSpacing: 8.h,
-                          children: services.map((service) {
+                          spacing: 4.w,
+                          runSpacing: 4.h,
+                          children: services.where((service) {
+                            final searchTerm =
+                                serviceSearchController.text.toLowerCase();
+                            final matchesSearch = searchTerm.isEmpty ||
+                                service['sName']
+                                    .toString()
+                                    .toLowerCase()
+                                    .contains(searchTerm);
+
+                            // Only show services that match the vehicle type or if no vehicle is selected
+                            final matchesVehicleType =
+                                selectedVehicleData == null ||
+                                    service['vType'] ==
+                                        selectedVehicleData?['vehicleType'];
+
+                            return matchesSearch && matchesVehicleType;
+                          }).map((service) {
                             bool isSelected =
                                 selectedServices.contains(service['sId']);
                             List<dynamic> subServices =
@@ -620,6 +754,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 FilterChip(
+                                  labelPadding: EdgeInsets.all(0),
                                   label: Text(service['sName']),
                                   selected: isSelected,
                                   onSelected: (bool selected) {
@@ -640,46 +775,42 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 if (isSelected && subServices.isNotEmpty)
                                   Padding(
                                     padding:
-                                        EdgeInsets.only(left: 16.w, top: 4.h),
+                                        EdgeInsets.only(left: 2.w, top: 4.h),
                                     child: Wrap(
-                                      spacing: 8.w,
-                                      runSpacing: 4.h,
-                                      children: subServices.map((subService) {
+                                      direction: Axis.horizontal,
+                                      spacing: 4.w,
+                                      children:
+                                          subServices.expand((subService) {
                                         List<String> sNames = List<String>.from(
                                             subService['sName'] ?? []);
-                                        return Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children:
-                                              sNames.map((subServiceName) {
-                                            if (subServiceName.isEmpty)
-                                              return Container();
-                                            return FilterChip(
-                                              label: Text(subServiceName),
-                                              selected: selectedSubServices[
+                                        return sNames.map((subServiceName) {
+                                          if (subServiceName.isEmpty)
+                                            return Container();
+                                          return FilterChip(
+                                            labelPadding: EdgeInsets.all(0),
+                                            label: Text(subServiceName),
+                                            selected: selectedSubServices[
+                                                        service['sId']]
+                                                    ?.contains(
+                                                        subServiceName) ??
+                                                false,
+                                            onSelected: (bool selected) {
+                                              setState(() {
+                                                if (selected) {
+                                                  selectedSubServices[
+                                                      service['sId']] ??= [];
+                                                  selectedSubServices[
+                                                          service['sId']]!
+                                                      .add(subServiceName);
+                                                } else {
+                                                  selectedSubServices[
                                                           service['sId']]
-                                                      ?.contains(
-                                                          subServiceName) ??
-                                                  false,
-                                              onSelected: (bool selected) {
-                                                setState(() {
-                                                  if (selected) {
-                                                    selectedSubServices[
-                                                        service['sId']] ??= [];
-                                                    selectedSubServices[
-                                                            service['sId']]!
-                                                        .add(subServiceName);
-                                                  } else {
-                                                    selectedSubServices[
-                                                            service['sId']]
-                                                        ?.remove(
-                                                            subServiceName);
-                                                  }
-                                                });
-                                              },
-                                            );
-                                          }).toList(),
-                                        );
+                                                      ?.remove(subServiceName);
+                                                }
+                                              });
+                                            },
+                                          );
+                                        });
                                       }).toList(),
                                     ),
                                   ),
@@ -764,6 +895,15 @@ class _ReportsScreenState extends State<ReportsScreen>
                           keyboardType: TextInputType.number,
                         ),
                         SizedBox(height: 16.h),
+                        TextField(
+                          controller: descriptionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Description (Optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.text,
+                        ),
+                        SizedBox(height: 16.h),
 
                         // Save Button
                         CustomButton(
@@ -810,7 +950,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         TextField(
                           controller: todayMilesController,
                           decoration: const InputDecoration(
-                            labelText: 'Enter Today\'s Miles',
+                            labelText: 'Enter Miles',
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
@@ -921,7 +1061,17 @@ class _ReportsScreenState extends State<ReportsScreen>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (filteredRecords.isEmpty)
-                    const Center(child: Text('No records found'))
+                    Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.note_alt_outlined,
+                              size: 80, color: kPrimary.withOpacity(0.5)),
+                          const SizedBox(height: 16),
+                          Text('No records found',
+                              style: appStyle(18, kDarkGray, FontWeight.w500)),
+                        ],
+                      ),
+                    )
                   else
                     ListView.builder(
                       shrinkWrap: true,
@@ -930,107 +1080,131 @@ class _ReportsScreenState extends State<ReportsScreen>
                       itemBuilder: (context, index) {
                         final record = filteredRecords[index];
                         final services = record['services'] as List<dynamic>;
-                        final serviceNames = services
-                            .map((s) => s['serviceName'].toString())
-                            .join(', ');
+                        final date = DateFormat('dd-MM-yy')
+                            .format(DateTime.parse(record['createdAt']));
 
-                        final date =
-                            "${DateTime.parse(record['createdAt']).toString().split('.')[0]}";
-
-                        return GestureDetector(
-                          onTap: () => Get.to(
-                              () => RecordsDetailsScreen(record: record)),
-                          child: Card(
-                            elevation: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 8.0, top: 8.0, right: 8.0, bottom: 5),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                        return Container(
+                          margin: EdgeInsets.symmetric(vertical: 8.h),
+                          child: GestureDetector(
+                            onTap: () => Get.to(
+                                () => RecordsDetailsScreen(record: record)),
+                            child: Card(
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.r),
+                                side: BorderSide(
+                                  color: kPrimary.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15.r),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(16.w),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Container(
-                                          padding: EdgeInsets.all(1),
-                                          decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.r),
-                                              color:
-                                                  kSecondary.withOpacity(0.2)),
-                                          child: Text(date,
-                                              style: appStyle(18, kDark,
-                                                  FontWeight.normal))),
-                                      Container(
-                                        padding: EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(12.r),
-                                          color: kPrimary.withOpacity(0.2),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Text("1,70,000",
-                                                style: appStyle(14, kDark,
-                                                    FontWeight.w500)),
-                                            SizedBox(width: 5.w),
-                                            AnimatedBuilder(
-                                              animation: _animationController,
-                                              builder: (context, child) {
-                                                return Icon(
-                                                    Icons.notifications_active,
-                                                    color: Color.lerp(
-                                                        kPrimary,
-                                                        kSecondary,
-                                                        _animationController
-                                                            .value));
-                                              },
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          if (record['invoice'].isNotEmpty)
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 12.w,
+                                                vertical: 6.h,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    kPrimary.withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(20.r),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.receipt_outlined,
+                                                      size: 20,
+                                                      color: kPrimary),
+                                                  SizedBox(width: 8.w),
+                                                  Text("#${record['invoice']}",
+                                                      style: appStyle(16, kDark,
+                                                          FontWeight.w500)),
+                                                ],
+                                              ),
                                             ),
-                                          ],
-                                        ),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 12.w,
+                                              vertical: 6.h,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  kSecondary.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(20.r),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.calendar_today,
+                                                    size: 18,
+                                                    color: kSecondary),
+                                                SizedBox(width: 8.w),
+                                                Text(date,
+                                                    style: appStyle(16, kDark,
+                                                        FontWeight.w500)),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                      SizedBox(height: 16.h),
+                                      buildInfoRow(
+                                        Icons.directions_car_outlined,
+                                        '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                                      ),
+                                      Divider(height: 24.h),
+                                      buildInfoRow(
+                                        Icons.build_outlined,
+                                        services.map((service) {
+                                          String serviceName =
+                                              service['serviceName'];
+                                          if ((service['subServices'] as List?)
+                                                  ?.isNotEmpty ??
+                                              false) {
+                                            String subServices =
+                                                (service['subServices'] as List)
+                                                    .map((s) => s['name'])
+                                                    .join(', ');
+                                            return "$serviceName ($subServices)";
+                                          }
+                                          return serviceName;
+                                        }).join(", "),
+                                      ),
+                                      Divider(height: 24.h),
+                                      buildInfoRow(
+                                        Icons.store_outlined,
+                                        record['workshopName'] ?? 'N/A',
+                                      ),
+                                      if (record["description"].isNotEmpty) ...[
+                                        Divider(height: 24.h),
+                                        buildInfoRow(
+                                          Icons.description_outlined,
+                                          record['description'],
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                  SizedBox(height: 6.h),
-                                  buildReusableRowTextWidget("Vehicle :",
-                                      ' ${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
-                                  SizedBox(height: 6.h),
-                                  buildReusableRowTextWidget(
-                                      "Services :", " $serviceNames"),
-                                  for (var service in services) ...[
-                                    if ((service['subServices'] as List?)
-                                            ?.isNotEmpty ??
-                                        false) ...[
-                                      SizedBox(height: 6.h),
-                                      SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: buildReusableRowTextWidget(
-                                            "${service['serviceName']} Sub Services :",
-                                            " ${(service['subServices'] as List).map((s) => s['name']).join(', ')}"),
-                                      ),
-                                    ],
-                                  ],
-                                  SizedBox(height: 6.h),
-                                  buildReusableRowTextWidget("Workshop :",
-                                      "${record['workshopName'] ?? 'N/A'}"),
-                                  SizedBox(height: 6.h),
-                                  if (record['miles'] > 0)
-                                    buildReusableRowTextWidget(
-                                        "Miles :", "${record['miles']}"),
-                                  SizedBox(height: 6.h),
-                                  if (record['hours'] > 0)
-                                    buildReusableRowTextWidget(
-                                        "Hours :", "${record["hours"]}"),
-                                  if (record['invoice'].isEmpty) SizedBox(),
-                                  buildReusableRowTextWidget(
-                                      "Invoice :", "${record["invoice"]}"),
-                                  SizedBox(height: 6.h),
-                                ],
+                                ),
                               ),
                             ),
                           ),
-                        );
+                        )
+                            .animate()
+                            .fadeIn(duration: 400.ms, delay: (index * 100).ms)
+                            .slideX(begin: 0.2, end: 0);
                       },
                     ),
                 ],
@@ -1042,18 +1216,35 @@ class _ReportsScreenState extends State<ReportsScreen>
     );
   }
 
+  Widget buildInfoRow(IconData icon, String vText) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: kSecondary),
+        SizedBox(width: 8.w),
+        // Text(hText, style: appStyle(16, kDark, FontWeight.w500)),
+        // SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            vText,
+            style: appStyle(16, kDarkGray, FontWeight.w400),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget buildReusableRowTextWidget(String hText, String vText) {
     return Row(
       children: [
         Text(hText, style: appStyle(15, kDark, FontWeight.w500)),
         SizedBox(
           width: 250.w,
-          child: Text(
-            vText,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: appStyle(15, kDarkGray, FontWeight.w400),
-          ),
+          child: Text(vText,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: appStyle(15, kDarkGray, FontWeight.w400)),
         ),
       ],
     );
