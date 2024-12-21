@@ -97,24 +97,107 @@ class RecordsDetailsScreen extends StatelessWidget {
                     ),
                     Divider(height: 24.h),
                     buildInfoRow(
-                      Icons.build_outlined,
-                      services.map((service) {
-                        String serviceName = service['serviceName'];
-                        if ((service['subServices'] as List?)?.isNotEmpty ??
-                            false) {
-                          String subServices = (service['subServices'] as List)
-                              .map((s) => s['name'])
-                              .join(', ');
-                          return "$serviceName ($subServices)";
-                        }
-                        return serviceName;
-                      }).join(", "),
-                    ),
-                    Divider(height: 24.h),
-                    buildInfoRow(
                       Icons.store_outlined,
                       record['workshopName'] ?? 'N/A',
                     ),
+                    Divider(height: 24.h),
+                    // buildInfoRow(
+                    //   Icons.build_outlined,
+                    //   services.map((service) {
+                    //     String serviceName = service['serviceName'];
+                    //     if ((service['subServices'] as List?)?.isNotEmpty ??
+                    //         false) {
+                    //       String subServices = (service['subServices'] as List)
+                    //           .map((s) => s['name'])
+                    //           .join(', ');
+                    //       return "$serviceName ($subServices)";
+                    //     }
+                    //     return serviceName;
+                    //   }).join(", "),
+                    // ),
+
+                    // Replace the services section with this
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Services:",
+                          style: appStyle(18, kDark, FontWeight.bold),
+                        ),
+                        SizedBox(height: 8.h),
+                        ListView.separated(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: services.length,
+                          separatorBuilder: (context, index) =>
+                              Divider(height: 24.h),
+                          itemBuilder: (context, index) {
+                            final service = services[index];
+                            final serviceName = service['serviceName'];
+                            final defaultNotificationValue =
+                                service['defaultNotificationValue'];
+                            final subServices =
+                                (service['subServices'] as List?)
+                                        ?.map((s) => s['name'])
+                                        .toList() ??
+                                    [];
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.build_outlined,
+                                        size: 20, color: kSecondary),
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        "$serviceName ",
+                                        style: appStyle(
+                                            16, kDark, FontWeight.w500),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.only(
+                                          left: 6.w, right: 6.w),
+                                      decoration: BoxDecoration(
+                                        color: kPrimary.withOpacity(0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(12.r),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                              Icons
+                                                  .notifications_active_outlined,
+                                              size: 20,
+                                              color: kPrimary),
+                                          SizedBox(width: 2.w),
+                                          Text("${defaultNotificationValue}",
+                                              style: appStyle(
+                                                  16, kDark, FontWeight.w500)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (subServices.isNotEmpty)
+                                  Padding(
+                                    padding:
+                                        EdgeInsets.only(left: 28.w, top: 4.h),
+                                    child: Text(
+                                      "Subservices: ${subServices.join(', ')}",
+                                      style: appStyle(
+                                          14, kDarkGray, FontWeight.w400),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+
                     if (record["description"].isNotEmpty) ...[
                       Divider(height: 24.h),
                       buildInfoRow(

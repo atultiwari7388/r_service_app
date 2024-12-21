@@ -787,6 +787,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           if (subServiceName.isEmpty)
                                             return Container();
                                           return FilterChip(
+                                            backgroundColor:
+                                                kPrimary.withOpacity(0.3),
                                             labelPadding: EdgeInsets.all(0),
                                             label: Text(subServiceName),
                                             selected: selectedSubServices[
