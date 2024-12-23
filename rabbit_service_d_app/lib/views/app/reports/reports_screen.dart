@@ -284,6 +284,9 @@ class _ReportsScreenState extends State<ReportsScreen>
       final dataServicesRef =
           FirebaseFirestore.instance.collection("DataServicesRecords");
 
+      // Generate a unique document ID
+      final docId = dataServicesUserRef.doc().id;
+
       // Calculate notification values for all services
       List<Map<String, dynamic>> servicesData = [];
       List<int> allNextNotificationValues = [];
@@ -309,8 +312,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         servicesData.add({
           "serviceId": serviceId,
           "serviceName": service['sName'],
-          "defaultNotificationValue": serviceDefaultValues[serviceId] ??
-              0, // Added default value per service
+          "defaultNotificationValue": serviceDefaultValues[serviceId] ?? 0,
           "subServices": selectedSubServices[serviceId]
                   ?.map((subService) => {
                         "name": subService,
@@ -318,7 +320,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       })
                   .toList() ??
               [],
-          "nextNotificationValues": nextNotificationValues,
+          "nextNotificationValues": 0,
         });
       }
 
@@ -330,13 +332,9 @@ class _ReportsScreenState extends State<ReportsScreen>
         "services": servicesData,
         "invoice": invoiceController.text,
         "description": descriptionController.text.toString(),
-        "currentMilesArray": [
-          {
-            "miles": int.tryParse(milesController.text) ?? 0,
-            "date": DateTime.now().toIso8601String()
-          }
-        ],
+        "currentMilesArray": [], // bydefault empty value
         "allNextNotificationValues": allNextNotificationValues,
+        "totalMiles": 0,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
                 selectedServiceData.any((s) => s['vType'] == "Truck")
             ? int.tryParse(milesController.text) ?? 0
@@ -351,9 +349,9 @@ class _ReportsScreenState extends State<ReportsScreen>
         "createdAt": DateTime.now().toIso8601String(),
       };
 
-      // Save single record
-      await dataServicesUserRef.add(recordData);
-      await dataServicesRef.add(recordData);
+      // Save the record with the same docId in both collections
+      await dataServicesUserRef.doc(docId).set(recordData);
+      await dataServicesRef.doc(docId).set(recordData);
 
       fetchRecords();
 
@@ -361,7 +359,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         selectedVehicle = null;
         selectedServices.clear();
         selectedSubServices.clear();
-        serviceDefaultValues.clear(); // Clear service default values
+        serviceDefaultValues.clear();
         milesController.clear();
         hoursController.clear();
         workshopController.clear();
@@ -425,6 +423,17 @@ class _ReportsScreenState extends State<ReportsScreen>
         ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2, end: 0),
         elevation: 0,
         backgroundColor: Colors.white,
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: kPrimary,
+        foregroundColor: kWhite,
+        onPressed: () {
+          fetchVehicles();
+          fetchServices();
+          fetchRecords();
+          fetchServicesVehiclesToAddMiles();
+        },
+        child: Icon(Icons.refresh),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -754,6 +763,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 FilterChip(
+                                  backgroundColor: kPrimary.withOpacity(0.1),
+                                  selectedColor: kPrimary,
                                   labelPadding: EdgeInsets.all(0),
                                   label: Text(service['sName']),
                                   selected: isSelected,
@@ -788,7 +799,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             return Container();
                                           return FilterChip(
                                             backgroundColor:
-                                                kPrimary.withOpacity(0.3),
+                                                kSecondary.withOpacity(0.1),
                                             labelPadding: EdgeInsets.all(0),
                                             label: Text(subServiceName),
                                             selected: selectedSubServices[
@@ -996,6 +1007,21 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 .collection('Users')
                                                 .doc(currentUId)
                                                 .collection('DataServices')
+                                                .doc(vehicleId)
+                                                .update({
+                                              'currentMilesArray':
+                                                  FieldValue.arrayUnion([
+                                                {
+                                                  "miles": todayMiles,
+                                                  "date": DateTime.now()
+                                                      .toIso8601String()
+                                                }
+                                              ]),
+                                            });
+
+                                            await FirebaseFirestore.instance
+                                                .collection(
+                                                    'DataServicesRecords')
                                                 .doc(vehicleId)
                                                 .update({
                                               'currentMilesArray':

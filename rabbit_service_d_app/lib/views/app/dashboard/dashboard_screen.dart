@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/our_services.dart';
 import '../../../services/collection_references.dart';
 import '../profile/profile_screen.dart';
@@ -41,6 +42,16 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                       height: 50.h,
                     ),
                     actions: [
+                      GestureDetector(
+                        onTap: () =>
+                            Get.to(() => CloudNotificationMessageCenter()),
+                        child: CircleAvatar(
+                            backgroundColor: kPrimary,
+                            radius: 17.r,
+                            child: Icon(Icons.notifications,
+                                size: 25.sp, color: kWhite)),
+                      ),
+                      SizedBox(width: 10.w),
                       GestureDetector(
                         onTap: () => Get.to(() => const ProfileScreen(),
                             transition: Transition.cupertino,
