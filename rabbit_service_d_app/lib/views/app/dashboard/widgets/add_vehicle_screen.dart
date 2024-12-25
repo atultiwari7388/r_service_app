@@ -212,12 +212,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       if (_selectedVehicleType == 'Truck') {
         vehicleData['currentMiles'] = _currentMilesController.text;
+        vehicleData['firstTimeMiles'] = _currentMilesController.text;
+        vehicleData['nextNotificationMiles'] = [];
         vehicleData['oilChangeDate'] = '';
         vehicleData['hoursReading'] = '';
       }
 
       if (_selectedVehicleType == 'Trailer') {
         vehicleData['currentMiles'] = '';
+        vehicleData['firstTimeMiles'] = '';
+        vehicleData['nextNotificationMiles'] = [];
         vehicleData['oilChangeDate'] = _oilChangeDate != null
             ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
             : null;

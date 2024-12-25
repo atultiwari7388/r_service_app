@@ -283,13 +283,21 @@ class _ReportsScreenState extends State<ReportsScreen>
           .collection('DataServices');
       final dataServicesRef =
           FirebaseFirestore.instance.collection("DataServicesRecords");
+      final vehicleRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('Vehicles')
+          .doc(selectedVehicle);
 
       // Generate a unique document ID
       final docId = dataServicesUserRef.doc().id;
 
       // Calculate notification values for all services
       List<Map<String, dynamic>> servicesData = [];
+      List<Map<String, dynamic>> notificationData = [];
       List<int> allNextNotificationValues = [];
+
+      final currentMiles = int.tryParse(milesController.text) ?? 0;
 
       for (var serviceId in selectedServices) {
         final service = services.firstWhere((s) => s['sId'] == serviceId);
@@ -309,10 +317,14 @@ class _ReportsScreenState extends State<ReportsScreen>
           }
         }
 
+        final defaultValue = serviceDefaultValues[serviceId] ?? 0;
+        final nextNotificationValue = currentMiles + defaultValue;
+
         servicesData.add({
           "serviceId": serviceId,
           "serviceName": service['sName'],
-          "defaultNotificationValue": serviceDefaultValues[serviceId] ?? 0,
+          "defaultNotificationValue": defaultValue,
+          "nextNotificationValue": nextNotificationValue,
           "subServices": selectedSubServices[serviceId]
                   ?.map((subService) => {
                         "name": subService,
@@ -320,7 +332,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                       })
                   .toList() ??
               [],
-          "nextNotificationValues": 0,
+        });
+
+        // Add service notification data
+        notificationData.add({
+          "serviceName": service['sName'],
+          "nextNotificationValue": nextNotificationValue,
+          "subServices": selectedSubServices[serviceId] ?? [],
         });
       }
 
@@ -328,16 +346,20 @@ class _ReportsScreenState extends State<ReportsScreen>
       final recordData = {
         "userId": currentUId,
         "vehicleId": selectedVehicle,
-        "vehicleDetails": selectedVehicleData,
+        "vehicleDetails": {
+          ...selectedVehicleData!,
+          "currentMiles": currentMiles.toString(),
+          "nextNotificationMiles": notificationData,
+        },
         "services": servicesData,
         "invoice": invoiceController.text,
         "description": descriptionController.text.toString(),
         "currentMilesArray": [], // bydefault empty value
         "allNextNotificationValues": allNextNotificationValues,
-        "totalMiles": 0,
+        "totalMiles": currentMiles,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
                 selectedServiceData.any((s) => s['vType'] == "Truck")
-            ? int.tryParse(milesController.text) ?? 0
+            ? currentMiles
             : 0,
         "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
                 selectedServiceData.any((s) => s['vType'] == "Trailer")
@@ -348,6 +370,12 @@ class _ReportsScreenState extends State<ReportsScreen>
         "workshopName": workshopController.text,
         "createdAt": DateTime.now().toIso8601String(),
       };
+
+      // Update vehicle's current miles and next notification miles
+      await vehicleRef.update({
+        'currentMiles': currentMiles.toString(),
+        'nextNotificationMiles': notificationData,
+      });
 
       // Save the record with the same docId in both collections
       await dataServicesUserRef.doc(docId).set(recordData);
@@ -415,12 +443,11 @@ class _ReportsScreenState extends State<ReportsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Records',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2, end: 0),
+        title: Text('Records',
+                style: appStyleUniverse(28, kDark, FontWeight.normal))
+            .animate()
+            .fadeIn(duration: 600.ms)
+            .slideX(begin: -0.2, end: 0),
         elevation: 0,
         backgroundColor: Colors.white,
       ),
@@ -457,21 +484,29 @@ class _ReportsScreenState extends State<ReportsScreen>
                       });
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'vehicle',
-                        child: Text('Search by Vehicle'),
+                        child: Text('Search by Vehicle',
+                            style:
+                                appStyleUniverse(15, kDark, FontWeight.normal)),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'service',
-                        child: Text('Search by Service'),
+                        child: Text('Search by Service',
+                            style:
+                                appStyleUniverse(15, kDark, FontWeight.normal)),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'date',
-                        child: Text('Search by Date'),
+                        child: Text('Search by Date',
+                            style:
+                                appStyleUniverse(15, kDark, FontWeight.normal)),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'combined',
-                        child: Text('Search All'),
+                        child: Text('Search All',
+                            style:
+                                appStyleUniverse(15, kDark, FontWeight.normal)),
                       ),
                     ],
                     child: Container(
@@ -486,8 +521,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                         children: [
                           const Icon(Icons.search, color: Colors.white),
                           Text('Search',
-                              style:
-                                  appStyle(14, Colors.white, FontWeight.w500)),
+                              style: appStyleUniverse(
+                                  14, Colors.white, FontWeight.w500)),
                         ],
                       ),
                     ),
@@ -509,167 +544,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                 ],
               ),
               SizedBox(height: 10.h),
-
-              // Search & Filter Section
-              if (showSearchFilter) ...[
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Search & Filter',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 16.h),
-                        if (showVehicleSearch || showCombinedSearch)
-                          DropdownButtonFormField<String>(
-                            decoration: InputDecoration(
-                              labelText: 'Search by Vehicle',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              prefixIcon:
-                                  Icon(Icons.directions_car, color: kPrimary),
-                            ),
-                            items: vehicles.map((vehicle) {
-                              return DropdownMenuItem<String>(
-                                value: vehicle['vehicleNumber'],
-                                child: Text(
-                                    "${vehicle['vehicleNumber']} (${vehicle['companyName']}) "),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                filterVehicle = value ?? '';
-                              });
-                            },
-                            value: filterVehicle.isEmpty ? null : filterVehicle,
-                            hint: Text('Select Vehicle'),
-                          ),
-                        SizedBox(height: 16.h),
-                        if ((showVehicleSearch || showCombinedSearch) &&
-                            (showServiceSearch || showDateSearch))
-                          SizedBox(height: 16.h),
-                        if (showServiceSearch || showCombinedSearch)
-                          DropdownButtonFormField<String>(
-                            decoration: InputDecoration(
-                              labelText: 'Search by Service',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              prefixIcon: Icon(Icons.build, color: kPrimary),
-                            ),
-                            items: services.map((service) {
-                              return DropdownMenuItem<String>(
-                                value: service['sName'],
-                                child: Text(service['sName']),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                filterService = value ?? '';
-                              });
-                            },
-                            value: filterService.isEmpty ? null : filterService,
-                            hint: Text('Select Service'),
-                          ),
-                        SizedBox(height: 16.h),
-                        if ((showServiceSearch || showCombinedSearch) &&
-                            showDateSearch)
-                          SizedBox(height: 16.h),
-                        if (showDateSearch || showCombinedSearch) ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () async {
-                                    final DateTime? picked =
-                                        await showDatePicker(
-                                      context: context,
-                                      initialDate: startDate ?? DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime(2100),
-                                    );
-                                    if (picked != null) {
-                                      setState(() {
-                                        startDate = picked;
-                                      });
-                                    }
-                                  },
-                                  child: InputDecorator(
-                                    decoration: InputDecoration(
-                                      labelText: 'Start Date',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      prefixIcon: Icon(Icons.calendar_today,
-                                          color: kPrimary),
-                                    ),
-                                    child: Text(
-                                      startDate != null
-                                          ? DateFormat('dd-MM-yyyy')
-                                              .format(startDate!)
-                                          : 'Select Start Date',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 16.w),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () async {
-                                    final DateTime? picked =
-                                        await showDatePicker(
-                                      context: context,
-                                      initialDate: endDate ?? DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime(2100),
-                                    );
-                                    if (picked != null) {
-                                      setState(() {
-                                        endDate = picked;
-                                      });
-                                    }
-                                  },
-                                  child: InputDecorator(
-                                    decoration: InputDecoration(
-                                      labelText: 'End Date',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      prefixIcon: Icon(Icons.calendar_today,
-                                          color: kPrimary),
-                                    ),
-                                    child: Text(
-                                      endDate != null
-                                          ? DateFormat('dd-MM-yyyy')
-                                              .format(endDate!)
-                                          : 'Select End Date',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        SizedBox(height: 16.h),
-                        CustomButton(
-                            text: "Reset",
-                            onPress: resetFilters,
-                            color: kPrimary),
-                        SizedBox(height: 16.h),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-
               if (showAddRecords) ...[
                 SizedBox(height: 20.h),
                 Card(
@@ -687,7 +561,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                             return DropdownMenuItem<String>(
                               value: vehicle['id'],
                               child: Text(
-                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
+                                '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                style: appStyleUniverse(
+                                    17, kDark, FontWeight.normal),
+                              ),
                             );
                           }).toList(),
                           onChanged: (value) {
@@ -704,7 +581,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
                         // Services Selection with Search
                         Text('Select Services',
-                            style: appStyle(16, kDark, FontWeight.w500)),
+                            style:
+                                appStyleUniverse(16, kDark, FontWeight.w500)),
                         SizedBox(height: 8.h),
 
                         // Search Bar for Services
@@ -767,6 +645,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   selectedColor: kPrimary,
                                   labelPadding: EdgeInsets.all(0),
                                   label: Text(service['sName']),
+                                  labelStyle: appStyleUniverse(
+                                      14, kDark, FontWeight.normal),
                                   selected: isSelected,
                                   onSelected: (bool selected) {
                                     setState(() {
@@ -802,6 +682,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 kSecondary.withOpacity(0.1),
                                             labelPadding: EdgeInsets.all(0),
                                             label: Text(subServiceName),
+                                            labelStyle: appStyle(
+                                                13, kDark, FontWeight.normal),
                                             selected: selectedSubServices[
                                                         service['sId']]
                                                     ?.contains(
@@ -893,25 +775,31 @@ class _ReportsScreenState extends State<ReportsScreen>
                         // Workshop Name
                         TextField(
                           controller: workshopController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Workshop Name',
+                            labelStyle:
+                                appStyleUniverse(14, kDark, FontWeight.normal),
                             border: OutlineInputBorder(),
                           ),
                         ),
                         SizedBox(height: 10.h),
                         TextField(
                           controller: invoiceController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Invoice (Optional)',
+                            labelStyle:
+                                appStyleUniverse(14, kDark, FontWeight.normal),
                             border: OutlineInputBorder(),
                           ),
-                          keyboardType: TextInputType.number,
+                          keyboardType: TextInputType.streetAddress,
                         ),
                         SizedBox(height: 16.h),
                         TextField(
                           controller: descriptionController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Description (Optional)',
+                            labelStyle:
+                                appStyleUniverse(14, kDark, FontWeight.normal),
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.text,
@@ -924,6 +812,183 @@ class _ReportsScreenState extends State<ReportsScreen>
                           color: kPrimary,
                           text: 'Save Record',
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              // Search & Filter Section
+              if (showSearchFilter) ...[
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('Search & Filter',
+                            style:
+                                appStyleUniverse(18, kDark, FontWeight.normal)),
+                        SizedBox(height: 16.h),
+                        if (showVehicleSearch || showCombinedSearch)
+                          DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Search by Vehicle',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              prefixIcon:
+                                  Icon(Icons.directions_car, color: kPrimary),
+                            ),
+                            items: vehicles.map((vehicle) {
+                              return DropdownMenuItem<String>(
+                                value: vehicle['vehicleNumber'],
+                                child: Text(
+                                  "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+                                  style: appStyleUniverse(
+                                      14, kDark, FontWeight.normal),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                filterVehicle = value ?? '';
+                              });
+                            },
+                            value: filterVehicle.isEmpty ? null : filterVehicle,
+                            hint: Text(
+                              'Select Vehicle',
+                              style: appStyleUniverse(
+                                  14, kDark, FontWeight.normal),
+                            ),
+                          ),
+                        SizedBox(height: 16.h),
+                        if ((showVehicleSearch || showCombinedSearch) &&
+                            (showServiceSearch || showDateSearch))
+                          SizedBox(height: 16.h),
+                        if (showServiceSearch || showCombinedSearch)
+                          DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Search by Service',
+                              labelStyle: appStyleUniverse(
+                                  14, kDark, FontWeight.normal),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              prefixIcon: Icon(Icons.build, color: kPrimary),
+                            ),
+                            items: services.map((service) {
+                              return DropdownMenuItem<String>(
+                                value: service['sName'],
+                                child: Text(
+                                  service['sName'],
+                                  style: appStyleUniverse(
+                                      14, kDark, FontWeight.normal),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                filterService = value ?? '';
+                              });
+                            },
+                            value: filterService.isEmpty ? null : filterService,
+                            hint: Text(
+                              'Select Service',
+                              style: appStyleUniverse(
+                                  14, kDark, FontWeight.normal),
+                            ),
+                          ),
+                        SizedBox(height: 16.h),
+                        if ((showServiceSearch || showCombinedSearch) &&
+                            showDateSearch)
+                          SizedBox(height: 16.h),
+                        if (showDateSearch || showCombinedSearch) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                      context: context,
+                                      initialDate: startDate ?? DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        startDate = picked;
+                                      });
+                                    }
+                                  },
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Start Date',
+                                      labelStyle: appStyleUniverse(
+                                          14, kDark, FontWeight.normal),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      prefixIcon: Icon(Icons.calendar_today,
+                                          color: kPrimary),
+                                    ),
+                                    child: Text(
+                                      startDate != null
+                                          ? DateFormat('dd-MM-yyyy')
+                                              .format(startDate!)
+                                          : 'Select Start Date',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 16.w),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                      context: context,
+                                      initialDate: endDate ?? DateTime.now(),
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        endDate = picked;
+                                      });
+                                    }
+                                  },
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'End Date',
+                                      labelStyle: appStyleUniverse(
+                                          14, kDark, FontWeight.normal),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      prefixIcon: Icon(Icons.calendar_today,
+                                          color: kPrimary),
+                                    ),
+                                    child: Text(
+                                      endDate != null
+                                          ? DateFormat('dd-MM-yyyy')
+                                              .format(endDate!)
+                                          : 'Select End Date',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        SizedBox(height: 16.h),
+                        CustomButton(
+                            text: "Reset",
+                            onPress: resetFilters,
+                            color: kPrimary),
+                        SizedBox(height: 16.h),
                       ],
                     ),
                   ),
@@ -949,6 +1014,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                               value: vehicle['id'],
                               child: Text(
                                 '${vehicleDetails['companyName']} (${vehicleDetails['vehicleNumber'] ?? 'N/A'})',
+                                style: appStyleUniverse(
+                                    14, kDark, FontWeight.normal),
                               ),
                             );
                           }).toList(),
@@ -962,8 +1029,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                         SizedBox(height: 16.h),
                         TextField(
                           controller: todayMilesController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Enter Miles',
+                            labelStyle:
+                                appStyleUniverse(14, kDark, FontWeight.normal),
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
@@ -979,7 +1048,11 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
-                                    title: const Text('Confirm Save'),
+                                    title: Text(
+                                      'Confirm Save',
+                                      style: appStyleUniverse(
+                                          14, kDark, FontWeight.normal),
+                                    ),
                                     content: Text(
                                       'Are you sure you want to save ${todayMilesController.text} miles?',
                                     ),
@@ -1082,7 +1155,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
               SizedBox(height: 20.h),
 
-              Text("My Records", style: appStyle(20, kDark, FontWeight.w500)),
+              Text("My Records",
+                  style: appStyleUniverse(20, kDark, FontWeight.w500)),
               SizedBox(height: 20.h),
 
               Column(
@@ -1096,7 +1170,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                               size: 80, color: kPrimary.withOpacity(0.5)),
                           const SizedBox(height: 16),
                           Text('No records found',
-                              style: appStyle(18, kDarkGray, FontWeight.w500)),
+                              style: appStyleUniverse(
+                                  18, kDarkGray, FontWeight.w500)),
                         ],
                       ),
                     )
@@ -1158,7 +1233,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                       color: kPrimary),
                                                   SizedBox(width: 8.w),
                                                   Text("#${record['invoice']}",
-                                                      style: appStyle(16, kDark,
+                                                      style: appStyleUniverse(
+                                                          16,
+                                                          kDark,
                                                           FontWeight.w500)),
                                                 ],
                                               ),
@@ -1181,7 +1258,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                     color: kSecondary),
                                                 SizedBox(width: 8.w),
                                                 Text(date,
-                                                    style: appStyle(16, kDark,
+                                                    style: appStyleUniverse(
+                                                        16,
+                                                        kDark,
                                                         FontWeight.w500)),
                                               ],
                                             ),
@@ -1254,7 +1333,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         Expanded(
           child: Text(
             vText,
-            style: appStyle(16, kDarkGray, FontWeight.w400),
+            style: appStyleUniverse(16, kDarkGray, FontWeight.w400),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1291,7 +1370,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(iconName, color: kWhite),
-            Text(text, style: appStyle(14, kWhite, FontWeight.w500)),
+            Text(text, style: appStyleUniverse(14, kWhite, FontWeight.w500)),
           ],
         ),
       ),

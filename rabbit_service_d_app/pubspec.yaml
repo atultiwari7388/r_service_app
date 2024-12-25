@@ -69,3 +69,9 @@ flutter:
   assets:
     - assets/
     - assets/noti.mp3
+
+  fonts:
+    - family: Universe
+      fonts:
+        - asset: assets/font/UniversRegular.ttf
+        - asset: assets/font/UniversBold.ttf

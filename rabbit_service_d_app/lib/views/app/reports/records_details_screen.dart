@@ -20,7 +20,8 @@ class RecordsDetailsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Record Details'),
+        title: Text('Record Details',
+            style: appStyleUniverse(25, kDark, FontWeight.normal)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -64,8 +65,8 @@ class RecordsDetailsScreen extends StatelessWidget {
                                     size: 20, color: kPrimary),
                                 SizedBox(width: 8.w),
                                 Text("#${record['invoice']}",
-                                    style:
-                                        appStyle(16, kDark, FontWeight.w500)),
+                                    style: appStyleUniverse(
+                                        16, kDark, FontWeight.w500)),
                               ],
                             ),
                           ),
@@ -84,7 +85,8 @@ class RecordsDetailsScreen extends StatelessWidget {
                                   size: 18, color: kSecondary),
                               SizedBox(width: 8.w),
                               Text(date,
-                                  style: appStyle(16, kDark, FontWeight.w500)),
+                                  style: appStyleUniverse(
+                                      16, kDark, FontWeight.w500)),
                             ],
                           ),
                         ),
@@ -122,7 +124,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                       children: [
                         Text(
                           "Services:",
-                          style: appStyle(18, kDark, FontWeight.bold),
+                          style: appStyleUniverse(18, kDark, FontWeight.bold),
                         ),
                         SizedBox(height: 8.h),
                         ListView.separated(
@@ -134,8 +136,8 @@ class RecordsDetailsScreen extends StatelessWidget {
                           itemBuilder: (context, index) {
                             final service = services[index];
                             final serviceName = service['serviceName'];
-                            final defaultNotificationValue =
-                                service['defaultNotificationValue'];
+                            final nextNotificationValue =
+                                service['nextNotificationValue'];
                             final subServices =
                                 (service['subServices'] as List?)
                                         ?.map((s) => s['name'])
@@ -153,7 +155,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                                     Expanded(
                                       child: Text(
                                         "$serviceName ",
-                                        style: appStyle(
+                                        style: appStyleUniverse(
                                             16, kDark, FontWeight.w500),
                                       ),
                                     ),
@@ -173,9 +175,11 @@ class RecordsDetailsScreen extends StatelessWidget {
                                               size: 20,
                                               color: kPrimary),
                                           SizedBox(width: 2.w),
-                                          Text("${defaultNotificationValue}",
-                                              style: appStyle(
-                                                  16, kDark, FontWeight.w500)),
+                                          nextNotificationValue == 0
+                                              ? Text("")
+                                              : Text("${nextNotificationValue}",
+                                                  style: appStyleUniverse(16,
+                                                      kDark, FontWeight.w500)),
                                         ],
                                       ),
                                     ),
@@ -187,7 +191,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                                         EdgeInsets.only(left: 28.w, top: 4.h),
                                     child: Text(
                                       "Subservices: ${subServices.join(', ')}",
-                                      style: appStyle(
+                                      style: appStyleUniverse(
                                           14, kDarkGray, FontWeight.w400),
                                     ),
                                   ),
@@ -279,7 +283,7 @@ class RecordsDetailsScreen extends StatelessWidget {
         Expanded(
           child: Text(
             vText,
-            style: appStyle(16, kDarkGray, FontWeight.w400),
+            style: appStyleUniverse(16, kDarkGray, FontWeight.w400),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
