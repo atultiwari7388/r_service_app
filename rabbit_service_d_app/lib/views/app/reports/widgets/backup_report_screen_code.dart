@@ -544,6 +544,200 @@
 //                 ],
 //               ),
 //               SizedBox(height: 10.h),
+
+//               if (showAddMiles) ...[
+//                 SizedBox(height: 20.h),
+//                 Card(
+//                   elevation: 4,
+//                   child: Padding(
+//                     padding: EdgeInsets.all(16.0.w),
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.stretch,
+//                       children: [
+//                         // Vehicle Dropdown
+//                         DropdownButtonFormField<String>(
+//                           value: selectedRecordsVehicle,
+//                           hint: const Text('Select Vehicle'),
+//                           items: vehicles.map((vehicle) {
+//                             return DropdownMenuItem<String>(
+//                               value: vehicle['id'],
+//                               child: Text(
+//                                 '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+//                                 style: appStyleUniverse(
+//                                     14, kDark, FontWeight.normal),
+//                               ),
+//                             );
+//                           }).toList(),
+//                           onChanged: (value) {
+//                             setState(() {
+//                               selectedRecordsVehicle = value;
+//                             });
+//                           },
+//                         ),
+//                         SizedBox(height: 16.h),
+//                         TextField(
+//                           controller: todayMilesController,
+//                           decoration: InputDecoration(
+//                             labelText: 'Enter Miles',
+//                             labelStyle:
+//                                 appStyleUniverse(14, kDark, FontWeight.normal),
+//                             border: OutlineInputBorder(),
+//                           ),
+//                           keyboardType: TextInputType.number,
+//                         ),
+//                         SizedBox(height: 16.h),
+//                         // Save Button
+//                         CustomButton(
+//                           onPress: () {
+//                             if (selectedRecordsVehicle != null &&
+//                                 todayMilesController.text.isNotEmpty) {
+//                               // Show confirmation dialog
+//                               showDialog(
+//                                 context: context,
+//                                 builder: (BuildContext context) {
+//                                   return AlertDialog(
+//                                     title: Text(
+//                                       'Confirm Save',
+//                                       style: appStyleUniverse(
+//                                           14, kDark, FontWeight.normal),
+//                                     ),
+//                                     content: Text(
+//                                       'Are you sure you want to save ${todayMilesController.text} miles?',
+//                                     ),
+//                                     actions: [
+//                                       TextButton(
+//                                         onPressed: () {
+//                                           Navigator.pop(
+//                                               context); // Close dialog
+//                                         },
+//                                         child: const Text('Cancel'),
+//                                       ),
+//                                       TextButton(
+//                                         onPressed: () async {
+//                                           // Perform update if user confirms
+//                                           Navigator.pop(
+//                                               context); // Close dialog
+//                                           try {
+//                                             final int todayMiles = int.parse(
+//                                                 todayMilesController.text);
+//                                             final vehicleId =
+//                                                 selectedRecordsVehicle;
+
+//                                             // Update vehicle miles
+//                                             await FirebaseFirestore.instance
+//                                                 .collection("Users")
+//                                                 .doc(currentUId)
+//                                                 .collection("Vehicles")
+//                                                 .doc(vehicleId)
+//                                                 .update({
+//                                               "currentMiles":
+//                                                   todayMiles.toString(),
+//                                               'currentMilesArray':
+//                                                   FieldValue.arrayUnion([
+//                                                 {
+//                                                   "miles": todayMiles,
+//                                                   "date": DateTime.now()
+//                                                       .toIso8601String()
+//                                                 }
+//                                               ]),
+//                                             });
+
+//                                             // Get all DataServices documents for this vehicle
+//                                             final dataServicesSnapshot =
+//                                                 await FirebaseFirestore.instance
+//                                                     .collection('Users')
+//                                                     .doc(currentUId)
+//                                                     .collection('DataServices')
+//                                                     .where('vehicleId',
+//                                                         isEqualTo: vehicleId)
+//                                                     .get();
+
+//                                             // Update each DataServices document
+//                                             for (var doc
+//                                                 in dataServicesSnapshot.docs) {
+//                                               await FirebaseFirestore.instance
+//                                                   .collection('Users')
+//                                                   .doc(currentUId)
+//                                                   .collection('DataServices')
+//                                                   .doc(doc.id)
+//                                                   .update({
+//                                                 "miles": todayMiles,
+//                                                 "totalMiles": todayMiles,
+//                                                 'currentMilesArray':
+//                                                     FieldValue.arrayUnion([
+//                                                   {
+//                                                     "miles": todayMiles,
+//                                                     "date": DateTime.now()
+//                                                         .toIso8601String()
+//                                                   }
+//                                                 ]),
+//                                               });
+
+//                                               // Also update DataServicesRecords
+//                                               await FirebaseFirestore.instance
+//                                                   .collection(
+//                                                       'DataServicesRecords')
+//                                                   .doc(doc.id)
+//                                                   .update({
+//                                                 "miles": todayMiles,
+//                                                 "totalMiles": todayMiles,
+//                                                 'currentMilesArray':
+//                                                     FieldValue.arrayUnion([
+//                                                   {
+//                                                     "miles": todayMiles,
+//                                                     "date": DateTime.now()
+//                                                         .toIso8601String()
+//                                                   }
+//                                                 ]),
+//                                               });
+//                                             }
+
+//                                             debugPrint(
+//                                                 'Miles updated successfully!');
+//                                             todayMilesController.clear();
+//                                             setState(() {
+//                                               selectedRecordsVehicle = null;
+//                                             });
+
+//                                             // Show success message
+//                                             ScaffoldMessenger.of(context)
+//                                                 .showSnackBar(
+//                                               const SnackBar(
+//                                                 content: Text(
+//                                                     'Miles saved successfully!'),
+//                                                 duration: Duration(seconds: 2),
+//                                               ),
+//                                             );
+//                                           } catch (e) {
+//                                             debugPrint(
+//                                                 'Error updating miles: ${e.toString()}');
+//                                             ScaffoldMessenger.of(context)
+//                                                 .showSnackBar(
+//                                               SnackBar(
+//                                                 content: Text(
+//                                                     'Failed to save miles: $e'),
+//                                                 duration: Duration(seconds: 2),
+//                                               ),
+//                                             );
+//                                           }
+//                                         },
+//                                         child: const Text('Confirm'),
+//                                       ),
+//                                     ],
+//                                   );
+//                                 },
+//                               );
+//                             }
+//                           },
+//                           color: kPrimary,
+//                           text: 'Save Mile',
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 ),
+//               ],
+
 //               if (showAddRecords) ...[
 //                 SizedBox(height: 20.h),
 //                 Card(
@@ -989,164 +1183,6 @@
 //                             onPress: resetFilters,
 //                             color: kPrimary),
 //                         SizedBox(height: 16.h),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ],
-
-//               if (showAddMiles) ...[
-//                 SizedBox(height: 20.h),
-//                 Card(
-//                   elevation: 4,
-//                   child: Padding(
-//                     padding: EdgeInsets.all(16.0.w),
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.stretch,
-//                       children: [
-//                         // Vehicle Dropdown
-//                         DropdownButtonFormField<String>(
-//                           value: selectedRecordsVehicle,
-//                           hint: const Text('Select Vehicle'),
-//                           items: milesToAddInRecords.map((vehicle) {
-//                             final vehicleDetails = vehicle['vehicleDetails'];
-//                             return DropdownMenuItem<String>(
-//                               value: vehicle['id'],
-//                               child: Text(
-//                                 '${vehicleDetails['companyName']} (${vehicleDetails['vehicleNumber'] ?? 'N/A'})',
-//                                 style: appStyleUniverse(
-//                                     14, kDark, FontWeight.normal),
-//                               ),
-//                             );
-//                           }).toList(),
-//                           onChanged: (value) {
-//                             setState(() {
-//                               selectedRecordsVehicle = value;
-//                               updateSelectedVehicleAndService();
-//                             });
-//                           },
-//                         ),
-//                         SizedBox(height: 16.h),
-//                         TextField(
-//                           controller: todayMilesController,
-//                           decoration: InputDecoration(
-//                             labelText: 'Enter Miles',
-//                             labelStyle:
-//                                 appStyleUniverse(14, kDark, FontWeight.normal),
-//                             border: OutlineInputBorder(),
-//                           ),
-//                           keyboardType: TextInputType.number,
-//                         ),
-//                         SizedBox(height: 16.h),
-//                         // Save Button
-//                         CustomButton(
-//                           onPress: () {
-//                             if (selectedRecordsVehicle != null &&
-//                                 todayMilesController.text.isNotEmpty) {
-//                               // Show confirmation dialog
-//                               showDialog(
-//                                 context: context,
-//                                 builder: (BuildContext context) {
-//                                   return AlertDialog(
-//                                     title: Text(
-//                                       'Confirm Save',
-//                                       style: appStyleUniverse(
-//                                           14, kDark, FontWeight.normal),
-//                                     ),
-//                                     content: Text(
-//                                       'Are you sure you want to save ${todayMilesController.text} miles?',
-//                                     ),
-//                                     actions: [
-//                                       TextButton(
-//                                         onPressed: () {
-//                                           Navigator.pop(
-//                                               context); // Close dialog
-//                                         },
-//                                         child: const Text('Cancel'),
-//                                       ),
-//                                       TextButton(
-//                                         onPressed: () async {
-//                                           // Perform update if user confirms
-//                                           Navigator.pop(
-//                                               context); // Close dialog
-//                                           try {
-//                                             final int todayMiles = int.parse(
-//                                                 todayMilesController.text);
-//                                             final vehicleId =
-//                                                 selectedRecordsVehicle;
-
-//                                             // Update Firestore
-//                                             await FirebaseFirestore.instance
-//                                                 .collection('Users')
-//                                                 .doc(currentUId)
-//                                                 .collection('DataServices')
-//                                                 .doc(vehicleId)
-//                                                 .update({
-//                                               'currentMilesArray':
-//                                                   FieldValue.arrayUnion([
-//                                                 {
-//                                                   "miles": todayMiles,
-//                                                   "date": DateTime.now()
-//                                                       .toIso8601String()
-//                                                 }
-//                                               ]),
-//                                             });
-
-//                                             await FirebaseFirestore.instance
-//                                                 .collection(
-//                                                     'DataServicesRecords')
-//                                                 .doc(vehicleId)
-//                                                 .update({
-//                                               'currentMilesArray':
-//                                                   FieldValue.arrayUnion([
-//                                                 {
-//                                                   "miles": todayMiles,
-//                                                   "date": DateTime.now()
-//                                                       .toIso8601String()
-//                                                 }
-//                                               ]),
-//                                             });
-
-//                                             debugPrint(
-//                                                 'Miles updated successfully!');
-//                                             todayMilesController.clear();
-//                                             setState(() {
-//                                               selectedRecordsVehicle = null;
-//                                             });
-
-//                                             // Show success message
-//                                             ScaffoldMessenger.of(context)
-//                                                 .showSnackBar(
-//                                               const SnackBar(
-//                                                 content: Text(
-//                                                     'Miles saved successfully!'),
-//                                                 duration: Duration(seconds: 2),
-//                                               ),
-//                                             );
-//                                           } catch (e) {
-//                                             debugPrint(
-//                                                 'Error updating miles: ${e.toString()}');
-//                                             ScaffoldMessenger.of(context)
-//                                                 .showSnackBar(
-//                                               SnackBar(
-//                                                 content: Text(
-//                                                     'Failed to save miles: $e'),
-//                                                 duration: Duration(seconds: 2),
-//                                               ),
-//                                             );
-//                                           }
-//                                         },
-//                                         child: const Text('Confirm'),
-//                                       ),
-//                                     ],
-//                                   );
-//                                 },
-//                               );
-//                             }
-//                           },
-//                           color: kPrimary,
-//                           text: 'Save Mile',
-//                         ),
 //                       ],
 //                     ),
 //                   ),
