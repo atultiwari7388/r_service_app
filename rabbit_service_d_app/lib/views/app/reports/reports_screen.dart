@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,7 +8,8 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
-import 'package:regal_service_d_app/views/app/reports/records_details_screen.dart';
+import 'package:regal_service_d_app/views/app/reports/widgets/miles_details_screen.dart';
+import 'package:regal_service_d_app/views/app/reports/widgets/records_details_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -174,9 +174,21 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         final dValues = selectedService['dValues'] as List<dynamic>?;
         if (dValues != null) {
+          // for (var dValue in dValues) {
+
+          //  //now here we comparing the value of the brand with the company name
+          //   if (dValue['brand'].toString().toUpperCase() ==
+          //       selectedVehicleData?['companyName'].toString().toUpperCase()) {
+          //     serviceDefaultValues[serviceId] =
+          //         int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+          //     break;
+          //   }
+          // }
+
           for (var dValue in dValues) {
+            //now here we comparing the value of the brand with the engine name
             if (dValue['brand'].toString().toUpperCase() ==
-                selectedVehicleData?['companyName'].toString().toUpperCase()) {
+                selectedVehicleData?['engineName'].toString().toUpperCase()) {
               serviceDefaultValues[serviceId] =
                   int.parse(dValue['value'].toString().split(',')[0]) * 1000;
               break;
@@ -203,9 +215,20 @@ class _ReportsScreenState extends State<ReportsScreen>
     for (var service in selectedServiceData) {
       final dValues = service['dValues'] as List<dynamic>?;
       if (dValues != null) {
+        // now here we comparing the value of the brand with the company name
+        // for (var dValue in dValues) {
+        //   if (dValue['brand'].toString().toUpperCase() ==
+        //       selectedVehicleData?['companyName'].toString().toUpperCase()) {
+        //     serviceDefaultValues[service['sId']] =
+        //         int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+        //     break;
+        //   }
+        // }
+
+        //now here we comparing the value of the brand with the engine name
         for (var dValue in dValues) {
           if (dValue['brand'].toString().toUpperCase() ==
-              selectedVehicleData?['companyName'].toString().toUpperCase()) {
+              selectedVehicleData?['engineName'].toString().toUpperCase()) {
             serviceDefaultValues[service['sId']] =
                 int.parse(dValue['value'].toString().split(',')[0]) * 1000;
             break;
@@ -273,7 +296,9 @@ class _ReportsScreenState extends State<ReportsScreen>
       for (var serviceId in selectedServices) {
         final service = services.firstWhere((s) => s['sId'] == serviceId);
         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-        final nextNotificationValue = currentMiles + defaultValue;
+        //if the default value is 0 then the next notification value will be 0
+        final nextNotificationValue =
+            defaultValue == 0 ? 0 : currentMiles + defaultValue;
 
         servicesData.add({
           "serviceId": serviceId,
@@ -307,7 +332,12 @@ class _ReportsScreenState extends State<ReportsScreen>
         "services": servicesData,
         "invoice": invoiceController.text,
         "description": descriptionController.text.toString(),
-        "currentMilesArray": [],
+        'currentMilesArray': FieldValue.arrayUnion([
+          {
+            "miles": int.parse(currentMiles.toString()),
+            "date": DateTime.now().toIso8601String()
+          }
+        ]),
         "allNextNotificationValues": allNextNotificationValues,
         "totalMiles": currentMiles,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
@@ -328,6 +358,12 @@ class _ReportsScreenState extends State<ReportsScreen>
       batch.set(dataServicesRef.doc(docId), recordData);
       batch.update(vehicleRef, {
         'currentMiles': currentMiles.toString(),
+        'currentMilesArray': FieldValue.arrayUnion([
+          {
+            "miles": int.parse(currentMiles.toString()),
+            "date": DateTime.now().toIso8601String()
+          }
+        ]),
         'nextNotificationMiles': notificationData,
       });
 
@@ -380,7 +416,6 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Future<void> _refreshPage() async {
     await Future.delayed(Duration(seconds: 2));
-    // No need to manually fetch since we're using streams
   }
 
   @override
@@ -1364,24 +1399,77 @@ class _ReportsScreenState extends State<ReportsScreen>
                         itemCount: vehicles.length,
                         itemBuilder: (context, index) {
                           final vehicle = vehicles[index];
-                          return Card(
-                            margin: EdgeInsets.symmetric(vertical: 8.h),
-                            child: ListTile(
-                              title: Text(
-                                '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                style: appStyleUniverse(
-                                    16, kDark, FontWeight.w500),
+                          return GestureDetector(
+                            onTap: () => Get.to(
+                                () => MilesDetailsScreen(milesRecord: vehicle)),
+                            child: Card(
+                              margin: EdgeInsets.symmetric(vertical: 8.h),
+                              child: ListTile(
+                                title: Text(
+                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                  style: appStyleUniverse(
+                                      16, kDark, FontWeight.w500),
+                                ),
+                                subtitle: Text(
+                                  'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+                                  style: appStyleUniverse(
+                                      14, kDarkGray, FontWeight.normal),
+                                ),
+                                trailing: Icon(Icons.directions_car_outlined,
+                                    color: kPrimary),
                               ),
-                              subtitle: Text(
-                                'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                                style: appStyleUniverse(
-                                    14, kDarkGray, FontWeight.normal),
-                              ),
-                              trailing: Icon(Icons.directions_car_outlined,
-                                  color: kPrimary),
-                            ),
-                          ).animate().fadeIn(
-                              duration: 400.ms, delay: (index * 100).ms);
+                            ).animate().fadeIn(
+                                duration: 400.ms, delay: (index * 100).ms),
+                          );
+                          // return Card(
+                          //   margin: EdgeInsets.symmetric(vertical: 8.h),
+                          //   child: ListTile(
+                          //     title: Text(
+                          //       '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                          //       style: appStyleUniverse(
+                          //           16, kDark, FontWeight.w500),
+                          //     ),
+                          //     subtitle: Column(
+                          //       crossAxisAlignment: CrossAxisAlignment.start,
+                          //       children: [
+                          //         Text(
+                          //           'Engine: ${vehicle['engineName'] ?? '0'}',
+                          //           style: appStyleUniverse(
+                          //               14, kDarkGray, FontWeight.normal),
+                          //         ),
+                          //         Text(
+                          //           'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+                          //           style: appStyleUniverse(
+                          //               14, kDarkGray, FontWeight.normal),
+                          //         ),
+                          //         Text(
+                          //           'Miles Record: ${vehicle['currentMilesArray']?.length ?? 0}',
+                          //           style: appStyleUniverse(
+                          //               14, kDarkGray, FontWeight.normal),
+                          //         ),
+                          //         if (vehicle['currentMilesArray'] != null)
+                          //           ...vehicle['currentMilesArray']
+                          //               .map<Widget>((milesRecord) {
+                          //             final date = DateFormat('dd-MM-yyyy')
+                          //                 .format(DateTime.parse(
+                          //                     milesRecord['date']));
+                          //             final miles = milesRecord['miles'];
+                          //             return Padding(
+                          //               padding: EdgeInsets.only(top: 4.h),
+                          //               child: Text(
+                          //                 'Date: $date, Miles: $miles',
+                          //                 style: appStyleUniverse(
+                          //                     14, kDarkGray, FontWeight.normal),
+                          //               ),
+                          //             );
+                          //           }).toList(),
+                          //       ],
+                          //     ),
+                          //     trailing: Icon(Icons.directions_car_outlined,
+                          //         color: kPrimary),
+                          //   ),
+                          // ).animate().fadeIn(
+                          //     duration: 400.ms, delay: (index * 100).ms);
                         },
                       ),
                     ],
@@ -1408,7 +1496,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           child: Text(
             vText,
             style: appStyleUniverse(16, kDarkGray, FontWeight.w400),
-            maxLines: 3,
+            maxLines: 5,
             overflow: TextOverflow.ellipsis,
           ),
         ),

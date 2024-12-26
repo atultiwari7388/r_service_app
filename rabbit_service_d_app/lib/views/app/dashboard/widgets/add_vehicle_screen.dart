@@ -208,7 +208,12 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             : null,
         'isSet': true,
         'createdAt': FieldValue.serverTimestamp(),
-        'currentMilesArray': [],
+        'currentMilesArray': FieldValue.arrayUnion([
+          {
+            "miles": int.parse(_currentMilesController.text),
+            "date": DateTime.now().toIso8601String()
+          }
+        ]),
       };
 
       if (_selectedVehicleType == 'Truck') {

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/cloudNotiMsg/notification_detail_screen.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
 
 class CloudNotificationMessageCenter extends StatelessWidget {
   const CloudNotificationMessageCenter({super.key});
@@ -19,14 +22,10 @@ class CloudNotificationMessageCenter extends StatelessWidget {
           return NotificationCard(
             message:
                 "Hey User, it's time to service your vehicle. Your mileage has reached ${120000 + index * 6000} miles.",
-            onRead: () {
-              // Handle "Read" button action
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Message $index marked as read."),
-                ),
-              );
-            },
+            vehicleName: "Mack",
+            vehicleNumber: "1234H",
+            onView: () => Get.to(() => NotificationDetailsScreen()),
+            onAddVehicle: () => Get.to(() => AddVehicleScreen()),
           );
         },
       ),
@@ -36,12 +35,18 @@ class CloudNotificationMessageCenter extends StatelessWidget {
 
 class NotificationCard extends StatelessWidget {
   final String message;
-  final VoidCallback onRead;
+  final String vehicleName;
+  final String vehicleNumber;
+  final VoidCallback onView;
+  final VoidCallback onAddVehicle;
 
   const NotificationCard({
     super.key,
     required this.message,
-    required this.onRead,
+    required this.vehicleName,
+    required this.vehicleNumber,
+    required this.onView,
+    required this.onAddVehicle,
   });
 
   @override
@@ -72,26 +77,53 @@ class NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4.0),
                   Text(
+                    "$vehicleName ($vehicleNumber)",
+                    style: appStyle(16, kDark, FontWeight.normal),
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
                     message,
                     style: appStyle(16, kDark, FontWeight.normal),
                   ),
                   const SizedBox(height: 8.0),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: ElevatedButton(
-                      onPressed: onRead,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kSecondary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: onAddVehicle,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kSecondary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 8.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: Text("Add vehicle",
+                              style: appStyle(15, kWhite, FontWeight.normal)),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                        SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: onView,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 8.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: Text("View",
+                              style: appStyle(15, kWhite, FontWeight.normal)),
                         ),
-                      ),
-                      child: Text("Mark as Read",
-                          style: appStyle(15, kWhite, FontWeight.normal)),
+                      ],
                     ),
                   ),
                 ],

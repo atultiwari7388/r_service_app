@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import '../../../utils/app_styles.dart';
-import '../../../utils/constants.dart';
+import '../../../../utils/app_styles.dart';
+import '../../../../utils/constants.dart';
 
 class RecordsDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> record;
