@@ -162,18 +162,22 @@ class RecordsDetailsScreen extends StatelessWidget {
                                     Container(
                                       padding: EdgeInsets.only(
                                           left: 6.w, right: 6.w),
-                                      decoration: BoxDecoration(
-                                        color: kPrimary.withOpacity(0.1),
-                                        borderRadius:
-                                            BorderRadius.circular(12.r),
-                                      ),
+                                      decoration: nextNotificationValue == 0
+                                          ? BoxDecoration()
+                                          : BoxDecoration(
+                                              color: kPrimary.withOpacity(0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12.r),
+                                            ),
                                       child: Row(
                                         children: [
-                                          Icon(
-                                              Icons
-                                                  .notifications_active_outlined,
-                                              size: 20,
-                                              color: kPrimary),
+                                          nextNotificationValue == 0
+                                              ? Container()
+                                              : Icon(
+                                                  Icons
+                                                      .notifications_active_outlined,
+                                                  size: 20,
+                                                  color: kPrimary),
                                           SizedBox(width: 2.w),
                                           nextNotificationValue == 0
                                               ? Text("")

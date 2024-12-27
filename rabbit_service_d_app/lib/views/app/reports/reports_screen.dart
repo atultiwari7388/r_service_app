@@ -1212,68 +1212,104 @@ class _ReportsScreenState extends State<ReportsScreen>
                     controller: _tabController,
                     children: [
                       // My Records Tab
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (filteredRecords.isEmpty)
-                            Center(
-                              child: Column(
-                                children: [
-                                  Icon(Icons.note_alt_outlined,
-                                      size: 80,
-                                      color: kPrimary.withOpacity(0.5)),
-                                  const SizedBox(height: 16),
-                                  Text('No records found',
-                                      style: appStyleUniverse(
-                                          18, kDarkGray, FontWeight.w500)),
-                                ],
-                              ),
-                            )
-                          else
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: filteredRecords.length,
-                              itemBuilder: (context, index) {
-                                final record = filteredRecords[index];
-                                final services =
-                                    record['services'] as List<dynamic>;
-                                final date = DateFormat('dd-MM-yy').format(
-                                    DateTime.parse(record['createdAt']));
+                      SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (filteredRecords.isEmpty)
+                              Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.note_alt_outlined,
+                                        size: 80,
+                                        color: kPrimary.withOpacity(0.5)),
+                                    const SizedBox(height: 16),
+                                    Text('No records found',
+                                        style: appStyleUniverse(
+                                            18, kDarkGray, FontWeight.w500)),
+                                  ],
+                                ),
+                              )
+                            else
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: filteredRecords.length,
+                                itemBuilder: (context, index) {
+                                  final record = filteredRecords[index];
+                                  final services =
+                                      record['services'] as List<dynamic>;
+                                  final date = DateFormat('dd-MM-yy').format(
+                                      DateTime.parse(record['createdAt']));
 
-                                return Container(
-                                  margin: EdgeInsets.symmetric(vertical: 8.h),
-                                  child: GestureDetector(
-                                    onTap: () => Get.to(() =>
-                                        RecordsDetailsScreen(record: record)),
-                                    child: Card(
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(15.r),
-                                        side: BorderSide(
-                                          color: kPrimary.withOpacity(0.2),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Container(
-                                        decoration: BoxDecoration(
+                                  return Container(
+                                    margin: EdgeInsets.symmetric(vertical: 8.h),
+                                    child: GestureDetector(
+                                      onTap: () => Get.to(() =>
+                                          RecordsDetailsScreen(record: record)),
+                                      child: Card(
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(15.r),
+                                          side: BorderSide(
+                                            color: kPrimary.withOpacity(0.2),
+                                            width: 1,
+                                          ),
                                         ),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(16.w),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  if (record['invoice']
-                                                      .isNotEmpty)
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(15.r),
+                                          ),
+                                          child: Padding(
+                                            padding: EdgeInsets.all(16.w),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    if (record['invoice']
+                                                        .isNotEmpty)
+                                                      Container(
+                                                        padding: EdgeInsets
+                                                            .symmetric(
+                                                          horizontal: 12.w,
+                                                          vertical: 6.h,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: kPrimary
+                                                              .withOpacity(0.1),
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      20.r),
+                                                        ),
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(
+                                                                Icons
+                                                                    .receipt_outlined,
+                                                                size: 20,
+                                                                color:
+                                                                    kPrimary),
+                                                            SizedBox(
+                                                                width: 8.w),
+                                                            Text(
+                                                                "#${record['invoice']}",
+                                                                style: appStyleUniverse(
+                                                                    16,
+                                                                    kDark,
+                                                                    FontWeight
+                                                                        .w500)),
+                                                          ],
+                                                        ),
+                                                      ),
                                                     Container(
                                                       padding:
                                                           EdgeInsets.symmetric(
@@ -1281,7 +1317,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                         vertical: 6.h,
                                                       ),
                                                       decoration: BoxDecoration(
-                                                        color: kPrimary
+                                                        color: kSecondary
                                                             .withOpacity(0.1),
                                                         borderRadius:
                                                             BorderRadius
@@ -1291,12 +1327,12 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                         children: [
                                                           Icon(
                                                               Icons
-                                                                  .receipt_outlined,
-                                                              size: 20,
-                                                              color: kPrimary),
+                                                                  .calendar_today,
+                                                              size: 18,
+                                                              color:
+                                                                  kSecondary),
                                                           SizedBox(width: 8.w),
-                                                          Text(
-                                                              "#${record['invoice']}",
+                                                          Text(date,
                                                               style:
                                                                   appStyleUniverse(
                                                                       16,
@@ -1306,93 +1342,64 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                         ],
                                                       ),
                                                     ),
-                                                  Container(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                      horizontal: 12.w,
-                                                      vertical: 6.h,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: kSecondary
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              20.r),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        Icon(
-                                                            Icons
-                                                                .calendar_today,
-                                                            size: 18,
-                                                            color: kSecondary),
-                                                        SizedBox(width: 8.w),
-                                                        Text(date,
-                                                            style:
-                                                                appStyleUniverse(
-                                                                    16,
-                                                                    kDark,
-                                                                    FontWeight
-                                                                        .w500)),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 16.h),
-                                              buildInfoRow(
-                                                Icons.directions_car_outlined,
-                                                '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
-                                              ),
-                                              Divider(height: 24.h),
-                                              buildInfoRow(
-                                                Icons.build_outlined,
-                                                services.map((service) {
-                                                  String serviceName =
-                                                      service['serviceName'];
-                                                  if ((service['subServices']
-                                                              as List?)
-                                                          ?.isNotEmpty ??
-                                                      false) {
-                                                    String subServices =
-                                                        (service['subServices']
-                                                                as List)
-                                                            .map((s) =>
-                                                                s['name'])
-                                                            .join(', ');
-                                                    return "$serviceName ($subServices)";
-                                                  }
-                                                  return serviceName;
-                                                }).join(", "),
-                                              ),
-                                              Divider(height: 24.h),
-                                              buildInfoRow(
-                                                Icons.store_outlined,
-                                                record['workshopName'] ?? 'N/A',
-                                              ),
-                                              if (record["description"]
-                                                  .isNotEmpty) ...[
+                                                  ],
+                                                ),
+                                                SizedBox(height: 16.h),
+                                                buildInfoRow(
+                                                  Icons.directions_car_outlined,
+                                                  '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                                                ),
                                                 Divider(height: 24.h),
                                                 buildInfoRow(
-                                                  Icons.description_outlined,
-                                                  record['description'],
+                                                  Icons.build_outlined,
+                                                  services.map((service) {
+                                                    String serviceName =
+                                                        service['serviceName'];
+                                                    if ((service['subServices']
+                                                                as List?)
+                                                            ?.isNotEmpty ??
+                                                        false) {
+                                                      String subServices =
+                                                          (service['subServices']
+                                                                  as List)
+                                                              .map((s) =>
+                                                                  s['name'])
+                                                              .join(', ');
+                                                      return "$serviceName ($subServices)";
+                                                    }
+                                                    return serviceName;
+                                                  }).join(", "),
                                                 ),
+                                                Divider(height: 24.h),
+                                                buildInfoRow(
+                                                  Icons.store_outlined,
+                                                  record['workshopName'] ??
+                                                      'N/A',
+                                                ),
+                                                if (record["description"]
+                                                    .isNotEmpty) ...[
+                                                  Divider(height: 24.h),
+                                                  buildInfoRow(
+                                                    Icons.description_outlined,
+                                                    record['description'],
+                                                  ),
+                                                ],
                                               ],
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                )
-                                    .animate()
-                                    .fadeIn(
-                                        duration: 400.ms,
-                                        delay: (index * 100).ms)
-                                    .slideX(begin: 0.2, end: 0);
-                              },
-                            ),
-                        ],
+                                  )
+                                      .animate()
+                                      .fadeIn(
+                                          duration: 400.ms,
+                                          delay: (index * 100).ms)
+                                      .slideX(begin: 0.2, end: 0);
+                                },
+                              ),
+                          ],
+                        ),
                       ),
                       // My Miles Tab
                       ListView.builder(
