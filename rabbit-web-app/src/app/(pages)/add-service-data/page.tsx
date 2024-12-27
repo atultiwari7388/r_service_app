@@ -27,6 +27,7 @@ interface ServiceData {
   sName: string;
   vType: string;
   dValues: Vehicle[];
+  subServices: string[];
 }
 
 export default function AddServiceData() {
@@ -35,6 +36,7 @@ export default function AddServiceData() {
     sName: "",
     vType: "",
     dValues: [],
+    subServices: [],
   });
 
   const [companyNames, setCompanyNames] = useState<string[]>([]);
@@ -93,6 +95,7 @@ export default function AddServiceData() {
         sName: "",
         vType: "",
         dValues: [],
+        subServices: [],
       });
     } catch (e) {
       alert(`Error saving data: ${e}`);
