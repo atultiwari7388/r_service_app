@@ -51,12 +51,17 @@ export default function AddServiceData() {
 
   const fetchCompanyNames = async () => {
     try {
-      const docRef = doc(db, "metadata", "companyName");
+      const docRef = doc(db, "metadata", "companyNameL");
       const docSnap = await getDoc(docRef);
+
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setCompanyNames(data.data || []);
+        const companyNames = (data.data || []).map(
+          (item: { cName: string }) => item.cName || ""
+        );
+        setCompanyNames(companyNames);
       }
+
       setIsLoading(false);
     } catch (e) {
       console.error("Error fetching company names:", e);
