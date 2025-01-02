@@ -198,11 +198,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
         'engineName': _selectedEngineName?.toUpperCase(),
-        'vehicleNumber': _vehicleNumberController.text,
-        'vin': _vinController.text,
-        'dot': _dotController.text,
-        'iccms': _iccmsController.text,
-        'licensePlate': _licensePlateController.text,
+        'vehicleNumber': _vehicleNumberController.text.toString(),
+        'vin': _vinController.text.toString(),
+        'dot': _dotController.text.toString(),
+        'iccms': _iccmsController.text.toString(),
+        'licensePlate': _licensePlateController.text.toString(),
         'year': _selectedYear != null
             ? DateFormat('yyyy-MM-dd').format(_selectedYear!)
             : null,
@@ -210,15 +210,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'createdAt': FieldValue.serverTimestamp(),
         'currentMilesArray': FieldValue.arrayUnion([
           {
-            "miles": int.parse(_currentMilesController.text),
+            "miles": _currentMilesController.text.isNotEmpty
+                ? int.parse(_currentMilesController.text)
+                : 0,
             "date": DateTime.now().toIso8601String()
           }
         ]),
       };
 
       if (_selectedVehicleType == 'Truck') {
-        vehicleData['currentMiles'] = _currentMilesController.text;
-        vehicleData['firstTimeMiles'] = _currentMilesController.text;
+        vehicleData['currentMiles'] = _currentMilesController.text.toString();
+        vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();
         vehicleData['nextNotificationMiles'] = [];
         vehicleData['oilChangeDate'] = '';
         vehicleData['hoursReading'] = '';
@@ -231,7 +233,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         vehicleData['oilChangeDate'] = _oilChangeDate != null
             ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
             : null;
-        vehicleData['hoursReading'] = _hoursReadingController.text;
+        vehicleData['hoursReading'] = _hoursReadingController.text.toString();
       }
 
       await vehiclesRef.add(vehicleData);
@@ -241,6 +243,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       );
       Navigator.pop(context);
     } catch (e) {
+      print('Error adding vehicle: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error adding vehicle: $e')),
       );

@@ -84,7 +84,8 @@ exports.sendContactEmail = functions.https.onCall(async (data, context) => {
 });
 
 //check and notify User for Service
-exports.checkAndNotifyUserForService = functions.pubsub
+
+exports.checkAndNotifyUserForVehicleService = functions.pubsub
   .schedule("every 24 hours")
   .onRun(async () => {
     try {
@@ -99,64 +100,43 @@ exports.checkAndNotifyUserForService = functions.pubsub
 
       for (const userDoc of usersSnapshot.docs) {
         const userId = userDoc.id;
-        const dataServicesSnapshot = await admin
+        const userData = userDoc.data();
+        const userName = userData.userName || "User";
+
+        // Fetch Vehicles subcollection for the user
+        const vehiclesSnapshot = await admin
           .firestore()
           .collection("Users")
           .doc(userId)
-          .collection("DataServices")
+          .collection("Vehicles")
           .get();
 
-        if (dataServicesSnapshot.empty) {
-          console.log(`No DataServices found for user ${userId}`);
+        if (vehiclesSnapshot.empty) {
+          console.log(`No vehicles found for user ${userId}`);
           continue;
         }
 
-        for (const serviceDoc of dataServicesSnapshot.docs) {
-          const serviceData = serviceDoc.data();
-          const docId = serviceDoc.id; // Document ID for DataServices
+        for (const vehicleDoc of vehiclesSnapshot.docs) {
+          const vehicleData = vehicleDoc.data();
+          const currentMiles = parseInt(vehicleData.currentMiles || "0", 10);
+          const nextNotificationMiles = vehicleData.nextNotificationMiles || [];
 
-          // Get currentMilesArray and calculate totalMiles
-          const currentMilesArray = serviceData.currentMilesArray || [];
-          const currentMiles = serviceData.vehicleDetails?.currentMiles || 0;
-          const totalMiles =
-            currentMiles +
-            currentMilesArray.reduce((acc, entry) => acc + entry.miles, 0);
+          for (let i = 0; i < nextNotificationMiles.length; i++) {
+            const service = nextNotificationMiles[i];
+            const nextNotificationValue = service.nextNotificationValue || 0;
+            const serviceName = service.serviceName || "Unknown Service";
 
-          // Update the totalMiles field in both collections
-          await Promise.all([
-            serviceDoc.ref.update({ totalMiles }),
-            admin
-              .firestore()
-              .collection("DataServicesRecords")
-              .doc(docId)
-              .update({ totalMiles }),
-          ]);
-
-          // Check each service in the services array
-          const services = serviceData.services || [];
-          for (const service of services) {
-            const { defaultNotificationValue, nextNotificationValues } =
-              service;
-
-            if (!defaultNotificationValue || defaultNotificationValue === 0) {
+            if (
+              nextNotificationValue > 0 &&
+              currentMiles >= nextNotificationValue
+            ) {
               console.log(
-                `Service ${service.serviceName} has no notification threshold.`
-              );
-              continue;
-            }
-
-            // Handle services that have already crossed the threshold
-            if (currentMiles >= defaultNotificationValue) {
-              console.log(
-                `Service ${service.serviceName} already exceeded for user ${userId}`
+                `Service ${serviceName} exceeds threshold for user ${userId}`
               );
 
-              // Notify the user immediately
-              const notificationMessage = `Hey ${
-                userDoc.data().userName || "user"
-              }, your ${service.serviceName} for vehicle ${
-                serviceData.vehicleDetails?.vehicleType || "unknown"
-              } has already crossed the service threshold. Current mileage: ${currentMiles}. Please service it as soon as possible!`;
+              const notificationMessage = `Hey ${userName}, your ${serviceName} for vehicle ${
+                vehicleData.vehicleType || "unknown"
+              } needs attention. Your mileage has reached ${currentMiles}.`;
 
               const payload = {
                 notification: {
@@ -165,13 +145,13 @@ exports.checkAndNotifyUserForService = functions.pubsub
                 },
                 data: {
                   userId,
-                  vehicleId: serviceData.vehicleId || "",
-                  serviceId: service.serviceId || "",
+                  vehicleId: vehicleDoc.id,
+                  serviceName,
                   type: "service_reminder",
                 },
               };
 
-              // Create notification document in UserNotifications collection
+              // Save notification in UserNotifications subcollection
               await admin
                 .firestore()
                 .collection("Users")
@@ -179,29 +159,26 @@ exports.checkAndNotifyUserForService = functions.pubsub
                 .collection("UserNotifications")
                 .add({
                   userId,
+                  vehicleId: vehicleDoc.id,
+                  serviceName,
                   message: notificationMessage,
                   isRead: false,
                   date: admin.firestore.FieldValue.serverTimestamp(),
-                  serviceId: service.serviceId || "",
-                  vehicleId: serviceData.vehicleId || "",
                   type: "service_reminder",
                 });
 
-              // Create notification document in ServiceNotifications collection
-              await admin
-                .firestore()
-                .collection("ServiceNotifications")
-                .add({
-                  userId,
-                  message: notificationMessage,
-                  isRead: false,
-                  date: admin.firestore.FieldValue.serverTimestamp(),
-                  serviceId: service.serviceId || "",
-                  vehicleId: serviceData.vehicleId || "",
-                  type: "service_reminder",
-                });
+              // Save notification in ServiceNotifications collection
+              await admin.firestore().collection("ServiceNotifications").add({
+                userId,
+                vehicleId: vehicleDoc.id,
+                serviceName,
+                message: notificationMessage,
+                isRead: false,
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                type: "service_reminder",
+              });
 
-              const fcmToken = userDoc.data().fcmToken;
+              const fcmToken = userData.fcmToken;
               if (fcmToken) {
                 notificationPromises.push(
                   admin.messaging().send({
@@ -213,92 +190,15 @@ exports.checkAndNotifyUserForService = functions.pubsub
                 console.error(`No FCM token for user ${userId}`);
               }
 
-              // Reset nextNotificationValues for future tracking
-              service.nextNotificationValues = currentMiles;
-            } else {
-              // For services not yet crossed, update nextNotificationValues
-              const updatedNextNotificationValues =
-                nextNotificationValues || totalMiles;
-              service.nextNotificationValues = updatedNextNotificationValues;
-
-              // Send notification if the threshold is exceeded
-              if (updatedNextNotificationValues >= defaultNotificationValue) {
-                console.log(
-                  `Service ${service.serviceName} exceeds threshold for user ${userId}`
-                );
-
-                const notificationMessage = `Hey ${
-                  userDoc.data().userName || "user"
-                }, it's time to service your ${
-                  service.serviceName
-                }! Your total mileage has reached ${totalMiles}.`;
-
-                const payload = {
-                  notification: {
-                    title: "Service Reminder 🚗",
-                    body: notificationMessage,
-                  },
-                  data: {
-                    userId,
-                    vehicleId: serviceData.vehicleId || "",
-                    serviceId: service.serviceId || "",
-                    type: "service_reminder",
-                  },
-                };
-
-                // Create notification document in UserNotifications collection
-                await admin
-                  .firestore()
-                  .collection("Users")
-                  .doc(userId)
-                  .collection("UserNotifications")
-                  .add({
-                    userId,
-                    message: notificationMessage,
-                    isRead: false,
-                    date: admin.firestore.FieldValue.serverTimestamp(),
-                    serviceId: service.serviceId || "",
-                    vehicleId: serviceData.vehicleId || "",
-                    type: "service_reminder",
-                  });
-                // Create notification document in ServiceNotifications collection
-                await admin
-                  .firestore()
-                  .collection("ServiceNotifications")
-                  .add({
-                    userId,
-                    message: notificationMessage,
-                    isRead: false,
-                    date: admin.firestore.FieldValue.serverTimestamp(),
-                    serviceId: service.serviceId || "",
-                    vehicleId: serviceData.vehicleId || "",
-                    type: "service_reminder",
-                  });
-
-                if (fcmToken) {
-                  notificationPromises.push(
-                    admin.messaging().send({
-                      token: fcmToken,
-                      ...payload,
-                    })
-                  );
-                }
-
-                // Reset nextNotificationValues after sending notification
-                service.nextNotificationValues = 0;
-              }
+              // Update nextNotificationValue to 0 to avoid repeated notifications
+              service.nextNotificationValue = 0;
             }
           }
 
-          // Update the services array in both collections
-          await Promise.all([
-            serviceDoc.ref.update({ services }),
-            admin
-              .firestore()
-              .collection("DataServicesRecords")
-              .doc(docId)
-              .update({ services }),
-          ]);
+          // Update nextNotificationMiles in the vehicle document
+          await vehicleDoc.ref.update({
+            nextNotificationMiles,
+          });
         }
       }
 
@@ -308,10 +208,240 @@ exports.checkAndNotifyUserForService = functions.pubsub
       console.log("All notifications sent successfully.");
       return null;
     } catch (error) {
-      console.error("Error in checkAndNotifyUserForService:", error);
+      console.error("Error in checkAndNotifyUserForVehicleService:", error);
       return null;
     }
   });
+
+//check and notify User for Service
+// exports.checkAndNotifyUserForService = functions.pubsub
+//   .schedule("every 24 hours")
+//   .onRun(async () => {
+//     try {
+//       const usersSnapshot = await admin.firestore().collection("Users").get();
+
+//       if (usersSnapshot.empty) {
+//         console.log("No users found.");
+//         return null;
+//       }
+
+//       const notificationPromises = [];
+
+//       for (const userDoc of usersSnapshot.docs) {
+//         const userId = userDoc.id;
+//         const dataServicesSnapshot = await admin
+//           .firestore()
+//           .collection("Users")
+//           .doc(userId)
+//           .collection("DataServices")
+//           .get();
+
+//         if (dataServicesSnapshot.empty) {
+//           console.log(`No DataServices found for user ${userId}`);
+//           continue;
+//         }
+
+//         for (const serviceDoc of dataServicesSnapshot.docs) {
+//           const serviceData = serviceDoc.data();
+//           const docId = serviceDoc.id; // Document ID for DataServices
+
+//           // Get currentMilesArray and calculate totalMiles
+//           const currentMilesArray = serviceData.currentMilesArray || [];
+//           const currentMiles = serviceData.vehicleDetails?.currentMiles || 0;
+//           const totalMiles =
+//             currentMiles +
+//             currentMilesArray.reduce((acc, entry) => acc + entry.miles, 0);
+
+//           // Update the totalMiles field in both collections
+//           await Promise.all([
+//             serviceDoc.ref.update({ totalMiles }),
+//             admin
+//               .firestore()
+//               .collection("DataServicesRecords")
+//               .doc(docId)
+//               .update({ totalMiles }),
+//           ]);
+
+//           // Check each service in the services array
+//           const services = serviceData.services || [];
+//           for (const service of services) {
+//             const { defaultNotificationValue, nextNotificationValues } =
+//               service;
+
+//             if (!defaultNotificationValue || defaultNotificationValue === 0) {
+//               console.log(
+//                 `Service ${service.serviceName} has no notification threshold.`
+//               );
+//               continue;
+//             }
+
+//             // Handle services that have already crossed the threshold
+//             if (currentMiles >= defaultNotificationValue) {
+//               console.log(
+//                 `Service ${service.serviceName} already exceeded for user ${userId}`
+//               );
+
+//               // Notify the user immediately
+//               const notificationMessage = `Hey ${
+//                 userDoc.data().userName || "user"
+//               }, your ${service.serviceName} for vehicle ${
+//                 serviceData.vehicleDetails?.vehicleType || "unknown"
+//               } has already crossed the service threshold. Current mileage: ${currentMiles}. Please service it as soon as possible!`;
+
+//               const payload = {
+//                 notification: {
+//                   title: "Service Reminder 🚗",
+//                   body: notificationMessage,
+//                 },
+//                 data: {
+//                   userId,
+//                   vehicleId: serviceData.vehicleId || "",
+//                   serviceId: service.serviceId || "",
+//                   type: "service_reminder",
+//                 },
+//               };
+
+//               // Create notification document in UserNotifications collection
+//               await admin
+//                 .firestore()
+//                 .collection("Users")
+//                 .doc(userId)
+//                 .collection("UserNotifications")
+//                 .add({
+//                   userId,
+//                   message: notificationMessage,
+//                   isRead: false,
+//                   date: admin.firestore.FieldValue.serverTimestamp(),
+//                   serviceId: service.serviceId || "",
+//                   vehicleId: serviceData.vehicleId || "",
+//                   type: "service_reminder",
+//                 });
+
+//               // Create notification document in ServiceNotifications collection
+//               await admin
+//                 .firestore()
+//                 .collection("ServiceNotifications")
+//                 .add({
+//                   userId,
+//                   message: notificationMessage,
+//                   isRead: false,
+//                   date: admin.firestore.FieldValue.serverTimestamp(),
+//                   serviceId: service.serviceId || "",
+//                   vehicleId: serviceData.vehicleId || "",
+//                   type: "service_reminder",
+//                 });
+
+//               const fcmToken = userDoc.data().fcmToken;
+//               if (fcmToken) {
+//                 notificationPromises.push(
+//                   admin.messaging().send({
+//                     token: fcmToken,
+//                     ...payload,
+//                   })
+//                 );
+//               } else {
+//                 console.error(`No FCM token for user ${userId}`);
+//               }
+
+//               // Reset nextNotificationValues for future tracking
+//               service.nextNotificationValues = currentMiles;
+//             } else {
+//               // For services not yet crossed, update nextNotificationValues
+//               const updatedNextNotificationValues =
+//                 nextNotificationValues || totalMiles;
+//               service.nextNotificationValues = updatedNextNotificationValues;
+
+//               // Send notification if the threshold is exceeded
+//               if (updatedNextNotificationValues >= defaultNotificationValue) {
+//                 console.log(
+//                   `Service ${service.serviceName} exceeds threshold for user ${userId}`
+//                 );
+
+//                 const notificationMessage = `Hey ${
+//                   userDoc.data().userName || "user"
+//                 }, it's time to service your ${
+//                   service.serviceName
+//                 }! Your total mileage has reached ${totalMiles}.`;
+
+//                 const payload = {
+//                   notification: {
+//                     title: "Service Reminder 🚗",
+//                     body: notificationMessage,
+//                   },
+//                   data: {
+//                     userId,
+//                     vehicleId: serviceData.vehicleId || "",
+//                     serviceId: service.serviceId || "",
+//                     type: "service_reminder",
+//                   },
+//                 };
+
+//                 // Create notification document in UserNotifications collection
+//                 await admin
+//                   .firestore()
+//                   .collection("Users")
+//                   .doc(userId)
+//                   .collection("UserNotifications")
+//                   .add({
+//                     userId,
+//                     message: notificationMessage,
+//                     isRead: false,
+//                     date: admin.firestore.FieldValue.serverTimestamp(),
+//                     serviceId: service.serviceId || "",
+//                     vehicleId: serviceData.vehicleId || "",
+//                     type: "service_reminder",
+//                   });
+//                 // Create notification document in ServiceNotifications collection
+//                 await admin
+//                   .firestore()
+//                   .collection("ServiceNotifications")
+//                   .add({
+//                     userId,
+//                     message: notificationMessage,
+//                     isRead: false,
+//                     date: admin.firestore.FieldValue.serverTimestamp(),
+//                     serviceId: service.serviceId || "",
+//                     vehicleId: serviceData.vehicleId || "",
+//                     type: "service_reminder",
+//                   });
+
+//                 if (fcmToken) {
+//                   notificationPromises.push(
+//                     admin.messaging().send({
+//                       token: fcmToken,
+//                       ...payload,
+//                     })
+//                   );
+//                 }
+
+//                 // Reset nextNotificationValues after sending notification
+//                 service.nextNotificationValues = 0;
+//               }
+//             }
+//           }
+
+//           // Update the services array in both collections
+//           await Promise.all([
+//             serviceDoc.ref.update({ services }),
+//             admin
+//               .firestore()
+//               .collection("DataServicesRecords")
+//               .doc(docId)
+//               .update({ services }),
+//           ]);
+//         }
+//       }
+
+//       // Wait for all notifications to be sent
+//       await Promise.all(notificationPromises);
+
+//       console.log("All notifications sent successfully.");
+//       return null;
+//     } catch (error) {
+//       console.error("Error in checkAndNotifyUserForService:", error);
+//       return null;
+//     }
+//   });
 
 // Function to send a new notification to the nearby Mechanics when a job is created
 exports.sendNewMechanicNotification = functions.firestore
