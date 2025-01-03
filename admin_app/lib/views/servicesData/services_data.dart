@@ -78,7 +78,7 @@ class _ServicesDataRecordsState extends State<ServicesDataRecords> {
         title: Text("Services Data"),
         actions: [
           InkWell(
-            onTap: () => Get.to(() => AddServicesData()),
+            onTap: () => Get.to(() => AddServiceDataScreen()),
             child: CircleAvatar(
               radius: 20.r,
               backgroundColor: kPrimary,
