@@ -4,11 +4,13 @@ import 'package:admin_app/services/collection_references.dart';
 import 'package:admin_app/views/all_jobs/all_jobs_screen.dart';
 import 'package:admin_app/views/auth/login_screen.dart';
 import 'package:admin_app/views/drivers/drivers_screen.dart';
+import 'package:admin_app/views/engineNameLists/engine_name_lists.dart';
 import 'package:admin_app/views/help/help_screen.dart';
 import 'package:admin_app/views/languages/languages_screen.dart';
 import 'package:admin_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:admin_app/views/profile/profile_detail_screen.dart';
 import 'package:admin_app/views/services/services.dart';
+import 'package:admin_app/views/servicesData/services_data.dart';
 import 'package:admin_app/views/terms_and_condition/terms_condition.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -177,6 +179,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               () => Get.to(() => LanguagesScreen())),
           buildListTile("assets/services.png", "Services",
               () => Get.to(() => ServicesScreen())),
+          buildListTile("assets/services.png", "Engine Name Lists",
+              () => Get.to(() => EngineNameLists())),
+          buildListTile("assets/services.png", "Services Data",
+              () => Get.to(() => ServicesDataRecords())),
           buildListTile("assets/about_us.png", "About us",
               () => Get.to(() => AboutUsScreen())),
           buildListTile(

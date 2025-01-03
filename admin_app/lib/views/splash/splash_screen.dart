@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:admin_app/views/auth/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../adminHome/admin_home_screen.dart';
