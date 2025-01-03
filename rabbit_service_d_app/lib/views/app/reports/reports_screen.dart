@@ -1234,6 +1234,141 @@ class _ReportsScreenState extends State<ReportsScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // Filter Section
+
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(height: 10.h),
+                                  DropdownButtonFormField<String>(
+                                    decoration: InputDecoration(
+                                      labelText: 'Filter by Vehicle',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      prefixIcon: Icon(Icons.directions_car,
+                                          color: kPrimary),
+                                    ),
+                                    items: vehicles.map((vehicle) {
+                                      return DropdownMenuItem<String>(
+                                        value: vehicle['vehicleNumber'],
+                                        child: Text(
+                                          "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+                                          style: appStyleUniverse(
+                                              14, kDark, FontWeight.normal),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        filterVehicle = value ?? '';
+                                      });
+                                    },
+                                    value: filterVehicle.isEmpty
+                                        ? null
+                                        : filterVehicle,
+                                    hint: Text(
+                                      'Select Vehicle',
+                                      style: appStyleUniverse(
+                                          14, kDark, FontWeight.normal),
+                                    ),
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: InkWell(
+                                          onTap: () async {
+                                            final DateTime? picked =
+                                                await showDatePicker(
+                                              context: context,
+                                              initialDate:
+                                                  startDate ?? DateTime.now(),
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(2100),
+                                            );
+                                            if (picked != null) {
+                                              setState(() {
+                                                startDate = picked;
+                                              });
+                                            }
+                                          },
+                                          child: InputDecorator(
+                                            decoration: InputDecoration(
+                                              labelText: 'Start Date',
+                                              labelStyle: appStyleUniverse(
+                                                  14, kDark, FontWeight.normal),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              prefixIcon: Icon(
+                                                  Icons.calendar_today,
+                                                  color: kPrimary),
+                                            ),
+                                            child: Text(
+                                              startDate != null
+                                                  ? DateFormat('dd-MM-yyyy')
+                                                      .format(startDate!)
+                                                  : 'Select Start Date',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 16.w),
+                                      Expanded(
+                                        child: InkWell(
+                                          onTap: () async {
+                                            final DateTime? picked =
+                                                await showDatePicker(
+                                              context: context,
+                                              initialDate:
+                                                  endDate ?? DateTime.now(),
+                                              firstDate: DateTime(2000),
+                                              lastDate: DateTime(2100),
+                                            );
+                                            if (picked != null) {
+                                              setState(() {
+                                                endDate = picked;
+                                              });
+                                            }
+                                          },
+                                          child: InputDecorator(
+                                            decoration: InputDecoration(
+                                              labelText: 'End Date',
+                                              labelStyle: appStyleUniverse(
+                                                  14, kDark, FontWeight.normal),
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              prefixIcon: Icon(
+                                                  Icons.calendar_today,
+                                                  color: kPrimary),
+                                            ),
+                                            child: Text(
+                                              endDate != null
+                                                  ? DateFormat('dd-MM-yyyy')
+                                                      .format(endDate!)
+                                                  : 'Select End Date',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  CustomButton(
+                                    text: "Reset Filters",
+                                    onPress: resetFilters,
+                                    color: kPrimary,
+                                  ),
+                                  SizedBox(height: 16.h),
+                                ],
+                              ),
+                            ),
                             if (filteredRecords.isEmpty)
                               Center(
                                 child: Column(
@@ -1446,55 +1581,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                             ).animate().fadeIn(
                                 duration: 400.ms, delay: (index * 100).ms),
                           );
-                          // return Card(
-                          //   margin: EdgeInsets.symmetric(vertical: 8.h),
-                          //   child: ListTile(
-                          //     title: Text(
-                          //       '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                          //       style: appStyleUniverse(
-                          //           16, kDark, FontWeight.w500),
-                          //     ),
-                          //     subtitle: Column(
-                          //       crossAxisAlignment: CrossAxisAlignment.start,
-                          //       children: [
-                          //         Text(
-                          //           'Engine: ${vehicle['engineName'] ?? '0'}',
-                          //           style: appStyleUniverse(
-                          //               14, kDarkGray, FontWeight.normal),
-                          //         ),
-                          //         Text(
-                          //           'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                          //           style: appStyleUniverse(
-                          //               14, kDarkGray, FontWeight.normal),
-                          //         ),
-                          //         Text(
-                          //           'Miles Record: ${vehicle['currentMilesArray']?.length ?? 0}',
-                          //           style: appStyleUniverse(
-                          //               14, kDarkGray, FontWeight.normal),
-                          //         ),
-                          //         if (vehicle['currentMilesArray'] != null)
-                          //           ...vehicle['currentMilesArray']
-                          //               .map<Widget>((milesRecord) {
-                          //             final date = DateFormat('dd-MM-yyyy')
-                          //                 .format(DateTime.parse(
-                          //                     milesRecord['date']));
-                          //             final miles = milesRecord['miles'];
-                          //             return Padding(
-                          //               padding: EdgeInsets.only(top: 4.h),
-                          //               child: Text(
-                          //                 'Date: $date, Miles: $miles',
-                          //                 style: appStyleUniverse(
-                          //                     14, kDarkGray, FontWeight.normal),
-                          //               ),
-                          //             );
-                          //           }).toList(),
-                          //       ],
-                          //     ),
-                          //     trailing: Icon(Icons.directions_car_outlined,
-                          //         color: kPrimary),
-                          //   ),
-                          // ).animate().fadeIn(
-                          //     duration: 400.ms, delay: (index * 100).ms);
                         },
                       ),
                     ],
