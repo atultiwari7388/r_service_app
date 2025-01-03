@@ -241,7 +241,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   }
 
   List<Map<String, dynamic>> getFilteredRecords() {
-    return records.where((record) {
+    final filteredRecords = records.where((record) {
       final matchesVehicle = filterVehicle.isEmpty ||
           record['vehicleDetails']['vehicleNumber']
               .toString()
@@ -261,6 +261,14 @@ class _ReportsScreenState extends State<ReportsScreen>
 
       return matchesVehicle && matchesService && matchesDateRange;
     }).toList();
+
+    filteredRecords.sort((a, b) {
+      final dateA = DateTime.parse(a['createdAt']);
+      final dateB = DateTime.parse(b['createdAt']);
+      return dateB.compareTo(dateA); // Sort in descending order
+    });
+
+    return filteredRecords;
   }
 
   Future<void> handleSaveRecords() async {
@@ -822,6 +830,15 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         14, kDark, FontWeight.normal),
                                     selected: isSelected,
                                     onSelected: (bool selected) {
+                                      if (selectedVehicle == null) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'First select the vehicle')),
+                                        );
+                                        return;
+                                      }
                                       setState(() {
                                         if (selected) {
                                           selectedServices.add(service['sId']);
@@ -994,6 +1011,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     ),
                   ),
                 ],
+
                 if (showAddMiles) ...[
                   SizedBox(height: 20.h),
                   Card(
