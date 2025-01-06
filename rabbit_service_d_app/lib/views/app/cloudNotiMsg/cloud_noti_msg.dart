@@ -1,12 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/notification_detail_screen.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CloudNotificationMessageCenter extends StatelessWidget {
   const CloudNotificationMessageCenter({super.key});
+
+  Future<Map<String, dynamic>> getVehicleDetails(String vehicleId) async {
+    DocumentSnapshot vehicleDoc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection('Vehicles')
+        .doc(vehicleId)
+        .get();
+    return vehicleDoc.data() as Map<String, dynamic>;
+  }
+
+  Future<void> markAsRead(String notificationId) async {
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection('UserNotifications')
+        .doc(notificationId)
+        .update({'isRead': true});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,17 +36,50 @@ class CloudNotificationMessageCenter extends StatelessWidget {
         title: const Text("Notification Center"),
         elevation: 1,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: 10, // Example count
-        itemBuilder: (ctx, index) {
-          return NotificationCard(
-            message:
-                "Hey User, it's time to service your vehicle. Your mileage has reached ${120000 + index * 6000} miles.",
-            vehicleName: "Mack",
-            vehicleNumber: "1234H",
-            onView: () => Get.to(() => NotificationDetailsScreen()),
-            onAddVehicle: () => Get.to(() => AddVehicleScreen()),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUId)
+            .collection('UserNotifications')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          var notifications = snapshot.data!.docs;
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(8.0),
+            itemCount: notifications.length,
+            itemBuilder: (ctx, index) {
+              var notification =
+                  notifications[index].data() as Map<String, dynamic>;
+              return FutureBuilder<Map<String, dynamic>>(
+                future: getVehicleDetails(notification['vehicleId']),
+                builder: (context, vehicleSnapshot) {
+                  if (!vehicleSnapshot.hasData) {
+                    return SizedBox.shrink();
+                  }
+
+                  var vehicleData = vehicleSnapshot.data!;
+
+                  return NotificationCard(
+                    message: notification['message'],
+                    vehicleName: vehicleData['companyName'],
+                    vehicleNumber: vehicleData['vehicleNumber'],
+                    onView: () async {
+                      await markAsRead(notifications[index].id);
+                      Get.to(() => NotificationDetailsScreen(
+                            notification: notification,
+                            vehicleData: vehicleData,
+                          ));
+                    },
+                    onAddVehicle: () => Get.to(() => AddVehicleScreen()),
+                  );
+                },
+              );
+            },
           );
         },
       ),

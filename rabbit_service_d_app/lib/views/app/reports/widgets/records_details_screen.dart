@@ -133,20 +133,6 @@ class RecordsDetailsScreen extends StatelessWidget {
                         );
                       }).toList(),
 
-                    // buildInfoRow(
-                    //   Icons.build_outlined,
-                    //   services.map((service) {
-                    //     String serviceName = service['serviceName'];
-                    //     if ((service['subServices'] as List?)?.isNotEmpty ??
-                    //         false) {
-                    //       String subServices = (service['subServices'] as List)
-                    //           .map((s) => s['name'])
-                    //           .join(', ');
-                    //       return "$serviceName ($subServices)";
-                    //     }
-                    //     return serviceName;
-                    //   }).join(", "),
-                    // ),
                     SizedBox(height: 10.h),
                     // Replace the services section with this
                     Column(

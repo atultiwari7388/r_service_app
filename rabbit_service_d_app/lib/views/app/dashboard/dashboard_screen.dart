@@ -42,14 +42,50 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                       height: 50.h,
                     ),
                     actions: [
-                      GestureDetector(
-                        // onTap: () =>
-                        //     Get.to(() => CloudNotificationMessageCenter()),
-                        child: CircleAvatar(
-                            backgroundColor: kPrimary,
-                            radius: 17.r,
-                            child: Icon(Icons.notifications,
-                                size: 25.sp, color: kWhite)),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('Users')
+                            .doc(currentUId)
+                            .collection('UserNotifications')
+                            .where('isRead', isEqualTo: false)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return Container();
+                          }
+                          int unreadCount = snapshot.data!.docs.length;
+                          return unreadCount > 0
+                              ? Badge(
+                                  backgroundColor: kSecondary,
+                                  label: Text(unreadCount.toString(),
+                                      style: appStyle(
+                                          12, kWhite, FontWeight.normal)),
+                                  child: GestureDetector(
+                                    onTap: () => Get.to(
+                                        () => CloudNotificationMessageCenter()),
+                                    child: CircleAvatar(
+                                        backgroundColor: kPrimary,
+                                        radius: 17.r,
+                                        child: Icon(Icons.notifications,
+                                            size: 25.sp, color: kWhite)),
+                                  ),
+                                )
+                              : Badge(
+                                  backgroundColor: kSecondary,
+                                  label: Text(unreadCount.toString(),
+                                      style: appStyle(
+                                          12, kWhite, FontWeight.normal)),
+                                  child: GestureDetector(
+                                    // onTap: () => Get.to(
+                                    //     () => CloudNotificationMessageCenter()),
+                                    child: CircleAvatar(
+                                        backgroundColor: kPrimary,
+                                        radius: 17.r,
+                                        child: Icon(Icons.notifications,
+                                            size: 25.sp, color: kWhite)),
+                                  ),
+                                );
+                        },
                       ),
                       SizedBox(width: 10.w),
                       GestureDetector(

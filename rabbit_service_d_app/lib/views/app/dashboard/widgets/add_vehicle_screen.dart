@@ -9,6 +9,7 @@ import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class AddVehicleScreen extends StatefulWidget {
   @override
@@ -329,11 +330,28 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         vehicleData['hoursReading'] = _hoursReadingController.text.toString();
       }
 
-      await vehiclesRef.add(vehicleData);
+      DocumentReference vehicleDocRef = await vehiclesRef.add(vehicleData);
+
+      // Update the vehicle data with the vehicleId
+      await vehicleDocRef.update({'vehicleId': vehicleDocRef.id});
+
+      log('Vehicle added successfully with id: ${vehicleDocRef.id}');
 
       setState(() {
         isSaving = false;
       });
+
+      // After the vehicle is added, call the cloud function to check and notify the user
+      final HttpsCallable callable = FirebaseFunctions.instance
+          .httpsCallable('checkAndNotifyUserForVehicleService');
+
+      // Call the function with necessary data
+      await callable.call({
+        'userId': currentUId, // Pass userId
+        'vehicleId': vehicleDocRef.id, // Pass the vehicleId
+      });
+
+      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: $currentUId");
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Vehicle added successfully')),

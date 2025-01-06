@@ -46,6 +46,7 @@ dependencies:
   google_maps_place_picker_mb:
   photo_view:
   flutter_animate:
+  cloud_functions: ^5.2.0
 
 dev_dependencies:
   flutter_test:
