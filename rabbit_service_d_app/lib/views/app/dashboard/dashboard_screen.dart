@@ -43,8 +43,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     ),
                     actions: [
                       GestureDetector(
-                        onTap: () =>
-                            Get.to(() => CloudNotificationMessageCenter()),
+                        // onTap: () =>
+                        //     Get.to(() => CloudNotificationMessageCenter()),
                         child: CircleAvatar(
                             backgroundColor: kPrimary,
                             radius: 17.r,

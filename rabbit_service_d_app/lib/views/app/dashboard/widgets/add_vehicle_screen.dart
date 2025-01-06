@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   List<String> _companies = [];
   List<String> _vehicleTypes = [];
   List<String> _engineNameList = [];
+  List<Map<String, dynamic>> servicesData = [];
+  bool isLoading = true;
+  bool isSaving = false;
   StreamSubscription<DocumentSnapshot>? _engineNameSubscription;
 
   Future<void> _selectYear(BuildContext context) async {
@@ -61,16 +65,89 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchVehicleTypes();
+  final CollectionReference metadataCollection =
+      FirebaseFirestore.instance.collection('metadata');
+
+  // Fetch services data
+  Future<void> _fetchServicesData() async {
+    try {
+      DocumentSnapshot doc = await metadataCollection.doc('servicesData').get();
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        List<dynamic> servicesList = data['data'] ?? [];
+        setState(() {
+          servicesData = servicesList.cast<Map<String, dynamic>>();
+          isLoading = false;
+        });
+      } else {
+        print("No services data found.");
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error fetching services data: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
-  @override
-  void dispose() {
-    _engineNameSubscription?.cancel();
-    super.dispose();
+  List<Map<String, dynamic>> calculateNextNotificationMiles() {
+    List<Map<String, dynamic>> nextNotificationMiles = [];
+    int currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
+
+    log('Current Miles: $currentMiles');
+    log('Selected Engine: $_selectedEngineName');
+    log('Selected Vehicle Type: $_selectedVehicleType');
+
+    for (var service in servicesData) {
+      log('\nChecking service: ${service['sName']}');
+
+      if (service['vType'] == _selectedVehicleType) {
+        String serviceName = service['sName'];
+        String serviceId = service['sId'] ?? '';
+        List<dynamic> subServices = service['subServices'] ?? [];
+        List<dynamic> defaultValues = service['dValues'] ?? [];
+
+        // Track if we found any matches for this service
+        bool foundMatch = false;
+
+        // Check all default values for brand matches
+        for (var defaultValue in defaultValues) {
+          if (defaultValue['brand'].toString().toLowerCase() ==
+              _selectedEngineName?.toLowerCase()) {
+            foundMatch = true;
+            int notificationValue =
+                (int.tryParse(defaultValue['value'].toString()) ?? 0) * 1000;
+            int nextMiles =
+                notificationValue == 0 ? 0 : currentMiles + notificationValue;
+            int defaultNotificationvalues = notificationValue;
+
+            log('Matched dValue - Brand: ${defaultValue['brand']}, Notification Value: $notificationValue, Next Miles: $nextMiles');
+
+            nextNotificationMiles.add({
+              'serviceId': serviceId,
+              'serviceName': serviceName,
+              'defaultNotificationValue': defaultNotificationvalues,
+              'nextNotificationValue': nextMiles,
+              'subServices':
+                  subServices.map((s) => s['sName'].toString()).toList(),
+            });
+          }
+        }
+
+        // If no brand match was found, log it
+        if (!foundMatch) {
+          log('No brand match found for service: $serviceName');
+        }
+      } else {
+        log('Skipping service: ${service['sName']} due to unmatched vehicle type.');
+      }
+    }
+
+    log('\nFinal nextNotificationMiles: $nextNotificationMiles');
+    return nextNotificationMiles;
   }
 
   Future<void> _fetchVehicleTypes() async {
@@ -181,6 +258,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   Future<void> _saveVehicleData() async {
+    setState(() {
+      isSaving = true;
+    });
+
     try {
       CollectionReference vehiclesRef = FirebaseFirestore.instance
           .collection('Users')
@@ -193,6 +274,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           'isSet': false,
         });
       }
+
+      List<Map<String, dynamic>> nextNotificationMiles =
+          calculateNextNotificationMiles();
 
       Map<String, dynamic> vehicleData = {
         'vehicleType': _selectedVehicleType,
@@ -208,20 +292,30 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             : null,
         'isSet': true,
         'createdAt': FieldValue.serverTimestamp(),
-        'currentMilesArray': FieldValue.arrayUnion([
+        'currentMilesArray': [
           {
             "miles": _currentMilesController.text.isNotEmpty
                 ? int.parse(_currentMilesController.text)
                 : 0,
             "date": DateTime.now().toIso8601String()
           }
-        ]),
+        ],
+        'nextNotificationMiles': nextNotificationMiles,
+        'services': nextNotificationMiles
+            .map((service) => {
+                  'defaultNotificationValue':
+                      service['defaultNotificationValue'],
+                  'nextNotificationValue': service['nextNotificationValue'],
+                  'serviceId': service['serviceId'],
+                  'serviceName': service['serviceName'],
+                  'subServices': service['subServices'],
+                })
+            .toList(),
       };
 
       if (_selectedVehicleType == 'Truck') {
         vehicleData['currentMiles'] = _currentMilesController.text.toString();
         vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();
-        vehicleData['nextNotificationMiles'] = [];
         vehicleData['oilChangeDate'] = '';
         vehicleData['hoursReading'] = '';
       }
@@ -229,7 +323,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       if (_selectedVehicleType == 'Trailer') {
         vehicleData['currentMiles'] = '';
         vehicleData['firstTimeMiles'] = '';
-        vehicleData['nextNotificationMiles'] = [];
         vehicleData['oilChangeDate'] = _oilChangeDate != null
             ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
             : null;
@@ -238,16 +331,37 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       await vehiclesRef.add(vehicleData);
 
+      setState(() {
+        isSaving = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Vehicle added successfully')),
       );
       Navigator.pop(context);
     } catch (e) {
+      setState(() {
+        isSaving = false;
+      });
+
       print('Error adding vehicle: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error adding vehicle: $e')),
       );
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchVehicleTypes();
+    _fetchServicesData();
+  }
+
+  @override
+  void dispose() {
+    _engineNameSubscription?.cancel();
+    super.dispose();
   }
 
   @override
