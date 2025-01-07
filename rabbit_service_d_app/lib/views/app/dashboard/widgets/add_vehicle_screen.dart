@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
@@ -269,6 +270,26 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           .collection('Users')
           .doc(currentUId)
           .collection('Vehicles');
+
+      // Check if the vehicle already exists based on vehicle number, vehicleType, companyName, and engineName
+      QuerySnapshot existingVehicles = await vehiclesRef
+          .where('vehicleNumber',
+              isEqualTo: _vehicleNumberController.text.toString())
+          .where('vehicleType', isEqualTo: _selectedVehicleType)
+          .where('companyName', isEqualTo: _selectedCompany?.toUpperCase())
+          .where('engineName', isEqualTo: _selectedEngineName?.toUpperCase())
+          .get();
+
+      if (existingVehicles.docs.isNotEmpty) {
+        setState(() {
+          isSaving = false;
+        });
+        showToastMessage('Already', 'Vehicle already added', kRed);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Vehicle already added')),
+        );
+        return;
+      }
 
       QuerySnapshot vehiclesSnapshot = await vehiclesRef.get();
       for (QueryDocumentSnapshot vehicleDoc in vehiclesSnapshot.docs) {

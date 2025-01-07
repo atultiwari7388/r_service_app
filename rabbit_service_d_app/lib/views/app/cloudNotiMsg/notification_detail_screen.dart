@@ -11,7 +11,7 @@ class NotificationDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final services = vehicleData['services'] as List;
+    final services = notification['notifications'] as List;
 
     return Scaffold(
       appBar: AppBar(
@@ -44,6 +44,12 @@ class NotificationDetailsScreen extends StatelessWidget {
                       '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
                     ),
                     Divider(height: 24.h),
+                    buildInfoRow(
+                      Icons.gas_meter,
+                      notification['currentMiles'].toString() +
+                          " (current miles)",
+                    ),
+                    Divider(height: 24.h),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -62,12 +68,7 @@ class NotificationDetailsScreen extends StatelessWidget {
                             final service = services[index];
                             final serviceName = service['serviceName'];
                             final nextNotificationValue =
-                                service['nextNotificationValue'];
-                            // final subServices =
-                            //     (service['subServices'] as List?)
-                            //             ?.map((s) => s['name'])
-                            //             .toList() ??
-                            //         [];
+                                service['defaultNotificationValue'];
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
