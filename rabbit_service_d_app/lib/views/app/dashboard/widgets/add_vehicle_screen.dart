@@ -121,8 +121,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             foundMatch = true;
             int notificationValue =
                 (int.tryParse(defaultValue['value'].toString()) ?? 0) * 1000;
-            int nextMiles =
-                notificationValue == 0 ? 0 : currentMiles + notificationValue;
+            // int nextMiles =
+            //     notificationValue == 0 ? 0 : currentMiles + notificationValue;
+            int nextMiles = notificationValue;
             int defaultNotificationvalues = notificationValue;
 
             log('Matched dValue - Brand: ${defaultValue['brand']}, Notification Value: $notificationValue, Next Miles: $nextMiles');
@@ -337,10 +338,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       log('Vehicle added successfully with id: ${vehicleDocRef.id}');
 
-      setState(() {
-        isSaving = false;
-      });
-
       // After the vehicle is added, call the cloud function to check and notify the user
       final HttpsCallable callable = FirebaseFunctions.instance
           .httpsCallable('checkAndNotifyUserForVehicleService');
@@ -352,6 +349,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       });
 
       log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: $currentUId");
+
+      setState(() {
+        isSaving = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Vehicle added successfully')),
@@ -366,6 +367,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error adding vehicle: $e')),
       );
+    } finally {
+      setState(() {
+        isSaving = false;
+      });
     }
   }
 
@@ -386,262 +391,26 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Your Vehicle'),
+        title: Text('Add Your Vehicle',
+            style: appStyle(22, kWhite, FontWeight.normal)),
+        iconTheme: IconThemeData(color: kWhite),
         backgroundColor: kPrimary,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedVehicleType,
-                          hint: Text('Select Vehicle Type'),
-                          decoration: InputDecoration(
-                            labelText: 'Vehicle Type *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                          items: _vehicleTypes.map((String type) {
-                            return DropdownMenuItem<String>(
-                              value: type,
-                              child: Text(type),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedVehicleType = newValue;
-                              // Fetch companies when vehicle type changes
-                              _fetchCompanyNames();
-                            });
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedCompany,
-                          hint: Text('Select Company Name'),
-                          decoration: InputDecoration(
-                            labelText: 'Company Name *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                          items: _companies.map((String company) {
-                            return DropdownMenuItem<String>(
-                              value: company,
-                              child: Text(company),
-                            );
-                          }).toList(),
-                          onChanged: _selectedVehicleType == null
-                              ? null
-                              : (String? newValue) {
-                                  setState(() {
-                                    _selectedCompany = newValue;
-                                    _setupEngineNameListener();
-                                  });
-                                },
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedEngineName,
-                          hint: Text('Select Engine'),
-                          decoration: InputDecoration(
-                            labelText: 'Select Engine Name *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                          items: _engineNameList.isEmpty
-                              ? []
-                              : _engineNameList.map((String engineName) {
-                                  return DropdownMenuItem<String>(
-                                    value: engineName,
-                                    child: Text(engineName),
-                                  );
-                                }).toList(),
-                          onChanged: _engineNameList.isEmpty
-                              ? null
-                              : (String? newValue) {
-                                  setState(() {
-                                    _selectedEngineName = newValue;
-                                  });
-                                },
-                        ),
-                      ),
-                      if (_selectedVehicleType == 'Truck') ...[
-                        SizedBox(height: 16.h),
-                        Container(
-                          margin: kIsWeb
-                              ? EdgeInsets.symmetric(vertical: 4.0.h)
-                              : EdgeInsets.symmetric(vertical: 4.0.h),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: kIsWeb
-                                ? BorderRadius.circular(12.r)
-                                : BorderRadius.circular(12.0.r),
-                          ),
-                          child: TextField(
-                            controller: _currentMilesController,
-                            decoration: InputDecoration(
-                              labelText: 'Current Miles *',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.0,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.0,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.0,
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: kIsWeb
-                                  ? EdgeInsets.all(2)
-                                  : const EdgeInsets.all(8),
-                              labelStyle: kIsWeb
-                                  ? TextStyle()
-                                  : appStyle(14, kPrimary, FontWeight.bold),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                      if (_selectedVehicleType == 'Trailer') ...[
-                        SizedBox(height: 16.h),
-                        GestureDetector(
-                          onTap: () => _selectOilChangeDate(context),
-                          child: AbsorbPointer(
-                            child: Container(
+      body: isSaving
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Card(
+                      elevation: 4,
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)
                                   : EdgeInsets.symmetric(vertical: 4.0.h),
@@ -651,9 +420,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     ? BorderRadius.circular(12.r)
                                     : BorderRadius.circular(12.0.r),
                               ),
-                              child: TextField(
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedVehicleType,
+                                hint: Text('Select Vehicle Type'),
                                 decoration: InputDecoration(
-                                  labelText: 'Oil Change Date *',
+                                  labelText: 'Vehicle Type *',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12.0),
                                     borderSide: BorderSide(
@@ -684,388 +455,637 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                       ? TextStyle()
                                       : appStyle(14, kPrimary, FontWeight.bold),
                                 ),
-                                controller: TextEditingController(
-                                  text: _oilChangeDate == null
-                                      ? ''
-                                      : DateFormat('yyyy-MM-dd')
-                                          .format(_oilChangeDate!),
+                                items: _vehicleTypes.map((String type) {
+                                  return DropdownMenuItem<String>(
+                                    value: type,
+                                    child: Text(type),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    _selectedVehicleType = newValue;
+                                    // Fetch companies when vehicle type changes
+                                    _fetchCompanyNames();
+                                  });
+                                },
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedCompany,
+                                hint: Text('Select Company Name'),
+                                decoration: InputDecoration(
+                                  labelText: 'Company Name *',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                                items: _companies.map((String company) {
+                                  return DropdownMenuItem<String>(
+                                    value: company,
+                                    child: Text(company),
+                                  );
+                                }).toList(),
+                                onChanged: _selectedVehicleType == null
+                                    ? null
+                                    : (String? newValue) {
+                                        setState(() {
+                                          _selectedCompany = newValue;
+                                          _setupEngineNameListener();
+                                        });
+                                      },
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedEngineName,
+                                hint: Text('Select Engine'),
+                                decoration: InputDecoration(
+                                  labelText: 'Select Engine Name *',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                                items: _engineNameList.isEmpty
+                                    ? []
+                                    : _engineNameList.map((String engineName) {
+                                        return DropdownMenuItem<String>(
+                                          value: engineName,
+                                          child: Text(engineName),
+                                        );
+                                      }).toList(),
+                                onChanged: _engineNameList.isEmpty
+                                    ? null
+                                    : (String? newValue) {
+                                        setState(() {
+                                          _selectedEngineName = newValue;
+                                        });
+                                      },
+                              ),
+                            ),
+                            if (_selectedVehicleType == 'Truck') ...[
+                              SizedBox(height: 16.h),
+                              Container(
+                                margin: kIsWeb
+                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                    : EdgeInsets.symmetric(vertical: 4.0.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: kIsWeb
+                                      ? BorderRadius.circular(12.r)
+                                      : BorderRadius.circular(12.0.r),
+                                ),
+                                child: TextField(
+                                  controller: _currentMilesController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Current Miles *',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: kIsWeb
+                                        ? EdgeInsets.all(2)
+                                        : const EdgeInsets.all(8),
+                                    labelStyle: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(
+                                            14, kPrimary, FontWeight.bold),
+                                  ),
+                                  keyboardType: TextInputType.number,
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 16.h),
-                        Container(
-                          margin: kIsWeb
-                              ? EdgeInsets.symmetric(vertical: 4.0.h)
-                              : EdgeInsets.symmetric(vertical: 4.0.h),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: kIsWeb
-                                ? BorderRadius.circular(12.r)
-                                : BorderRadius.circular(12.0.r),
-                          ),
-                          child: TextField(
-                            controller: _hoursReadingController,
-                            decoration: InputDecoration(
-                              labelText: 'Hours Reading *',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.0,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.0,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                  width: 1.0,
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: kIsWeb
-                                  ? EdgeInsets.all(2)
-                                  : const EdgeInsets.all(8),
-                              labelStyle: kIsWeb
-                                  ? TextStyle()
-                                  : appStyle(14, kPrimary, FontWeight.bold),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: TextField(
-                          controller: _vehicleNumberController,
-                          decoration: InputDecoration(
-                            labelText: 'Vehicle Number *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: TextField(
-                          controller: _vinController,
-                          decoration: InputDecoration(
-                            labelText: 'VIN *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: TextField(
-                          controller: _dotController,
-                          decoration: InputDecoration(
-                            labelText: 'DOT (Optional)',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: TextField(
-                          controller: _iccmsController,
-                          decoration: InputDecoration(
-                            labelText: 'ICCMS (Optional)',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      Container(
-                        margin: kIsWeb
-                            ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            : EdgeInsets.symmetric(vertical: 4.0.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: kIsWeb
-                              ? BorderRadius.circular(12.r)
-                              : BorderRadius.circular(12.0.r),
-                        ),
-                        child: TextField(
-                          controller: _licensePlateController,
-                          decoration: InputDecoration(
-                            labelText: 'License Plate *',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade300,
-                                width: 1.0,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: kIsWeb
-                                ? EdgeInsets.all(2)
-                                : const EdgeInsets.all(8),
-                            labelStyle: kIsWeb
-                                ? TextStyle()
-                                : appStyle(14, kPrimary, FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16.h),
-                      GestureDetector(
-                        onTap: () => _selectYear(context),
-                        child: AbsorbPointer(
-                          child: Container(
-                            margin: kIsWeb
-                                ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                : EdgeInsets.symmetric(vertical: 4.0.h),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: kIsWeb
-                                  ? BorderRadius.circular(12.r)
-                                  : BorderRadius.circular(12.0.r),
-                            ),
-                            child: TextField(
-                              decoration: InputDecoration(
-                                labelText: 'Year *',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                    width: 1.0,
+                            ],
+                            if (_selectedVehicleType == 'Trailer') ...[
+                              SizedBox(height: 16.h),
+                              GestureDetector(
+                                onTap: () => _selectOilChangeDate(context),
+                                child: AbsorbPointer(
+                                  child: Container(
+                                    margin: kIsWeb
+                                        ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                        : EdgeInsets.symmetric(vertical: 4.0.h),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: kIsWeb
+                                          ? BorderRadius.circular(12.r)
+                                          : BorderRadius.circular(12.0.r),
+                                    ),
+                                    child: TextField(
+                                      decoration: InputDecoration(
+                                        labelText: 'Oil Change Date *',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.white,
+                                        contentPadding: kIsWeb
+                                            ? EdgeInsets.all(2)
+                                            : const EdgeInsets.all(8),
+                                        labelStyle: kIsWeb
+                                            ? TextStyle()
+                                            : appStyle(
+                                                14, kPrimary, FontWeight.bold),
+                                      ),
+                                      controller: TextEditingController(
+                                        text: _oilChangeDate == null
+                                            ? ''
+                                            : DateFormat('yyyy-MM-dd')
+                                                .format(_oilChangeDate!),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                    width: 1.0,
-                                  ),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                contentPadding: kIsWeb
-                                    ? EdgeInsets.all(2)
-                                    : const EdgeInsets.all(8),
-                                labelStyle: kIsWeb
-                                    ? TextStyle()
-                                    : appStyle(14, kPrimary, FontWeight.bold),
                               ),
-                              controller: TextEditingController(
-                                text: _selectedYear == null
-                                    ? ''
-                                    : DateFormat('yyyy').format(_selectedYear!),
+                              SizedBox(height: 16.h),
+                              Container(
+                                margin: kIsWeb
+                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                    : EdgeInsets.symmetric(vertical: 4.0.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: kIsWeb
+                                      ? BorderRadius.circular(12.r)
+                                      : BorderRadius.circular(12.0.r),
+                                ),
+                                child: TextField(
+                                  controller: _hoursReadingController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Hours Reading *',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: kIsWeb
+                                        ? EdgeInsets.all(2)
+                                        : const EdgeInsets.all(8),
+                                    labelStyle: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(
+                                            14, kPrimary, FontWeight.bold),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: TextField(
+                                controller: _vehicleNumberController,
+                                decoration: InputDecoration(
+                                  labelText: 'Vehicle Number *',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
                               ),
                             ),
-                          ),
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: TextField(
+                                controller: _vinController,
+                                decoration: InputDecoration(
+                                  labelText: 'VIN *',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: TextField(
+                                controller: _dotController,
+                                decoration: InputDecoration(
+                                  labelText: 'DOT (Optional)',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: TextField(
+                                controller: _iccmsController,
+                                decoration: InputDecoration(
+                                  labelText: 'ICCMS (Optional)',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Container(
+                              margin: kIsWeb
+                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                  : EdgeInsets.symmetric(vertical: 4.0.h),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: kIsWeb
+                                    ? BorderRadius.circular(12.r)
+                                    : BorderRadius.circular(12.0.r),
+                              ),
+                              child: TextField(
+                                controller: _licensePlateController,
+                                decoration: InputDecoration(
+                                  labelText: 'License Plate *',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: kIsWeb
+                                      ? EdgeInsets.all(2)
+                                      : const EdgeInsets.all(8),
+                                  labelStyle: kIsWeb
+                                      ? TextStyle()
+                                      : appStyle(14, kPrimary, FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            GestureDetector(
+                              onTap: () => _selectYear(context),
+                              child: AbsorbPointer(
+                                child: Container(
+                                  margin: kIsWeb
+                                      ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                      : EdgeInsets.symmetric(vertical: 4.0.h),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: kIsWeb
+                                        ? BorderRadius.circular(12.r)
+                                        : BorderRadius.circular(12.0.r),
+                                  ),
+                                  child: TextField(
+                                    decoration: InputDecoration(
+                                      labelText: 'Year *',
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12.0),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12.0),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12.0),
+                                        borderSide: BorderSide(
+                                          color: Colors.grey.shade300,
+                                          width: 1.0,
+                                        ),
+                                      ),
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      contentPadding: kIsWeb
+                                          ? EdgeInsets.all(2)
+                                          : const EdgeInsets.all(8),
+                                      labelStyle: kIsWeb
+                                          ? TextStyle()
+                                          : appStyle(
+                                              14, kPrimary, FontWeight.bold),
+                                    ),
+                                    controller: TextEditingController(
+                                      text: _selectedYear == null
+                                          ? ''
+                                          : DateFormat('yyyy')
+                                              .format(_selectedYear!),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 24.h),
+                            CustomButton(
+                              text: "Save Vehicle",
+                              onPress: () {
+                                if (_selectedVehicleType != null &&
+                                    _selectedCompany != null &&
+                                    _selectedEngineName != null &&
+                                    _vehicleNumberController.text.isNotEmpty &&
+                                    _vinController.text.isNotEmpty &&
+                                    _licensePlateController.text.isNotEmpty &&
+                                    _selectedYear != null) {
+                                  _saveVehicleData();
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Please fill all required fields (*)'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
+                              color: kPrimary,
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 24.h),
-                      CustomButton(
-                        text: "Save Vehicle",
-                        onPress: () {
-                          if (_selectedVehicleType != null &&
-                              _selectedCompany != null &&
-                              _selectedEngineName != null &&
-                              _vehicleNumberController.text.isNotEmpty &&
-                              _vinController.text.isNotEmpty &&
-                              _licensePlateController.text.isNotEmpty &&
-                              _selectedYear != null) {
-                            _saveVehicleData();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('Please fill all required fields (*)'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                        color: kPrimary,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
