@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/reports/widgets/miles_details_screen.dart';
 import 'package:regal_service_d_app/views/app/reports/widgets/records_details_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
@@ -58,6 +61,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   late StreamSubscription recordsSubscription;
   late StreamSubscription servicesSubscription;
   late StreamSubscription milesSubscription;
+  String selectedVehicleType = 'Truck';
 
   // Selected data
   Map<String, dynamic>? selectedVehicleData;
@@ -1012,6 +1016,159 @@ class _ReportsScreenState extends State<ReportsScreen>
                   ),
                 ],
 
+                // if (showAddMiles) ...[
+                //   SizedBox(height: 20.h),
+                //   Card(
+                //     elevation: 4,
+                //     child: Padding(
+                //       padding: EdgeInsets.all(16.0.w),
+                //       child: Column(
+                //         crossAxisAlignment: CrossAxisAlignment.stretch,
+                //         children: [
+                //           // Vehicle Dropdown
+                //           DropdownButtonFormField<String>(
+                //             value: selectedVehicle,
+                //             hint: const Text('Select Vehicle'),
+                //             items: vehicles.map((vehicle) {
+                //               return DropdownMenuItem<String>(
+                //                 value: vehicle['id'],
+                //                 child: Text(
+                //                   '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                //                   style: appStyleUniverse(
+                //                       14, kDark, FontWeight.normal),
+                //                 ),
+                //               );
+                //             }).toList(),
+                //             onChanged: (value) {
+                //               setState(() {
+                //                 selectedVehicle = value;
+                //                 log("message: $value");
+                //                 log("Selected vehicle type: $selectedVehicle");
+                //               });
+                //             },
+                //           ),
+                //           SizedBox(height: 16.h),
+
+                //           TextField(
+                //             controller: todayMilesController,
+                //             decoration: InputDecoration(
+                //               labelText: 'Enter Miles',
+                //               labelStyle: appStyleUniverse(
+                //                   14, kDark, FontWeight.normal),
+                //               border: OutlineInputBorder(),
+                //             ),
+                //             keyboardType: TextInputType.number,
+                //           ),
+                //           SizedBox(height: 16.h),
+                //           // Save Button
+                //           CustomButton(
+                //             onPress: () async {
+                //               if (selectedVehicle != null &&
+                //                   todayMilesController.text.isNotEmpty) {
+                //                 try {
+                //                   final int todayMiles =
+                //                       int.parse(todayMilesController.text);
+                //                   final vehicleId = selectedVehicle;
+
+                //                   // Fetch current miles for the selected vehicle
+                //                   final vehicleDoc = await FirebaseFirestore
+                //                       .instance
+                //                       .collection("Users")
+                //                       .doc(currentUId)
+                //                       .collection("Vehicles")
+                //                       .doc(vehicleId)
+                //                       .get();
+
+                //                   if (vehicleDoc.exists) {
+                //                     final int currentMiles = int.parse(
+                //                         vehicleDoc['currentMiles'] ?? '0');
+
+                //                     // Check if todayMiles is less than currentMiles
+                //                     if (todayMiles < currentMiles) {
+                //                       showToastMessage(
+                //                           "Error",
+                //                           "Miles cannot be less than the current miles.",
+                //                           kRed);
+                //                       ScaffoldMessenger.of(context)
+                //                           .showSnackBar(
+                //                         const SnackBar(
+                //                           content: Text(
+                //                               'Miles cannot be less than the current miles.'),
+                //                           duration: Duration(seconds: 2),
+                //                         ),
+                //                       );
+                //                       return; // Exit early to prevent further execution
+                //                     }
+
+                //                     // Proceed with saving the data
+                //                     await FirebaseFirestore.instance
+                //                         .collection("Users")
+                //                         .doc(currentUId)
+                //                         .collection("Vehicles")
+                //                         .doc(vehicleId)
+                //                         .update({
+                //                       "currentMiles": todayMiles.toString(),
+                //                       'currentMilesArray':
+                //                           FieldValue.arrayUnion([
+                //                         {
+                //                           "miles": todayMiles,
+                //                           "date":
+                //                               DateTime.now().toIso8601String(),
+                //                         }
+                //                       ]),
+                //                     });
+
+                //                     // Fetch and update DataServices and DataServicesRecords as needed...
+
+                //                     debugPrint(
+                //                         'Miles updated successfully!, vehicle id $vehicleId');
+                //                     todayMilesController.clear();
+                //                     setState(() {
+                //                       selectedVehicle = null;
+                //                     });
+
+                //                     ScaffoldMessenger.of(context).showSnackBar(
+                //                       const SnackBar(
+                //                         content:
+                //                             Text('Miles saved successfully!'),
+                //                         duration: Duration(seconds: 2),
+                //                       ),
+                //                     );
+
+                //                     // Call the cloud function
+                //                     final HttpsCallable callable =
+                //                         FirebaseFunctions.instance.httpsCallable(
+                //                             'checkAndNotifyUserForVehicleService');
+                //                     final result = await callable.call({
+                //                       'userId': currentUId,
+                //                       'vehicleId': vehicleId,
+                //                     });
+
+                //                     log('Cloud function result: ${result.data} vehicleId: $vehicleId');
+                //                   } else {
+                //                     throw 'Vehicle data not found';
+                //                   }
+                //                 } catch (e) {
+                //                   debugPrint(
+                //                       'Error updating miles: ${e.toString()}');
+                //                   ScaffoldMessenger.of(context).showSnackBar(
+                //                     SnackBar(
+                //                       content: Text('Failed to save miles: $e'),
+                //                       duration: Duration(seconds: 2),
+                //                     ),
+                //                   );
+                //                 }
+                //               }
+                //             },
+                //             color: kPrimary,
+                //             text: 'Save Mile',
+                //           ),
+                //         ],
+                //       ),
+                //     ),
+                //   ),
+                // ],
+
                 if (showAddMiles) ...[
                   SizedBox(height: 20.h),
                   Card(
@@ -1023,7 +1180,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         children: [
                           // Vehicle Dropdown
                           DropdownButtonFormField<String>(
-                            value: selectedRecordsVehicle,
+                            value: selectedVehicle,
                             hint: const Text('Select Vehicle'),
                             items: vehicles.map((vehicle) {
                               return DropdownMenuItem<String>(
@@ -1035,174 +1192,175 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 ),
                               );
                             }).toList(),
-                            onChanged: (value) {
+                            onChanged: (value) async {
                               setState(() {
-                                selectedRecordsVehicle = value;
+                                selectedVehicle = value;
+                                todayMilesController.clear();
+                                log("Selected vehicle: $value");
                               });
+
+                              // Fetch the selected vehicle type from Firestore
+                              final vehicleDoc = await FirebaseFirestore
+                                  .instance
+                                  .collection('Users')
+                                  .doc(currentUId)
+                                  .collection('Vehicles')
+                                  .doc(value)
+                                  .get();
+
+                              if (vehicleDoc.exists) {
+                                setState(() {
+                                  selectedVehicleType =
+                                      vehicleDoc['vehicleType'];
+                                  log("Selected vehicle type: $selectedVehicleType");
+                                });
+                              } else {
+                                log("Vehicle data not found.");
+                              }
                             },
                           ),
                           SizedBox(height: 16.h),
-                          TextField(
-                            controller: todayMilesController,
-                            decoration: InputDecoration(
-                              labelText: 'Enter Miles',
-                              labelStyle: appStyleUniverse(
-                                  14, kDark, FontWeight.normal),
-                              border: OutlineInputBorder(),
+
+                          // Dynamically show input field based on vehicle type
+                          if (selectedVehicleType == 'Truck') ...[
+                            TextField(
+                              controller: todayMilesController,
+                              decoration: InputDecoration(
+                                labelText: 'Enter Miles',
+                                labelStyle: appStyleUniverse(
+                                    14, kDark, FontWeight.normal),
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
                             ),
-                            keyboardType: TextInputType.number,
-                          ),
+                          ] else if (selectedVehicleType == 'Trailer') ...[
+                            TextField(
+                              controller: todayMilesController,
+                              decoration: InputDecoration(
+                                labelText: 'Enter Hours',
+                                labelStyle: appStyleUniverse(
+                                    14, kDark, FontWeight.normal),
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ],
                           SizedBox(height: 16.h),
+
                           // Save Button
                           CustomButton(
-                            onPress: () {
-                              if (selectedRecordsVehicle != null &&
+                            onPress: () async {
+                              if (selectedVehicle != null &&
                                   todayMilesController.text.isNotEmpty) {
-                                // Show confirmation dialog
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: Text(
-                                        'Confirm Save',
-                                        style: appStyleUniverse(
-                                            14, kDark, FontWeight.normal),
-                                      ),
-                                      content: Text(
-                                        'Are you sure you want to save ${todayMilesController.text} miles?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(
-                                                context); // Close dialog
-                                          },
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () async {
-                                            // Perform update if user confirms
-                                            Navigator.pop(
-                                                context); // Close dialog
-                                            try {
-                                              final int todayMiles = int.parse(
-                                                  todayMilesController.text);
-                                              final vehicleId =
-                                                  selectedRecordsVehicle;
+                                try {
+                                  final int enteredValue =
+                                      int.parse(todayMilesController.text);
+                                  final vehicleId = selectedVehicle;
 
-                                              // Update vehicle miles
-                                              await FirebaseFirestore.instance
-                                                  .collection("Users")
-                                                  .doc(currentUId)
-                                                  .collection("Vehicles")
-                                                  .doc(vehicleId)
-                                                  .update({
-                                                "currentMiles":
-                                                    todayMiles.toString(),
-                                                'currentMilesArray':
-                                                    FieldValue.arrayUnion([
-                                                  {
-                                                    "miles": todayMiles,
-                                                    "date": DateTime.now()
-                                                        .toIso8601String()
-                                                  }
-                                                ]),
-                                              });
+                                  // Fetch current reading (Miles/Hours) for the selected vehicle
+                                  final vehicleDoc = await FirebaseFirestore
+                                      .instance
+                                      .collection("Users")
+                                      .doc(currentUId)
+                                      .collection("Vehicles")
+                                      .doc(vehicleId)
+                                      .get();
 
-                                              // Get all DataServices documents for this vehicle
-                                              final dataServicesSnapshot =
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection('Users')
-                                                      .doc(currentUId)
-                                                      .collection(
-                                                          'DataServices')
-                                                      .where('vehicleId',
-                                                          isEqualTo: vehicleId)
-                                                      .get();
-
-                                              // Update each DataServices document
-                                              for (var doc
-                                                  in dataServicesSnapshot
-                                                      .docs) {
-                                                await FirebaseFirestore.instance
-                                                    .collection('Users')
-                                                    .doc(currentUId)
-                                                    .collection('DataServices')
-                                                    .doc(doc.id)
-                                                    .update({
-                                                  "miles": todayMiles,
-                                                  "totalMiles": todayMiles,
-                                                  'currentMilesArray':
-                                                      FieldValue.arrayUnion([
-                                                    {
-                                                      "miles": todayMiles,
-                                                      "date": DateTime.now()
-                                                          .toIso8601String()
-                                                    }
-                                                  ]),
-                                                });
-
-                                                // Also update DataServicesRecords
-                                                await FirebaseFirestore.instance
-                                                    .collection(
-                                                        'DataServicesRecords')
-                                                    .doc(doc.id)
-                                                    .update({
-                                                  "miles": todayMiles,
-                                                  "totalMiles": todayMiles,
-                                                  'currentMilesArray':
-                                                      FieldValue.arrayUnion([
-                                                    {
-                                                      "miles": todayMiles,
-                                                      "date": DateTime.now()
-                                                          .toIso8601String()
-                                                    }
-                                                  ]),
-                                                });
-                                              }
-
-                                              debugPrint(
-                                                  'Miles updated successfully!');
-                                              todayMilesController.clear();
-                                              setState(() {
-                                                selectedRecordsVehicle = null;
-                                              });
-
-                                              // Show success message
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                      'Miles saved successfully!'),
-                                                  duration:
-                                                      Duration(seconds: 2),
-                                                ),
-                                              );
-                                            } catch (e) {
-                                              debugPrint(
-                                                  'Error updating miles: ${e.toString()}');
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                      'Failed to save miles: $e'),
-                                                  duration:
-                                                      Duration(seconds: 2),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                          child: const Text('Confirm'),
-                                        ),
-                                      ],
+                                  if (vehicleDoc.exists) {
+                                    final int currentReading = int.parse(
+                                      vehicleDoc[selectedVehicleType == 'Truck'
+                                              ? 'currentMiles'
+                                              : 'hoursReading'] ??
+                                          '0',
                                     );
-                                  },
-                                );
+
+                                    // Validate the entered value
+                                    if (enteredValue < currentReading) {
+                                      showToastMessage(
+                                          "Error",
+                                          "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
+                                          kRed);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                      return; // Exit early to prevent further execution
+                                    }
+
+                                    // Proceed with saving the data
+                                    await FirebaseFirestore.instance
+                                        .collection("Users")
+                                        .doc(currentUId)
+                                        .collection("Vehicles")
+                                        .doc(vehicleId)
+                                        .update({
+                                      selectedVehicleType == 'Truck'
+                                              ? "currentMiles"
+                                              : "hoursReading":
+                                          enteredValue.toString(),
+                                      selectedVehicleType == 'Truck'
+                                              ? 'currentMilesArray'
+                                              : 'hoursReadingArray':
+                                          FieldValue.arrayUnion([
+                                        {
+                                          selectedVehicleType == 'Truck'
+                                              ? "miles"
+                                              : "hours": enteredValue,
+                                          "date":
+                                              DateTime.now().toIso8601String(),
+                                        }
+                                      ]),
+                                    });
+
+                                    debugPrint(
+                                        '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
+                                    todayMilesController.clear();
+                                    setState(() {
+                                      selectedVehicle = null;
+                                      selectedVehicleType = '';
+                                    });
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} saved successfully!'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+
+                                    // Call the cloud function
+                                    final HttpsCallable callable =
+                                        FirebaseFunctions.instance.httpsCallable(
+                                            'checkAndNotifyUserForVehicleService');
+                                    final result = await callable.call({
+                                      'userId': currentUId,
+                                      'vehicleId': vehicleId,
+                                    });
+
+                                    log('Cloud function result: ${result.data}');
+                                  } else {
+                                    throw 'Vehicle data not found';
+                                  }
+                                } catch (e) {
+                                  debugPrint(
+                                      'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
                               }
                             },
                             color: kPrimary,
-                            text: 'Save Mile',
+                            text:
+                                'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
                           ),
                         ],
                       ),
@@ -1570,11 +1728,16 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   style: appStyleUniverse(
                                       16, kDark, FontWeight.w500),
                                 ),
-                                subtitle: Text(
-                                  'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                                  style: appStyleUniverse(
-                                      14, kDarkGray, FontWeight.normal),
-                                ),
+                                subtitle: vehicle['vehicleType'] == "Truck"
+                                    ? Text(
+                                        'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+                                        style: appStyleUniverse(
+                                            14, kDarkGray, FontWeight.normal))
+                                    : Text(
+                                        'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
+                                        style: appStyleUniverse(
+                                            14, kDarkGray, FontWeight.normal),
+                                      ),
                                 trailing: Icon(Icons.directions_car_outlined,
                                     color: kPrimary),
                               ),

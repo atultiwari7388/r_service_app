@@ -41,6 +41,7 @@ class CloudNotificationMessageCenter extends StatelessWidget {
             .collection('Users')
             .doc(currentUId)
             .collection('UserNotifications')
+            .where('isRead', isEqualTo: false)
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -49,38 +50,45 @@ class CloudNotificationMessageCenter extends StatelessWidget {
 
           var notifications = snapshot.data!.docs;
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(8.0),
-            itemCount: notifications.length,
-            itemBuilder: (ctx, index) {
-              var notification =
-                  notifications[index].data() as Map<String, dynamic>;
-              return FutureBuilder<Map<String, dynamic>>(
-                future: getVehicleDetails(notification['vehicleId']),
-                builder: (context, vehicleSnapshot) {
-                  if (!vehicleSnapshot.hasData) {
-                    return SizedBox.shrink();
-                  }
+          return notifications.isEmpty
+              ? Center(
+                  child: Text("No notification found",
+                      style: appStyle(18, kDark, FontWeight.w500)),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: notifications.length,
+                  itemBuilder: (ctx, index) {
+                    var notification =
+                        notifications[index].data() as Map<String, dynamic>;
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: getVehicleDetails(notification['vehicleId']),
+                      builder: (context, vehicleSnapshot) {
+                        if (!vehicleSnapshot.hasData) {
+                          return SizedBox.shrink();
+                        }
 
-                  var vehicleData = vehicleSnapshot.data!;
+                        var vehicleData = vehicleSnapshot.data!;
 
-                  return NotificationCard(
-                    message: notification['message'],
-                    vehicleName: vehicleData['companyName'],
-                    vehicleNumber: vehicleData['vehicleNumber'],
-                    onView: () async {
-                      await markAsRead(notifications[index].id);
-                      Get.to(() => NotificationDetailsScreen(
-                            notification: notification,
-                            vehicleData: vehicleData,
-                          ));
-                    },
-                    onAddVehicle: () => Get.to(() => AddVehicleScreen()),
-                  );
-                },
-              );
-            },
-          );
+                        return NotificationCard(
+                          message: notification['message'],
+                          vehicleName: vehicleData['companyName'],
+                          vehicleNumber: vehicleData['vehicleNumber'],
+                          onView: () async {
+                            // await markAsRead(notifications[index].id);
+                            Get.to(() => NotificationDetailsScreen(
+                                  notification: notification,
+                                  vehicleData: vehicleData,
+                                ));
+                          },
+                          onReadVehicle: () async {
+                            await markAsRead(notifications[index].id);
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
         },
       ),
     );
@@ -92,7 +100,7 @@ class NotificationCard extends StatelessWidget {
   final String vehicleName;
   final String vehicleNumber;
   final VoidCallback onView;
-  final VoidCallback onAddVehicle;
+  final VoidCallback onReadVehicle;
 
   const NotificationCard({
     super.key,
@@ -100,7 +108,7 @@ class NotificationCard extends StatelessWidget {
     required this.vehicleName,
     required this.vehicleNumber,
     required this.onView,
-    required this.onAddVehicle,
+    required this.onReadVehicle,
   });
 
   @override
@@ -147,7 +155,34 @@ class NotificationCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         ElevatedButton(
-                          onPressed: onAddVehicle,
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: Text('Mark as Read'),
+                                  content: Text(
+                                      'Are you sure to hide this notification?'),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: Text('Cancel',
+                                          style: appStyle(
+                                              16, kRed, FontWeight.w500)),
+                                    ),
+                                    TextButton(
+                                      onPressed: onReadVehicle,
+                                      child: Text('Mark as Read',
+                                          style: appStyle(
+                                              16, kSecondary, FontWeight.w500)),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kSecondary,
                             padding: const EdgeInsets.symmetric(
@@ -158,7 +193,7 @@ class NotificationCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8.0),
                             ),
                           ),
-                          child: Text("Add vehicle",
+                          child: Text("Read",
                               style: appStyle(15, kWhite, FontWeight.normal)),
                         ),
                         SizedBox(width: 10),
