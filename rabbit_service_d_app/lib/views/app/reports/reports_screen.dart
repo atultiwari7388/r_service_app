@@ -913,9 +913,11 @@ class _ReportsScreenState extends State<ReportsScreen>
                           SizedBox(height: 16.h),
 
                           // Conditional Fields based on vehicle type
-                          if (selectedVehicleData?['vehicleType'] == "Truck" &&
-                              selectedServiceData
-                                  .any((s) => s['vType'] == "Truck"))
+                          // if (selectedVehicleData?['vehicleType'] == "Truck" &&
+                          //     selectedServiceData
+                          //         .any((s) => s['vType'] == "Truck"))
+
+                          if (selectedVehicleData?['vehicleType'] == "Truck")
                             TextField(
                               controller: milesController,
                               decoration: const InputDecoration(
@@ -925,10 +927,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                               keyboardType: TextInputType.number,
                             ),
 
+                          // if (selectedVehicleData?['vehicleType'] ==
+                          //         "Trailer" &&
+                          //     selectedServiceData
+                          //         .any((s) => s['vType'] == "Trailer"))
+
                           if (selectedVehicleData?['vehicleType'] ==
-                                  "Trailer" &&
-                              selectedServiceData
-                                  .any((s) => s['vType'] == "Trailer")) ...[
+                              "Trailer") ...[
                             TextField(
                               controller: hoursController,
                               decoration: const InputDecoration(
@@ -1015,159 +1020,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                     ),
                   ),
                 ],
-
-                // if (showAddMiles) ...[
-                //   SizedBox(height: 20.h),
-                //   Card(
-                //     elevation: 4,
-                //     child: Padding(
-                //       padding: EdgeInsets.all(16.0.w),
-                //       child: Column(
-                //         crossAxisAlignment: CrossAxisAlignment.stretch,
-                //         children: [
-                //           // Vehicle Dropdown
-                //           DropdownButtonFormField<String>(
-                //             value: selectedVehicle,
-                //             hint: const Text('Select Vehicle'),
-                //             items: vehicles.map((vehicle) {
-                //               return DropdownMenuItem<String>(
-                //                 value: vehicle['id'],
-                //                 child: Text(
-                //                   '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                //                   style: appStyleUniverse(
-                //                       14, kDark, FontWeight.normal),
-                //                 ),
-                //               );
-                //             }).toList(),
-                //             onChanged: (value) {
-                //               setState(() {
-                //                 selectedVehicle = value;
-                //                 log("message: $value");
-                //                 log("Selected vehicle type: $selectedVehicle");
-                //               });
-                //             },
-                //           ),
-                //           SizedBox(height: 16.h),
-
-                //           TextField(
-                //             controller: todayMilesController,
-                //             decoration: InputDecoration(
-                //               labelText: 'Enter Miles',
-                //               labelStyle: appStyleUniverse(
-                //                   14, kDark, FontWeight.normal),
-                //               border: OutlineInputBorder(),
-                //             ),
-                //             keyboardType: TextInputType.number,
-                //           ),
-                //           SizedBox(height: 16.h),
-                //           // Save Button
-                //           CustomButton(
-                //             onPress: () async {
-                //               if (selectedVehicle != null &&
-                //                   todayMilesController.text.isNotEmpty) {
-                //                 try {
-                //                   final int todayMiles =
-                //                       int.parse(todayMilesController.text);
-                //                   final vehicleId = selectedVehicle;
-
-                //                   // Fetch current miles for the selected vehicle
-                //                   final vehicleDoc = await FirebaseFirestore
-                //                       .instance
-                //                       .collection("Users")
-                //                       .doc(currentUId)
-                //                       .collection("Vehicles")
-                //                       .doc(vehicleId)
-                //                       .get();
-
-                //                   if (vehicleDoc.exists) {
-                //                     final int currentMiles = int.parse(
-                //                         vehicleDoc['currentMiles'] ?? '0');
-
-                //                     // Check if todayMiles is less than currentMiles
-                //                     if (todayMiles < currentMiles) {
-                //                       showToastMessage(
-                //                           "Error",
-                //                           "Miles cannot be less than the current miles.",
-                //                           kRed);
-                //                       ScaffoldMessenger.of(context)
-                //                           .showSnackBar(
-                //                         const SnackBar(
-                //                           content: Text(
-                //                               'Miles cannot be less than the current miles.'),
-                //                           duration: Duration(seconds: 2),
-                //                         ),
-                //                       );
-                //                       return; // Exit early to prevent further execution
-                //                     }
-
-                //                     // Proceed with saving the data
-                //                     await FirebaseFirestore.instance
-                //                         .collection("Users")
-                //                         .doc(currentUId)
-                //                         .collection("Vehicles")
-                //                         .doc(vehicleId)
-                //                         .update({
-                //                       "currentMiles": todayMiles.toString(),
-                //                       'currentMilesArray':
-                //                           FieldValue.arrayUnion([
-                //                         {
-                //                           "miles": todayMiles,
-                //                           "date":
-                //                               DateTime.now().toIso8601String(),
-                //                         }
-                //                       ]),
-                //                     });
-
-                //                     // Fetch and update DataServices and DataServicesRecords as needed...
-
-                //                     debugPrint(
-                //                         'Miles updated successfully!, vehicle id $vehicleId');
-                //                     todayMilesController.clear();
-                //                     setState(() {
-                //                       selectedVehicle = null;
-                //                     });
-
-                //                     ScaffoldMessenger.of(context).showSnackBar(
-                //                       const SnackBar(
-                //                         content:
-                //                             Text('Miles saved successfully!'),
-                //                         duration: Duration(seconds: 2),
-                //                       ),
-                //                     );
-
-                //                     // Call the cloud function
-                //                     final HttpsCallable callable =
-                //                         FirebaseFunctions.instance.httpsCallable(
-                //                             'checkAndNotifyUserForVehicleService');
-                //                     final result = await callable.call({
-                //                       'userId': currentUId,
-                //                       'vehicleId': vehicleId,
-                //                     });
-
-                //                     log('Cloud function result: ${result.data} vehicleId: $vehicleId');
-                //                   } else {
-                //                     throw 'Vehicle data not found';
-                //                   }
-                //                 } catch (e) {
-                //                   debugPrint(
-                //                       'Error updating miles: ${e.toString()}');
-                //                   ScaffoldMessenger.of(context).showSnackBar(
-                //                     SnackBar(
-                //                       content: Text('Failed to save miles: $e'),
-                //                       duration: Duration(seconds: 2),
-                //                     ),
-                //                   );
-                //                 }
-                //               }
-                //             },
-                //             color: kPrimary,
-                //             text: 'Save Mile',
-                //           ),
-                //         ],
-                //       ),
-                //     ),
-                //   ),
-                // ],
 
                 if (showAddMiles) ...[
                   SizedBox(height: 20.h),
