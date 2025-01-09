@@ -338,18 +338,23 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       if (_selectedVehicleType == 'Truck') {
         vehicleData['currentMiles'] = _currentMilesController.text.toString();
+        vehicleData['prevMilesValue'] = _currentMilesController.text.toString();
         vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();
         vehicleData['oilChangeDate'] = '';
         vehicleData['hoursReading'] = '';
+        vehicleData['prevHoursReadingValue'] = '';
       }
 
       if (_selectedVehicleType == 'Trailer') {
         vehicleData['currentMiles'] = '';
+        vehicleData['prevMilesValue'] = '';
         vehicleData['firstTimeMiles'] = '';
         vehicleData['oilChangeDate'] = _oilChangeDate != null
             ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
             : null;
         vehicleData['hoursReading'] = _hoursReadingController.text.toString();
+        vehicleData['prevHoursReadingValue'] =
+            _hoursReadingController.text.toString();
       }
 
       DocumentReference vehicleDocRef = await vehiclesRef.add(vehicleData);

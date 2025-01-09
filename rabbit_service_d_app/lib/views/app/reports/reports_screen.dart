@@ -1021,6 +1021,205 @@ class _ReportsScreenState extends State<ReportsScreen>
                   ),
                 ],
 
+                // if (showAddMiles) ...[
+                //   SizedBox(height: 20.h),
+                //   Card(
+                //     elevation: 4,
+                //     child: Padding(
+                //       padding: EdgeInsets.all(16.0.w),
+                //       child: Column(
+                //         crossAxisAlignment: CrossAxisAlignment.stretch,
+                //         children: [
+                //           // Vehicle Dropdown
+                //           DropdownButtonFormField<String>(
+                //             value: selectedVehicle,
+                //             hint: const Text('Select Vehicle'),
+                //             items: vehicles.map((vehicle) {
+                //               return DropdownMenuItem<String>(
+                //                 value: vehicle['id'],
+                //                 child: Text(
+                //                   '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                //                   style: appStyleUniverse(
+                //                       14, kDark, FontWeight.normal),
+                //                 ),
+                //               );
+                //             }).toList(),
+                //             onChanged: (value) async {
+                //               setState(() {
+                //                 selectedVehicle = value;
+                //                 todayMilesController.clear();
+                //                 log("Selected vehicle: $value");
+                //               });
+
+                //               // Fetch the selected vehicle type from Firestore
+                //               final vehicleDoc = await FirebaseFirestore
+                //                   .instance
+                //                   .collection('Users')
+                //                   .doc(currentUId)
+                //                   .collection('Vehicles')
+                //                   .doc(value)
+                //                   .get();
+
+                //               if (vehicleDoc.exists) {
+                //                 setState(() {
+                //                   selectedVehicleType =
+                //                       vehicleDoc['vehicleType'];
+                //                   log("Selected vehicle type: $selectedVehicleType");
+                //                 });
+                //               } else {
+                //                 log("Vehicle data not found.");
+                //               }
+                //             },
+                //           ),
+                //           SizedBox(height: 16.h),
+
+                //           // Dynamically show input field based on vehicle type
+                //           if (selectedVehicleType == 'Truck') ...[
+                //             TextField(
+                //               controller: todayMilesController,
+                //               decoration: InputDecoration(
+                //                 labelText: 'Enter Miles',
+                //                 labelStyle: appStyleUniverse(
+                //                     14, kDark, FontWeight.normal),
+                //                 border: OutlineInputBorder(),
+                //               ),
+                //               keyboardType: TextInputType.number,
+                //             ),
+                //           ] else if (selectedVehicleType == 'Trailer') ...[
+                //             TextField(
+                //               controller: todayMilesController,
+                //               decoration: InputDecoration(
+                //                 labelText: 'Enter Hours',
+                //                 labelStyle: appStyleUniverse(
+                //                     14, kDark, FontWeight.normal),
+                //                 border: OutlineInputBorder(),
+                //               ),
+                //               keyboardType: TextInputType.number,
+                //             ),
+                //           ],
+                //           SizedBox(height: 16.h),
+
+                //           // Save Button
+                //           CustomButton(
+                //             onPress: () async {
+                //               if (selectedVehicle != null &&
+                //                   todayMilesController.text.isNotEmpty) {
+                //                 try {
+                //                   final int enteredValue =
+                //                       int.parse(todayMilesController.text);
+                //                   final vehicleId = selectedVehicle;
+
+                //                   // Fetch current reading (Miles/Hours) for the selected vehicle
+                //                   final vehicleDoc = await FirebaseFirestore
+                //                       .instance
+                //                       .collection("Users")
+                //                       .doc(currentUId)
+                //                       .collection("Vehicles")
+                //                       .doc(vehicleId)
+                //                       .get();
+
+                //                   if (vehicleDoc.exists) {
+                //                     final int currentReading = int.parse(
+                //                       vehicleDoc[selectedVehicleType == 'Truck'
+                //                               ? 'currentMiles'
+                //                               : 'hoursReading'] ??
+                //                           '0',
+                //                     );
+
+                //                     // Validate the entered value
+                //                     if (enteredValue < currentReading) {
+                //                       showToastMessage(
+                //                           "Error",
+                //                           "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
+                //                           kRed);
+                //                       ScaffoldMessenger.of(context)
+                //                           .showSnackBar(
+                //                         SnackBar(
+                //                           content: Text(
+                //                               '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
+                //                           duration: Duration(seconds: 2),
+                //                         ),
+                //                       );
+                //                       return; // Exit early to prevent further execution
+                //                     }
+
+                //                     // Proceed with saving the data
+                //                     await FirebaseFirestore.instance
+                //                         .collection("Users")
+                //                         .doc(currentUId)
+                //                         .collection("Vehicles")
+                //                         .doc(vehicleId)
+                //                         .update({
+                //                       selectedVehicleType == 'Truck'
+                //                               ? "currentMiles"
+                //                               : "hoursReading":
+                //                           enteredValue.toString(),
+                //                       selectedVehicleType == 'Truck'
+                //                               ? 'currentMilesArray'
+                //                               : 'hoursReadingArray':
+                //                           FieldValue.arrayUnion([
+                //                         {
+                //                           selectedVehicleType == 'Truck'
+                //                               ? "miles"
+                //                               : "hours": enteredValue,
+                //                           "date":
+                //                               DateTime.now().toIso8601String(),
+                //                         }
+                //                       ]),
+                //                     });
+
+                //                     debugPrint(
+                //                         '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
+                //                     todayMilesController.clear();
+                //                     setState(() {
+                //                       selectedVehicle = null;
+                //                       selectedVehicleType = '';
+                //                     });
+
+                //                     ScaffoldMessenger.of(context).showSnackBar(
+                //                       SnackBar(
+                //                         content: Text(
+                //                             '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} saved successfully!'),
+                //                         duration: Duration(seconds: 2),
+                //                       ),
+                //                     );
+
+                //                     // Call the cloud function
+                //                     final HttpsCallable callable =
+                //                         FirebaseFunctions.instance.httpsCallable(
+                //                             'checkAndNotifyUserForVehicleService');
+                //                     final result = await callable.call({
+                //                       'userId': currentUId,
+                //                       'vehicleId': vehicleId,
+                //                     });
+
+                //                     log('Cloud function result: ${result.data} vehicle Id $vehicleId');
+                //                   } else {
+                //                     throw 'Vehicle data not found';
+                //                   }
+                //                 } catch (e) {
+                //                   debugPrint(
+                //                       'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
+                //                   ScaffoldMessenger.of(context).showSnackBar(
+                //                     SnackBar(
+                //                       content: Text(
+                //                           'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
+                //                       duration: Duration(seconds: 2),
+                //                     ),
+                //                   );
+                //                 }
+                //               }
+                //             },
+                //             color: kPrimary,
+                //             text:
+                //                 'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
+                //           ),
+                //         ],
+                //       ),
+                //     ),
+                //   ),
+                // ],
+
                 if (showAddMiles) ...[
                   SizedBox(height: 20.h),
                   Card(
@@ -1151,6 +1350,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         .doc(vehicleId)
                                         .update({
                                       selectedVehicleType == 'Truck'
+                                              ? "prevMilesValue"
+                                              : "prevHoursReadingValue":
+                                          currentReading.toString(),
+                                      selectedVehicleType == 'Truck'
                                               ? "currentMiles"
                                               : "hoursReading":
                                           enteredValue.toString(),
@@ -1178,13 +1381,12 @@ class _ReportsScreenState extends State<ReportsScreen>
 
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(
-                                            '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} saved successfully!'),
+                                        content: Text('saved successfully!'),
                                         duration: Duration(seconds: 2),
                                       ),
                                     );
 
-                                    // Call the cloud function
+                                    // Call the cloud function to check for notifications
                                     final HttpsCallable callable =
                                         FirebaseFunctions.instance.httpsCallable(
                                             'checkAndNotifyUserForVehicleService');
