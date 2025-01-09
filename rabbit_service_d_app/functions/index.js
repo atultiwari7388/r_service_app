@@ -87,6 +87,157 @@ exports.sendContactEmail = functions.https.onCall(async (data, context) => {
 
 // Function to check vehicle service status and send notifications
 
+// exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
+//   async (data, context) => {
+//     const userId = data.userId; // User ID passed from Flutter
+//     const vehicleId = data.vehicleId; // Vehicle ID passed from Flutter
+
+//     try {
+//       // Fetch the user's data
+//       const userDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(userId)
+//         .get();
+//       if (!userDoc.exists) {
+//         console.error(`User with ID ${userId} not found.`);
+//         return { error: `User not found for ${userId}` };
+//       }
+
+//       const userData = userDoc.data();
+//       const userName = userData.userName || "User";
+//       const fcmToken = userData.fcmToken;
+
+//       // Fetch the vehicle's data
+//       const vehicleDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(userId)
+//         .collection("Vehicles")
+//         .doc(vehicleId)
+//         .get();
+
+//       if (!vehicleDoc.exists) {
+//         console.error(`Vehicle with ID ${vehicleId} not found.`);
+//         return { error: `Vehicle not found for ${vehicleId}` };
+//       }
+
+//       const vehicleData = vehicleDoc.data();
+//       const currentMilesArray = vehicleData.currentMilesArray || [];
+//       const nextNotificationMiles = vehicleData.nextNotificationMiles || [];
+
+//       // Check if a new miles entry was added
+//       if (currentMilesArray.length === 0) {
+//         console.error("No miles data found.");
+//         return { error: "No miles data found." };
+//       }
+
+//       const latestMilesEntry = currentMilesArray[currentMilesArray.length - 1];
+//       const currentMiles = parseInt(latestMilesEntry.miles || "0", 10);
+
+//       // Prepare a single document to store all service notifications
+//       const serviceNotifications = [];
+//       let hasNotifications = false;
+
+//       for (const service of nextNotificationMiles) {
+//         const defaultNotificationValue = service.defaultNotificationValue || 0;
+//         const serviceName = service.serviceName || "Unknown Service";
+
+//         // Skip if the notification for this service was already sent
+//         if (service.notificationSent) continue;
+
+//         if (
+//           defaultNotificationValue > 0 &&
+//           currentMiles >= defaultNotificationValue
+//         ) {
+//           hasNotifications = true;
+
+//           serviceNotifications.push({
+//             serviceName,
+//             defaultNotificationValue,
+//             currentMiles,
+//             message: `Hey ${userName}, your ${serviceName} for vehicle ${
+//               vehicleData.vehicleType || "unknown"
+//             } needs attention. Your mileage has reached ${currentMiles}.`,
+//           });
+
+//           // Mark this service as notified
+//           service.notificationSent = true;
+//         }
+//       }
+
+//       if (hasNotifications) {
+//         // Save all notifications in a single document
+//         await admin
+//           .firestore()
+//           .collection("Users")
+//           .doc(userId)
+//           .collection("UserNotifications")
+//           .doc(vehicleId) // Use vehicleId as the document ID
+//           .set(
+//             {
+//               vehicleId,
+//               notifications: admin.firestore.FieldValue.arrayUnion(
+//                 ...serviceNotifications
+//               ),
+//               date: admin.firestore.FieldValue.serverTimestamp(),
+//               isRead: false,
+//               message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+//               currentMiles: currentMiles,
+//             },
+//             { merge: true }
+//           );
+
+//         // Save notification in ServiceNotifications collection
+//         await admin
+//           .firestore()
+//           .collection("ServiceNotifications")
+//           .doc(vehicleId)
+//           .set(
+//             {
+//               vehicleId,
+//               notifications: admin.firestore.FieldValue.arrayUnion(
+//                 ...serviceNotifications
+//               ),
+//               date: admin.firestore.FieldValue.serverTimestamp(),
+//               isRead: false,
+//               message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+//               currentMiles: currentMiles,
+//             },
+//             { merge: true }
+//           );
+
+//         // Send a push notification if FCM token exists
+//         if (fcmToken) {
+//           await admin.messaging().send({
+//             token: fcmToken,
+//             notification: {
+//               title: "Service Reminder 🚗",
+//               body: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+//             },
+//             data: {
+//               userId,
+//               vehicleId,
+//               type: "service_reminder",
+//             },
+//           });
+//         }
+//       }
+
+//       // Update the vehicle document with modified nextNotificationMiles
+//       await vehicleDoc.ref.update({
+//         nextNotificationMiles,
+//       });
+
+//       console.log("Notifications processed successfully.");
+//       return { message: "Notifications sent successfully." };
+//     } catch (error) {
+//       console.error("Error in checkAndNotifyUserForVehicleService:", error);
+//       return { error: "Error in sending notifications" };
+//     }
+//   }
+// );
+
 exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
   async (data, context) => {
     const userId = data.userId; // User ID passed from Flutter
@@ -123,8 +274,17 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       }
 
       const vehicleData = vehicleDoc.data();
-      const currentMiles = parseInt(vehicleData.currentMiles || "0", 10);
+      const currentMilesArray = vehicleData.currentMilesArray || [];
       const nextNotificationMiles = vehicleData.nextNotificationMiles || [];
+
+      // Check if a new miles entry was added
+      if (currentMilesArray.length === 0) {
+        console.error("No miles data found.");
+        return { error: "No miles data found." };
+      }
+
+      const latestMilesEntry = currentMilesArray[currentMilesArray.length - 1];
+      const currentMiles = parseInt(latestMilesEntry.miles || "0", 10);
 
       // Prepare a single document to store all service notifications
       const serviceNotifications = [];
@@ -158,13 +318,13 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       }
 
       if (hasNotifications) {
-        // Save all notifications in a single document
+        // Save a new notification in a new document every time miles are updated
         await admin
           .firestore()
           .collection("Users")
           .doc(userId)
           .collection("UserNotifications")
-          .doc(vehicleId) // Use vehicleId as the document ID
+          .doc() // Do not use vehicleId as the document ID, create a new one every time
           .set(
             {
               vehicleId,
@@ -174,7 +334,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
               date: admin.firestore.FieldValue.serverTimestamp(),
               isRead: false,
               message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
-              currentMiles: currentMiles,
+              currentMiles,
             },
             { merge: true }
           );
@@ -183,7 +343,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         await admin
           .firestore()
           .collection("ServiceNotifications")
-          .doc(vehicleId)
+          .doc() // New document every time
           .set(
             {
               vehicleId,
@@ -193,7 +353,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
               date: admin.firestore.FieldValue.serverTimestamp(),
               isRead: false,
               message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
-              currentMiles: currentMiles,
+              currentMiles,
             },
             { merge: true }
           );
@@ -220,7 +380,14 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         nextNotificationMiles,
       });
 
-      console.log("Notifications processed successfully.");
+      console.log(
+        "Notifications processed successfully. vehicle Id is:",
+        vehicleId,
+        " and new miles are:",
+        currentMiles,
+        " and user id is:",
+        userId
+      );
       return { message: "Notifications sent successfully." };
     } catch (error) {
       console.error("Error in checkAndNotifyUserForVehicleService:", error);

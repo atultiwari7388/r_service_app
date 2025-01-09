@@ -1193,7 +1193,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       'vehicleId': vehicleId,
                                     });
 
-                                    log('Cloud function result: ${result.data}');
+                                    log('Cloud function result: ${result.data} vehicle Id $vehicleId');
                                   } else {
                                     throw 'Vehicle data not found';
                                   }
