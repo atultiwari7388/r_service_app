@@ -4,8 +4,8 @@ import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/notification_detail_screen.dart';
-import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class CloudNotificationMessageCenter extends StatelessWidget {
   const CloudNotificationMessageCenter({super.key});
@@ -42,6 +42,7 @@ class CloudNotificationMessageCenter extends StatelessWidget {
             .doc(currentUId)
             .collection('UserNotifications')
             .where('isRead', isEqualTo: false)
+            .orderBy('date', descending: true) // Order by date
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -50,17 +51,63 @@ class CloudNotificationMessageCenter extends StatelessWidget {
 
           var notifications = snapshot.data!.docs;
 
-          return notifications.isEmpty
-              ? Center(
-                  child: Text("No notification found",
-                      style: appStyle(18, kDark, FontWeight.w500)),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(8.0),
-                  itemCount: notifications.length,
-                  itemBuilder: (ctx, index) {
-                    var notification =
-                        notifications[index].data() as Map<String, dynamic>;
+          if (notifications.isEmpty) {
+            return Center(
+              child: Text(
+                "No notification found",
+                style: appStyle(18, kDark, FontWeight.w500),
+              ),
+            );
+          }
+
+          // Group notifications by date
+          Map<String, List<QueryDocumentSnapshot>> groupedNotifications = {};
+          for (var doc in notifications) {
+            String date = DateFormat('yyyy-MM-dd').format(
+              (doc['date'] as Timestamp).toDate(),
+            );
+            if (!groupedNotifications.containsKey(date)) {
+              groupedNotifications[date] = [];
+            }
+            groupedNotifications[date]!.add(doc);
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(2.0),
+            itemCount: groupedNotifications.keys.length,
+            itemBuilder: (ctx, index) {
+              String dateKey = groupedNotifications.keys.toList()[index];
+              List<QueryDocumentSnapshot> dateNotifications =
+                  groupedNotifications[dateKey]!;
+
+              String dayMonth = DateFormat('d MMMM')
+                  .format(DateTime.parse(dateKey)); // e.g., "9 January"
+              String year = DateFormat('yyyy').format(DateTime.parse(dateKey));
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(10),
+                    decoration:
+                        BoxDecoration(color: kSecondary.withOpacity(0.1)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          dayMonth,
+                          style: appStyle(16, kDark, FontWeight.bold),
+                        ),
+                        Text(
+                          year,
+                          style: appStyle(16, kDark, FontWeight.w400),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  ...dateNotifications.map((doc) {
+                    var notification = doc.data() as Map<String, dynamic>;
                     return FutureBuilder<Map<String, dynamic>>(
                       future: getVehicleDetails(notification['vehicleId']),
                       builder: (context, vehicleSnapshot) {
@@ -70,25 +117,31 @@ class CloudNotificationMessageCenter extends StatelessWidget {
 
                         var vehicleData = vehicleSnapshot.data!;
 
-                        return NotificationCard(
-                          message: notification['message'],
-                          vehicleName: vehicleData['companyName'],
-                          vehicleNumber: vehicleData['vehicleNumber'],
-                          onView: () async {
-                            // await markAsRead(notifications[index].id);
-                            Get.to(() => NotificationDetailsScreen(
-                                  notification: notification,
-                                  vehicleData: vehicleData,
-                                ));
-                          },
-                          onReadVehicle: () async {
-                            await markAsRead(notifications[index].id);
-                          },
+                        return Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: NotificationCard(
+                            message: notification['message'],
+                            vehicleName: vehicleData['companyName'],
+                            vehicleNumber: vehicleData['vehicleNumber'],
+                            onView: () async {
+                              Get.to(() => NotificationDetailsScreen(
+                                    notification: notification,
+                                    vehicleData: vehicleData,
+                                  ));
+                            },
+                            onReadVehicle: () async {
+                              await markAsRead(doc.id);
+                            },
+                          ),
                         );
                       },
                     );
-                  },
-                );
+                  }).toList(),
+                  SizedBox(height: 16),
+                ],
+              );
+            },
+          );
         },
       ),
     );
@@ -173,7 +226,10 @@ class NotificationCard extends StatelessWidget {
                                               16, kRed, FontWeight.w500)),
                                     ),
                                     TextButton(
-                                      onPressed: onReadVehicle,
+                                      onPressed: () {
+                                        onReadVehicle();
+                                        Navigator.of(context).pop();
+                                      },
                                       child: Text('Mark as Read',
                                           style: appStyle(
                                               16, kSecondary, FontWeight.w500)),

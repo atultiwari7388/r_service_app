@@ -1,5 +1,7 @@
+// import 'dart:async';
 // import 'dart:developer';
 // import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_functions/cloud_functions.dart';
 // import 'package:flutter/material.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:flutter_animate/flutter_animate.dart';
@@ -8,7 +10,9 @@
 // import 'package:regal_service_d_app/services/collection_references.dart';
 // import 'package:regal_service_d_app/utils/app_styles.dart';
 // import 'package:regal_service_d_app/utils/constants.dart';
-// import 'package:regal_service_d_app/views/app/reports/records_details_screen.dart';
+// import 'package:regal_service_d_app/utils/show_toast_msg.dart';
+// import 'package:regal_service_d_app/views/app/reports/widgets/miles_details_screen.dart';
+// import 'package:regal_service_d_app/views/app/reports/widgets/records_details_screen.dart';
 // import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 // class ReportsScreen extends StatefulWidget {
@@ -52,6 +56,13 @@
 //   final List<Map<String, dynamic>> records = [];
 //   final List<Map<String, dynamic>> milesToAddInRecords = [];
 
+//   // Stream subscriptions
+//   late StreamSubscription vehiclesSubscription;
+//   late StreamSubscription recordsSubscription;
+//   late StreamSubscription servicesSubscription;
+//   late StreamSubscription milesSubscription;
+//   String selectedVehicleType = 'Truck';
+
 //   // Selected data
 //   Map<String, dynamic>? selectedVehicleData;
 //   List<Map<String, dynamic>> selectedServiceData = [];
@@ -67,49 +78,41 @@
 //   void initState() {
 //     super.initState();
 //     _tabController = TabController(length: 2, vsync: this);
-//     fetchVehicles();
-//     fetchServices();
-//     fetchRecords();
-//     fetchServicesVehiclesToAddMiles();
+//     initializeStreams();
 //   }
 
-//   void fetchVehicles() async {
-//     try {
-//       final vehicleSnapshot = await FirebaseFirestore.instance
-//           .collection('Users')
-//           .doc(currentUId)
-//           .collection("Vehicles")
-//           .get();
-
-//       if (vehicleSnapshot.docs.isEmpty) {
+//   void initializeStreams() {
+//     // Setup vehicle stream
+//     vehiclesSubscription = FirebaseFirestore.instance
+//         .collection('Users')
+//         .doc(currentUId)
+//         .collection("Vehicles")
+//         .snapshots()
+//         .listen((snapshot) {
+//       if (snapshot.docs.isEmpty) {
 //         debugPrint('No vehicles found for user');
 //         return;
 //       }
 
 //       setState(() {
 //         vehicles.clear();
-//         vehicles.addAll(
-//             vehicleSnapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+//         vehicles
+//             .addAll(snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
 //       });
 //       debugPrint('Fetched ${vehicles.length} vehicles');
-//     } catch (e) {
-//       debugPrint('Error fetching vehicles: ${e.toString()}');
-//     }
-//   }
+//     });
 
-//   void fetchServices() async {
-//     try {
-//       final serviceSnapshot = await FirebaseFirestore.instance
-//           .collection('metadata')
-//           .doc('servicesData')
-//           .get();
-
-//       if (serviceSnapshot.exists) {
-//         final servicesData = serviceSnapshot.data()?['data'] as List<dynamic>?;
+//     // Setup services stream
+//     servicesSubscription = FirebaseFirestore.instance
+//         .collection('metadata')
+//         .doc('servicesData')
+//         .snapshots()
+//         .listen((snapshot) {
+//       if (snapshot.exists) {
+//         final servicesData = snapshot.data()?['data'] as List<dynamic>?;
 //         if (servicesData != null) {
 //           setState(() {
 //             services.clear();
-//             // Convert to list and sort by service name before adding
 //             List<Map<String, dynamic>> sortedServices = servicesData
 //                 .map((service) => {
 //                       'sId': service['sId'],
@@ -124,81 +127,79 @@
 //                 (a['sName'] as String).compareTo(b['sName'] as String));
 
 //             services.addAll(sortedServices);
-
-//             // Update default values for each selected service
-//             if (selectedVehicle != null && selectedServices.isNotEmpty) {
-//               for (var serviceId in selectedServices) {
-//                 final selectedService = services.firstWhere(
-//                   (service) => service['sId'] == serviceId,
-//                   orElse: () => <String, dynamic>{},
-//                 );
-
-//                 final dValues = selectedService['dValues'] as List<dynamic>?;
-//                 if (dValues != null) {
-//                   for (var dValue in dValues) {
-//                     if (dValue['brand'].toString().toUpperCase() ==
-//                         selectedVehicleData?['companyName']
-//                             .toString()
-//                             .toUpperCase()) {
-//                       serviceDefaultValues[serviceId] =
-//                           int.parse(dValue['value'].toString().split(',')[0]) *
-//                               1000;
-//                       debugPrint(
-//                           'Set default notification value for service $serviceId to: ${serviceDefaultValues[serviceId]}');
-//                       break;
-//                     }
-//                   }
-//                 }
-//               }
-//             }
+//             updateServiceDefaultValues();
 //           });
-//           debugPrint('Fetched ${services.length} services');
 //         }
 //       }
-//     } catch (e) {
-//       debugPrint('Error fetching services: ${e.toString()}');
-//     }
-//   }
+//     });
 
-//   void fetchRecords() async {
-//     try {
-//       final recordSnapshot = await FirebaseFirestore.instance
-//           .collection('Users')
-//           .doc(currentUId)
-//           .collection('DataServices')
-//           .get();
-
+//     // Setup records stream
+//     recordsSubscription = FirebaseFirestore.instance
+//         .collection('Users')
+//         .doc(currentUId)
+//         .collection('DataServices')
+//         .snapshots()
+//         .listen((snapshot) {
 //       setState(() {
 //         records.clear();
-//         records.addAll(recordSnapshot.docs.map((doc) => {
+//         records.addAll(snapshot.docs.map((doc) => {
 //               ...doc.data(),
 //               'id': doc.id,
 //               'vehicle': doc['vehicleDetails']['companyName']
 //             }));
 //       });
 //       debugPrint('Fetched ${records.length} records');
-//     } catch (e) {
-//       debugPrint('Error fetching records: ${e.toString()}');
-//     }
-//   }
+//     });
 
-//   void fetchServicesVehiclesToAddMiles() async {
-//     try {
-//       final recordSnapshot = await FirebaseFirestore.instance
-//           .collection('Users')
-//           .doc(currentUId)
-//           .collection('DataServices')
-//           .get();
-
+//     // Setup miles stream
+//     milesSubscription = FirebaseFirestore.instance
+//         .collection('Users')
+//         .doc(currentUId)
+//         .collection('DataServices')
+//         .snapshots()
+//         .listen((snapshot) {
 //       setState(() {
 //         milesToAddInRecords.clear();
-//         milesToAddInRecords.addAll(recordSnapshot.docs.map((doc) => {
+//         milesToAddInRecords.addAll(snapshot.docs.map((doc) => {
 //               ...doc.data(),
 //               'id': doc.id,
 //             }));
 //       });
-//     } catch (e) {
-//       log('Error fetching records: ${e.toString()}');
+//     });
+//   }
+
+//   void updateServiceDefaultValues() {
+//     if (selectedVehicle != null && selectedServices.isNotEmpty) {
+//       for (var serviceId in selectedServices) {
+//         final selectedService = services.firstWhere(
+//           (service) => service['sId'] == serviceId,
+//           orElse: () => <String, dynamic>{},
+//         );
+
+//         final dValues = selectedService['dValues'] as List<dynamic>?;
+//         if (dValues != null) {
+//           // for (var dValue in dValues) {
+
+//           //  //now here we comparing the value of the brand with the company name
+//           //   if (dValue['brand'].toString().toUpperCase() ==
+//           //       selectedVehicleData?['companyName'].toString().toUpperCase()) {
+//           //     serviceDefaultValues[serviceId] =
+//           //         int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+//           //     break;
+//           //   }
+//           // }
+
+//           for (var dValue in dValues) {
+//             //now here we comparing the value of the brand with the engine name
+//             if (dValue['brand'].toString().toUpperCase() ==
+//                 selectedVehicleData?['engineName'].toString().toUpperCase()) {
+//               serviceDefaultValues[serviceId] =
+//                   int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+//               break;
+//             }
+//           }
+//         }
+//       }
 //     }
 //   }
 
@@ -208,33 +209,35 @@
 //         (vehicle) => vehicle['id'] == selectedVehicle,
 //         orElse: () => <String, dynamic>{},
 //       );
-//       log('Selected vehicle: ${selectedVehicleData?['companyName']}');
 //     }
 
 //     selectedServiceData = services
 //         .where((service) => selectedServices.contains(service['sId']))
 //         .toList();
-//     log('Selected services: ${selectedServiceData.map((s) => s['sName']).join(', ')}');
 
-//     // Update default values for each service
-//     serviceDefaultValues.clear(); // Reset default values
+//     serviceDefaultValues.clear();
 //     for (var service in selectedServiceData) {
 //       final dValues = service['dValues'] as List<dynamic>?;
 //       if (dValues != null) {
-//         for (var dValue in dValues) {
-//           log('Checking dValue: ${dValue.toString()}');
-//           log('Comparing brands: ${dValue['brand'].toString().toUpperCase()} == ${selectedVehicleData?['companyName'].toString().toUpperCase()}');
+//         // now here we comparing the value of the brand with the company name
+//         // for (var dValue in dValues) {
+//         //   if (dValue['brand'].toString().toUpperCase() ==
+//         //       selectedVehicleData?['companyName'].toString().toUpperCase()) {
+//         //     serviceDefaultValues[service['sId']] =
+//         //         int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+//         //     break;
+//         //   }
+//         // }
 
+//         //now here we comparing the value of the brand with the engine name
+//         for (var dValue in dValues) {
 //           if (dValue['brand'].toString().toUpperCase() ==
-//               selectedVehicleData?['companyName'].toString().toUpperCase()) {
+//               selectedVehicleData?['engineName'].toString().toUpperCase()) {
 //             serviceDefaultValues[service['sId']] =
 //                 int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-//             log('Updated default notification value for service ${service['sId']} to: ${serviceDefaultValues[service['sId']]}');
 //             break;
 //           }
 //         }
-//       } else {
-//         log('dValues is null for service: ${service['sName']}');
 //       }
 //     }
 
@@ -242,7 +245,7 @@
 //   }
 
 //   List<Map<String, dynamic>> getFilteredRecords() {
-//     return records.where((record) {
+//     final filteredRecords = records.where((record) {
 //       final matchesVehicle = filterVehicle.isEmpty ||
 //           record['vehicleDetails']['vehicleNumber']
 //               .toString()
@@ -262,9 +265,17 @@
 
 //       return matchesVehicle && matchesService && matchesDateRange;
 //     }).toList();
+
+//     filteredRecords.sort((a, b) {
+//       final dateA = DateTime.parse(a['createdAt']);
+//       final dateB = DateTime.parse(b['createdAt']);
+//       return dateB.compareTo(dateA); // Sort in descending order
+//     });
+
+//     return filteredRecords;
 //   }
 
-//   void handleSaveRecords() async {
+//   Future<void> handleSaveRecords() async {
 //     try {
 //       if (selectedVehicle == null || selectedServices.isEmpty) {
 //         ScaffoldMessenger.of(context).showSnackBar(
@@ -274,6 +285,7 @@
 //         return;
 //       }
 
+//       final batch = FirebaseFirestore.instance.batch();
 //       final dataServicesUserRef = FirebaseFirestore.instance
 //           .collection('Users')
 //           .doc(currentUId)
@@ -286,36 +298,19 @@
 //           .collection('Vehicles')
 //           .doc(selectedVehicle);
 
-//       // Generate a unique document ID
 //       final docId = dataServicesUserRef.doc().id;
+//       final currentMiles = int.tryParse(milesController.text) ?? 0;
 
-//       // Calculate notification values for all services
 //       List<Map<String, dynamic>> servicesData = [];
 //       List<Map<String, dynamic>> notificationData = [];
 //       List<int> allNextNotificationValues = [];
 
-//       final currentMiles = int.tryParse(milesController.text) ?? 0;
-
 //       for (var serviceId in selectedServices) {
 //         final service = services.firstWhere((s) => s['sId'] == serviceId);
-
-//         final dValues = service['dValues'] as List<dynamic>?;
-//         List<int> nextNotificationValues = [];
-
-//         if (dValues != null) {
-//           for (var dValue in dValues) {
-//             if (dValue['brand'] == selectedVehicleData?['companyName']) {
-//               final values = dValue['value'].toString().split(',');
-//               nextNotificationValues =
-//                   values.map((v) => int.parse(v.trim()) * 1000).toList();
-//               allNextNotificationValues.addAll(nextNotificationValues);
-//               break;
-//             }
-//           }
-//         }
-
 //         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-//         final nextNotificationValue = currentMiles + defaultValue;
+//         //if the default value is 0 then the next notification value will be 0
+//         final nextNotificationValue =
+//             defaultValue == 0 ? 0 : currentMiles + defaultValue;
 
 //         servicesData.add({
 //           "serviceId": serviceId,
@@ -331,7 +326,6 @@
 //               [],
 //         });
 
-//         // Add service notification data
 //         notificationData.add({
 //           "serviceName": service['sName'],
 //           "nextNotificationValue": nextNotificationValue,
@@ -339,7 +333,6 @@
 //         });
 //       }
 
-//       // Create single record with all services
 //       final recordData = {
 //         "userId": currentUId,
 //         "vehicleId": selectedVehicle,
@@ -351,7 +344,12 @@
 //         "services": servicesData,
 //         "invoice": invoiceController.text,
 //         "description": descriptionController.text.toString(),
-//         "currentMilesArray": [], // bydefault empty value
+//         'currentMilesArray': FieldValue.arrayUnion([
+//           {
+//             "miles": int.parse(currentMiles.toString()),
+//             "date": DateTime.now().toIso8601String()
+//           }
+//         ]),
 //         "allNextNotificationValues": allNextNotificationValues,
 //         "totalMiles": currentMiles,
 //         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
@@ -368,33 +366,22 @@
 //         "createdAt": DateTime.now().toIso8601String(),
 //       };
 
-//       // Update vehicle's current miles and next notification miles
-//       await vehicleRef.update({
+//       batch.set(dataServicesUserRef.doc(docId), recordData);
+//       batch.set(dataServicesRef.doc(docId), recordData);
+//       batch.update(vehicleRef, {
 //         'currentMiles': currentMiles.toString(),
+//         'currentMilesArray': FieldValue.arrayUnion([
+//           {
+//             "miles": int.parse(currentMiles.toString()),
+//             "date": DateTime.now().toIso8601String()
+//           }
+//         ]),
 //         'nextNotificationMiles': notificationData,
 //       });
 
-//       // Save the record with the same docId in both collections
-//       await dataServicesUserRef.doc(docId).set(recordData);
-//       await dataServicesRef.doc(docId).set(recordData);
+//       await batch.commit();
 
-//       fetchRecords();
-
-//       setState(() {
-//         selectedVehicle = null;
-//         selectedServices.clear();
-//         selectedSubServices.clear();
-//         serviceDefaultValues.clear();
-//         milesController.clear();
-//         hoursController.clear();
-//         workshopController.clear();
-//         invoiceController.clear();
-//         descriptionController.clear();
-//         selectedDate = null;
-//         showAddRecords = false;
-//         selectedVehicleData = null;
-//         selectedServiceData.clear();
-//       });
+//       resetForm();
 
 //       ScaffoldMessenger.of(context).showSnackBar(
 //         const SnackBar(content: Text('Records saved successfully')),
@@ -407,17 +394,22 @@
 //     }
 //   }
 
-//   @override
-//   void dispose() {
-//     milesController.dispose();
-//     hoursController.dispose();
-//     workshopController.dispose();
-//     invoiceController.dispose();
-//     serviceSearchController.dispose();
-//     vehicleSearchController.dispose();
-//     dateSearchController.dispose();
-//     _tabController.dispose();
-//     super.dispose();
+//   void resetForm() {
+//     setState(() {
+//       selectedVehicle = null;
+//       selectedServices.clear();
+//       selectedSubServices.clear();
+//       serviceDefaultValues.clear();
+//       milesController.clear();
+//       hoursController.clear();
+//       workshopController.clear();
+//       invoiceController.clear();
+//       descriptionController.clear();
+//       selectedDate = null;
+//       showAddRecords = false;
+//       selectedVehicleData = null;
+//       selectedServiceData.clear();
+//     });
 //   }
 
 //   void resetFilters() {
@@ -436,13 +428,23 @@
 
 //   Future<void> _refreshPage() async {
 //     await Future.delayed(Duration(seconds: 2));
+//   }
 
-//     setState(() {
-//       fetchVehicles();
-//       fetchServices();
-//       fetchRecords();
-//       fetchServicesVehiclesToAddMiles();
-//     });
+//   @override
+//   void dispose() {
+//     vehiclesSubscription.cancel();
+//     recordsSubscription.cancel();
+//     servicesSubscription.cancel();
+//     milesSubscription.cancel();
+//     milesController.dispose();
+//     hoursController.dispose();
+//     workshopController.dispose();
+//     invoiceController.dispose();
+//     serviceSearchController.dispose();
+//     vehicleSearchController.dispose();
+//     dateSearchController.dispose();
+//     _tabController.dispose();
+//     super.dispose();
 //   }
 
 //   @override
@@ -832,6 +834,15 @@
 //                                         14, kDark, FontWeight.normal),
 //                                     selected: isSelected,
 //                                     onSelected: (bool selected) {
+//                                       if (selectedVehicle == null) {
+//                                         ScaffoldMessenger.of(context)
+//                                             .showSnackBar(
+//                                           const SnackBar(
+//                                               content: Text(
+//                                                   'First select the vehicle')),
+//                                         );
+//                                         return;
+//                                       }
 //                                       setState(() {
 //                                         if (selected) {
 //                                           selectedServices.add(service['sId']);
@@ -902,9 +913,11 @@
 //                           SizedBox(height: 16.h),
 
 //                           // Conditional Fields based on vehicle type
-//                           if (selectedVehicleData?['vehicleType'] == "Truck" &&
-//                               selectedServiceData
-//                                   .any((s) => s['vType'] == "Truck"))
+//                           // if (selectedVehicleData?['vehicleType'] == "Truck" &&
+//                           //     selectedServiceData
+//                           //         .any((s) => s['vType'] == "Truck"))
+
+//                           if (selectedVehicleData?['vehicleType'] == "Truck")
 //                             TextField(
 //                               controller: milesController,
 //                               decoration: const InputDecoration(
@@ -914,10 +927,13 @@
 //                               keyboardType: TextInputType.number,
 //                             ),
 
+//                           // if (selectedVehicleData?['vehicleType'] ==
+//                           //         "Trailer" &&
+//                           //     selectedServiceData
+//                           //         .any((s) => s['vType'] == "Trailer"))
+
 //                           if (selectedVehicleData?['vehicleType'] ==
-//                                   "Trailer" &&
-//                               selectedServiceData
-//                                   .any((s) => s['vType'] == "Trailer")) ...[
+//                               "Trailer") ...[
 //                             TextField(
 //                               controller: hoursController,
 //                               decoration: const InputDecoration(
@@ -1004,6 +1020,7 @@
 //                     ),
 //                   ),
 //                 ],
+
 //                 if (showAddMiles) ...[
 //                   SizedBox(height: 20.h),
 //                   Card(
@@ -1015,7 +1032,7 @@
 //                         children: [
 //                           // Vehicle Dropdown
 //                           DropdownButtonFormField<String>(
-//                             value: selectedRecordsVehicle,
+//                             value: selectedVehicle,
 //                             hint: const Text('Select Vehicle'),
 //                             items: vehicles.map((vehicle) {
 //                               return DropdownMenuItem<String>(
@@ -1027,174 +1044,178 @@
 //                                 ),
 //                               );
 //                             }).toList(),
-//                             onChanged: (value) {
+//                             onChanged: (value) async {
 //                               setState(() {
-//                                 selectedRecordsVehicle = value;
+//                                 selectedVehicle = value;
+//                                 todayMilesController.clear();
+//                                 log("Selected vehicle: $value");
 //                               });
+
+//                               // Fetch the selected vehicle type from Firestore
+//                               final vehicleDoc = await FirebaseFirestore
+//                                   .instance
+//                                   .collection('Users')
+//                                   .doc(currentUId)
+//                                   .collection('Vehicles')
+//                                   .doc(value)
+//                                   .get();
+
+//                               if (vehicleDoc.exists) {
+//                                 setState(() {
+//                                   selectedVehicleType =
+//                                       vehicleDoc['vehicleType'];
+//                                   log("Selected vehicle type: $selectedVehicleType");
+//                                 });
+//                               } else {
+//                                 log("Vehicle data not found.");
+//                               }
 //                             },
 //                           ),
 //                           SizedBox(height: 16.h),
-//                           TextField(
-//                             controller: todayMilesController,
-//                             decoration: InputDecoration(
-//                               labelText: 'Enter Miles',
-//                               labelStyle: appStyleUniverse(
-//                                   14, kDark, FontWeight.normal),
-//                               border: OutlineInputBorder(),
+
+//                           // Dynamically show input field based on vehicle type
+//                           if (selectedVehicleType == 'Truck') ...[
+//                             TextField(
+//                               controller: todayMilesController,
+//                               decoration: InputDecoration(
+//                                 labelText: 'Enter Miles',
+//                                 labelStyle: appStyleUniverse(
+//                                     14, kDark, FontWeight.normal),
+//                                 border: OutlineInputBorder(),
+//                               ),
+//                               keyboardType: TextInputType.number,
 //                             ),
-//                             keyboardType: TextInputType.number,
-//                           ),
+//                           ] else if (selectedVehicleType == 'Trailer') ...[
+//                             TextField(
+//                               controller: todayMilesController,
+//                               decoration: InputDecoration(
+//                                 labelText: 'Enter Hours',
+//                                 labelStyle: appStyleUniverse(
+//                                     14, kDark, FontWeight.normal),
+//                                 border: OutlineInputBorder(),
+//                               ),
+//                               keyboardType: TextInputType.number,
+//                             ),
+//                           ],
 //                           SizedBox(height: 16.h),
+
 //                           // Save Button
 //                           CustomButton(
-//                             onPress: () {
-//                               if (selectedRecordsVehicle != null &&
+//                             onPress: () async {
+//                               if (selectedVehicle != null &&
 //                                   todayMilesController.text.isNotEmpty) {
-//                                 // Show confirmation dialog
-//                                 showDialog(
-//                                   context: context,
-//                                   builder: (BuildContext context) {
-//                                     return AlertDialog(
-//                                       title: Text(
-//                                         'Confirm Save',
-//                                         style: appStyleUniverse(
-//                                             14, kDark, FontWeight.normal),
-//                                       ),
-//                                       content: Text(
-//                                         'Are you sure you want to save ${todayMilesController.text} miles?',
-//                                       ),
-//                                       actions: [
-//                                         TextButton(
-//                                           onPressed: () {
-//                                             Navigator.pop(
-//                                                 context); // Close dialog
-//                                           },
-//                                           child: const Text('Cancel'),
-//                                         ),
-//                                         TextButton(
-//                                           onPressed: () async {
-//                                             // Perform update if user confirms
-//                                             Navigator.pop(
-//                                                 context); // Close dialog
-//                                             try {
-//                                               final int todayMiles = int.parse(
-//                                                   todayMilesController.text);
-//                                               final vehicleId =
-//                                                   selectedRecordsVehicle;
+//                                 try {
+//                                   final int enteredValue =
+//                                       int.parse(todayMilesController.text);
+//                                   final vehicleId = selectedVehicle;
 
-//                                               // Update vehicle miles
-//                                               await FirebaseFirestore.instance
-//                                                   .collection("Users")
-//                                                   .doc(currentUId)
-//                                                   .collection("Vehicles")
-//                                                   .doc(vehicleId)
-//                                                   .update({
-//                                                 "currentMiles":
-//                                                     todayMiles.toString(),
-//                                                 'currentMilesArray':
-//                                                     FieldValue.arrayUnion([
-//                                                   {
-//                                                     "miles": todayMiles,
-//                                                     "date": DateTime.now()
-//                                                         .toIso8601String()
-//                                                   }
-//                                                 ]),
-//                                               });
+//                                   // Fetch current reading (Miles/Hours) for the selected vehicle
+//                                   final vehicleDoc = await FirebaseFirestore
+//                                       .instance
+//                                       .collection("Users")
+//                                       .doc(currentUId)
+//                                       .collection("Vehicles")
+//                                       .doc(vehicleId)
+//                                       .get();
 
-//                                               // Get all DataServices documents for this vehicle
-//                                               final dataServicesSnapshot =
-//                                                   await FirebaseFirestore
-//                                                       .instance
-//                                                       .collection('Users')
-//                                                       .doc(currentUId)
-//                                                       .collection(
-//                                                           'DataServices')
-//                                                       .where('vehicleId',
-//                                                           isEqualTo: vehicleId)
-//                                                       .get();
-
-//                                               // Update each DataServices document
-//                                               for (var doc
-//                                                   in dataServicesSnapshot
-//                                                       .docs) {
-//                                                 await FirebaseFirestore.instance
-//                                                     .collection('Users')
-//                                                     .doc(currentUId)
-//                                                     .collection('DataServices')
-//                                                     .doc(doc.id)
-//                                                     .update({
-//                                                   "miles": todayMiles,
-//                                                   "totalMiles": todayMiles,
-//                                                   'currentMilesArray':
-//                                                       FieldValue.arrayUnion([
-//                                                     {
-//                                                       "miles": todayMiles,
-//                                                       "date": DateTime.now()
-//                                                           .toIso8601String()
-//                                                     }
-//                                                   ]),
-//                                                 });
-
-//                                                 // Also update DataServicesRecords
-//                                                 await FirebaseFirestore.instance
-//                                                     .collection(
-//                                                         'DataServicesRecords')
-//                                                     .doc(doc.id)
-//                                                     .update({
-//                                                   "miles": todayMiles,
-//                                                   "totalMiles": todayMiles,
-//                                                   'currentMilesArray':
-//                                                       FieldValue.arrayUnion([
-//                                                     {
-//                                                       "miles": todayMiles,
-//                                                       "date": DateTime.now()
-//                                                           .toIso8601String()
-//                                                     }
-//                                                   ]),
-//                                                 });
-//                                               }
-
-//                                               debugPrint(
-//                                                   'Miles updated successfully!');
-//                                               todayMilesController.clear();
-//                                               setState(() {
-//                                                 selectedRecordsVehicle = null;
-//                                               });
-
-//                                               // Show success message
-//                                               ScaffoldMessenger.of(context)
-//                                                   .showSnackBar(
-//                                                 const SnackBar(
-//                                                   content: Text(
-//                                                       'Miles saved successfully!'),
-//                                                   duration:
-//                                                       Duration(seconds: 2),
-//                                                 ),
-//                                               );
-//                                             } catch (e) {
-//                                               debugPrint(
-//                                                   'Error updating miles: ${e.toString()}');
-//                                               ScaffoldMessenger.of(context)
-//                                                   .showSnackBar(
-//                                                 SnackBar(
-//                                                   content: Text(
-//                                                       'Failed to save miles: $e'),
-//                                                   duration:
-//                                                       Duration(seconds: 2),
-//                                                 ),
-//                                               );
-//                                             }
-//                                           },
-//                                           child: const Text('Confirm'),
-//                                         ),
-//                                       ],
+//                                   if (vehicleDoc.exists) {
+//                                     final int currentReading = int.parse(
+//                                       vehicleDoc[selectedVehicleType == 'Truck'
+//                                               ? 'currentMiles'
+//                                               : 'hoursReading'] ??
+//                                           '0',
 //                                     );
-//                                   },
-//                                 );
+
+//                                     // Validate the entered value
+//                                     if (enteredValue < currentReading) {
+//                                       showToastMessage(
+//                                           "Error",
+//                                           "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
+//                                           kRed);
+//                                       ScaffoldMessenger.of(context)
+//                                           .showSnackBar(
+//                                         SnackBar(
+//                                           content: Text(
+//                                               '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
+//                                           duration: Duration(seconds: 2),
+//                                         ),
+//                                       );
+//                                       return; // Exit early to prevent further execution
+//                                     }
+
+//                                     // Proceed with saving the data
+//                                     await FirebaseFirestore.instance
+//                                         .collection("Users")
+//                                         .doc(currentUId)
+//                                         .collection("Vehicles")
+//                                         .doc(vehicleId)
+//                                         .update({
+//                                       selectedVehicleType == 'Truck'
+//                                               ? "prevMilesValue"
+//                                               : "prevHoursReadingValue":
+//                                           currentReading.toString(),
+//                                       selectedVehicleType == 'Truck'
+//                                               ? "currentMiles"
+//                                               : "hoursReading":
+//                                           enteredValue.toString(),
+//                                       selectedVehicleType == 'Truck'
+//                                               ? 'currentMilesArray'
+//                                               : 'hoursReadingArray':
+//                                           FieldValue.arrayUnion([
+//                                         {
+//                                           selectedVehicleType == 'Truck'
+//                                               ? "miles"
+//                                               : "hours": enteredValue,
+//                                           "date":
+//                                               DateTime.now().toIso8601String(),
+//                                         }
+//                                       ]),
+//                                     });
+
+//                                     debugPrint(
+//                                         '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
+//                                     todayMilesController.clear();
+//                                     setState(() {
+//                                       selectedVehicle = null;
+//                                       selectedVehicleType = '';
+//                                     });
+
+//                                     ScaffoldMessenger.of(context).showSnackBar(
+//                                       SnackBar(
+//                                         content: Text('saved successfully!'),
+//                                         duration: Duration(seconds: 2),
+//                                       ),
+//                                     );
+
+//                                     // Call the cloud function to check for notifications
+//                                     final HttpsCallable callable =
+//                                         FirebaseFunctions.instance.httpsCallable(
+//                                             'checkAndNotifyUserForVehicleService');
+//                                     final result = await callable.call({
+//                                       'userId': currentUId,
+//                                       'vehicleId': vehicleId,
+//                                     });
+
+//                                     log('Cloud function result: ${result.data} vehicle Id $vehicleId');
+//                                   } else {
+//                                     throw 'Vehicle data not found';
+//                                   }
+//                                 } catch (e) {
+//                                   debugPrint(
+//                                       'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
+//                                   ScaffoldMessenger.of(context).showSnackBar(
+//                                     SnackBar(
+//                                       content: Text(
+//                                           'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
+//                                       duration: Duration(seconds: 2),
+//                                     ),
+//                                   );
+//                                 }
 //                               }
 //                             },
 //                             color: kPrimary,
-//                             text: 'Save Mile',
+//                             text:
+//                                 'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
 //                           ),
 //                         ],
 //                       ),
@@ -1222,68 +1243,239 @@
 //                     controller: _tabController,
 //                     children: [
 //                       // My Records Tab
-//                       Column(
-//                         crossAxisAlignment: CrossAxisAlignment.stretch,
-//                         children: [
-//                           if (filteredRecords.isEmpty)
-//                             Center(
-//                               child: Column(
-//                                 children: [
-//                                   Icon(Icons.note_alt_outlined,
-//                                       size: 80,
-//                                       color: kPrimary.withOpacity(0.5)),
-//                                   const SizedBox(height: 16),
-//                                   Text('No records found',
-//                                       style: appStyleUniverse(
-//                                           18, kDarkGray, FontWeight.w500)),
-//                                 ],
-//                               ),
-//                             )
-//                           else
-//                             ListView.builder(
-//                               shrinkWrap: true,
-//                               physics: const NeverScrollableScrollPhysics(),
-//                               itemCount: filteredRecords.length,
-//                               itemBuilder: (context, index) {
-//                                 final record = filteredRecords[index];
-//                                 final services =
-//                                     record['services'] as List<dynamic>;
-//                                 final date = DateFormat('dd-MM-yy').format(
-//                                     DateTime.parse(record['createdAt']));
+//                       SingleChildScrollView(
+//                         child: Column(
+//                           crossAxisAlignment: CrossAxisAlignment.stretch,
+//                           children: [
+//                             // Filter Section
 
-//                                 return Container(
-//                                   margin: EdgeInsets.symmetric(vertical: 8.h),
-//                                   child: GestureDetector(
-//                                     onTap: () => Get.to(() =>
-//                                         RecordsDetailsScreen(record: record)),
-//                                     child: Card(
-//                                       elevation: 0,
-//                                       shape: RoundedRectangleBorder(
-//                                         borderRadius:
-//                                             BorderRadius.circular(15.r),
-//                                         side: BorderSide(
-//                                           color: kPrimary.withOpacity(0.2),
-//                                           width: 1,
+//                             Padding(
+//                               padding: EdgeInsets.symmetric(horizontal: 16.w),
+//                               child: Column(
+//                                 crossAxisAlignment: CrossAxisAlignment.stretch,
+//                                 children: [
+//                                   SizedBox(height: 10.h),
+//                                   DropdownButtonFormField<String>(
+//                                     decoration: InputDecoration(
+//                                       labelText: 'Filter by Vehicle',
+//                                       border: OutlineInputBorder(
+//                                         borderRadius: BorderRadius.circular(8),
+//                                       ),
+//                                       prefixIcon: Icon(Icons.directions_car,
+//                                           color: kPrimary),
+//                                     ),
+//                                     items: vehicles.map((vehicle) {
+//                                       return DropdownMenuItem<String>(
+//                                         value: vehicle['vehicleNumber'],
+//                                         child: Text(
+//                                           "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+//                                           style: appStyleUniverse(
+//                                               14, kDark, FontWeight.normal),
+//                                         ),
+//                                       );
+//                                     }).toList(),
+//                                     onChanged: (value) {
+//                                       setState(() {
+//                                         filterVehicle = value ?? '';
+//                                       });
+//                                     },
+//                                     value: filterVehicle.isEmpty
+//                                         ? null
+//                                         : filterVehicle,
+//                                     hint: Text(
+//                                       'Select Vehicle',
+//                                       style: appStyleUniverse(
+//                                           14, kDark, FontWeight.normal),
+//                                     ),
+//                                   ),
+//                                   SizedBox(height: 16.h),
+//                                   Row(
+//                                     children: [
+//                                       Expanded(
+//                                         child: InkWell(
+//                                           onTap: () async {
+//                                             final DateTime? picked =
+//                                                 await showDatePicker(
+//                                               context: context,
+//                                               initialDate:
+//                                                   startDate ?? DateTime.now(),
+//                                               firstDate: DateTime(2000),
+//                                               lastDate: DateTime(2100),
+//                                             );
+//                                             if (picked != null) {
+//                                               setState(() {
+//                                                 startDate = picked;
+//                                               });
+//                                             }
+//                                           },
+//                                           child: InputDecorator(
+//                                             decoration: InputDecoration(
+//                                               labelText: 'Start Date',
+//                                               labelStyle: appStyleUniverse(
+//                                                   14, kDark, FontWeight.normal),
+//                                               border: OutlineInputBorder(
+//                                                 borderRadius:
+//                                                     BorderRadius.circular(8),
+//                                               ),
+//                                               prefixIcon: Icon(
+//                                                   Icons.calendar_today,
+//                                                   color: kPrimary),
+//                                             ),
+//                                             child: Text(
+//                                               startDate != null
+//                                                   ? DateFormat('dd-MM-yyyy')
+//                                                       .format(startDate!)
+//                                                   : 'Select Start Date',
+//                                             ),
+//                                           ),
 //                                         ),
 //                                       ),
-//                                       child: Container(
-//                                         decoration: BoxDecoration(
+//                                       SizedBox(width: 16.w),
+//                                       Expanded(
+//                                         child: InkWell(
+//                                           onTap: () async {
+//                                             final DateTime? picked =
+//                                                 await showDatePicker(
+//                                               context: context,
+//                                               initialDate:
+//                                                   endDate ?? DateTime.now(),
+//                                               firstDate: DateTime(2000),
+//                                               lastDate: DateTime(2100),
+//                                             );
+//                                             if (picked != null) {
+//                                               setState(() {
+//                                                 endDate = picked;
+//                                               });
+//                                             }
+//                                           },
+//                                           child: InputDecorator(
+//                                             decoration: InputDecoration(
+//                                               labelText: 'End Date',
+//                                               labelStyle: appStyleUniverse(
+//                                                   14, kDark, FontWeight.normal),
+//                                               border: OutlineInputBorder(
+//                                                 borderRadius:
+//                                                     BorderRadius.circular(8),
+//                                               ),
+//                                               prefixIcon: Icon(
+//                                                   Icons.calendar_today,
+//                                                   color: kPrimary),
+//                                             ),
+//                                             child: Text(
+//                                               endDate != null
+//                                                   ? DateFormat('dd-MM-yyyy')
+//                                                       .format(endDate!)
+//                                                   : 'Select End Date',
+//                                             ),
+//                                           ),
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                   SizedBox(height: 16.h),
+//                                   CustomButton(
+//                                     text: "Reset Filters",
+//                                     onPress: resetFilters,
+//                                     color: kPrimary,
+//                                   ),
+//                                   SizedBox(height: 16.h),
+//                                 ],
+//                               ),
+//                             ),
+//                             if (filteredRecords.isEmpty)
+//                               Center(
+//                                 child: Column(
+//                                   children: [
+//                                     Icon(Icons.note_alt_outlined,
+//                                         size: 80,
+//                                         color: kPrimary.withOpacity(0.5)),
+//                                     const SizedBox(height: 16),
+//                                     Text('No records found',
+//                                         style: appStyleUniverse(
+//                                             18, kDarkGray, FontWeight.w500)),
+//                                   ],
+//                                 ),
+//                               )
+//                             else
+//                               ListView.builder(
+//                                 shrinkWrap: true,
+//                                 physics: const NeverScrollableScrollPhysics(),
+//                                 itemCount: filteredRecords.length,
+//                                 itemBuilder: (context, index) {
+//                                   final record = filteredRecords[index];
+//                                   final services =
+//                                       record['services'] as List<dynamic>;
+//                                   final date = DateFormat('dd-MM-yy').format(
+//                                       DateTime.parse(record['createdAt']));
+
+//                                   return Container(
+//                                     margin: EdgeInsets.symmetric(vertical: 8.h),
+//                                     child: GestureDetector(
+//                                       onTap: () => Get.to(() =>
+//                                           RecordsDetailsScreen(record: record)),
+//                                       child: Card(
+//                                         elevation: 0,
+//                                         shape: RoundedRectangleBorder(
 //                                           borderRadius:
 //                                               BorderRadius.circular(15.r),
+//                                           side: BorderSide(
+//                                             color: kPrimary.withOpacity(0.2),
+//                                             width: 1,
+//                                           ),
 //                                         ),
-//                                         child: Padding(
-//                                           padding: EdgeInsets.all(16.w),
-//                                           child: Column(
-//                                             crossAxisAlignment:
-//                                                 CrossAxisAlignment.start,
-//                                             children: [
-//                                               Row(
-//                                                 mainAxisAlignment:
-//                                                     MainAxisAlignment
-//                                                         .spaceBetween,
-//                                                 children: [
-//                                                   if (record['invoice']
-//                                                       .isNotEmpty)
+//                                         child: Container(
+//                                           decoration: BoxDecoration(
+//                                             borderRadius:
+//                                                 BorderRadius.circular(15.r),
+//                                           ),
+//                                           child: Padding(
+//                                             padding: EdgeInsets.all(16.w),
+//                                             child: Column(
+//                                               crossAxisAlignment:
+//                                                   CrossAxisAlignment.start,
+//                                               children: [
+//                                                 Row(
+//                                                   mainAxisAlignment:
+//                                                       MainAxisAlignment
+//                                                           .spaceBetween,
+//                                                   children: [
+//                                                     if (record['invoice']
+//                                                         .isNotEmpty)
+//                                                       Container(
+//                                                         padding: EdgeInsets
+//                                                             .symmetric(
+//                                                           horizontal: 12.w,
+//                                                           vertical: 6.h,
+//                                                         ),
+//                                                         decoration:
+//                                                             BoxDecoration(
+//                                                           color: kPrimary
+//                                                               .withOpacity(0.1),
+//                                                           borderRadius:
+//                                                               BorderRadius
+//                                                                   .circular(
+//                                                                       20.r),
+//                                                         ),
+//                                                         child: Row(
+//                                                           children: [
+//                                                             Icon(
+//                                                                 Icons
+//                                                                     .receipt_outlined,
+//                                                                 size: 20,
+//                                                                 color:
+//                                                                     kPrimary),
+//                                                             SizedBox(
+//                                                                 width: 8.w),
+//                                                             Text(
+//                                                                 "#${record['invoice']}",
+//                                                                 style: appStyleUniverse(
+//                                                                     16,
+//                                                                     kDark,
+//                                                                     FontWeight
+//                                                                         .w500)),
+//                                                           ],
+//                                                         ),
+//                                                       ),
 //                                                     Container(
 //                                                       padding:
 //                                                           EdgeInsets.symmetric(
@@ -1291,7 +1483,7 @@
 //                                                         vertical: 6.h,
 //                                                       ),
 //                                                       decoration: BoxDecoration(
-//                                                         color: kPrimary
+//                                                         color: kSecondary
 //                                                             .withOpacity(0.1),
 //                                                         borderRadius:
 //                                                             BorderRadius
@@ -1301,12 +1493,12 @@
 //                                                         children: [
 //                                                           Icon(
 //                                                               Icons
-//                                                                   .receipt_outlined,
-//                                                               size: 20,
-//                                                               color: kPrimary),
+//                                                                   .calendar_today,
+//                                                               size: 18,
+//                                                               color:
+//                                                                   kSecondary),
 //                                                           SizedBox(width: 8.w),
-//                                                           Text(
-//                                                               "#${record['invoice']}",
+//                                                           Text(date,
 //                                                               style:
 //                                                                   appStyleUniverse(
 //                                                                       16,
@@ -1316,117 +1508,97 @@
 //                                                         ],
 //                                                       ),
 //                                                     ),
-//                                                   Container(
-//                                                     padding:
-//                                                         EdgeInsets.symmetric(
-//                                                       horizontal: 12.w,
-//                                                       vertical: 6.h,
-//                                                     ),
-//                                                     decoration: BoxDecoration(
-//                                                       color: kSecondary
-//                                                           .withOpacity(0.1),
-//                                                       borderRadius:
-//                                                           BorderRadius.circular(
-//                                                               20.r),
-//                                                     ),
-//                                                     child: Row(
-//                                                       children: [
-//                                                         Icon(
-//                                                             Icons
-//                                                                 .calendar_today,
-//                                                             size: 18,
-//                                                             color: kSecondary),
-//                                                         SizedBox(width: 8.w),
-//                                                         Text(date,
-//                                                             style:
-//                                                                 appStyleUniverse(
-//                                                                     16,
-//                                                                     kDark,
-//                                                                     FontWeight
-//                                                                         .w500)),
-//                                                       ],
-//                                                     ),
-//                                                   ),
-//                                                 ],
-//                                               ),
-//                                               SizedBox(height: 16.h),
-//                                               buildInfoRow(
-//                                                 Icons.directions_car_outlined,
-//                                                 '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
-//                                               ),
-//                                               Divider(height: 24.h),
-//                                               buildInfoRow(
-//                                                 Icons.build_outlined,
-//                                                 services.map((service) {
-//                                                   String serviceName =
-//                                                       service['serviceName'];
-//                                                   if ((service['subServices']
-//                                                               as List?)
-//                                                           ?.isNotEmpty ??
-//                                                       false) {
-//                                                     String subServices =
-//                                                         (service['subServices']
-//                                                                 as List)
-//                                                             .map((s) =>
-//                                                                 s['name'])
-//                                                             .join(', ');
-//                                                     return "$serviceName ($subServices)";
-//                                                   }
-//                                                   return serviceName;
-//                                                 }).join(", "),
-//                                               ),
-//                                               Divider(height: 24.h),
-//                                               buildInfoRow(
-//                                                 Icons.store_outlined,
-//                                                 record['workshopName'] ?? 'N/A',
-//                                               ),
-//                                               if (record["description"]
-//                                                   .isNotEmpty) ...[
+//                                                   ],
+//                                                 ),
+//                                                 SizedBox(height: 16.h),
+//                                                 buildInfoRow(
+//                                                   Icons.directions_car_outlined,
+//                                                   '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+//                                                 ),
 //                                                 Divider(height: 24.h),
 //                                                 buildInfoRow(
-//                                                   Icons.description_outlined,
-//                                                   record['description'],
+//                                                   Icons.build_outlined,
+//                                                   services.map((service) {
+//                                                     String serviceName =
+//                                                         service['serviceName'];
+//                                                     if ((service['subServices']
+//                                                                 as List?)
+//                                                             ?.isNotEmpty ??
+//                                                         false) {
+//                                                       String subServices =
+//                                                           (service['subServices']
+//                                                                   as List)
+//                                                               .map((s) =>
+//                                                                   s['name'])
+//                                                               .join(', ');
+//                                                       return "$serviceName ($subServices)";
+//                                                     }
+//                                                     return serviceName;
+//                                                   }).join(", "),
 //                                                 ),
+//                                                 Divider(height: 24.h),
+//                                                 buildInfoRow(
+//                                                   Icons.store_outlined,
+//                                                   record['workshopName'] ??
+//                                                       'N/A',
+//                                                 ),
+//                                                 if (record["description"]
+//                                                     .isNotEmpty) ...[
+//                                                   Divider(height: 24.h),
+//                                                   buildInfoRow(
+//                                                     Icons.description_outlined,
+//                                                     record['description'],
+//                                                   ),
+//                                                 ],
 //                                               ],
-//                                             ],
+//                                             ),
 //                                           ),
 //                                         ),
 //                                       ),
 //                                     ),
-//                                   ),
-//                                 )
-//                                     .animate()
-//                                     .fadeIn(
-//                                         duration: 400.ms,
-//                                         delay: (index * 100).ms)
-//                                     .slideX(begin: 0.2, end: 0);
-//                               },
-//                             ),
-//                         ],
+//                                   )
+//                                       .animate()
+//                                       .fadeIn(
+//                                           duration: 400.ms,
+//                                           delay: (index * 100).ms)
+//                                       .slideX(begin: 0.2, end: 0);
+//                                 },
+//                               ),
+//                           ],
+//                         ),
 //                       ),
 //                       // My Miles Tab
 //                       ListView.builder(
 //                         itemCount: vehicles.length,
 //                         itemBuilder: (context, index) {
 //                           final vehicle = vehicles[index];
-//                           return Card(
-//                             margin: EdgeInsets.symmetric(vertical: 8.h),
-//                             child: ListTile(
-//                               title: Text(
-//                                 '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-//                                 style: appStyleUniverse(
-//                                     16, kDark, FontWeight.w500),
+//                           return GestureDetector(
+//                             onTap: () => Get.to(
+//                                 () => MilesDetailsScreen(milesRecord: vehicle)),
+//                             child: Card(
+//                               margin: EdgeInsets.symmetric(vertical: 8.h),
+//                               child: ListTile(
+//                                 title: Text(
+//                                   '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+//                                   style: appStyleUniverse(
+//                                       16, kDark, FontWeight.w500),
+//                                 ),
+//                                 subtitle: vehicle['vehicleType'] == "Truck"
+//                                     ? Text(
+//                                         'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+//                                         style: appStyleUniverse(
+//                                             14, kDarkGray, FontWeight.normal))
+//                                     : Text(
+//                                         'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
+//                                         style: appStyleUniverse(
+//                                             14, kDarkGray, FontWeight.normal),
+//                                       ),
+//                                 trailing: Icon(Icons.directions_car_outlined,
+//                                     color: kPrimary),
 //                               ),
-//                               subtitle: Text(
-//                                 'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-//                                 style: appStyleUniverse(
-//                                     14, kDarkGray, FontWeight.normal),
-//                               ),
-//                               trailing: Icon(Icons.directions_car_outlined,
-//                                   color: kPrimary),
-//                             ),
-//                           ).animate().fadeIn(
-//                               duration: 400.ms, delay: (index * 100).ms);
+//                             ).animate().fadeIn(
+//                                 duration: 400.ms, delay: (index * 100).ms),
+//                           );
 //                         },
 //                       ),
 //                     ],
@@ -1453,7 +1625,7 @@
 //           child: Text(
 //             vText,
 //             style: appStyleUniverse(16, kDarkGray, FontWeight.w400),
-//             maxLines: 3,
+//             maxLines: 5,
 //             overflow: TextOverflow.ellipsis,
 //           ),
 //         ),
