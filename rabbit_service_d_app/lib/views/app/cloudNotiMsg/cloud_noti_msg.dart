@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
@@ -87,24 +88,6 @@ class CloudNotificationMessageCenter extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration:
-                        BoxDecoration(color: kSecondary.withOpacity(0.1)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          dayMonth,
-                          style: appStyle(16, kDark, FontWeight.bold),
-                        ),
-                        Text(
-                          year,
-                          style: appStyle(16, kDark, FontWeight.w400),
-                        ),
-                      ],
-                    ),
-                  ),
                   SizedBox(height: 8),
                   ...dateNotifications.map((doc) {
                     var notification = doc.data() as Map<String, dynamic>;
@@ -120,6 +103,8 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: NotificationCard(
+                            dayMonth: dayMonth,
+                            year: year,
                             message: notification['message'],
                             vehicleName: vehicleData['companyName'],
                             vehicleNumber: vehicleData['vehicleNumber'],
@@ -154,6 +139,8 @@ class NotificationCard extends StatelessWidget {
   final String vehicleNumber;
   final VoidCallback onView;
   final VoidCallback onReadVehicle;
+  final String dayMonth;
+  final String year;
 
   const NotificationCard({
     super.key,
@@ -162,6 +149,8 @@ class NotificationCard extends StatelessWidget {
     required this.vehicleNumber,
     required this.onView,
     required this.onReadVehicle,
+    required this.dayMonth,
+    required this.year,
   });
 
   @override
@@ -186,9 +175,34 @@ class NotificationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Service Reminder",
-                    style: appStyle(18, kDark, FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Service Reminder",
+                        style: appStyle(18, kDark, FontWeight.bold),
+                      ),
+                      Container(
+                        padding: EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                            color: kPrimary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12.r)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              dayMonth,
+                              style: appStyle(16, kDark, FontWeight.bold),
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              year,
+                              style: appStyle(16, kDark, FontWeight.w400),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4.0),
                   Text(
