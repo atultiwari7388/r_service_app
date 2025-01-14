@@ -19,6 +19,45 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { HashLoader } from "react-spinners";
 
+interface DValue {
+  brand: string;
+  type: string;
+  value: string;
+}
+
+interface Service {
+  sId: string;
+  sName: string;
+  defaultNotificationValue: number;
+  nextNotificationValue: number;
+  subServices: { sName: string }[];
+  vType: string;
+  dValues: DValue[];
+}
+
+interface VehicleData {
+  vehicleType: string;
+  companyName: string;
+  engineName: string;
+  vehicleNumber: string;
+  vin: string;
+  dot: string | null;
+  iccms: string | null;
+  licensePlate: string;
+  year: string;
+  isSet: boolean;
+  createdAt: unknown;
+  currentMilesArray: { miles: number; date: string }[];
+  nextNotificationMiles: Service[];
+  services: Service[];
+  currentMiles?: string;
+  prevMilesValue?: string;
+  firstTimeMiles?: string;
+  oilChangeDate?: string | null;
+  hoursReading?: string;
+  prevHoursReadingValue?: string;
+}
+
 export default function AddVehiclePage() {
   const [companyList, setCompanyList] = useState<string[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<string[]>([]);
@@ -37,6 +76,8 @@ export default function AddVehiclePage() {
   const [oilChangeDate, setOilChangeDate] = useState<string>("");
   const [dot, setDot] = useState<string>("");
   const [iccms, setIccms] = useState<string>("");
+  const [servicesData, setServicesData] = useState<Service[]>([]); // State to hold services data
+  // const [isSaving, setIsSaving] = useState<boolean>(false); // State to manage saving status
 
   const router = useRouter();
 
@@ -57,14 +98,15 @@ export default function AddVehiclePage() {
     try {
       const companyDoc = await getDoc(doc(db, "metadata", "companyNameL"));
       if (companyDoc.exists()) {
-        interface Company {
-          type: string;
-          cName: string;
-        }
         const companies = companyDoc.data()?.data || [];
         const filteredCompanies = companies
-          .filter((company: Company) => company.type === selectedVehicleType)
-          .map((company: Company) => company.cName.toString().toUpperCase());
+          .filter(
+            (company: { type: string; cName: string }) =>
+              company.type === selectedVehicleType
+          )
+          .map((company: { cName: string }) =>
+            company.cName.toString().toUpperCase()
+          );
         setCompanyList(filteredCompanies);
         setSelectedCompany("");
         setSelectedEngineName("");
@@ -85,18 +127,15 @@ export default function AddVehiclePage() {
       const engineDoc = await getDoc(doc(db, "metadata", "engineNameList"));
       if (engineDoc.exists()) {
         const engineData = engineDoc.data()?.data || [];
-        interface Engine {
-          type: string;
-          cName: string;
-          eName: string;
-        }
         const filteredEngines = engineData
           .filter(
-            (engine: Engine) =>
+            (engine: { type: string; cName: string }) =>
               engine.type === selectedVehicleType &&
               engine.cName.toUpperCase() === selectedCompany.toUpperCase()
           )
-          .map((engine: Engine) => engine.eName.toString().toUpperCase());
+          .map((engine: { eName: string }) =>
+            engine.eName.toString().toUpperCase()
+          );
         setEngineNameList(filteredEngines);
         if (!filteredEngines.includes(selectedEngineName)) {
           setSelectedEngineName("");
@@ -107,17 +146,94 @@ export default function AddVehiclePage() {
     }
   };
 
-  useEffect(() => {
-    fetchVehicleTypes();
-  }, []);
+  const fetchServicesData = async () => {
+    try {
+      const servicesDoc = await getDoc(doc(db, "metadata", "servicesData"));
+      if (servicesDoc.exists()) {
+        const services = servicesDoc.data()?.data || [];
+        setServicesData(services);
+      }
+    } catch (error) {
+      toast.error("Error fetching services data: " + error);
+    }
+  };
 
-  useEffect(() => {
-    fetchCompanyList();
-  }, [selectedVehicleType]);
+  const calculateNextNotificationMiles = (): Service[] => {
+    const nextNotificationMiles: Service[] = [];
+    const currentMiles = parseInt(currentReading) || 0;
 
-  useEffect(() => {
-    fetchEngineNames();
-  }, [selectedVehicleType, selectedCompany]);
+    for (const service of servicesData) {
+      if (service.vType === selectedVehicleType) {
+        const subServices = service.subServices || [];
+        const defaultValues = service.dValues || [];
+        let foundMatch = false;
+
+        for (const defaultValue of defaultValues) {
+          if (
+            defaultValue.brand.toLowerCase() ===
+            selectedEngineName.toLowerCase()
+          ) {
+            foundMatch = true;
+            const notificationValue = parseInt(defaultValue.value) * 1000;
+            nextNotificationMiles.push({
+              sId: service.sId,
+              sName: service.sName,
+              defaultNotificationValue: notificationValue,
+              nextNotificationValue: currentMiles + notificationValue,
+              subServices: subServices.map((s: { sName: string }) => ({
+                sName: s.sName,
+              })),
+              vType: service.vType,
+              dValues: service.dValues,
+            });
+          }
+        }
+
+        if (!foundMatch) {
+          console.log(`No brand match found for service: ${service.sName}`);
+        }
+      }
+    }
+
+    return nextNotificationMiles;
+  };
+
+  // const calculateNextNotificationMiles = (): Service[] => {
+  //   const nextNotificationMiles: Service[] = [];
+  //   const currentMiles = parseInt(currentReading) || 0;
+
+  //   for (const service of servicesData) {
+  //     if (service.vType === selectedVehicleType) {
+  //       const subServices = service.subServices || [];
+  //       const defaultValues = service.dValues || []; // Access dValues
+  //       let foundMatch = false;
+
+  //       for (const defaultValue of defaultValues) {
+  //         if (
+  //           defaultValue.brand.toLowerCase() ===
+  //           selectedEngineName.toLowerCase()
+  //         ) {
+  //           foundMatch = true;
+  //           const notificationValue = parseInt(defaultValue.value) * 1000;
+  //           nextNotificationMiles.push({
+  //             serviceId: service.sId,
+  //             serviceName: service.sName,
+  //             defaultNotificationValue: notificationValue,
+  //             nextNotificationValue: currentMiles + notificationValue,
+  //             subServices: subServices.map((s: { sName: string }) => s.sName),
+  //             dValues: defaultValues, // Include dValues in the nextNotificationMiles
+  //           });
+  //         }
+  //       }
+
+  //       if (!foundMatch) {
+  //         console.log(`No brand match found for service: ${service.sName}`);
+  //       }
+  //     }
+  //   }
+
+  //   return nextNotificationMiles;
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,17 +260,29 @@ export default function AddVehiclePage() {
 
       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
 
-      // Set isSet to false for all existing vehicles
       const existingVehicles = await getDocs(
-        query(vehiclesRef, where("isSet", "==", true))
+        query(
+          vehiclesRef,
+          where("vehicleNumber", "==", vehicleNumber),
+          where("vehicleType", "==", selectedVehicleType),
+          where("companyName", "==", selectedCompany.toUpperCase()),
+          where("engineName", "==", selectedEngineName.toUpperCase())
+        )
       );
 
-      const updatePromises = existingVehicles.docs.map((doc) =>
+      if (!existingVehicles.empty) {
+        toast.error("Vehicle already added");
+        return;
+      }
+
+      const updatePromises = (await getDocs(vehiclesRef)).docs.map((doc) =>
         updateDoc(doc.ref, { isSet: false })
       );
       await Promise.all(updatePromises);
 
-      const vehicleData = {
+      const nextNotificationMiles = calculateNextNotificationMiles();
+
+      const vehicleData: VehicleData = {
         vehicleType: selectedVehicleType,
         companyName: selectedCompany.toUpperCase(),
         engineName: selectedEngineName.toUpperCase(),
@@ -165,48 +293,69 @@ export default function AddVehiclePage() {
         licensePlate,
         year,
         isSet: true,
-        createdAt: serverTimestamp(),
-        currentReading: "",
-        oilChangeDate: "",
-        hoursReading: "",
+        createdAt: serverTimestamp,
+        currentMilesArray: [
+          {
+            miles: currentReading ? parseInt(currentReading) : 0,
+            date: new Date().toISOString(),
+          },
+        ],
+        nextNotificationMiles,
+        services: nextNotificationMiles.map((service) => ({
+          defaultNotificationValue: service.defaultNotificationValue,
+          nextNotificationValue: service.nextNotificationValue,
+          sId: service.sId,
+          sName: service.sName,
+          subServices: service.subServices,
+          vType: service.vType,
+          dValues: service.dValues,
+        })),
       };
 
       if (selectedVehicleType === "Truck") {
-        vehicleData.currentReading = currentReading;
+        vehicleData.currentMiles = currentReading;
+        vehicleData.prevMilesValue = currentReading;
+        vehicleData.firstTimeMiles = currentReading;
         vehicleData.oilChangeDate = "";
         vehicleData.hoursReading = "";
+        vehicleData.prevHoursReadingValue = "";
       }
 
       if (selectedVehicleType === "Trailer") {
-        vehicleData.currentReading = "";
-        vehicleData.oilChangeDate = oilChangeDate;
+        vehicleData.currentMiles = "";
+        vehicleData.prevMilesValue = "";
+        vehicleData.firstTimeMiles = "";
+        vehicleData.oilChangeDate = oilChangeDate || null;
         vehicleData.hoursReading = hoursReading;
+        vehicleData.prevHoursReadingValue = hoursReading;
       }
 
-      await addDoc(vehiclesRef, vehicleData);
+      const vehicleDocRef = await addDoc(vehiclesRef, vehicleData);
+      await updateDoc(vehicleDocRef, { vehicleId: vehicleDocRef.id });
 
       toast.success("Vehicle added successfully!");
       router.push("/account/my-profile");
-
-      // Reset form
-      setSelectedCompany("");
-      setSelectedVehicleType("");
-      setSelectedEngineName("");
-      setVehicleNumber("");
-      setVin("");
-      setLicensePlate("");
-      setYear("");
-      setCurrentReading("");
-      setHoursReading("");
-      setOilChangeDate("");
-      setDot("");
-      setIccms("");
     } catch (error) {
       toast.error("Error adding vehicle: " + error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchVehicleTypes();
+    fetchServicesData();
+  }, []);
+
+  useEffect(() => {
+    fetchCompanyList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVehicleType]);
+
+  useEffect(() => {
+    fetchEngineNames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCompany, selectedVehicleType]);
 
   if (!user) {
     return <div>Please log in to access the add vehicle page.</div>;
@@ -482,4 +631,3 @@ export default function AddVehiclePage() {
     </div>
   );
 }
-// End of Selection

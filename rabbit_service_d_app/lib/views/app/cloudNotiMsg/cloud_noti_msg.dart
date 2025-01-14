@@ -192,7 +192,7 @@ class NotificationCard extends StatelessWidget {
                           children: [
                             Text(
                               dayMonth,
-                              style: appStyle(16, kDark, FontWeight.bold),
+                              style: appStyle(16, kDark, FontWeight.normal),
                             ),
                             SizedBox(width: 5),
                             Text(
