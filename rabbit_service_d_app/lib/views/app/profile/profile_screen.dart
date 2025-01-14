@@ -9,6 +9,7 @@ import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
+import 'package:regal_service_d_app/views/app/myVehicles/my_vehicles_screen.dart';
 import 'package:regal_service_d_app/views/app/privacyPolicy/privacy_policy.dart';
 import 'package:regal_service_d_app/views/app/profile/profile_details_screen.dart';
 import 'package:regal_service_d_app/views/app/ratings/ratings_screen.dart';
@@ -97,7 +98,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Row(
                       children: [
                         Text(
-                          "Manage Orders",
+                          "Manage Profile",
                           style: kIsWeb
                               ? TextStyle(color: kPrimary)
                               : appStyle(18, kPrimary, FontWeight.normal),
@@ -114,6 +115,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }),
                     buildListTile("assets/profile_bw.png", "My Profile", () {
                       Get.to(() => ProfileDetailsScreen());
+                    }),
+                    buildListTile("assets/myvehicles.png", "My Vehicles", () {
+                      Get.to(() => MyVehiclesScreen());
                     }),
                     role == "Owner"
                         ? buildListTile("assets/team.png", "Manage Team", () {

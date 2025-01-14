@@ -47,6 +47,9 @@ dependencies:
   photo_view:
   flutter_animate:
   cloud_functions: ^5.2.0
+  share_plus:
+  pdf:
+  printing:
 
 dev_dependencies:
   flutter_test:
