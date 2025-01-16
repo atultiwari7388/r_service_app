@@ -219,37 +219,6 @@ class _ReportsScreenState extends State<ReportsScreen>
     }
   }
 
-  // void updateSelectedVehicleAndService() {
-  //   if (selectedVehicle != null) {
-  //     selectedVehicleData = vehicles.firstWhere(
-  //       (vehicle) => vehicle['id'] == selectedVehicle,
-  //       orElse: () => <String, dynamic>{},
-  //     );
-  //   }
-
-  //   selectedServiceData = services
-  //       .where((service) => selectedServices.contains(service['sId']))
-  //       .toList();
-
-  //   serviceDefaultValues.clear();
-  //   for (var service in selectedServiceData) {
-  //     final dValues = service['dValues'] as List<dynamic>?;
-  //     if (dValues != null) {
-  //       //now here we comparing the value of the brand with the engine name
-  //       for (var dValue in dValues) {
-  //         if (dValue['brand'].toString().toUpperCase() ==
-  //             selectedVehicleData?['engineName'].toString().toUpperCase()) {
-  //           serviceDefaultValues[service['sId']] =
-  //               int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-  //           break;
-  //         }
-  //       }
-  //     }
-  //   }
-
-  //   setState(() {});
-  // }
-
   void updateSelectedVehicleAndService() {
     if (selectedVehicle != null) {
       selectedVehicleData = vehicles.firstWhere(
@@ -964,126 +933,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                             ],
                           ),
 
-                          // Wrap(
-                          //   spacing: 4.w,
-                          //   runSpacing: 4.h,
-                          //   children: services.where((service) {
-                          //     final searchTerm =
-                          //         serviceSearchController.text.toLowerCase();
-                          //     final matchesSearch = searchTerm.isEmpty ||
-                          //         service['sName']
-                          //             .toString()
-                          //             .toLowerCase()
-                          //             .contains(searchTerm);
-
-                          //     // Only show services that match the vehicle type or if no vehicle is selected
-                          //     final matchesVehicleType =
-                          //         selectedVehicleData == null ||
-                          //             service['vType'] ==
-                          //                 selectedVehicleData?['vehicleType'];
-
-                          //     return matchesSearch && matchesVehicleType;
-                          //   }).map((service) {
-                          //     bool isSelected =
-                          //         selectedServices.contains(service['sId']);
-                          //     List<dynamic> subServices =
-                          //         service['subServices'] as List<dynamic>? ??
-                          //             [];
-
-                          //     return Column(
-                          //       crossAxisAlignment: CrossAxisAlignment.start,
-                          //       children: [
-                          //         FilterChip(
-                          //           backgroundColor: kPrimary.withOpacity(0.1),
-                          //           selectedColor: kPrimary,
-                          //           labelPadding: EdgeInsets.all(0),
-                          //           label: Text(service['sName']),
-                          //           labelStyle: appStyleUniverse(
-                          //               14, kDark, FontWeight.normal),
-                          //           selected: isSelected,
-                          //           onSelected: (bool selected) {
-                          //             if (selectedVehicle == null) {
-                          //               ScaffoldMessenger.of(context)
-                          //                   .showSnackBar(
-                          //                 const SnackBar(
-                          //                     content: Text(
-                          //                         'First select the vehicle')),
-                          //               );
-                          //               return;
-                          //             }
-                          //             setState(() {
-                          //               if (selected) {
-                          //                 selectedServices.add(service['sId']);
-                          //                 selectedSubServices[service['sId']] =
-                          //                     [];
-                          //               } else {
-                          //                 selectedServices
-                          //                     .remove(service['sId']);
-                          //                 selectedSubServices
-                          //                     .remove(service['sId']);
-                          //               }
-                          //               updateSelectedVehicleAndService();
-                          //             });
-                          //           },
-                          //         ),
-                          //         if (isSelected && subServices.isNotEmpty)
-                          //           Padding(
-                          //             padding:
-                          //                 EdgeInsets.only(left: 2.w, top: 4.h),
-                          //             child: Wrap(
-                          //               direction: Axis.horizontal,
-                          //               spacing: 4.w,
-                          //               children:
-                          //                   subServices.expand((subService) {
-                          //                 List<String> sNames =
-                          //                     List<String>.from(
-                          //                         subService['sName'] ?? []);
-                          //                 return sNames.map((subServiceName) {
-                          //                   if (subServiceName.isEmpty)
-                          //                     return Container();
-                          //                   return FilterChip(
-                          //                     backgroundColor:
-                          //                         kSecondary.withOpacity(0.1),
-                          //                     labelPadding: EdgeInsets.all(0),
-                          //                     label: Text(subServiceName),
-                          //                     labelStyle: appStyle(
-                          //                         13, kDark, FontWeight.normal),
-                          //                     selected: selectedSubServices[
-                          //                                 service['sId']]
-                          //                             ?.contains(
-                          //                                 subServiceName) ??
-                          //                         false,
-                          //                     onSelected: (bool selected) {
-                          //                       setState(() {
-                          //                         if (selected) {
-                          //                           selectedSubServices[
-                          //                               service['sId']] ??= [];
-                          //                           selectedSubServices[
-                          //                                   service['sId']]!
-                          //                               .add(subServiceName);
-                          //                         } else {
-                          //                           selectedSubServices[
-                          //                                   service['sId']]
-                          //                               ?.remove(
-                          //                                   subServiceName);
-                          //                         }
-                          //                       });
-                          //                     },
-                          //                   );
-                          //                 });
-                          //               }).toList(),
-                          //             ),
-                          //           ),
-                          //       ],
-                          //     );
-                          //   }).toList(),
-                          // ),
                           SizedBox(height: 16.h),
-
-                          // Conditional Fields based on vehicle type
-                          // if (selectedVehicleData?['vehicleType'] == "Truck" &&
-                          //     selectedServiceData
-                          //         .any((s) => s['vType'] == "Truck"))
 
                           if (selectedVehicleData?['vehicleType'] == "Truck")
                             TextField(
@@ -1094,11 +944,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                               ),
                               keyboardType: TextInputType.number,
                             ),
-
-                          // if (selectedVehicleData?['vehicleType'] ==
-                          //         "Trailer" &&
-                          //     selectedServiceData
-                          //         .any((s) => s['vType'] == "Trailer"))
 
                           if (selectedVehicleData?['vehicleType'] ==
                               "Trailer") ...[

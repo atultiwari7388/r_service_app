@@ -56,6 +56,9 @@ interface VehicleData {
   oilChangeDate?: string | null;
   hoursReading?: string;
   prevHoursReadingValue?: string;
+  lastServiceDate?: string;
+  lastServiceMiles?: number;
+  lastServiceHours?: number;
 }
 
 export default function AddVehiclePage() {
@@ -76,8 +79,7 @@ export default function AddVehiclePage() {
   const [oilChangeDate, setOilChangeDate] = useState<string>("");
   const [dot, setDot] = useState<string>("");
   const [iccms, setIccms] = useState<string>("");
-  const [servicesData, setServicesData] = useState<Service[]>([]); // State to hold services data
-  // const [isSaving, setIsSaving] = useState<boolean>(false); // State to manage saving status
+  const [servicesData, setServicesData] = useState<Service[]>([]);
 
   const router = useRouter();
 
@@ -198,42 +200,35 @@ export default function AddVehiclePage() {
     return nextNotificationMiles;
   };
 
-  // const calculateNextNotificationMiles = (): Service[] => {
-  //   const nextNotificationMiles: Service[] = [];
-  //   const currentMiles = parseInt(currentReading) || 0;
+  const validateForm = () => {
+    if (
+      !selectedVehicleType ||
+      !selectedCompany ||
+      !selectedEngineName ||
+      !vehicleNumber ||
+      !vin ||
+      !licensePlate ||
+      !year
+    ) {
+      toast.error("Please fill all required fields");
+      return false;
+    }
 
-  //   for (const service of servicesData) {
-  //     if (service.vType === selectedVehicleType) {
-  //       const subServices = service.subServices || [];
-  //       const defaultValues = service.dValues || []; // Access dValues
-  //       let foundMatch = false;
+    if (selectedVehicleType === "Truck" && !currentReading) {
+      toast.error("Please enter current reading for Truck");
+      return false;
+    }
 
-  //       for (const defaultValue of defaultValues) {
-  //         if (
-  //           defaultValue.brand.toLowerCase() ===
-  //           selectedEngineName.toLowerCase()
-  //         ) {
-  //           foundMatch = true;
-  //           const notificationValue = parseInt(defaultValue.value) * 1000;
-  //           nextNotificationMiles.push({
-  //             serviceId: service.sId,
-  //             serviceName: service.sName,
-  //             defaultNotificationValue: notificationValue,
-  //             nextNotificationValue: currentMiles + notificationValue,
-  //             subServices: subServices.map((s: { sName: string }) => s.sName),
-  //             dValues: defaultValues, // Include dValues in the nextNotificationMiles
-  //           });
-  //         }
-  //       }
+    if (
+      selectedVehicleType === "Trailer" &&
+      (!oilChangeDate || !hoursReading)
+    ) {
+      toast.error("Please enter oil change date and hours reading for Trailer");
+      return false;
+    }
 
-  //       if (!foundMatch) {
-  //         console.log(`No brand match found for service: ${service.sName}`);
-  //       }
-  //     }
-  //   }
-
-  //   return nextNotificationMiles;
-  // };
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,16 +240,8 @@ export default function AddVehiclePage() {
         return;
       }
 
-      if (
-        !selectedCompany ||
-        !vehicleNumber ||
-        !selectedVehicleType ||
-        !selectedEngineName ||
-        !vin ||
-        !licensePlate ||
-        !year
-      ) {
-        toast.error("Please fill all required fields");
+      if (!validateForm()) {
+        setLoading(false);
         return;
       }
 
@@ -293,7 +280,7 @@ export default function AddVehiclePage() {
         licensePlate,
         year,
         isSet: true,
-        createdAt: serverTimestamp,
+        createdAt: serverTimestamp(),
         currentMilesArray: [
           {
             miles: currentReading ? parseInt(currentReading) : 0,
@@ -310,6 +297,9 @@ export default function AddVehiclePage() {
           vType: service.vType,
           dValues: service.dValues,
         })),
+
+        lastServiceMiles: currentReading ? parseInt(currentReading) : 0,
+        lastServiceHours: hoursReading ? parseInt(hoursReading) : 0,
       };
 
       if (selectedVehicleType === "Truck") {

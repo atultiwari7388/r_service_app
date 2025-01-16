@@ -9,11 +9,20 @@
 //   MenuItem,
 //   Select,
 //   TextField,
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableContainer,
+//   TableHead,
+//   TableRow,
+//   Paper,
 // } from "@mui/material";
 // import toast from "react-hot-toast";
 // import { VehicleTypes } from "@/types/types";
 // import { useAuth } from "@/contexts/AuthContexts";
 // import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { WhatsappShareButton } from "react-share";
+// import { WhatsappIcon } from "react-share";
 
 // interface Vehicle {
 //   brand: string;
@@ -28,6 +37,20 @@
 //   dValues: Vehicle[];
 // }
 
+// interface ServiceRecord {
+//   vehicleDetails: {
+//     vehicleNumber: string;
+//     vehicleType: string;
+//     companyName: string;
+//     engineNumber: string;
+//   };
+//   serviceId: string;
+//   date: string;
+//   hours: number;
+//   miles: number;
+//   createdAt: string;
+// }
+
 // export default function RecordsPage() {
 //   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
 //   const [services, setServices] = useState<ServiceData[]>([]);
@@ -39,6 +62,30 @@
 //   const [workshopName, setWorkshopName] = useState("");
 //   const [showAddRecords, setShowAddRecords] = useState(false);
 //   const { user } = useAuth() || { user: null };
+
+//   // New states for search and filter
+//   const [records, setRecords] = useState<ServiceRecord[]>([]);
+//   const [filterVehicle, setFilterVehicle] = useState("");
+//   const [filterService, setFilterService] = useState("");
+//   const [filterMiles, setFilterMiles] = useState("");
+//   const [startDate, setStartDate] = useState("");
+//   const [endDate, setEndDate] = useState("");
+
+//   // Fetch records function
+//   const fetchRecords = async () => {
+//     if (!user) return;
+//     try {
+//       const recordsRef = collection(db, "Users", user.uid, "DataServices");
+//       const recordsSnapshot = await getDocs(recordsRef);
+//       const recordsList = recordsSnapshot.docs.map(
+//         (doc) => doc.data() as ServiceRecord
+//       );
+//       setRecords(recordsList);
+//     } catch (error) {
+//       console.error("Error fetching records:", error);
+//       GlobalToastError(error);
+//     }
+//   };
 
 //   const fetchVehicles = async () => {
 //     if (!user) return;
@@ -173,7 +220,22 @@
 //   useEffect(() => {
 //     fetchVehicles();
 //     fetchServices();
+//     fetchRecords();
 //   }, [user]);
+
+//   // Filter records based on search criteria
+//   const filteredRecords = records.filter((record) => {
+//     const matchesVehicle =
+//       !filterVehicle || record.vehicleDetails.vehicleNumber === filterVehicle;
+//     const matchesService = !filterService || record.serviceId === filterService;
+//     const matchesMiles = !filterMiles || record.miles >= Number(filterMiles);
+//     const matchesDateRange =
+//       !startDate ||
+//       !endDate ||
+//       (record.date >= startDate && record.date <= endDate);
+
+//     return matchesVehicle && matchesService && matchesMiles && matchesDateRange;
+//   });
 
 //   const selectedVehicleData = vehicles.find((v) => v.id === selectedVehicle);
 //   const selectedServiceData = services.find((s) => s.sId === selectedService);
@@ -184,20 +246,135 @@
 //     selectedVehicleData?.vehicleType === "Trailer" &&
 //     selectedServiceData?.vType === "Trailer";
 
+//   // Generate share text for WhatsApp
+//   const generateShareText = (record: ServiceRecord) => {
+//     return `Vehicle: ${record.vehicleDetails.vehicleNumber}
+// Type: ${record.vehicleDetails.vehicleType}
+// Company: ${record.vehicleDetails.companyName}
+// Engine: ${record.vehicleDetails.engineNumber}
+// Service: ${services.find((s) => s.sId === record.serviceId)?.sName}
+// ${record.date ? `Date: ${record.date}` : `Hours: ${record.hours}`}`;
+//   };
+
 //   return (
 //     <section className="p-4">
 //       <div className="flex justify-between items-center mb-6">
 //         <h1 className="text-2xl font-bold">Records</h1>
-//         <div className="flex gap-4">
-//           <button
-//             className="bg-[#F96176] text-white px-4 py-2 rounded-md"
-//             onClick={() => setShowAddRecords(true)}
-//           >
-//             Add Records
-//           </button>
+//         <button
+//           className="bg-[#F96176] text-white px-4 py-2 rounded-md"
+//           onClick={() => setShowAddRecords(true)}
+//         >
+//           Add Records
+//         </button>
+//       </div>
+
+//       {/* Search & Filter Section */}
+//       <div className="bg-white p-4 rounded-lg shadow mb-6 space-y-4">
+//         <h2 className="text-xl font-semibold">Search & Filter</h2>
+//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+//           <FormControl fullWidth>
+//             <InputLabel>Vehicle</InputLabel>
+//             <Select
+//               value={filterVehicle}
+//               label="Vehicle"
+//               onChange={(e) => setFilterVehicle(e.target.value)}
+//             >
+//               <MenuItem value="">All</MenuItem>
+//               {vehicles.map((vehicle) => (
+//                 <MenuItem key={vehicle.id} value={vehicle.vehicleNumber}>
+//                   {vehicle.vehicleNumber}
+//                 </MenuItem>
+//               ))}
+//             </Select>
+//           </FormControl>
+
+//           <FormControl fullWidth>
+//             <InputLabel>Service</InputLabel>
+//             <Select
+//               value={filterService}
+//               label="Service"
+//               onChange={(e) => setFilterService(e.target.value)}
+//             >
+//               <MenuItem value="">All</MenuItem>
+//               {services.map((service) => (
+//                 <MenuItem key={service.sId} value={service.sId}>
+//                   {service.sName}
+//                 </MenuItem>
+//               ))}
+//             </Select>
+//           </FormControl>
+
+//           <TextField
+//             fullWidth
+//             label="Minimum Miles"
+//             type="number"
+//             value={filterMiles}
+//             onChange={(e) => setFilterMiles(e.target.value)}
+//           />
+
+//           <div className="flex gap-2">
+//             <TextField
+//               type="date"
+//               label="Start Date"
+//               value={startDate}
+//               onChange={(e) => setStartDate(e.target.value)}
+//               InputLabelProps={{ shrink: true }}
+//             />
+//             <TextField
+//               type="date"
+//               label="End Date"
+//               value={endDate}
+//               onChange={(e) => setEndDate(e.target.value)}
+//               InputLabelProps={{ shrink: true }}
+//             />
+//           </div>
 //         </div>
 //       </div>
 
+//       {/* Records Table */}
+//       <TableContainer component={Paper}>
+//         <Table>
+//           <TableHead>
+//             <TableRow>
+//               <TableCell>Vehicle Number</TableCell>
+//               <TableCell>Type</TableCell>
+//               <TableCell>Company</TableCell>
+//               <TableCell>Engine</TableCell>
+//               <TableCell>Service</TableCell>
+//               <TableCell>Date/Hours</TableCell>
+//               <TableCell>Miles</TableCell>
+//               <TableCell>Share</TableCell>
+//             </TableRow>
+//           </TableHead>
+//           <TableBody>
+//             {filteredRecords.map((record, index) => (
+//               <TableRow key={index}>
+//                 <TableCell>{record.vehicleDetails.vehicleNumber}</TableCell>
+//                 <TableCell>{record.vehicleDetails.vehicleType}</TableCell>
+//                 <TableCell>{record.vehicleDetails.companyName}</TableCell>
+//                 <TableCell>{record.vehicleDetails.engineNumber}</TableCell>
+//                 <TableCell>
+//                   {services.find((s) => s.sId === record.serviceId)?.sName}
+//                 </TableCell>
+//                 <TableCell>
+//                   {record.date ? record.date : `${record.hours} hours`}
+//                 </TableCell>
+//                 <TableCell>{record.miles}</TableCell>
+//                 <TableCell>
+//                   <WhatsappShareButton
+//                     url="https://example.com"
+//                     title={generateShareText(record)}
+//                   >
+//                     <WhatsappIcon size={32} round />
+//                   </WhatsappShareButton>
+//                 </TableCell>
+//               </TableRow>
+//             ))}
+//           </TableBody>
+//         </Table>
+//       </TableContainer>
+
+//       {/* Add Records Form */}
 //       {showAddRecords && (
 //         <div className="space-y-4 bg-white p-6 rounded-lg shadow">
 //           <h2 className="text-xl font-semibold mb-4">Add Service Record</h2>
