@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import {
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 import {
   FormControl,
   InputLabel,
@@ -72,6 +80,11 @@ export default function RecordsPage() {
   const [packages, setPackages] = useState<string[]>([]);
   const [selectedVehicleData, setSelectedVehicleData] =
     useState<VehicleTypes | null>(null);
+
+  // Add Miles Form State
+  const [showAddMiles, setShowAddMiles] = useState(false);
+  const [todayMiles, setTodayMiles] = useState("");
+  const [selectedVehicleType, setSelectedVehicleType] = useState("");
 
   const fetchVehicles = async () => {
     if (!user) return;
@@ -210,6 +223,75 @@ export default function RecordsPage() {
     updateServiceDefaultValues();
   };
 
+  const handleAddMiles = async () => {
+    if (!selectedVehicle || !todayMiles || !user?.uid) {
+      toast.error("Please select a vehicle and enter miles/hours.");
+      return;
+    }
+
+    const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
+    if (!vehicleData) {
+      toast.error("Vehicle data not found.");
+      return;
+    }
+
+    try {
+      const vehicleRef = doc(
+        db,
+        "Users",
+        user.uid,
+        "Vehicles",
+        selectedVehicle
+      );
+      const vehicleDoc = await getDoc(vehicleRef);
+
+      if (!vehicleDoc.exists()) {
+        toast.error("Vehicle data not found.");
+        return;
+      }
+
+      const currentReadingField =
+        selectedVehicleType === "Truck" ? "currentMiles" : "hoursReading";
+      const currentReadingArrayField =
+        selectedVehicleType === "Truck"
+          ? "currentMilesArray"
+          : "hoursReadingArray";
+
+      const currentReading = parseInt(
+        vehicleDoc.data()[currentReadingField] || "0"
+      );
+      const enteredValue = parseInt(todayMiles);
+
+      if (enteredValue < currentReading) {
+        toast.error(
+          `${
+            selectedVehicleType === "Truck" ? "Miles" : "Hours"
+          } cannot be less than the current value.`
+        );
+        return;
+      }
+
+      await updateDoc(vehicleRef, {
+        [currentReadingField]: enteredValue,
+        [currentReadingArrayField]: arrayUnion({
+          [selectedVehicleType === "Truck" ? "miles" : "hours"]: enteredValue,
+          date: new Date().toISOString(),
+        }),
+      });
+
+      toast.success(
+        `${
+          selectedVehicleType === "Truck" ? "Miles" : "Hours"
+        } updated successfully!`
+      );
+      setTodayMiles("");
+      setShowAddMiles(false);
+    } catch (error) {
+      console.error("Error updating miles/hours:", error);
+      toast.error("Failed to save miles/hours.");
+    }
+  };
+
   const handleSaveRecords = async () => {
     try {
       if (!user || !selectedVehicle) {
@@ -308,6 +390,19 @@ export default function RecordsPage() {
     }
   };
 
+  const handleVehicleSelect = async (value: string) => {
+    setSelectedVehicle(value);
+    if (!user?.uid) return;
+    const vehicleDoc = await getDoc(
+      doc(db, "Users", user.uid, "Vehicles", value)
+    );
+    if (vehicleDoc.exists()) {
+      setSelectedVehicleType(vehicleDoc.data().vehicleType);
+    } else {
+      toast.error("Vehicle data not found.");
+    }
+  };
+
   const resetForm = () => {
     setSelectedVehicle("");
     setSelectedPackage("");
@@ -335,25 +430,98 @@ export default function RecordsPage() {
   }, [selectedVehicle, selectedServices]);
 
   return (
-    <div className="p-4">
+    <div className="flex items-center p-6 bg-gray-100  gap-8">
       <Button
         variant="contained"
         startIcon={<IoMdAdd />}
         onClick={() => setShowAddRecords(true)}
-        className="mb-4"
+        className="mb-6 bg-[#F96176] hover:bg-[#F96176] text-white transition duration-300"
       >
         Add Record
       </Button>
 
+      <Button
+        variant="contained"
+        onClick={() => setShowAddMiles(true)}
+        className="mb-6 bg-[#58BB87] hover:bg-[#58BB87] text-white transition duration-300"
+      >
+        Add Miles/Hours
+      </Button>
+
+      <Dialog
+        open={showAddMiles}
+        onClose={() => setShowAddMiles(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle className="bg-[#58BB87] text-white">
+          Add Miles/Hours
+        </DialogTitle>
+        <DialogContent>
+          <Card className="mt-4 shadow-lg rounded-lg">
+            <CardContent>
+              <FormControl fullWidth className="mb-4">
+                <InputLabel>Select Vehicle</InputLabel>
+                <Select
+                  value={selectedVehicle}
+                  onChange={(e) => handleVehicleSelect(e.target.value)}
+                  className="rounded-lg"
+                >
+                  {vehicles.map((vehicle) => (
+                    <MenuItem key={vehicle.id} value={vehicle.id}>
+                      {vehicle.vehicleNumber} ({vehicle.companyName})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {selectedVehicleType && (
+                <TextField
+                  fullWidth
+                  label={
+                    selectedVehicleType === "Truck"
+                      ? "Enter Miles"
+                      : "Enter Hours"
+                  }
+                  type="number"
+                  value={todayMiles}
+                  onChange={(e) => setTodayMiles(e.target.value)}
+                  className="mb-4 rounded-lg"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowAddMiles(false)}
+            className="text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddMiles}
+            variant="contained"
+            color="primary"
+            className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
+          >
+            Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Record Dialog */}
       <Dialog
         open={showAddRecords}
         onClose={() => setShowAddRecords(false)}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Add Service Record</DialogTitle>
+        <DialogTitle className="bg-[#F96176] text-white">
+          Add Service Record
+        </DialogTitle>
         <DialogContent>
-          <Card className="mt-4">
+          <Card className="mt-4 shadow-lg rounded-lg">
             <CardContent>
               <FormControl fullWidth className="mb-4">
                 <InputLabel>Select Vehicle</InputLabel>
@@ -366,9 +534,10 @@ export default function RecordsPage() {
                       vehicles.find((v) => v.id === value) || null;
                     setSelectedVehicleData(vehicleData);
                   }}
+                  className="rounded-lg"
                 >
                   {vehicles.map((vehicle) => (
-                    <MenuItem key={Math.random()} value={vehicle.id}>
+                    <MenuItem key={vehicle.id} value={vehicle.id}>
                       {vehicle.vehicleNumber} ({vehicle.companyName})
                     </MenuItem>
                   ))}
@@ -384,6 +553,7 @@ export default function RecordsPage() {
                       e.preventDefault();
                       handlePackageSelect(e.target.value);
                     }}
+                    className="rounded-lg"
                   >
                     {packages.map((pkg) => (
                       <MenuItem key={pkg} value={pkg}>
@@ -407,6 +577,7 @@ export default function RecordsPage() {
                       </InputAdornment>
                     ),
                   }}
+                  className="rounded-lg"
                 />
               </div>
 
@@ -422,7 +593,7 @@ export default function RecordsPage() {
                   )
                   .map((service) => (
                     <div key={service.sId} className="w-full">
-                      <Chip
+                      {/* <Chip
                         label={service.sName}
                         onClick={(e) => {
                           e.preventDefault();
@@ -441,8 +612,39 @@ export default function RecordsPage() {
                             ? "filled"
                             : "outlined"
                         }
-                        className="mb-2"
+                        className="mb-2 transition duration-300 hover:shadow-lg"
+                      /> */}
+
+                      <Chip
+                        label={service.sName}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleServiceSelect(service.sId);
+                          setExpandedService(
+                            expandedService === service.sId ? null : service.sId
+                          );
+                        }}
+                        sx={{
+                          backgroundColor: selectedServices.has(service.sId)
+                            ? "#F96176"
+                            : "default",
+                          color: selectedServices.has(service.sId)
+                            ? "white"
+                            : "inherit",
+                          "&:hover": {
+                            backgroundColor: selectedServices.has(service.sId)
+                              ? "#F96176"
+                              : "#FFCDD2", // Optional hover color
+                          },
+                        }}
+                        variant={
+                          selectedServices.has(service.sId)
+                            ? "filled"
+                            : "outlined"
+                        }
+                        className="mb-2 transition duration-300 hover:shadow-lg"
                       />
+
                       <Collapse
                         in={
                           expandedService === service.sId &&
@@ -458,7 +660,7 @@ export default function RecordsPage() {
                                   key={`${service.sId}-${name}-${idx}`}
                                   label={name}
                                   size="small"
-                                  className="m-1"
+                                  className="m-1 transition duration-300 hover:bg-gray-200"
                                 />
                               ))
                             )}
@@ -476,7 +678,7 @@ export default function RecordsPage() {
                   type="number"
                   value={miles}
                   onChange={(e) => setMiles(e.target.value)}
-                  className="mb-4"
+                  className="mb-4 rounded-lg"
                 />
               )}
 
@@ -488,7 +690,7 @@ export default function RecordsPage() {
                     type="number"
                     value={hours}
                     onChange={(e) => setHours(e.target.value)}
-                    className="mb-4"
+                    className="mb-4 rounded-lg"
                   />
                   <TextField
                     fullWidth
@@ -497,7 +699,7 @@ export default function RecordsPage() {
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     InputLabelProps={{ shrink: true }}
-                    className="mb-4"
+                    className="mb-4 rounded-lg"
                   />
                 </>
               )}
@@ -507,17 +709,15 @@ export default function RecordsPage() {
                 label="Workshop Name"
                 value={workshopName}
                 onChange={(e) => setWorkshopName(e.target.value)}
-                className="mb-4"
+                className="mb-4 rounded-lg"
               />
-
               <TextField
                 fullWidth
                 label="Invoice (Optional)"
                 value={invoice}
                 onChange={(e) => setInvoice(e.target.value)}
-                className="mb-4"
+                className="mb-4 rounded-lg"
               />
-
               <TextField
                 fullWidth
                 label="Description (Optional)"
@@ -525,16 +725,23 @@ export default function RecordsPage() {
                 rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                className="rounded-lg"
               />
             </CardContent>
           </Card>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowAddRecords(false)}>Cancel</Button>
+          <Button
+            onClick={() => setShowAddRecords(false)}
+            className="text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleSaveRecords}
             variant="contained"
             color="primary"
+            className="bg-[#F96176] hover:bg-[#F96176] transition duration-300"
           >
             Save Record
           </Button>
