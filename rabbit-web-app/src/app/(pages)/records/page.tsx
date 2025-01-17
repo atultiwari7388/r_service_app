@@ -387,7 +387,7 @@ export default function RecordsPage() {
                   >
                     {packages.map((pkg) => (
                       <MenuItem key={pkg} value={pkg}>
-                        {pkg}
+                        {pkg.toUpperCase()}
                       </MenuItem>
                     ))}
                   </Select>
