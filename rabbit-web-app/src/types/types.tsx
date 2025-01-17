@@ -67,6 +67,8 @@ export interface ServiceType {
 /** Vehicles */
 
 export interface VehicleTypes {
+  nextNotificationMiles: boolean;
+  currentMiles: string;
   id: string;
   companyName: string;
   createdAt: Timestamp;
