@@ -26,8 +26,8 @@ interface DValue {
 }
 
 interface Service {
-  sId: string;
-  sName: string;
+  serviceId: string;
+  serviceName: string;
   defaultNotificationValue: number;
   nextNotificationValue: number;
   subServices: { sName: string }[];
@@ -178,8 +178,8 @@ export default function AddVehiclePage() {
             foundMatch = true;
             const notificationValue = parseInt(defaultValue.value) * 1000;
             nextNotificationMiles.push({
-              sId: service.sId,
-              sName: service.sName,
+              serviceId: service.serviceId,
+              serviceName: service.serviceName,
               defaultNotificationValue: notificationValue,
               nextNotificationValue: currentMiles + notificationValue,
               subServices: subServices.map((s: { sName: string }) => ({
@@ -192,7 +192,9 @@ export default function AddVehiclePage() {
         }
 
         if (!foundMatch) {
-          console.log(`No brand match found for service: ${service.sName}`);
+          console.log(
+            `No brand match found for service: ${service.serviceName}`
+          );
         }
       }
     }
@@ -291,8 +293,8 @@ export default function AddVehiclePage() {
         services: nextNotificationMiles.map((service) => ({
           defaultNotificationValue: service.defaultNotificationValue,
           nextNotificationValue: service.nextNotificationValue,
-          sId: service.sId,
-          sName: service.sName,
+          serviceId: service.serviceId,
+          serviceName: service.serviceName,
           subServices: service.subServices,
           vType: service.vType,
           dValues: service.dValues,
