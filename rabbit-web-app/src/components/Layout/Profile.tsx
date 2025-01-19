@@ -2,7 +2,7 @@
 import { FaSignOutAlt } from "react-icons/fa";
 import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
-import { CiStar } from "react-icons/ci";
+import { CiDeliveryTruck, CiStar } from "react-icons/ci";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -35,6 +35,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       icon: <CgProfile className="mr-2" />,
       label: "My Profile",
       path: "/account/my-profile",
+    },
+    {
+      icon: <CiDeliveryTruck className="mr-2" />,
+      label: "My Vehicles",
+      path: "/account/my-vehicles",
     },
     {
       icon: <RiTeamLine className="mr-2" />,
