@@ -107,6 +107,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         widget.vehicleData['licensePlate'] ?? "Unknown License Plate";
     final services = widget.vehicleData['services'] ?? [];
     final currentMilesArray = widget.vehicleData['currentMilesArray'] ?? [];
+    final uploadedDocuments = widget.vehicleData['uploadedDocuments'] ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -131,13 +132,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         ],
       ),
       body: Container(
-        // decoration: BoxDecoration(
-        //   gradient: LinearGradient(
-        //     begin: Alignment.topCenter,
-        //     end: Alignment.bottomCenter,
-        //     colors: [kPrimary.withOpacity(0.1), Colors.white],
-        //   ),
-        // ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
@@ -249,6 +243,52 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+
+                // Uploaded Documents
+// Uploaded Documents
+                _buildSection(
+                  title: 'Uploaded Documents',
+                  content: uploadedDocuments.isNotEmpty
+                      ? uploadedDocuments.map<Widget>((doc) {
+                          return Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (doc['imageUrl'] != null)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Image.network(
+                                        doc['imageUrl'],
+                                        height: 150,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    doc['text'] ?? 'No description provided',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList() // Convert Iterable to List
+                      : [
+                          const Text(
+                            'No documents uploaded yet.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                ),
+
+                const SizedBox(height: 20),
                 ElevatedButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.add_photo_alternate,
@@ -307,30 +347,66 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   );
                 }).toList(),
                 const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 40, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+
+                uploadedFiles.isEmpty
+                    ? SizedBox()
+                    : Center(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: _uploadToFirestore,
+                          child: const Text(
+                            'Update',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ),
-                    ),
-                    onPressed: _uploadToFirestore,
-                    child: const Text(
-                      'Update',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 20),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSection({required String title, required List<Widget> content}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: kPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...content,
+        ],
       ),
     );
   }
@@ -420,7 +496,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   color: isEven ? Colors.grey[100] : Colors.white,
                 ),
                 children: [
-                  _buildTableCell(index.toString()),
+                  _buildTableCell(index.toString()), // Serial Number
                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
                   _buildTableCell(
                       service['defaultNotificationValue'].toString()),
@@ -443,6 +519,86 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       ),
     );
   }
+
+  // Widget _buildServicesTable(BuildContext context, List services) {
+  //   final filteredServices = services
+  //       .where((service) => service['defaultNotificationValue'] != 0)
+  //       .toList();
+
+  //   if (filteredServices.isEmpty) {
+  //     return Center(
+  //       child: Column(
+  //         children: [
+  //           Icon(Icons.no_sim, size: 48, color: Colors.grey[400]),
+  //           const SizedBox(height: 10),
+  //           Text(
+  //             'No services available.',
+  //             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
+
+  //   return Container(
+  //     decoration: BoxDecoration(
+  //       borderRadius: BorderRadius.circular(10),
+  //       border: Border.all(color: Colors.grey.shade300),
+  //     ),
+  //     child: ClipRRect(
+  //       borderRadius: BorderRadius.circular(10),
+  //       child: Table(
+  //         columnWidths: const {
+  //           0: FixedColumnWidth(40),
+  //           1: FlexColumnWidth(),
+  //           2: FixedColumnWidth(100),
+  //           3: FixedColumnWidth(60),
+  //         },
+  //         children: [
+  //           TableRow(
+  //             decoration: const BoxDecoration(
+  //               color: kPrimary,
+  //             ),
+  //             children: [
+  //               _buildTableHeader('Sr. No.'),
+  //               _buildTableHeader('Service Name'),
+  //               _buildTableHeader("D'Value"),
+  //               _buildTableHeader('Action'),
+  //             ],
+  //           ),
+  //           ...filteredServices.asMap().entries.map((entry) {
+  //             final index = entry.key + 1;
+  //             final service = entry.value;
+  //             final bool isEven = index.isEven;
+
+  //             return TableRow(
+  //               decoration: BoxDecoration(
+  //                 color: isEven ? Colors.grey[100] : Colors.white,
+  //               ),
+  //               children: [
+  //                 _buildTableCell(index.toString()),
+  //                 _buildTableCell(service['serviceName'] ?? 'Unknown'),
+  //                 _buildTableCell(
+  //                     service['defaultNotificationValue'].toString()),
+  //                 TableCell(
+  //                   child: Container(
+  //                     padding: const EdgeInsets.all(8.0),
+  //                     child: IconButton(
+  //                       icon: const Icon(Icons.edit, color: kPrimary, size: 20),
+  //                       onPressed: () {
+  //                         _showEditDialog(context, service);
+  //                       },
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ],
+  //             );
+  //           }).toList(),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildTableHeader(String text) {
     return Container(

@@ -314,6 +314,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             ? DateFormat('yyyy-MM-dd').format(_selectedYear!)
             : null,
         'isSet': true,
+        "uploadedDocuments": [],
         'createdAt': FieldValue.serverTimestamp(),
         'currentMilesArray': [
           {
