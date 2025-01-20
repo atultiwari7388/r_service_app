@@ -1,5 +1,4 @@
 // import 'dart:io';
-
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:flutter/material.dart';
 // import 'package:image_picker/image_picker.dart';
@@ -11,6 +10,7 @@
 // import 'package:regal_service_d_app/utils/constants.dart';
 // import 'package:share_plus/share_plus.dart';
 // import 'package:intl/intl.dart';
+// import 'package:firebase_storage/firebase_storage.dart';
 
 // class MyVehiclesDetailsScreen extends StatefulWidget {
 //   const MyVehiclesDetailsScreen({super.key, required this.vehicleData});
@@ -24,6 +24,7 @@
 // class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 //   final List<Map<String, dynamic>> uploadedFiles = [];
 //   final ImagePicker _imagePicker = ImagePicker();
+//   bool isLoading = false;
 
 //   Future<void> _pickImage() async {
 //     final pickedFile =
@@ -38,10 +39,12 @@
 //     }
 //   }
 
-//   Future<void> _uploadToFirestore() async {
-//     final String vehicleId = widget.vehicleData['vehicleId'];
+//   Future<void> _uploadToFirestore(String vehicleId) async {
 //     if (uploadedFiles.isEmpty || vehicleId == null) return;
 
+//     setState(() {
+//       isLoading = true;
+//     });
 //     try {
 //       final List<Map<String, dynamic>> uploads = [];
 //       for (var file in uploadedFiles) {
@@ -64,40 +67,55 @@
 //       });
 
 //       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(content: Text('Documents uploaded successfully!')),
+//         const SnackBar(
+//           content: Text('Documents uploaded successfully!'),
+//           backgroundColor: Colors.green,
+//         ),
 //       );
 
 //       setState(() {
 //         uploadedFiles.clear();
 //       });
 //     } catch (e) {
+//       setState(() {
+//         isLoading = false;
+//       });
 //       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(content: Text('Error uploading documents: $e')),
+//         SnackBar(
+//           content: Text('Error uploading documents: $e'),
+//           backgroundColor: Colors.red,
+//         ),
 //       );
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
 //     }
 //   }
 
 //   Future<String> _uploadImageToStorage(File image) async {
-//     // Implement image upload to Firebase Storage here
-//     // and return the download URL
-//     return "";
+//     try {
+//       final storageRef = FirebaseStorage.instance.ref();
+//       final imageRef = storageRef
+//           .child('vehicle_images/${DateTime.now().millisecondsSinceEpoch}.png');
+//       await imageRef.putFile(image);
+//       return await imageRef.getDownloadURL();
+//     } catch (e) {
+//       throw Exception('Failed to upload image: $e');
+//     }
 //   }
 
 //   @override
 //   Widget build(BuildContext context) {
-//     final vehicleName = widget.vehicleData['companyName'] ?? "Unknown Company";
-//     final vehicleNumber =
-//         widget.vehicleData['vehicleNumber'] ?? "Unknown Number";
-//     final year = widget.vehicleData['year'] ?? "Unknown Year";
-//     final currentMiles = widget.vehicleData['currentMiles'] ?? "Unknown Miles";
-//     final licensePlate =
-//         widget.vehicleData['licensePlate'] ?? "Unknown License Plate";
-//     final services = widget.vehicleData['services'] ?? [];
-//     final currentMilesArray = widget.vehicleData['currentMilesArray'] ?? [];
+//     final String vehicleId = widget.vehicleData['vehicleId'];
 
 //     return Scaffold(
 //       appBar: AppBar(
-//         title: Text("$vehicleName Vehicle Details"),
+//         title: Text("Vehicle Details",
+//             style: appStyle(20, kWhite, FontWeight.normal)),
+//         elevation: 0,
+//         iconTheme: IconThemeData(color: kWhite),
+//         backgroundColor: kPrimary,
 //         actions: [
 //           IconButton(
 //             icon: const Icon(Icons.share),
@@ -113,94 +131,279 @@
 //           ),
 //         ],
 //       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: SingleChildScrollView(
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               _buildInfoRow('Vehicle Number:', vehicleNumber),
-//               _buildInfoRow('Year:', year),
-//               _buildInfoRow('Current Miles:', currentMiles),
-//               _buildInfoRow('License Plate:', licensePlate),
-//               const SizedBox(height: 20),
-//               const Text(
-//                 'Services:',
-//                 style: TextStyle(
-//                   fontSize: 22,
-//                   fontWeight: FontWeight.bold,
-//                   color: Colors.blue,
-//                 ),
-//               ),
-//               const SizedBox(height: 20),
-//               _buildServicesTable(context, services),
-//               const SizedBox(height: 20),
-//               const Text(
-//                 'Current Miles History:',
-//                 style: TextStyle(
-//                   fontSize: 22,
-//                   fontWeight: FontWeight.bold,
-//                   color: kPrimary,
-//                 ),
-//               ),
-//               const SizedBox(height: 10),
-//               ...currentMilesArray.map((milesEntry) {
-//                 final rawDate = milesEntry['date'] ?? '';
-//                 final formattedDate =
-//                     DateFormat('yyyy-MM-dd').format(DateTime.parse(rawDate));
-//                 return Padding(
-//                   padding: const EdgeInsets.symmetric(vertical: 4.0),
-//                   child: Text(
-//                     'Date: $formattedDate, Miles: ${milesEntry['miles']}',
-//                     style: const TextStyle(fontSize: 16),
-//                   ),
-//                 );
-//               }).toList(),
-//               const SizedBox(height: 20),
-//               ElevatedButton.icon(
-//                 onPressed: _pickImage,
-//                 icon: const Icon(Icons.add, color: kWhite),
-//                 label: const Text('Upload Document'),
-//                 style: ElevatedButton.styleFrom(
-//                   backgroundColor: kPrimary,
-//                   foregroundColor: kWhite,
-//                 ),
-//               ),
-//               const SizedBox(height: 20),
-//               // Display Uploaded Images and Text Fields
-//               ...uploadedFiles.map((file) {
-//                 return Column(
-//                   children: [
-//                     if (file['image'] != null)
-//                       Image.file(file['image'], height: 150, width: 150),
-//                     const SizedBox(height: 10),
-//                     TextField(
-//                       controller: file['textController'],
-//                       decoration: const InputDecoration(
-//                         labelText: 'Enter Description',
-//                         border: OutlineInputBorder(),
-//                       ),
-//                     ),
-//                     const SizedBox(height: 20),
-//                   ],
-//                 );
-//               }).toList(),
+//       body: isLoading
+//           ? Center(child: CircularProgressIndicator())
+//           : StreamBuilder<DocumentSnapshot>(
+//               stream: FirebaseFirestore.instance
+//                   .collection('Users')
+//                   .doc(currentUId)
+//                   .collection("Vehicles")
+//                   .doc(vehicleId)
+//                   .snapshots(),
+//               builder: (context, snapshot) {
+//                 if (snapshot.connectionState == ConnectionState.waiting) {
+//                   return const Center(child: CircularProgressIndicator());
+//                 }
 
-//               const SizedBox(height: 20),
-//               // Final Update Button
-//               Center(
-//                 child: ElevatedButton(
-//                   style: ElevatedButton.styleFrom(
-//                     backgroundColor: kPrimary,
-//                     foregroundColor: kWhite,
+//                 if (!snapshot.hasData || snapshot.data == null) {
+//                   return const Center(child: Text("No data found."));
+//                 }
+
+//                 final vehicleData =
+//                     snapshot.data!.data() as Map<String, dynamic>;
+//                 final uploadedDocuments =
+//                     vehicleData['uploadedDocuments'] ?? [];
+//                 final services = vehicleData['services'] ?? [];
+//                 final currentMilesArray =
+//                     vehicleData['currentMilesArray'] ?? [];
+
+//                 return SingleChildScrollView(
+//                   child: Padding(
+//                     padding: const EdgeInsets.all(16.0),
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         // Display vehicle details
+//                         Card(
+//                           elevation: 1,
+//                           shape: RoundedRectangleBorder(
+//                             borderRadius: BorderRadius.circular(15),
+//                           ),
+//                           child: Padding(
+//                             padding: const EdgeInsets.all(16.0),
+//                             child: Column(
+//                               children: [
+//                                 _buildInfoRow('Vehicle Number:',
+//                                     vehicleData['vehicleNumber']),
+//                                 _buildInfoRow('Year:', vehicleData['year']),
+//                                 _buildInfoRow('Current Miles:',
+//                                     vehicleData['currentMiles']),
+//                                 _buildInfoRow('License Plate:',
+//                                     vehicleData['licensePlate']),
+//                               ],
+//                             ),
+//                           ),
+//                         ),
+//                         const SizedBox(height: 20),
+
+//                         // Services
+//                         Container(
+//                           padding: const EdgeInsets.all(16),
+//                           decoration: BoxDecoration(
+//                             color: Colors.white,
+//                             borderRadius: BorderRadius.circular(15),
+//                             boxShadow: [
+//                               BoxShadow(
+//                                 color: Colors.grey.withOpacity(0.2),
+//                                 spreadRadius: 2,
+//                                 blurRadius: 5,
+//                                 offset: const Offset(0, 3),
+//                               ),
+//                             ],
+//                           ),
+//                           child: Column(
+//                             crossAxisAlignment: CrossAxisAlignment.start,
+//                             children: [
+//                               const Text(
+//                                 'Services',
+//                                 style: TextStyle(
+//                                   fontSize: 24,
+//                                   fontWeight: FontWeight.bold,
+//                                   color: kPrimary,
+//                                 ),
+//                               ),
+//                               const SizedBox(height: 20),
+//                               _buildServicesTable(context, services),
+//                             ],
+//                           ),
+//                         ),
+//                         const SizedBox(height: 20),
+
+//                         // Current Miles History
+//                         _buildSection(
+//                           title: 'Current Miles History',
+//                           content: currentMilesArray.map<Widget>((milesEntry) {
+//                             final rawDate = milesEntry['date'] ?? '';
+//                             final formattedDate = DateFormat('yyyy-MM-dd')
+//                                 .format(DateTime.parse(rawDate));
+//                             return ListTile(
+//                               leading:
+//                                   const Icon(Icons.timeline, color: kPrimary),
+//                               title: Text('Date: $formattedDate'),
+//                               trailing: Text('Miles: ${milesEntry['miles']}'),
+//                             );
+//                           }).toList(),
+//                         ),
+
+//                         const SizedBox(height: 20),
+
+//                         // Uploaded Documents
+//                         _buildSection(
+//                           title: 'Uploaded Documents',
+//                           content: uploadedDocuments.isNotEmpty
+//                               ? uploadedDocuments.map<Widget>((doc) {
+//                                   return Card(
+//                                     elevation: 2,
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(10),
+//                                     ),
+//                                     child: Padding(
+//                                       padding: const EdgeInsets.all(16.0),
+//                                       child: Column(
+//                                         crossAxisAlignment:
+//                                             CrossAxisAlignment.start,
+//                                         children: [
+//                                           if (doc['imageUrl'] != null)
+//                                             ClipRRect(
+//                                               borderRadius:
+//                                                   BorderRadius.circular(10),
+//                                               child: Image.network(
+//                                                 doc['imageUrl'],
+//                                                 height: 150,
+//                                                 width: double.infinity,
+//                                                 fit: BoxFit.cover,
+//                                               ),
+//                                             ),
+//                                           const SizedBox(height: 10),
+//                                           Text(
+//                                             doc['text'] ??
+//                                                 'No description provided',
+//                                           ),
+//                                         ],
+//                                       ),
+//                                     ),
+//                                   );
+//                                 }).toList()
+//                               : [
+//                                   const Text(
+//                                     'No documents uploaded yet.',
+//                                     style: TextStyle(color: Colors.grey),
+//                                   ),
+//                                 ],
+//                         ),
+
+//                         const SizedBox(height: 20),
+//                         ElevatedButton.icon(
+//                           onPressed: _pickImage,
+//                           icon: const Icon(Icons.add_photo_alternate,
+//                               color: Colors.white),
+//                           label: const Text(
+//                             'Upload Document',
+//                             style: TextStyle(
+//                                 fontSize: 16, fontWeight: FontWeight.bold),
+//                           ),
+//                           style: ElevatedButton.styleFrom(
+//                             backgroundColor: kPrimary,
+//                             foregroundColor: Colors.white,
+//                             padding: const EdgeInsets.symmetric(
+//                                 horizontal: 20, vertical: 12),
+//                             shape: RoundedRectangleBorder(
+//                               borderRadius: BorderRadius.circular(10),
+//                             ),
+//                           ),
+//                         ),
+//                         const SizedBox(height: 20),
+//                         ...uploadedFiles.map((file) {
+//                           return Card(
+//                             margin: const EdgeInsets.only(bottom: 16),
+//                             shape: RoundedRectangleBorder(
+//                               borderRadius: BorderRadius.circular(15),
+//                             ),
+//                             elevation: 4,
+//                             child: Padding(
+//                               padding: const EdgeInsets.all(12),
+//                               child: Column(
+//                                 children: [
+//                                   if (file['image'] != null)
+//                                     ClipRRect(
+//                                       borderRadius: BorderRadius.circular(10),
+//                                       child: Image.file(
+//                                         file['image'],
+//                                         height: 200,
+//                                         width: double.infinity,
+//                                         fit: BoxFit.cover,
+//                                       ),
+//                                     ),
+//                                   const SizedBox(height: 12),
+//                                   TextField(
+//                                     controller: file['textController'],
+//                                     decoration: InputDecoration(
+//                                       labelText: 'Enter Description',
+//                                       border: OutlineInputBorder(
+//                                         borderRadius: BorderRadius.circular(10),
+//                                       ),
+//                                       filled: true,
+//                                       fillColor: Colors.grey[100],
+//                                     ),
+//                                   ),
+//                                 ],
+//                               ),
+//                             ),
+//                           );
+//                         }).toList(),
+//                         const SizedBox(height: 20),
+//                         uploadedFiles.isEmpty
+//                             ? const SizedBox()
+//                             : Center(
+//                                 child: ElevatedButton(
+//                                   style: ElevatedButton.styleFrom(
+//                                     backgroundColor: kPrimary,
+//                                     foregroundColor: Colors.white,
+//                                     padding: const EdgeInsets.symmetric(
+//                                         horizontal: 40, vertical: 15),
+//                                     shape: RoundedRectangleBorder(
+//                                       borderRadius: BorderRadius.circular(10),
+//                                     ),
+//                                   ),
+//                                   onPressed: () =>
+//                                       _uploadToFirestore(vehicleId),
+//                                   child: const Text(
+//                                     'Update',
+//                                     style: TextStyle(
+//                                         fontSize: 18,
+//                                         fontWeight: FontWeight.bold),
+//                                   ),
+//                                 ),
+//                               ),
+//                         const SizedBox(height: 20),
+//                       ],
+//                     ),
 //                   ),
-//                   onPressed: _uploadToFirestore,
-//                   child: const Text('Update'),
-//                 ),
-//               ),
-//             ],
+//                 );
+//               },
+//             ),
+//     );
+//   }
+
+//   Widget _buildSection({required String title, required List<Widget> content}) {
+//     return Container(
+//       padding: const EdgeInsets.all(16),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(15),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.grey.withOpacity(0.2),
+//             spreadRadius: 2,
+//             blurRadius: 5,
+//             offset: const Offset(0, 3),
 //           ),
-//         ),
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             title,
+//             style: const TextStyle(
+//               fontSize: 24,
+//               fontWeight: FontWeight.bold,
+//               color: kPrimary,
+//             ),
+//           ),
+//           const SizedBox(height: 10),
+//           ...content,
+//         ],
 //       ),
 //     );
 //   }
@@ -212,13 +415,20 @@
 //         children: [
 //           Text(
 //             label,
-//             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+//             style: const TextStyle(
+//               fontSize: 18,
+//               fontWeight: FontWeight.w600,
+//               color: kPrimary,
+//             ),
 //           ),
 //           const SizedBox(width: 8),
 //           Expanded(
 //             child: Text(
 //               value,
-//               style: const TextStyle(fontSize: 18),
+//               style: const TextStyle(
+//                 fontSize: 18,
+//                 color: Colors.black87,
+//               ),
 //               overflow: TextOverflow.ellipsis,
 //             ),
 //           ),
@@ -233,82 +443,101 @@
 //         .toList();
 
 //     if (filteredServices.isEmpty) {
-//       return const Center(
-//         child: Text(
-//           'No services available.',
-//           style: TextStyle(fontSize: 16, color: Colors.grey),
+//       return Center(
+//         child: Column(
+//           children: [
+//             Icon(Icons.no_sim, size: 48, color: Colors.grey[400]),
+//             const SizedBox(height: 10),
+//             Text(
+//               'No services available.',
+//               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+//             ),
+//           ],
 //         ),
 //       );
 //     }
 
-//     return Table(
-//       columnWidths: const {
-//         0: FixedColumnWidth(40),
-//         1: FlexColumnWidth(),
-//         2: FixedColumnWidth(100),
-//         3: FixedColumnWidth(60),
-//       },
-//       border: TableBorder.all(color: Colors.grey),
-//       children: [
-//         const TableRow(
-//           decoration: BoxDecoration(color: kPrimary),
+//     return Container(
+//       decoration: BoxDecoration(
+//         borderRadius: BorderRadius.circular(10),
+//         border: Border.all(color: Colors.grey.shade300),
+//       ),
+//       child: ClipRRect(
+//         borderRadius: BorderRadius.circular(10),
+//         child: Table(
+//           columnWidths: const {
+//             0: FixedColumnWidth(40),
+//             1: FlexColumnWidth(),
+//             2: FixedColumnWidth(100),
+//             3: FixedColumnWidth(60),
+//           },
 //           children: [
-//             Padding(
-//               padding: EdgeInsets.all(8.0),
-//               child: Text('Sr. No.',
-//                   style: TextStyle(
-//                       color: Colors.white, fontWeight: FontWeight.bold)),
+//             TableRow(
+//               decoration: const BoxDecoration(
+//                 color: kPrimary,
+//               ),
+//               children: [
+//                 _buildTableHeader('Sr. No.'),
+//                 _buildTableHeader('Service Name'),
+//                 _buildTableHeader("D'Value"),
+//                 _buildTableHeader('Action'),
+//               ],
 //             ),
-//             Padding(
-//               padding: EdgeInsets.all(8.0),
-//               child: Text('Service Name',
-//                   style: TextStyle(
-//                       color: Colors.white, fontWeight: FontWeight.bold)),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(8.0),
-//               child: Text("D'Value",
-//                   style: TextStyle(
-//                       color: Colors.white, fontWeight: FontWeight.bold)),
-//             ),
-//             Padding(
-//               padding: EdgeInsets.all(8.0),
-//               child: Text('Action',
-//                   style: TextStyle(
-//                       color: Colors.white, fontWeight: FontWeight.bold)),
-//             ),
+//             ...filteredServices.asMap().entries.map((entry) {
+//               final index = entry.key + 1;
+//               final service = entry.value;
+//               final bool isEven = index.isEven;
+
+//               return TableRow(
+//                 decoration: BoxDecoration(
+//                   color: isEven ? Colors.grey[100] : Colors.white,
+//                 ),
+//                 children: [
+//                   _buildTableCell(index.toString()), // Serial Number
+//                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
+//                   _buildTableCell(
+//                       service['defaultNotificationValue'].toString()),
+//                   TableCell(
+//                     child: Container(
+//                       padding: const EdgeInsets.all(8.0),
+//                       child: IconButton(
+//                         icon: const Icon(Icons.edit, color: kPrimary, size: 20),
+//                         onPressed: () {
+//                           _showEditDialog(context, service);
+//                         },
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               );
+//             }).toList(),
 //           ],
 //         ),
-//         ...filteredServices.asMap().entries.map((entry) {
-//           final index = entry.key + 1;
-//           final service = entry.value;
-//           return TableRow(
-//             children: [
-//               Padding(
-//                 padding: const EdgeInsets.all(8.0),
-//                 child: Text(index.toString()),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(8.0),
-//                 child: Text(service['serviceName'] ?? 'Unknown'),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(8.0),
-//                 child: Text(service['defaultNotificationValue'].toString()),
-//               ),
-//               Padding(
-//                 padding: const EdgeInsets.all(8.0),
-//                 child: IconButton(
-//                   icon: const Icon(Icons.edit, color: kPrimary),
-//                   onPressed: () {
-//                     _showEditDialog(context, service);
-//                   },
-//                 ),
-//               ),
-//             ],
-//           );
-//         }).toList(),
-//       ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildTableHeader(String text) {
+//     return Container(
+//       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+//       child: Text(
+//         text,
+//         style: const TextStyle(
+//           color: Colors.white,
+//           fontWeight: FontWeight.bold,
+//           fontSize: 15,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildTableCell(String text) {
+//     return Container(
+//       padding: const EdgeInsets.all(12),
+//       child: Text(
+//         text,
+//         style: const TextStyle(fontSize: 14),
+//       ),
 //     );
 //   }
 
@@ -321,13 +550,25 @@
 //       context: context,
 //       builder: (context) {
 //         return AlertDialog(
-//           title: const Text('Edit Default Notification Value'),
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(15),
+//           ),
+//           title: const Text(
+//             'Edit Default Notification Value',
+//             style: TextStyle(color: kPrimary),
+//           ),
 //           content: TextField(
 //             controller: controller,
 //             keyboardType: TextInputType.number,
-//             decoration: const InputDecoration(
+//             decoration: InputDecoration(
 //               labelText: 'Enter New Value',
-//               border: OutlineInputBorder(),
+//               border: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(10),
+//               ),
+//               focusedBorder: OutlineInputBorder(
+//                 borderRadius: BorderRadius.circular(10),
+//                 borderSide: const BorderSide(color: kPrimary, width: 2),
+//               ),
 //             ),
 //           ),
 //           actions: [
@@ -340,7 +581,12 @@
 //             ),
 //             ElevatedButton(
 //               style: ElevatedButton.styleFrom(
-//                   backgroundColor: kSecondary, foregroundColor: kWhite),
+//                 backgroundColor: kSecondary,
+//                 foregroundColor: kWhite,
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(8),
+//                 ),
+//               ),
 //               onPressed: () {
 //                 final newValue = int.tryParse(controller.text);
 //                 if (newValue != null) {

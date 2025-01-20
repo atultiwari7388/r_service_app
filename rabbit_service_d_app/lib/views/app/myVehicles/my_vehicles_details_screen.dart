@@ -116,6 +116,20 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: kWhite),
         backgroundColor: kPrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              _shareVehicleDetails(widget.vehicleData);
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: () {
+              _generatePdf(widget.vehicleData);
+            },
+          ),
+        ],
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
