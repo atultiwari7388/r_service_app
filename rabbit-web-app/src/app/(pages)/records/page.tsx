@@ -10,6 +10,8 @@ import {
   setDoc,
   getDocs,
   updateDoc,
+  onSnapshot,
+  query,
 } from "firebase/firestore";
 import {
   FormControl,
@@ -28,12 +30,22 @@ import {
   InputAdornment,
   Collapse,
 } from "@mui/material";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from "@mui/material";
 import toast from "react-hot-toast";
 import { VehicleTypes } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContexts";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 import { CiSearch } from "react-icons/ci";
 import { IoMdAdd } from "react-icons/io";
+import Link from "next/link";
 
 interface Vehicle {
   brand: string;
@@ -50,10 +62,46 @@ interface ServiceData {
   pName?: string[];
 }
 
+interface ServiceRecord {
+  id: string;
+  vehicleDetails: {
+    vehicleNumber: string;
+    vehicleType: string;
+    companyName: string;
+    engineNumber: string;
+    currentMiles?: string;
+    nextNotificationMiles?: Array<{
+      serviceName: string;
+      nextNotificationValue: number;
+      subServices: string[];
+    }>;
+  };
+  services: Array<{
+    serviceId: string;
+    serviceName: string;
+    defaultNotificationValue: number;
+    nextNotificationValue: number;
+    subServices: Array<{ name: string; id: string }>;
+  }>;
+  date: string;
+  hours: number;
+  miles: number;
+  totalMiles: number;
+  createdAt: string;
+  workshopName: string;
+  invoice?: string;
+  description?: string;
+}
+
+interface RecordData extends ServiceRecord {
+  id: string;
+  vehicle: string;
+}
+
 export default function RecordsPage() {
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
-  // const [records, setRecords] = useState<ServiceRecord[]>([]);
+  const [records, setRecords] = useState<ServiceRecord[]>([]);
   const { user } = useAuth() || { user: null };
 
   // Add Records Form State
@@ -421,6 +469,27 @@ export default function RecordsPage() {
   useEffect(() => {
     fetchVehicles();
     fetchServices();
+    if (!user?.uid) return;
+
+    const recordsQuery = query(
+      collection(db, "Users", user.uid, "DataServices")
+    );
+
+    const unsubscribe = onSnapshot(recordsQuery, (snapshot) => {
+      const recordsData: RecordData[] = snapshot.docs.map((doc) => {
+        const data = doc.data() as ServiceRecord;
+        return {
+          ...data,
+          id: doc.id,
+          vehicle: data.vehicleDetails.companyName,
+        };
+      });
+
+      setRecords(recordsData);
+      console.log(`Fetched ${recordsData.length} records`);
+    });
+
+    return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -430,24 +499,28 @@ export default function RecordsPage() {
   }, [selectedVehicle, selectedServices]);
 
   return (
-    <div className="flex items-center p-6 bg-gray-100  gap-8">
-      <Button
-        variant="contained"
-        startIcon={<IoMdAdd />}
-        onClick={() => setShowAddRecords(true)}
-        className="mb-6 bg-[#F96176] hover:bg-[#F96176] text-white transition duration-300"
-      >
-        Add Record
-      </Button>
+    <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
+      {/* Button Container */}
+      <div className="flex justify-center gap-4 mb-6">
+        <Button
+          variant="contained"
+          startIcon={<IoMdAdd />}
+          onClick={() => setShowAddRecords(true)}
+          className="bg-[#F96176] hover:bg-[#F96176] text-white transition duration-300"
+        >
+          Add Record
+        </Button>
 
-      <Button
-        variant="contained"
-        onClick={() => setShowAddMiles(true)}
-        className="mb-6 bg-[#58BB87] hover:bg-[#58BB87] text-white transition duration-300"
-      >
-        Add Miles/Hours
-      </Button>
+        <Button
+          variant="contained"
+          onClick={() => setShowAddMiles(true)}
+          className="bg-[#58BB87] hover:bg-[#58BB87] text-white transition duration-300"
+        >
+          Add Miles/Hours
+        </Button>
+      </div>
 
+      {/* Add Miles Dialog Box */}
       <Dialog
         open={showAddMiles}
         onClose={() => setShowAddMiles(false)}
@@ -593,28 +666,6 @@ export default function RecordsPage() {
                   )
                   .map((service) => (
                     <div key={service.sId} className="w-full">
-                      {/* <Chip
-                        label={service.sName}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleServiceSelect(service.sId);
-                          setExpandedService(
-                            expandedService === service.sId ? null : service.sId
-                          );
-                        }}
-                        color={
-                          selectedServices.has(service.sId)
-                            ? "primary"
-                            : "default"
-                        }
-                        variant={
-                          selectedServices.has(service.sId)
-                            ? "filled"
-                            : "outlined"
-                        }
-                        className="mb-2 transition duration-300 hover:shadow-lg"
-                      /> */}
-
                       <Chip
                         label={service.sName}
                         onClick={(e) => {
@@ -747,6 +798,57 @@ export default function RecordsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Records Table */}
+
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Date</TableCell>
+              <TableCell>Vehicle</TableCell>
+              <TableCell>Workshop Name</TableCell>
+              {records.some((record) => record.miles > 0) && (
+                <TableCell>Miles</TableCell>
+              )}
+              {records.some((record) => record.hours > 0) && (
+                <TableCell>Hours</TableCell>
+              )}
+              {records.some((record) => record.description) && (
+                <TableCell>Description</TableCell>
+              )}
+              <TableCell>Services</TableCell>
+              <TableCell>Invoice</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {records.map((record) => (
+              <TableRow
+                key={record.id}
+                component={Link}
+                href={`/records/${record.id}`}
+              >
+                <TableCell>
+                  {new Date(record.date).toLocaleDateString()}
+                </TableCell>
+                <TableCell>{record.vehicleDetails.companyName}</TableCell>
+                <TableCell>{record.workshopName}</TableCell>
+                {record.miles > 0 && <TableCell>{record.miles}</TableCell>}
+                {record.hours > 0 && <TableCell>{record.hours}</TableCell>}
+                {record.description && (
+                  <TableCell>{record.description}</TableCell>
+                )}
+                <TableCell>
+                  {record.services
+                    .map((service) => service.serviceName)
+                    .join(", ")}{" "}
+                </TableCell>
+                <TableCell>{record.invoice}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </div>
   );
 }

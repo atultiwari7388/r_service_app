@@ -99,8 +99,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                                 fontSize: 18, fontWeight: FontWeight.bold)),
                         subtitle: Text(vehicleNumber,
                             style: TextStyle(color: Colors.grey[600])),
-                        trailing: Icon(Icons.arrow_forward_ios,
-                            color: Colors.blueAccent),
+                        trailing:
+                            Icon(Icons.arrow_forward_ios, color: kPrimary),
                         onTap: () {
                           Get.to(() =>
                               MyVehiclesDetailsScreen(vehicleData: vehicle));

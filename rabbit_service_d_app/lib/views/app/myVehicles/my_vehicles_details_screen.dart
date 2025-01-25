@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
@@ -180,6 +182,30 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     vehicleData['currentMiles']),
                                 _buildInfoRow('License Plate:',
                                     vehicleData['licensePlate']),
+                                _buildInfoRow('Company Name:',
+                                    vehicleData['companyName']),
+                                vehicleData['dot'].isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow('DOT:', vehicleData['dot']),
+                                vehicleData['iccms'].isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow(
+                                        'ICCMS:', vehicleData['iccms']),
+                                vehicleData['vin'].isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow('VIN:', vehicleData['vin']),
+                                vehicleData['oilChangeDate'].isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow('Oil Change Date:',
+                                        vehicleData['oilChangeDate']),
+                                vehicleData['hoursReading'].isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow('Hours Reading:',
+                                        vehicleData['hoursReading']),
+                                _buildInfoRow(
+                                    "Engine Name:", vehicleData['engineName']),
+                                _buildInfoRow("Vehicle Type:",
+                                    vehicleData['vehicleType']),
                               ],
                             ),
                           ),
@@ -236,40 +262,61 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         ),
 
                         const SizedBox(height: 20),
-
-                        // Uploaded Documents
+//======================== Uploaded Documents ================================================
                         _buildSection(
                           title: 'Uploaded Documents',
                           content: uploadedDocuments.isNotEmpty
                               ? uploadedDocuments.map<Widget>((doc) {
-                                  return Card(
-                                    elevation: 2,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          if (doc['imageUrl'] != null)
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Image.network(
-                                                doc['imageUrl'],
-                                                height: 150,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
+                                  return GestureDetector(
+                                    onTap: () async {
+                                      await _generatePdfForDocument(
+                                          doc['imageUrl'], doc['text']);
+                                    },
+                                    child: Card(
+                                      elevation: 2,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (doc['imageUrl'] != null)
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                child: Image.network(
+                                                  doc['imageUrl'],
+                                                  height: 150,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                ),
                                               ),
+                                            const SizedBox(height: 10),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  doc['text'] ??
+                                                      'No description provided',
+                                                ),
+                                                IconButton(
+                                                  onPressed: () async {
+                                                    // Generate PDF for this image and text
+                                                    await _generatePdfForDocument(
+                                                        doc['imageUrl'],
+                                                        doc['text']);
+                                                  },
+                                                  icon: Icon(Icons.download),
+                                                ),
+                                              ],
                                             ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            doc['text'] ??
-                                                'No description provided',
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
@@ -614,41 +661,69 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     Share.share(details);
   }
 
+//generate vehicle details pdf
   void _generatePdf(Map<String, dynamic> vehicleData) async {
     final pdf = pw.Document();
 
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
+          return pw.Stack(
             children: [
-              pw.Text('Vehicle Details',
+              // Background watermark
+              pw.Center(
+                child: pw.Text(
+                  // vehicleData['companyName']?.toUpperCase() ?? "COMPANY NAME",
+                  "Rabbit Mechanic",
                   style: pw.TextStyle(
-                      fontSize: 24, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 20),
-              pw.Text(
-                  'Company Name: ${vehicleData['companyName'] ?? "Unknown Company"}'),
-              pw.Text(
-                  'Vehicle Number: ${vehicleData['vehicleNumber'] ?? "Unknown Number"}'),
-              pw.Text('Year: ${vehicleData['year'] ?? "Unknown Year"}'),
-              pw.Text(
-                  'Current Miles: ${vehicleData['currentMiles'] ?? "Unknown Miles"}'),
-              pw.Text(
-                  'License Plate: ${vehicleData['licensePlate'] ?? "Unknown License Plate"}'),
-              pw.SizedBox(height: 20),
-              pw.Text('Current Miles History:',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              ...vehicleData['currentMilesArray'].map<pw.Widget>((milesEntry) {
-                return pw.Text(
-                    'Date: ${milesEntry['date']}, Miles: ${milesEntry['miles']}');
-              }).toList(),
-              pw.SizedBox(height: 20),
-              pw.Text('Services:',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              ...vehicleData['services'].map<pw.Widget>((service) {
-                return pw.Text('Service Name: ${service['serviceName']}');
-              }).toList(),
+                    fontSize: 100,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey300,
+                  ),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              // Foreground content
+              pw.Padding(
+                padding: const pw.EdgeInsets.all(16.0),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Vehicle Details',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 20),
+                    pw.Text(
+                        'Company Name: ${vehicleData['companyName'] ?? "Unknown Company"}'),
+                    pw.Text(
+                        'Vehicle Number: ${vehicleData['vehicleNumber'] ?? "Unknown Number"}'),
+                    pw.Text('Year: ${vehicleData['year'] ?? "Unknown Year"}'),
+                    pw.Text(
+                        'Current Miles: ${vehicleData['currentMiles'] ?? "Unknown Miles"}'),
+                    pw.Text(
+                        'License Plate: ${vehicleData['licensePlate'] ?? "Unknown License Plate"}'),
+                    if (vehicleData['dot']?.isNotEmpty ?? false)
+                      pw.Text('DOT: ${vehicleData['dot']}'),
+                    if (vehicleData['iccms']?.isNotEmpty ?? false)
+                      pw.Text('ICCMS: ${vehicleData['iccms']}'),
+                    if (vehicleData['vin']?.isNotEmpty ?? false)
+                      pw.Text('VIN: ${vehicleData['vin']}'),
+                    if (vehicleData['oilChangeDate']?.isNotEmpty ?? false)
+                      pw.Text(
+                          'Oil Change Date: ${vehicleData['oilChangeDate']}'),
+                    if (vehicleData['hoursReading']?.isNotEmpty ?? false)
+                      pw.Text('Hours Reading: ${vehicleData['hoursReading']}'),
+                    pw.Text(
+                        'Engine Name: ${vehicleData['engineName'] ?? "Unknown Engine Name"}'),
+                    pw.Text(
+                        'Vehicle Type: ${vehicleData['vehicleType'] ?? "Unknown Vehicle Type"}'),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -656,6 +731,146 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
 
     await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save());
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
   }
+
+//generate pdf for image
+
+  Future<void> _generatePdfForDocument(String? imageUrl, String? text) async {
+    try {
+      final pdf = pw.Document();
+
+      // Download the image
+      Uint8List? imageBytes;
+      if (imageUrl != null) {
+        try {
+          final response = await http.get(Uri.parse(imageUrl));
+          if (response.statusCode == 200) {
+            imageBytes = response.bodyBytes;
+          }
+        } catch (e) {
+          print('Error downloading image: $e');
+        }
+      }
+
+      // Debugging logs
+      print('Image Bytes: ${imageBytes?.length ?? 0}');
+      print('Text: ${text ?? 'No description provided'}');
+
+      // Add page with image, text, and watermark
+      if (imageBytes != null) {
+        pdf.addPage(
+          pw.Page(
+            build: (pw.Context context) {
+              return pw.Stack(
+                children: [
+                  // Watermark in the background
+                  pw.Center(
+                    child: pw.Opacity(
+                      opacity: 0.1,
+                      child: pw.Text(
+                        'Rabbit Mechanic',
+                        style: pw.TextStyle(
+                          fontSize: 80,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  // Main content
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Image(
+                        pw.MemoryImage(imageBytes!),
+                        height: 200,
+                        width: 500,
+                        fit: pw.BoxFit.cover,
+                      ),
+                      pw.SizedBox(height: 20),
+                      pw.Text(
+                        text?.trim().isNotEmpty == true
+                            ? text!
+                            : 'No description provided',
+                        style: pw.TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      } else {
+        pdf.addPage(
+          pw.Page(
+            build: (pw.Context context) {
+              return pw.Center(
+                child: pw.Text(
+                  'Image could not be loaded.',
+                  style: pw.TextStyle(fontSize: 18, color: PdfColors.red),
+                ),
+              );
+            },
+          ),
+        );
+      }
+
+      // Show PDF preview and allow download
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e, stackTrace) {
+      print('Error generating PDF: $e');
+      print(stackTrace);
+    }
+  }
+
+  // void _generatePdf(Map<String, dynamic> vehicleData) async {
+  //   final pdf = pw.Document();
+
+  //   pdf.addPage(
+  //     pw.Page(
+  //       build: (pw.Context context) {
+  //         return pw.Column(
+  //           crossAxisAlignment: pw.CrossAxisAlignment.start,
+  //           children: [
+  //             pw.Text('Vehicle Details',
+  //                 style: pw.TextStyle(
+  //                     fontSize: 24, fontWeight: pw.FontWeight.bold)),
+  //             pw.SizedBox(height: 20),
+  //             pw.Text(
+  //                 'Company Name: ${vehicleData['companyName'] ?? "Unknown Company"}'),
+  //             pw.Text(
+  //                 'Vehicle Number: ${vehicleData['vehicleNumber'] ?? "Unknown Number"}'),
+  //             pw.Text('Year: ${vehicleData['year'] ?? "Unknown Year"}'),
+  //             pw.Text(
+  //                 'Current Miles: ${vehicleData['currentMiles'] ?? "Unknown Miles"}'),
+  //             pw.Text(
+  //                 'License Plate: ${vehicleData['licensePlate'] ?? "Unknown License Plate"}'),
+  //             pw.SizedBox(height: 20),
+  //             pw.Text('Current Miles History:',
+  //                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+  //             ...vehicleData['currentMilesArray'].map<pw.Widget>((milesEntry) {
+  //               return pw.Text(
+  //                   'Date: ${milesEntry['date']}, Miles: ${milesEntry['miles']}');
+  //             }).toList(),
+  //             pw.SizedBox(height: 20),
+  //             pw.Text('Services:',
+  //                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+  //             ...vehicleData['services'].map<pw.Widget>((service) {
+  //               return pw.Text('Service Name: ${service['serviceName']}');
+  //             }).toList(),
+  //           ],
+  //         );
+  //       },
+  //     ),
+  //   );
+
+  //   await Printing.layoutPdf(
+  //       onLayout: (PdfPageFormat format) async => pdf.save());
+  // }
 }
