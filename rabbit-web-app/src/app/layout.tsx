@@ -36,26 +36,6 @@ export const metadata: Metadata = {
   },
 };
 
-// export default function RootLayout({
-//   children,
-// }: Readonly<{ children: React.ReactNode }>) {
-//   return (
-//     <html lang="en">
-//       <body>
-//         <AuthContextProvider>
-//           <Toaster />
-//           <NextUIProvider>
-//             <TopBar />
-//             <NavBar />
-//             {children}
-//             <Footer />
-//           </NextUIProvider>
-//         </AuthContextProvider>
-//       </body>
-//     </html>
-//   );
-// }
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
