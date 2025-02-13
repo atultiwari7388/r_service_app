@@ -25,6 +25,16 @@ export const metadata = {
 };
 
 const AboutUs: React.FC = () => {
+  
   return <AboutUsComponent />;
 };
+
 export default AboutUs;
+
+
+
+
+
+
+
+

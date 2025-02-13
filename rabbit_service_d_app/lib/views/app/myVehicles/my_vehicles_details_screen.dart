@@ -212,56 +212,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Services
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 2,
-                                blurRadius: 5,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Services',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: kPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              _buildServicesTable(context, services),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Current Miles History
-                        _buildSection(
-                          title: 'Current Miles History',
-                          content: currentMilesArray.map<Widget>((milesEntry) {
-                            final rawDate = milesEntry['date'] ?? '';
-                            final formattedDate = DateFormat('yyyy-MM-dd')
-                                .format(DateTime.parse(rawDate));
-                            return ListTile(
-                              leading:
-                                  const Icon(Icons.timeline, color: kPrimary),
-                              title: Text('Date: $formattedDate'),
-                              trailing: Text('Miles: ${milesEntry['miles']}'),
-                            );
-                          }).toList(),
-                        ),
-
-                        const SizedBox(height: 20),
 //======================== Uploaded Documents ================================================
                         _buildSection(
                           title: 'Uploaded Documents',
@@ -412,6 +362,57 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                   ),
                                 ),
                               ),
+                        const SizedBox(height: 20),
+
+                        // Services
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 2,
+                                blurRadius: 5,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Services',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: kPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              _buildServicesTable(context, services),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Current Miles History
+                        _buildSection(
+                          title: 'Current Miles History',
+                          content: currentMilesArray.map<Widget>((milesEntry) {
+                            final rawDate = milesEntry['date'] ?? '';
+                            final formattedDate = DateFormat('yyyy-MM-dd')
+                                .format(DateTime.parse(rawDate));
+                            return ListTile(
+                              leading:
+                                  const Icon(Icons.timeline, color: kPrimary),
+                              title: Text('Date: $formattedDate'),
+                              trailing: Text('Miles: ${milesEntry['miles']}'),
+                            );
+                          }).toList(),
+                        ),
+
                         const SizedBox(height: 20),
                       ],
                     ),
@@ -649,15 +650,55 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
+  // void _shareVehicleDetails(Map<String, dynamic> vehicleData) {
+  //   final String details = '''
+  //   Vehicle Details:
+  //   Company Name: ${vehicleData['companyName']}
+  //   Vehicle Number: ${vehicleData['vehicleNumber']}
+  //   Year: ${vehicleData['year']}
+  //   Current Miles: ${vehicleData['currentMiles']}
+  //   License Plate: ${vehicleData['licensePlate']}
+  //   ''';
+  //   Share.share(details);
+  // }
+
   void _shareVehicleDetails(Map<String, dynamic> vehicleData) {
+    // Build the details string with enhanced message and URLs
     final String details = '''
-    Vehicle Details:
-    Company Name: ${vehicleData['companyName']}
-    Vehicle Number: ${vehicleData['vehicleNumber']}
-    Year: ${vehicleData['year']}
-    Current Miles: ${vehicleData['currentMiles']}
-    License Plate: ${vehicleData['licensePlate']}
-    ''';
+  🚗 Hey! Check out my vehicle details managed with Rabbit Mechanic! 🔧
+
+  📱 Get the Rabbit Mechanic App:
+  • Android: [Play Store URL]
+  • iOS: [App Store URL]
+  • Web: www.rabbitmechanic.com
+
+  Vehicle Details:
+  -----------------------------------
+  Vehicle Number: ${vehicleData['vehicleNumber']}
+  Year: ${vehicleData['year']}
+  Current Miles: ${vehicleData['currentMiles']}
+  License Plate: ${vehicleData['licensePlate']}
+  Company Name: ${vehicleData['companyName']}
+  ${vehicleData['dot'].isNotEmpty ? 'DOT: ${vehicleData['dot']}' : ''}
+  ${vehicleData['iccms'].isNotEmpty ? 'ICCMS: ${vehicleData['iccms']}' : ''}
+  ${vehicleData['vin'].isNotEmpty ? 'VIN: ${vehicleData['vin']}' : ''}
+  ${vehicleData['oilChangeDate'].isNotEmpty ? 'Oil Change Date: ${vehicleData['oilChangeDate']}' : ''}
+  ${vehicleData['hoursReading'].isNotEmpty ? 'Hours Reading: ${vehicleData['hoursReading']}' : ''}
+  
+  -----------------------------------
+
+  🌟 Why Rabbit Mechanic?
+  • Track vehicle maintenance
+  • Service reminders
+  • Document management
+  • Digital records
+  • And much more!
+
+  Join thousands of smart vehicle owners using Rabbit Mechanic! 🚀
+  #RabbitMechanic #VehicleManagement
+  ''';
+
+    // Share the enhanced message
     Share.share(details);
   }
 
@@ -758,7 +799,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       print('Image Bytes: ${imageBytes?.length ?? 0}');
       print('Text: ${text ?? 'No description provided'}');
 
-      // Add page with image, text, and watermark
+      // Add page with cropped image and text
       if (imageBytes != null) {
         pdf.addPage(
           pw.Page(
@@ -784,13 +825,21 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Image(
-                        pw.MemoryImage(imageBytes!),
-                        height: 200,
-                        width: 500,
-                        fit: pw.BoxFit.cover,
+                      // Cropped image
+                      pw.Container(
+                        height: 500,
+                        width: double.infinity, // Make it full width
+                        child: pw.Center(
+                          child: pw.ClipRect(
+                            child: pw.Image(
+                              pw.MemoryImage(imageBytes!),
+                              fit: pw.BoxFit.contain, // Crop the image
+                            ),
+                          ),
+                        )
                       ),
                       pw.SizedBox(height: 20),
+                      // Text description
                       pw.Text(
                         text?.trim().isNotEmpty == true
                             ? text!
@@ -805,6 +854,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
           ),
         );
       } else {
+        // Error handling if image cannot be loaded
         pdf.addPage(
           pw.Page(
             build: (pw.Context context) {
@@ -828,49 +878,4 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       print(stackTrace);
     }
   }
-
-  // void _generatePdf(Map<String, dynamic> vehicleData) async {
-  //   final pdf = pw.Document();
-
-  //   pdf.addPage(
-  //     pw.Page(
-  //       build: (pw.Context context) {
-  //         return pw.Column(
-  //           crossAxisAlignment: pw.CrossAxisAlignment.start,
-  //           children: [
-  //             pw.Text('Vehicle Details',
-  //                 style: pw.TextStyle(
-  //                     fontSize: 24, fontWeight: pw.FontWeight.bold)),
-  //             pw.SizedBox(height: 20),
-  //             pw.Text(
-  //                 'Company Name: ${vehicleData['companyName'] ?? "Unknown Company"}'),
-  //             pw.Text(
-  //                 'Vehicle Number: ${vehicleData['vehicleNumber'] ?? "Unknown Number"}'),
-  //             pw.Text('Year: ${vehicleData['year'] ?? "Unknown Year"}'),
-  //             pw.Text(
-  //                 'Current Miles: ${vehicleData['currentMiles'] ?? "Unknown Miles"}'),
-  //             pw.Text(
-  //                 'License Plate: ${vehicleData['licensePlate'] ?? "Unknown License Plate"}'),
-  //             pw.SizedBox(height: 20),
-  //             pw.Text('Current Miles History:',
-  //                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-  //             ...vehicleData['currentMilesArray'].map<pw.Widget>((milesEntry) {
-  //               return pw.Text(
-  //                   'Date: ${milesEntry['date']}, Miles: ${milesEntry['miles']}');
-  //             }).toList(),
-  //             pw.SizedBox(height: 20),
-  //             pw.Text('Services:',
-  //                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-  //             ...vehicleData['services'].map<pw.Widget>((service) {
-  //               return pw.Text('Service Name: ${service['serviceName']}');
-  //             }).toList(),
-  //           ],
-  //         );
-  //       },
-  //     ),
-  //   );
-
-  //   await Printing.layoutPdf(
-  //       onLayout: (PdfPageFormat format) async => pdf.save());
-  // }
 }

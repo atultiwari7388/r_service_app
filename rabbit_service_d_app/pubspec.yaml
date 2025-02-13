@@ -50,6 +50,7 @@ dependencies:
   share_plus:
   pdf:
   printing:
+  multi_select_flutter: ^4.1.3
 
 dev_dependencies:
   flutter_test:

@@ -28,7 +28,7 @@ import {
   Card,
   CardContent,
   InputAdornment,
-  Collapse,
+  Checkbox,
 } from "@mui/material";
 import {
   Table,
@@ -51,6 +51,11 @@ interface Vehicle {
   brand: string;
   type: string;
   value: string;
+}
+
+interface ServicePackage {
+  name: string;
+  type: string[];
 }
 
 interface ServiceData {
@@ -106,10 +111,14 @@ export default function RecordsPage() {
 
   // Add Records Form State
   const [selectedVehicle, setSelectedVehicle] = useState("");
-  const [selectedPackage, setSelectedPackage] = useState("");
   const [selectedServices, setSelectedServices] = useState<Set<string>>(
     new Set()
   );
+  const [servicePackages, setServicePackages] = useState<ServicePackage[]>([]);
+  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
+
+
+
   const [selectedSubServices, setSelectedSubServices] = useState<{
     [key: string]: string[];
   }>({});
@@ -122,10 +131,11 @@ export default function RecordsPage() {
   const [date, setDate] = useState("");
   const [workshopName, setWorkshopName] = useState("");
   const [invoice, setInvoice] = useState("");
+  const [invoiceAmount, setInvoiceAmount] = useState("");
   const [description, setDescription] = useState("");
   const [showAddRecords, setShowAddRecords] = useState(false);
   const [serviceSearchText, setServiceSearchText] = useState("");
-  const [packages, setPackages] = useState<string[]>([]);
+
   const [selectedVehicleData, setSelectedVehicleData] =
     useState<VehicleTypes | null>(null);
 
@@ -141,10 +151,10 @@ export default function RecordsPage() {
       const vehiclesSnapshot = await getDocs(vehiclesRef);
       const vehiclesList = vehiclesSnapshot.docs.map(
         (doc) =>
-          ({
-            id: doc.id,
-            ...doc.data(),
-          } as VehicleTypes)
+        ({
+          id: doc.id,
+          ...doc.data(),
+        } as VehicleTypes)
       );
       setVehicles(vehiclesList);
     } catch (error) {
@@ -167,11 +177,26 @@ export default function RecordsPage() {
             service.pName.forEach((pkg) => uniquePackages.add(pkg));
           }
         });
-        setPackages(Array.from(uniquePackages));
       }
     } catch (error) {
       console.error("Error fetching services:", error);
       toast.error("Failed to fetch services");
+    }
+  };
+
+  const fetchServicePackages = async () => {
+    try {
+      const packagesDoc = await getDoc(doc(db, "metadata", "nServicesPackages"));
+      if (packagesDoc.exists()) {
+        const packagesData = packagesDoc.data().data || [];
+        console.log("Fetched packages:", packagesData); // Debug log
+        setServicePackages(packagesData);
+      } else {
+        console.log("No packages document found");
+      }
+    } catch (error) {
+      console.error("Error fetching service packages:", error);
+      toast.error("Failed to fetch service packages");
     }
   };
 
@@ -188,7 +213,7 @@ export default function RecordsPage() {
               dValue?.brand &&
               selectedVehicleData?.engineNumber &&
               dValue.brand.toString().toUpperCase() ===
-                selectedVehicleData.engineNumber.toString().toUpperCase()
+              selectedVehicleData.engineNumber.toString().toUpperCase()
             ) {
               // Add null check for dValue.value
               if (dValue.value) {
@@ -240,36 +265,7 @@ export default function RecordsPage() {
     updateServiceDefaultValues();
   };
 
-  const handlePackageSelect = (packageName: string) => {
-    setSelectedPackage(packageName);
-    setSelectedServices(new Set());
-    setSelectedSubServices({});
 
-    const normalizedPackage = packageName.toLowerCase().trim();
-    services.forEach((service) => {
-      if (
-        service.pName?.some((p) => p.toLowerCase().trim() === normalizedPackage)
-      ) {
-        setSelectedServices((prev) => new Set([...prev, service.sId]));
-
-        if (service.subServices) {
-          // Flatten all sName arrays and filter out empty ones
-          const subServiceNames: string[] = service.subServices
-            .flatMap((subService) => subService.sName) // Flatten the arrays
-            .filter((name) => name.trim().length > 0); // Remove empty strings
-
-          // Update the state only if there are valid sub-service names
-          if (subServiceNames.length > 0) {
-            setSelectedSubServices((prev) => ({
-              ...prev,
-              [service.sId]: subServiceNames,
-            }));
-          }
-        }
-      }
-    });
-    updateServiceDefaultValues();
-  };
 
   const handleAddMiles = async () => {
     if (!selectedVehicle || !todayMiles || !user?.uid) {
@@ -312,8 +308,7 @@ export default function RecordsPage() {
 
       if (enteredValue < currentReading) {
         toast.error(
-          `${
-            selectedVehicleType === "Truck" ? "Miles" : "Hours"
+          `${selectedVehicleType === "Truck" ? "Miles" : "Hours"
           } cannot be less than the current value.`
         );
         return;
@@ -328,8 +323,7 @@ export default function RecordsPage() {
       });
 
       toast.success(
-        `${
-          selectedVehicleType === "Truck" ? "Miles" : "Hours"
+        `${selectedVehicleType === "Truck" ? "Miles" : "Hours"
         } updated successfully!`
       );
       setTodayMiles("");
@@ -401,6 +395,7 @@ export default function RecordsPage() {
         date: date || new Date().toISOString(),
         workshopName,
         invoice,
+        invoiceAmount,
         description,
         createdAt: new Date().toISOString(),
       };
@@ -438,23 +433,61 @@ export default function RecordsPage() {
     }
   };
 
+
+
   const handleVehicleSelect = async (value: string) => {
     setSelectedVehicle(value);
-    if (!user?.uid) return;
-    const vehicleDoc = await getDoc(
-      doc(db, "Users", user.uid, "Vehicles", value)
-    );
-    if (vehicleDoc.exists()) {
-      setSelectedVehicleType(vehicleDoc.data().vehicleType);
-    } else {
-      toast.error("Vehicle data not found.");
+    setSelectedVehicleData(null);
+    setSelectedPackages(new Set());
+
+    if (!user?.uid || !value) return;
+
+    try {
+      const vehicleRef = doc(db, "Users", user.uid, "Vehicles", value);
+      const vehicleDoc = await getDoc(vehicleRef);
+
+      if (vehicleDoc.exists()) {
+        const vehicleData = vehicleDoc.data() as VehicleTypes;
+        setSelectedVehicleData(vehicleData);
+        setSelectedVehicleType(vehicleData.vehicleType);
+        if (vehicleData.vehicleType) {
+        }
+      } else {
+        toast.error("Vehicle data not found.");
+      }
+    } catch (error) {
+      console.error("Error fetching vehicle data:", error);
+      toast.error("Failed to fetch vehicle data.");
     }
   };
 
+  const normalizePackageName = (name: string) => {
+    return name.toLowerCase().replace(/\s+/g, '');
+  };
+
+
+  const handlePackageSelect = (selectedPackages: string[]) => {
+    const newSelectedServices = new Set(selectedServices);
+
+    selectedPackages.forEach((pkg) => {
+      services.forEach((service) => {
+        if (service.pName && service.pName.some(p => normalizePackageName(p) === normalizePackageName(pkg))) {
+          newSelectedServices.add(service.sId);
+        }
+      });
+    });
+
+    setSelectedServices(newSelectedServices);
+    setSelectedPackages(new Set(selectedPackages));
+  };
+
+
+
+
   const resetForm = () => {
     setSelectedVehicle("");
-    setSelectedPackage("");
     setSelectedServices(new Set());
+    setSelectedPackages(new Set());
     setSelectedSubServices({});
     setServiceDefaultValues({});
     setMiles("");
@@ -469,6 +502,7 @@ export default function RecordsPage() {
   useEffect(() => {
     fetchVehicles();
     fetchServices();
+    fetchServicePackages();
     if (!user?.uid) return;
 
     const recordsQuery = query(
@@ -497,6 +531,10 @@ export default function RecordsPage() {
     updateServiceDefaultValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVehicle, selectedServices]);
+
+
+
+
 
   return (
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
@@ -596,47 +634,84 @@ export default function RecordsPage() {
         <DialogContent>
           <Card className="mt-4 shadow-lg rounded-lg">
             <CardContent>
-              <FormControl fullWidth className="mb-4">
-                <InputLabel>Select Vehicle</InputLabel>
-                <Select
-                  value={selectedVehicle}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedVehicle(value);
-                    const vehicleData =
-                      vehicles.find((v) => v.id === value) || null;
-                    setSelectedVehicleData(vehicleData);
-                  }}
-                  className="rounded-lg"
-                >
-                  {vehicles.map((vehicle) => (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.vehicleNumber} ({vehicle.companyName})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {selectedVehicle && (
-                <FormControl fullWidth className="mb-4">
-                  <InputLabel>Select Package (Optional)</InputLabel>
+              <div className="mb-4">
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel id="select-vehicle-label">Select Vehicle</InputLabel>
                   <Select
-                    value={selectedPackage}
+                    labelId="select-vehicle-label"
+                    value={selectedVehicle}
                     onChange={(e) => {
-                      e.preventDefault();
-                      handlePackageSelect(e.target.value);
+                      const value = e.target.value;
+                      setSelectedVehicle(value);
+                      const vehicleData = vehicles.find((v) => v.id === value) || null;
+                      setSelectedVehicleData(vehicleData);
                     }}
                     className="rounded-lg"
+                    sx={{ minHeight: '56px' }} // Adjust the minimum height and padding
+                    label="Select Vehicle" // Ensure the label is associated with the Select
                   >
-                    {packages.map((pkg) => (
-                      <MenuItem key={pkg} value={pkg}>
-                        {pkg.toUpperCase()}
+                    {vehicles.map((vehicle) => (
+                      <MenuItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.vehicleNumber} ({vehicle.companyName})
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-              )}
 
+              </div>
+              {/** Select packages */}
+
+              {/* <div className="mb-4">
+                <FormControl fullWidth>
+                  <InputLabel>Select Packages</InputLabel>
+                  <Select
+                    multiple
+                    value={Array.from(selectedPackages)}
+                    onChange={(e) => setSelectedPackages(new Set(e.target.value as string[]))}
+                    renderValue={(selected) => selected.join(", ")}
+                  >
+                    {servicePackages
+                      .filter((pkg) =>
+                        pkg.type.some(t =>
+                          t.toLowerCase() === selectedVehicleData?.vehicleType?.toLowerCase()
+                        )
+                      )
+                      .map((pkg) => (
+                        <MenuItem key={pkg.name} value={pkg.name}>
+                          <Checkbox checked={selectedPackages.has(pkg.name)} />
+                          {pkg.name}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              </div> */}
+              <div className="mb-4">
+                <FormControl fullWidth variant="outlined">
+                  <InputLabel id="select-packages-label">Select Packages</InputLabel>
+                  <Select
+                    labelId="select-packages-label"
+                    multiple
+                    value={Array.from(selectedPackages)}
+                    onChange={(e) => handlePackageSelect(e.target.value as string[])}
+                    renderValue={(selected) => selected.join(", ")}
+                    label="Select Packages" // Ensure the label is associated with the Select
+                    sx={{ minHeight: '56px' }} // Adjust the minimum height if needed
+                  >
+                    {servicePackages
+                      .filter((pkg) =>
+                        pkg.type.some(t =>
+                          t.toLowerCase() === selectedVehicleData?.vehicleType?.toLowerCase()
+                        )
+                      )
+                      .map((pkg) => (
+                        <MenuItem key={pkg.name} value={pkg.name}>
+                          <Checkbox checked={selectedPackages.has(pkg.name)} />
+                          {pkg.name}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              </div>
               <div className="mb-4">
                 <TextField
                   fullWidth
@@ -653,74 +728,41 @@ export default function RecordsPage() {
                   className="rounded-lg"
                 />
               </div>
+              {/** Select Services */}
 
-              <div className="flex flex-wrap gap-2 mb-4">
+
+              <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter(
                     (service) =>
-                      service.sName
-                        .toLowerCase()
-                        .includes(serviceSearchText.toLowerCase()) &&
-                      (!selectedVehicleData ||
-                        service.vType === selectedVehicleData.vehicleType)
+                      service.sName.toLowerCase().includes(serviceSearchText.toLowerCase()) &&
+                      (!selectedVehicleData || service.vType === selectedVehicleData.vehicleType)
                   )
                   .map((service) => (
-                    <div key={service.sId} className="w-full">
+                    <div key={service.sId} className="flex justify-center">
                       <Chip
                         label={service.sName}
                         onClick={(e) => {
                           e.preventDefault();
                           handleServiceSelect(service.sId);
-                          setExpandedService(
-                            expandedService === service.sId ? null : service.sId
-                          );
+                          setExpandedService(expandedService === service.sId ? null : service.sId);
                         }}
                         sx={{
-                          backgroundColor: selectedServices.has(service.sId)
-                            ? "#F96176"
-                            : "default",
-                          color: selectedServices.has(service.sId)
-                            ? "white"
-                            : "inherit",
+                          backgroundColor: selectedServices.has(service.sId) ? "#F96176" : "default",
+                          color: selectedServices.has(service.sId) ? "white" : "inherit",
                           "&:hover": {
-                            backgroundColor: selectedServices.has(service.sId)
-                              ? "#F96176"
-                              : "#FFCDD2", // Optional hover color
+                            backgroundColor: selectedServices.has(service.sId) ? "#F96176" : "#FFCDD2",
                           },
                         }}
-                        variant={
-                          selectedServices.has(service.sId)
-                            ? "filled"
-                            : "outlined"
-                        }
-                        className="mb-2 transition duration-300 hover:shadow-lg"
+                        variant={selectedServices.has(service.sId) ? "filled" : "outlined"}
+                        className="w-full min-w-[120px] text-center transition duration-300 hover:shadow-lg"
                       />
-
-                      <Collapse
-                        in={
-                          expandedService === service.sId &&
-                          selectedServices.has(service.sId)
-                        }
-                        timeout="auto"
-                      >
-                        {service.subServices && (
-                          <div className="ml-4 mt-2">
-                            {service.subServices.map((subService) =>
-                              subService.sName.map((name, idx) => (
-                                <Chip
-                                  key={`${service.sId}-${name}-${idx}`}
-                                  label={name}
-                                  size="small"
-                                  className="m-1 transition duration-300 hover:bg-gray-200"
-                                />
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </Collapse>
                     </div>
                   ))}
               </div>
+
+
+
 
               {selectedVehicleData?.vehicleType === "Truck" && (
                 <TextField
@@ -732,6 +774,16 @@ export default function RecordsPage() {
                   className="mb-4 rounded-lg"
                 />
               )}
+
+              <TextField
+                fullWidth
+                label="Date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                className="mb-4 rounded-lg"
+              />
 
               {selectedVehicleData?.vehicleType === "Trailer" && (
                 <>
@@ -764,9 +816,16 @@ export default function RecordsPage() {
               />
               <TextField
                 fullWidth
-                label="Invoice (Optional)"
+                label="Invoice Number (Optional)"
                 value={invoice}
                 onChange={(e) => setInvoice(e.target.value)}
+                className="mb-4 rounded-lg"
+              />
+              <TextField
+                fullWidth
+                label="Invoice Amount (Optional)"
+                value={invoiceAmount}
+                onChange={(e) => setInvoiceAmount(e.target.value)}
                 className="mb-4 rounded-lg"
               />
               <TextField

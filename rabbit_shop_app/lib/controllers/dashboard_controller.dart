@@ -134,8 +134,8 @@ class DashboardController extends GetxController {
     // Check if location services are enabled
     serviceEnabled = await location.serviceEnabled();
     if (!serviceEnabled) {
-      showToastMessage(
-          "Location Error", "Please enable location Services", kRed);
+      // showToastMessage(
+      //     "Location Error", "Please enable location Services", kRed);
       serviceEnabled = await location.requestService();
       if (!serviceEnabled) {
         return;
@@ -145,8 +145,8 @@ class DashboardController extends GetxController {
     // Check if location permissions are granted
     permissionGranted = await location.hasPermission();
     if (permissionGranted == loc.PermissionStatus.denied) {
-      showToastMessage(
-          "Error", "Please grant location permission in app settings", kRed);
+      // showToastMessage(
+      //     "Error", "Please grant location permission in app settings", kRed);
       // Open app settings to grant permission
       await loc.Location().requestPermission();
       permissionGranted = await location.hasPermission();

@@ -26,6 +26,7 @@ class Assets {
   static const String assetsItemList = 'assets/item-list.png';
   static const String assetsLogout = 'assets/logout.png';
   static const String assetsMoney = 'assets/money.png';
+  static const String assetsMyvehicles = 'assets/myvehicles.png';
   static const String assetsNewAppIcon = 'assets/new_app_icon.png';
   static const String assetsNewHomeLogo = 'assets/new_home_logo.jpg';
   static const String assetsNewSplashLogo = 'assets/new_splash_logo.png';
@@ -61,6 +62,8 @@ class Assets {
   static const String assetsWallet = 'assets/wallet.png';
   static const String assetsWallet2C = 'assets/wallet_2_c.png';
   static const String assetsWallet3 = 'assets/wallet_3.png';
+  static const String fontUniversBold = 'assets/font/UniversBold.ttf';
+  static const String fontUniversRegular = 'assets/font/UniversRegular.ttf';
   static const String rabbitServiceDAppAssetsNoti = 'assets/noti.mp3';
 
 }

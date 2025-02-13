@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
+import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/myJobs/widgets/my_jobs_card.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
@@ -32,6 +33,50 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                 ? TextStyle(color: kDark)
                 : appStyle(20, kDark, FontWeight.normal)),
         actions: [
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('Users')
+                .doc(currentUId)
+                .collection('UserNotifications')
+                .where('isRead', isEqualTo: false)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return Container();
+              }
+              int unreadCount = snapshot.data!.docs.length;
+              return unreadCount > 0
+                  ? Badge(
+                      backgroundColor: kSecondary,
+                      label: Text(unreadCount.toString(),
+                          style: appStyle(12, kWhite, FontWeight.normal)),
+                      child: GestureDetector(
+                        onTap: () =>
+                            Get.to(() => CloudNotificationMessageCenter()),
+                        child: CircleAvatar(
+                            backgroundColor: kPrimary,
+                            radius: 17.r,
+                            child: Icon(Icons.notifications,
+                                size: 25.sp, color: kWhite)),
+                      ),
+                    )
+                  : Badge(
+                      backgroundColor: kSecondary,
+                      label: Text(unreadCount.toString(),
+                          style: appStyle(12, kWhite, FontWeight.normal)),
+                      child: GestureDetector(
+                        onTap: () =>
+                            Get.to(() => CloudNotificationMessageCenter()),
+                        child: CircleAvatar(
+                            backgroundColor: kPrimary,
+                            radius: 17.r,
+                            child: Icon(Icons.notifications,
+                                size: 25.sp, color: kWhite)),
+                      ),
+                    );
+            },
+          ),
+          SizedBox(width: 10.w),
           GestureDetector(
             onTap: () => Get.to(() => const ProfileScreen(),
                 transition: Transition.cupertino,

@@ -37,6 +37,99 @@ class CloudNotificationMessageCenter extends StatelessWidget {
         title: const Text("Notification Center"),
         elevation: 1,
       ),
+      // body: StreamBuilder<QuerySnapshot>(
+      //   stream: FirebaseFirestore.instance
+      //       .collection('Users')
+      //       .doc(currentUId)
+      //       .collection('UserNotifications')
+      //       .where('isRead', isEqualTo: false)
+      //       .orderBy('date', descending: true) // Order by date
+      //       .snapshots(),
+      //   builder: (context, snapshot) {
+      //     if (!snapshot.hasData) {
+      //       return Center(child: CircularProgressIndicator());
+      //     }
+
+      //     var notifications = snapshot.data!.docs;
+
+      //     if (notifications.isEmpty) {
+      //       return Center(
+      //         child: Text(
+      //           "No notification found",
+      //           style: appStyle(18, kDark, FontWeight.w500),
+      //         ),
+      //       );
+      //     }
+
+      //     // Group notifications by date
+      //     Map<String, List<QueryDocumentSnapshot>> groupedNotifications = {};
+      //     for (var doc in notifications) {
+      //       String date = DateFormat('yyyy-MM-dd').format(
+      //         (doc['date'] as Timestamp).toDate(),
+      //       );
+      //       if (!groupedNotifications.containsKey(date)) {
+      //         groupedNotifications[date] = [];
+      //       }
+      //       groupedNotifications[date]!.add(doc);
+      //     }
+
+      //     return ListView.builder(
+      //       padding: const EdgeInsets.all(2.0),
+      //       itemCount: groupedNotifications.keys.length,
+      //       itemBuilder: (ctx, index) {
+      //         String dateKey = groupedNotifications.keys.toList()[index];
+      //         List<QueryDocumentSnapshot> dateNotifications =
+      //             groupedNotifications[dateKey]!;
+
+      //         String dayMonth = DateFormat('d MMMM')
+      //             .format(DateTime.parse(dateKey)); // e.g., "9 January"
+      //         String year = DateFormat('yyyy').format(DateTime.parse(dateKey));
+
+      //         return Column(
+      //           crossAxisAlignment: CrossAxisAlignment.start,
+      //           children: [
+      //             SizedBox(height: 8),
+      //             ...dateNotifications.map((doc) {
+      //               var notification = doc.data() as Map<String, dynamic>;
+      //               return FutureBuilder<Map<String, dynamic>>(
+      //                 future: getVehicleDetails(notification['vehicleId']),
+      //                 builder: (context, vehicleSnapshot) {
+      //                   if (!vehicleSnapshot.hasData) {
+      //                     return SizedBox.shrink();
+      //                   }
+
+      //                   var vehicleData = vehicleSnapshot.data!;
+
+      //                   return Padding(
+      //                     padding: const EdgeInsets.all(8.0),
+      //                     child: NotificationCard(
+      //                       dayMonth: dayMonth,
+      //                       year: year,
+      //                       message: notification['message'],
+      //                       vehicleName: vehicleData['companyName'],
+      //                       vehicleNumber: vehicleData['vehicleNumber'],
+      //                       onView: () async {
+      //                         Get.to(() => NotificationDetailsScreen(
+      //                               notification: notification,
+      //                               vehicleData: vehicleData,
+      //                             ));
+      //                       },
+      //                       onReadVehicle: () async {
+      //                         await markAsRead(doc.id);
+      //                       },
+      //                     ),
+      //                   );
+      //                 },
+      //               );
+      //             }).toList(),
+      //             SizedBox(height: 16),
+      //           ],
+      //         );
+      //       },
+      //     );
+      //   },
+      // ),
+
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Users')
@@ -61,7 +154,7 @@ class CloudNotificationMessageCenter extends StatelessWidget {
             );
           }
 
-          // Group notifications by date
+          // Group notifications by date while maintaining descending order
           Map<String, List<QueryDocumentSnapshot>> groupedNotifications = {};
           for (var doc in notifications) {
             String date = DateFormat('yyyy-MM-dd').format(
@@ -73,11 +166,15 @@ class CloudNotificationMessageCenter extends StatelessWidget {
             groupedNotifications[date]!.add(doc);
           }
 
+          // Ensure dates in descending order
+          List<String> sortedDates = groupedNotifications.keys.toList()
+            ..sort((a, b) => b.compareTo(a)); // Descending order
+
           return ListView.builder(
             padding: const EdgeInsets.all(2.0),
-            itemCount: groupedNotifications.keys.length,
+            itemCount: sortedDates.length,
             itemBuilder: (ctx, index) {
-              String dateKey = groupedNotifications.keys.toList()[index];
+              String dateKey = sortedDates[index];
               List<QueryDocumentSnapshot> dateNotifications =
                   groupedNotifications[dateKey]!;
 

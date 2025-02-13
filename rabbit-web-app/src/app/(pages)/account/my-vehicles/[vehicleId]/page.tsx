@@ -173,7 +173,7 @@ export default function MyVehicleDetailsScreen() {
                     <td className="px-4 py-2">
                       <button
                         onClick={() => handleEditService(index, service)}
-                        className="text-blue-500 hover:text-blue-700"
+                        className="text-[#F96176] hover:text-[#F96176]"
                       >
                         <FaEdit />
                       </button>
@@ -196,7 +196,7 @@ export default function MyVehicleDetailsScreen() {
           />
           <button
             onClick={handleUpload}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="bg-[#F96176] text-white px-4 py-2 rounded hover:bg-[#F96176]"
           >
             Upload Documents
           </button>
