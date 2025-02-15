@@ -56,7 +56,11 @@ class _ReportsScreenState extends State<ReportsScreen>
   bool showDateSearch = false;
   bool showCombinedSearch = false;
   bool showRecordFilter = false;
-
+  //for records access
+  bool? isView;
+  bool? isEdit;
+  bool? isAdd;
+  bool? isDelete;
   // Define a new variable to track the selected filter option
   String? selectedFilterOption;
 
@@ -75,6 +79,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   late StreamSubscription servicesSubscription;
   late StreamSubscription milesSubscription;
   late StreamSubscription packagesSubscription;
+  late StreamSubscription usersSubscription;
   String selectedVehicleType = 'Truck';
 
   // Selected data
@@ -96,6 +101,31 @@ class _ReportsScreenState extends State<ReportsScreen>
   }
 
   void initializeStreams() {
+    //setup users stream
+    usersSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        final userData = snapshot.data();
+        if (userData != null) {
+          setState(() {
+            isView = userData['isView'];
+            isEdit = userData['isEdit'];
+            isAdd = userData['isAdd'];
+            isDelete = userData['isDelete'];
+
+            print("My Current User is $currentUId");
+            print("My isView is $isView");
+            print("My isEdit is $isEdit");
+            print("My isAdd is $isAdd");
+            print("My isDelete is $isDelete");
+          });
+        }
+      }
+    });
+
     // Setup vehicle stream
     vehiclesSubscription = FirebaseFirestore.instance
         .collection('Users')
@@ -486,6 +516,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     hoursController.dispose();
     workshopController.dispose();
     invoiceController.dispose();
+    invoiceAmountController.dispose();
     serviceSearchController.dispose();
     vehicleSearchController.dispose();
     dateSearchController.dispose();
@@ -607,1441 +638,1592 @@ class _ReportsScreenState extends State<ReportsScreen>
           ],
           backgroundColor: Colors.white,
         ),
-        body: RefreshIndicator(
-          onRefresh: _refreshPage,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(10.0.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      // Removed PopupMenuButton
-                      buildCustomRowButton(Icons.search, "Search", kPrimary,
-                          () {
-                        setState(() {
-                          showSearchFilter = !showSearchFilter;
-                          showAddRecords = false;
-                          showAddMiles = false;
-                          showCombinedSearch = true;
-                        });
-                      }),
-                      buildCustomRowButton(Icons.add, "Records", kSecondary,
-                          () {
-                        setState(() {
-                          showAddRecords = !showAddRecords;
-                          showSearchFilter = false;
-                          showAddMiles = false;
-                        });
-                      }),
-                      buildCustomRowButton(Icons.add, "Miles", kPrimary, () {
-                        setState(() {
-                          showAddMiles = !showAddMiles;
-                          showSearchFilter = false;
-                          showAddRecords = false;
-                        });
-                      }),
-                    ],
-                  ),
-
-                  // SizedBox(height: 5.h),
-
-                  // Search & Filter Section
-                  if (showSearchFilter) ...[
-                    SizedBox(height: 10.h),
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+        body: isView == true
+            ? RefreshIndicator(
+                onRefresh: _refreshPage,
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(10.0.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('Search & Filter',
-                                    style: appStyleUniverse(
-                                        18, kDark, FontWeight.normal)),
-
-                                // Filter Icon
-                                IconButton(
-                                  icon:
-                                      Icon(Icons.filter_list, color: kPrimary),
-                                  onPressed: () {
-                                    // Show popup with options for filtering
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return AlertDialog(
-                                          title: Text('Filter Options'),
-                                          content: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              ListTile(
-                                                title:
-                                                    Text('Search by Vehicle'),
-                                                onTap: () {
-                                                  // Handle search by vehicle
-
-                                                  setState(() {
-                                                    showCombinedSearch = false;
-                                                    showVehicleSearch = true;
-                                                    showServiceSearch = false;
-                                                    showDateSearch = false;
-                                                    filterService = '';
-                                                    startDate = null;
-                                                    endDate = null;
-                                                  });
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              ListTile(
-                                                title:
-                                                    Text('Search by Service'),
-                                                onTap: () {
-                                                  setState(() {});
-                                                  // Handle search by service
-                                                  setState(() {
-                                                    showCombinedSearch = false;
-                                                    showVehicleSearch = false;
-                                                    showServiceSearch = true;
-                                                    showDateSearch = false;
-                                                    filterVehicle = '';
-                                                    startDate = null;
-                                                    endDate = null;
-                                                  });
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              ListTile(
-                                                title: Text('Search by Date'),
-                                                onTap: () {
-                                                  setState(() {
-                                                    showCombinedSearch = false;
-                                                    showVehicleSearch = false;
-                                                    showServiceSearch = false;
-                                                    showDateSearch = true;
-                                                    filterVehicle = '';
-                                                    filterService = '';
-                                                  });
-                                                  // Handle search by date
-                                                  Navigator.of(context).pop();
-                                                },
-                                              ),
-                                              ListTile(
-                                                  title: Text('Search All'),
-                                                  onTap: () {
-                                                    setState(() {
-                                                      showCombinedSearch = true;
-                                                      showVehicleSearch = false;
-                                                      showServiceSearch = false;
-                                                      showDateSearch = false;
-                                                      filterVehicle = '';
-                                                      filterService = '';
-                                                      startDate = null;
-                                                      endDate = null;
-                                                    });
-                                                    Navigator.of(context).pop();
-                                                  }),
-                                            ],
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('Close'),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 16.h),
-                            if (showVehicleSearch || showCombinedSearch)
-                              DropdownButtonFormField<String>(
-                                decoration: InputDecoration(
-                                  labelText: 'Search by Vehicle',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  prefixIcon: Icon(Icons.directions_car,
-                                      color: kPrimary),
-                                ),
-                                items: vehicles.map((vehicle) {
-                                  return DropdownMenuItem<String>(
-                                    value: vehicle['vehicleNumber'],
-                                    child: Text(
-                                      "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
-                                      style: appStyleUniverse(
-                                          14, kDark, FontWeight.normal),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    filterVehicle = value ?? '';
-                                  });
-                                },
-                                value: filterVehicle.isEmpty
-                                    ? null
-                                    : filterVehicle,
-                                hint: Text(
-                                  'Select Vehicle',
-                                  style: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                ),
-                              ),
-                            SizedBox(height: 16.h),
-                            if ((showVehicleSearch || showCombinedSearch) &&
-                                (showServiceSearch || showDateSearch))
-                              SizedBox(height: 16.h),
-                            if (showServiceSearch || showCombinedSearch)
-                              DropdownButtonFormField<String>(
-                                decoration: InputDecoration(
-                                  labelText: 'Search by Service',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  prefixIcon:
-                                      Icon(Icons.build, color: kPrimary),
-                                ),
-                                items: services.map((service) {
-                                  return DropdownMenuItem<String>(
-                                    value: service['sName'],
-                                    child: Text(
-                                      service['sName'],
-                                      style: appStyleUniverse(
-                                          14, kDark, FontWeight.normal),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    filterService = value ?? '';
-                                  });
-                                },
-                                value: filterService.isEmpty
-                                    ? null
-                                    : filterService,
-                                hint: Text(
-                                  'Select Service',
-                                  style: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                ),
-                              ),
-                            SizedBox(height: 16.h),
-                            if ((showServiceSearch || showCombinedSearch) &&
-                                showDateSearch)
-                              SizedBox(height: 16.h),
-                            if (showDateSearch || showCombinedSearch) ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () async {
-                                        final DateTime? picked =
-                                            await showDatePicker(
-                                          context: context,
-                                          initialDate:
-                                              startDate ?? DateTime.now(),
-                                          firstDate: DateTime(2000),
-                                          lastDate: DateTime(2100),
-                                        );
-                                        if (picked != null) {
-                                          setState(() {
-                                            startDate = picked;
-                                          });
-                                        }
-                                      },
-                                      child: InputDecorator(
-                                        decoration: InputDecoration(
-                                          labelText: 'Start Date',
-                                          labelStyle: appStyleUniverse(
-                                              14, kDark, FontWeight.normal),
-                                          border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          prefixIcon: Icon(Icons.calendar_today,
-                                              color: kPrimary),
-                                        ),
-                                        child: Text(
-                                          startDate != null
-                                              ? DateFormat('dd-MM-yyyy')
-                                                  .format(startDate!)
-                                              : 'Select Start Date',
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 16.w),
-                                  Expanded(
-                                    child: InkWell(
-                                      onTap: () async {
-                                        final DateTime? picked =
-                                            await showDatePicker(
-                                          context: context,
-                                          initialDate:
-                                              endDate ?? DateTime.now(),
-                                          firstDate: DateTime(2000),
-                                          lastDate: DateTime(2100),
-                                        );
-                                        if (picked != null) {
-                                          setState(() {
-                                            endDate = picked;
-                                          });
-                                        }
-                                      },
-                                      child: InputDecorator(
-                                        decoration: InputDecoration(
-                                          labelText: 'End Date',
-                                          labelStyle: appStyleUniverse(
-                                              14, kDark, FontWeight.normal),
-                                          border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                          prefixIcon: Icon(Icons.calendar_today,
-                                              color: kPrimary),
-                                        ),
-                                        child: Text(
-                                          endDate != null
-                                              ? DateFormat('dd-MM-yyyy')
-                                                  .format(endDate!)
-                                              : 'Select End Date',
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            SizedBox(height: 16.h),
-                            CustomButton(
-                                text: "Hide",
-                                onPress: resetFilters,
-                                color: kPrimary),
-                            SizedBox(height: 16.h),
+                            // Removed PopupMenuButton
+                            buildCustomRowButton(
+                                Icons.search, "Search", kPrimary, () {
+                              setState(() {
+                                showSearchFilter = !showSearchFilter;
+                                showAddRecords = false;
+                                showAddMiles = false;
+                                showCombinedSearch = true;
+                              });
+                            }),
+                            buildCustomRowButton(
+                                Icons.add, "Records", kSecondary, () {
+                              if (isAdd == true) {
+                                setState(() {
+                                  showAddRecords = !showAddRecords;
+                                  showSearchFilter = false;
+                                  showAddMiles = false;
+                                });
+                              } else {
+                                showToastMessage("Alert!",
+                                    "Sorry you don't have access", kPrimary);
+                              }
+                            }),
+                            buildCustomRowButton(Icons.add, "Miles", kPrimary,
+                                () {
+                              if (isAdd == true) {
+                                setState(() {
+                                  showAddMiles = !showAddMiles;
+                                  showSearchFilter = false;
+                                  showAddRecords = false;
+                                });
+                              } else {
+                                showToastMessage("Alert!",
+                                    "Sorry you don't have access", kPrimary);
+                              }
+                            }),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
 
-                  if (showAddRecords) ...[
-                    SizedBox(height: 10.h),
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: EdgeInsets.all(8.0.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Vehicle Dropdown
-                            DropdownButtonFormField<String>(
-                              value: selectedVehicle,
-                              hint: const Text('Select Vehicle'),
-                              items: vehicles.map((vehicle) {
-                                return DropdownMenuItem<String>(
-                                  value: vehicle['id'],
-                                  child: Text(
-                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                    style: appStyleUniverse(
-                                        17, kDark, FontWeight.normal),
+                        // SizedBox(height: 5.h),
+
+                        // Search & Filter Section
+                        if (showSearchFilter) ...[
+                          SizedBox(height: 10.h),
+                          Card(
+                            elevation: 4,
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('Search & Filter',
+                                          style: appStyleUniverse(
+                                              18, kDark, FontWeight.normal)),
+
+                                      // Filter Icon
+                                      IconButton(
+                                        icon: Icon(Icons.filter_list,
+                                            color: kPrimary),
+                                        onPressed: () {
+                                          // Show popup with options for filtering
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) {
+                                              return AlertDialog(
+                                                title: Text('Filter Options'),
+                                                content: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    ListTile(
+                                                      title: Text(
+                                                          'Search by Vehicle'),
+                                                      onTap: () {
+                                                        // Handle search by vehicle
+
+                                                        setState(() {
+                                                          showCombinedSearch =
+                                                              false;
+                                                          showVehicleSearch =
+                                                              true;
+                                                          showServiceSearch =
+                                                              false;
+                                                          showDateSearch =
+                                                              false;
+                                                          filterService = '';
+                                                          startDate = null;
+                                                          endDate = null;
+                                                        });
+                                                        Navigator.of(context)
+                                                            .pop();
+                                                      },
+                                                    ),
+                                                    ListTile(
+                                                      title: Text(
+                                                          'Search by Service'),
+                                                      onTap: () {
+                                                        setState(() {});
+                                                        // Handle search by service
+                                                        setState(() {
+                                                          showCombinedSearch =
+                                                              false;
+                                                          showVehicleSearch =
+                                                              false;
+                                                          showServiceSearch =
+                                                              true;
+                                                          showDateSearch =
+                                                              false;
+                                                          filterVehicle = '';
+                                                          startDate = null;
+                                                          endDate = null;
+                                                        });
+                                                        Navigator.of(context)
+                                                            .pop();
+                                                      },
+                                                    ),
+                                                    ListTile(
+                                                      title: Text(
+                                                          'Search by Date'),
+                                                      onTap: () {
+                                                        setState(() {
+                                                          showCombinedSearch =
+                                                              false;
+                                                          showVehicleSearch =
+                                                              false;
+                                                          showServiceSearch =
+                                                              false;
+                                                          showDateSearch = true;
+                                                          filterVehicle = '';
+                                                          filterService = '';
+                                                        });
+                                                        // Handle search by date
+                                                        Navigator.of(context)
+                                                            .pop();
+                                                      },
+                                                    ),
+                                                    ListTile(
+                                                        title:
+                                                            Text('Search All'),
+                                                        onTap: () {
+                                                          setState(() {
+                                                            showCombinedSearch =
+                                                                true;
+                                                            showVehicleSearch =
+                                                                false;
+                                                            showServiceSearch =
+                                                                false;
+                                                            showDateSearch =
+                                                                false;
+                                                            filterVehicle = '';
+                                                            filterService = '';
+                                                            startDate = null;
+                                                            endDate = null;
+                                                          });
+                                                          Navigator.of(context)
+                                                              .pop();
+                                                        }),
+                                                  ],
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(context)
+                                                          .pop();
+                                                    },
+                                                    child: Text('Close'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedVehicle = value;
-                                  selectedServices
-                                      .clear(); // Clear selected services when vehicle changes
-                                  updateSelectedVehicleAndService();
-                                });
-                              },
+                                  SizedBox(height: 16.h),
+                                  if (showVehicleSearch || showCombinedSearch)
+                                    DropdownButtonFormField<String>(
+                                      decoration: InputDecoration(
+                                        labelText: 'Search by Vehicle',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        prefixIcon: Icon(Icons.directions_car,
+                                            color: kPrimary),
+                                      ),
+                                      items: vehicles.map((vehicle) {
+                                        return DropdownMenuItem<String>(
+                                          value: vehicle['vehicleNumber'],
+                                          child: Text(
+                                            "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+                                            style: appStyleUniverse(
+                                                14, kDark, FontWeight.normal),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          filterVehicle = value ?? '';
+                                        });
+                                      },
+                                      value: filterVehicle.isEmpty
+                                          ? null
+                                          : filterVehicle,
+                                      hint: Text(
+                                        'Select Vehicle',
+                                        style: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                      ),
+                                    ),
+                                  SizedBox(height: 16.h),
+                                  if ((showVehicleSearch ||
+                                          showCombinedSearch) &&
+                                      (showServiceSearch || showDateSearch))
+                                    SizedBox(height: 16.h),
+                                  if (showServiceSearch || showCombinedSearch)
+                                    DropdownButtonFormField<String>(
+                                      decoration: InputDecoration(
+                                        labelText: 'Search by Service',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        prefixIcon:
+                                            Icon(Icons.build, color: kPrimary),
+                                      ),
+                                      items: services.map((service) {
+                                        return DropdownMenuItem<String>(
+                                          value: service['sName'],
+                                          child: Text(
+                                            service['sName'],
+                                            style: appStyleUniverse(
+                                                14, kDark, FontWeight.normal),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          filterService = value ?? '';
+                                        });
+                                      },
+                                      value: filterService.isEmpty
+                                          ? null
+                                          : filterService,
+                                      hint: Text(
+                                        'Select Service',
+                                        style: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                      ),
+                                    ),
+                                  SizedBox(height: 16.h),
+                                  if ((showServiceSearch ||
+                                          showCombinedSearch) &&
+                                      showDateSearch)
+                                    SizedBox(height: 16.h),
+                                  if (showDateSearch || showCombinedSearch) ...[
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () async {
+                                              final DateTime? picked =
+                                                  await showDatePicker(
+                                                context: context,
+                                                initialDate:
+                                                    startDate ?? DateTime.now(),
+                                                firstDate: DateTime(2000),
+                                                lastDate: DateTime(2100),
+                                              );
+                                              if (picked != null) {
+                                                setState(() {
+                                                  startDate = picked;
+                                                });
+                                              }
+                                            },
+                                            child: InputDecorator(
+                                              decoration: InputDecoration(
+                                                labelText: 'Start Date',
+                                                labelStyle: appStyleUniverse(14,
+                                                    kDark, FontWeight.normal),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                prefixIcon: Icon(
+                                                    Icons.calendar_today,
+                                                    color: kPrimary),
+                                              ),
+                                              child: Text(
+                                                startDate != null
+                                                    ? DateFormat('dd-MM-yyyy')
+                                                        .format(startDate!)
+                                                    : 'Select Start Date',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 16.w),
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () async {
+                                              final DateTime? picked =
+                                                  await showDatePicker(
+                                                context: context,
+                                                initialDate:
+                                                    endDate ?? DateTime.now(),
+                                                firstDate: DateTime(2000),
+                                                lastDate: DateTime(2100),
+                                              );
+                                              if (picked != null) {
+                                                setState(() {
+                                                  endDate = picked;
+                                                });
+                                              }
+                                            },
+                                            child: InputDecorator(
+                                              decoration: InputDecoration(
+                                                labelText: 'End Date',
+                                                labelStyle: appStyleUniverse(14,
+                                                    kDark, FontWeight.normal),
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                prefixIcon: Icon(
+                                                    Icons.calendar_today,
+                                                    color: kPrimary),
+                                              ),
+                                              child: Text(
+                                                endDate != null
+                                                    ? DateFormat('dd-MM-yyyy')
+                                                        .format(endDate!)
+                                                    : 'Select End Date',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  SizedBox(height: 16.h),
+                                  CustomButton(
+                                      text: "Hide",
+                                      onPress: resetFilters,
+                                      color: kPrimary),
+                                  SizedBox(height: 16.h),
+                                ],
+                              ),
                             ),
+                          ),
+                        ],
 
-                            SizedBox(height: 10.h),
-                            // Select Package (Multiple Selection)
+                        if (showAddRecords) ...[
+                          SizedBox(height: 10.h),
+                          Card(
+                            elevation: 4,
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Vehicle Dropdown
+                                  DropdownButtonFormField<String>(
+                                    value: selectedVehicle,
+                                    hint: const Text('Select Vehicle'),
+                                    items: vehicles.map((vehicle) {
+                                      return DropdownMenuItem<String>(
+                                        value: vehicle['id'],
+                                        child: Text(
+                                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                          style: appStyleUniverse(
+                                              17, kDark, FontWeight.normal),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        selectedVehicle = value;
+                                        selectedServices
+                                            .clear(); // Clear selected services when vehicle changes
+                                        updateSelectedVehicleAndService();
+                                      });
+                                    },
+                                  ),
 
-                            if (selectedVehicle != null) ...[
-                              Text("Select Packages",
-                                  style: appStyleUniverse(
-                                      16, kDark, FontWeight.normal)),
-                              MultiSelectDialogField(
-                                dialogHeight: 300,
-                                items: packages.where((package) {
-                                  List<
-                                      String>? vehicleTypes = selectedVehicleData?[
-                                          'vehicleType']
-                                      .toString()
-                                      .toLowerCase()
-                                      .split(
-                                          '/'); // Convert "Truck/Trailer" into ["truck", "trailer"]
+                                  SizedBox(height: 10.h),
+                                  // Select Package (Multiple Selection)
 
-                                  List<String> packageTypes = List<String>.from(
-                                          package['type'])
-                                      .map((t) => t.toLowerCase())
-                                      .toList(); // Convert package types to lowercase
+                                  if (selectedVehicle != null) ...[
+                                    Text("Select Packages",
+                                        style: appStyleUniverse(
+                                            16, kDark, FontWeight.normal)),
+                                    MultiSelectDialogField(
+                                      dialogHeight: 300,
+                                      items: packages.where((package) {
+                                        List<String>? vehicleTypes =
+                                            selectedVehicleData?['vehicleType']
+                                                .toString()
+                                                .toLowerCase()
+                                                .split(
+                                                    '/'); // Convert "Truck/Trailer" into ["truck", "trailer"]
 
-                                  return packageTypes.any((type) =>
-                                      vehicleTypes!.contains(
-                                          type)); // Check if any type matches
-                                }).map((package) {
-                                  return MultiSelectItem<String>(
-                                    package['name'], // Display the package name
-                                    package['name'], // Label in dropdown
-                                  );
-                                }).toList(),
-                                initialValue: selectedPackages.toList(),
-                                title: Text("Select Packages"),
-                                selectedColor: kSecondary,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey),
-                                ),
-                                buttonIcon: Icon(Icons.arrow_drop_down),
-                                buttonText: Text("Choose Packages"),
-                                separateSelectedItems: false,
-                                onConfirm: (values) {
-                                  setState(() {
-                                    selectedPackages = Set<String>.from(values);
-                                    selectedServices.clear();
+                                        List<String> packageTypes = List<
+                                                String>.from(package['type'])
+                                            .map((t) => t.toLowerCase())
+                                            .toList(); // Convert package types to lowercase
 
-                                    for (var selectedPackage
-                                        in selectedPackages) {
-                                      String normalizedPackage =
-                                          normalizeString(selectedPackage);
+                                        return packageTypes.any((type) =>
+                                            vehicleTypes!.contains(
+                                                type)); // Check if any type matches
+                                      }).map((package) {
+                                        return MultiSelectItem<String>(
+                                          package[
+                                              'name'], // Display the package name
+                                          package['name'], // Label in dropdown
+                                        );
+                                      }).toList(),
+                                      initialValue: selectedPackages.toList(),
+                                      title: Text("Select Packages"),
+                                      selectedColor: kSecondary,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.grey),
+                                      ),
+                                      buttonIcon: Icon(Icons.arrow_drop_down),
+                                      buttonText: Text("Choose Packages"),
+                                      separateSelectedItems: false,
+                                      onConfirm: (values) {
+                                        setState(() {
+                                          selectedPackages =
+                                              Set<String>.from(values);
+                                          selectedServices.clear();
 
-                                      for (var service in services) {
-                                        if (service['pName'] != null &&
-                                            service['pName'].isNotEmpty) {
-                                          for (var packageName
-                                              in service['pName']) {
-                                            if (normalizeString(packageName) ==
-                                                normalizedPackage) {
-                                              selectedServices
-                                                  .add(service['sId']);
+                                          for (var selectedPackage
+                                              in selectedPackages) {
+                                            String normalizedPackage =
+                                                normalizeString(
+                                                    selectedPackage);
 
-                                              // Automatically select subservices if they exist
-                                              if (service['subServices'] !=
-                                                  null) {
-                                                for (var subService
-                                                    in service['subServices']) {
-                                                  List<String> subServiceNames =
-                                                      List<String>.from(
-                                                          subService['sName'] ??
-                                                              []);
-                                                  for (var subServiceName
-                                                      in subServiceNames) {
-                                                    if (subServiceName
-                                                        .isNotEmpty) {
-                                                      selectedSubServices[
-                                                          service[
-                                                              'sId']] ??= [];
-                                                      selectedSubServices[
-                                                              service['sId']]!
-                                                          .add(subServiceName);
+                                            for (var service in services) {
+                                              if (service['pName'] != null &&
+                                                  service['pName'].isNotEmpty) {
+                                                for (var packageName
+                                                    in service['pName']) {
+                                                  if (normalizeString(
+                                                          packageName) ==
+                                                      normalizedPackage) {
+                                                    selectedServices
+                                                        .add(service['sId']);
+
+                                                    // Automatically select subservices if they exist
+                                                    if (service[
+                                                            'subServices'] !=
+                                                        null) {
+                                                      for (var subService
+                                                          in service[
+                                                              'subServices']) {
+                                                        List<String>
+                                                            subServiceNames =
+                                                            List<String>.from(
+                                                                subService[
+                                                                        'sName'] ??
+                                                                    []);
+                                                        for (var subServiceName
+                                                            in subServiceNames) {
+                                                          if (subServiceName
+                                                              .isNotEmpty) {
+                                                            selectedSubServices[
+                                                                service[
+                                                                    'sId']] ??= [];
+                                                            selectedSubServices[
+                                                                    service[
+                                                                        'sId']]!
+                                                                .add(
+                                                                    subServiceName);
+                                                          }
+                                                        }
+                                                      }
                                                     }
                                                   }
                                                 }
                                               }
                                             }
                                           }
-                                        }
-                                      }
-                                    }
-                                    updateSelectedVehicleAndService();
-                                  });
-                                },
-                              ),
-                            ],
+                                          updateSelectedVehicleAndService();
+                                        });
+                                      },
+                                    ),
+                                  ],
 
-                            SizedBox(height: 10.h),
+                                  SizedBox(height: 10.h),
 
-                            // Services Selection with Search
-                            Text('Select Services',
-                                style: appStyleUniverse(
-                                    16, kDark, FontWeight.w500)),
-                            SizedBox(height: 8.h),
+                                  // Services Selection with Search
+                                  Text('Select Services',
+                                      style: appStyleUniverse(
+                                          16, kDark, FontWeight.w500)),
+                                  SizedBox(height: 8.h),
 
-                            // Search Bar for Services
-                            SizedBox(
-                              height: 40.h,
-                              child: TextField(
-                                controller: serviceSearchController,
-                                decoration: InputDecoration(
-                                  labelText: 'Search Services',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
+                                  // Search Bar for Services
+                                  SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: serviceSearchController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Search Services',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          borderSide: BorderSide(
+                                              color: Colors.grey.shade400),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          borderSide: BorderSide(
+                                              color: kPrimary, width: 1),
+                                        ),
+                                        prefixIcon:
+                                            Icon(Icons.search, color: kPrimary),
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {});
+                                      },
+                                    ),
                                   ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide:
-                                        BorderSide(color: Colors.grey.shade400),
+                                  SizedBox(height: 8.h),
+                                  //Serial-wise and top
+                                  // Wrap(
+                                  //   spacing: 4.w,
+                                  //   runSpacing: 4.h,
+                                  //   children: [
+                                  //     ...services.where((service) {
+                                  //       // Show selected services first
+                                  //       return selectedServices
+                                  //           .contains(service['sId']);
+                                  //     }).map((service) =>
+                                  //         buildServiceChip(service, true)),
+                                  //     ...services.where((service) {
+                                  //       // Show non-selected services next
+                                  //       final searchTerm = serviceSearchController
+                                  //           .text
+                                  //           .toLowerCase();
+                                  //       final matchesSearch = searchTerm.isEmpty ||
+                                  //           service['sName']
+                                  //               .toString()
+                                  //               .toLowerCase()
+                                  //               .contains(searchTerm);
+                                  //
+                                  //       final matchesVehicleType =
+                                  //           selectedVehicleData == null ||
+                                  //               service['vType'] ==
+                                  //                   selectedVehicleData?[
+                                  //                       'vehicleType'];
+                                  //
+                                  //       return matchesSearch &&
+                                  //           matchesVehicleType &&
+                                  //           !selectedServices
+                                  //               .contains(service['sId']);
+                                  //     }).map((service) =>
+                                  //         buildServiceChip(service, false)),
+                                  //   ],
+                                  // ),
+
+                                  Wrap(
+                                    spacing: 4.w,
+                                    runSpacing: 4.h,
+                                    children: services.where((service) {
+                                      final searchTerm = serviceSearchController
+                                          .text
+                                          .toLowerCase();
+                                      final matchesSearch =
+                                          searchTerm.isEmpty ||
+                                              service['sName']
+                                                  .toString()
+                                                  .toLowerCase()
+                                                  .contains(searchTerm);
+                                      final matchesVehicleType =
+                                          selectedVehicleData == null ||
+                                              service['vType'] ==
+                                                  selectedVehicleData?[
+                                                      'vehicleType'];
+
+                                      return matchesSearch &&
+                                          matchesVehicleType;
+                                    }).map((service) {
+                                      bool isSelected = selectedServices
+                                          .contains(service['sId']);
+                                      return buildServiceChip(
+                                          service, isSelected);
+                                    }).toList(),
                                   ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide:
-                                        BorderSide(color: kPrimary, width: 1),
-                                  ),
-                                  prefixIcon:
-                                      Icon(Icons.search, color: kPrimary),
-                                  filled: true,
-                                  fillColor: Colors.grey.shade50,
-                                ),
-                                onChanged: (value) {
-                                  setState(() {});
-                                },
-                              ),
-                            ),
-                            SizedBox(height: 8.h),
-                            //Serial-wise and top
-                            // Wrap(
-                            //   spacing: 4.w,
-                            //   runSpacing: 4.h,
-                            //   children: [
-                            //     ...services.where((service) {
-                            //       // Show selected services first
-                            //       return selectedServices
-                            //           .contains(service['sId']);
-                            //     }).map((service) =>
-                            //         buildServiceChip(service, true)),
-                            //     ...services.where((service) {
-                            //       // Show non-selected services next
-                            //       final searchTerm = serviceSearchController
-                            //           .text
-                            //           .toLowerCase();
-                            //       final matchesSearch = searchTerm.isEmpty ||
-                            //           service['sName']
-                            //               .toString()
-                            //               .toLowerCase()
-                            //               .contains(searchTerm);
-                            //
-                            //       final matchesVehicleType =
-                            //           selectedVehicleData == null ||
-                            //               service['vType'] ==
-                            //                   selectedVehicleData?[
-                            //                       'vehicleType'];
-                            //
-                            //       return matchesSearch &&
-                            //           matchesVehicleType &&
-                            //           !selectedServices
-                            //               .contains(service['sId']);
-                            //     }).map((service) =>
-                            //         buildServiceChip(service, false)),
-                            //   ],
-                            // ),
 
-                            Wrap(
-                              spacing: 4.w,
-                              runSpacing: 4.h,
-                              children: services.where((service) {
-                                final searchTerm =
-                                    serviceSearchController.text.toLowerCase();
-                                final matchesSearch = searchTerm.isEmpty ||
-                                    service['sName']
-                                        .toString()
-                                        .toLowerCase()
-                                        .contains(searchTerm);
-                                final matchesVehicleType =
-                                    selectedVehicleData == null ||
-                                        service['vType'] ==
-                                            selectedVehicleData?['vehicleType'];
+                                  SizedBox(height: 10.h),
 
-                                return matchesSearch && matchesVehicleType;
-                              }).map((service) {
-                                bool isSelected =
-                                    selectedServices.contains(service['sId']);
-                                return buildServiceChip(service, isSelected);
-                              }).toList(),
-                            ),
+                                  if (selectedVehicleData?['vehicleType'] ==
+                                      "Truck")
+                                    SizedBox(
+                                      height: 40.h,
+                                      child: TextField(
+                                        controller: milesController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Miles',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ),
 
-                            SizedBox(height: 10.h),
+                                  if (selectedVehicleData?['vehicleType'] ==
+                                      "Trailer") ...[
+                                    SizedBox(
+                                      height: 40.h,
+                                      child: TextField(
+                                        controller: hoursController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Hours',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                      ),
+                                    ),
+                                    SizedBox(height: 10.h),
+                                    // InkWell(
+                                    //   onTap: () async {
+                                    //     final DateTime? picked = await showDatePicker(
+                                    //       context: context,
+                                    //       initialDate: selectedDate ?? DateTime.now(),
+                                    //       firstDate: DateTime(2000),
+                                    //       lastDate: DateTime(2100),
+                                    //     );
+                                    //     if (picked != null) {
+                                    //       setState(() {
+                                    //         selectedDate = picked;
+                                    //       });
+                                    //     }
+                                    //   },
+                                    //   child: InputDecorator(
+                                    //     decoration: const InputDecoration(
+                                    //       labelText: 'Date',
+                                    //       border: OutlineInputBorder(),
+                                    //     ),
+                                    //     child: Text(
+                                    //       selectedDate != null
+                                    //           ? selectedDate!
+                                    //               .toLocal()
+                                    //               .toString()
+                                    //               .split(' ')[0]
+                                    //           : 'Select Date',
+                                    //     ),
+                                    //   ),
+                                    // ),
+                                  ],
+                                  SizedBox(height: 10.h),
 
-                            if (selectedVehicleData?['vehicleType'] == "Truck")
-                              SizedBox(
-                                height: 40.h,
-                                child: TextField(
-                                  controller: milesController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Miles',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-
-                            if (selectedVehicleData?['vehicleType'] ==
-                                "Trailer") ...[
-                              SizedBox(
-                                height: 40.h,
-                                child: TextField(
-                                  controller: hoursController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Hours',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              SizedBox(height: 10.h),
-                              InkWell(
-                                onTap: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: selectedDate ?? DateTime.now(),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      selectedDate = picked;
-                                    });
-                                  }
-                                },
-                                child: InputDecorator(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Date',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  child: Text(
-                                    selectedDate != null
-                                        ? selectedDate!
-                                            .toLocal()
-                                            .toString()
-                                            .split(' ')[0]
-                                        : 'Select Date',
-                                  ),
-                                ),
-                              ),
-                            ],
-                            SizedBox(height: 10.h),
-
-                            InkWell(
-                              onTap: () async {
-                                final DateTime? picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: selectedDate ?? DateTime.now(),
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime(2100),
-                                );
-                                if (picked != null) {
-                                  setState(() {
-                                    selectedDate = picked;
-                                  });
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Date',
-                                  border: OutlineInputBorder(),
-                                ),
-                                child: Text(
-                                  selectedDate != null
-                                      ? selectedDate!
-                                          .toLocal()
-                                          .toString()
-                                          .split(' ')[0]
-                                      : 'Select Date',
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 10.h),
-                            // Workshop Name
-                            SizedBox(
-                              height: 40.h,
-                              child: TextField(
-                                controller: workshopController,
-                                decoration: InputDecoration(
-                                  labelText: 'Workshop Name',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 10.h),
-                            SizedBox(
-                              height: 40.h,
-                              child: TextField(
-                                controller: invoiceController,
-                                decoration: InputDecoration(
-                                  labelText: 'Invoice Number (Optional)',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.streetAddress,
-                              ),
-                            ),
-                            SizedBox(height: 10.h),
-
-                            SizedBox(
-                              height: 40.h,
-                              child: TextField(
-                                controller: invoiceAmountController,
-                                decoration: InputDecoration(
-                                  labelText: 'Invoice Amount (Optional)',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.streetAddress,
-                              ),
-                            ),
-                            SizedBox(height: 10.h),
-                            SizedBox(
-                              height: 40.h,
-                              child: TextField(
-                                controller: descriptionController,
-                                decoration: InputDecoration(
-                                  labelText: 'Description (Optional)',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.text,
-                              ),
-                            ),
-                            SizedBox(height: 10.h),
-
-                            // Save Button
-                            CustomButton(
-                              onPress: handleSaveRecords,
-                              color: kPrimary,
-                              text: 'Save Record',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  if (showAddMiles) ...[
-                    SizedBox(height: 10.h),
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Vehicle Dropdown
-                            DropdownButtonFormField<String>(
-                              value: selectedVehicle,
-                              hint: const Text('Select Vehicle'),
-                              items: vehicles.map((vehicle) {
-                                return DropdownMenuItem<String>(
-                                  value: vehicle['id'],
-                                  child: Text(
-                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                    style: appStyleUniverse(
-                                        14, kDark, FontWeight.normal),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) async {
-                                setState(() {
-                                  selectedVehicle = value;
-                                  todayMilesController.clear();
-                                  log("Selected vehicle: $value");
-                                });
-
-                                // Fetch the selected vehicle type from Firestore
-                                final vehicleDoc = await FirebaseFirestore
-                                    .instance
-                                    .collection('Users')
-                                    .doc(currentUId)
-                                    .collection('Vehicles')
-                                    .doc(value)
-                                    .get();
-
-                                if (vehicleDoc.exists) {
-                                  setState(() {
-                                    selectedVehicleType =
-                                        vehicleDoc['vehicleType'];
-                                    log("Selected vehicle type: $selectedVehicleType");
-                                  });
-                                } else {
-                                  log("Vehicle data not found.");
-                                }
-                              },
-                            ),
-                            SizedBox(height: 16.h),
-
-                            // Dynamically show input field based on vehicle type
-                            if (selectedVehicleType == 'Truck') ...[
-                              TextField(
-                                controller: todayMilesController,
-                                decoration: InputDecoration(
-                                  labelText: 'Enter Miles',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ] else if (selectedVehicleType == 'Trailer') ...[
-                              TextField(
-                                controller: todayMilesController,
-                                decoration: InputDecoration(
-                                  labelText: 'Enter Hours',
-                                  labelStyle: appStyleUniverse(
-                                      14, kDark, FontWeight.normal),
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ],
-                            SizedBox(height: 16.h),
-
-                            // Save Button
-                            CustomButton(
-                              onPress: () async {
-                                if (selectedVehicle != null &&
-                                    todayMilesController.text.isNotEmpty) {
-                                  try {
-                                    final int enteredValue =
-                                        int.parse(todayMilesController.text);
-                                    final vehicleId = selectedVehicle;
-
-                                    // Fetch current reading (Miles/Hours) for the selected vehicle
-                                    final vehicleDoc = await FirebaseFirestore
-                                        .instance
-                                        .collection("Users")
-                                        .doc(currentUId)
-                                        .collection("Vehicles")
-                                        .doc(vehicleId)
-                                        .get();
-
-                                    if (vehicleDoc.exists) {
-                                      final int currentReading = int.parse(
-                                        vehicleDoc[
-                                                selectedVehicleType == 'Truck'
-                                                    ? 'currentMiles'
-                                                    : 'hoursReading'] ??
-                                            '0',
+                                  InkWell(
+                                    onTap: () async {
+                                      final DateTime? picked =
+                                          await showDatePicker(
+                                        context: context,
+                                        initialDate:
+                                            selectedDate ?? DateTime.now(),
+                                        firstDate: DateTime(2000),
+                                        lastDate: DateTime(2100),
                                       );
-
-                                      // Validate the entered value
-                                      if (enteredValue < currentReading) {
-                                        showToastMessage(
-                                            "Error",
-                                            "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
-                                            kRed);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
-                                            duration: Duration(seconds: 2),
-                                          ),
-                                        );
-                                        return; // Exit early to prevent further execution
+                                      if (picked != null) {
+                                        setState(() {
+                                          selectedDate = picked;
+                                        });
                                       }
+                                    },
+                                    child: SizedBox(
+                                      height: 50.h,
+                                      child: InputDecorator(
+                                        decoration: const InputDecoration(
+                                          labelText: 'Date',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        child: Text(
+                                          selectedDate != null
+                                              ? selectedDate!
+                                                  .toLocal()
+                                                  .toString()
+                                                  .split(' ')[0]
+                                              : 'Select Date',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 10.h),
+                                  // Workshop Name
+                                  SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: workshopController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Workshop Name',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: 10.h),
+                                  SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: invoiceController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Invoice Number (Optional)',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.streetAddress,
+                                    ),
+                                  ),
+                                  SizedBox(height: 10.h),
 
-                                      // Proceed with saving the data
-                                      await FirebaseFirestore.instance
-                                          .collection("Users")
-                                          .doc(currentUId)
-                                          .collection("Vehicles")
-                                          .doc(vehicleId)
-                                          .update({
-                                        selectedVehicleType == 'Truck'
-                                                ? "prevMilesValue"
-                                                : "prevHoursReadingValue":
-                                            currentReading.toString(),
-                                        selectedVehicleType == 'Truck'
-                                                ? "currentMiles"
-                                                : "hoursReading":
-                                            enteredValue.toString(),
-                                        selectedVehicleType == 'Truck'
-                                                ? 'currentMilesArray'
-                                                : 'hoursReadingArray':
-                                            FieldValue.arrayUnion([
-                                          {
-                                            selectedVehicleType == 'Truck'
-                                                ? "miles"
-                                                : "hours": enteredValue,
-                                            "date": DateTime.now()
-                                                .toIso8601String(),
-                                          }
-                                        ]),
-                                      });
+                                  SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: invoiceAmountController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Invoice Amount (Optional)',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.streetAddress,
+                                    ),
+                                  ),
+                                  SizedBox(height: 10.h),
+                                  SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: descriptionController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Description (Optional)',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.text,
+                                    ),
+                                  ),
+                                  SizedBox(height: 10.h),
 
-                                      debugPrint(
-                                          '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
-                                      todayMilesController.clear();
-                                      setState(() {
-                                        selectedVehicle = null;
-                                        selectedVehicleType = '';
-                                      });
+                                  // Save Button
+                                  CustomButton(
+                                    onPress: handleSaveRecords,
+                                    color: kPrimary,
+                                    text: 'Save Record',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
 
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text('saved successfully!'),
-                                          duration: Duration(seconds: 2),
+                        if (showAddMiles) ...[
+                          SizedBox(height: 10.h),
+                          Card(
+                            elevation: 4,
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Vehicle Dropdown
+                                  DropdownButtonFormField<String>(
+                                    value: selectedVehicle,
+                                    hint: const Text('Select Vehicle'),
+                                    items: vehicles.map((vehicle) {
+                                      return DropdownMenuItem<String>(
+                                        value: vehicle['id'],
+                                        child: Text(
+                                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                          style: appStyleUniverse(
+                                              14, kDark, FontWeight.normal),
                                         ),
                                       );
-
-                                      // Call the cloud function to check for notifications
-                                      final HttpsCallable callable =
-                                          FirebaseFunctions.instance.httpsCallable(
-                                              'checkAndNotifyUserForVehicleService');
-                                      final result = await callable.call({
-                                        'userId': currentUId,
-                                        'vehicleId': vehicleId,
+                                    }).toList(),
+                                    onChanged: (value) async {
+                                      setState(() {
+                                        selectedVehicle = value;
+                                        todayMilesController.clear();
+                                        log("Selected vehicle: $value");
                                       });
 
-                                      log('Cloud function result: ${result.data} vehicle Id $vehicleId');
-                                    } else {
-                                      throw 'Vehicle data not found';
-                                    }
-                                  } catch (e) {
-                                    debugPrint(
-                                        'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
-                                        duration: Duration(seconds: 2),
+                                      // Fetch the selected vehicle type from Firestore
+                                      final vehicleDoc = await FirebaseFirestore
+                                          .instance
+                                          .collection('Users')
+                                          .doc(currentUId)
+                                          .collection('Vehicles')
+                                          .doc(value)
+                                          .get();
+
+                                      if (vehicleDoc.exists) {
+                                        setState(() {
+                                          selectedVehicleType =
+                                              vehicleDoc['vehicleType'];
+                                          log("Selected vehicle type: $selectedVehicleType");
+                                        });
+                                      } else {
+                                        log("Vehicle data not found.");
+                                      }
+                                    },
+                                  ),
+                                  SizedBox(height: 16.h),
+
+                                  // Dynamically show input field based on vehicle type
+                                  if (selectedVehicleType == 'Truck') ...[
+                                    TextField(
+                                      controller: todayMilesController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Enter Miles',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
                                       ),
-                                    );
-                                  }
-                                }
-                              },
-                              color: kPrimary,
-                              text:
-                                  'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  ] else if (selectedVehicleType ==
+                                      'Trailer') ...[
+                                    TextField(
+                                      controller: todayMilesController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Enter Hours',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  ],
+                                  SizedBox(height: 16.h),
+
+                                  // Save Button
+                                  CustomButton(
+                                    onPress: () async {
+                                      if (selectedVehicle != null &&
+                                          todayMilesController
+                                              .text.isNotEmpty) {
+                                        try {
+                                          final int enteredValue = int.parse(
+                                              todayMilesController.text);
+                                          final vehicleId = selectedVehicle;
+
+                                          // Fetch current reading (Miles/Hours) for the selected vehicle
+                                          final vehicleDoc =
+                                              await FirebaseFirestore.instance
+                                                  .collection("Users")
+                                                  .doc(currentUId)
+                                                  .collection("Vehicles")
+                                                  .doc(vehicleId)
+                                                  .get();
+
+                                          if (vehicleDoc.exists) {
+                                            final int currentReading =
+                                                int.parse(
+                                              vehicleDoc[selectedVehicleType ==
+                                                          'Truck'
+                                                      ? 'currentMiles'
+                                                      : 'hoursReading'] ??
+                                                  '0',
+                                            );
+
+                                            // Validate the entered value
+                                            if (enteredValue < currentReading) {
+                                              showToastMessage(
+                                                  "Error",
+                                                  "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
+                                                  kRed);
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
+                                                  duration:
+                                                      Duration(seconds: 2),
+                                                ),
+                                              );
+                                              return; // Exit early to prevent further execution
+                                            }
+
+                                            // Proceed with saving the data
+                                            await FirebaseFirestore.instance
+                                                .collection("Users")
+                                                .doc(currentUId)
+                                                .collection("Vehicles")
+                                                .doc(vehicleId)
+                                                .update({
+                                              selectedVehicleType == 'Truck'
+                                                      ? "prevMilesValue"
+                                                      : "prevHoursReadingValue":
+                                                  currentReading.toString(),
+                                              selectedVehicleType == 'Truck'
+                                                      ? "currentMiles"
+                                                      : "hoursReading":
+                                                  enteredValue.toString(),
+                                              selectedVehicleType == 'Truck'
+                                                      ? 'currentMilesArray'
+                                                      : 'hoursReadingArray':
+                                                  FieldValue.arrayUnion([
+                                                {
+                                                  selectedVehicleType == 'Truck'
+                                                      ? "miles"
+                                                      : "hours": enteredValue,
+                                                  "date": DateTime.now()
+                                                      .toIso8601String(),
+                                                }
+                                              ]),
+                                            });
+
+                                            debugPrint(
+                                                '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
+                                            todayMilesController.clear();
+                                            setState(() {
+                                              selectedVehicle = null;
+                                              selectedVehicleType = '';
+                                            });
+
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content:
+                                                    Text('saved successfully!'),
+                                                duration: Duration(seconds: 2),
+                                              ),
+                                            );
+
+                                            // Call the cloud function to check for notifications
+                                            final HttpsCallable callable =
+                                                FirebaseFunctions.instance
+                                                    .httpsCallable(
+                                                        'checkAndNotifyUserForVehicleService');
+                                            final result = await callable.call({
+                                              'userId': currentUId,
+                                              'vehicleId': vehicleId,
+                                            });
+
+                                            log('Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                          } else {
+                                            throw 'Vehicle data not found';
+                                          }
+                                        } catch (e) {
+                                          debugPrint(
+                                              'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                  'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    color: kPrimary,
+                                    text:
+                                        'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+
+                        TabBar(
+                          controller: _tabController,
+                          tabs: [
+                            Tab(
+                              child: Text("My Records",
+                                  style: appStyleUniverse(
+                                      20, kDark, FontWeight.w500)),
+                            ),
+                            Tab(
+                              child: Text("My Miles",
+                                  style: appStyleUniverse(
+                                      20, kDark, FontWeight.w500)),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ],
+                        SizedBox(height: 20.h),
 
-                  TabBar(
-                    controller: _tabController,
-                    tabs: [
-                      Tab(
-                        child: Text("My Records",
-                            style:
-                                appStyleUniverse(20, kDark, FontWeight.w500)),
-                      ),
-                      Tab(
-                        child: Text("My Miles",
-                            style:
-                                appStyleUniverse(20, kDark, FontWeight.w500)),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20.h),
-
-                  //my records section
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        // My Records Tab
-                        SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                        //my records section
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: TabBarView(
+                            controller: _tabController,
                             children: [
-                              // Padding(
-                              //   padding: EdgeInsets.symmetric(
-                              //       horizontal: 16.w, vertical: 8.h),
-                              //   child: GestureDetector(
-                              //     onTap: () {
-                              //       setState(() {
-                              //         showRecordFilter = !showRecordFilter;
-                              //       });
-                              //     },
-                              //     child: Container(
-                              //       padding: EdgeInsets.all(12.w),
-                              //       decoration: BoxDecoration(
-                              //         color: kPrimary.withOpacity(0.1),
-                              //         borderRadius: BorderRadius.circular(8.r),
-                              //         border: Border.all(
-                              //             color: kPrimary.withOpacity(0.3)),
-                              //       ),
-                              //       child: Row(
-                              //         mainAxisAlignment:
-                              //             MainAxisAlignment.center,
-                              //         children: [
-                              //           Icon(
-                              //             showRecordFilter
-                              //                 ? Icons.filter_alt_off_outlined
-                              //                 : Icons.filter_alt_outlined,
-                              //             size: 20,
-                              //             color: kPrimary,
-                              //           ),
-                              //           SizedBox(width: 8.w),
-                              //           Text(
-                              //             showRecordFilter
-                              //                 ? "Hide Filter"
-                              //                 : "Show Filter",
-                              //             style: appStyleUniverse(
-                              //                 14, kPrimary, FontWeight.w500),
-                              //           ),
-                              //         ],
-                              //       ),
-                              //     ),
-                              //   ),
-                              // ),
+                              // My Records Tab
+                              SingleChildScrollView(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Padding(
+                                    //   padding: EdgeInsets.symmetric(
+                                    //       horizontal: 16.w, vertical: 8.h),
+                                    //   child: GestureDetector(
+                                    //     onTap: () {
+                                    //       setState(() {
+                                    //         showRecordFilter = !showRecordFilter;
+                                    //       });
+                                    //     },
+                                    //     child: Container(
+                                    //       padding: EdgeInsets.all(12.w),
+                                    //       decoration: BoxDecoration(
+                                    //         color: kPrimary.withOpacity(0.1),
+                                    //         borderRadius: BorderRadius.circular(8.r),
+                                    //         border: Border.all(
+                                    //             color: kPrimary.withOpacity(0.3)),
+                                    //       ),
+                                    //       child: Row(
+                                    //         mainAxisAlignment:
+                                    //             MainAxisAlignment.center,
+                                    //         children: [
+                                    //           Icon(
+                                    //             showRecordFilter
+                                    //                 ? Icons.filter_alt_off_outlined
+                                    //                 : Icons.filter_alt_outlined,
+                                    //             size: 20,
+                                    //             color: kPrimary,
+                                    //           ),
+                                    //           SizedBox(width: 8.w),
+                                    //           Text(
+                                    //             showRecordFilter
+                                    //                 ? "Hide Filter"
+                                    //                 : "Show Filter",
+                                    //             style: appStyleUniverse(
+                                    //                 14, kPrimary, FontWeight.w500),
+                                    //           ),
+                                    //         ],
+                                    //       ),
+                                    //     ),
+                                    //   ),
+                                    // ),
 
-                              // // Filter Section
+                                    // // Filter Section
 
-                              // Visibility(
-                              //   visible: showRecordFilter,
-                              //   child: Padding(
-                              //     padding:
-                              //         EdgeInsets.symmetric(horizontal: 16.w),
-                              //     child: Column(
-                              //       crossAxisAlignment:
-                              //           CrossAxisAlignment.stretch,
-                              //       children: [
-                              //         SizedBox(height: 10.h),
-                              //         DropdownButtonFormField<String>(
-                              //           decoration: InputDecoration(
-                              //             labelText: 'Filter by Vehicle',
-                              //             border: OutlineInputBorder(
-                              //               borderRadius:
-                              //                   BorderRadius.circular(8),
-                              //             ),
-                              //             prefixIcon: Icon(Icons.directions_car,
-                              //                 color: kPrimary),
-                              //           ),
-                              //           items: vehicles.map((vehicle) {
-                              //             return DropdownMenuItem<String>(
-                              //               value: vehicle['vehicleNumber'],
-                              //               child: Text(
-                              //                 "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
-                              //                 style: appStyleUniverse(
-                              //                     14, kDark, FontWeight.normal),
-                              //               ),
-                              //             );
-                              //           }).toList(),
-                              //           onChanged: (value) {
-                              //             setState(() {
-                              //               filterVehicle = value ?? '';
-                              //             });
-                              //           },
-                              //           value: filterVehicle.isEmpty
-                              //               ? null
-                              //               : filterVehicle,
-                              //           hint: Text(
-                              //             'Select Vehicle',
-                              //             style: appStyleUniverse(
-                              //                 14, kDark, FontWeight.normal),
-                              //           ),
-                              //         ),
-                              //         SizedBox(height: 16.h),
-                              //         Row(
-                              //           children: [
-                              //             Expanded(
-                              //               child: InkWell(
-                              //                 onTap: () async {
-                              //                   final DateTime? picked =
-                              //                       await showDatePicker(
-                              //                     context: context,
-                              //                     initialDate: startDate ??
-                              //                         DateTime.now(),
-                              //                     firstDate: DateTime(2000),
-                              //                     lastDate: DateTime(2100),
-                              //                   );
-                              //                   if (picked != null) {
-                              //                     setState(() {
-                              //                       startDate = picked;
-                              //                     });
-                              //                   }
-                              //                 },
-                              //                 child: InputDecorator(
-                              //                   decoration: InputDecoration(
-                              //                     labelText: 'Start Date',
-                              //                     labelStyle: appStyleUniverse(
-                              //                         14,
-                              //                         kDark,
-                              //                         FontWeight.normal),
-                              //                     border: OutlineInputBorder(
-                              //                       borderRadius:
-                              //                           BorderRadius.circular(
-                              //                               8),
-                              //                     ),
-                              //                     prefixIcon: Icon(
-                              //                         Icons.calendar_today,
-                              //                         color: kPrimary),
-                              //                   ),
-                              //                   child: Text(
-                              //                     startDate != null
-                              //                         ? DateFormat('dd-MM-yyyy')
-                              //                             .format(startDate!)
-                              //                         : 'Select Start Date',
-                              //                   ),
-                              //                 ),
-                              //               ),
-                              //             ),
-                              //             SizedBox(width: 16.w),
-                              //             Expanded(
-                              //               child: InkWell(
-                              //                 onTap: () async {
-                              //                   final DateTime? picked =
-                              //                       await showDatePicker(
-                              //                     context: context,
-                              //                     initialDate:
-                              //                         endDate ?? DateTime.now(),
-                              //                     firstDate: DateTime(2000),
-                              //                     lastDate: DateTime(2100),
-                              //                   );
-                              //                   if (picked != null) {
-                              //                     setState(() {
-                              //                       endDate = picked;
-                              //                     });
-                              //                   }
-                              //                 },
-                              //                 child: InputDecorator(
-                              //                   decoration: InputDecoration(
-                              //                     labelText: 'End Date',
-                              //                     labelStyle: appStyleUniverse(
-                              //                         14,
-                              //                         kDark,
-                              //                         FontWeight.normal),
-                              //                     border: OutlineInputBorder(
-                              //                       borderRadius:
-                              //                           BorderRadius.circular(
-                              //                               8),
-                              //                     ),
-                              //                     prefixIcon: Icon(
-                              //                         Icons.calendar_today,
-                              //                         color: kPrimary),
-                              //                   ),
-                              //                   child: Text(
-                              //                     endDate != null
-                              //                         ? DateFormat('dd-MM-yyyy')
-                              //                             .format(endDate!)
-                              //                         : 'Select End Date',
-                              //                   ),
-                              //                 ),
-                              //               ),
-                              //             ),
-                              //           ],
-                              //         ),
-                              //         SizedBox(height: 16.h),
-                              //         CustomButton(
-                              //           text: "Reset Filters",
-                              //           onPress: resetFilters,
-                              //           color: kPrimary,
-                              //         ),
-                              //         SizedBox(height: 16.h),
-                              //       ],
-                              //     ),
-                              //   ),
-                              // ),
+                                    // Visibility(
+                                    //   visible: showRecordFilter,
+                                    //   child: Padding(
+                                    //     padding:
+                                    //         EdgeInsets.symmetric(horizontal: 16.w),
+                                    //     child: Column(
+                                    //       crossAxisAlignment:
+                                    //           CrossAxisAlignment.stretch,
+                                    //       children: [
+                                    //         SizedBox(height: 10.h),
+                                    //         DropdownButtonFormField<String>(
+                                    //           decoration: InputDecoration(
+                                    //             labelText: 'Filter by Vehicle',
+                                    //             border: OutlineInputBorder(
+                                    //               borderRadius:
+                                    //                   BorderRadius.circular(8),
+                                    //             ),
+                                    //             prefixIcon: Icon(Icons.directions_car,
+                                    //                 color: kPrimary),
+                                    //           ),
+                                    //           items: vehicles.map((vehicle) {
+                                    //             return DropdownMenuItem<String>(
+                                    //               value: vehicle['vehicleNumber'],
+                                    //               child: Text(
+                                    //                 "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+                                    //                 style: appStyleUniverse(
+                                    //                     14, kDark, FontWeight.normal),
+                                    //               ),
+                                    //             );
+                                    //           }).toList(),
+                                    //           onChanged: (value) {
+                                    //             setState(() {
+                                    //               filterVehicle = value ?? '';
+                                    //             });
+                                    //           },
+                                    //           value: filterVehicle.isEmpty
+                                    //               ? null
+                                    //               : filterVehicle,
+                                    //           hint: Text(
+                                    //             'Select Vehicle',
+                                    //             style: appStyleUniverse(
+                                    //                 14, kDark, FontWeight.normal),
+                                    //           ),
+                                    //         ),
+                                    //         SizedBox(height: 16.h),
+                                    //         Row(
+                                    //           children: [
+                                    //             Expanded(
+                                    //               child: InkWell(
+                                    //                 onTap: () async {
+                                    //                   final DateTime? picked =
+                                    //                       await showDatePicker(
+                                    //                     context: context,
+                                    //                     initialDate: startDate ??
+                                    //                         DateTime.now(),
+                                    //                     firstDate: DateTime(2000),
+                                    //                     lastDate: DateTime(2100),
+                                    //                   );
+                                    //                   if (picked != null) {
+                                    //                     setState(() {
+                                    //                       startDate = picked;
+                                    //                     });
+                                    //                   }
+                                    //                 },
+                                    //                 child: InputDecorator(
+                                    //                   decoration: InputDecoration(
+                                    //                     labelText: 'Start Date',
+                                    //                     labelStyle: appStyleUniverse(
+                                    //                         14,
+                                    //                         kDark,
+                                    //                         FontWeight.normal),
+                                    //                     border: OutlineInputBorder(
+                                    //                       borderRadius:
+                                    //                           BorderRadius.circular(
+                                    //                               8),
+                                    //                     ),
+                                    //                     prefixIcon: Icon(
+                                    //                         Icons.calendar_today,
+                                    //                         color: kPrimary),
+                                    //                   ),
+                                    //                   child: Text(
+                                    //                     startDate != null
+                                    //                         ? DateFormat('dd-MM-yyyy')
+                                    //                             .format(startDate!)
+                                    //                         : 'Select Start Date',
+                                    //                   ),
+                                    //                 ),
+                                    //               ),
+                                    //             ),
+                                    //             SizedBox(width: 16.w),
+                                    //             Expanded(
+                                    //               child: InkWell(
+                                    //                 onTap: () async {
+                                    //                   final DateTime? picked =
+                                    //                       await showDatePicker(
+                                    //                     context: context,
+                                    //                     initialDate:
+                                    //                         endDate ?? DateTime.now(),
+                                    //                     firstDate: DateTime(2000),
+                                    //                     lastDate: DateTime(2100),
+                                    //                   );
+                                    //                   if (picked != null) {
+                                    //                     setState(() {
+                                    //                       endDate = picked;
+                                    //                     });
+                                    //                   }
+                                    //                 },
+                                    //                 child: InputDecorator(
+                                    //                   decoration: InputDecoration(
+                                    //                     labelText: 'End Date',
+                                    //                     labelStyle: appStyleUniverse(
+                                    //                         14,
+                                    //                         kDark,
+                                    //                         FontWeight.normal),
+                                    //                     border: OutlineInputBorder(
+                                    //                       borderRadius:
+                                    //                           BorderRadius.circular(
+                                    //                               8),
+                                    //                     ),
+                                    //                     prefixIcon: Icon(
+                                    //                         Icons.calendar_today,
+                                    //                         color: kPrimary),
+                                    //                   ),
+                                    //                   child: Text(
+                                    //                     endDate != null
+                                    //                         ? DateFormat('dd-MM-yyyy')
+                                    //                             .format(endDate!)
+                                    //                         : 'Select End Date',
+                                    //                   ),
+                                    //                 ),
+                                    //               ),
+                                    //             ),
+                                    //           ],
+                                    //         ),
+                                    //         SizedBox(height: 16.h),
+                                    //         CustomButton(
+                                    //           text: "Reset Filters",
+                                    //           onPress: resetFilters,
+                                    //           color: kPrimary,
+                                    //         ),
+                                    //         SizedBox(height: 16.h),
+                                    //       ],
+                                    //     ),
+                                    //   ),
+                                    // ),
 
-                              if (filteredRecords.isEmpty)
-                                Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(Icons.note_alt_outlined,
-                                          size: 80,
-                                          color: kPrimary.withOpacity(0.5)),
-                                      const SizedBox(height: 16),
-                                      Text('No records found',
-                                          style: appStyleUniverse(
-                                              18, kDarkGray, FontWeight.w500)),
-                                    ],
-                                  ),
-                                )
-                              else
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: filteredRecords.length,
-                                  itemBuilder: (context, index) {
-                                    final record = filteredRecords[index];
-                                    final services =
-                                        record['services'] as List<dynamic>;
-                                    final date = DateFormat('dd-MM-yy').format(
-                                        DateTime.parse(record['createdAt']));
+                                    if (filteredRecords.isEmpty)
+                                      Center(
+                                        child: Column(
+                                          children: [
+                                            Icon(Icons.note_alt_outlined,
+                                                size: 80,
+                                                color:
+                                                    kPrimary.withOpacity(0.5)),
+                                            const SizedBox(height: 16),
+                                            Text('No records found',
+                                                style: appStyleUniverse(
+                                                    18,
+                                                    kDarkGray,
+                                                    FontWeight.w500)),
+                                          ],
+                                        ),
+                                      )
+                                    else
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        itemCount: filteredRecords.length,
+                                        itemBuilder: (context, index) {
+                                          final record = filteredRecords[index];
+                                          final services = record['services']
+                                              as List<dynamic>;
+                                          final date = DateFormat('dd-MM-yy')
+                                              .format(DateTime.parse(
+                                                  record['createdAt']));
 
-                                    return Container(
-                                      margin:
-                                          EdgeInsets.symmetric(vertical: 2.h),
-                                      child: GestureDetector(
-                                        onTap: () => Get.to(() =>
-                                            RecordsDetailsScreen(
-                                                record: record)),
-                                        child: Card(
-                                          elevation: 0,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(15.r),
-                                            side: BorderSide(
-                                              color: kPrimary.withOpacity(0.2),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(15.r),
-                                            ),
-                                            child: Padding(
-                                              padding: EdgeInsets.all(16.w),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      if (record['invoice']
-                                                          .isNotEmpty)
-                                                        Container(
-                                                          padding: EdgeInsets
-                                                              .symmetric(
-                                                            horizontal: 12.w,
-                                                            vertical: 6.h,
-                                                          ),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: kPrimary
-                                                                .withOpacity(
-                                                                    0.1),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        20.r),
-                                                          ),
-                                                          child: Row(
-                                                            children: [
-                                                              Icon(
-                                                                  Icons
-                                                                      .receipt_outlined,
-                                                                  size: 20,
-                                                                  color:
-                                                                      kPrimary),
-                                                              SizedBox(
-                                                                  width: 8.w),
-                                                              Text(
-                                                                  "#${record['invoice']}",
-                                                                  style: appStyleUniverse(
-                                                                      16,
-                                                                      kDark,
-                                                                      FontWeight
-                                                                          .w500)),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      Container(
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                          horizontal: 12.w,
-                                                          vertical: 6.h,
-                                                        ),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: kSecondary
-                                                              .withOpacity(0.1),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(
-                                                                      20.r),
-                                                        ),
-                                                        child: Row(
+                                          return Container(
+                                            margin: EdgeInsets.symmetric(
+                                                vertical: 2.h),
+                                            child: GestureDetector(
+                                              onTap: () => Get.to(() =>
+                                                  RecordsDetailsScreen(
+                                                      record: record)),
+                                              child: Card(
+                                                elevation: 0,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          15.r),
+                                                  side: BorderSide(
+                                                    color: kPrimary
+                                                        .withOpacity(0.2),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            15.r),
+                                                  ),
+                                                  child: Padding(
+                                                    padding:
+                                                        EdgeInsets.all(16.w),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
                                                           children: [
-                                                            Icon(
-                                                                Icons
-                                                                    .calendar_today,
-                                                                size: 18,
-                                                                color:
-                                                                    kSecondary),
-                                                            SizedBox(
-                                                                width: 8.w),
-                                                            Text(date,
-                                                                style: appStyleUniverse(
-                                                                    16,
-                                                                    kDark,
-                                                                    FontWeight
-                                                                        .w500)),
+                                                            if (record[
+                                                                    'invoice']
+                                                                .isNotEmpty)
+                                                              Container(
+                                                                padding: EdgeInsets
+                                                                    .symmetric(
+                                                                  horizontal:
+                                                                      12.w,
+                                                                  vertical: 6.h,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: kPrimary
+                                                                      .withOpacity(
+                                                                          0.1),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              20.r),
+                                                                ),
+                                                                child: Row(
+                                                                  children: [
+                                                                    Icon(
+                                                                        Icons
+                                                                            .receipt_outlined,
+                                                                        size:
+                                                                            20,
+                                                                        color:
+                                                                            kPrimary),
+                                                                    SizedBox(
+                                                                        width: 8
+                                                                            .w),
+                                                                    Text(
+                                                                        "#${record['invoice']}",
+                                                                        style: appStyleUniverse(
+                                                                            16,
+                                                                            kDark,
+                                                                            FontWeight.w500)),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            Container(
+                                                              padding: EdgeInsets
+                                                                  .symmetric(
+                                                                horizontal:
+                                                                    12.w,
+                                                                vertical: 6.h,
+                                                              ),
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: kSecondary
+                                                                    .withOpacity(
+                                                                        0.1),
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            20.r),
+                                                              ),
+                                                              child: Row(
+                                                                children: [
+                                                                  Icon(
+                                                                      Icons
+                                                                          .calendar_today,
+                                                                      size: 18,
+                                                                      color:
+                                                                          kSecondary),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          8.w),
+                                                                  Text(date,
+                                                                      style: appStyleUniverse(
+                                                                          16,
+                                                                          kDark,
+                                                                          FontWeight
+                                                                              .w500)),
+                                                                ],
+                                                              ),
+                                                            ),
                                                           ],
                                                         ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  SizedBox(height: 16.h),
-                                                  buildInfoRow(
-                                                    Icons
-                                                        .directions_car_outlined,
-                                                    '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
-                                                  ),
-                                                  Divider(height: 24.h),
-                                                  // buildInfoRow(
-                                                  //   Icons.tire_repair,
-                                                  //   record['miles'].toString(),
-                                                  // ),
-                                                  // Divider(height: 24.h),
-                                                  buildInfoRow(
-                                                    Icons.build_outlined,
-                                                    services.map((service) {
-                                                      String serviceName =
-                                                          service[
-                                                              'serviceName'];
-                                                      if ((service['subServices']
-                                                                  as List?)
-                                                              ?.isNotEmpty ??
-                                                          false) {
-                                                        String subServices =
-                                                            (service['subServices']
-                                                                    as List)
-                                                                .map((s) =>
-                                                                    s['name'])
-                                                                .join(', ');
-                                                        return "$serviceName ($subServices)";
-                                                      }
-                                                      return serviceName;
-                                                    }).join(", "),
-                                                  ),
-                                                  Divider(height: 24.h),
-                                                  buildInfoRow(
-                                                    Icons.store_outlined,
-                                                    record['workshopName'] ??
-                                                        'N/A',
-                                                  ),
-                                                  if (record["description"]
-                                                      .isNotEmpty) ...[
-                                                    Divider(height: 24.h),
-                                                    buildInfoRow(
-                                                      Icons
-                                                          .description_outlined,
-                                                      record['description'],
-                                                    ),
-                                                  ],
+                                                        SizedBox(height: 16.h),
+                                                        buildInfoRow(
+                                                          Icons
+                                                              .directions_car_outlined,
+                                                          '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                                                        ),
+                                                        Divider(height: 24.h),
+                                                        // buildInfoRow(
+                                                        //   Icons.tire_repair,
+                                                        //   record['miles'].toString(),
+                                                        // ),
+                                                        // Divider(height: 24.h),
+                                                        // buildInfoRow(
+                                                        //   Icons.build_outlined,
+                                                        //   services
+                                                        //       .map((service) {
+                                                        //     String serviceName =
+                                                        //         service[
+                                                        //             'serviceName'];
+                                                        //     if ((service['subServices']
+                                                        //                 as List?)
+                                                        //             ?.isNotEmpty ??
+                                                        //         false) {
+                                                        //       String
+                                                        //           subServices =
+                                                        //           (service['subServices']
+                                                        //                   as List)
+                                                        //               .map((s) => s[
+                                                        //                   'name'])
+                                                        //               .join(
+                                                        //                   ', ');
+                                                        //       return "$serviceName ($subServices)";
+                                                        //     }
+                                                        //     return serviceName;
+                                                        //   }).join(", "),
+                                                        // ),
 
-                                                  Divider(height: 24.h),
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      if (record[
-                                                              "invoiceAmount"]
-                                                          .isNotEmpty) ...[
+                                                        buildInfoRow(
+                                                          Icons.build_outlined,
+                                                          services
+                                                              .map((service) =>
+                                                                  service[
+                                                                      'serviceName'])
+                                                              .join(", "),
+                                                        ),
+
+                                                        Divider(height: 24.h),
+                                                        buildInfoRow(
+                                                          Icons.store_outlined,
+                                                          record['workshopName'] ??
+                                                              'N/A',
+                                                        ),
+                                                        if (record[
+                                                                "description"]
+                                                            .isNotEmpty) ...[
+                                                          Divider(height: 24.h),
+                                                          buildInfoRow(
+                                                            Icons
+                                                                .description_outlined,
+                                                            record[
+                                                                'description'],
+                                                          ),
+                                                        ],
+
+                                                        Divider(height: 24.h),
                                                         Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .spaceBetween,
                                                           children: [
-                                                            Text(
-                                                                "Invoice Amount :",
-                                                                style: appStyle(
-                                                                    14,
-                                                                    kDark,
-                                                                    FontWeight
-                                                                        .w500)),
-                                                            SizedBox(
-                                                                width: 8.w),
-                                                            Text(
-                                                                '${record['invoiceAmount']}',
-                                                                style: appStyleUniverse(
-                                                                    14,
-                                                                    kPrimary,
-                                                                    FontWeight
-                                                                        .bold)),
+                                                            if (record[
+                                                                    "invoiceAmount"]
+                                                                .isNotEmpty) ...[
+                                                              Row(
+                                                                children: [
+                                                                  Text(
+                                                                      "Invoice Amount :",
+                                                                      style: appStyle(
+                                                                          14,
+                                                                          kDark,
+                                                                          FontWeight
+                                                                              .w500)),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          8.w),
+                                                                  Text(
+                                                                      '${record['invoiceAmount']}',
+                                                                      style: appStyleUniverse(
+                                                                          14,
+                                                                          kPrimary,
+                                                                          FontWeight
+                                                                              .bold)),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                            if (record.containsKey(
+                                                                    "miles") &&
+                                                                record['miles'] !=
+                                                                    0)
+                                                              Row(
+                                                                children: [
+                                                                  Text(
+                                                                      "Miles :",
+                                                                      style: appStyle(
+                                                                          14,
+                                                                          kDark,
+                                                                          FontWeight
+                                                                              .w500)),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          8.w),
+                                                                  Text(
+                                                                      '${record['miles']}',
+                                                                      style: appStyleUniverse(
+                                                                          14,
+                                                                          kPrimary,
+                                                                          FontWeight
+                                                                              .bold)),
+                                                                ],
+                                                              ),
+                                                            if (record.containsKey(
+                                                                    "hours") &&
+                                                                record['hours'] !=
+                                                                    0)
+                                                              Row(
+                                                                children: [
+                                                                  Text(
+                                                                      "Hours :",
+                                                                      style: appStyle(
+                                                                          14,
+                                                                          kDark,
+                                                                          FontWeight
+                                                                              .w500)),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          8.w),
+                                                                  Text(
+                                                                      '${record['hours']}',
+                                                                      style: appStyleUniverse(
+                                                                          14,
+                                                                          kPrimary,
+                                                                          FontWeight
+                                                                              .bold)),
+                                                                ],
+                                                              ),
                                                           ],
                                                         ),
                                                       ],
-                                                      Row(
-                                                        children: [
-                                                          Text("Miles :",
-                                                              style: appStyle(
-                                                                  14,
-                                                                  kDark,
-                                                                  FontWeight
-                                                                      .w500)),
-                                                          SizedBox(width: 8.w),
-                                                          Text(
-                                                              '${record['miles']}',
-                                                              style:
-                                                                  appStyleUniverse(
-                                                                      14,
-                                                                      kPrimary,
-                                                                      FontWeight
-                                                                          .bold)),
-                                                        ],
-                                                      ),
-                                                    ],
+                                                    ),
                                                   ),
-                                                ],
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ),
+                                          )
+                                              .animate()
+                                              .fadeIn(
+                                                  duration: 400.ms,
+                                                  delay: (index * 100).ms)
+                                              .slideX(begin: 0.2, end: 0);
+                                        },
                                       ),
-                                    )
-                                        .animate()
-                                        .fadeIn(
-                                            duration: 400.ms,
-                                            delay: (index * 100).ms)
-                                        .slideX(begin: 0.2, end: 0);
-                                  },
+                                  ],
                                 ),
+                              ),
+                              // My Miles Tab
+                              ListView.builder(
+                                itemCount: vehicles.length,
+                                itemBuilder: (context, index) {
+                                  final vehicle = vehicles[index];
+                                  return GestureDetector(
+                                    onTap: () => Get.to(() =>
+                                        MilesDetailsScreen(
+                                            milesRecord: vehicle)),
+                                    child: Card(
+                                      margin:
+                                          EdgeInsets.symmetric(vertical: 8.h),
+                                      child: ListTile(
+                                        title: Text(
+                                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                          style: appStyleUniverse(
+                                              16, kDark, FontWeight.w500),
+                                        ),
+                                        subtitle: vehicle['vehicleType'] ==
+                                                "Truck"
+                                            ? Text(
+                                                'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+                                                style: appStyleUniverse(
+                                                    14,
+                                                    kDarkGray,
+                                                    FontWeight.normal))
+                                            : Text(
+                                                'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
+                                                style: appStyleUniverse(
+                                                    14,
+                                                    kDarkGray,
+                                                    FontWeight.normal),
+                                              ),
+                                        trailing: Icon(
+                                            Icons.directions_car_outlined,
+                                            color: kPrimary),
+                                      ),
+                                    ).animate().fadeIn(
+                                        duration: 400.ms,
+                                        delay: (index * 100).ms),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ),
-                        // My Miles Tab
-                        ListView.builder(
-                          itemCount: vehicles.length,
-                          itemBuilder: (context, index) {
-                            final vehicle = vehicles[index];
-                            return GestureDetector(
-                              onTap: () => Get.to(() =>
-                                  MilesDetailsScreen(milesRecord: vehicle)),
-                              child: Card(
-                                margin: EdgeInsets.symmetric(vertical: 8.h),
-                                child: ListTile(
-                                  title: Text(
-                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                    style: appStyleUniverse(
-                                        16, kDark, FontWeight.w500),
-                                  ),
-                                  subtitle: vehicle['vehicleType'] == "Truck"
-                                      ? Text(
-                                          'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                                          style: appStyleUniverse(
-                                              14, kDarkGray, FontWeight.normal))
-                                      : Text(
-                                          'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
-                                          style: appStyleUniverse(
-                                              14, kDarkGray, FontWeight.normal),
-                                        ),
-                                  trailing: Icon(Icons.directions_car_outlined,
-                                      color: kPrimary),
-                                ),
-                              ).animate().fadeIn(
-                                  duration: 400.ms, delay: (index * 100).ms),
-                            );
-                          },
-                        ),
+
+                        SizedBox(height: 20.h),
                       ],
                     ),
                   ),
-
-                  SizedBox(height: 20.h),
-                ],
-              ),
-            ),
-          ),
-        ));
+                ),
+              )
+            : Center(
+                child: Text(
+                  'You don\'t have access to view this page',
+                  style: appStyleUniverse(18, kDark, FontWeight.w500),
+                ),
+              ));
   }
 
   Widget buildServiceChip(Map<String, dynamic> service, bool isSelected) {

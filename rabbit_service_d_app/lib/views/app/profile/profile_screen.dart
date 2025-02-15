@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
+import 'package:regal_service_d_app/views/app/companyProfile/company_profile.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
@@ -124,6 +125,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Get.to(() => MyTeamScreen());
                           })
                         : SizedBox(),
+                    role == "Owner"
+                        ? buildListTile(
+                            "assets/companyProfile.png", "Company Profile", () {
+                            Get.to(() => CompanyProfileScreen());
+                          })
+                        : SizedBox(),
+                    buildListTile("assets/manage_trip.png", "Manage Trips", () {
+                      Get.to(() => RatingsScreen());
+                    }),
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());
                     }),

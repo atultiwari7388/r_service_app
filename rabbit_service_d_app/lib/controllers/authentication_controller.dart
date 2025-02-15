@@ -182,6 +182,12 @@ class AuthController extends GetxController {
   Future<void> logout() async {
     try {
       await _auth.signOut();
+      // Clear Firestore offline cache (optional, only if needed)
+      await FirebaseFirestore.instance.terminate();
+      await FirebaseFirestore.instance.clearPersistence();
+
+      // Remove any GetX stored user session data (if used)
+      Get.deleteAll();
       Get.offAll(() => const LoginScreen());
     } catch (e) {
       showToastMessage("Error", e.toString(), Colors.red);

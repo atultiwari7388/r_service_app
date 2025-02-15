@@ -26,6 +26,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
   TextEditingController passController = TextEditingController();
+  TextEditingController perMileChargeController = TextEditingController();
 
   var isUserAcCreated = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -33,6 +34,15 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
   List<Map<String, dynamic>> vehicles = []; // To store vehicle details
   List<String> selectedVehicles = []; // To store selected vehicles' IDs
+  List<String> roles = ["Manager", "Driver"];
+  String? selectedRole;
+  List<String> recordAccessCheckBox = [
+    "View",
+    "Edit",
+    "Delete",
+    "Add",
+  ];
+  List<String> selectedRecordAccess = [];
 
   @override
   void initState() {
@@ -81,7 +91,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 24.h),
               buildTextFieldInputWidget(
@@ -112,15 +122,14 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 MaterialCommunityIcons.security,
                 isPass: true,
               ),
-              SizedBox(height: 15.h),
-
               // Vehicle selection with checkboxes
-              SizedBox(height: 24.h),
+              SizedBox(height: 10.h),
               Text(
                 "Assign Vehicles",
                 style: appStyle(16, Colors.black, FontWeight.bold),
               ),
               SizedBox(height: 15.h),
+              Divider(),
               vehicles.isEmpty
                   ? CircularProgressIndicator()
                   : Column(
@@ -141,8 +150,72 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                         );
                       }).toList(),
                     ),
-
+              SizedBox(height: 10.h),
+              Text(
+                "Assign Role",
+                style: appStyle(16, Colors.black, FontWeight.bold),
+              ),
+              SizedBox(height: 10.h),
+              Divider(),
+              Padding(
+                padding: const EdgeInsets.only(left: 10, right: 10),
+                child: DropdownButtonFormField<String>(
+                  hint: Text("Select Role"),
+                  value: selectedRole,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedRole = newValue;
+                    });
+                  },
+                  items: roles.map((String role) {
+                    return DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    );
+                  }).toList(),
+                ),
+              ),
               SizedBox(height: 24.h),
+              Text(
+                "Assign Record Access",
+                style: appStyle(16, Colors.black, FontWeight.bold),
+              ),
+              SizedBox(height: 10.h),
+              Divider(),
+
+              Column(
+                children: recordAccessCheckBox.map((recordAccess) {
+                  return CheckboxListTile(
+                    title: Text(recordAccess),
+                    value: selectedRecordAccess
+                        .contains(recordAccess), // Check if selected
+                    onChanged: (bool? selected) {
+                      setState(() {
+                        if (selected == true) {
+                          selectedRecordAccess.add(recordAccess); // Add to list
+                          print(selectedRecordAccess);
+                        } else {
+                          selectedRecordAccess
+                              .remove(recordAccess); // Remove from list
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+
+              SizedBox(height: 15.h),
+
+              selectedRole == "Driver"
+                  ? buildTextFieldInputWidget(
+                      "Enter per mile charge",
+                      TextInputType.number,
+                      perMileChargeController,
+                      Icons.money,
+                    )
+                  : Container(),
+              SizedBox(height: 24.h),
+
               isUserAcCreated
                   ? CircularProgressIndicator()
                   : CustomButton(
@@ -207,18 +280,55 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         "uid": user.user!.uid,
         "email": emailController.text,
         "active": true,
-        "isTeamMember": true,
         "userName": nameController.text,
         "phoneNumber": phoneController.text,
         "createdBy": currentUId,
-        "profilePicture": "",
-        "role": "TMember",
+        "profilePicture":
+            "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+        "role": selectedRole,
+        "isManager": selectedRole == "Manager" ? true : false,
+        "isDriver": selectedRole == "Driver" ? true : false,
+        "perMileCharge":
+            selectedRole == "Driver" ? perMileChargeController.text : "",
+        "isView": selectedRecordAccess.contains("View"),
+        "isEdit": selectedRecordAccess.contains("Edit"),
+        "isDelete": selectedRecordAccess.contains("Delete"),
+        "isAdd": selectedRecordAccess.contains("Add"),
+        "isOwner": false,
+        "isTeamMember": true,
         "created_at": DateTime.now(),
         "updated_at": DateTime.now(),
       });
 
       // Fetch and store selected vehicles in the team member's subcollection
       for (String vehicleId in selectedVehicles) {
+        // DocumentSnapshot vehicleDoc = await _firestore
+        //     .collection('Users')
+        //     .doc(currentUId) // Fetching from the owner's vehicles collection
+        //     .collection('Vehicles')
+        //     .doc(vehicleId)
+        //     .get();
+
+        // if (vehicleDoc.exists) {
+        //   // Store the selected vehicle details in the new team member's Vehicles subcollection
+        //   await _firestore
+        //       .collection('Users')
+        //       .doc(user.user!.uid) // New team member's document
+        //       .collection('Vehicles')
+        //       .doc(vehicleId)
+        //       .set({
+        //     'companyName': vehicleDoc['companyName'],
+        //     'licensePlate': vehicleDoc['licensePlate'],
+        //     'vehicleNumber': vehicleDoc['vehicleNumber'],
+        //     'year': vehicleDoc['year'],
+        //     'vin': vehicleDoc['vin'],
+        //     'isSet': vehicleDoc['isSet'],
+        //     'assigned_at': DateTime.now(),
+        //     "createdAt": DateTime.now(),
+        //   });
+
+        // }
+
         DocumentSnapshot vehicleDoc = await _firestore
             .collection('Users')
             .doc(currentUId) // Fetching from the owner's vehicles collection
@@ -227,22 +337,31 @@ class _AddTeamMemberState extends State<AddTeamMember> {
             .get();
 
         if (vehicleDoc.exists) {
-          // Store the selected vehicle details in the new team member's Vehicles subcollection
           await _firestore
               .collection('Users')
               .doc(user.user!.uid) // New team member's document
               .collection('Vehicles')
               .doc(vehicleId)
-              .set({
-            'companyName': vehicleDoc['companyName'],
-            'licensePlate': vehicleDoc['licensePlate'],
-            'vehicleNumber': vehicleDoc['vehicleNumber'],
-            'year': vehicleDoc['year'],
-            'vin': vehicleDoc['vin'],
-            'isSet': vehicleDoc['isSet'],
-            'assigned_at': DateTime.now(),
-            "createdAt": DateTime.now(),
-          });
+              .set(vehicleDoc.data()
+                  as Map<String, dynamic>); // Copy the whole document
+        }
+
+        // **Fetch and assign DataServices based on vehicleId**
+        QuerySnapshot dataServicesSnapshot = await _firestore
+            .collection('Users')
+            .doc(currentUId)
+            .collection('DataServices')
+            .where('vehicleId', isEqualTo: vehicleId)
+            .get();
+
+        for (var doc in dataServicesSnapshot.docs) {
+          await _firestore
+              .collection('Users')
+              .doc(user.user!.uid)
+              .collection('DataServices')
+              .doc(doc.id)
+              .set(doc.data()
+                  as Map<String, dynamic>); // Copy the entire document
         }
       }
 
@@ -281,5 +400,16 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         errorMessage = e.message ?? "An unknown error occurred.";
     }
     showToastMessage("Error", errorMessage, Colors.red);
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passController.dispose();
+    perMileChargeController.dispose();
   }
 }

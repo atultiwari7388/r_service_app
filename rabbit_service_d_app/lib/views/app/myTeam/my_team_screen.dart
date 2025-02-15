@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/edit_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/member_jobs_history.dart';
 import '../../../utils/app_styles.dart';
 
@@ -241,7 +242,9 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                         icon: const Icon(Icons.edit,
                                             color: Colors.green),
                                         onPressed: () {
-                                          // Handle Edit action
+                                          Get.to(() => EditTeamMember(
+                                                memberId: memberId,
+                                              ));
                                         },
                                       ),
                                     ],
