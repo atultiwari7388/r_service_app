@@ -338,6 +338,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             ),
                           );
                         }).toList(),
+
                         const SizedBox(height: 20),
                         uploadedFiles.isEmpty
                             ? const SizedBox()
@@ -827,17 +828,16 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     children: [
                       // Cropped image
                       pw.Container(
-                        height: 500,
-                        width: double.infinity, // Make it full width
-                        child: pw.Center(
-                          child: pw.ClipRect(
-                            child: pw.Image(
-                              pw.MemoryImage(imageBytes!),
-                              fit: pw.BoxFit.contain, // Crop the image
+                          height: 500,
+                          width: double.infinity, // Make it full width
+                          child: pw.Center(
+                            child: pw.ClipRect(
+                              child: pw.Image(
+                                pw.MemoryImage(imageBytes!),
+                                fit: pw.BoxFit.contain, // Crop the image
+                              ),
                             ),
-                          ),
-                        )
-                      ),
+                          )),
                       pw.SizedBox(height: 20),
                       // Text description
                       pw.Text(

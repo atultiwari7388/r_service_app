@@ -360,19 +360,19 @@ class _ReportsScreenState extends State<ReportsScreen>
       }
 
       final batch = FirebaseFirestore.instance.batch();
-      final dataServicesUserRef = FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .collection('DataServices');
+      // final dataServicesUserRef = FirebaseFirestore.instance
+      //     .collection('Users')
+      //     .doc(currentUId)
+      //     .collection('DataServices');
       final dataServicesRef =
           FirebaseFirestore.instance.collection("DataServicesRecords");
-      final vehicleRef = FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .collection('Vehicles')
-          .doc(selectedVehicle);
+      // final vehicleRef = FirebaseFirestore.instance
+      //     .collection('Users')
+      //     .doc(currentUId)
+      //     .collection('Vehicles')
+      //     .doc(selectedVehicle);
+      final docId = dataServicesRef.doc().id;
 
-      final docId = dataServicesUserRef.doc().id;
       final currentMiles = int.tryParse(milesController.text) ?? 0;
 
       List<Map<String, dynamic>> servicesData = [];
@@ -441,8 +441,58 @@ class _ReportsScreenState extends State<ReportsScreen>
         "createdAt": DateTime.now().toIso8601String(),
       };
 
-      batch.set(dataServicesUserRef.doc(docId), recordData);
+      // 1. Save to Owner's DataServices
+      final ownerDataServicesRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('DataServices');
+      batch.set(ownerDataServicesRef.doc(docId), recordData);
       batch.set(dataServicesRef.doc(docId), recordData);
+
+      // 2. Query for Team Members (Drivers/Managers)
+      final teamMembersSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('createdBy', isEqualTo: currentUId)
+          .where('isTeamMember', isEqualTo: true)
+          .get();
+
+      // 3. Save to Team Members' DataServices
+      for (final doc in teamMembersSnapshot.docs) {
+        final teamMemberUid = doc.id;
+        final teamMemberDataServicesRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(teamMemberUid)
+            .collection('DataServices');
+        batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+      }
+
+      // 4. Handle Team Member Creating Record (Save to Owner)
+      final currentUserDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+      if (currentUserDoc.data()?['isTeamMember'] == true) {
+        final ownerSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+            .get();
+        if (ownerSnapshot.docs.isNotEmpty) {
+          final ownerUid = ownerSnapshot.docs.first.id;
+          final ownerDataServicesRef = FirebaseFirestore.instance
+              .collection('Users')
+              .doc(ownerUid)
+              .collection('DataServices');
+          batch.set(ownerDataServicesRef.doc(docId), recordData);
+        }
+      }
+
+      // 5. Update Vehicle (Your existing code)
+      final vehicleRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('Vehicles')
+          .doc(selectedVehicle);
+
       batch.update(vehicleRef, {
         'currentMiles': currentMiles.toString(),
         'currentMilesArray': FieldValue.arrayUnion([
@@ -453,6 +503,19 @@ class _ReportsScreenState extends State<ReportsScreen>
         ]),
         'nextNotificationMiles': notificationData,
       });
+
+      // batch.set(dataServicesUserRef.doc(docId), recordData);
+      // batch.set(dataServicesRef.doc(docId), recordData);
+      // batch.update(vehicleRef, {
+      //   'currentMiles': currentMiles.toString(),
+      //   'currentMilesArray': FieldValue.arrayUnion([
+      //     {
+      //       "miles": int.parse(currentMiles.toString()),
+      //       "date": DateTime.now().toIso8601String()
+      //     }
+      //   ]),
+      //   'nextNotificationMiles': notificationData,
+      // });
 
       await batch.commit();
 
@@ -1351,7 +1414,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       ),
                                     ),
                                   ),
+
                                   SizedBox(height: 10.h),
+
                                   // Workshop Name
                                   SizedBox(
                                     height: 40.h,
