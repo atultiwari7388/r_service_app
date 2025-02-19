@@ -5,12 +5,14 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
+import 'package:regal_service_d_app/views/app/manageTrips/trip_details.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class ManageTripsScreen extends StatefulWidget {
@@ -22,7 +24,7 @@ class ManageTripsScreen extends StatefulWidget {
 
 class _ManageTripsScreenState extends State<ManageTripsScreen> {
   final TextEditingController _tripNameController = TextEditingController();
-  final TextEditingController _totalMilesController = TextEditingController();
+  final TextEditingController _currentMilesController = TextEditingController();
   String selectedTrip = '';
   String selectedType = 'Miles';
   TextEditingController milesController = TextEditingController();
@@ -42,6 +44,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   File? _selectedImage;
   String _imageUrl = '';
   DateTime? selectedDate;
+  DateTime? selectedFilterDate;
 
   void addTrip() async {
     setState(() {
@@ -49,21 +52,28 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     });
     try {
       if (_tripNameController.text.isNotEmpty &&
-          _totalMilesController.text.isNotEmpty) {
+          _currentMilesController.text.isNotEmpty) {
         await FirebaseFirestore.instance
             .collection("Users")
             .doc(currentUId)
             .collection('trips')
             .add({
           'tripName': _tripNameController.text,
-          'totalMiles': int.parse(_totalMilesController.text),
+          'currentMiles': int.parse(_currentMilesController.text),
+          'previousMiles': int.parse(_currentMilesController.text),
+          'milesArray': [
+            {
+              'mile': int.parse(_currentMilesController.text),
+              'date': Timestamp.now(),
+            }
+          ],
           'isPaid': false,
           'date': selectedDate,
           'createdAt': Timestamp.now(),
         });
         showToastMessage("Success", "Trip added successfully", kSecondary);
         _tripNameController.clear();
-        _totalMilesController.clear();
+        _currentMilesController.clear();
         setState(() {
           selectedDate = null;
         });
@@ -126,12 +136,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         return;
       }
 
-      DocumentSnapshot tripSnapshot = await FirebaseFirestore.instance
+      DocumentReference tripRef = FirebaseFirestore.instance
           .collection("Users")
           .doc(currentUId)
           .collection('trips')
-          .doc(selectedTrip)
-          .get();
+          .doc(selectedTrip);
+
+      DocumentSnapshot tripSnapshot = await tripRef.get();
 
       if (!tripSnapshot.exists) {
         showToastMessage("Error", "Trip not found.", kRed);
@@ -145,18 +156,40 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
       if (selectedType == 'Miles' && milesController.text.isNotEmpty) {
         int newMiles = int.parse(milesController.text);
+        int previousMiles =
+            tripSnapshot['currentMiles'] ?? 0; // Get the last saved miles
 
-        await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(currentUId)
-            .collection('trips')
-            .doc(selectedTrip)
-            .update({
-          'currentMiles': newMiles,
-          'createdAt': Timestamp.now(),
+        // Check if new miles entry is less than previous
+        if (newMiles < previousMiles) {
+          showToastMessage(
+              "Error", "New miles cannot be less than previous miles.", kRed);
+          return;
+        }
+
+        // Fetch the existing milesArray
+        List<dynamic> milesArray = tripSnapshot['milesArray'] ?? [];
+
+        // Append new entry to milesArray
+        milesArray.add({
+          'mile': newMiles,
+          'date': Timestamp.now(),
+        });
+
+        // Update Firestore document
+        await tripRef.update({
+          'previousMiles': previousMiles, // Move currentMiles to previousMiles
+          'currentMiles': newMiles, // Update currentMiles with new value
+          'milesArray': milesArray, // Save the updated miles array
+          'updatedAt': Timestamp.now(),
         });
 
         showToastMessage("Success", "Miles added successfully!", kSecondary);
+
+        // Reset fields
+        setState(() {
+          milesController.clear();
+          isLoading = false;
+        });
       } else if (selectedType == 'Expenses' &&
           amountController.text.isNotEmpty) {
         await FirebaseFirestore.instance
@@ -283,9 +316,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             SizedBox(
                               height: 40.h,
                               child: TextField(
-                                controller: _totalMilesController,
+                                controller: _currentMilesController,
                                 decoration: const InputDecoration(
-                                  labelText: 'Total Miles',
+                                  labelText: 'Current Miles',
                                   border: OutlineInputBorder(),
                                 ),
                                 keyboardType: TextInputType.number,
@@ -473,19 +506,34 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
                   SizedBox(height: 20.h),
 
-                  // Padding(
-                  //   padding: EdgeInsets.symmetric(horizontal: 12.w),
-                  //   child: InkWell(
-                  //     onTap: () => _selectDateRange(context),
-                  //     child: Container(
-                  //         height: 40.h,
-                  //         width: 70.w,
-                  //         decoration: BoxDecoration(
-                  //             color: kPrimary,
-                  //             borderRadius: BorderRadius.circular(10.r)),
-                  //         child: Icon(Icons.filter_list, color: kWhite)),
-                  //   ),
-                  // ),
+                  // Add this above the StreamBuilder
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12.0, right: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Trips",
+                            style: appStyle(18, kDark, FontWeight.w500)),
+                        IconButton(
+                          icon: Icon(Icons.filter_list, color: kPrimary),
+                          onPressed: () async {
+                            final DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: selectedFilterDate ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+
+                            if (pickedDate != null) {
+                              setState(() {
+                                selectedFilterDate = pickedDate;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
 
                   StreamBuilder(
                     stream: FirebaseFirestore.instance
@@ -496,43 +544,77 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                     builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                       if (!snapshot.hasData)
                         return const CircularProgressIndicator();
+
+                      // Convert selectedFilterDate to formatted string for comparison
+                      String? selectedDateStr = selectedFilterDate != null
+                          ? DateFormat('dd MMM yyyy')
+                              .format(selectedFilterDate!)
+                          : null;
+
+                      // Filter trips based on selected date
+                      var filteredTrips = snapshot.data!.docs.where((doc) {
+                        String tripDate = DateFormat('dd MMM yyyy')
+                            .format(doc['date'].toDate());
+                        return selectedFilterDate == null ||
+                            tripDate == selectedDateStr;
+                      }).toList();
+
+                      // Show message if no trips match the selected date
+                      if (filteredTrips.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: Center(
+                            child: Text(
+                              "No trips found",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red),
+                            ),
+                          ),
+                        );
+                      }
+
                       return ListView(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        children: snapshot.data!.docs.map((doc) {
-                          num totalMiles = doc['totalMiles'];
+                        children: filteredTrips.map((doc) {
+                          num totalMiles = doc['currentMiles'];
                           num perMileCharges = num.parse(perMileCharge);
                           num earnings = totalMiles * perMileCharges;
                           String formattedDate = DateFormat('dd MMM yyyy')
                               .format(doc['date'].toDate());
                           bool isPaid = doc['isPaid'];
 
-                          return Container(
-                            padding: EdgeInsets.all(5.w),
-                            margin: EdgeInsets.all(5.w),
-                            decoration: BoxDecoration(
-                              color: kWhite,
-                              borderRadius: BorderRadius.circular(10.r),
-                              border: Border.all(color: kPrimary),
-                            ),
-                            child: ListTile(
-                              title: Text(doc['tripName']),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("Miles: $totalMiles"),
-                                  Text("Earnings: \$${earnings.toString()}"),
-                                  Text("Date: $formattedDate"),
-                                ],
+                          return GestureDetector(
+                            onTap: () =>
+                                Get.to(() => TripDetailsScreen(docId: doc.id)),
+                            child: Container(
+                              padding: EdgeInsets.all(5.w),
+                              margin: EdgeInsets.all(5.w),
+                              decoration: BoxDecoration(
+                                color: kWhite,
+                                borderRadius: BorderRadius.circular(10.r),
+                                border: Border.all(color: kPrimary),
                               ),
-                              trailing: Text(
-                                "Status: ${isPaid ? 'Paid' : 'Unpaid'}",
-                                style: appStyle(
-                                    12,
-                                    isPaid ? kSecondary : kPrimary,
-                                    FontWeight.w400),
+                              child: ListTile(
+                                title: Text(doc['tripName']),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("Miles: $totalMiles"),
+                                    Text("Earnings: \$${earnings.toString()}"),
+                                    Text("Date: $formattedDate"),
+                                  ],
+                                ),
+                                trailing: Text(
+                                  "Status: ${isPaid ? 'Paid' : 'Unpaid'}",
+                                  style: appStyle(
+                                      12,
+                                      isPaid ? kSecondary : kPrimary,
+                                      FontWeight.w400),
+                                ),
                               ),
-                              onTap: () {},
                             ),
                           );
                         }).toList(),

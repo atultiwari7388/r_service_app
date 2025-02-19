@@ -34,7 +34,7 @@ class DatabaseServices {
       'isOwner': true,
       'isManager': false,
       'isDriver': false,
-      'perHourCharge': "",
+      'perMileCharge': "",
       "isView": true,
       "isEdit": true,
       "isDelete": true,

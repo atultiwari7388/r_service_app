@@ -11,6 +11,8 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart';
 
 class AddVehicleScreen extends StatefulWidget {
   @override
@@ -401,6 +403,69 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
+  Future<void> _uploadExcelFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+    );
+
+    if (result != null) {
+      PlatformFile file = result.files.first;
+      var bytes = file.bytes;
+      if (bytes != null) {
+        var excel = Excel.decodeBytes(bytes);
+        for (var table in excel.tables.keys) {
+          var sheet = excel.tables[table]!;
+          for (var row in sheet.rows) {
+            // Assuming the first row contains headers
+            if (row[0]?.value.toString() == 'Vehicle Type') {
+              setState(() {
+                _selectedVehicleType = row[1]?.value.toString();
+                _fetchCompanyNames();
+              });
+            } else if (row[0]?.value.toString() == 'Company Name') {
+              setState(() {
+                _selectedCompany = row[1]?.value.toString();
+                _setupEngineNameListener();
+              });
+            } else if (row[0]?.value.toString() == 'Engine Name') {
+              setState(() {
+                _selectedEngineName = row[1]?.value.toString();
+              });
+            } else if (row[0]?.value.toString() == 'Vehicle Number') {
+              _vehicleNumberController.text = row[1]!.value.toString();
+            } else if (row[0]?.value.toString() == 'VIN') {
+              _vinController.text = row[1]!.value.toString();
+            } else if (row[0]?.value.toString() == 'DOT') {
+              _dotController.text = row[1]!.value.toString();
+            } else if (row[0]?.value.toString() == 'ICCMS') {
+              _iccmsController.text = row[1]!.value.toString();
+            } else if (row[0]?.value.toString() == 'License Plate') {
+              _licensePlateController.text = row[1]!.value.toString();
+            } else if (row[0]?.value.toString() == 'Year') {
+              String year = row[1]!.value.toString();
+              if (year.isNotEmpty) {
+                _selectedYear = DateTime(int.parse(year), 1, 1);
+              }
+            } else if (row[0]?.value.toString() == 'Current Miles') {
+              _currentMilesController.text = row[1]!.value.toString();
+            } else if (row[0]?.value.toString() == 'Oil Change Date') {
+              String date = row[1]!.value.toString();
+              if (date.isNotEmpty) {
+                _oilChangeDate = DateFormat('yyyy-MM-dd').parse(date);
+              }
+            } else if (row[0]?.value.toString() == 'Hours Reading') {
+              _hoursReadingController.text = row[1]!.value.toString();
+            }
+          }
+        }
+      }
+    } else {
+      // User canceled the picker
+      showToastMessage('Error', 'No file selected', kRed);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -412,6 +477,19 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   void dispose() {
     _engineNameSubscription?.cancel();
     super.dispose();
+  }
+
+  void _showInstructions() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Tap the upload icon to select an Excel file. '
+            'Ensure the file contains the following fields: '
+            'Vehicle Type, Company Name, Engine Name, Vehicle Number, '
+            'VIN, DOT, ICCMS, License Plate, Year, Current Miles, '
+            'Oil Change Date, Hours Reading.'),
+        duration: Duration(seconds: 5),
+      ),
+    );
   }
 
   @override
@@ -437,6 +515,30 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         padding: EdgeInsets.all(16.0),
                         child: Column(
                           children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: CustomButton(
+                                    text: "Upload Excel File",
+                                    onPress: _uploadExcelFile,
+                                    color: kSecondary,
+                                  ),
+                                ),
+                                Container(
+                                  margin: EdgeInsets.only(left: 10.w),
+                                  decoration: BoxDecoration(
+                                    color: kPrimary,
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: IconButton(
+                                    onPressed: _showInstructions,
+                                    icon: Icon(Icons.question_mark,
+                                        color: kWhite),
+                                  ),
+                                )
+                              ],
+                            ),
+                            SizedBox(height: 16.h),
                             Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)

@@ -8,6 +8,7 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/edit_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/member_jobs_history.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/view_members_trip.dart';
 import '../../../utils/app_styles.dart';
 
 class MyTeamScreen extends StatefulWidget {
@@ -23,10 +24,12 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
   List<Map<String, dynamic>> _filteredMembers = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  late String role = "";
 
   @override
   void initState() {
     super.initState();
+    fetchUserDetails();
     fetchTeamMembersWithVehicles();
     _searchController.addListener(_filterMembers);
   }
@@ -36,6 +39,30 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
     _searchController.removeListener(_filterMembers);
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> fetchUserDetails() async {
+    try {
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+
+      if (userSnapshot.exists) {
+        // Cast the document data to a map
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          role = userData["role"] ?? "";
+        });
+        // log("Role set to " + role);
+      } else {
+        // log("No user document found for ID: $currentUId");
+      }
+    } catch (e) {
+      // log("Error fetching user details: $e");
+      setState(() {});
+    }
   }
 
   // Method to fetch team members along with their vehicles
@@ -82,6 +109,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           'memberId': memberId,
           'ownerId': member['createdBy'],
           'vehicles': vehicles, // List of vehicles
+          'perMileCharge': member['perMileCharge'],
         });
       }
 
@@ -196,6 +224,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                               bool isActive = member['isActive'];
                               String memberId = member['memberId'];
                               String ownerId = member['ownerId'];
+                              String perMileCharge = member['perMileCharge'];
                               List vehicles = member['vehicles'];
 
                               String vehicleDetails = vehicles.isNotEmpty
@@ -238,23 +267,62 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                           // Handle the switch change (update in Firestore if necessary)
                                         },
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.edit,
-                                            color: Colors.green),
-                                        onPressed: () {
-                                          Get.to(() => EditTeamMember(
-                                                memberId: memberId,
-                                              ));
+                                      PopupMenuButton<String>(
+                                        icon: Icon(Icons
+                                            .more_vert_rounded), // The 3-dot menu icon
+                                        onSelected: (value) {
+                                          if (value == 'edit') {
+                                            Get.to(() => EditTeamMember(
+                                                memberId: memberId));
+                                          } else if (value == 'view_trip') {
+                                            Get.to(() => ViewMemberTrip(
+                                                  memberName: name,
+                                                  memberId: memberId,
+                                                  ownerId: ownerId,
+                                                  perMileCharge:
+                                                      num.parse(perMileCharge),
+                                                ));
+                                          } else if (value == 'view_jobs') {
+                                            Get.to(
+                                                () => MemberJobsHistoryScreen(
+                                                      memberName: name,
+                                                      memebrId: memberId,
+                                                      ownerId: ownerId,
+                                                    ));
+                                          }
                                         },
+                                        itemBuilder: (BuildContext context) => [
+                                          PopupMenuItem(
+                                            value: 'edit',
+                                            child: ListTile(
+                                              leading: Icon(Icons.edit,
+                                                  color: kPrimary),
+                                              title: Text('Edit'),
+                                            ),
+                                          ),
+                                          if (role == "Owner")
+                                            PopupMenuItem(
+                                              value: 'view_trip',
+                                              child: ListTile(
+                                                leading: Icon(
+                                                    Icons.directions_car,
+                                                    color: kPrimary),
+                                                title: Text('View Trip'),
+                                              ),
+                                            ),
+                                          if (role == "Owner")
+                                            PopupMenuItem(
+                                              value: 'view_jobs',
+                                              child: ListTile(
+                                                leading: Icon(Icons.work,
+                                                    color: kPrimary),
+                                                title: Text('View Jobs'),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                  onTap: () =>
-                                      Get.to(() => MemberJobsHistoryScreen(
-                                            memberName: name,
-                                            memebrId: memberId,
-                                            ownerId: ownerId,
-                                          )),
                                 ),
                               );
                             },
