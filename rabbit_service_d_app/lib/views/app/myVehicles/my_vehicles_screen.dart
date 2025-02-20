@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:regal_service_d_app/views/app/myVehicles/my_vehicles_details_screen.dart';
 
 class MyVehiclesScreen extends StatefulWidget {
@@ -19,11 +20,37 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
   final bool isLoading = false;
   final List<Map<String, dynamic>> vehicles = [];
   late StreamSubscription vehiclesSubscription;
+  late String role = "";
 
   @override
   void initState() {
     super.initState();
     initializeStreams();
+    fetchUserDetails();
+  }
+
+  Future<void> fetchUserDetails() async {
+    try {
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .get();
+
+      if (userSnapshot.exists) {
+        // Cast the document data to a map
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+
+        setState(() {
+          role = userData["role"] ?? "";
+        });
+        // log("Role set to " + role);
+      } else {
+        // log("No user document found for ID: $currentUId");
+      }
+    } catch (e) {
+      // log("Error fetching user details: $e");
+      setState(() {});
+    }
   }
 
   void initializeStreams() {
@@ -61,6 +88,20 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
             Text("My Vehicles", style: appStyle(20, kWhite, FontWeight.normal)),
         backgroundColor: kPrimary,
         iconTheme: IconThemeData(color: kWhite),
+        actions: [
+          role == "Owner"
+              ? InkWell(
+                  onTap: () {
+                    Get.to(() => AddVehicleScreen());
+                  },
+                  child: CircleAvatar(
+                    backgroundColor: kWhite,
+                    child: Icon(Icons.add, color: kPrimary),
+                  ),
+                )
+              : SizedBox(),
+          SizedBox(width: 10.w),
+        ],
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())

@@ -184,6 +184,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         .collection('Users')
         .doc(currentUId)
         .collection('DataServices')
+        // .where('vehicleId', isEqualTo: selectedRecordsVehicle)
         .snapshots()
         .listen((snapshot) {
       setState(() {
@@ -360,17 +361,10 @@ class _ReportsScreenState extends State<ReportsScreen>
       }
 
       final batch = FirebaseFirestore.instance.batch();
-      // final dataServicesUserRef = FirebaseFirestore.instance
-      //     .collection('Users')
-      //     .doc(currentUId)
-      //     .collection('DataServices');
+
       final dataServicesRef =
           FirebaseFirestore.instance.collection("DataServicesRecords");
-      // final vehicleRef = FirebaseFirestore.instance
-      //     .collection('Users')
-      //     .doc(currentUId)
-      //     .collection('Vehicles')
-      //     .doc(selectedVehicle);
+
       final docId = dataServicesRef.doc().id;
 
       final currentMiles = int.tryParse(milesController.text) ?? 0;
@@ -503,19 +497,6 @@ class _ReportsScreenState extends State<ReportsScreen>
         ]),
         'nextNotificationMiles': notificationData,
       });
-
-      // batch.set(dataServicesUserRef.doc(docId), recordData);
-      // batch.set(dataServicesRef.doc(docId), recordData);
-      // batch.update(vehicleRef, {
-      //   'currentMiles': currentMiles.toString(),
-      //   'currentMilesArray': FieldValue.arrayUnion([
-      //     {
-      //       "miles": int.parse(currentMiles.toString()),
-      //       "date": DateTime.now().toIso8601String()
-      //     }
-      //   ]),
-      //   'nextNotificationMiles': notificationData,
-      // });
 
       await batch.commit();
 
@@ -751,8 +732,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                             }),
                           ],
                         ),
-
-                        // SizedBox(height: 5.h),
 
                         // Search & Filter Section
                         if (showSearchFilter) ...[
@@ -1713,7 +1692,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                             ),
                           ],
                         ),
-                        SizedBox(height: 20.h),
+                        SizedBox(height: 10.h),
 
                         //my records section
                         SizedBox(
@@ -1727,196 +1706,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    // Padding(
-                                    //   padding: EdgeInsets.symmetric(
-                                    //       horizontal: 16.w, vertical: 8.h),
-                                    //   child: GestureDetector(
-                                    //     onTap: () {
-                                    //       setState(() {
-                                    //         showRecordFilter = !showRecordFilter;
-                                    //       });
-                                    //     },
-                                    //     child: Container(
-                                    //       padding: EdgeInsets.all(12.w),
-                                    //       decoration: BoxDecoration(
-                                    //         color: kPrimary.withOpacity(0.1),
-                                    //         borderRadius: BorderRadius.circular(8.r),
-                                    //         border: Border.all(
-                                    //             color: kPrimary.withOpacity(0.3)),
-                                    //       ),
-                                    //       child: Row(
-                                    //         mainAxisAlignment:
-                                    //             MainAxisAlignment.center,
-                                    //         children: [
-                                    //           Icon(
-                                    //             showRecordFilter
-                                    //                 ? Icons.filter_alt_off_outlined
-                                    //                 : Icons.filter_alt_outlined,
-                                    //             size: 20,
-                                    //             color: kPrimary,
-                                    //           ),
-                                    //           SizedBox(width: 8.w),
-                                    //           Text(
-                                    //             showRecordFilter
-                                    //                 ? "Hide Filter"
-                                    //                 : "Show Filter",
-                                    //             style: appStyleUniverse(
-                                    //                 14, kPrimary, FontWeight.w500),
-                                    //           ),
-                                    //         ],
-                                    //       ),
-                                    //     ),
-                                    //   ),
-                                    // ),
-
-                                    // // Filter Section
-
-                                    // Visibility(
-                                    //   visible: showRecordFilter,
-                                    //   child: Padding(
-                                    //     padding:
-                                    //         EdgeInsets.symmetric(horizontal: 16.w),
-                                    //     child: Column(
-                                    //       crossAxisAlignment:
-                                    //           CrossAxisAlignment.stretch,
-                                    //       children: [
-                                    //         SizedBox(height: 10.h),
-                                    //         DropdownButtonFormField<String>(
-                                    //           decoration: InputDecoration(
-                                    //             labelText: 'Filter by Vehicle',
-                                    //             border: OutlineInputBorder(
-                                    //               borderRadius:
-                                    //                   BorderRadius.circular(8),
-                                    //             ),
-                                    //             prefixIcon: Icon(Icons.directions_car,
-                                    //                 color: kPrimary),
-                                    //           ),
-                                    //           items: vehicles.map((vehicle) {
-                                    //             return DropdownMenuItem<String>(
-                                    //               value: vehicle['vehicleNumber'],
-                                    //               child: Text(
-                                    //                 "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
-                                    //                 style: appStyleUniverse(
-                                    //                     14, kDark, FontWeight.normal),
-                                    //               ),
-                                    //             );
-                                    //           }).toList(),
-                                    //           onChanged: (value) {
-                                    //             setState(() {
-                                    //               filterVehicle = value ?? '';
-                                    //             });
-                                    //           },
-                                    //           value: filterVehicle.isEmpty
-                                    //               ? null
-                                    //               : filterVehicle,
-                                    //           hint: Text(
-                                    //             'Select Vehicle',
-                                    //             style: appStyleUniverse(
-                                    //                 14, kDark, FontWeight.normal),
-                                    //           ),
-                                    //         ),
-                                    //         SizedBox(height: 16.h),
-                                    //         Row(
-                                    //           children: [
-                                    //             Expanded(
-                                    //               child: InkWell(
-                                    //                 onTap: () async {
-                                    //                   final DateTime? picked =
-                                    //                       await showDatePicker(
-                                    //                     context: context,
-                                    //                     initialDate: startDate ??
-                                    //                         DateTime.now(),
-                                    //                     firstDate: DateTime(2000),
-                                    //                     lastDate: DateTime(2100),
-                                    //                   );
-                                    //                   if (picked != null) {
-                                    //                     setState(() {
-                                    //                       startDate = picked;
-                                    //                     });
-                                    //                   }
-                                    //                 },
-                                    //                 child: InputDecorator(
-                                    //                   decoration: InputDecoration(
-                                    //                     labelText: 'Start Date',
-                                    //                     labelStyle: appStyleUniverse(
-                                    //                         14,
-                                    //                         kDark,
-                                    //                         FontWeight.normal),
-                                    //                     border: OutlineInputBorder(
-                                    //                       borderRadius:
-                                    //                           BorderRadius.circular(
-                                    //                               8),
-                                    //                     ),
-                                    //                     prefixIcon: Icon(
-                                    //                         Icons.calendar_today,
-                                    //                         color: kPrimary),
-                                    //                   ),
-                                    //                   child: Text(
-                                    //                     startDate != null
-                                    //                         ? DateFormat('dd-MM-yyyy')
-                                    //                             .format(startDate!)
-                                    //                         : 'Select Start Date',
-                                    //                   ),
-                                    //                 ),
-                                    //               ),
-                                    //             ),
-                                    //             SizedBox(width: 16.w),
-                                    //             Expanded(
-                                    //               child: InkWell(
-                                    //                 onTap: () async {
-                                    //                   final DateTime? picked =
-                                    //                       await showDatePicker(
-                                    //                     context: context,
-                                    //                     initialDate:
-                                    //                         endDate ?? DateTime.now(),
-                                    //                     firstDate: DateTime(2000),
-                                    //                     lastDate: DateTime(2100),
-                                    //                   );
-                                    //                   if (picked != null) {
-                                    //                     setState(() {
-                                    //                       endDate = picked;
-                                    //                     });
-                                    //                   }
-                                    //                 },
-                                    //                 child: InputDecorator(
-                                    //                   decoration: InputDecoration(
-                                    //                     labelText: 'End Date',
-                                    //                     labelStyle: appStyleUniverse(
-                                    //                         14,
-                                    //                         kDark,
-                                    //                         FontWeight.normal),
-                                    //                     border: OutlineInputBorder(
-                                    //                       borderRadius:
-                                    //                           BorderRadius.circular(
-                                    //                               8),
-                                    //                     ),
-                                    //                     prefixIcon: Icon(
-                                    //                         Icons.calendar_today,
-                                    //                         color: kPrimary),
-                                    //                   ),
-                                    //                   child: Text(
-                                    //                     endDate != null
-                                    //                         ? DateFormat('dd-MM-yyyy')
-                                    //                             .format(endDate!)
-                                    //                         : 'Select End Date',
-                                    //                   ),
-                                    //                 ),
-                                    //               ),
-                                    //             ),
-                                    //           ],
-                                    //         ),
-                                    //         SizedBox(height: 16.h),
-                                    //         CustomButton(
-                                    //           text: "Reset Filters",
-                                    //           onPress: resetFilters,
-                                    //           color: kPrimary,
-                                    //         ),
-                                    //         SizedBox(height: 16.h),
-                                    //       ],
-                                    //     ),
-                                    //   ),
-                                    // ),
-
                                     if (filteredRecords.isEmpty)
                                       Center(
                                         child: Column(
@@ -1949,8 +1738,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                   record['createdAt']));
 
                                           return Container(
-                                            margin: EdgeInsets.symmetric(
-                                                vertical: 2.h),
                                             child: GestureDetector(
                                               onTap: () => Get.to(() =>
                                                   RecordsDetailsScreen(
@@ -2073,36 +1860,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                           '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
                                                         ),
                                                         Divider(height: 24.h),
-                                                        // buildInfoRow(
-                                                        //   Icons.tire_repair,
-                                                        //   record['miles'].toString(),
-                                                        // ),
-                                                        // Divider(height: 24.h),
-                                                        // buildInfoRow(
-                                                        //   Icons.build_outlined,
-                                                        //   services
-                                                        //       .map((service) {
-                                                        //     String serviceName =
-                                                        //         service[
-                                                        //             'serviceName'];
-                                                        //     if ((service['subServices']
-                                                        //                 as List?)
-                                                        //             ?.isNotEmpty ??
-                                                        //         false) {
-                                                        //       String
-                                                        //           subServices =
-                                                        //           (service['subServices']
-                                                        //                   as List)
-                                                        //               .map((s) => s[
-                                                        //                   'name'])
-                                                        //               .join(
-                                                        //                   ', ');
-                                                        //       return "$serviceName ($subServices)";
-                                                        //     }
-                                                        //     return serviceName;
-                                                        //   }).join(", "),
-                                                        // ),
-
                                                         buildInfoRow(
                                                           Icons.build_outlined,
                                                           services
@@ -2111,7 +1868,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                       'serviceName'])
                                                               .join(", "),
                                                         ),
-
                                                         Divider(height: 24.h),
                                                         buildInfoRow(
                                                           Icons.store_outlined,
@@ -2129,7 +1885,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                 'description'],
                                                           ),
                                                         ],
-
                                                         Divider(height: 24.h),
                                                         Row(
                                                           mainAxisAlignment:
@@ -2277,7 +2032,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                           ),
                         ),
 
-                        SizedBox(height: 20.h),
+                        // SizedBox(height: 20.h),
                       ],
                     ),
                   ),

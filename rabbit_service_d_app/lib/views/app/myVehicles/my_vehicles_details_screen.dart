@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
@@ -364,8 +365,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 ),
                               ),
                         const SizedBox(height: 20),
+//========================= Services ================================================
 
-                        // Services
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -408,8 +409,12 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             return ListTile(
                               leading:
                                   const Icon(Icons.timeline, color: kPrimary),
-                              title: Text('Date: $formattedDate'),
-                              trailing: Text('Miles: ${milesEntry['miles']}'),
+                              title: Text('$formattedDate',
+                                  style:
+                                      appStyle(13, kDark, FontWeight.normal)),
+                              trailing: Text('Miles: ${milesEntry['miles']}',
+                                  style:
+                                      appStyle(13, kDark, FontWeight.normal)),
                             );
                           }).toList(),
                         ),
@@ -517,8 +522,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
           columnWidths: const {
             0: FixedColumnWidth(40),
             1: FlexColumnWidth(),
-            2: FixedColumnWidth(100),
-            3: FixedColumnWidth(60),
+            2: FixedColumnWidth(80),
+            3: FixedColumnWidth(40),
           },
           children: [
             TableRow(
@@ -529,7 +534,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 _buildTableHeader('Sr. No.'),
                 _buildTableHeader('Service Name'),
                 _buildTableHeader("D'Value"),
-                _buildTableHeader('Action'),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                  child: Icon(Icons.edit, color: kWhite, size: 20),
+                ),
               ],
             ),
             ...filteredServices.asMap().entries.map((entry) {
@@ -548,7 +557,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                       service['defaultNotificationValue'].toString()),
                   TableCell(
                     child: Container(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(2.0),
                       child: IconButton(
                         icon: const Icon(Icons.edit, color: kPrimary, size: 20),
                         onPressed: () {
@@ -568,9 +577,10 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
   Widget _buildTableHeader(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
       child: Text(
         text,
+        maxLines: 1,
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -582,10 +592,10 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
   Widget _buildTableCell(String text) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(5),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 14),
+        style: appStyle(13, kDark, FontWeight.normal),
       ),
     );
   }
