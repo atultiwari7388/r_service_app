@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -75,6 +74,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
           'tripStartDate': selectedDate,
           'tripEndDate': DateTime.now(),
           'createdAt': Timestamp.now(),
+          'updatedAt': Timestamp.now(),
         });
         showToastMessage("Success", "Trip added successfully", kSecondary);
         _tripNameController.clear();
@@ -579,8 +579,10 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           num earnings = totalMiles * perMileCharges;
 
                           return GestureDetector(
-                            onTap: () =>
-                                Get.to(() => TripDetailsScreen(docId: doc.id)),
+                            onTap: () => Get.to(() => TripDetailsScreen(
+                                  docId: doc.id,
+                                  tripName: doc['tripName'],
+                                )),
                             child: Container(
                               padding: EdgeInsets.all(5.w),
                               margin: EdgeInsets.all(5.w),
@@ -612,7 +614,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text("End Date: $formattedEndDate"),
+                                        Text(
+                                          "End Date: $formattedEndDate",
+                                        ),
                                         Text("End Miles: $tripEndMiles"),
                                       ],
                                     ),
@@ -738,6 +742,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                                           currentMiles,
                                                       'tripEndDate':
                                                           Timestamp.now(),
+                                                      'updatedAt':
+                                                          Timestamp.now(),
                                                     });
                                                   } else {
                                                     showToastMessage(
@@ -753,7 +759,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                                       .collection('trips')
                                                       .doc(doc.id)
                                                       .update({
-                                                    'tripStatus': newStatus
+                                                    'tripStatus': newStatus,
+                                                    'updatedAt':
+                                                        Timestamp.now(),
                                                   });
                                                 }
                                               }
@@ -769,6 +777,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       ],
                                     ),
                                     SizedBox(height: 5.h),
+                                    CustomButton(
+                                      onPress: () {},
+                                      text: "Edit Trip",
+                                      color: kSecondary,
+                                      height: 30.h,
+                                    ),
                                   ]
                                 ],
                               ),

@@ -39,8 +39,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   String? selectedRole;
   List<String> recordAccessCheckBox = [
     "View",
-    "Edit",
-    "Delete",
+    // "Edit",
+    // "Delete",
     "Add",
   ];
   List<String> selectedRecordAccess = [];

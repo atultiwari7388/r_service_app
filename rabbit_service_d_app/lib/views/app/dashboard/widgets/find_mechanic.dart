@@ -7,6 +7,7 @@ import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'dart:developer';
 import '../../../../services/collection_references.dart';
@@ -85,26 +86,62 @@ class _FindMechanicState extends State<FindMechanic> {
                   ),
                   widget.controller.role == "Owner"
                       ? GestureDetector(
-                          onTap: () async {
-                            var result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddVehicleScreen(),
-                              ),
-                            );
-                            if (result != null) {
-                              // Handle the result
-                              String? company = result['company'];
-                              String? vehicleNumber = result['vehicleNumber'];
-                              log("Company: $company, Vehicle Number: $vehicleNumber");
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text("Choose an option"),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: Icon(Icons.directions_car),
+                                        title: Text("Add Vehicle"),
+                                        onTap: () async {
+                                          Navigator.pop(
+                                              context); // Close the dialog
+                                          var result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  AddVehicleScreen(),
+                                            ),
+                                          );
+                                          if (result != null) {
+                                            String? company = result['company'];
+                                            String? vehicleNumber =
+                                                result['vehicleNumber'];
+                                            log("Company: $company, Vehicle Number: $vehicleNumber");
 
-                              setState(
-                                () {
-                                  widget.controller
-                                      .selectedCompanyAndVehcileName = company;
-                                },
-                              );
-                            }
+                                            setState(() {
+                                              widget.controller
+                                                      .selectedCompanyAndVehcileName =
+                                                  company;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: Icon(Icons.upload_file),
+                                        title: Text("Upload Vehicle via Excel"),
+                                        onTap: () {
+                                          Navigator.pop(
+                                              context); // Close the dialog
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  AddVehicleViaExcelScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
                           },
                           child: CircleAvatar(
                             backgroundColor: kPrimary,

@@ -1,22 +1,16 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:open_file/open_file.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:csv/csv.dart';
 
 class AddVehicleScreen extends StatefulWidget {
   @override
@@ -407,69 +401,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
-  Future<void> _uploadExcelFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['xlsx', 'csv'],
-    );
-
-    if (result != null) {
-      PlatformFile file = result.files.first;
-      var bytes = file.bytes;
-      if (bytes != null) {
-        var excel = Excel.decodeBytes(bytes);
-        for (var table in excel.tables.keys) {
-          var sheet = excel.tables[table]!;
-          for (var row in sheet.rows) {
-            // Assuming the first row contains headers
-            if (row[0]?.value.toString() == 'Vehicle Type') {
-              setState(() {
-                _selectedVehicleType = row[1]?.value.toString();
-                _fetchCompanyNames();
-              });
-            } else if (row[0]?.value.toString() == 'Company Name') {
-              setState(() {
-                _selectedCompany = row[1]?.value.toString();
-                _setupEngineNameListener();
-              });
-            } else if (row[0]?.value.toString() == 'Engine Name') {
-              setState(() {
-                _selectedEngineName = row[1]?.value.toString();
-              });
-            } else if (row[0]?.value.toString() == 'Vehicle Number') {
-              _vehicleNumberController.text = row[1]!.value.toString();
-            } else if (row[0]?.value.toString() == 'VIN') {
-              _vinController.text = row[1]!.value.toString();
-            } else if (row[0]?.value.toString() == 'DOT') {
-              _dotController.text = row[1]!.value.toString();
-            } else if (row[0]?.value.toString() == 'ICCMS') {
-              _iccmsController.text = row[1]!.value.toString();
-            } else if (row[0]?.value.toString() == 'License Plate') {
-              _licensePlateController.text = row[1]!.value.toString();
-            } else if (row[0]?.value.toString() == 'Year') {
-              String year = row[1]!.value.toString();
-              if (year.isNotEmpty) {
-                _selectedYear = DateTime(int.parse(year), 1, 1);
-              }
-            } else if (row[0]?.value.toString() == 'Current Miles') {
-              _currentMilesController.text = row[1]!.value.toString();
-            } else if (row[0]?.value.toString() == 'Oil Change Date') {
-              String date = row[1]!.value.toString();
-              if (date.isNotEmpty) {
-                _oilChangeDate = DateFormat('yyyy-MM-dd').parse(date);
-              }
-            } else if (row[0]?.value.toString() == 'Hours Reading') {
-              _hoursReadingController.text = row[1]!.value.toString();
-            }
-          }
-        }
-      }
-    } else {
-      // User canceled the picker
-      showToastMessage('Error', 'No file selected', kRed);
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -481,147 +412,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   void dispose() {
     _engineNameSubscription?.cancel();
     super.dispose();
-  }
-
-  // void _showInstructions() {
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     SnackBar(
-  //       content: Text('Tap the upload icon to select an Excel file. '
-  //           'Ensure the file contains the following fields: '
-  //           'Vehicle Type, Company Name, Engine Name, Vehicle Number, '
-  //           'VIN, DOT, ICCMS, License Plate, Year, Current Miles, '
-  //           'Oil Change Date, Hours Reading.'),
-  //       duration: Duration(seconds: 5),
-  //     ),
-  //   );
-  // }
-
-  void _showInstructions(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Vehicle Type'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text('Truck'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  createSampleDocument('Truck');
-                },
-              ),
-              ListTile(
-                title: Text('Trailer'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  createSampleDocument('Trailer');
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> createSampleDocument(String vehicleType) async {
-    try {
-      Directory tempDir = await getTemporaryDirectory();
-      String filePath = '${tempDir.path}/sample_${vehicleType.toLowerCase()}.';
-      String fileExtension = '';
-      List<List<String>> data = [];
-
-      if (vehicleType.toLowerCase() == 'truck') {
-        filePath += 'xlsx';
-        fileExtension = 'xlsx';
-        data = [
-          [
-            'CompanyName',
-            'Engine name',
-            'Current Miles*',
-            'Vehicle Number*',
-            'VIN*',
-            'DOT',
-            'ICCMS',
-            'License Plate*',
-            'Year*'
-          ],
-          [
-            'Sample Company',
-            'Sample Engine',
-            '1000',
-            'ABC-1234',
-            '1234567890',
-            'DOT-123',
-            'ICCMS-456',
-            'XYZ-5678',
-            '2023'
-          ],
-        ];
-        _createExcelFile(filePath, data);
-      } else if (vehicleType.toLowerCase() == 'trailer') {
-        filePath += 'csv';
-        fileExtension = 'csv';
-        data = [
-          [
-            'CompanyName',
-            'Engine name',
-            'Oil Change Date*',
-            'Hours Reading*',
-            'Vehicle Number*',
-            'VIN*',
-            'DOT',
-            'ICCMS',
-            'License Plate*',
-            'Year*'
-          ],
-          [
-            'Sample Trailer Company',
-            'Trailer Engine',
-            '2023-12-01',
-            '500',
-            'DEF-5678',
-            '0987654321',
-            'DOT-789',
-            'ICCMS-012',
-            'UVW-9012',
-            '2022'
-          ],
-        ];
-        _createCsvFile(filePath, data);
-      }
-
-      OpenFile.open(filePath);
-    } catch (e) {
-      print("Error creating sample document: $e");
-      // Handle the error (e.g., show a snackbar)
-    }
-  }
-
-  Future<void> _createExcelFile(
-      String filePath, List<List<String>> data) async {
-    var excel = Excel.createExcel();
-    var sheet = excel.sheets[excel.sheets.keys.first];
-
-    for (int i = 0; i < data.length; i++) {
-      for (int j = 0; j < data[i].length; j++) {
-        sheet
-            ?.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i))
-            .value = data[i][j];
-      }
-    }
-
-    var fileBytes = excel.save();
-    if (fileBytes != null) {
-      File(filePath).writeAsBytes(fileBytes);
-    }
-  }
-
-  Future<void> _createCsvFile(String filePath, List<List<String>> data) async {
-    String csv = const ListToCsvConverter().convert(data);
-    File(filePath).writeAsString(csv);
   }
 
   @override
@@ -647,32 +437,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         padding: EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: CustomButton(
-                                    text: "Upload Excel File",
-                                    onPress: _uploadExcelFile,
-                                    color: kSecondary,
-                                  ),
-                                ),
-                                Container(
-                                  margin: EdgeInsets.only(left: 10.w),
-                                  decoration: BoxDecoration(
-                                    color: kPrimary,
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: IconButton(
-                                    onPressed: () {
-                                      _showInstructions(context);
-                                    },
-                                    icon: Icon(Icons.question_mark,
-                                        color: kWhite),
-                                  ),
-                                )
-                              ],
-                            ),
-                            SizedBox(height: 16.h),
                             Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)

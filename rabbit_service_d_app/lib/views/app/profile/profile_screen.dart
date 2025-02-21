@@ -311,9 +311,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   //====================== signOut from app =====================
   void signOut(BuildContext context) async {
     try {
-      await auth.signOut().then((value) {
-        Get.offAll(() => LoginScreen());
-      });
+      await auth.signOut();
+      // Clear Firestore offline cache (optional, only if needed)
+      await FirebaseFirestore.instance.terminate();
+      await FirebaseFirestore.instance.clearPersistence();
+
+      // Remove any GetX stored user session data (if used)
+      Get.deleteAll();
+      Get.offAll(() => const LoginScreen());
     } catch (e) {
       showToastMessage("Error", e.toString(), Colors.red);
     }
