@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../../utils/show_toast_msg.dart';
@@ -247,14 +248,125 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     );
   }
 
+  // Future<void> createMemberWithEmailAndPassword() async {
+  //   if (nameController.text.isEmpty ||
+  //       emailController.text.isEmpty ||
+  //       phoneController.text.isEmpty ||
+  //       passController.text.isEmpty ||
+  //       selectedVehicles.isEmpty) {
+  //     showToastMessage(
+  //         "Error", "All fields and vehicle selection are required", Colors.red);
+  //     return;
+  //   }
+
+  //   final emailValid = RegExp(
+  //       r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
+  //   if (!emailValid.hasMatch(emailController.text)) {
+  //     showToastMessage("Error", "Please enter a valid email", Colors.red);
+  //     return;
+  //   }
+
+  //   isUserAcCreated = true;
+  //   setState(() {});
+
+  //   try {
+  //     // Create the team member's account
+  //     var user = await _auth.createUserWithEmailAndPassword(
+  //       email: emailController.text,
+  //       password: passController.text,
+  //     );
+
+  //     // Store the new team member in Firestore under 'Users'
+  //     await _firestore.collection('Users').doc(user.user!.uid).set({
+  //       "uid": user.user!.uid,
+  //       "email": emailController.text,
+  //       "active": true,
+  //       "userName": nameController.text,
+  //       "phoneNumber": phoneController.text,
+  //       "createdBy": currentUId,
+  //       "profilePicture":
+  //           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+  //       "role": selectedRole,
+  //       "isManager": selectedRole == "Manager" ? true : false,
+  //       "isDriver": selectedRole == "Driver" ? true : false,
+  //       "perMileCharge":
+  //           selectedRole == "Driver" ? perMileChargeController.text : "",
+  //       "isView": selectedRecordAccess.contains("View"),
+  //       "isEdit": selectedRecordAccess.contains("Edit"),
+  //       "isDelete": selectedRecordAccess.contains("Delete"),
+  //       "isAdd": selectedRecordAccess.contains("Add"),
+  //       "isOwner": false,
+  //       "isTeamMember": true,
+  //       "created_at": DateTime.now(),
+  //       "updated_at": DateTime.now(),
+  //     });
+
+  //     // Fetch and store selected vehicles in the team member's subcollection
+  //     for (String vehicleId in selectedVehicles) {
+  //       DocumentSnapshot vehicleDoc = await _firestore
+  //           .collection('Users')
+  //           .doc(currentUId) // Fetching from the owner's vehicles collection
+  //           .collection('Vehicles')
+  //           .doc(vehicleId)
+  //           .get();
+
+  //       if (vehicleDoc.exists) {
+  //         await _firestore
+  //             .collection('Users')
+  //             .doc(user.user!.uid) // New team member's document
+  //             .collection('Vehicles')
+  //             .doc(vehicleId)
+  //             .set(vehicleDoc.data()
+  //                 as Map<String, dynamic>); // Copy the whole document
+  //       }
+
+  //       // **Fetch and assign DataServices based on vehicleId**
+  //       QuerySnapshot dataServicesSnapshot = await _firestore
+  //           .collection('Users')
+  //           .doc(currentUId)
+  //           .collection('DataServices')
+  //           .where('vehicleId', isEqualTo: vehicleId)
+  //           .get();
+
+  //       for (var doc in dataServicesSnapshot.docs) {
+  //         await _firestore
+  //             .collection('Users')
+  //             .doc(user.user!.uid)
+  //             .collection('DataServices')
+  //             .doc(doc.id)
+  //             .set(doc.data()
+  //                 as Map<String, dynamic>); // Copy the entire document
+  //       }
+  //     }
+
+  //     // Send email verification
+  //     await user.user!.sendEmailVerification();
+  //     showToastMessage(
+  //       "Verification Sent",
+  //       "A verification email has been sent to ${emailController.text}.",
+  //       Colors.orange,
+  //     );
+
+  //     // Sign out the newly created user immediately after account creation
+  //     await _auth.signOut();
+  //     Get.offAll(() => const LoginScreen());
+  //   } on FirebaseAuthException catch (e) {
+  //     handleError(e);
+  //   } finally {
+  //     isUserAcCreated = false;
+  //     setState(() {});
+  //   }
+  // }
+
   Future<void> createMemberWithEmailAndPassword() async {
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
         phoneController.text.isEmpty ||
         passController.text.isEmpty ||
-        selectedVehicles.isEmpty) {
-      showToastMessage(
-          "Error", "All fields and vehicle selection are required", Colors.red);
+        selectedVehicles.isEmpty ||
+        selectedRole == null) {
+      showToastMessage("Error",
+          "All fields, role, and vehicle selection are required", Colors.red);
       return;
     }
 
@@ -269,13 +381,11 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     setState(() {});
 
     try {
-      // Create the team member's account
       var user = await _auth.createUserWithEmailAndPassword(
         email: emailController.text,
         password: passController.text,
       );
 
-      // Store the new team member in Firestore under 'Users'
       await _firestore.collection('Users').doc(user.user!.uid).set({
         "uid": user.user!.uid,
         "email": emailController.text,
@@ -300,38 +410,10 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         "updated_at": DateTime.now(),
       });
 
-      // Fetch and store selected vehicles in the team member's subcollection
       for (String vehicleId in selectedVehicles) {
-        // DocumentSnapshot vehicleDoc = await _firestore
-        //     .collection('Users')
-        //     .doc(currentUId) // Fetching from the owner's vehicles collection
-        //     .collection('Vehicles')
-        //     .doc(vehicleId)
-        //     .get();
-
-        // if (vehicleDoc.exists) {
-        //   // Store the selected vehicle details in the new team member's Vehicles subcollection
-        //   await _firestore
-        //       .collection('Users')
-        //       .doc(user.user!.uid) // New team member's document
-        //       .collection('Vehicles')
-        //       .doc(vehicleId)
-        //       .set({
-        //     'companyName': vehicleDoc['companyName'],
-        //     'licensePlate': vehicleDoc['licensePlate'],
-        //     'vehicleNumber': vehicleDoc['vehicleNumber'],
-        //     'year': vehicleDoc['year'],
-        //     'vin': vehicleDoc['vin'],
-        //     'isSet': vehicleDoc['isSet'],
-        //     'assigned_at': DateTime.now(),
-        //     "createdAt": DateTime.now(),
-        //   });
-
-        // }
-
         DocumentSnapshot vehicleDoc = await _firestore
             .collection('Users')
-            .doc(currentUId) // Fetching from the owner's vehicles collection
+            .doc(currentUId)
             .collection('Vehicles')
             .doc(vehicleId)
             .get();
@@ -339,33 +421,29 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         if (vehicleDoc.exists) {
           await _firestore
               .collection('Users')
-              .doc(user.user!.uid) // New team member's document
+              .doc(user.user!.uid)
               .collection('Vehicles')
               .doc(vehicleId)
-              .set(vehicleDoc.data()
-                  as Map<String, dynamic>); // Copy the whole document
-        }
+              .set(vehicleDoc.data() as Map<String, dynamic>);
 
-        // **Fetch and assign DataServices based on vehicleId**
-        QuerySnapshot dataServicesSnapshot = await _firestore
-            .collection('Users')
-            .doc(currentUId)
-            .collection('DataServices')
-            .where('vehicleId', isEqualTo: vehicleId)
-            .get();
-
-        for (var doc in dataServicesSnapshot.docs) {
-          await _firestore
+          QuerySnapshot dataServicesSnapshot = await _firestore
               .collection('Users')
-              .doc(user.user!.uid)
+              .doc(currentUId)
               .collection('DataServices')
-              .doc(doc.id)
-              .set(doc.data()
-                  as Map<String, dynamic>); // Copy the entire document
+              .where('vehicleId', isEqualTo: vehicleId)
+              .get();
+
+          for (var doc in dataServicesSnapshot.docs) {
+            await _firestore
+                .collection('Users')
+                .doc(user.user!.uid)
+                .collection('DataServices')
+                .doc(doc.id)
+                .set(doc.data() as Map<String, dynamic>);
+          }
         }
       }
 
-      // Send email verification
       await user.user!.sendEmailVerification();
       showToastMessage(
         "Verification Sent",
@@ -373,9 +451,18 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         Colors.orange,
       );
 
-      // Sign out the newly created user immediately after account creation
-      await _auth.signOut();
-      Get.offAll(() => const LoginScreen());
+      nameController.clear();
+      emailController.clear();
+      phoneController.clear();
+      passController.clear();
+      perMileChargeController.clear();
+      selectedVehicles.clear();
+      selectedRole = null;
+      selectedRecordAccess.clear();
+
+      setState(() {});
+
+      Get.off(() => MyTeamScreen());
     } on FirebaseAuthException catch (e) {
       handleError(e);
     } finally {
@@ -404,7 +491,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     super.dispose();
     nameController.dispose();
     emailController.dispose();

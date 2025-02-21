@@ -68,7 +68,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
           // Filter trips based on selected date
           var filteredTrips = snapshot.data!.docs.where((doc) {
             String tripDate =
-                DateFormat('dd MMM yyyy').format(doc['date'].toDate());
+                DateFormat('dd MMM yyyy').format(doc['createdAt'].toDate());
             return selectedFilterDate == null || tripDate == selectedDateStr;
           }).toList();
 
@@ -92,12 +92,18 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: filteredTrips.map((doc) {
-              num totalMiles = doc['currentMiles'];
-              num perMileCharges = widget.perMileCharge;
-              num earnings = totalMiles * perMileCharges;
-              String formattedDate =
-                  DateFormat('dd MMM yyyy').format(doc['date'].toDate());
               bool isPaid = doc['isPaid'];
+              String formattedStartDate = DateFormat('dd MMM yyyy')
+                  .format(doc['tripStartDate'].toDate());
+              String formattedEndDate =
+                  DateFormat('dd MMM yyyy').format(doc['tripEndDate'].toDate());
+
+              num tripStartMiles = doc['tripStartMiles'];
+              num tripEndMiles = doc['tripEndMiles'];
+              num totalMiles = doc['tripEndMiles'] - doc['tripStartMiles'];
+              num perMileCharges = num.parse(widget.perMileCharge.toString());
+              num earnings = totalMiles * perMileCharges;
+              String tripStatus = getStringFromTripStatus(doc['tripStatus']);
 
               return Container(
                 padding: EdgeInsets.all(5.w),
@@ -107,66 +113,116 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                   borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: kPrimary),
                 ),
-                child: ListTile(
-                  title: Text(doc['tripName']),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Miles: $totalMiles"),
-                      Text("Earnings: \$${earnings.toString()}"),
-                      Text("Date: $formattedDate"),
-                    ],
-                  ),
-                  trailing: isPaid
-                      ? Text("Paid",
-                          style: appStyle(18, kSecondary, FontWeight.bold))
-                      : ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimary,
-                            foregroundColor: kWhite,
-                            elevation: 0,
-                          ),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text("Pay"),
-                                content: Text("Are you sure you want to pay?"),
-                                actions: [
-                                  TextButton(
-                                      onPressed: () async {
-                                        await FirebaseFirestore.instance
-                                            .collection("Users")
-                                            .doc(widget.memberId)
-                                            .collection('trips')
-                                            .doc(doc.id)
-                                            .update({'isPaid': true}).then(
-                                                (value) {
-                                          showToastMessage(
-                                              "Success",
-                                              "Trip paid successfully",
-                                              kSecondary);
-                                          Navigator.pop(context);
-                                        });
-                                      },
-                                      child: Text("Pay",
-                                          style: appStyle(18, kSecondary,
-                                              FontWeight.w400))),
-                                  TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: Text(
-                                        "Cancel",
-                                        style: appStyle(
-                                            18, kPrimary, FontWeight.w400),
-                                      )),
-                                ],
-                              ),
-                            );
-                          },
-                          child: Text("Pay"),
-                        ),
+                // child: ListTile(
+                //   title: Text(doc['tripName']),
+                //   subtitle: Column(
+                //     crossAxisAlignment: CrossAxisAlignment.start,
+                //     children: [
+                //       Text("Start Miles: $tripStartMiles"),
+                //       SizedBox(height: 2.h),
+                //       if (tripStatus == 'Completed') ...[
+                //         Text("End Miles: $tripEndMiles"),
+                //         SizedBox(height: 2.h),
+                //       ],
+                //       Text("Start Date: $formattedStartDate"),
+                //       if (tripStatus == 'Completed') ...[
+                //         Text("End Date: $formattedEndDate"),
+                //         SizedBox(height: 2.h),
+                //       ],
+                //       if (tripStatus == 'Completed') ...[
+                //         Text("Total Miles: $totalMiles"),
+                //         SizedBox(height: 2.h),
+                //         Text("Earnings: $earnings"),
+                //         SizedBox(height: 2.h),
+                //       ],
+                //     ],
+                //   ),
+                //   trailing: isPaid
+                //       ? Text("Paid",
+                //           style: appStyle(18, kSecondary, FontWeight.bold))
+                //       : ElevatedButton(
+                //           style: ElevatedButton.styleFrom(
+                //             backgroundColor: kPrimary,
+                //             foregroundColor: kWhite,
+                //             elevation: 0,
+                //           ),
+                //           onPressed: () {
+                //             showDialog(
+                //               context: context,
+                //               builder: (context) => AlertDialog(
+                //                 title: Text("Pay"),
+                //                 content: Text("Are you sure you want to pay?"),
+                //                 actions: [
+                //                   TextButton(
+                //                       onPressed: () async {
+                //                         await FirebaseFirestore.instance
+                //                             .collection("Users")
+                //                             .doc(widget.memberId)
+                //                             .collection('trips')
+                //                             .doc(doc.id)
+                //                             .update({'isPaid': true}).then(
+                //                                 (value) {
+                //                           showToastMessage(
+                //                               "Success",
+                //                               "Trip paid successfully",
+                //                               kSecondary);
+                //                           Navigator.pop(context);
+                //                         });
+                //                       },
+                //                       child: Text("Pay",
+                //                           style: appStyle(18, kSecondary,
+                //                               FontWeight.w400))),
+                //                   TextButton(
+                //                       onPressed: () {
+                //                         Navigator.pop(context);
+                //                       },
+                //                       child: Text(
+                //                         "Cancel",
+                //                         style: appStyle(
+                //                             18, kPrimary, FontWeight.w400),
+                //                       )),
+                //                 ],
+                //               ),
+                //             );
+                //           },
+                //           child: Text("Pay"),
+                //         ),
+                // ),
+
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(doc['tripName'],
+                          style: appStyle(16, kDark, FontWeight.w500)),
+                    ),
+                    SizedBox(height: 10.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Start Date: $formattedStartDate"),
+                        Text("Start Miles: $tripStartMiles"),
+                      ],
+                    ),
+                    SizedBox(height: 5.h),
+                    if (tripStatus == "Completed") ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("End Date: $formattedEndDate"),
+                          Text("End Miles: $tripEndMiles"),
+                        ],
+                      ),
+                      SizedBox(height: 5.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Total Miles: $totalMiles"),
+                          Text("Earnings: $earnings"),
+                        ],
+                      ),
+                    ]
+                  ],
                 ),
               );
             }).toList(),
@@ -174,5 +230,27 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
         },
       ),
     );
+  }
+
+  String getStringFromTripStatus(int status) {
+    if (status == 0) {
+      return 'Pending';
+    } else if (status == 1) {
+      return 'Started';
+    } else if (status == 2) {
+      return 'Completed';
+    }
+    return 'Pending';
+  }
+
+  int getIntFromTripStatus(String status) {
+    if (status == 'Pending') {
+      return 0;
+    } else if (status == 'Started') {
+      return 1;
+    } else if (status == 'Completed') {
+      return 2;
+    }
+    return 0;
   }
 }

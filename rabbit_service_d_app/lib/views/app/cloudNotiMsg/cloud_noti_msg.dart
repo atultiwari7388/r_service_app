@@ -198,7 +198,7 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                         var vehicleData = vehicleSnapshot.data!;
 
                         return Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.all(5.0),
                           child: NotificationCard(
                             dayMonth: dayMonth,
                             year: year,
@@ -219,7 +219,7 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                       },
                     );
                   }).toList(),
-                  SizedBox(height: 16),
+                  // SizedBox(height: 16),
                 ],
               );
             },
@@ -253,13 +253,13 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      margin: const EdgeInsets.symmetric(vertical: 2.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
       ),
-      elevation: 3,
+      elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(10.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -277,7 +277,7 @@ class NotificationCard extends StatelessWidget {
                     children: [
                       Text(
                         "Service Reminder",
-                        style: appStyle(18, kDark, FontWeight.bold),
+                        style: appStyle(15, kDark, FontWeight.bold),
                       ),
                       Container(
                         padding: EdgeInsets.all(5),
@@ -289,12 +289,12 @@ class NotificationCard extends StatelessWidget {
                           children: [
                             Text(
                               dayMonth,
-                              style: appStyle(16, kDark, FontWeight.normal),
+                              style: appStyle(10, kDark, FontWeight.normal),
                             ),
                             SizedBox(width: 5),
                             Text(
                               year,
-                              style: appStyle(16, kDark, FontWeight.w400),
+                              style: appStyle(10, kDark, FontWeight.w400),
                             ),
                           ],
                         ),
@@ -304,12 +304,12 @@ class NotificationCard extends StatelessWidget {
                   const SizedBox(height: 4.0),
                   Text(
                     "$vehicleName ($vehicleNumber)",
-                    style: appStyle(16, kDark, FontWeight.normal),
+                    style: appStyle(14, kDark, FontWeight.normal),
                   ),
                   const SizedBox(height: 4.0),
                   Text(
                     message,
-                    style: appStyle(16, kDark, FontWeight.normal),
+                    style: appStyle(14, kDark, FontWeight.normal),
                   ),
                   const SizedBox(height: 8.0),
                   Align(
@@ -361,7 +361,7 @@ class NotificationCard extends StatelessWidget {
                             ),
                           ),
                           child: Text("Read",
-                              style: appStyle(15, kWhite, FontWeight.normal)),
+                              style: appStyle(14, kWhite, FontWeight.normal)),
                         ),
                         SizedBox(width: 10),
                         ElevatedButton(
@@ -377,7 +377,7 @@ class NotificationCard extends StatelessWidget {
                             ),
                           ),
                           child: Text("View",
-                              style: appStyle(15, kWhite, FontWeight.normal)),
+                              style: appStyle(14, kWhite, FontWeight.normal)),
                         ),
                       ],
                     ),

@@ -26,7 +26,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   final TextEditingController _tripNameController = TextEditingController();
   final TextEditingController _currentMilesController = TextEditingController();
   String selectedTrip = '';
-  String selectedType = 'Miles';
+  String selectedType = 'Expenses';
   TextEditingController milesController = TextEditingController();
   TextEditingController amountController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
@@ -273,7 +273,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           });
                         }),
                         buildCustomRowButton(
-                            Icons.add, "Add Mile/Exp", kSecondary, () {
+                            Icons.add, "Add Expenses", kSecondary, () {
                           setState(() {
                             showAddTrip = false;
                             showAddMileageOrExpense = !showAddMileageOrExpense;
@@ -368,127 +368,123 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         padding: EdgeInsets.all(8.0.w),
                         child: Column(
                           children: [
-                            StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance
-                                  .collection("Users")
-                                  .doc(currentUId)
-                                  .collection('trips')
-                                  .snapshots(),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData ||
-                                    snapshot.data!.docs.isEmpty) {
-                                  return Center(
-                                      child: Text("Please add a trip first.",
-                                          style: TextStyle(color: kRed)));
-                                }
+                            Row(
+                              children: [
+                                //trip drop-down
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection("Users")
+                                      .doc(currentUId)
+                                      .collection('trips')
+                                      .snapshots(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData ||
+                                        snapshot.data!.docs.isEmpty) {
+                                      return Center(
+                                          child: Text(
+                                              "Please add a trip first.",
+                                              style: TextStyle(color: kRed)));
+                                    }
 
-                                List<DropdownMenuItem<String>> tripItems =
-                                    snapshot.data!.docs.map((doc) {
-                                  return DropdownMenuItem<String>(
-                                    value: doc.id,
-                                    child: Text(doc['tripName']),
-                                  );
-                                }).toList();
+                                    List<DropdownMenuItem<String>> tripItems =
+                                        snapshot.data!.docs.map((doc) {
+                                      return DropdownMenuItem<String>(
+                                        value: doc.id,
+                                        child: Text(doc['tripName']),
+                                      );
+                                    }).toList();
 
-                                return DropdownButton<String>(
-                                  value: selectedTrip.isNotEmpty
-                                      ? selectedTrip
-                                      : null,
-                                  hint: Text("Select Trip"),
-                                  items: tripItems,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedTrip = value!;
-                                    });
+                                    return DropdownButton<String>(
+                                      value: selectedTrip.isNotEmpty
+                                          ? selectedTrip
+                                          : null,
+                                      hint: Text("Select Trip"),
+                                      items: tripItems,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          selectedTrip = value!;
+                                        });
+                                      },
+                                    );
                                   },
-                                );
-                              },
+                                ),
+                                Spacer(),
+                                // expense type drop-down
+                                DropdownButton<String>(
+                                  value: selectedType,
+                                  items: ['Expenses']
+                                      .map((e) => DropdownMenuItem(
+                                          value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setState(() => selectedType = value!);
+                                  },
+                                ),
+                              ],
                             ),
-                            DropdownButton<String>(
-                              value: selectedType,
-                              items: ['Miles', 'Expenses']
-                                  .map((e) => DropdownMenuItem(
-                                      value: e, child: Text(e)))
-                                  .toList(),
-                              onChanged: (value) {
-                                setState(() => selectedType = value!);
-                              },
-                            ),
-                            if (selectedType == 'Miles')
-                              SizedBox(
-                                height: 40.h,
-                                child: TextField(
-                                  controller: milesController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Enter Miles',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              )
-                            else ...[
-                              SizedBox(
-                                height: 40.h,
-                                child: TextField(
-                                  controller: amountController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Enter Amount',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              SizedBox(height: 10.h),
-
-                              //select Image
-                              ElevatedButton.icon(
-                                onPressed: pickImage,
-                                icon: const Icon(Icons.add_photo_alternate,
-                                    color: Colors.white),
-                                label: const Text(
-                                  'Upload Image',
-                                  style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: kPrimary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 10.h),
-
-                              _selectedImage != null
-                                  ? Image.file(
-                                      _selectedImage!,
-                                      height: 100.h,
-                                      // width: 100.w,
-                                    )
-                                  : const SizedBox(),
-                              SizedBox(height: 10.h),
-
-                              SizedBox(
-                                height: 40.h,
-                                child: TextField(
-                                  controller: descriptionController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Description',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.text,
-                                ),
-                              ),
-                            ],
                             SizedBox(height: 10.h),
-                            CustomButton(
-                                text: "Add Entry ",
-                                onPress: () => addMileageOrExpense(),
-                                color: kPrimary),
+                            SizedBox(
+                              height: 40.h,
+                              child: TextField(
+                                controller: amountController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Enter Amount',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            TextField(
+                              controller: descriptionController,
+                              maxLines: 3,
+                              decoration: const InputDecoration(
+                                labelText: 'Description',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.text,
+                            ),
+                            SizedBox(height: 10.h),
+                            _selectedImage != null
+                                ? Image.file(
+                                    _selectedImage!,
+                                    height: 100.h,
+                                    // width: 100.w,
+                                  )
+                                : const SizedBox(),
+                            SizedBox(height: 10.h),
+                            Row(
+                              children: [
+//select Image
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: pickImage,
+                                    icon: const Icon(Icons.add_photo_alternate,
+                                        color: Colors.white),
+                                    label: const Text(
+                                      'Upload Image',
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kSecondary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                CustomButton(
+                                    height: 30.h,
+                                    width: 100.w,
+                                    text: "Add Entry ",
+                                    onPress: () => addMileageOrExpense(),
+                                    color: kPrimary),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -593,29 +589,57 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                 borderRadius: BorderRadius.circular(10.r),
                                 border: Border.all(color: kPrimary),
                               ),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.all(5.w),
-                                title: Text(doc['tripName']),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text("Start Miles: $tripStartMiles"),
-                                    SizedBox(height: 2.h),
-                                    if (tripStatus == 'Completed') ...[
-                                      Text("End Miles: $tripEndMiles"),
-                                      SizedBox(height: 2.h),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Center(
+                                    child: Text(doc['tripName'],
+                                        style: appStyle(
+                                            16, kDark, FontWeight.w500)),
+                                  ),
+                                  SizedBox(height: 10.h),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("Start Date: $formattedStartDate"),
+                                      Text("Start Miles: $tripStartMiles"),
                                     ],
-                                    Text("Start Date: $formattedStartDate"),
-                                    if (tripStatus == 'Completed') ...[
-                                      Text("End Date: $formattedEndDate"),
-                                      SizedBox(height: 2.h),
-                                    ],
-                                    if (tripStatus == 'Completed') ...[
-                                      Text("Total Miles: $totalMiles"),
-                                      SizedBox(height: 2.h),
-                                      Text("Earnings: $earnings"),
-                                      SizedBox(height: 2.h),
-                                    ],
+                                  ),
+                                  SizedBox(height: 5.h),
+                                  if (tripStatus == "Completed") ...[
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text("End Date: $formattedEndDate"),
+                                        Text("End Miles: $tripEndMiles"),
+                                      ],
+                                    ),
+                                    SizedBox(height: 5.h),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text("Total Miles: $totalMiles"),
+                                        Text("Earnings: \$${earnings}"),
+                                      ],
+                                    ),
+                                    SizedBox(height: 5.h),
+                                    Row(
+                                      children: [
+                                        Text("Payment Status: "),
+                                        Spacer(),
+                                        isPaid
+                                            ? Text("Paid",
+                                                style: appStyle(16, kSecondary,
+                                                    FontWeight.w500))
+                                            : Text("Unpaid",
+                                                style: appStyle(
+                                                    16, kRed, FontWeight.w500))
+                                      ],
+                                    ),
+                                    SizedBox(height: 5.h),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
@@ -744,8 +768,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                         ],
                                       ],
                                     ),
-                                  ],
-                                ),
+                                    SizedBox(height: 5.h),
+                                  ]
+                                ],
                               ),
                             ),
                           );
