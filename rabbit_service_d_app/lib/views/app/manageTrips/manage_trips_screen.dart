@@ -578,216 +578,66 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           num perMileCharges = num.parse(perMileCharge);
                           num earnings = totalMiles * perMileCharges;
 
-                          return GestureDetector(
-                            onTap: () => Get.to(() => TripDetailsScreen(
-                                  docId: doc.id,
-                                  tripName: doc['tripName'],
-                                )),
-                            child: Container(
-                              padding: EdgeInsets.all(5.w),
-                              margin: EdgeInsets.all(5.w),
-                              decoration: BoxDecoration(
-                                color: kWhite,
-                                borderRadius: BorderRadius.circular(10.r),
-                                border: Border.all(color: kPrimary),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: [
-                                  Center(
-                                    child: Text(doc['tripName'],
-                                        style: appStyle(
-                                            16, kDark, FontWeight.w500)),
-                                  ),
-                                  SizedBox(height: 10.h),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Start Date: $formattedStartDate"),
-                                      Text("Start Miles: $tripStartMiles"),
-                                    ],
-                                  ),
-                                  SizedBox(height: 5.h),
-                                  if (tripStatus == "Completed") ...[
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          "End Date: $formattedEndDate",
-                                        ),
-                                        Text("End Miles: $tripEndMiles"),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5.h),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text("Total Miles: $totalMiles"),
-                                        Text("Earnings: \$${earnings}"),
-                                      ],
-                                    ),
-                                    SizedBox(height: 5.h),
-                                    Row(
-                                      children: [
-                                        Text("Payment Status: "),
-                                        Spacer(),
-                                        isPaid
-                                            ? Text("Paid",
-                                                style: appStyle(16, kSecondary,
-                                                    FontWeight.w500))
-                                            : Text("Unpaid",
-                                                style: appStyle(
-                                                    16, kRed, FontWeight.w500))
-                                      ],
-                                    ),
-                                    SizedBox(height: 5.h),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text("Trip Status: "),
-                                        Spacer(),
-                                        if (tripStatus != 'Completed') ...[
-                                          DropdownButton<String>(
-                                            value: tripStatus,
-                                            items: [
-                                              'Pending',
-                                              'Started',
-                                              'Completed'
-                                            ]
-                                                .map((e) => DropdownMenuItem(
-                                                    value: e, child: Text(e)))
-                                                .toList(),
-                                            onChanged: (value) async {
-                                              if (value != null) {
-                                                int newStatus =
-                                                    getIntFromTripStatus(value);
+                          // print("Trip Status: " + tripStatus);
 
-                                                if (value == 'Completed') {
-                                                  String? currentMilesStr =
-                                                      await showDialog<String>(
-                                                    context: context,
-                                                    builder:
-                                                        (BuildContext context) {
-                                                      TextEditingController
-                                                          milesController =
-                                                          TextEditingController();
-                                                      return AlertDialog(
-                                                        title: Text(
-                                                            'Enter Trip End Miles'),
-                                                        content: TextField(
-                                                          controller:
-                                                              milesController,
-                                                          keyboardType:
-                                                              TextInputType
-                                                                  .number,
-                                                          decoration:
-                                                              InputDecoration(
-                                                                  labelText:
-                                                                      'Current Miles'),
-                                                        ),
-                                                        actions: <Widget>[
-                                                          TextButton(
-                                                            child:
-                                                                Text('Cancel'),
-                                                            onPressed: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop();
-                                                            },
-                                                          ),
-                                                          TextButton(
-                                                            child:
-                                                                Text('Submit'),
-                                                            onPressed: () {
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(milesController
-                                                                      .text);
-                                                            },
-                                                          ),
-                                                        ],
-                                                      );
-                                                    },
-                                                  );
-                                                  if (currentMilesStr != null &&
-                                                      currentMilesStr
-                                                          .isNotEmpty) {
-                                                    int currentMiles =
-                                                        int.tryParse(
-                                                                currentMilesStr) ??
-                                                            0;
+                          return FutureBuilder<QuerySnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection("Users")
+                                .doc(currentUId)
+                                .collection('trips')
+                                .doc(doc.id)
+                                .collection('tripDetails')
+                                .where('tripId',
+                                    isEqualTo: doc.id) // ✅ Match tripId
+                                .get(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Container(); // Prevents flickering UI while loading
+                              }
 
-                                                    if (currentMiles <=
-                                                        tripStartMiles) {
-                                                      showToastMessage(
-                                                          "Warning",
-                                                          "End miles must be greater than start miles.",
-                                                          kRed);
+                              // ✅ If tripDetails subcollection doesn't exist or is empty, hide "Total Expenses"
+                              if (!snapshot.hasData ||
+                                  snapshot.data == null ||
+                                  snapshot.data!.docs.isEmpty) {
+                                return buildTripCard(
+                                    doc,
+                                    formattedStartDate,
+                                    tripStartMiles,
+                                    tripStatus,
+                                    formattedEndDate,
+                                    tripEndMiles,
+                                    totalMiles,
+                                    earnings,
+                                    isPaid,
+                                    0,
+                                    // 0 means no expenses, so we hide it
+                                    context);
+                              }
 
-                                                      return; // Stop the status change
-                                                    }
+                              // ✅ Sum all "amount" values ONLY if tripId matches
+                              num totalExpenses = snapshot.data!.docs.fold(
+                                0,
+                                (sum, item) => sum + (item['amount'] ?? 0),
+                              );
 
-                                                    FirebaseFirestore.instance
-                                                        .collection("Users")
-                                                        .doc(currentUId)
-                                                        .collection('trips')
-                                                        .doc(doc.id)
-                                                        .update({
-                                                      'tripStatus': newStatus,
-                                                      'tripEndMiles':
-                                                          currentMiles,
-                                                      'tripEndDate':
-                                                          Timestamp.now(),
-                                                      'updatedAt':
-                                                          Timestamp.now(),
-                                                    });
-                                                  } else {
-                                                    showToastMessage(
-                                                        "Warning",
-                                                        "Please enter current miles.",
-                                                        kRed);
-                                                    return;
-                                                  }
-                                                } else {
-                                                  FirebaseFirestore.instance
-                                                      .collection("Users")
-                                                      .doc(currentUId)
-                                                      .collection('trips')
-                                                      .doc(doc.id)
-                                                      .update({
-                                                    'tripStatus': newStatus,
-                                                    'updatedAt':
-                                                        Timestamp.now(),
-                                                  });
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        ] else ...[
-                                          Text(
-                                            "Completed",
-                                            style: appStyle(16, kSecondary,
-                                                FontWeight.w500),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    SizedBox(height: 5.h),
-                                    CustomButton(
-                                      onPress: () {},
-                                      text: "Edit Trip",
-                                      color: kSecondary,
-                                      height: 30.h,
-                                    ),
-                                  ]
-                                ],
-                              ),
-                            ),
+                              return buildTripCard(
+                                  doc,
+                                  formattedStartDate,
+                                  tripStartMiles,
+                                  tripStatus,
+                                  formattedEndDate,
+                                  tripEndMiles,
+                                  totalMiles,
+                                  earnings,
+                                  isPaid,
+                                  totalExpenses,
+                                  // Show total expenses if exists
+                                  context);
+                            },
                           );
+
+                          // return buildTripCard(doc, formattedStartDate, tripStartMiles, tripStatus, formattedEndDate, tripEndMiles, totalMiles, earnings, isPaid, context);
                         }).toList(),
                       );
                     },
@@ -795,6 +645,292 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 ],
               ),
       ),
+    );
+  }
+
+  GestureDetector buildTripCard(
+      QueryDocumentSnapshot<Object?> doc,
+      String formattedStartDate,
+      num tripStartMiles,
+      String tripStatus,
+      String formattedEndDate,
+      num tripEndMiles,
+      num totalMiles,
+      num earnings,
+      bool isPaid,
+      num totalExpenses,
+      BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.to(() => TripDetailsScreen(
+            docId: doc.id,
+            userId: currentUId,
+            tripName: doc['tripName'],
+          )),
+      child: Container(
+        padding: EdgeInsets.all(5.w),
+        margin: EdgeInsets.all(5.w),
+        decoration: BoxDecoration(
+          color: kWhite,
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: kPrimary),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Center(
+              child: Text(doc['tripName'],
+                  style: appStyle(16, kDark, FontWeight.w500)),
+            ),
+            SizedBox(height: 10.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Start Date: $formattedStartDate"),
+                Text("Start Miles: $tripStartMiles"),
+              ],
+            ),
+            SizedBox(height: 5.h),
+            if (tripStatus == "Completed") ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "End Date: $formattedEndDate",
+                  ),
+                  Text("End Miles: $tripEndMiles"),
+                ],
+              ),
+              SizedBox(height: 5.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Total Miles: $totalMiles"),
+                  Text("Earnings: \$${earnings}"),
+                ],
+              ),
+              SizedBox(height: 5.h),
+              Row(
+                children: [
+                  Text("Payment Status: "),
+                  Spacer(),
+                  isPaid
+                      ? Text("Paid",
+                          style: appStyle(16, kSecondary, FontWeight.w500))
+                      : Text("Unpaid",
+                          style: appStyle(16, kRed, FontWeight.w500))
+                ],
+              ),
+              SizedBox(height: 5.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [Text("Total Expenses:"), Text("\$${totalExpenses}")],
+              ),
+            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Trip Status: "),
+                Spacer(),
+                if (tripStatus != 'Completed') ...[
+                  DropdownButton<String>(
+                    value: tripStatus,
+                    items: ['Pending', 'Started', 'Completed']
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (value) async {
+                      if (value != null) {
+                        int newStatus = getIntFromTripStatus(value);
+
+                        if (value == 'Completed') {
+                          String? currentMilesStr = await showDialog<String>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              TextEditingController milesController =
+                                  TextEditingController();
+                              return AlertDialog(
+                                title: Text('Enter Trip End Miles'),
+                                content: TextField(
+                                  controller: milesController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                      labelText: 'Current Miles'),
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    child: Text('Cancel'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                  TextButton(
+                                    child: Text('Submit'),
+                                    onPressed: () {
+                                      Navigator.of(context)
+                                          .pop(milesController.text);
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          if (currentMilesStr != null &&
+                              currentMilesStr.isNotEmpty) {
+                            int currentMiles =
+                                int.tryParse(currentMilesStr) ?? 0;
+
+                            if (currentMiles <= tripStartMiles) {
+                              showToastMessage(
+                                  "Warning",
+                                  "End miles must be greater than start miles.",
+                                  kRed);
+
+                              return; // Stop the status change
+                            }
+
+                            FirebaseFirestore.instance
+                                .collection("Users")
+                                .doc(currentUId)
+                                .collection('trips')
+                                .doc(doc.id)
+                                .update({
+                              'tripStatus': newStatus,
+                              'tripEndMiles': currentMiles,
+                              'tripEndDate': Timestamp.now(),
+                              'updatedAt': Timestamp.now(),
+                            });
+                          } else {
+                            showToastMessage(
+                                "Warning", "Please enter current miles.", kRed);
+                            return;
+                          }
+                        } else {
+                          FirebaseFirestore.instance
+                              .collection("Users")
+                              .doc(currentUId)
+                              .collection('trips')
+                              .doc(doc.id)
+                              .update({
+                            'tripStatus': newStatus,
+                            'updatedAt': Timestamp.now(),
+                          });
+                        }
+                      }
+                    },
+                  ),
+                ] else ...[
+                  Text(
+                    "Completed",
+                    style: appStyle(16, kSecondary, FontWeight.w500),
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(height: 5.h),
+            if (tripStatus != "Completed") ...[
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimary,
+                  foregroundColor: kWhite,
+                ),
+                onPressed: () {
+                  showEditTripDialog(context, doc.id,
+                      doc['tripStartDate'].toDate(), doc['tripStartMiles']);
+                },
+                child: Text("Edit Trip"),
+              ),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  void showEditTripDialog(BuildContext context, String tripId,
+      DateTime currentStartDate, num currentStartMiles) {
+    TextEditingController startMilesController =
+        TextEditingController(text: currentStartMiles.toString());
+    DateTime selectedDate = currentStartDate;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Edit Trip Details"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Date Picker for Start Date
+              GestureDetector(
+                onTap: () async {
+                  DateTime? pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+
+                  if (pickedDate != null) {
+                    selectedDate = pickedDate;
+                  }
+                },
+                child: AbsorbPointer(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: "Start Date",
+                      hintText: DateFormat('dd MMM yyyy').format(selectedDate),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              // Start Miles Input
+              TextField(
+                controller: startMilesController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(labelText: "Start Miles"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: Text("Cancel"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            TextButton(
+              child: Text("Update"),
+              onPressed: () {
+                int updatedMiles = int.tryParse(startMilesController.text) ?? 0;
+
+                if (updatedMiles <= 0) {
+                  showToastMessage(
+                      "Warning", "Start miles must be greater than 0.", kRed);
+                  return;
+                }
+
+                // Update Firestore
+                FirebaseFirestore.instance
+                    .collection("Users")
+                    .doc(currentUId)
+                    .collection("trips")
+                    .doc(tripId)
+                    .update({
+                  "tripStartDate": Timestamp.fromDate(selectedDate),
+                  "tripStartMiles": updatedMiles,
+                  "updatedAt": Timestamp.now(),
+                }).then((_) {
+                  showToastMessage(
+                      "Success", "Trip details updated!", kPrimary);
+                  Navigator.pop(context);
+                }).catchError((error) {
+                  showToastMessage(
+                      "Error", "Failed to update trip: $error", kRed);
+                });
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

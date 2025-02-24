@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
-import 'package:regal_service_d_app/utils/show_toast_msg.dart';
+import 'package:regal_service_d_app/views/app/manageTrips/trip_details.dart';
 
 class ViewMemberTrip extends StatefulWidget {
   const ViewMemberTrip({
@@ -14,6 +16,7 @@ class ViewMemberTrip extends StatefulWidget {
     required this.ownerId,
     required this.perMileCharge,
   });
+
   final String memberId;
   final String memberName;
   final String ownerId;
@@ -105,129 +108,152 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
               num earnings = totalMiles * perMileCharges;
               String tripStatus = getStringFromTripStatus(doc['tripStatus']);
 
-              return Container(
-                padding: EdgeInsets.all(5.w),
-                margin: EdgeInsets.all(10.w),
-                decoration: BoxDecoration(
-                  color: kWhite,
-                  borderRadius: BorderRadius.circular(10.r),
-                  border: Border.all(color: kPrimary),
-                ),
-                // child: ListTile(
-                //   title: Text(doc['tripName']),
-                //   subtitle: Column(
-                //     crossAxisAlignment: CrossAxisAlignment.start,
-                //     children: [
-                //       Text("Start Miles: $tripStartMiles"),
-                //       SizedBox(height: 2.h),
-                //       if (tripStatus == 'Completed') ...[
-                //         Text("End Miles: $tripEndMiles"),
-                //         SizedBox(height: 2.h),
-                //       ],
-                //       Text("Start Date: $formattedStartDate"),
-                //       if (tripStatus == 'Completed') ...[
-                //         Text("End Date: $formattedEndDate"),
-                //         SizedBox(height: 2.h),
-                //       ],
-                //       if (tripStatus == 'Completed') ...[
-                //         Text("Total Miles: $totalMiles"),
-                //         SizedBox(height: 2.h),
-                //         Text("Earnings: $earnings"),
-                //         SizedBox(height: 2.h),
-                //       ],
-                //     ],
-                //   ),
-                //   trailing: isPaid
-                //       ? Text("Paid",
-                //           style: appStyle(18, kSecondary, FontWeight.bold))
-                //       : ElevatedButton(
-                //           style: ElevatedButton.styleFrom(
-                //             backgroundColor: kPrimary,
-                //             foregroundColor: kWhite,
-                //             elevation: 0,
-                //           ),
-                //           onPressed: () {
-                //             showDialog(
-                //               context: context,
-                //               builder: (context) => AlertDialog(
-                //                 title: Text("Pay"),
-                //                 content: Text("Are you sure you want to pay?"),
-                //                 actions: [
-                //                   TextButton(
-                //                       onPressed: () async {
-                //                         await FirebaseFirestore.instance
-                //                             .collection("Users")
-                //                             .doc(widget.memberId)
-                //                             .collection('trips')
-                //                             .doc(doc.id)
-                //                             .update({'isPaid': true}).then(
-                //                                 (value) {
-                //                           showToastMessage(
-                //                               "Success",
-                //                               "Trip paid successfully",
-                //                               kSecondary);
-                //                           Navigator.pop(context);
-                //                         });
-                //                       },
-                //                       child: Text("Pay",
-                //                           style: appStyle(18, kSecondary,
-                //                               FontWeight.w400))),
-                //                   TextButton(
-                //                       onPressed: () {
-                //                         Navigator.pop(context);
-                //                       },
-                //                       child: Text(
-                //                         "Cancel",
-                //                         style: appStyle(
-                //                             18, kPrimary, FontWeight.w400),
-                //                       )),
-                //                 ],
-                //               ),
-                //             );
-                //           },
-                //           child: Text("Pay"),
-                //         ),
-                // ),
+              return FutureBuilder<QuerySnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection("Users")
+                    .doc(widget.memberId)
+                    .collection('trips')
+                    .doc(doc.id)
+                    .collection('tripDetails')
+                    .where('tripId', isEqualTo: doc.id) // ✅ Match tripId
+                    .get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Container(); // Prevents flickering UI while loading
+                  }
 
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Text(doc['tripName'],
-                          style: appStyle(16, kDark, FontWeight.w500)),
-                    ),
-                    SizedBox(height: 10.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("Start Date: $formattedStartDate"),
-                        Text("Start Miles: $tripStartMiles"),
-                      ],
-                    ),
-                    SizedBox(height: 5.h),
-                    if (tripStatus == "Completed") ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("End Date: $formattedEndDate"),
-                          Text("End Miles: $tripEndMiles"),
-                        ],
-                      ),
-                      SizedBox(height: 5.h),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("Total Miles: $totalMiles"),
-                          Text("Earnings: $earnings"),
-                        ],
-                      ),
-                    ]
-                  ],
-                ),
+                  // ✅ If tripDetails subcollection doesn't exist or is empty, hide "Total Expenses"
+                  if (!snapshot.hasData ||
+                      snapshot.data == null ||
+                      snapshot.data!.docs.isEmpty) {
+                    return buildTripCard(
+                        doc,
+                        formattedStartDate,
+                        tripStartMiles,
+                        tripStatus,
+                        formattedEndDate,
+                        tripEndMiles,
+                        totalMiles,
+                        earnings,
+                        isPaid,
+                        0);
+                  }
+
+                  // ✅ Sum all "amount" values ONLY if tripId matches
+                  num totalExpenses = snapshot.data!.docs.fold(
+                    0,
+                    (sum, item) => sum + (item['amount'] ?? 0),
+                  );
+
+                  return buildTripCard(
+                      doc,
+                      formattedStartDate,
+                      tripStartMiles,
+                      tripStatus,
+                      formattedEndDate,
+                      tripEndMiles,
+                      totalMiles,
+                      earnings,
+                      isPaid,
+                      totalExpenses);
+                },
               );
+
+              // return buildTripCard(doc, formattedStartDate, tripStartMiles, tripStatus, formattedEndDate, tripEndMiles, totalMiles, earnings);
             }).toList(),
           );
         },
+      ),
+    );
+  }
+
+  Container buildTripCard(
+    QueryDocumentSnapshot<Object?> doc,
+    String formattedStartDate,
+    num tripStartMiles,
+    String tripStatus,
+    String formattedEndDate,
+    num tripEndMiles,
+    num totalMiles,
+    num earnings,
+    bool isPaid,
+    num totalExpenses,
+  ) {
+    return Container(
+      padding: EdgeInsets.all(5.w),
+      margin: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: kWhite,
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: kPrimary),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Text(doc['tripName'],
+                style: appStyle(16, kDark, FontWeight.w500)),
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Start Date: $formattedStartDate"),
+              Text("Start Miles: $tripStartMiles"),
+            ],
+          ),
+          SizedBox(height: 5.h),
+          if (tripStatus == "Completed") ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("End Date: $formattedEndDate"),
+                Text("End Miles: $tripEndMiles"),
+              ],
+            ),
+            SizedBox(height: 5.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Total Miles: $totalMiles"),
+                Text("Earnings: $earnings"),
+              ],
+            ),
+            SizedBox(height: 5.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [Text("Total Expenses:"), Text("\$${totalExpenses}")],
+            ),
+            SizedBox(height: 5.h),
+            Row(
+              children: [
+                Text("Payment Status: "),
+                Spacer(),
+                isPaid
+                    ? Text("Paid",
+                        style: appStyle(16, kSecondary, FontWeight.w500))
+                    : ElevatedButton(
+                        onPressed: () {},
+                        child: Text("Pay"),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimary, foregroundColor: kWhite))
+              ],
+            ),
+            SizedBox(height: 5.h),
+            Center(
+              child: ElevatedButton(
+                onPressed: () => Get.to(() => TripDetailsScreen(
+                      docId: doc.id,
+                      userId: widget.memberId,
+                      tripName: doc['tripName'],
+                    )),
+                child: Text("View Details"),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: kSecondary, foregroundColor: kWhite),
+              ),
+            )
+          ]
+        ],
       ),
     );
   }

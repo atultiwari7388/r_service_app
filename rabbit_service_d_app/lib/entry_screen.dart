@@ -4,9 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
-import 'package:regal_service_d_app/main.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
-import 'package:regal_service_d_app/views/app/addServiceData/add_service_data.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/dashboard/dashboard_screen.dart';
 import 'utils/app_styles.dart';
@@ -31,7 +29,7 @@ class _EntryScreenState extends State<EntryScreen>
   @override
   void initState() {
     super.initState();
-    checkUserAuthentication();
+    // checkUserAuthentication();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -44,39 +42,39 @@ class _EntryScreenState extends State<EntryScreen>
     super.dispose();
   }
 
-  Future<void> checkUserAuthentication() async {
-    FirebaseAuth _auth = FirebaseAuth.instance;
-    User? user = _auth.currentUser;
-
-    log("Checking user authentication...");
-
-    // Simulating an asynchronous operation (e.g., fetching user data) with a delay
-    await Future.delayed(Duration(seconds: 2));
-
-    setState(() {
-      loading = true;
-    });
-
-    if (user == null) {
-      // If user is not authenticated, navigate to OnboardScreen
-      log("User is not authenticated. Navigating to OnboardingScreen.");
-
-      Get.offAll(() => LoginScreen());
-    } else {
-      // If user is authenticated, you can perform additional actions if needed
-      log("User is authenticated. UID: ${user.uid}");
-
-      setState(() {
-        loading = false;
-      });
-    }
-
-    log("Check user authentication completed.");
-
-    setState(() {
-      loading = false;
-    });
-  }
+  // Future<void> checkUserAuthentication() async {
+  //   FirebaseAuth _auth = FirebaseAuth.instance;
+  //   User? user = _auth.currentUser;
+  //
+  //   log("Checking user authentication...");
+  //
+  //   // Simulating an asynchronous operation (e.g., fetching user data) with a delay
+  //   await Future.delayed(Duration(seconds: 2));
+  //
+  //   setState(() {
+  //     loading = true;
+  //   });
+  //
+  //   if (user == null) {
+  //     // If user is not authenticated, navigate to OnboardScreen
+  //     log("User is not authenticated. Navigating to OnboardingScreen.");
+  //
+  //     Get.offAll(() => LoginScreen());
+  //   } else {
+  //     // If user is authenticated, you can perform additional actions if needed
+  //     log("User is authenticated. UID: ${user.uid}");
+  //
+  //     setState(() {
+  //       loading = false;
+  //     });
+  //   }
+  //
+  //   log("Check user authentication completed.");
+  //
+  //   setState(() {
+  //     loading = false;
+  //   });
+  // }
 
   void setTab(int index) {
     setState(() {

@@ -236,6 +236,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
 
                               return Container(
                                 margin: EdgeInsets.only(left: 8.w, right: 8.w),
+                                padding: EdgeInsets.symmetric(vertical: 8.h),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12.r),
                                   color: kLightWhite,
@@ -330,6 +331,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           ),
         ],
       ),
+
     );
   }
 }

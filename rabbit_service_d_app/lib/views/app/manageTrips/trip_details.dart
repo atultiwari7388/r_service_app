@@ -8,9 +8,10 @@ import 'package:regal_service_d_app/utils/constants.dart';
 
 class TripDetailsScreen extends StatefulWidget {
   const TripDetailsScreen(
-      {super.key, required this.docId, required this.tripName});
+      {super.key, required this.docId, required this.tripName, required this.userId});
   final String docId;
   final String tripName;
+  final String userId;
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -29,7 +30,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
             .collection("Users")
-            .doc(currentUId) // Replace with the current user ID
+            .doc(widget.userId) // Replace with the current user ID
             .collection('trips')
             .doc(widget.docId)
             .collection('tripDetails')

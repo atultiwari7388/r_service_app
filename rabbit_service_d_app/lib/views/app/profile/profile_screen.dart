@@ -1,9 +1,14 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/controllers/authentication_controller.dart';
+import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
+import 'package:regal_service_d_app/controllers/tab_index_controller.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/companyProfile/company_profile.dart';
@@ -179,8 +184,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
-                    buildListTile(
-                        "assets/out_bw.png", "Logout", () => signOut(context)),
+                    buildListTile("assets/out_bw.png", "Logout", () {
+                      Future.delayed(const Duration(milliseconds: 500), () {
+                        logOutUser(context);
+                      });
+                    }),
                   ],
                 ),
               ),
@@ -308,19 +316,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  //====================== signOut from app =====================
-  void signOut(BuildContext context) async {
+//================ Signout from the app ====================
+
+  void logOutUser(BuildContext context) async {
     try {
-      await auth.signOut();
-      // Clear Firestore offline cache (optional, only if needed)
-      await FirebaseFirestore.instance.terminate();
+      log("Signing out user...");
+      final navigator = Navigator.of(context);
+      String? uid = auth.currentUser?.uid;
+
+      if (uid != null) {
+        await FirebaseFirestore.instance.collection('Users').doc(uid).update({
+          'fcmToken': FieldValue.delete(),
+        });
+      }
+
+      // Stop Firestore Listeners
+      FirebaseFirestore.instance.terminate();
+
+      // Clear Firestore Cache Before Sign-Out
       await FirebaseFirestore.instance.clearPersistence();
 
-      // Remove any GetX stored user session data (if used)
-      Get.deleteAll();
-      Get.offAll(() => const LoginScreen());
+      // Sign out from Firebase
+      await auth.signOut();
+      clearControllers();
+      log("User should be signed out.");
+
+      // Wait & force FirebaseAuth to reload session
+      await Future.delayed(const Duration(milliseconds: 500));
+      await FirebaseAuth.instance.currentUser?.reload();
+
+      // Check if user is null
+      var currentUser = FirebaseAuth.instance.currentUser;
+      log("User after sign out: $currentUser"); // Should be null
+
+      // Ensure User is Fully Signed Out
+      FirebaseAuth.instance.authStateChanges().listen((user) {
+        log("AuthState after signOut: ${user?.uid}"); // Should print "null"
+      });
+
+
+      // Navigate to Login Screen
+      // Get.offAll(() => const LoginScreen());
+      // Clear GetX controllers and app state
+      Get.reset();
+
+      // Force close the app (works on Android)
+      SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+      log("User signed out successfully: $uid");
     } catch (e) {
       showToastMessage("Error", e.toString(), Colors.red);
     }
+  }
+
+
+  void clearControllers() {
+    Get.delete<DashboardController>(force: true);
+    Get.delete<AuthController>(force: true);
+    Get.delete<TabIndexController>(force: true);
+    // Remove Any Stored GetX Data
+    Get.deleteAll();
   }
 }

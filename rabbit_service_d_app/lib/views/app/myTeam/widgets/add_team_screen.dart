@@ -248,116 +248,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     );
   }
 
-  // Future<void> createMemberWithEmailAndPassword() async {
-  //   if (nameController.text.isEmpty ||
-  //       emailController.text.isEmpty ||
-  //       phoneController.text.isEmpty ||
-  //       passController.text.isEmpty ||
-  //       selectedVehicles.isEmpty) {
-  //     showToastMessage(
-  //         "Error", "All fields and vehicle selection are required", Colors.red);
-  //     return;
-  //   }
-
-  //   final emailValid = RegExp(
-  //       r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
-  //   if (!emailValid.hasMatch(emailController.text)) {
-  //     showToastMessage("Error", "Please enter a valid email", Colors.red);
-  //     return;
-  //   }
-
-  //   isUserAcCreated = true;
-  //   setState(() {});
-
-  //   try {
-  //     // Create the team member's account
-  //     var user = await _auth.createUserWithEmailAndPassword(
-  //       email: emailController.text,
-  //       password: passController.text,
-  //     );
-
-  //     // Store the new team member in Firestore under 'Users'
-  //     await _firestore.collection('Users').doc(user.user!.uid).set({
-  //       "uid": user.user!.uid,
-  //       "email": emailController.text,
-  //       "active": true,
-  //       "userName": nameController.text,
-  //       "phoneNumber": phoneController.text,
-  //       "createdBy": currentUId,
-  //       "profilePicture":
-  //           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
-  //       "role": selectedRole,
-  //       "isManager": selectedRole == "Manager" ? true : false,
-  //       "isDriver": selectedRole == "Driver" ? true : false,
-  //       "perMileCharge":
-  //           selectedRole == "Driver" ? perMileChargeController.text : "",
-  //       "isView": selectedRecordAccess.contains("View"),
-  //       "isEdit": selectedRecordAccess.contains("Edit"),
-  //       "isDelete": selectedRecordAccess.contains("Delete"),
-  //       "isAdd": selectedRecordAccess.contains("Add"),
-  //       "isOwner": false,
-  //       "isTeamMember": true,
-  //       "created_at": DateTime.now(),
-  //       "updated_at": DateTime.now(),
-  //     });
-
-  //     // Fetch and store selected vehicles in the team member's subcollection
-  //     for (String vehicleId in selectedVehicles) {
-  //       DocumentSnapshot vehicleDoc = await _firestore
-  //           .collection('Users')
-  //           .doc(currentUId) // Fetching from the owner's vehicles collection
-  //           .collection('Vehicles')
-  //           .doc(vehicleId)
-  //           .get();
-
-  //       if (vehicleDoc.exists) {
-  //         await _firestore
-  //             .collection('Users')
-  //             .doc(user.user!.uid) // New team member's document
-  //             .collection('Vehicles')
-  //             .doc(vehicleId)
-  //             .set(vehicleDoc.data()
-  //                 as Map<String, dynamic>); // Copy the whole document
-  //       }
-
-  //       // **Fetch and assign DataServices based on vehicleId**
-  //       QuerySnapshot dataServicesSnapshot = await _firestore
-  //           .collection('Users')
-  //           .doc(currentUId)
-  //           .collection('DataServices')
-  //           .where('vehicleId', isEqualTo: vehicleId)
-  //           .get();
-
-  //       for (var doc in dataServicesSnapshot.docs) {
-  //         await _firestore
-  //             .collection('Users')
-  //             .doc(user.user!.uid)
-  //             .collection('DataServices')
-  //             .doc(doc.id)
-  //             .set(doc.data()
-  //                 as Map<String, dynamic>); // Copy the entire document
-  //       }
-  //     }
-
-  //     // Send email verification
-  //     await user.user!.sendEmailVerification();
-  //     showToastMessage(
-  //       "Verification Sent",
-  //       "A verification email has been sent to ${emailController.text}.",
-  //       Colors.orange,
-  //     );
-
-  //     // Sign out the newly created user immediately after account creation
-  //     await _auth.signOut();
-  //     Get.offAll(() => const LoginScreen());
-  //   } on FirebaseAuthException catch (e) {
-  //     handleError(e);
-  //   } finally {
-  //     isUserAcCreated = false;
-  //     setState(() {});
-  //   }
-  // }
-
   Future<void> createMemberWithEmailAndPassword() async {
     if (nameController.text.isEmpty ||
         emailController.text.isEmpty ||
@@ -463,6 +353,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
       setState(() {});
 
       Get.off(() => MyTeamScreen());
+      // Get.back();
     } on FirebaseAuthException catch (e) {
       handleError(e);
     } finally {

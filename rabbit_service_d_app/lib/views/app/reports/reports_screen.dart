@@ -116,11 +116,11 @@ class _ReportsScreenState extends State<ReportsScreen>
             isAdd = userData['isAdd'];
             isDelete = userData['isDelete'];
 
-            print("My Current User is $currentUId");
-            print("My isView is $isView");
-            print("My isEdit is $isEdit");
-            print("My isAdd is $isAdd");
-            print("My isDelete is $isDelete");
+            // print("My Current User is $currentUId");
+            // print("My isView is $isView");
+            // print("My isEdit is $isEdit");
+            // print("My isAdd is $isAdd");
+            // print("My isDelete is $isDelete");
           });
         }
       }
