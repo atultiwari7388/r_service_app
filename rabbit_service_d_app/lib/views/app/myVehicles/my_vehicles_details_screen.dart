@@ -136,7 +136,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          : StreamBuilder<DocumentSnapshot>(
+          :
+      StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('Users')
                   .doc(currentUId)
@@ -214,71 +215,137 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         const SizedBox(height: 20),
 
 //======================== Uploaded Documents ================================================
+//                         _buildSection(
+//                           title: 'Uploaded Documents',
+//                           content: uploadedDocuments.isNotEmpty
+//                               ? uploadedDocuments.map<Widget>((doc) {
+//                                   return GestureDetector(
+//                                     onTap: () async {
+//                                       await _generatePdfForDocument(
+//                                           doc['imageUrl'], doc['text']);
+//                                     },
+//                                     child: Card(
+//                                       elevation: 2,
+//                                       shape: RoundedRectangleBorder(
+//                                         borderRadius: BorderRadius.circular(10),
+//                                       ),
+//                                       child: Padding(
+//                                         padding: const EdgeInsets.all(16.0),
+//                                         child: Column(
+//                                           crossAxisAlignment:
+//                                               CrossAxisAlignment.start,
+//                                           children: [
+//                                             if (doc['imageUrl'] != null)
+//                                               ClipRRect(
+//                                                 borderRadius:
+//                                                     BorderRadius.circular(10),
+//                                                 child: Image.network(
+//                                                   doc['imageUrl'],
+//                                                   height: 150,
+//                                                   width: double.infinity,
+//                                                   fit: BoxFit.cover,
+//                                                 ),
+//                                               ),
+//                                             const SizedBox(height: 10),
+//                                             Row(
+//                                               mainAxisAlignment:
+//                                                   MainAxisAlignment
+//                                                       .spaceBetween,
+//                                               children: [
+//                                                 Text(
+//                                                   doc['text'] ??
+//                                                       'No description provided',
+//                                                 ),
+//                                                 IconButton(
+//                                                   onPressed: () async {
+//                                                     // Generate PDF for this image and text
+//                                                     await _generatePdfForDocument(
+//                                                         doc['imageUrl'],
+//                                                         doc['text']);
+//                                                   },
+//                                                   icon: Icon(Icons.download),
+//                                                 ),
+//                                               ],
+//                                             ),
+//                                           ],
+//                                         ),
+//                                       ),
+//                                     ),
+//                                   );
+//                                 }).toList()
+//                               : [
+//                                   const Text(
+//                                     'No documents uploaded yet.',
+//                                     style: TextStyle(color: Colors.grey),
+//                                   ),
+//                                 ],
+//                         ),
+
                         _buildSection(
                           title: 'Uploaded Documents',
                           content: uploadedDocuments.isNotEmpty
                               ? uploadedDocuments.map<Widget>((doc) {
-                                  return GestureDetector(
-                                    onTap: () async {
-                                      await _generatePdfForDocument(
-                                          doc['imageUrl'], doc['text']);
-                                    },
-                                    child: Card(
-                                      elevation: 2,
-                                      shape: RoundedRectangleBorder(
+                            return Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (doc['imageUrl'] != null)
+                                      ClipRRect(
                                         borderRadius: BorderRadius.circular(10),
+                                        child: Image.network(
+                                          doc['imageUrl'],
+                                          height: 150,
+                                          width: double.infinity,
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(16.0),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          doc['text'] ?? 'No description provided',
+                                        ),
+                                        Row(
                                           children: [
-                                            if (doc['imageUrl'] != null)
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                child: Image.network(
-                                                  doc['imageUrl'],
-                                                  height: 150,
-                                                  width: double.infinity,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            const SizedBox(height: 10),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  doc['text'] ??
-                                                      'No description provided',
-                                                ),
-                                                IconButton(
-                                                  onPressed: () async {
-                                                    // Generate PDF for this image and text
-                                                    await _generatePdfForDocument(
-                                                        doc['imageUrl'],
-                                                        doc['text']);
-                                                  },
-                                                  icon: Icon(Icons.download),
-                                                ),
-                                              ],
+                                            IconButton(
+                                              onPressed: () {
+                                                _showDeleteConfirmationDialog(
+                                                    context, vehicleId, doc);
+                                              },
+                                              icon: const Icon(Icons.delete, color: Colors.red),
+                                            ),
+                                            IconButton(
+                                              onPressed: () async {
+                                                await _generatePdfForDocument(
+                                                    doc['imageUrl'], doc['text']);
+                                              },
+                                              icon: const Icon(Icons.download),
                                             ),
                                           ],
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  );
-                                }).toList()
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList()
                               : [
-                                  const Text(
-                                    'No documents uploaded yet.',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ],
+                            const Text(
+                              'No documents uploaded yet.',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
                         ),
+
+
 
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
@@ -426,8 +493,68 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 );
               },
             ),
+
     );
   }
+
+
+  void _showDeleteConfirmationDialog(
+      BuildContext context, String vehicleId, Map<String, dynamic> doc) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Delete Document"),
+          content: const Text("Are you sure you want to delete this document?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog
+                await _deleteDocument(vehicleId, doc);
+              },
+              child: const Text("Yes", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  Future<void> _deleteDocument(String vehicleId, Map<String, dynamic> doc) async {
+    try {
+      final userDocRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection("Vehicles")
+          .doc(vehicleId);
+
+      final snapshot = await userDocRef.get();
+
+      if (snapshot.exists) {
+        final vehicleData = snapshot.data() as Map<String, dynamic>;
+        List<dynamic> uploadedDocuments = vehicleData['uploadedDocuments'] ?? [];
+
+        // Remove the selected document
+        uploadedDocuments.removeWhere((element) => element['imageUrl'] == doc['imageUrl']);
+
+        // Update Firestore with the new list
+        await userDocRef.update({'uploadedDocuments': uploadedDocuments});
+
+        // Optionally delete image from Firebase Storage if needed
+        await FirebaseStorage.instance.refFromURL(doc['imageUrl']).delete();
+      }
+    } catch (e) {
+      print("Error deleting document: $e");
+    }
+  }
+
 
   Widget _buildSection({required String title, required List<Widget> content}) {
     return Container(

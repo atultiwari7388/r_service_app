@@ -302,6 +302,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           calculateNextNotificationMiles();
 
       Map<String, dynamic> vehicleData = {
+        'active':true,
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
         'engineName': _selectedEngineName?.toUpperCase(),

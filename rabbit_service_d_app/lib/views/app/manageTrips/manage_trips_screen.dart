@@ -43,7 +43,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   File? _selectedImage;
   String _imageUrl = '';
   DateTime? selectedDate;
-  DateTime? selectedFilterDate;
+
+  // DateTime? selectedFilterDate;
 
   void addTrip() async {
     setState(() {
@@ -233,6 +234,63 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         }
       }
     });
+  }
+
+  Future<void> _pickDateRange() async {
+    DateTime now = DateTime.now();
+    DateTime firstDate = DateTime(now.year - 5);
+    DateTime lastDate = DateTime(now.year + 1);
+
+    DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      initialDateRange: fromDate != null && toDate != null
+          ? DateTimeRange(start: fromDate!, end: toDate!)
+          : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        fromDate = picked.start;
+        toDate = picked.end;
+      });
+    }
+  }
+
+  // this helper function calculate the total Earning and expenses
+  Future<Map<String, double>> calculateTotals(
+      List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
+    double totalExpenses = 0;
+    double totalEarnings = 0;
+    String userId = driverId;
+    double perMile = double.tryParse(perMileCharge) ?? 0.0;
+
+    for (var trip in trips) {
+      // Calculate expenses from tripDetails
+      var expensesSnapshot = await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(userId)
+          .collection('trips')
+          .doc(trip.id)
+          .collection('tripDetails')
+          .where('type', isEqualTo: 'Expenses')
+          .get();
+
+      double tripExpenses = expensesSnapshot.docs
+          .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
+      totalExpenses += tripExpenses;
+
+      // Calculate earnings only for completed trips
+
+      int startMiles = trip['tripStartMiles'];
+      int endMiles = trip['tripEndMiles'];
+      int miles = endMiles - startMiles;
+      double earnings = miles * perMile;
+      totalEarnings += earnings;
+    }
+
+    return {'expenses': totalExpenses, 'earnings': totalEarnings};
   }
 
   @override
@@ -503,21 +561,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             style: appStyle(18, kDark, FontWeight.w500)),
                         IconButton(
                           icon: Icon(Icons.filter_list, color: kPrimary),
-                          onPressed: () async {
-                            final DateTime? pickedDate = await showDatePicker(
-                              context: context,
-                              initialDate: selectedFilterDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-
-                            if (pickedDate != null) {
-                              setState(() {
-                                selectedFilterDate = pickedDate;
-                              });
-                            }
-                          },
+                          onPressed: _pickDateRange,
                         ),
+                        if (fromDate != null && toDate != null)
+                          Text(
+                            "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
+                            style: appStyle(14, kDark, FontWeight.w500),
+                          ),
                       ],
                     ),
                   ),
@@ -533,16 +583,11 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         return const CircularProgressIndicator();
                       }
 
-                      String? selectedDateStr = selectedFilterDate != null
-                          ? DateFormat('dd MMM yyyy')
-                              .format(selectedFilterDate!)
-                          : null;
-
                       var filteredTrips = snapshot.data!.docs.where((doc) {
-                        String tripDate = DateFormat('dd MMM yyyy')
-                            .format(doc['createdAt'].toDate());
-                        return selectedFilterDate == null ||
-                            tripDate == selectedDateStr;
+                        DateTime tripDate = doc['createdAt'].toDate();
+                        return (fromDate == null ||
+                                tripDate.isAfter(fromDate!)) &&
+                            (toDate == null || tripDate.isBefore(toDate!));
                       }).toList();
 
                       if (filteredTrips.isEmpty) {
@@ -560,85 +605,165 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         );
                       }
 
-                      return ListView(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: filteredTrips.map((doc) {
-                          String formattedStartDate = DateFormat('dd MMM yyyy')
-                              .format(doc['tripStartDate'].toDate());
-                          String formattedEndDate = DateFormat('dd MMM yyyy')
-                              .format(doc['tripEndDate'].toDate());
-                          bool isPaid = doc['isPaid'];
-                          String tripStatus =
-                              getStringFromTripStatus(doc['tripStatus']);
-                          num tripStartMiles = doc['tripStartMiles'];
-                          num tripEndMiles = doc['tripEndMiles'];
-                          num totalMiles =
-                              doc['tripEndMiles'] - doc['tripStartMiles'];
-                          num perMileCharges = num.parse(perMileCharge);
-                          num earnings = totalMiles * perMileCharges;
-
-                          // print("Trip Status: " + tripStatus);
-
-                          return FutureBuilder<QuerySnapshot>(
-                            future: FirebaseFirestore.instance
-                                .collection("Users")
-                                .doc(currentUId)
-                                .collection('trips')
-                                .doc(doc.id)
-                                .collection('tripDetails')
-                                .where('tripId',
-                                    isEqualTo: doc.id) // ✅ Match tripId
-                                .get(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
+                      return Column(
+                        children: [
+                          FutureBuilder<Map<String, double>>(
+                            future:
+                                calculateTotals(filteredTrips, perMileCharge, currentUId),
+                            builder: (context, totalsSnapshot) {
+                              if (totalsSnapshot.connectionState ==
                                   ConnectionState.waiting) {
-                                return Container(); // Prevents flickering UI while loading
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                                  child: Center(
+                                      child: CircularProgressIndicator()),
+                                );
                               }
+                              if (totalsSnapshot.hasError) {
+                                return Text('Error calculating totals');
+                              }
+                              var totals = totalsSnapshot.data ??
+                                  {'expenses': 0.0, 'earnings': 0.0};
+                              return Padding(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 10.h, horizontal: 12.w),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w, vertical: 10.h),
+                                      decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.8),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Total Expenses',
+                                            style: appStyle(
+                                                16, kWhite, FontWeight.w500),
+                                          ),
+                                          Text(
+                                            "\$${totals['expenses']!.toStringAsFixed(2)}",
+                                            style: appStyle(
+                                                15, kWhite, FontWeight.w500),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w, vertical: 10.h),
+                                      decoration: BoxDecoration(
+                                          color: kSecondary.withOpacity(0.8),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Total Earnings',
+                                            style: appStyle(
+                                                16, kWhite, FontWeight.w500),
+                                          ),
+                                          Text(
+                                              "\$${totals['earnings']!.toStringAsFixed(2)}",
+                                              style: appStyle(
+                                                  15, kWhite, FontWeight.normal))
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
 
-                              // ✅ If tripDetails subcollection doesn't exist or is empty, hide "Total Expenses"
-                              if (!snapshot.hasData ||
-                                  snapshot.data == null ||
-                                  snapshot.data!.docs.isEmpty) {
-                                return buildTripCard(
-                                    doc,
-                                    formattedStartDate,
-                                    tripStartMiles,
-                                    tripStatus,
-                                    formattedEndDate,
-                                    tripEndMiles,
-                                    totalMiles,
-                                    earnings,
-                                    isPaid,
+
+                          ListView(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: filteredTrips.map((doc) {
+                              String formattedStartDate =
+                                  DateFormat('dd MMM yyyy')
+                                      .format(doc['tripStartDate'].toDate());
+                              String formattedEndDate =
+                                  DateFormat('dd MMM yyyy')
+                                      .format(doc['tripEndDate'].toDate());
+                              bool isPaid = doc['isPaid'];
+                              String tripStatus =
+                                  getStringFromTripStatus(doc['tripStatus']);
+                              num tripStartMiles = doc['tripStartMiles'];
+                              num tripEndMiles = doc['tripEndMiles'];
+                              num totalMiles =
+                                  doc['tripEndMiles'] - doc['tripStartMiles'];
+                              num perMileCharges = num.parse(perMileCharge);
+                              num earnings = totalMiles * perMileCharges;
+
+                              // print("Trip Status: " + tripStatus);
+
+                              return FutureBuilder<QuerySnapshot>(
+                                future: FirebaseFirestore.instance
+                                    .collection("Users")
+                                    .doc(currentUId)
+                                    .collection('trips')
+                                    .doc(doc.id)
+                                    .collection('tripDetails')
+                                    .where('tripId',
+                                        isEqualTo: doc.id) // ✅ Match tripId
+                                    .get(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return Container(); // Prevents flickering UI while loading
+                                  }
+
+                                  // ✅ If tripDetails subcollection doesn't exist or is empty, hide "Total Expenses"
+                                  if (!snapshot.hasData ||
+                                      snapshot.data == null ||
+                                      snapshot.data!.docs.isEmpty) {
+                                    return buildTripCard(
+                                        doc,
+                                        formattedStartDate,
+                                        tripStartMiles,
+                                        tripStatus,
+                                        formattedEndDate,
+                                        tripEndMiles,
+                                        totalMiles,
+                                        earnings,
+                                        isPaid,
+                                        0,
+                                        // 0 means no expenses, so we hide it
+                                        context);
+                                  }
+
+                                  // ✅ Sum all "amount" values ONLY if tripId matches
+                                  num totalExpenses = snapshot.data!.docs.fold(
                                     0,
-                                    // 0 means no expenses, so we hide it
-                                    context);
-                              }
+                                    (sum, item) => sum + (item['amount'] ?? 0),
+                                  );
 
-                              // ✅ Sum all "amount" values ONLY if tripId matches
-                              num totalExpenses = snapshot.data!.docs.fold(
-                                0,
-                                (sum, item) => sum + (item['amount'] ?? 0),
+                                  return buildTripCard(
+                                      doc,
+                                      formattedStartDate,
+                                      tripStartMiles,
+                                      tripStatus,
+                                      formattedEndDate,
+                                      tripEndMiles,
+                                      totalMiles,
+                                      earnings,
+                                      isPaid,
+                                      totalExpenses,
+                                      // Show total expenses if exists
+                                      context);
+                                },
                               );
 
-                              return buildTripCard(
-                                  doc,
-                                  formattedStartDate,
-                                  tripStartMiles,
-                                  tripStatus,
-                                  formattedEndDate,
-                                  tripEndMiles,
-                                  totalMiles,
-                                  earnings,
-                                  isPaid,
-                                  totalExpenses,
-                                  // Show total expenses if exists
-                                  context);
-                            },
-                          );
-
-                          // return buildTripCard(doc, formattedStartDate, tripStartMiles, tripStatus, formattedEndDate, tripEndMiles, totalMiles, earnings, isPaid, context);
-                        }).toList(),
+                              // return buildTripCard(doc, formattedStartDate, tripStartMiles, tripStatus, formattedEndDate, tripEndMiles, totalMiles, earnings, isPaid, context);
+                            }).toList(),
+                          ),
+                        ],
                       );
                     },
                   ),
@@ -720,12 +845,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           style: appStyle(16, kRed, FontWeight.w500))
                 ],
               ),
-              SizedBox(height: 5.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [Text("Total Expenses:"), Text("\$${totalExpenses}")],
-              ),
+
             ],
+            SizedBox(height: 5.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [Text("Expenses:"), Text("\$${totalExpenses}")],
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

@@ -115,12 +115,6 @@ class _ReportsScreenState extends State<ReportsScreen>
             isEdit = userData['isEdit'];
             isAdd = userData['isAdd'];
             isDelete = userData['isDelete'];
-
-            // print("My Current User is $currentUId");
-            // print("My isView is $isView");
-            // print("My isEdit is $isEdit");
-            // print("My isAdd is $isAdd");
-            // print("My isDelete is $isDelete");
           });
         }
       }
@@ -701,7 +695,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 showSearchFilter = !showSearchFilter;
                                 showAddRecords = false;
                                 showAddMiles = false;
-                                showCombinedSearch = true;
+                                showVehicleSearch = true;
                               });
                             }),
                             buildCustomRowButton(

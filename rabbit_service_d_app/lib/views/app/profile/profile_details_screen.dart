@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:regal_service_d_app/utils/app_styles.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/text_field.dart';
@@ -320,6 +321,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                       itemCount: vehicles.length,
                                       itemBuilder: (context, index) {
                                         final vehicle = vehicles[index];
+                                        final bool isActive = vehicle['active'];
                                         return buildVehicleNameEditDeleteSection(
                                           vehicle['vehicleNumber'],
                                           () => _editVehicle(
@@ -327,11 +329,23 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                               vehicle['company'],
                                               vehicle['vehicleNumber']),
                                           () => _deleteVehicle(vehicle.id),
+                                          isActive,
+                                              (value) async {
+                                            await FirebaseFirestore.instance
+                                                .collection("Users")
+                                                .doc(currentUId)
+                                                .collection('Vehicles')
+                                                .doc(vehicle.id)
+                                                .update({'active': value}).then((value){
+                                                  showToastMessage("Msg", "Vehicle Status Updated", kSecondary);
+                                            });
+                                          },
                                         );
                                       },
                                     );
                                   },
                                 ),
+
                               ],
                             ),
 
@@ -385,7 +399,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   }
 
   Container buildVehicleNameEditDeleteSection(String vehcileName,
-      void Function()? onEditPress, void Function()? onDeletePress) {
+      void Function()? onEditPress, void Function()? onDeletePress, bool isActive
+      ,ValueChanged<bool> onSwitchChanged) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2.0.h),
       padding: EdgeInsets.symmetric(vertical: 1.0.h, horizontal: 2.w),
@@ -406,12 +421,18 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
             ),
           ),
           Expanded(child: SizedBox()),
-          IconButton(
-              onPressed: onEditPress,
-              icon: Icon(Icons.edit, color: kSecondary)),
-          IconButton(
-              onPressed: onDeletePress,
-              icon: Icon(Icons.delete, color: kPrimary))
+          // IconButton(
+          //     onPressed: onEditPress,
+          //     icon: Icon(Icons.edit, color: kSecondary)),
+          // IconButton(
+          //     onPressed: onDeletePress,
+          //     icon: Icon(Icons.delete, color: kPrimary))
+          //
+          Switch(
+            value: isActive,
+            activeColor: kPrimary,
+            onChanged: onSwitchChanged,
+          ),
         ],
       ),
     );
