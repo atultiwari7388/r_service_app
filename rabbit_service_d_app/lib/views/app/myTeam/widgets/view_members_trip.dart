@@ -92,27 +92,27 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
       appBar: AppBar(
         title: Text("${widget.memberName}'s Trip"),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(left: 8.0, right: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.filter_list, color: kPrimary),
-                  onPressed: _pickDateRange,
-                ),
-                if (fromDate != null && toDate != null)
-                  Text(
-                    "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
-                    style: appStyle(14, kDark, FontWeight.w500),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(left: 8.0, right: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.filter_list, color: kPrimary),
+                    onPressed: _pickDateRange,
                   ),
-              ],
+                  if (fromDate != null && toDate != null)
+                    Text(
+                      "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
+                      style: appStyle(14, kDark, FontWeight.w500),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: StreamBuilder(
+            StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection("Users")
                   .doc(widget.memberId)
@@ -289,8 +289,8 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 );
               },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

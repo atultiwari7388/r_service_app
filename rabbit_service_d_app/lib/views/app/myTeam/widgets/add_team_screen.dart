@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -221,7 +222,19 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   ? CircularProgressIndicator()
                   : CustomButton(
                       text: "Add Member",
-                      onPress: () => createMemberWithEmailAndPassword(),
+                      // onPress: () => createMemberWithEmailAndPassword(),
+                      onPress: () => {
+                        createMemberWithCloudFunction(
+                            name: nameController.text,
+                            email: emailController.text,
+                            phone: phoneController.text,
+                            password: passController.text,
+                            currentUId: currentUId,
+                            selectedRole: selectedRole!,
+                            selectedVehicles: selectedVehicles,
+                            perMileCharge: perMileChargeController.text,
+                            selectedRecordAccess: selectedRecordAccess),
+                      },
                       color: kPrimary,
                     ),
               SizedBox(height: 24.h),
@@ -248,119 +261,153 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     );
   }
 
-  Future<void> createMemberWithEmailAndPassword() async {
-    if (nameController.text.isEmpty ||
-        emailController.text.isEmpty ||
-        phoneController.text.isEmpty ||
-        passController.text.isEmpty ||
-        selectedVehicles.isEmpty ||
-        selectedRole == null) {
-      showToastMessage("Error",
-          "All fields, role, and vehicle selection are required", Colors.red);
-      return;
-    }
-
-    final emailValid = RegExp(
-        r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
-    if (!emailValid.hasMatch(emailController.text)) {
-      showToastMessage("Error", "Please enter a valid email", Colors.red);
-      return;
-    }
-
-    isUserAcCreated = true;
-    setState(() {});
-
+  Future<void> createMemberWithCloudFunction({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required String currentUId,
+    required String selectedRole,
+    required List<String> selectedVehicles,
+    required String perMileCharge,
+    required List<String> selectedRecordAccess,
+  }) async {
     try {
-      var user = await _auth.createUserWithEmailAndPassword(
-        email: emailController.text,
-        password: passController.text,
-      );
-
-      await _firestore.collection('Users').doc(user.user!.uid).set({
-        "uid": user.user!.uid,
-        "email": emailController.text,
-        "active": true,
-        "userName": nameController.text,
-        "phoneNumber": phoneController.text,
-        "createdBy": currentUId,
-        "profilePicture":
-            "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
-        "role": selectedRole,
-        "isManager": selectedRole == "Manager" ? true : false,
-        "isDriver": selectedRole == "Driver" ? true : false,
-        "perMileCharge":
-            selectedRole == "Driver" ? perMileChargeController.text : "",
-        "isView": selectedRecordAccess.contains("View"),
-        "isEdit": selectedRecordAccess.contains("Edit"),
-        "isDelete": selectedRecordAccess.contains("Delete"),
-        "isAdd": selectedRecordAccess.contains("Add"),
-        "isOwner": false,
-        "isTeamMember": true,
-        "created_at": DateTime.now(),
-        "updated_at": DateTime.now(),
+      HttpsCallable callable =
+          FirebaseFunctions.instance.httpsCallable('createTeamMember');
+      final result = await callable.call({
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'password': password,
+        'currentUId': currentUId,
+        'selectedRole': selectedRole,
+        'selectedVehicles': selectedVehicles,
+        'perMileCharge': perMileCharge,
+        'selectedRecordAccess': selectedRecordAccess,
       });
 
-      for (String vehicleId in selectedVehicles) {
-        DocumentSnapshot vehicleDoc = await _firestore
-            .collection('Users')
-            .doc(currentUId)
-            .collection('Vehicles')
-            .doc(vehicleId)
-            .get();
-
-        if (vehicleDoc.exists) {
-          await _firestore
-              .collection('Users')
-              .doc(user.user!.uid)
-              .collection('Vehicles')
-              .doc(vehicleId)
-              .set(vehicleDoc.data() as Map<String, dynamic>);
-
-          QuerySnapshot dataServicesSnapshot = await _firestore
-              .collection('Users')
-              .doc(currentUId)
-              .collection('DataServices')
-              .where('vehicleId', isEqualTo: vehicleId)
-              .get();
-
-          for (var doc in dataServicesSnapshot.docs) {
-            await _firestore
-                .collection('Users')
-                .doc(user.user!.uid)
-                .collection('DataServices')
-                .doc(doc.id)
-                .set(doc.data() as Map<String, dynamic>);
-          }
-        }
+      if (result.data['success']) {
+        print("Team member created successfully! UID: ${result.data['uid']}");
       }
-
-      await user.user!.sendEmailVerification();
-      showToastMessage(
-        "Verification Sent",
-        "A verification email has been sent to ${emailController.text}.",
-        Colors.orange,
-      );
-
-      nameController.clear();
-      emailController.clear();
-      phoneController.clear();
-      passController.clear();
-      perMileChargeController.clear();
-      selectedVehicles.clear();
-      selectedRole = null;
-      selectedRecordAccess.clear();
-
-      setState(() {});
-
-      Get.off(() => MyTeamScreen());
-      // Get.back();
-    } on FirebaseAuthException catch (e) {
-      handleError(e);
-    } finally {
-      isUserAcCreated = false;
-      setState(() {});
+    } catch (e) {
+      print("Error creating team member: $e");
     }
   }
+
+  // Future<void> createMemberWithEmailAndPassword() async {
+  //   if (nameController.text.isEmpty ||
+  //       emailController.text.isEmpty ||
+  //       phoneController.text.isEmpty ||
+  //       passController.text.isEmpty ||
+  //       selectedVehicles.isEmpty ||
+  //       selectedRole == null) {
+  //     showToastMessage("Error",
+  //         "All fields, role, and vehicle selection are required", Colors.red);
+  //     return;
+  //   }
+  //
+  //   final emailValid = RegExp(
+  //       r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
+  //   if (!emailValid.hasMatch(emailController.text)) {
+  //     showToastMessage("Error", "Please enter a valid email", Colors.red);
+  //     return;
+  //   }
+  //
+  //   isUserAcCreated = true;
+  //   setState(() {});
+  //
+  //   try {
+  //     var user = await _auth.createUserWithEmailAndPassword(
+  //       email: emailController.text,
+  //       password: passController.text,
+  //     );
+  //
+  //     await _firestore.collection('Users').doc(user.user!.uid).set({
+  //       "uid": user.user!.uid,
+  //       "email": emailController.text,
+  //       "active": true,
+  //       "userName": nameController.text,
+  //       "phoneNumber": phoneController.text,
+  //       "createdBy": currentUId,
+  //       "profilePicture":
+  //           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+  //       "role": selectedRole,
+  //       "isManager": selectedRole == "Manager" ? true : false,
+  //       "isDriver": selectedRole == "Driver" ? true : false,
+  //       "perMileCharge":
+  //           selectedRole == "Driver" ? perMileChargeController.text : "",
+  //       "isView": selectedRecordAccess.contains("View"),
+  //       "isEdit": selectedRecordAccess.contains("Edit"),
+  //       "isDelete": selectedRecordAccess.contains("Delete"),
+  //       "isAdd": selectedRecordAccess.contains("Add"),
+  //       "isOwner": false,
+  //       "isTeamMember": true,
+  //       "created_at": DateTime.now(),
+  //       "updated_at": DateTime.now(),
+  //     });
+  //
+  //     for (String vehicleId in selectedVehicles) {
+  //       DocumentSnapshot vehicleDoc = await _firestore
+  //           .collection('Users')
+  //           .doc(currentUId)
+  //           .collection('Vehicles')
+  //           .doc(vehicleId)
+  //           .get();
+  //
+  //       if (vehicleDoc.exists) {
+  //         await _firestore
+  //             .collection('Users')
+  //             .doc(user.user!.uid)
+  //             .collection('Vehicles')
+  //             .doc(vehicleId)
+  //             .set(vehicleDoc.data() as Map<String, dynamic>);
+  //
+  //         QuerySnapshot dataServicesSnapshot = await _firestore
+  //             .collection('Users')
+  //             .doc(currentUId)
+  //             .collection('DataServices')
+  //             .where('vehicleId', isEqualTo: vehicleId)
+  //             .get();
+  //
+  //         for (var doc in dataServicesSnapshot.docs) {
+  //           await _firestore
+  //               .collection('Users')
+  //               .doc(user.user!.uid)
+  //               .collection('DataServices')
+  //               .doc(doc.id)
+  //               .set(doc.data() as Map<String, dynamic>);
+  //         }
+  //       }
+  //     }
+  //
+  //     await user.user!.sendEmailVerification();
+  //     showToastMessage(
+  //       "Verification Sent",
+  //       "A verification email has been sent to ${emailController.text}.",
+  //       Colors.orange,
+  //     );
+  //
+  //     nameController.clear();
+  //     emailController.clear();
+  //     phoneController.clear();
+  //     passController.clear();
+  //     perMileChargeController.clear();
+  //     selectedVehicles.clear();
+  //     selectedRole = null;
+  //     selectedRecordAccess.clear();
+  //
+  //     setState(() {});
+  //
+  //     Get.off(() => MyTeamScreen());
+  //     // Get.back();
+  //   } on FirebaseAuthException catch (e) {
+  //     handleError(e);
+  //   } finally {
+  //     isUserAcCreated = false;
+  //     setState(() {});
+  //   }
+  // }
 
   void handleError(FirebaseAuthException e) {
     String errorMessage;

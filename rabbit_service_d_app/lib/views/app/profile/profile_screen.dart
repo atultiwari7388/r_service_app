@@ -137,12 +137,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     //         Get.to(() => CompanyProfileScreen());
                     //       })
                     //     : SizedBox(),
-                    role == "Driver"
-                        ? buildListTile(
-                            "assets/manage_trip.png", "Manage Trips", () {
-                            Get.to(() => ManageTripsScreen());
-                          })
-                        : SizedBox(),
+
+                    if (role == "Owner" || role == "Driver") ...[
+                      buildListTile("assets/manage_trip.png", "Manage Trips",
+                          () {
+                        Get.to(() => ManageTripsScreen());
+                      }),
+                    ],
+
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());
                     }),
@@ -354,7 +356,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         log("AuthState after signOut: ${user?.uid}"); // Should print "null"
       });
 
-
       // Navigate to Login Screen
       // Get.offAll(() => const LoginScreen());
       // Clear GetX controllers and app state
@@ -367,7 +368,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       showToastMessage("Error", e.toString(), Colors.red);
     }
   }
-
 
   void clearControllers() {
     Get.delete<DashboardController>(force: true);

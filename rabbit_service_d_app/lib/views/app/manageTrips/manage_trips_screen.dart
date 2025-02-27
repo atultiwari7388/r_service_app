@@ -24,6 +24,7 @@ class ManageTripsScreen extends StatefulWidget {
 class _ManageTripsScreenState extends State<ManageTripsScreen> {
   final TextEditingController _tripNameController = TextEditingController();
   final TextEditingController _currentMilesController = TextEditingController();
+  final TextEditingController _oEarningController = TextEditingController();
   String selectedTrip = '';
   String selectedType = 'Expenses';
   TextEditingController milesController = TextEditingController();
@@ -33,6 +34,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   DateTime? toDate;
   late StreamSubscription usersSubscription;
   String perMileCharge = '0';
+  String role = "";
 
   bool showAddTrip = false;
   bool showAddMileageOrExpense = false;
@@ -71,15 +73,18 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
             }
           ],
           'isPaid': false,
-          'tripStatus': 0,
+          'tripStatus': 1,
           'tripStartDate': selectedDate,
           'tripEndDate': DateTime.now(),
           'createdAt': Timestamp.now(),
           'updatedAt': Timestamp.now(),
+          'oEarnings':
+              role == "Owner" ? int.parse(_oEarningController.text) : 0,
         });
         showToastMessage("Success", "Trip added successfully", kSecondary);
         _tripNameController.clear();
         _currentMilesController.clear();
+        _oEarningController.clear();
         setState(() {
           selectedDate = null;
         });
@@ -230,6 +235,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         if (userData != null) {
           setState(() {
             perMileCharge = userData['perMileCharge'];
+            role = userData['role'];
           });
         }
       }
@@ -258,9 +264,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     }
   }
 
-  // this helper function calculate the total Earning and expenses
-  Future<Map<String, double>> calculateTotals(
-      List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
+  Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
+      String perMileCharge, String driverId, String role) async {
     double totalExpenses = 0;
     double totalEarnings = 0;
     String userId = driverId;
@@ -281,13 +286,17 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
           .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
       totalExpenses += tripExpenses;
 
-      // Calculate earnings only for completed trips
-
-      int startMiles = trip['tripStartMiles'];
-      int endMiles = trip['tripEndMiles'];
-      int miles = endMiles - startMiles;
-      double earnings = miles * perMile;
-      totalEarnings += earnings;
+      // Calculate earnings based on role
+      if (role == "Driver") {
+        int startMiles = trip['tripStartMiles'];
+        int endMiles = trip['tripEndMiles'];
+        int miles = endMiles - startMiles;
+        totalEarnings += miles * perMile;
+      } else if (role == "Owner") {
+        // Sum all oEarnings values
+        double ownerEarnings = (trip['oEarnings'] ?? 0.0).toDouble();
+        totalEarnings += ownerEarnings;
+      }
     }
 
     return {'expenses': totalExpenses, 'earnings': totalEarnings};
@@ -374,6 +383,22 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               ),
                             ),
                             SizedBox(height: 10.h),
+                            role == "Owner"
+                                ? SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: _oEarningController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Earning',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  )
+                                : SizedBox(),
+                            role == "Owner"
+                                ? SizedBox(height: 10.h)
+                                : SizedBox(),
                             InkWell(
                               onTap: () async {
                                 final DateTime? picked = await showDatePicker(
@@ -608,8 +633,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                       return Column(
                         children: [
                           FutureBuilder<Map<String, double>>(
-                            future:
-                                calculateTotals(filteredTrips, perMileCharge, currentUId),
+                            future: calculateTotals(
+                                filteredTrips, perMileCharge, currentUId, role),
                             builder: (context, totalsSnapshot) {
                               if (totalsSnapshot.connectionState ==
                                   ConnectionState.waiting) {
@@ -669,8 +694,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                           ),
                                           Text(
                                               "\$${totals['earnings']!.toStringAsFixed(2)}",
-                                              style: appStyle(
-                                                  15, kWhite, FontWeight.normal))
+                                              style: appStyle(15, kWhite,
+                                                  FontWeight.normal))
                                         ],
                                       ),
                                     ),
@@ -679,8 +704,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               );
                             },
                           ),
-
-
                           ListView(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
@@ -698,8 +721,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               num tripEndMiles = doc['tripEndMiles'];
                               num totalMiles =
                                   doc['tripEndMiles'] - doc['tripStartMiles'];
-                              num perMileCharges = num.parse(perMileCharge);
+                              num perMileCharges = role == "Owner"
+                                  ? 0
+                                  : num.parse(perMileCharge);
                               num earnings = totalMiles * perMileCharges;
+
+                              num oEarnings = doc['oEarnings'];
 
                               // print("Trip Status: " + tripStatus);
 
@@ -734,8 +761,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                         earnings,
                                         isPaid,
                                         0,
-                                        // 0 means no expenses, so we hide it
-                                        context);
+                                        context,
+                                        role,
+                                        oEarnings);
                                   }
 
                                   // ✅ Sum all "amount" values ONLY if tripId matches
@@ -756,7 +784,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       isPaid,
                                       totalExpenses,
                                       // Show total expenses if exists
-                                      context);
+                                      context,
+                                      role,
+                                      oEarnings);
                                 },
                               );
 
@@ -784,7 +814,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       num earnings,
       bool isPaid,
       num totalExpenses,
-      BuildContext context) {
+      BuildContext context,
+      String role,
+      num oEarnings) {
     return GestureDetector(
       onTap: () => Get.to(() => TripDetailsScreen(
             docId: doc.id,
@@ -829,28 +861,39 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Total Miles: $totalMiles"),
-                  Text("Earnings: \$${earnings}"),
+                  Text("Trip Miles: $totalMiles"),
+                  role == "Owner"
+                      ? Text("Earnings: \$${oEarnings}",
+                          style: appStyle(15, kSecondary, FontWeight.w500))
+                      : Text("Earnings: \$${earnings}",
+                          style: appStyle(15, kSecondary, FontWeight.w500)),
                 ],
               ),
               SizedBox(height: 5.h),
-              Row(
-                children: [
-                  Text("Payment Status: "),
-                  Spacer(),
-                  isPaid
-                      ? Text("Paid",
-                          style: appStyle(16, kSecondary, FontWeight.w500))
-                      : Text("Unpaid",
-                          style: appStyle(16, kRed, FontWeight.w500))
-                ],
-              ),
-
+              role == "Owner"
+                  ? SizedBox()
+                  : Row(
+                      children: [
+                        Text("Payment Status: "),
+                        Spacer(),
+                        isPaid
+                            ? Text("Paid",
+                                style:
+                                    appStyle(16, kSecondary, FontWeight.w500))
+                            : Text("Unpaid",
+                                style: appStyle(16, kRed, FontWeight.w500))
+                      ],
+                    ),
             ],
             SizedBox(height: 5.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Text("Expenses:"), Text("\$${totalExpenses}")],
+              children: [
+                Text("Expenses:",
+                    style: appStyle(15, kPrimary, FontWeight.w500)),
+                Text("\$${totalExpenses}",
+                    style: appStyle(15, kPrimary, FontWeight.w500)),
+              ],
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -860,7 +903,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 if (tripStatus != 'Completed') ...[
                   DropdownButton<String>(
                     value: tripStatus,
-                    items: ['Pending', 'Started', 'Completed']
+                    items: ['Started', 'Completed']
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                         .toList(),
                     onChanged: (value) async {
@@ -1081,9 +1124,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   }
 
   String getStringFromTripStatus(int status) {
-    if (status == 0) {
-      return 'Pending';
-    } else if (status == 1) {
+    if (status == 1) {
       return 'Started';
     } else if (status == 2) {
       return 'Completed';
@@ -1092,9 +1133,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   }
 
   int getIntFromTripStatus(String status) {
-    if (status == 'Pending') {
-      return 0;
-    } else if (status == 'Started') {
+    if (status == 'Started') {
       return 1;
     } else if (status == 'Completed') {
       return 2;
