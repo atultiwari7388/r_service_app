@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
@@ -214,72 +213,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         ),
                         const SizedBox(height: 20),
 
-//======================== Uploaded Documents ================================================
-//                         _buildSection(
-//                           title: 'Uploaded Documents',
-//                           content: uploadedDocuments.isNotEmpty
-//                               ? uploadedDocuments.map<Widget>((doc) {
-//                                   return GestureDetector(
-//                                     onTap: () async {
-//                                       await _generatePdfForDocument(
-//                                           doc['imageUrl'], doc['text']);
-//                                     },
-//                                     child: Card(
-//                                       elevation: 2,
-//                                       shape: RoundedRectangleBorder(
-//                                         borderRadius: BorderRadius.circular(10),
-//                                       ),
-//                                       child: Padding(
-//                                         padding: const EdgeInsets.all(16.0),
-//                                         child: Column(
-//                                           crossAxisAlignment:
-//                                               CrossAxisAlignment.start,
-//                                           children: [
-//                                             if (doc['imageUrl'] != null)
-//                                               ClipRRect(
-//                                                 borderRadius:
-//                                                     BorderRadius.circular(10),
-//                                                 child: Image.network(
-//                                                   doc['imageUrl'],
-//                                                   height: 150,
-//                                                   width: double.infinity,
-//                                                   fit: BoxFit.cover,
-//                                                 ),
-//                                               ),
-//                                             const SizedBox(height: 10),
-//                                             Row(
-//                                               mainAxisAlignment:
-//                                                   MainAxisAlignment
-//                                                       .spaceBetween,
-//                                               children: [
-//                                                 Text(
-//                                                   doc['text'] ??
-//                                                       'No description provided',
-//                                                 ),
-//                                                 IconButton(
-//                                                   onPressed: () async {
-//                                                     // Generate PDF for this image and text
-//                                                     await _generatePdfForDocument(
-//                                                         doc['imageUrl'],
-//                                                         doc['text']);
-//                                                   },
-//                                                   icon: Icon(Icons.download),
-//                                                 ),
-//                                               ],
-//                                             ),
-//                                           ],
-//                                         ),
-//                                       ),
-//                                     ),
-//                                   );
-//                                 }).toList()
-//                               : [
-//                                   const Text(
-//                                     'No documents uploaded yet.',
-//                                     style: TextStyle(color: Colors.grey),
-//                                   ),
-//                                 ],
-//                         ),
 
                         _buildSection(
                           title: 'Uploaded Documents',
@@ -1015,4 +948,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       print(stackTrace);
     }
   }
+
+
 }

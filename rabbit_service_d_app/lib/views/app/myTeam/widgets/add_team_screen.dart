@@ -272,6 +272,10 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     required String perMileCharge,
     required List<String> selectedRecordAccess,
   }) async {
+    setState(() {
+      isUserAcCreated = true;
+    });
+
     try {
       HttpsCallable callable =
           FirebaseFunctions.instance.httpsCallable('createTeamMember');
@@ -288,10 +292,26 @@ class _AddTeamMemberState extends State<AddTeamMember> {
       });
 
       if (result.data['success']) {
-        print("Team member created successfully! UID: ${result.data['uid']}");
+        showToastMessage("Success", "Team Member Created ", kSecondary);
+        nameController.clear();
+        emailController.clear();
+        phoneController.clear();
+        passController.clear();
+        perMileChargeController.clear();
+        selectedVehicles.clear();
+        selectedRole = "";
+        selectedRecordAccess.clear();
+
+        setState(() {});
+
+        Get.off(() => MyTeamScreen());
       }
     } catch (e) {
       print("Error creating team member: $e");
+    } finally {
+      setState(() {
+        isUserAcCreated = false;
+      });
     }
   }
 

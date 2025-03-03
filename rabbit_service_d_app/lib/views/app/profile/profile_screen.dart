@@ -21,6 +21,7 @@ import 'package:regal_service_d_app/views/app/privacyPolicy/privacy_policy.dart'
 import 'package:regal_service_d_app/views/app/profile/profile_details_screen.dart';
 import 'package:regal_service_d_app/views/app/ratings/ratings_screen.dart';
 import 'package:regal_service_d_app/views/app/termsCondition/terms_conditions.dart';
+import 'package:regal_service_d_app/views/app/tripWiseVehicle/trip_wise_vehicle_screen.dart';
 import '../../../services/collection_references.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
@@ -131,18 +132,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Get.to(() => MyTeamScreen());
                           })
                         : SizedBox(),
-                    // role == "Owner"
-                    //     ? buildListTile(
-                    //         "assets/companyProfile.png", "Company Profile", () {
-                    //         Get.to(() => CompanyProfileScreen());
-                    //       })
-                    //     : SizedBox(),
+
 
                     if (role == "Owner" || role == "Driver") ...[
                       buildListTile("assets/manage_trip.png", "Manage Trips",
                           () {
                         Get.to(() => ManageTripsScreen());
                       }),
+                    ],
+
+                    if (role == "Owner" || role == "Driver") ...[
+                      buildListTile("assets/manage_trip.png", "Trips Wise Vehicle",
+                              () {
+                            Get.to(() => TripWiseVehicleScreen());
+                          }),
                     ],
 
                     buildListTile("assets/rating_bw.png", "Ratings", () {
@@ -187,10 +190,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
                     buildListTile("assets/out_bw.png", "Logout", () {
-                      Future.delayed(const Duration(milliseconds: 500), () {
-                        logOutUser(context);
-                      });
-                    }),
+                      showDialog<void>(
+                        context: context,
+                        barrierDismissible: true,
+                        builder: (BuildContext dialogContext) {
+                          return AlertDialog(
+                            title: Text('Logout'),
+                            content: Text('Are you sure you want to log out from this account'),
+                            actions: <Widget>[
+                              TextButton(
+                                child: Text('Yes',style: appStyle(15, kSecondary, FontWeight.normal)),
+                                onPressed: () {
+                                 logOutUser(context);
+                                },
+                              ),
+                              TextButton(onPressed: ()=> Navigator.pop(context), child: Text("No",style: appStyle(15, kPrimary, FontWeight.normal)))
+                            ],
+                          );
+                        },
+                      );
+                    })
                   ],
                 ),
               ),

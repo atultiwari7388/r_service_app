@@ -73,7 +73,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   // Fetch services data
   Future<void> _fetchServicesData() async {
     try {
-      DocumentSnapshot doc = await metadataCollection.doc('servicesData').get();
+      DocumentSnapshot doc = await metadataCollection.doc('serviceData').get();
       if (doc.exists) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         List<dynamic> servicesList = data['data'] ?? [];

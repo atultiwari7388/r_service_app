@@ -122,9 +122,15 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 if (!snapshot.hasData) return const CircularProgressIndicator();
 
                 var filteredTrips = snapshot.data!.docs.where((doc) {
-                  DateTime tripDate = doc['createdAt'].toDate();
-                  return (fromDate == null || tripDate.isAfter(fromDate!)) &&
-                      (toDate == null || tripDate.isBefore(toDate!));
+                  DateTime tripStartDate = doc['tripStartDate'].toDate();
+                  DateTime tripEndDate = doc['tripEndDate'].toDate();
+
+                  return (fromDate == null ||
+                          tripEndDate.isAfter(
+                              fromDate!.subtract(const Duration(days: 1)))) &&
+                      (toDate == null ||
+                          tripStartDate
+                              .isBefore(toDate!.add(const Duration(days: 1))));
                 }).toList();
 
                 if (filteredTrips.isEmpty) {
@@ -343,23 +349,42 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Total Miles: $totalMiles"),
-                Text("Earnings: $earnings"),
+                Text("Earnings: $earnings",
+                    style: appStyle(14, kSecondary, FontWeight.w500)),
+                Text("Trip Miles: $totalMiles"),
               ],
             ),
             SizedBox(height: 5.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Text("Total Expenses:"), Text("\$${totalExpenses}")],
+              children: [
+                Text("Expenses: \$${totalExpenses}",
+                    style: appStyle(15, kPrimary, FontWeight.w500)),
+                // Row(
+                //   children: [
+                //     Text("P'Status: "),
+                //     isPaid
+                //         ? Text("Paid",
+                //             style: appStyle(16, kSecondary, FontWeight.w500))
+                //         : Text("UnPaid",
+                //             style: appStyle(16, kPrimary, FontWeight.w500))
+                //   ],
+                // ),
+              ],
             ),
             SizedBox(height: 5.h),
+            SizedBox(height: 5.h),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Payment Status: "),
-                Spacer(),
                 isPaid
-                    ? Text("Paid",
-                        style: appStyle(16, kSecondary, FontWeight.w500))
+                    ? ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kSecondary,
+                          foregroundColor: kWhite,
+                        ),
+                        onPressed: null,
+                        child: Text("Paid"))
                     : ElevatedButton(
                         onPressed: () {
                           showDialog(
@@ -400,21 +425,20 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         },
                         child: Text("Pay"),
                         style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimary, foregroundColor: kWhite))
+                            backgroundColor: kPrimary,
+                            foregroundColor: kWhite)),
+                SizedBox(width: 10.w),
+                ElevatedButton(
+                  onPressed: () => Get.to(() => TripDetailsScreen(
+                        docId: doc.id,
+                        userId: widget.memberId,
+                        tripName: doc['tripName'],
+                      )),
+                  child: Text("View"),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: kSecondary, foregroundColor: kWhite),
+                ),
               ],
-            ),
-            SizedBox(height: 5.h),
-            Center(
-              child: ElevatedButton(
-                onPressed: () => Get.to(() => TripDetailsScreen(
-                      docId: doc.id,
-                      userId: widget.memberId,
-                      tripName: doc['tripName'],
-                    )),
-                child: Text("View Details"),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: kSecondary, foregroundColor: kWhite),
-              ),
             )
           ]
         ],

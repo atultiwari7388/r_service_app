@@ -1,14 +1,25 @@
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
+import 'package:pdf/pdf.dart';
+import 'package:printing/printing.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:http/http.dart' as http;
 
 class TripDetailsScreen extends StatefulWidget {
   const TripDetailsScreen(
-      {super.key, required this.docId, required this.tripName, required this.userId});
+      {super.key,
+      required this.docId,
+      required this.tripName,
+      required this.userId});
+
   final String docId;
   final String tripName;
   final String userId;
@@ -18,6 +29,10 @@ class TripDetailsScreen extends StatefulWidget {
 }
 
 class _TripDetailsScreenState extends State<TripDetailsScreen> {
+
+  final GlobalKey _globalKey = GlobalKey();
+
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,84 +42,261 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
         backgroundColor: kPrimary,
         iconTheme: IconThemeData(color: kWhite),
       ),
-      body: StreamBuilder(
-        stream: FirebaseFirestore.instance
-            .collection("Users")
-            .doc(widget.userId) // Replace with the current user ID
-            .collection('trips')
-            .doc(widget.docId)
-            .collection('tripDetails')
-            .snapshots(),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-                child: Text("No trip details found.",
-                    style: TextStyle(fontSize: 18.sp, color: Colors.grey)));
-          }
-
-          return ListView(
-            padding: EdgeInsets.all(10),
-            children: snapshot.data!.docs.map((doc) {
-              String tripId = doc['tripId'];
-              String description = doc['description'];
-              String imageUrl = doc['imageUrl'];
-              String type = doc['type'];
-              num amount = doc['amount'];
-              String formattedDate =
-                  DateFormat('dd MMM yyyy').format(doc['createdAt'].toDate());
-
-              return Card(
-                elevation: 1,
-                margin: EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text("Type: $type",
-                              style: TextStyle(
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.bold)),
-                          Spacer(),
-                          Text("Date: $formattedDate",
-                              style: TextStyle(
-                                  fontSize: 12.sp, color: Colors.grey)),
-                        ],
-                      ),
-                      SizedBox(height: 5),
-                      Text("Amount: \$${amount.toStringAsFixed(2)}",
-                          style:
-                              TextStyle(fontSize: 16.sp, color: Colors.green)),
-                      SizedBox(height: 5),
-                      Text("Description: $description",
-                          style: TextStyle(fontSize: 14.sp)),
-                      SizedBox(height: 10),
-                      imageUrl.isNotEmpty
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(imageUrl,
-                                  height: 150.h,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover),
-                            )
-                          : Container(),
-                    ],
+      body: RepaintBoundary(
+        key: _globalKey,
+        child: StreamBuilder(
+          stream: FirebaseFirestore.instance
+              .collection("Users")
+              .doc(widget.userId)
+              .collection('trips')
+              .doc(widget.docId)
+              .collection('tripDetails')
+              .snapshots(),
+          builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            }
+        
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Center(
+                  child: Text("No trip details found.",
+                      style: TextStyle(fontSize: 18.sp, color: Colors.grey)));
+            }
+        
+            return ListView(
+              padding: EdgeInsets.all(10),
+              children: snapshot.data!.docs.map((doc) {
+                String tripId = doc['tripId'];
+                String description = doc['description'];
+                String imageUrl = doc['imageUrl'];
+                String type = doc['type'];
+                num amount = doc['amount'];
+                String formattedDate =
+                    DateFormat('dd MMM yyyy').format(doc['createdAt'].toDate());
+        
+                return Card(
+                  elevation: 1,
+                  margin: EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                ),
-              );
-            }).toList(),
-          );
-        },
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text("Type: $type",
+                                style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold)),
+                            Spacer(),
+                            Text("Date: $formattedDate",
+                                style: TextStyle(
+                                    fontSize: 12.sp, color: Colors.grey)),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+        
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Amount: \$${amount.toStringAsFixed(2)}",
+                                style:
+                                    TextStyle(fontSize: 16.sp, color: Colors.green)),
+        
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.visibility, color: kSecondary),
+        
+                                  onPressed: () {
+                                    if (imageUrl.isNotEmpty) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return Dialog(
+                                            backgroundColor: Colors.transparent,
+                                            child: GestureDetector(
+                                              onTap: () => Navigator.pop(context),
+                                              child: InteractiveViewer(
+                                                child: Image.network(imageUrl),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.print, color: kPrimary),
+                                  onPressed: () async {
+                                    await _generatePdfForDocument(imageUrl, "");
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        Text("Description: $description",
+                            style: TextStyle(fontSize: 14.sp)),
+                        SizedBox(height: 10),
+                        imageUrl.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(imageUrl,
+                                    height: 150.h,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover),
+                              )
+                            : Container(),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _printScreen, // Call function to print screen
+        child: Icon(Icons.print,color: kWhite),
+        backgroundColor: kPrimary,
       ),
     );
+  }
+
+
+  Future<void> _printScreen() async {
+    try {
+      RenderRepaintBoundary boundary = _globalKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
+      var image = await boundary.toImage();
+      ByteData? byteData = await image.toByteData(format: ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.Image(pw.MemoryImage(pngBytes)),
+            );
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e) {
+      print('Error capturing screen: $e');
+    }
+  }
+
+  //generate pdf for image
+  Future<void> _generatePdfForDocument(String? imageUrl, String? text) async {
+    try {
+      final pdf = pw.Document();
+
+      // Download the image
+      Uint8List? imageBytes;
+      if (imageUrl != null) {
+        try {
+          final response = await http.get(Uri.parse(imageUrl));
+          if (response.statusCode == 200) {
+            imageBytes = response.bodyBytes;
+          }
+        } catch (e) {
+          print('Error downloading image: $e');
+        }
+      }
+
+      // Debugging logs
+      print('Image Bytes: ${imageBytes?.length ?? 0}');
+      print('Text: ${text ?? 'No description provided'}');
+
+      // Add page with cropped image and text
+      if (imageBytes != null) {
+        pdf.addPage(
+          pw.Page(
+            build: (pw.Context context) {
+              return pw.Stack(
+                children: [
+                  // Watermark in the background
+                  pw.Center(
+                    child: pw.Opacity(
+                      opacity: 0.1,
+                      child: pw.Text(
+                        'Rabbit Mechanic',
+                        style: pw.TextStyle(
+                          fontSize: 80,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  // Main content
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // Cropped image
+                      pw.Container(
+                          height: 500,
+                          width: double.infinity, // Make it full width
+                          child: pw.Center(
+                            child: pw.ClipRect(
+                              child: pw.Image(
+                                pw.MemoryImage(imageBytes!),
+                                fit: pw.BoxFit.contain, // Crop the image
+                              ),
+                            ),
+                          )),
+                      pw.SizedBox(height: 20),
+                      // Text description
+                      pw.Text(
+                        text?.trim().isNotEmpty == true
+                            ? text!
+                            : 'No description provided',
+                        style: pw.TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      } else {
+        // Error handling if image cannot be loaded
+        pdf.addPage(
+          pw.Page(
+            build: (pw.Context context) {
+              return pw.Center(
+                child: pw.Text(
+                  'Image could not be loaded.',
+                  style: pw.TextStyle(fontSize: 18, color: PdfColors.red),
+                ),
+              );
+            },
+          ),
+        );
+      }
+
+      // Show PDF preview and allow download
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+      );
+    } catch (e, stackTrace) {
+      print('Error generating PDF: $e');
+      print(stackTrace);
+    }
   }
 }

@@ -3,6 +3,7 @@ import { FaSignOutAlt } from "react-icons/fa";
 import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { CiDeliveryTruck, CiStar } from "react-icons/ci";
+import { BiTrip } from "react-icons/bi";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -45,6 +46,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       icon: <RiTeamLine className="mr-2" />,
       label: "Manage Team",
       path: "/account/manage-team",
+    },
+    {
+      icon: <BiTrip className="mr-2" />,
+      label: "Manage Trip",
+      path: "/account/manage-trip",
     },
     {
       icon: <CiStar className="mr-2" />,

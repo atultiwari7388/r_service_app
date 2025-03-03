@@ -56,11 +56,15 @@ class _ReportsScreenState extends State<ReportsScreen>
   bool showDateSearch = false;
   bool showCombinedSearch = false;
   bool showRecordFilter = false;
+
   //for records access
   bool? isView;
   bool? isEdit;
   bool? isAdd;
   bool? isDelete;
+  bool isEditing = false;
+  String? editingRecordId;
+
   // Define a new variable to track the selected filter option
   String? selectedFilterOption;
 
@@ -143,7 +147,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     // Setup services stream
     servicesSubscription = FirebaseFirestore.instance
         .collection('metadata')
-        .doc('servicesData')
+        .doc('serviceData')
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
@@ -344,22 +348,198 @@ class _ReportsScreenState extends State<ReportsScreen>
     return filteredRecords;
   }
 
+  // Future<void> handleSaveRecords() async {
+  //   try {
+  //     if (selectedVehicle == null || selectedServices.isEmpty) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //             content: Text('Please select vehicle and at least one service')),
+  //       );
+  //       return;
+  //     }
+  //
+  //     // final batch = FirebaseFirestore.instance.batch();
+  //
+  //     final dataServicesRef =
+  //         FirebaseFirestore.instance.collection("DataServicesRecords");
+  //
+  //     // final docId = dataServicesRef.doc().id;
+  //
+  //     final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
+  //
+  //     final currentMiles = int.tryParse(milesController.text) ?? 0;
+  //
+  //     List<Map<String, dynamic>> servicesData = [];
+  //     List<Map<String, dynamic>> notificationData = [];
+  //     List<int> allNextNotificationValues = [];
+  //
+  //     for (var serviceId in selectedServices) {
+  //       final service = services.firstWhere((s) => s['sId'] == serviceId);
+  //       final defaultValue = serviceDefaultValues[serviceId] ?? 0;
+  //       //if the default value is 0 then the next notification value will be 0
+  //       final nextNotificationValue =
+  //           defaultValue == 0 ? 0 : currentMiles + defaultValue;
+  //
+  //       servicesData.add({
+  //         "serviceId": serviceId,
+  //         "serviceName": service['sName'],
+  //         "defaultNotificationValue": defaultValue,
+  //         "nextNotificationValue": nextNotificationValue,
+  //         "subServices": selectedSubServices[serviceId]
+  //                 ?.map((subService) => {
+  //                       "name": subService,
+  //                       "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+  //                     })
+  //                 .toList() ??
+  //             [],
+  //       });
+  //
+  //       notificationData.add({
+  //         "serviceName": service['sName'],
+  //         "nextNotificationValue": nextNotificationValue,
+  //         "subServices": selectedSubServices[serviceId] ?? [],
+  //       });
+  //     }
+  //
+  //     final recordData = {
+  //       "userId": currentUId,
+  //       "vehicleId": selectedVehicle,
+  //       "vehicleDetails": {
+  //         ...selectedVehicleData!,
+  //         "currentMiles": currentMiles.toString(),
+  //         "nextNotificationMiles": notificationData,
+  //       },
+  //       "services": servicesData,
+  //       "invoice": invoiceController.text,
+  //       "invoiceAmount": invoiceAmountController.text,
+  //       "description": descriptionController.text.toString(),
+  //       'currentMilesArray': FieldValue.arrayUnion([
+  //         {
+  //           "miles": int.parse(currentMiles.toString()),
+  //           "date": DateTime.now().toIso8601String()
+  //         }
+  //       ]),
+  //       "allNextNotificationValues": allNextNotificationValues,
+  //       "totalMiles": currentMiles,
+  //       "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
+  //               selectedServiceData.any((s) => s['vType'] == "Truck")
+  //           ? currentMiles
+  //           : 0,
+  //       "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
+  //               selectedServiceData.any((s) => s['vType'] == "Trailer")
+  //           ? int.tryParse(hoursController.text) ?? 0
+  //           : 0,
+  //       "date":
+  //           selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+  //       "workshopName": workshopController.text,
+  //       "createdAt": DateTime.now().toIso8601String(),
+  //     };
+  //
+  //     // 1. Save to Owner's DataServices
+  //     // final ownerDataServicesRef = FirebaseFirestore.instance
+  //     //     .collection('Users')
+  //     //     .doc(currentUId)
+  //     //     .collection('DataServices');
+  //     // batch.set(ownerDataServicesRef.doc(docId), recordData);
+  //     // batch.set(dataServicesRef.doc(docId), recordData);
+  //
+  //     final batch = FirebaseFirestore.instance.batch();
+  //     final ownerDataServicesRef = FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('DataServices');
+  //     batch.set(ownerDataServicesRef.doc(docId), recordData);
+  //
+  //
+  //
+  //     // 2. Query for Team Members (Drivers/Managers)
+  //     final teamMembersSnapshot = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .where('createdBy', isEqualTo: currentUId)
+  //         .where('isTeamMember', isEqualTo: true)
+  //         .get();
+  //
+  //     // 3. Save to Team Members' DataServices
+  //     for (final doc in teamMembersSnapshot.docs) {
+  //       final teamMemberUid = doc.id;
+  //       final teamMemberDataServicesRef = FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(teamMemberUid)
+  //           .collection('DataServices');
+  //       batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+  //     }
+  //
+  //     // 4. Handle Team Member Creating Record (Save to Owner)
+  //     final currentUserDoc = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .get();
+  //     if (currentUserDoc.data()?['isTeamMember'] == true) {
+  //       final ownerSnapshot = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+  //           .get();
+  //       if (ownerSnapshot.docs.isNotEmpty) {
+  //         final ownerUid = ownerSnapshot.docs.first.id;
+  //         final ownerDataServicesRef = FirebaseFirestore.instance
+  //             .collection('Users')
+  //             .doc(ownerUid)
+  //             .collection('DataServices');
+  //         batch.set(ownerDataServicesRef.doc(docId), recordData);
+  //       }
+  //     }
+  //
+  //     // 5. Update Vehicle (Your existing code)
+  //     final vehicleRef = FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('Vehicles')
+  //         .doc(selectedVehicle);
+  //
+  //     batch.update(vehicleRef, {
+  //       'currentMiles': currentMiles.toString(),
+  //       'currentMilesArray': FieldValue.arrayUnion([
+  //         {
+  //           "miles": int.parse(currentMiles.toString()),
+  //           "date": DateTime.now().toIso8601String()
+  //         }
+  //       ]),
+  //       'nextNotificationMiles': notificationData,
+  //     });
+  //
+  //     await batch.commit();
+  //
+  //     resetForm();
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //           content: Text(isEditing
+  //               ? 'Record updated successfully'
+  //               : 'Record saved successfully')),
+  //     );
+  //   } catch (e) {
+  //     debugPrint('Error Saving records: ${e.toString()}');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error saving records: ${e.toString()}')),
+  //     );
+  //   }
+  // }
+
   Future<void> handleSaveRecords() async {
     try {
       if (selectedVehicle == null || selectedServices.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Please select vehicle and at least one service')),
+            content: Text('Please select a vehicle and at least one service'),
+          ),
         );
         return;
       }
 
-      final batch = FirebaseFirestore.instance.batch();
-
       final dataServicesRef =
           FirebaseFirestore.instance.collection("DataServicesRecords");
 
-      final docId = dataServicesRef.doc().id;
+      final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
       final currentMiles = int.tryParse(milesController.text) ?? 0;
 
@@ -368,9 +548,17 @@ class _ReportsScreenState extends State<ReportsScreen>
       List<int> allNextNotificationValues = [];
 
       for (var serviceId in selectedServices) {
-        final service = services.firstWhere((s) => s['sId'] == serviceId);
+        final service = services.firstWhere(
+          (s) => s['sId'] == serviceId,
+          orElse: () => {},
+        );
+
+        if (service == null) {
+          debugPrint('Service with ID $serviceId not found.');
+          continue; // Skip this iteration if service is not found
+        }
+
         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-        //if the default value is 0 then the next notification value will be 0
         final nextNotificationValue =
             defaultValue == 0 ? 0 : currentMiles + defaultValue;
 
@@ -408,10 +596,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         "invoiceAmount": invoiceAmountController.text,
         "description": descriptionController.text.toString(),
         'currentMilesArray': FieldValue.arrayUnion([
-          {
-            "miles": int.parse(currentMiles.toString()),
-            "date": DateTime.now().toIso8601String()
-          }
+          {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
         ]),
         "allNextNotificationValues": allNextNotificationValues,
         "totalMiles": currentMiles,
@@ -429,22 +614,21 @@ class _ReportsScreenState extends State<ReportsScreen>
         "createdAt": DateTime.now().toIso8601String(),
       };
 
-      // 1. Save to Owner's DataServices
+      final batch = FirebaseFirestore.instance.batch();
       final ownerDataServicesRef = FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
           .collection('DataServices');
       batch.set(ownerDataServicesRef.doc(docId), recordData);
-      batch.set(dataServicesRef.doc(docId), recordData);
 
-      // 2. Query for Team Members (Drivers/Managers)
+      // Query Team Members (Drivers/Managers)
       final teamMembersSnapshot = await FirebaseFirestore.instance
           .collection('Users')
           .where('createdBy', isEqualTo: currentUId)
           .where('isTeamMember', isEqualTo: true)
           .get();
 
-      // 3. Save to Team Members' DataServices
+      // Save to Team Members' DataServices
       for (final doc in teamMembersSnapshot.docs) {
         final teamMemberUid = doc.id;
         final teamMemberDataServicesRef = FirebaseFirestore.instance
@@ -454,16 +638,18 @@ class _ReportsScreenState extends State<ReportsScreen>
         batch.set(teamMemberDataServicesRef.doc(docId), recordData);
       }
 
-      // 4. Handle Team Member Creating Record (Save to Owner)
+      // Handle Team Member Creating Record (Save to Owner)
       final currentUserDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
           .get();
+
       if (currentUserDoc.data()?['isTeamMember'] == true) {
         final ownerSnapshot = await FirebaseFirestore.instance
             .collection('Users')
             .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
             .get();
+
         if (ownerSnapshot.docs.isNotEmpty) {
           final ownerUid = ownerSnapshot.docs.first.id;
           final ownerDataServicesRef = FirebaseFirestore.instance
@@ -474,7 +660,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
 
-      // 5. Update Vehicle (Your existing code)
+      // Update Vehicle
       final vehicleRef = FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
@@ -484,10 +670,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       batch.update(vehicleRef, {
         'currentMiles': currentMiles.toString(),
         'currentMilesArray': FieldValue.arrayUnion([
-          {
-            "miles": int.parse(currentMiles.toString()),
-            "date": DateTime.now().toIso8601String()
-          }
+          {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
         ]),
         'nextNotificationMiles': notificationData,
       });
@@ -497,70 +680,54 @@ class _ReportsScreenState extends State<ReportsScreen>
       resetForm();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Records saved successfully')),
+        SnackBar(
+          content: Text(isEditing
+              ? 'Record updated successfully'
+              : 'Record saved successfully'),
+        ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error Saving records: ${e.toString()}');
+      debugPrint(stackTrace.toString());
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving records: ${e.toString()}')),
       );
     }
   }
 
-  void resetForm() {
+  void _handleEditRecord(Map<String, dynamic> record) {
     setState(() {
-      selectedVehicle = null;
+      isEditing = true;
+      editingRecordId = record['id'];
+      selectedVehicle = record['vehicleId'];
+      selectedVehicleData = vehicles.firstWhere(
+        (v) => v['id'] == selectedVehicle,
+        orElse: () => {},
+      );
+
       selectedServices.clear();
       selectedSubServices.clear();
-      serviceDefaultValues.clear();
-      milesController.clear();
-      hoursController.clear();
-      workshopController.clear();
-      invoiceController.clear();
-      descriptionController.clear();
-      selectedPackages.clear();
-      selectedDate = null;
-      showAddRecords = false;
-      selectedVehicleData = null;
-      selectedServiceData.clear();
+      for (var service in record['services']) {
+        String serviceId = service['serviceId'];
+        selectedServices.add(serviceId);
+        // Handle sub-services
+        if (service['subServices'] != null) {
+          selectedSubServices[serviceId] = (service['subServices'] as List)
+              .map<String>((sub) => sub['name'].toString())
+              .toList();
+        }
+      }
+
+      milesController.text = record['miles']?.toString() ?? '';
+      hoursController.text = record['hours']?.toString() ?? '';
+      workshopController.text = record['workshopName'] ?? '';
+      invoiceController.text = record['invoice'] ?? '';
+      invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
+      descriptionController.text = record['description'] ?? '';
+      selectedDate = DateTime.parse(record['date']);
+      showAddRecords = true;
     });
-  }
-
-  void resetFilters() {
-    setState(() {
-      filterVehicle = '';
-      filterService = '';
-      startDate = null;
-      endDate = null;
-      showSearchFilter = false;
-      showVehicleSearch = false;
-      showServiceSearch = false;
-      showDateSearch = false;
-      showCombinedSearch = false;
-    });
-  }
-
-  Future<void> _refreshPage() async {
-    await Future.delayed(Duration(seconds: 2));
-  }
-
-  @override
-  void dispose() {
-    vehiclesSubscription.cancel();
-    recordsSubscription.cancel();
-    servicesSubscription.cancel();
-    milesSubscription.cancel();
-    milesController.dispose();
-    hoursController.dispose();
-    workshopController.dispose();
-    invoiceController.dispose();
-    invoiceAmountController.dispose();
-    serviceSearchController.dispose();
-    vehicleSearchController.dispose();
-    dateSearchController.dispose();
-    _tabController.dispose();
-    packagesSubscription.cancel();
-    super.dispose();
   }
 
   String normalizeString(String value) {
@@ -1449,10 +1616,28 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   SizedBox(height: 10.h),
 
                                   // Save Button
-                                  CustomButton(
-                                    onPress: handleSaveRecords,
-                                    color: kPrimary,
-                                    text: 'Save Record',
+                                  Row(
+                                    mainAxisAlignment: isEditing
+                                        ? MainAxisAlignment.spaceBetween
+                                        : MainAxisAlignment.center,
+                                    children: [
+                                      CustomButton(
+                                        height: isEditing ? 45 : 45,
+                                        width: isEditing ? 100 : 250.w,
+                                        onPress: handleSaveRecords,
+                                        color: kSecondary,
+                                        text: isEditing
+                                            ? 'Update Record'
+                                            : 'Save Record',
+                                      ),
+                                      isEditing
+                                          ? CustomButton(
+                                              width: 80,
+                                              text: "Clear",
+                                              onPress: () => resetForm(),
+                                              color: kPrimary)
+                                          : SizedBox(),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -1802,7 +1987,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                     Text(
                                                                         "#${record['invoice']}",
                                                                         style: appStyleUniverse(
-                                                                            16,
+                                                                            13,
                                                                             kDark,
                                                                             FontWeight.w500)),
                                                                   ],
@@ -1838,11 +2023,48 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                           8.w),
                                                                   Text(date,
                                                                       style: appStyleUniverse(
-                                                                          16,
+                                                                          13,
                                                                           kDark,
                                                                           FontWeight
                                                                               .w500)),
                                                                 ],
+                                                              ),
+                                                            ),
+                                                            //Edit Icon
+
+                                                            GestureDetector(
+                                                              onTap: () {
+                                                                if (isEdit!) {
+                                                                  _handleEditRecord(
+                                                                      record);
+                                                                } else {
+                                                                  showToastMessage(
+                                                                      "Sorry",
+                                                                      "You don't have permission to edit record",
+                                                                      kPrimary);
+                                                                }
+                                                              },
+                                                              child: Container(
+                                                                padding: EdgeInsets
+                                                                    .symmetric(
+                                                                  horizontal:
+                                                                      12.w,
+                                                                  vertical: 6.h,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color:
+                                                                      kPrimary,
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              20.r),
+                                                                ),
+                                                                child: Icon(
+                                                                    Icons.edit,
+                                                                    color:
+                                                                        kWhite,
+                                                                    size: 16),
                                                               ),
                                                             ),
                                                           ],
@@ -1980,6 +2202,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 ),
                               ),
                               // My Miles Tab
+
                               ListView.builder(
                                 itemCount: vehicles.length,
                                 itemBuilder: (context, index) {
@@ -2202,5 +2425,63 @@ class _ReportsScreenState extends State<ReportsScreen>
         ),
       ),
     );
+  }
+
+  void resetForm() {
+    setState(() {
+      isEditing = false;
+      editingRecordId = null;
+      selectedVehicle = null;
+      selectedServices.clear();
+      selectedSubServices.clear();
+      serviceDefaultValues.clear();
+      milesController.clear();
+      hoursController.clear();
+      workshopController.clear();
+      invoiceController.clear();
+      descriptionController.clear();
+      selectedPackages.clear();
+      selectedDate = null;
+      showAddRecords = false;
+      selectedVehicleData = null;
+      selectedServiceData.clear();
+    });
+  }
+
+  void resetFilters() {
+    setState(() {
+      filterVehicle = '';
+      filterService = '';
+      startDate = null;
+      endDate = null;
+      showSearchFilter = false;
+      showVehicleSearch = false;
+      showServiceSearch = false;
+      showDateSearch = false;
+      showCombinedSearch = false;
+    });
+  }
+
+  Future<void> _refreshPage() async {
+    await Future.delayed(Duration(seconds: 2));
+  }
+
+  @override
+  void dispose() {
+    vehiclesSubscription.cancel();
+    recordsSubscription.cancel();
+    servicesSubscription.cancel();
+    milesSubscription.cancel();
+    milesController.dispose();
+    hoursController.dispose();
+    workshopController.dispose();
+    invoiceController.dispose();
+    invoiceAmountController.dispose();
+    serviceSearchController.dispose();
+    vehicleSearchController.dispose();
+    dateSearchController.dispose();
+    _tabController.dispose();
+    packagesSubscription.cancel();
+    super.dispose();
   }
 }

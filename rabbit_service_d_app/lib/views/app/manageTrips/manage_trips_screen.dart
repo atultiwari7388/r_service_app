@@ -33,6 +33,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   DateTime? fromDate;
   DateTime? toDate;
   late StreamSubscription usersSubscription;
+  late StreamSubscription vehiclesSubscription;
+  final List<Map<String, dynamic>> vehicles = [];
+  String? selectedVehicle;
   String perMileCharge = '0';
   String role = "";
 
@@ -49,10 +52,38 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   // DateTime? selectedFilterDate;
 
   void addTrip() async {
+    if (_tripNameController.text.isEmpty ||
+        _currentMilesController.text.isEmpty) {
+      showToastMessage("Error", "Please fill all required fields", kRed);
+      return;
+    }
+
+    if (selectedDate == null) {
+      showToastMessage("Error", "Please select a trip start date", kRed);
+      return;
+    }
+
+    if (selectedVehicle == null) {
+      showToastMessage("Error", "Please select a vehicle", kRed);
+      return;
+    }
     setState(() {
       isLoading = true;
     });
     try {
+      // Find selected vehicle details
+      var selectedVehicleData = vehicles.firstWhere(
+        (vehicle) => vehicle['id'] == selectedVehicle,
+        orElse: () => {},
+      );
+
+      String vehicleName = selectedVehicleData.isNotEmpty
+          ? selectedVehicleData['companyName']
+          : "Unknown";
+      String vehicleNumber = selectedVehicleData.isNotEmpty
+          ? selectedVehicleData['vehicleNumber']
+          : "Unknown";
+
       if (_tripNameController.text.isNotEmpty &&
           _currentMilesController.text.isNotEmpty) {
         await FirebaseFirestore.instance
@@ -61,6 +92,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
             .collection('trips')
             .add({
           'tripName': _tripNameController.text,
+          'vehicleId': selectedVehicle,
+          'companyName': vehicleName,
+          'vehicleNumber': vehicleNumber,
           'totalMiles': 0,
           'tripStartMiles': int.parse(_currentMilesController.text),
           'tripEndMiles': 0,
@@ -240,6 +274,26 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         }
       }
     });
+
+    // Setup vehicle stream
+    vehiclesSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection("Vehicles")
+        .where("active", isEqualTo: true)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        debugPrint('No vehicles found for user');
+        return;
+      }
+
+      setState(() {
+        vehicles.clear();
+        vehicles
+            .addAll(snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+      });
+    });
   }
 
   Future<void> _pickDateRange() async {
@@ -331,7 +385,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        buildCustomRowButton(Icons.add, "Add Trip", kPrimary,
+                        buildCustomRowButton(Icons.add, "Add Trip", kSecondary,
                             () {
                           setState(() {
                             showAddTrip = !showAddTrip;
@@ -340,7 +394,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           });
                         }),
                         buildCustomRowButton(
-                            Icons.add, "Add Expenses", kSecondary, () {
+                            Icons.add, "Add Expenses", kPrimary, () {
                           setState(() {
                             showAddTrip = false;
                             showAddMileageOrExpense = !showAddMileageOrExpense;
@@ -432,6 +486,29 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               ),
                             ),
                             SizedBox(height: 10.h),
+                            // Vehicle Dropdown
+                            DropdownButtonFormField<String>(
+                              value: selectedVehicle,
+                              hint: const Text('Select Vehicle'),
+                              items: vehicles.map((vehicle) {
+                                return DropdownMenuItem<String>(
+                                  value: vehicle['id'],
+                                  child: Text(
+                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                    style: appStyleUniverse(
+                                        17, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedVehicle = value;
+                                });
+                              },
+                            ),
+
+                            SizedBox(height: 10.h),
+
                             CustomButton(
                               text: "Add Trip",
                               onPress: addTrip,
@@ -520,7 +597,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             SizedBox(height: 10.h),
                             TextField(
                               controller: descriptionController,
-                              maxLines: 3,
+                              maxLines: 2,
                               decoration: const InputDecoration(
                                 labelText: 'Description',
                                 border: OutlineInputBorder(),
@@ -609,11 +686,14 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                       }
 
                       var filteredTrips = snapshot.data!.docs.where((doc) {
-                        DateTime tripDate = doc['createdAt'].toDate();
-                        return (fromDate == null ||
-                                tripDate.isAfter(fromDate!)) &&
-                            (toDate == null || tripDate.isBefore(toDate!));
+                        DateTime tripStartDate = doc['tripStartDate'].toDate();
+                        DateTime tripEndDate = doc['tripEndDate'].toDate();
+
+                        // ✅ Show trips if they fall **inside** or **overlap** the selected range
+                        return (fromDate == null || tripEndDate.isAfter(fromDate!.subtract(const Duration(days: 1)))) &&
+                            (toDate == null || tripStartDate.isBefore(toDate!.add(const Duration(days: 1))));
                       }).toList();
+
 
                       if (filteredTrips.isEmpty) {
                         return Padding(
@@ -688,7 +768,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       child: Column(
                                         children: [
                                           Text(
-                                            'Total Earnings',
+                                            'Total Loads',
                                             style: appStyle(
                                                 16, kWhite, FontWeight.w500),
                                           ),
@@ -797,6 +877,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                       );
                     },
                   ),
+
                 ],
               ),
       ),
@@ -818,11 +899,11 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       String role,
       num oEarnings) {
     return GestureDetector(
-      onTap: () => Get.to(() => TripDetailsScreen(
-            docId: doc.id,
-            userId: currentUId,
-            tripName: doc['tripName'],
-          )),
+      // onTap: () => Get.to(() => TripDetailsScreen(
+      //       docId: doc.id,
+      //       userId: currentUId,
+      //       tripName: doc['tripName'],
+      //     )),
       child: Container(
         padding: EdgeInsets.all(5.w),
         margin: EdgeInsets.all(5.w),
@@ -846,7 +927,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 Text("Start Miles: $tripStartMiles"),
               ],
             ),
-            SizedBox(height: 5.h),
+            SizedBox(height: 4.h),
             if (tripStatus == "Completed") ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -857,19 +938,19 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                   Text("End Miles: $tripEndMiles"),
                 ],
               ),
-              SizedBox(height: 5.h),
+              SizedBox(height: 4.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Trip Miles: $totalMiles"),
                   role == "Owner"
-                      ? Text("Earnings: \$${oEarnings}",
+                      ? Text("Load Price: \$${oEarnings}",
                           style: appStyle(15, kSecondary, FontWeight.w500))
                       : Text("Earnings: \$${earnings}",
                           style: appStyle(15, kSecondary, FontWeight.w500)),
+                  Text("Trip Miles: $totalMiles"),
                 ],
               ),
-              SizedBox(height: 5.h),
+              SizedBox(height: 4.h),
               role == "Owner"
                   ? SizedBox()
                   : Row(
@@ -885,21 +966,24 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                       ],
                     ),
             ],
-            SizedBox(height: 5.h),
+            SizedBox(height: 4.h),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Expenses:",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
+                SizedBox(width: 5.w),
                 Text("\$${totalExpenses}",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
               ],
             ),
+            SizedBox(height: 4.h),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Trip Status: "),
-                Spacer(),
+                SizedBox(width: 5.w),
+                // Spacer(),
                 if (tripStatus != 'Completed') ...[
                   DropdownButton<String>(
                     value: tripStatus,
@@ -992,22 +1076,45 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                     style: appStyle(16, kSecondary, FontWeight.w500),
                   ),
                 ],
+                Spacer(),
               ],
             ),
             SizedBox(height: 5.h),
-            if (tripStatus != "Completed") ...[
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimary,
-                  foregroundColor: kWhite,
-                ),
-                onPressed: () {
-                  showEditTripDialog(context, doc.id,
-                      doc['tripStartDate'].toDate(), doc['tripStartMiles']);
-                },
-                child: Text("Edit Trip"),
-              ),
-            ]
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (tripStatus != "Completed") ...[
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimary,
+                        foregroundColor: kWhite,
+                        elevation: 0,
+                        minimumSize: Size(70.w, 35.h)),
+                    onPressed: () {
+                      showEditTripDialog(context, doc.id,
+                          doc['tripStartDate'].toDate(), doc['tripStartMiles']);
+                    },
+                    child: Text("Edit Trip"),
+                  ),
+                ],
+                SizedBox(width: 5.w),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: kSecondary,
+                      foregroundColor: kWhite,
+                      elevation: 0,
+                      minimumSize: Size(70.w, 35.h)),
+                  onPressed: () {
+                    Get.to(() => TripDetailsScreen(
+                          docId: doc.id,
+                          userId: currentUId,
+                          tripName: doc['tripName'],
+                        ));
+                  },
+                  child: Text("View"),
+                )
+              ],
+            ),
           ],
         ),
       ),
