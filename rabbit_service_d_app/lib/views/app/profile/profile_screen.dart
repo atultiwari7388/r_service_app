@@ -141,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }),
                     ],
 
-                    if (role == "Owner" || role == "Driver") ...[
+                    if (role == "Owner" || role == "Manager") ...[
                       buildListTile("assets/manage_trip.png", "Trips Wise Vehicle",
                               () {
                             Get.to(() => TripWiseVehicleScreen());

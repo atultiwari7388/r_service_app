@@ -393,7 +393,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 20),
-                              _buildServicesTable(context, services),
+                              _buildServicesTable(context, services, vehicleId),
                             ],
                           ),
                         ),
@@ -551,9 +551,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  Widget _buildServicesTable(BuildContext context, List services) {
+  Widget _buildServicesTable(BuildContext context, List services, String vehicleId) {
     final filteredServices = services
-        .where((service) => service['defaultNotificationValue'] != 0)
+        .where((service) => service['nextNotificationValue'] != 0)
         .toList();
 
     if (filteredServices.isEmpty) {
@@ -614,14 +614,14 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   _buildTableCell(index.toString()), // Serial Number
                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
                   _buildTableCell(
-                      service['defaultNotificationValue'].toString()),
+                      service['nextNotificationValue'].toString()),
                   TableCell(
                     child: Container(
                       padding: const EdgeInsets.all(2.0),
                       child: IconButton(
                         icon: const Icon(Icons.edit, color: kPrimary, size: 20),
                         onPressed: () {
-                          _showEditDialog(context, service);
+                          _showEditDialog(context, service,vehicleId);
                         },
                       ),
                     ),
@@ -660,9 +660,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  void _showEditDialog(BuildContext context, Map<String, dynamic> service) {
+  void _showEditDialog(BuildContext context, Map<String, dynamic> service, String vehicleId) {
     final TextEditingController controller = TextEditingController(
-      text: service['defaultNotificationValue'].toString(),
+      text: service['nextNotificationValue'].toString(),
     );
 
     showDialog(
@@ -706,12 +706,64 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () {
+              onPressed: () async{
+
                 final newValue = int.tryParse(controller.text);
-                if (newValue != null) {
-                  service['defaultNotificationValue'] = newValue;
-                  Navigator.pop(context);
+                final currentValue = service['nextNotificationValue'];
+
+                if (newValue == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid number')),
+                  );
+                  return;
                 }
+
+                if (newValue < currentValue) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('New value must be greater than $currentValue'),
+                    ),
+                  );
+                  return;
+                }
+
+                try {
+                  final vehicleDocRef = FirebaseFirestore.instance
+                      .collection('Users')
+                      .doc(currentUId)
+                      .collection('Vehicles')
+                      .doc(vehicleId);
+
+                  await FirebaseFirestore.instance.runTransaction((transaction) async {
+                    final docSnapshot = await transaction.get(vehicleDocRef);
+                    if (!docSnapshot.exists) throw Exception('Document not found');
+
+                    List<dynamic> services = List.from(docSnapshot['services']);
+                    int index = services.indexWhere(
+                          (s) => s['serviceName'] == service['serviceName'],
+                    );
+
+                    if (index == -1) throw Exception('Service not found');
+
+                    // Update the specific service
+                    Map<String, dynamic> updatedService = Map.from(services[index]);
+                    updatedService['nextNotificationValue'] = newValue;
+                    services[index] = updatedService;
+
+                    transaction.update(vehicleDocRef, {'services': services});
+                  });
+
+                  Navigator.pop(context); // Close dialog on success
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error updating service: $e')),
+                  );
+                }
+                // final newValue = int.tryParse(controller.text);
+                // if (newValue != null) {
+                //   service['nextNotificationValue'] = newValue;
+                //   Navigator.pop(context);
+                // }
               },
               child: const Text('Update'),
             ),
@@ -720,18 +772,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       },
     );
   }
-
-  // void _shareVehicleDetails(Map<String, dynamic> vehicleData) {
-  //   final String details = '''
-  //   Vehicle Details:
-  //   Company Name: ${vehicleData['companyName']}
-  //   Vehicle Number: ${vehicleData['vehicleNumber']}
-  //   Year: ${vehicleData['year']}
-  //   Current Miles: ${vehicleData['currentMiles']}
-  //   License Plate: ${vehicleData['licensePlate']}
-  //   ''';
-  //   Share.share(details);
-  // }
 
   void _shareVehicleDetails(Map<String, dynamic> vehicleData) {
     // Build the details string with enhanced message and URLs

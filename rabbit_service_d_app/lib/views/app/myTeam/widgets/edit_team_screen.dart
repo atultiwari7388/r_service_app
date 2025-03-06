@@ -34,7 +34,12 @@ class _EditTeamMemberState extends State<EditTeamMember> {
   List<dynamic> selectedVehicles = [];
   List<String> roles = ["Manager", "Driver"];
   String? selectedRole;
-  List<String> recordAccessCheckBox = ["View", "Edit", "Delete", "Add"];
+  List<String> recordAccessCheckBox = [
+    "View",
+    "Edit",
+    // "Delete",
+    "Add",
+  ];
   List<String> selectedRecordAccess = [];
 
   @override

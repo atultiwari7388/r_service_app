@@ -8,9 +8,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/generate_pdf.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/profile/profile_screen.dart';
@@ -1903,304 +1905,340 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         ),
                                       )
                                     else
-                                      ListView.builder(
-                                        shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        itemCount: filteredRecords.length,
-                                        itemBuilder: (context, index) {
-                                          final record = filteredRecords[index];
-                                          final services = record['services']
-                                              as List<dynamic>;
-                                          final date = DateFormat('dd-MM-yy')
-                                              .format(DateTime.parse(
-                                                  record['createdAt']));
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: kPrimary,
+                                            foregroundColor: kWhite,
+                                            radius: 20.r,
+                                            child: IconButton(
+                                              onPressed: ()  async{
+                                                try {
+                                                  final pdfBytes = await generateRecordPdf(filteredRecords);
+                                                  await Printing.layoutPdf(
+                                                    onLayout: (format) => pdfBytes,
+                                                  );
+                                                } catch (e) {
+                                                  print('Printing error: $e');
+                                                }
+                                              },
+                                              icon: Icon(Icons.print),
+                                            ),
+                                          ),
+                                          ListView.builder(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            itemCount: filteredRecords.length,
+                                            itemBuilder: (context, index) {
+                                              final record =
+                                                  filteredRecords[index];
+                                              final services =
+                                                  record['services']
+                                                      as List<dynamic>;
+                                              final date =
+                                                  DateFormat('dd-MM-yy').format(
+                                                      DateTime.parse(
+                                                          record['createdAt']));
 
-                                          return Container(
-                                            child: GestureDetector(
-                                              onTap: () => Get.to(() =>
-                                                  RecordsDetailsScreen(
-                                                      record: record)),
-                                              child: Card(
-                                                elevation: 0,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          15.r),
-                                                  side: BorderSide(
-                                                    color: kPrimary
-                                                        .withOpacity(0.2),
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            15.r),
-                                                  ),
-                                                  child: Padding(
-                                                    padding:
-                                                        EdgeInsets.all(16.w),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
+                                              return Container(
+                                                child: GestureDetector(
+                                                  onTap: () => Get.to(() =>
+                                                      RecordsDetailsScreen(
+                                                          record: record)),
+                                                  child: Card(
+                                                    elevation: 0,
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              15.r),
+                                                      side: BorderSide(
+                                                        color: kPrimary
+                                                            .withOpacity(0.2),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(15.r),
+                                                      ),
+                                                      child: Padding(
+                                                        padding: EdgeInsets.all(
+                                                            16.w),
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
                                                           children: [
-                                                            if (record[
-                                                                    'invoice']
-                                                                .isNotEmpty)
-                                                              Container(
-                                                                padding: EdgeInsets
-                                                                    .symmetric(
-                                                                  horizontal:
-                                                                      12.w,
-                                                                  vertical: 6.h,
-                                                                ),
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color: kPrimary
-                                                                      .withOpacity(
-                                                                          0.1),
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
+                                                            Row(
+                                                              mainAxisAlignment:
+                                                                  MainAxisAlignment
+                                                                      .spaceBetween,
+                                                              children: [
+                                                                if (record[
+                                                                        'invoice']
+                                                                    .isNotEmpty)
+                                                                  Container(
+                                                                    padding:
+                                                                        EdgeInsets
+                                                                            .symmetric(
+                                                                      horizontal:
+                                                                          12.w,
+                                                                      vertical:
+                                                                          6.h,
+                                                                    ),
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: kPrimary
+                                                                          .withOpacity(
+                                                                              0.1),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
                                                                               20.r),
-                                                                ),
-                                                                child: Row(
-                                                                  children: [
-                                                                    Icon(
-                                                                        Icons
-                                                                            .receipt_outlined,
-                                                                        size:
-                                                                            20,
-                                                                        color:
-                                                                            kPrimary),
-                                                                    SizedBox(
-                                                                        width: 8
-                                                                            .w),
-                                                                    Text(
-                                                                        "#${record['invoice']}",
-                                                                        style: appStyleUniverse(
-                                                                            13,
-                                                                            kDark,
-                                                                            FontWeight.w500)),
-                                                                  ],
-                                                                ),
-                                                              ),
-                                                            Container(
-                                                              padding: EdgeInsets
-                                                                  .symmetric(
-                                                                horizontal:
-                                                                    12.w,
-                                                                vertical: 6.h,
-                                                              ),
-                                                              decoration:
-                                                                  BoxDecoration(
-                                                                color: kSecondary
-                                                                    .withOpacity(
-                                                                        0.1),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
+                                                                    ),
+                                                                    child: Row(
+                                                                      children: [
+                                                                        Icon(
+                                                                            Icons
+                                                                                .receipt_outlined,
+                                                                            size:
+                                                                                20,
+                                                                            color:
+                                                                                kPrimary),
+                                                                        SizedBox(
+                                                                            width:
+                                                                                8.w),
+                                                                        Text(
+                                                                            "#${record['invoice']}",
+                                                                            style: appStyleUniverse(
+                                                                                13,
+                                                                                kDark,
+                                                                                FontWeight.w500)),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                Container(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .symmetric(
+                                                                    horizontal:
+                                                                        12.w,
+                                                                    vertical:
+                                                                        6.h,
+                                                                  ),
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    color: kSecondary
+                                                                        .withOpacity(
+                                                                            0.1),
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
                                                                             20.r),
-                                                              ),
-                                                              child: Row(
-                                                                children: [
-                                                                  Icon(
-                                                                      Icons
-                                                                          .calendar_today,
-                                                                      size: 18,
-                                                                      color:
-                                                                          kSecondary),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          8.w),
-                                                                  Text(date,
-                                                                      style: appStyleUniverse(
-                                                                          13,
-                                                                          kDark,
-                                                                          FontWeight
-                                                                              .w500)),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                            //Edit Icon
+                                                                  ),
+                                                                  child: Row(
+                                                                    children: [
+                                                                      Icon(
+                                                                          Icons
+                                                                              .calendar_today,
+                                                                          size:
+                                                                              18,
+                                                                          color:
+                                                                              kSecondary),
+                                                                      SizedBox(
+                                                                          width:
+                                                                              8.w),
+                                                                      Text(date,
+                                                                          style: appStyleUniverse(
+                                                                              13,
+                                                                              kDark,
+                                                                              FontWeight.w500)),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                                //Edit Icon
 
-                                                            GestureDetector(
-                                                              onTap: () {
-                                                                if (isEdit!) {
-                                                                  _handleEditRecord(
-                                                                      record);
-                                                                } else {
-                                                                  showToastMessage(
-                                                                      "Sorry",
-                                                                      "You don't have permission to edit record",
-                                                                      kPrimary);
-                                                                }
-                                                              },
-                                                              child: Container(
-                                                                padding: EdgeInsets
-                                                                    .symmetric(
-                                                                  horizontal:
-                                                                      12.w,
-                                                                  vertical: 6.h,
-                                                                ),
-                                                                decoration:
-                                                                    BoxDecoration(
-                                                                  color:
-                                                                      kPrimary,
-                                                                  borderRadius:
-                                                                      BorderRadius
-                                                                          .circular(
-                                                                              20.r),
-                                                                ),
-                                                                child: Icon(
-                                                                    Icons.edit,
-                                                                    color:
-                                                                        kWhite,
-                                                                    size: 16),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        SizedBox(height: 16.h),
-                                                        buildInfoRow(
-                                                          Icons
-                                                              .directions_car_outlined,
-                                                          '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
-                                                        ),
-                                                        Divider(height: 24.h),
-                                                        buildInfoRow(
-                                                          Icons.build_outlined,
-                                                          services
-                                                              .map((service) =>
-                                                                  service[
-                                                                      'serviceName'])
-                                                              .join(", "),
-                                                        ),
-                                                        Divider(height: 24.h),
-                                                        buildInfoRow(
-                                                          Icons.store_outlined,
-                                                          record['workshopName'] ??
-                                                              'N/A',
-                                                        ),
-                                                        if (record[
-                                                                "description"]
-                                                            .isNotEmpty) ...[
-                                                          Divider(height: 24.h),
-                                                          buildInfoRow(
-                                                            Icons
-                                                                .description_outlined,
-                                                            record[
-                                                                'description'],
-                                                          ),
-                                                        ],
-                                                        Divider(height: 24.h),
-                                                        Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceBetween,
-                                                          children: [
-                                                            if (record[
-                                                                    "invoiceAmount"]
-                                                                .isNotEmpty) ...[
-                                                              Row(
-                                                                children: [
-                                                                  Text(
-                                                                      "Invoice Amount :",
-                                                                      style: appStyle(
-                                                                          14,
-                                                                          kDark,
-                                                                          FontWeight
-                                                                              .w500)),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          8.w),
-                                                                  Text(
-                                                                      '${record['invoiceAmount']}',
-                                                                      style: appStyleUniverse(
-                                                                          14,
+                                                                GestureDetector(
+                                                                  onTap: () {
+                                                                    if (isEdit!) {
+                                                                      _handleEditRecord(
+                                                                          record);
+                                                                    } else {
+                                                                      showToastMessage(
+                                                                          "Sorry",
+                                                                          "You don't have permission to edit record",
+                                                                          kPrimary);
+                                                                    }
+                                                                  },
+                                                                  child:
+                                                                      Container(
+                                                                    padding:
+                                                                        EdgeInsets
+                                                                            .symmetric(
+                                                                      horizontal:
+                                                                          12.w,
+                                                                      vertical:
+                                                                          6.h,
+                                                                    ),
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color:
                                                                           kPrimary,
-                                                                          FontWeight
-                                                                              .bold)),
-                                                                ],
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              20.r),
+                                                                    ),
+                                                                    child: Icon(
+                                                                        Icons
+                                                                            .edit,
+                                                                        color:
+                                                                            kWhite,
+                                                                        size:
+                                                                            16),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            SizedBox(
+                                                                height: 16.h),
+                                                            buildInfoRow(
+                                                              Icons
+                                                                  .directions_car_outlined,
+                                                              '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                                                            ),
+                                                            Divider(
+                                                                height: 24.h),
+                                                            buildInfoRow(
+                                                              Icons
+                                                                  .build_outlined,
+                                                              services
+                                                                  .map((service) =>
+                                                                      service[
+                                                                          'serviceName'])
+                                                                  .join(", "),
+                                                            ),
+                                                            Divider(
+                                                                height: 24.h),
+                                                            buildInfoRow(
+                                                              Icons
+                                                                  .store_outlined,
+                                                              record['workshopName'] ??
+                                                                  'N/A',
+                                                            ),
+                                                            if (record[
+                                                                    "description"]
+                                                                .isNotEmpty) ...[
+                                                              Divider(
+                                                                  height: 24.h),
+                                                              buildInfoRow(
+                                                                Icons
+                                                                    .description_outlined,
+                                                                record[
+                                                                    'description'],
                                                               ),
                                                             ],
-                                                            if (record.containsKey(
-                                                                    "miles") &&
-                                                                record['miles'] !=
-                                                                    0)
-                                                              Row(
-                                                                children: [
-                                                                  Text(
-                                                                      "Miles :",
-                                                                      style: appStyle(
-                                                                          14,
-                                                                          kDark,
-                                                                          FontWeight
-                                                                              .w500)),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          8.w),
-                                                                  Text(
-                                                                      '${record['miles']}',
-                                                                      style: appStyleUniverse(
-                                                                          14,
-                                                                          kPrimary,
-                                                                          FontWeight
-                                                                              .bold)),
+                                                            Divider(
+                                                                height: 24.h),
+                                                            Row(
+                                                              mainAxisAlignment:
+                                                                  MainAxisAlignment
+                                                                      .spaceBetween,
+                                                              children: [
+                                                                if (record[
+                                                                        "invoiceAmount"]
+                                                                    .isNotEmpty) ...[
+                                                                  Row(
+                                                                    children: [
+                                                                      Text(
+                                                                          "Invoice Amount :",
+                                                                          style: appStyle(
+                                                                              14,
+                                                                              kDark,
+                                                                              FontWeight.w500)),
+                                                                      SizedBox(
+                                                                          width:
+                                                                              8.w),
+                                                                      Text(
+                                                                          '${record['invoiceAmount']}',
+                                                                          style: appStyleUniverse(
+                                                                              14,
+                                                                              kPrimary,
+                                                                              FontWeight.bold)),
+                                                                    ],
+                                                                  ),
                                                                 ],
-                                                              ),
-                                                            if (record.containsKey(
-                                                                    "hours") &&
-                                                                record['hours'] !=
-                                                                    0)
-                                                              Row(
-                                                                children: [
-                                                                  Text(
-                                                                      "Hours :",
-                                                                      style: appStyle(
-                                                                          14,
-                                                                          kDark,
-                                                                          FontWeight
-                                                                              .w500)),
-                                                                  SizedBox(
-                                                                      width:
-                                                                          8.w),
-                                                                  Text(
-                                                                      '${record['hours']}',
-                                                                      style: appStyleUniverse(
-                                                                          14,
-                                                                          kPrimary,
-                                                                          FontWeight
-                                                                              .bold)),
-                                                                ],
-                                                              ),
+                                                                if (record.containsKey(
+                                                                        "miles") &&
+                                                                    record['miles'] !=
+                                                                        0)
+                                                                  Row(
+                                                                    children: [
+                                                                      Text(
+                                                                          "Miles :",
+                                                                          style: appStyle(
+                                                                              14,
+                                                                              kDark,
+                                                                              FontWeight.w500)),
+                                                                      SizedBox(
+                                                                          width:
+                                                                              8.w),
+                                                                      Text(
+                                                                          '${record['miles']}',
+                                                                          style: appStyleUniverse(
+                                                                              14,
+                                                                              kPrimary,
+                                                                              FontWeight.bold)),
+                                                                    ],
+                                                                  ),
+                                                                if (record.containsKey(
+                                                                        "hours") &&
+                                                                    record['hours'] !=
+                                                                        0)
+                                                                  Row(
+                                                                    children: [
+                                                                      Text(
+                                                                          "Hours :",
+                                                                          style: appStyle(
+                                                                              14,
+                                                                              kDark,
+                                                                              FontWeight.w500)),
+                                                                      SizedBox(
+                                                                          width:
+                                                                              8.w),
+                                                                      Text(
+                                                                          '${record['hours']}',
+                                                                          style: appStyleUniverse(
+                                                                              14,
+                                                                              kPrimary,
+                                                                              FontWeight.bold)),
+                                                                    ],
+                                                                  ),
+                                                              ],
+                                                            ),
                                                           ],
                                                         ),
-                                                      ],
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
-                                          )
-                                              .animate()
-                                              .fadeIn(
-                                                  duration: 400.ms,
-                                                  delay: (index * 100).ms)
-                                              .slideX(begin: 0.2, end: 0);
-                                        },
+                                              )
+                                                  .animate()
+                                                  .fadeIn(
+                                                      duration: 400.ms,
+                                                      delay: (index * 100).ms)
+                                                  .slideX(begin: 0.2, end: 0);
+                                            },
+                                          ),
+                                        ],
                                       ),
                                   ],
                                 ),
                               ),
+
                               // My Miles Tab
 
                               ListView.builder(

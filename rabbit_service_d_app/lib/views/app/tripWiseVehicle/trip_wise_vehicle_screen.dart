@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
@@ -66,14 +67,33 @@ class AssignTripScreen extends StatelessWidget {
         .asyncMap((usersSnapshot) async {
       List<Map<String, dynamic>> allTrips = [];
 
+      // Include the current user's trips
+      QuerySnapshot currentUserTrips = await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(ownerId)
+          .collection("trips")
+          .where("tripStatus", isEqualTo: 1)
+          .get();
+
+      for (var trip in currentUserTrips.docs) {
+        allTrips.add({
+          "companyName": trip["companyName"],
+          "vehicleNumber": trip["vehicleNumber"],
+          "tripName": trip["tripName"],
+          "tripStartDate": trip["tripStartDate"],
+          "driverName": "You",
+          "tripStatus": trip["tripStatus"],
+        });
+      }
+
+      // Fetch trips for team members
       for (var userDoc in usersSnapshot.docs) {
         QuerySnapshot tripSnapshot = await FirebaseFirestore.instance
             .collection("Users")
             .doc(userDoc.id)
             .collection("trips")
-            .where("tripStatus", whereIn: [1, 2])
+            .where("tripStatus", isEqualTo: 1)
             .get();
-
 
         for (var trip in tripSnapshot.docs) {
           // Fetch Driver Name from Users collection
@@ -190,65 +210,91 @@ class AssignTripScreen extends StatelessWidget {
 }
 
 
-
 class NotAssignedTripScreen extends StatelessWidget {
   const NotAssignedTripScreen({super.key});
 
-  Stream<List<Map<String, dynamic>>> fetchNotAssignedDrivers(String ownerId) {
+  Stream<List<Map<String, dynamic>>> fetchNotAssignedVehicles(String ownerId) {
     return FirebaseFirestore.instance
         .collection("Users")
         .where("createdBy", isEqualTo: ownerId)
         .where("isTeamMember", isEqualTo: true)
         .snapshots()
         .asyncMap((usersSnapshot) async {
-      List<Map<String, dynamic>> notAssignedDrivers = [];
+      List<Map<String, dynamic>> notAssignedVehicles = [];
+      Set<String> assignedVehicleIds = {};
 
-      for (var userDoc in usersSnapshot.docs) {
-        // Check if the driver has any active trips (tripStatus 1 or 2)
-        QuerySnapshot tripSnapshot = await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(userDoc.id)
-            .collection("trips")
-            .where("tripStatus", whereIn: [1, 2])
-            .get();
+      // Fetch trips for the owner
+      QuerySnapshot ownerTrips = await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(ownerId)
+          .collection("trips")
+          .get();
 
-        // If the driver has active trips, skip this driver
-        if (tripSnapshot.docs.isNotEmpty) {
-          continue;
-        }
+      for (var trip in ownerTrips.docs) {
+        assignedVehicleIds.add(trip["vehicleId"]);
+      }
 
-        // Fetch vehicle details from vehicles subcollection
-        QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(userDoc.id)
-            .collection("vehicles")
-            .get();
+      // Fetch vehicles for the owner
+      QuerySnapshot ownerVehicles = await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(ownerId)
+          .collection("Vehicles")
+          .get();
 
-        // If no vehicle found, store only driver name
-        if (vehicleSnapshot.docs.isEmpty) {
-          notAssignedDrivers.add({
-            "driverName": userDoc["userName"],
-            "vehicleName": "No Vehicle Assigned",
-            "vehicleNumber": "--",
+      for (var vehicle in ownerVehicles.docs) {
+        if (!assignedVehicleIds.contains(vehicle["vehicleId"])) {
+          notAssignedVehicles.add({
+            "companyName": vehicle["companyName"],
+            "vehicleNumber": vehicle["vehicleNumber"],
+            "driverName": "You",
           });
-        } else {
-          for (var vehicle in vehicleSnapshot.docs) {
-            notAssignedDrivers.add({
-              "driverName": userDoc["userName"],
-              "vehicleName": vehicle["vehicleName"],
+        }
+      }
+
+      // Fetch trips for each team member
+      for (var userDoc in usersSnapshot.docs) {
+        var teamMemberId = userDoc.id;
+        QuerySnapshot teamTrips = await FirebaseFirestore.instance
+            .collection("Users")
+            .doc(teamMemberId)
+            .collection("trips")
+            .get();
+
+        bool hasTrips = teamTrips.docs.isNotEmpty;
+
+        // Fetch vehicles for this team member
+        QuerySnapshot teamVehicles = await FirebaseFirestore.instance
+            .collection("Users")
+            .doc(teamMemberId)
+            .collection("Vehicles")
+            .get();
+
+        // Fetch Driver Name
+        var driverDoc = await FirebaseFirestore.instance
+            .collection("Users")
+            .doc(teamMemberId)
+            .get();
+        String driverName = driverDoc['userName'];
+
+        for (var vehicle in teamVehicles.docs) {
+          if (!assignedVehicleIds.contains(vehicle["vehicleId"]) || !hasTrips) {
+            notAssignedVehicles.add({
+              "companyName": vehicle["companyName"],
               "vehicleNumber": vehicle["vehicleNumber"],
+              "driverName": driverName,
             });
           }
         }
       }
-      return notAssignedDrivers;
+
+      return notAssignedVehicles;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: fetchNotAssignedDrivers(currentUId),
+      stream: fetchNotAssignedVehicles(currentUId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -257,18 +303,18 @@ class NotAssignedTripScreen extends StatelessWidget {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(
             child: Text(
-              "No Unassigned Drivers Found",
+              "No Unassigned Vehicles Found",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           );
         }
 
-        var drivers = snapshot.data!;
+        var vehicles = snapshot.data!;
 
         return ListView.builder(
-          itemCount: drivers.length,
+          itemCount: vehicles.length,
           itemBuilder: (context, index) {
-            var driver = drivers[index];
+            var vehicle = vehicles[index];
 
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -282,20 +328,19 @@ class NotAssignedTripScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Driver: ${driver['driverName']}",
+                      "${vehicle['companyName']} - ${vehicle['vehicleNumber']}",
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Colors.blueAccent,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 4),
                     Text(
-                      "Vehicle: ${driver['vehicleName']} - ${driver['vehicleNumber']}",
+                      "Driver: ${vehicle['driverName']}",
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blueAccent,
+                        color: Colors.black54,
                       ),
                     ),
                   ],
