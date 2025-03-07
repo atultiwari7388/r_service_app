@@ -303,6 +303,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       Map<String, dynamic> vehicleData = {
         'active':true,
+        'tripAssign':false,
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
         'engineName': _selectedEngineName?.toUpperCase(),

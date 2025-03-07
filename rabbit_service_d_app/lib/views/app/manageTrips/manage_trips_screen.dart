@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +39,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   String? selectedVehicle;
   String perMileCharge = '0';
   String role = "";
+  String ownerId = "";
 
   bool showAddTrip = false;
   bool showAddMileageOrExpense = false;
@@ -48,8 +50,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   File? _selectedImage;
   String _imageUrl = '';
   DateTime? selectedDate;
-
-  // DateTime? selectedFilterDate;
 
   void addTrip() async {
     if (_tripNameController.text.isEmpty ||
@@ -67,66 +67,143 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       showToastMessage("Error", "Please select a vehicle", kRed);
       return;
     }
+
     setState(() {
       isLoading = true;
     });
+
     try {
-      // Find selected vehicle details
-      var selectedVehicleData = vehicles.firstWhere(
-        (vehicle) => vehicle['id'] == selectedVehicle,
-        orElse: () => {},
-      );
+      // Get selected vehicle details from Firestore
+      DocumentSnapshot vehicleSnapshot = await FirebaseFirestore.instance
+          .collection("Users")
+          .doc(currentUId)
+          .collection("Vehicles")
+          .doc(selectedVehicle)
+          .get();
 
-      String vehicleName = selectedVehicleData.isNotEmpty
-          ? selectedVehicleData['companyName']
-          : "Unknown";
-      String vehicleNumber = selectedVehicleData.isNotEmpty
-          ? selectedVehicleData['vehicleNumber']
-          : "Unknown";
-
-      if (_tripNameController.text.isNotEmpty &&
-          _currentMilesController.text.isNotEmpty) {
-        await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(currentUId)
-            .collection('trips')
-            .add({
-          'tripName': _tripNameController.text,
-          'vehicleId': selectedVehicle,
-          'companyName': vehicleName,
-          'vehicleNumber': vehicleNumber,
-          'totalMiles': 0,
-          'tripStartMiles': int.parse(_currentMilesController.text),
-          'tripEndMiles': 0,
-          'currentMiles': int.parse(_currentMilesController.text),
-          'previousMiles': int.parse(_currentMilesController.text),
-          'milesArray': [
-            {
-              'mile': int.parse(_currentMilesController.text),
-              'date': Timestamp.now(),
-            }
-          ],
-          'isPaid': false,
-          'tripStatus': 1,
-          'tripStartDate': selectedDate,
-          'tripEndDate': DateTime.now(),
-          'createdAt': Timestamp.now(),
-          'updatedAt': Timestamp.now(),
-          'oEarnings':
-              role == "Owner" ? int.parse(_oEarningController.text) : 0,
-        });
-        showToastMessage("Success", "Trip added successfully", kSecondary);
-        _tripNameController.clear();
-        _currentMilesController.clear();
-        _oEarningController.clear();
+      if (!vehicleSnapshot.exists) {
+        showToastMessage("Error", "Selected vehicle not found", kRed);
         setState(() {
-          selectedDate = null;
+          isLoading = false;
         });
+        return;
       }
-    } catch (e) {
+
+      Map<String, dynamic> selectedVehicleData =
+          vehicleSnapshot.data() as Map<String, dynamic>;
+
+      if (selectedVehicleData.containsKey('tripAssign') &&
+          selectedVehicleData['tripAssign'] == true) {
+        showToastMessage(
+            "Error",
+            "Your vehicle is already assigned. Please complete your ongoing ride.",
+            kRed);
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      String vehicleName = selectedVehicleData['companyName'] ?? "Unknown";
+      String vehicleNumber = selectedVehicleData['vehicleNumber'] ?? "Unknown";
+
+      // Generate docId for consistency
+      String docId = FirebaseFirestore.instance.collection('trips').doc().id;
+
+      final tripData = {
+        'tripName': _tripNameController.text,
+        'vehicleId': selectedVehicle,
+        'currentUID': currentUId,
+        'role': role,
+        'companyName': vehicleName,
+        'vehicleNumber': vehicleNumber,
+        'totalMiles': 0,
+        'tripStartMiles': int.parse(_currentMilesController.text),
+        'tripEndMiles': 0,
+        'currentMiles': int.parse(_currentMilesController.text),
+        'previousMiles': int.parse(_currentMilesController.text),
+        'milesArray': [
+          {
+            'mile': int.parse(_currentMilesController.text),
+            'date': Timestamp.now(),
+          }
+        ],
+        'isPaid': false,
+        'tripStatus': 1,
+        'tripStartDate': selectedDate,
+        'tripEndDate': DateTime.now(),
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+        'oEarnings': (role == "Owner" && _oEarningController.text.isNotEmpty)
+            ? int.parse(_oEarningController.text)
+            : 0,
+      };
+
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      DocumentReference userTripRef = FirebaseFirestore.instance
+          .collection("Users")
+          .doc(currentUId)
+          .collection('trips')
+          .doc(docId);
+
+      DocumentReference tripRef =
+          FirebaseFirestore.instance.collection('trips').doc(docId);
+
+      DocumentReference vehicleRef = FirebaseFirestore.instance
+          .collection("Users")
+          .doc(currentUId)
+          .collection("Vehicles")
+          .doc(selectedVehicle);
+
+      // Update current user's vehicle
+      batch.set(userTripRef, tripData);
+      batch.set(tripRef, tripData);
+      batch.update(vehicleRef, {'tripAssign': true});
+
+      // **Find and update assigned drivers' vehicles**
+      QuerySnapshot driverDocs = await FirebaseFirestore.instance
+          .collection("Users")
+          .where("createdBy", isEqualTo: ownerId)
+          .where("isDriver", isEqualTo: true)
+          .where("isTeamMember", isEqualTo: true)
+          .get();
+
+      for (var driverDoc in driverDocs.docs) {
+        String driverId = driverDoc.id;
+
+        DocumentReference driverVehicleRef = FirebaseFirestore.instance
+            .collection("Users")
+            .doc(driverId)
+            .collection("Vehicles")
+            .doc(selectedVehicle);
+
+        batch.update(driverVehicleRef, {'tripAssign': true});
+      }
+
+      // **If driver creates a trip, update owner's vehicle**
+      if (role == "Driver") {
+        DocumentReference ownerVehicleRef = FirebaseFirestore.instance
+            .collection("Users")
+            .doc(ownerId)
+            .collection("Vehicles")
+            .doc(selectedVehicle);
+
+        batch.update(ownerVehicleRef, {'tripAssign': true});
+      }
+
+      await batch.commit();
+
+      showToastMessage("Success", "Trip added successfully", kSecondary);
+
+      _tripNameController.clear();
+      _currentMilesController.clear();
+      _oEarningController.clear();
+
       setState(() {
-        isLoading = false;
+        selectedDate = null;
       });
+    } catch (e) {
       showToastMessage("Error", e.toString(), kRed);
     } finally {
       setState(() {
@@ -223,20 +300,27 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         });
       } else if (selectedType == 'Expenses' &&
           amountController.text.isNotEmpty) {
-        await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(currentUId)
-            .collection("trips")
-            .doc(selectedTrip)
-            .collection('tripDetails')
-            .add({
+        final expensesData = {
           'tripId': selectedTrip,
           'type': 'Expenses',
           'amount': double.parse(amountController.text),
           'description': descriptionController.text,
           'imageUrl': _imageUrl, // Store image URL if available
           'createdAt': Timestamp.now(),
-        });
+        };
+        await FirebaseFirestore.instance
+            .collection("Users")
+            .doc(currentUId)
+            .collection("trips")
+            .doc(selectedTrip)
+            .collection('tripDetails')
+            .add(expensesData);
+
+        await FirebaseFirestore.instance
+            .collection('trips')
+            .doc(selectedTrip)
+            .collection('tripDetails')
+            .add(expensesData);
 
         showToastMessage("Success", "Expense added successfully!", kSecondary);
       }
@@ -270,6 +354,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
           setState(() {
             perMileCharge = userData['perMileCharge'];
             role = userData['role'];
+            ownerId = userData['createdBy'];
           });
         }
       }
@@ -690,10 +775,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         DateTime tripEndDate = doc['tripEndDate'].toDate();
 
                         // ✅ Show trips if they fall **inside** or **overlap** the selected range
-                        return (fromDate == null || tripEndDate.isAfter(fromDate!.subtract(const Duration(days: 1)))) &&
-                            (toDate == null || tripStartDate.isBefore(toDate!.add(const Duration(days: 1))));
+                        return (fromDate == null ||
+                                tripEndDate.isAfter(fromDate!
+                                    .subtract(const Duration(days: 1)))) &&
+                            (toDate == null ||
+                                tripStartDate.isBefore(
+                                    toDate!.add(const Duration(days: 1))));
                       }).toList();
-
 
                       if (filteredTrips.isEmpty) {
                         return Padding(
@@ -807,8 +895,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               num earnings = totalMiles * perMileCharges;
 
                               num oEarnings = doc['oEarnings'];
-
-                              // print("Trip Status: " + tripStatus);
+                              String vehicleID = doc['vehicleId'];
 
                               return FutureBuilder<QuerySnapshot>(
                                 future: FirebaseFirestore.instance
@@ -843,7 +930,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                         0,
                                         context,
                                         role,
-                                        oEarnings);
+                                        oEarnings,
+                                        vehicleID);
                                   }
 
                                   // ✅ Sum all "amount" values ONLY if tripId matches
@@ -866,7 +954,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       // Show total expenses if exists
                                       context,
                                       role,
-                                      oEarnings);
+                                      oEarnings,
+                                      vehicleID);
                                 },
                               );
 
@@ -877,7 +966,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                       );
                     },
                   ),
-
                 ],
               ),
       ),
@@ -897,7 +985,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       num totalExpenses,
       BuildContext context,
       String role,
-      num oEarnings) {
+      num oEarnings,
+      String vehicleID) {
     return GestureDetector(
       // onTap: () => Get.to(() => TripDetailsScreen(
       //       docId: doc.id,
@@ -983,7 +1072,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
               children: [
                 Text("Trip Status: "),
                 SizedBox(width: 5.w),
-                // Spacer(),
                 if (tripStatus != 'Completed') ...[
                   DropdownButton<String>(
                     value: tripStatus,
@@ -1036,21 +1124,88 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                   "Warning",
                                   "End miles must be greater than start miles.",
                                   kRed);
-
                               return; // Stop the status change
                             }
 
-                            FirebaseFirestore.instance
+                            WriteBatch batch =
+                                FirebaseFirestore.instance.batch();
+
+                            // **Update the current user's trip**
+                            DocumentReference userTripRef = FirebaseFirestore
+                                .instance
                                 .collection("Users")
                                 .doc(currentUId)
                                 .collection('trips')
-                                .doc(doc.id)
-                                .update({
+                                .doc(doc.id);
+
+                            batch.update(userTripRef, {
                               'tripStatus': newStatus,
                               'tripEndMiles': currentMiles,
                               'tripEndDate': Timestamp.now(),
                               'updatedAt': Timestamp.now(),
                             });
+
+                            // **Update the global trips collection**
+                            DocumentReference globalTripRef = FirebaseFirestore
+                                .instance
+                                .collection('trips')
+                                .doc(doc.id);
+
+                            batch.update(globalTripRef, {
+                              'tripStatus': newStatus,
+                              'tripEndMiles': currentMiles,
+                              'tripEndDate': Timestamp.now(),
+                              'updatedAt': Timestamp.now(),
+                            });
+
+                            // **Update the current user's vehicle to remove trip assignment**
+                            DocumentReference currentUserVehicleRef =
+                                FirebaseFirestore.instance
+                                    .collection("Users")
+                                    .doc(currentUId)
+                                    .collection("Vehicles")
+                                    .doc(vehicleID);
+
+                            batch.update(
+                                currentUserVehicleRef, {'tripAssign': false});
+
+                            // **Find and update all assigned drivers' vehicles**
+                            QuerySnapshot driverDocs = await FirebaseFirestore
+                                .instance
+                                .collection("Users")
+                                .where("createdBy", isEqualTo: ownerId)
+                                .where("isDriver", isEqualTo: true)
+                                .where("isTeamMember", isEqualTo: true)
+                                .get();
+
+                            for (var driverDoc in driverDocs.docs) {
+                              String driverId = driverDoc.id;
+
+                              DocumentReference driverVehicleRef =
+                                  FirebaseFirestore.instance
+                                      .collection("Users")
+                                      .doc(driverId)
+                                      .collection("Vehicles")
+                                      .doc(vehicleID);
+
+                              batch.update(
+                                  driverVehicleRef, {'tripAssign': false});
+                            }
+
+                            // **If the current user is a driver, update the owner's vehicle**
+                            if (role == "Driver") {
+                              DocumentReference ownerVehicleRef =
+                                  FirebaseFirestore.instance
+                                      .collection("Users")
+                                      .doc(ownerId)
+                                      .collection("Vehicles")
+                                      .doc(vehicleID);
+
+                              batch.update(
+                                  ownerVehicleRef, {'tripAssign': false});
+                            }
+
+                            await batch.commit();
                           } else {
                             showToastMessage(
                                 "Warning", "Please enter current miles.", kRed);

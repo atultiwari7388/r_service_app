@@ -183,7 +183,10 @@ class AssignTripScreen extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       "Status: ${getStringFromTripStatus(trip['tripStatus'])}",
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.orange),
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange),
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -209,7 +212,6 @@ class AssignTripScreen extends StatelessWidget {
   }
 }
 
-
 class NotAssignedTripScreen extends StatelessWidget {
   const NotAssignedTripScreen({super.key});
 
@@ -221,73 +223,54 @@ class NotAssignedTripScreen extends StatelessWidget {
         .snapshots()
         .asyncMap((usersSnapshot) async {
       List<Map<String, dynamic>> notAssignedVehicles = [];
-      Set<String> assignedVehicleIds = {};
+      Map<String, Map<String, dynamic>> uniqueVehicles = {};
 
-      // Fetch trips for the owner
-      QuerySnapshot ownerTrips = await FirebaseFirestore.instance
-          .collection("Users")
-          .doc(ownerId)
-          .collection("trips")
-          .get();
-
-      for (var trip in ownerTrips.docs) {
-        assignedVehicleIds.add(trip["vehicleId"]);
-      }
-
-      // Fetch vehicles for the owner
+      // Fetch vehicles for the owner where tripAssign == false
       QuerySnapshot ownerVehicles = await FirebaseFirestore.instance
           .collection("Users")
           .doc(ownerId)
           .collection("Vehicles")
+          .where("tripAssign", isEqualTo: false)
           .get();
 
       for (var vehicle in ownerVehicles.docs) {
-        if (!assignedVehicleIds.contains(vehicle["vehicleId"])) {
-          notAssignedVehicles.add({
-            "companyName": vehicle["companyName"],
-            "vehicleNumber": vehicle["vehicleNumber"],
-            "driverName": "You",
-          });
-        }
+        String vehicleId = vehicle.id;
+        uniqueVehicles[vehicleId] = {
+          "companyName": vehicle["companyName"],
+          "vehicleNumber": vehicle["vehicleNumber"],
+          "driverName": "You",
+        };
       }
 
-      // Fetch trips for each team member
+      // Fetch vehicles for each team member where tripAssign == false
       for (var userDoc in usersSnapshot.docs) {
         var teamMemberId = userDoc.id;
-        QuerySnapshot teamTrips = await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(teamMemberId)
-            .collection("trips")
-            .get();
+        String driverName = userDoc["userName"];
 
-        bool hasTrips = teamTrips.docs.isNotEmpty;
-
-        // Fetch vehicles for this team member
         QuerySnapshot teamVehicles = await FirebaseFirestore.instance
             .collection("Users")
             .doc(teamMemberId)
             .collection("Vehicles")
+            .where("tripAssign", isEqualTo: false)
             .get();
-
-        // Fetch Driver Name
-        var driverDoc = await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(teamMemberId)
-            .get();
-        String driverName = driverDoc['userName'];
 
         for (var vehicle in teamVehicles.docs) {
-          if (!assignedVehicleIds.contains(vehicle["vehicleId"]) || !hasTrips) {
-            notAssignedVehicles.add({
+          String vehicleId = vehicle.id;
+
+          if (uniqueVehicles.containsKey(vehicleId)) {
+            // If vehicle exists, update driver name
+            uniqueVehicles[vehicleId]!["driverName"] = "You/$driverName";
+          } else {
+            uniqueVehicles[vehicleId] = {
               "companyName": vehicle["companyName"],
               "vehicleNumber": vehicle["vehicleNumber"],
               "driverName": driverName,
-            });
+            };
           }
         }
       }
 
-      return notAssignedVehicles;
+      return uniqueVehicles.values.toList();
     });
   }
 
