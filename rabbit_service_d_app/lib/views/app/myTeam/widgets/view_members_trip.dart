@@ -125,12 +125,15 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                   DateTime tripStartDate = doc['tripStartDate'].toDate();
                   DateTime tripEndDate = doc['tripEndDate'].toDate();
 
+                  // ✅ Show trips **only if** they overlap the selected range correctly
                   return (fromDate == null ||
                           tripEndDate.isAfter(
                               fromDate!.subtract(const Duration(days: 1)))) &&
                       (toDate == null ||
-                          tripStartDate
-                              .isBefore(toDate!.add(const Duration(days: 1))));
+                          tripStartDate.isBefore(
+                                  toDate!.add(const Duration(days: 1))) &&
+                              tripEndDate.isAfter(
+                                  toDate!.subtract(const Duration(days: 1))));
                 }).toList();
 
                 if (filteredTrips.isEmpty) {

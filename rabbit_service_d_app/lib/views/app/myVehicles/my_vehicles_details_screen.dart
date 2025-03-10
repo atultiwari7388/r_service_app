@@ -15,8 +15,11 @@ import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class MyVehiclesDetailsScreen extends StatefulWidget {
-  const MyVehiclesDetailsScreen({super.key, required this.vehicleData});
+  const MyVehiclesDetailsScreen(
+      {super.key, required this.vehicleData, required this.role});
+
   final Map<String, dynamic> vehicleData;
+  final String role;
 
   @override
   State<MyVehiclesDetailsScreen> createState() =>
@@ -135,8 +138,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          :
-      StreamBuilder<DocumentSnapshot>(
+          : StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('Users')
                   .doc(currentUId)
@@ -213,211 +215,243 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         ),
                         const SizedBox(height: 20),
 
-
-                        _buildSection(
-                          title: 'Uploaded Documents',
-                          content: uploadedDocuments.isNotEmpty
-                              ? uploadedDocuments.map<Widget>((doc) {
-                            return Card(
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (doc['imageUrl'] != null)
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: Image.network(
-                                          doc['imageUrl'],
-                                          height: 150,
-                                          width: double.infinity,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    const SizedBox(height: 10),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          doc['text'] ?? 'No description provided',
-                                        ),
-                                        Row(
-                                          children: [
-                                            IconButton(
-                                              onPressed: () {
-                                                _showDeleteConfirmationDialog(
-                                                    context, vehicleId, doc);
-                                              },
-                                              icon: const Icon(Icons.delete, color: Colors.red),
+                        widget.role == "Owner"
+                            ? _buildSection(
+                                title: 'Uploaded Documents',
+                                content: uploadedDocuments.isNotEmpty
+                                    ? uploadedDocuments.map<Widget>((doc) {
+                                        return Card(
+                                          elevation: 2,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                if (doc['imageUrl'] != null)
+                                                  ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
+                                                    child: Image.network(
+                                                      doc['imageUrl'],
+                                                      height: 150,
+                                                      width: double.infinity,
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  ),
+                                                const SizedBox(height: 10),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      doc['text'] ??
+                                                          'No description provided',
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        IconButton(
+                                                          onPressed: () {
+                                                            _showDeleteConfirmationDialog(
+                                                                context,
+                                                                vehicleId,
+                                                                doc);
+                                                          },
+                                                          icon: const Icon(
+                                                              Icons.delete,
+                                                              color:
+                                                                  Colors.red),
+                                                        ),
+                                                        IconButton(
+                                                          onPressed: () async {
+                                                            await _generatePdfForDocument(
+                                                                doc['imageUrl'],
+                                                                doc['text']);
+                                                          },
+                                                          icon: const Icon(
+                                                              Icons.download),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
                                             ),
-                                            IconButton(
-                                              onPressed: () async {
-                                                await _generatePdfForDocument(
-                                                    doc['imageUrl'], doc['text']);
-                                              },
-                                              icon: const Icon(Icons.download),
+                                          ),
+                                        );
+                                      }).toList()
+                                    : [
+                                        const Text(
+                                          'No documents uploaded yet.',
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ],
+                              )
+                            : SizedBox(),
+
+                        widget.role == "Owner"
+                            ? Column(
+                                children: [
+                                  const SizedBox(height: 20),
+                                  ElevatedButton.icon(
+                                    onPressed: _pickImage,
+                                    icon: const Icon(Icons.add_photo_alternate,
+                                        color: Colors.white),
+                                    label: const Text(
+                                      'Upload Document',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kPrimary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  ...uploadedFiles.map((file) {
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      elevation: 4,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          children: [
+                                            if (file['image'] != null)
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                child: Image.file(
+                                                  file['image'],
+                                                  height: 200,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            const SizedBox(height: 12),
+                                            TextField(
+                                              controller:
+                                                  file['textController'],
+                                              decoration: InputDecoration(
+                                                labelText: 'Enter Description',
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                filled: true,
+                                                fillColor: Colors.grey[100],
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                  const SizedBox(height: 20),
+                                  uploadedFiles.isEmpty
+                                      ? const SizedBox()
+                                      : Center(
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: kPrimary,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 40,
+                                                      vertical: 15),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                _uploadToFirestore(vehicleId),
+                                            child: const Text(
+                                              'Update',
+                                              style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                  const SizedBox(height: 20),
+                                ],
+                              )
+                            : SizedBox(),
+//========================= Services ================================================
+
+                        widget.role == "Owner"
+                            ? Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.withOpacity(0.2),
+                                      spreadRadius: 2,
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 3),
                                     ),
                                   ],
                                 ),
-                              ),
-                            );
-                          }).toList()
-                              : [
-                            const Text(
-                              'No documents uploaded yet.',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-
-
-
-                        const SizedBox(height: 20),
-                        ElevatedButton.icon(
-                          onPressed: _pickImage,
-                          icon: const Icon(Icons.add_photo_alternate,
-                              color: Colors.white),
-                          label: const Text(
-                            'Upload Document',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ...uploadedFiles.map((file) {
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            elevation: 4,
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                children: [
-                                  if (file['image'] != null)
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.file(
-                                        file['image'],
-                                        height: 200,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Services',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: kPrimary,
                                       ),
                                     ),
-                                  const SizedBox(height: 12),
-                                  TextField(
-                                    controller: file['textController'],
-                                    decoration: InputDecoration(
-                                      labelText: 'Enter Description',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      filled: true,
-                                      fillColor: Colors.grey[100],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-
-                        const SizedBox(height: 20),
-                        uploadedFiles.isEmpty
-                            ? const SizedBox()
-                            : Center(
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: kPrimary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 40, vertical: 15),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () =>
-                                      _uploadToFirestore(vehicleId),
-                                  child: const Text(
-                                    'Update',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold),
-                                  ),
+                                    const SizedBox(height: 20),
+                                    _buildServicesTable(
+                                        context, services, vehicleId),
+                                  ],
                                 ),
-                              ),
-                        const SizedBox(height: 20),
-//========================= Services ================================================
-
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 2,
-                                blurRadius: 5,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Services',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: kPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              _buildServicesTable(context, services, vehicleId),
-                            ],
-                          ),
-                        ),
+                              )
+                            : SizedBox(),
                         const SizedBox(height: 20),
 
                         // Current Miles History
-                        _buildSection(
-                          title: 'Current Miles History',
-                          content: currentMilesArray.map<Widget>((milesEntry) {
-                            final rawDate = milesEntry['date'] ?? '';
-                            final formattedDate = DateFormat('yyyy-MM-dd')
-                                .format(DateTime.parse(rawDate));
-                            return ListTile(
-                              leading:
-                                  const Icon(Icons.timeline, color: kPrimary),
-                              title: Text('$formattedDate',
-                                  style:
-                                      appStyle(13, kDark, FontWeight.normal)),
-                              trailing: Text('Miles: ${milesEntry['miles']}',
-                                  style:
-                                      appStyle(13, kDark, FontWeight.normal)),
-                            );
-                          }).toList(),
-                        ),
+                        vehicleData['vehicleType'] == "Truck"
+                            ? _buildSection(
+                                title: 'Current Miles History',
+                                content:
+                                    currentMilesArray.map<Widget>((milesEntry) {
+                                  final rawDate = milesEntry['date'] ?? '';
+                                  final formattedDate = DateFormat('yyyy-MM-dd')
+                                      .format(DateTime.parse(rawDate));
+                                  return ListTile(
+                                    leading: const Icon(Icons.timeline,
+                                        color: kPrimary),
+                                    title: Text('$formattedDate',
+                                        style: appStyle(
+                                            13, kDark, FontWeight.normal)),
+                                    trailing: Text(
+                                        'Miles: ${milesEntry['miles']}',
+                                        style: appStyle(
+                                            13, kDark, FontWeight.normal)),
+                                  );
+                                }).toList(),
+                              )
+                            : SizedBox(),
 
                         const SizedBox(height: 20),
                       ],
@@ -426,10 +460,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 );
               },
             ),
-
     );
   }
-
 
   void _showDeleteConfirmationDialog(
       BuildContext context, String vehicleId, Map<String, dynamic> doc) {
@@ -459,8 +491,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-
-  Future<void> _deleteDocument(String vehicleId, Map<String, dynamic> doc) async {
+  Future<void> _deleteDocument(
+      String vehicleId, Map<String, dynamic> doc) async {
     try {
       final userDocRef = FirebaseFirestore.instance
           .collection('Users')
@@ -472,10 +504,12 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
       if (snapshot.exists) {
         final vehicleData = snapshot.data() as Map<String, dynamic>;
-        List<dynamic> uploadedDocuments = vehicleData['uploadedDocuments'] ?? [];
+        List<dynamic> uploadedDocuments =
+            vehicleData['uploadedDocuments'] ?? [];
 
         // Remove the selected document
-        uploadedDocuments.removeWhere((element) => element['imageUrl'] == doc['imageUrl']);
+        uploadedDocuments
+            .removeWhere((element) => element['imageUrl'] == doc['imageUrl']);
 
         // Update Firestore with the new list
         await userDocRef.update({'uploadedDocuments': uploadedDocuments});
@@ -487,7 +521,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       print("Error deleting document: $e");
     }
   }
-
 
   Widget _buildSection({required String title, required List<Widget> content}) {
     return Container(
@@ -551,7 +584,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  Widget _buildServicesTable(BuildContext context, List services, String vehicleId) {
+  Widget _buildServicesTable(
+      BuildContext context, List services, String vehicleId) {
     final filteredServices = services
         .where((service) => service['nextNotificationValue'] != 0)
         .toList();
@@ -613,15 +647,14 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 children: [
                   _buildTableCell(index.toString()), // Serial Number
                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
-                  _buildTableCell(
-                      service['nextNotificationValue'].toString()),
+                  _buildTableCell(service['nextNotificationValue'].toString()),
                   TableCell(
                     child: Container(
                       padding: const EdgeInsets.all(2.0),
                       child: IconButton(
                         icon: const Icon(Icons.edit, color: kPrimary, size: 20),
                         onPressed: () {
-                          _showEditDialog(context, service,vehicleId);
+                          _showEditDialog(context, service, vehicleId);
                         },
                       ),
                     ),
@@ -660,7 +693,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  void _showEditDialog(BuildContext context, Map<String, dynamic> service, String vehicleId) {
+  void _showEditDialog(
+      BuildContext context, Map<String, dynamic> service, String vehicleId) {
     final TextEditingController controller = TextEditingController(
       text: service['nextNotificationValue'].toString(),
     );
@@ -706,14 +740,14 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () async{
-
+              onPressed: () async {
                 final newValue = int.tryParse(controller.text);
                 final currentValue = service['nextNotificationValue'];
 
                 if (newValue == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid number')),
+                    const SnackBar(
+                        content: Text('Please enter a valid number')),
                   );
                   return;
                 }
@@ -721,7 +755,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 if (newValue < currentValue) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('New value must be greater than $currentValue'),
+                      content:
+                          Text('New value must be greater than $currentValue'),
                     ),
                   );
                   return;
@@ -734,19 +769,22 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                       .collection('Vehicles')
                       .doc(vehicleId);
 
-                  await FirebaseFirestore.instance.runTransaction((transaction) async {
+                  await FirebaseFirestore.instance
+                      .runTransaction((transaction) async {
                     final docSnapshot = await transaction.get(vehicleDocRef);
-                    if (!docSnapshot.exists) throw Exception('Document not found');
+                    if (!docSnapshot.exists)
+                      throw Exception('Document not found');
 
                     List<dynamic> services = List.from(docSnapshot['services']);
                     int index = services.indexWhere(
-                          (s) => s['serviceName'] == service['serviceName'],
+                      (s) => s['serviceName'] == service['serviceName'],
                     );
 
                     if (index == -1) throw Exception('Service not found');
 
                     // Update the specific service
-                    Map<String, dynamic> updatedService = Map.from(services[index]);
+                    Map<String, dynamic> updatedService =
+                        Map.from(services[index]);
                     updatedService['nextNotificationValue'] = newValue;
                     services[index] = updatedService;
 
@@ -988,6 +1026,4 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       print(stackTrace);
     }
   }
-
-
 }

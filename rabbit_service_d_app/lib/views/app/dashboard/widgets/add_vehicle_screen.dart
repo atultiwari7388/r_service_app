@@ -122,8 +122,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             foundMatch = true;
             int notificationValue =
                 (int.tryParse(defaultValue['value'].toString()) ?? 0) * 1000;
-            // int nextMiles =
-            //     notificationValue == 0 ? 0 : currentMiles + notificationValue;
+
             int nextMiles = notificationValue;
             int defaultNotificationvalues = notificationValue;
 
@@ -302,8 +301,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           calculateNextNotificationMiles();
 
       Map<String, dynamic> vehicleData = {
-        'active':true,
-        'tripAssign':false,
+        'active': true,
+        'tripAssign': false,
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
         'engineName': _selectedEngineName?.toUpperCase(),
@@ -318,6 +317,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'isSet': true,
         "uploadedDocuments": [],
         'createdAt': FieldValue.serverTimestamp(),
+        'hoursReadingArray': [
+          {
+            "hours": _hoursReadingController.text.isNotEmpty
+                ? int.parse(_hoursReadingController.text)
+                : 0,
+            "date": DateTime.now().toIso8601String()
+          }
+        ],
         'currentMilesArray': [
           {
             "miles": _currentMilesController.text.isNotEmpty
@@ -340,6 +347,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       };
 
       if (_selectedVehicleType == 'Truck') {
+        vehicleData['hoursReadingArray'] = [];
         vehicleData['currentMiles'] = _currentMilesController.text.toString();
         vehicleData['prevMilesValue'] = _currentMilesController.text.toString();
         vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();

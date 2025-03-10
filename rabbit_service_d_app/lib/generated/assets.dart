@@ -12,6 +12,7 @@ class Assets {
   static const String assetsBatteryTruck = 'assets/battery_truck.png';
   static const String assetsBookingsBw = 'assets/bookings_bw.png';
   static const String assetsBrake = 'assets/brake.png';
+  static const String assetsCompanyProfile = 'assets/companyProfile.png';
   static const String assetsElectrical = 'assets/electrical.png';
   static const String assetsEngine = 'assets/engine.png';
   static const String assetsEngine2 = 'assets/engine_2.png';
@@ -25,6 +26,7 @@ class Assets {
   static const String assetsIndia = 'assets/india.png';
   static const String assetsItemList = 'assets/item-list.png';
   static const String assetsLogout = 'assets/logout.png';
+  static const String assetsManageTrip = 'assets/manage_trip.png';
   static const String assetsMoney = 'assets/money.png';
   static const String assetsMyvehicles = 'assets/myvehicles.png';
   static const String assetsNewAppIcon = 'assets/new_app_icon.png';
@@ -47,6 +49,8 @@ class Assets {
   static const String assetsProfileBw = 'assets/profile_bw.png';
   static const String assetsRatingBw = 'assets/rating_bw.png';
   static const String assetsRepairAnimation1 = 'assets/repair_animation_1.json';
+  static const String assetsSampleTrailerVehicleDataRabbit = 'assets/sample_trailer_vehicle_data_rabbit.xlsx';
+  static const String assetsSampleVehicleDataRabbitVehicleTypeTruck = 'assets/sample_vehicle_data_rabbit_vehicle_type_truck.xlsx';
   static const String assetsSettings = 'assets/settings.png';
   static const String assetsSlider1 = 'assets/slider_1.png';
   static const String assetsSlider2 = 'assets/slider_2.png';

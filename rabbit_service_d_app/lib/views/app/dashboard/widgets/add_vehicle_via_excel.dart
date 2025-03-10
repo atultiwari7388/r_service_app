@@ -1,21 +1,20 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:csv/csv.dart';
-import 'dart:io';
-import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/download_excel_file.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AddVehicleViaExcelScreen extends StatefulWidget {
   const AddVehicleViaExcelScreen({super.key});
@@ -26,28 +25,20 @@ class AddVehicleViaExcelScreen extends StatefulWidget {
 }
 
 class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
-  final _vehicleNumberController = TextEditingController();
-  final _vinController = TextEditingController();
-  final _licensePlateController = TextEditingController();
-  final _currentMilesController = TextEditingController();
-  final _hoursReadingController = TextEditingController();
-  final _dotController = TextEditingController();
-  final _iccmsController = TextEditingController();
+  late final TextEditingController _currentMilesController;
 
-  DateTime? _selectedYear;
-  DateTime? _oilChangeDate;
-  String? _selectedCompany;
   String? _selectedVehicleType;
   String? _selectedEngineName;
-  List<String> _companies = [];
-  List<String> _vehicleTypes = [];
-  List<String> _engineNameList = [];
   List<Map<String, dynamic>> servicesData = [];
   bool isLoading = true;
-  bool isSaving = false;
-  bool _isProcessing = false; //
+  bool _isBtnEnable = false;
   StreamSubscription<DocumentSnapshot>? _engineNameSubscription;
-  Map<String, dynamic>? _uploadedData;
+
+  //for excel
+  List<Map<String, dynamic>> excelData = [];
+  bool isParsing = false;
+  bool isSaving = false;
+  List<String> uploadErrors = [];
 
   final CollectionReference metadataCollection =
       FirebaseFirestore.instance.collection('metadata');
@@ -55,13 +46,14 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
   // Fetch services data
   Future<void> _fetchServicesData() async {
     try {
-      DocumentSnapshot doc = await metadataCollection.doc('servicesData').get();
+      DocumentSnapshot doc = await metadataCollection.doc('serviceData').get();
       if (doc.exists) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         List<dynamic> servicesList = data['data'] ?? [];
         setState(() {
           servicesData = servicesList.cast<Map<String, dynamic>>();
           isLoading = false;
+          log("Services Data $servicesData");
         });
       } else {
         print("No services data found.");
@@ -77,9 +69,9 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
     }
   }
 
-  List<Map<String, dynamic>> calculateNextNotificationMiles() {
+  List<Map<String, dynamic>> calculateNextNotificationMiles(int currentMiles) {
     List<Map<String, dynamic>> nextNotificationMiles = [];
-    int currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
+     currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
 
     log('Current Miles: $currentMiles');
     log('Selected Engine: $_selectedEngineName');
@@ -104,6 +96,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
             foundMatch = true;
             int notificationValue =
                 (int.tryParse(defaultValue['value'].toString()) ?? 0) * 1000;
+
             int nextMiles = notificationValue;
             int defaultNotificationvalues = notificationValue;
 
@@ -133,173 +126,101 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
     return nextNotificationMiles;
   }
 
-  Future<void> _fetchVehicleTypes() async {
-    try {
-      DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
-          await FirebaseFirestore.instance
-              .collection('metadata')
-              .doc('vehicleType')
-              .get();
-
-      if (metadataSnapshot.exists) {
-        List<dynamic> vehicleTypeList = metadataSnapshot.data()?['type'] ?? [];
-        setState(() {
-          _vehicleTypes = List<String>.from(vehicleTypeList);
-        });
-      }
-    } catch (e) {
-      print('Error fetching vehicle types: $e');
-    }
-  }
-
-  Future<void> _fetchCompanyNames() async {
-    try {
-      if (_selectedVehicleType == null) return;
-
-      DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
-          await FirebaseFirestore.instance
-              .collection('metadata')
-              .doc('companyNameL')
-              .get();
-
-      if (metadataSnapshot.exists) {
-        List<dynamic> companyList = metadataSnapshot.data()?['data'] ?? [];
-
-        // Filter companies based on vehicle type
-        List<String> filteredCompanies = companyList
-            .where((company) => company['type'] == _selectedVehicleType)
-            .map((company) => company['cName'].toString().toUpperCase())
-            .toList();
-
-        setState(() {
-          _companies = filteredCompanies;
-          // Reset company selection when vehicle type changes
-          _selectedCompany = null;
-          _selectedEngineName = null;
-        });
-      }
-    } catch (e) {
-      print('Error fetching company names: $e');
-    }
-  }
-
-  void _setupEngineNameListener() {
-    print('Setting up engine name listener');
-    _engineNameSubscription?.cancel();
-
-    if (_selectedVehicleType == null || _selectedCompany == null) {
-      print('Vehicle type or company not selected');
-      setState(() {
-        _engineNameList = [];
-        _selectedEngineName = null;
-      });
-      return;
-    }
-
-    print('Subscribing to engine name list updates');
-    _engineNameSubscription = FirebaseFirestore.instance
-        .collection('metadata')
-        .doc('engineNameList')
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.exists) {
-        print('Received engine name list snapshot');
-        List<dynamic> engineNameList = snapshot.data()?['data'] ?? [];
-        print('Raw engine name list: $engineNameList');
-
-        String selectedCompanyUpper = _selectedCompany!.toUpperCase().trim();
-        String selectedType = _selectedVehicleType!.trim();
-        print(
-            'Filtering for company: $selectedCompanyUpper, type: $selectedType');
-
-        List<String> filteredList = engineNameList
-            .where((engine) {
-              String engineCompany =
-                  (engine['cName'] as String).toUpperCase().trim();
-              String engineType = (engine['type'] as String).trim();
-
-              return engineCompany == selectedCompanyUpper &&
-                  engineType == selectedType;
-            })
-            .map((engine) => engine['eName'].toString().toUpperCase())
-            .toList();
-
-        print('Filtered engine list: $filteredList');
-
-        setState(() {
-          _engineNameList = filteredList;
-          if (!_engineNameList.contains(_selectedEngineName)) {
-            print(
-                'Previously selected engine name no longer valid, resetting selection');
-            _selectedEngineName = null;
-          }
-        });
-      } else {
-        print('Engine name list snapshot does not exist');
-      }
-    });
-  }
-
-  Future<void> _saveVehicleData() async {
+  Future<void> saveVehicleFromData(Map<String, dynamic> data) async {
     setState(() {
       isSaving = true;
     });
-
     try {
-      CollectionReference vehiclesRef = FirebaseFirestore.instance
+      // 1. Extract and validate basic fields
+      final vehicleType = data['vehicleType']?.toString().trim();
+      final company = data['companyName']?.toString().trim().toUpperCase();
+      final engine = data['engineName']?.toString().trim().toUpperCase();
+      final vehicleNumber = data['vehicleNumber']?.toString().trim() ?? '';
+
+      if (vehicleType == null || vehicleType.isEmpty) {
+        throw 'Missing vehicle type';
+      }
+      if (company == null || company.isEmpty) {
+        throw 'Missing company name';
+      }
+      if (engine == null || engine.isEmpty) {
+        throw 'Missing engine name';
+      }
+      if (vehicleNumber.isEmpty) {
+        throw 'Missing vehicle number';
+      }
+
+      // 2. Vehicle type specific validation
+      if (vehicleType == 'Truck') {
+        if (data['currentMiles']?.toString().isEmpty ?? true) {
+          throw 'Truck requires current miles';
+        }
+      } else if (vehicleType == 'Trailer') {
+        if (data['hoursReading']?.toString().isEmpty ?? true) {
+          throw 'Trailer requires hours reading';
+        }
+        if (data['oilChangeDate']?.toString().isEmpty ?? true) {
+          throw 'Trailer requires oil change date';
+        }
+      }
+
+      // 3. Check for existing vehicle
+      final duplicateQuery = await FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
-          .collection('Vehicles');
-
-      // Check if the vehicle already exists based on vehicle number, vehicleType, companyName, and engineName
-      QuerySnapshot existingVehicles = await vehiclesRef
-          .where('vehicleNumber',
-              isEqualTo: _vehicleNumberController.text.toString())
-          .where('vehicleType', isEqualTo: _selectedVehicleType)
-          .where('companyName', isEqualTo: _selectedCompany?.toUpperCase())
-          .where('engineName', isEqualTo: _selectedEngineName?.toUpperCase())
+          .collection('Vehicles')
+          .where('vehicleNumber', isEqualTo: vehicleNumber)
+          .where('vehicleType', isEqualTo: vehicleType)
+          .where('companyName', isEqualTo: company)
+          .where('engineName', isEqualTo: engine)
           .get();
 
-      if (existingVehicles.docs.isNotEmpty) {
-        setState(() {
-          isSaving = false;
-        });
-        showToastMessage('Already', 'Vehicle already added', kRed);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vehicle already added')),
-        );
-        return;
+      if (duplicateQuery.docs.isNotEmpty) {
+        throw 'Vehicle already exists';
       }
 
-      QuerySnapshot vehiclesSnapshot = await vehiclesRef.get();
-      for (QueryDocumentSnapshot vehicleDoc in vehiclesSnapshot.docs) {
-        await vehicleDoc.reference.update({
-          'isSet': false,
-        });
+      // 4. Parse dates
+      DateTime? year;
+      DateTime? oilChangeDate;
+      final dateFormat = DateFormat('yyyy-MM-dd');
+
+      try {
+        if (data['year'] != null) {
+          year = dateFormat.parse(data['year'].toString());
+        }
+        if (vehicleType == 'Trailer' && data['oilChangeDate'] != null) {
+          oilChangeDate = dateFormat.parse(data['oilChangeDate'].toString());
+        }
+      } catch (e) {
+        throw 'Invalid date format (use YYYY-MM-DD)';
       }
 
-      List<Map<String, dynamic>> nextNotificationMiles =
-          calculateNextNotificationMiles();
+      // 5. Set class variables for service calculation
+      _selectedVehicleType = vehicleType;
+      _selectedEngineName = engine;
+      // _currentMilesController.text = data['currentMiles']?.toString() ?? '';
 
-      Map<String, dynamic> vehicleData = {
-        'vehicleType': _selectedVehicleType,
-        'companyName': _selectedCompany?.toUpperCase(),
-        'engineName': _selectedEngineName?.toUpperCase(),
-        'vehicleNumber': _vehicleNumberController.text.toString(),
-        'vin': _vinController.text.toString(),
-        'dot': _dotController.text.toString(),
-        'iccms': _iccmsController.text.toString(),
-        'licensePlate': _licensePlateController.text.toString(),
-        'year': _selectedYear != null
-            ? DateFormat('yyyy-MM-dd').format(_selectedYear!)
-            : null,
+      // 6. Calculate notification milestones
+      final nextNotificationMiles = calculateNextNotificationMiles(int.parse(data['currentMiles']));
+
+      // 7. Prepare base vehicle data
+      final vehicleData = {
+        'vehicleType': vehicleType,
+        'companyName': company,
+        'engineName': engine,
+        'vehicleNumber': vehicleNumber,
+        'vin': data['vin']?.toString().trim() ?? '',
+        'dot': data['dot']?.toString().trim() ?? '',
+        'iccms': data['iccms']?.toString().trim() ?? '',
+        'licensePlate': data['licensePlate']?.toString().trim() ?? '',
+        'year': year != null ? dateFormat.format(year) : null,
         'isSet': true,
         "uploadedDocuments": [],
         'createdAt': FieldValue.serverTimestamp(),
         'currentMilesArray': [
           {
-            "miles": _currentMilesController.text.isNotEmpty
-                ? int.parse(_currentMilesController.text)
+            "miles": vehicleType == 'Truck'
+                ? int.parse(data['currentMiles'].toString())
                 : 0,
             "date": DateTime.now().toIso8601String()
           }
@@ -317,63 +238,57 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
             .toList(),
       };
 
-      if (_selectedVehicleType == 'Truck') {
-        vehicleData['currentMiles'] = _currentMilesController.text.toString();
-        vehicleData['prevMilesValue'] = _currentMilesController.text.toString();
-        vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();
-        vehicleData['oilChangeDate'] = '';
-        vehicleData['hoursReading'] = '';
-        vehicleData['prevHoursReadingValue'] = '';
+      // 8. Add vehicle type specific data
+      if (vehicleType == 'Truck') {
+        vehicleData.addAll({
+          'currentMiles': data['currentMiles'].toString(),
+          'prevMilesValue': data['currentMiles'].toString(),
+          'firstTimeMiles': data['currentMiles'].toString(),
+          'oilChangeDate': '',
+          'hoursReading': '',
+          'prevHoursReadingValue': '',
+        });
+      } else {
+        vehicleData.addAll({
+          'currentMiles': '',
+          'prevMilesValue': '',
+          'firstTimeMiles': '',
+          'oilChangeDate':
+              oilChangeDate != null ? dateFormat.format(oilChangeDate) : '',
+          'hoursReading': data['hoursReading'].toString(),
+          'prevHoursReadingValue': data['hoursReading'].toString(),
+        });
       }
 
-      if (_selectedVehicleType == 'Trailer') {
-        vehicleData['currentMiles'] = '';
-        vehicleData['prevMilesValue'] = '';
-        vehicleData['firstTimeMiles'] = '';
-        vehicleData['oilChangeDate'] = _oilChangeDate != null
-            ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
-            : null;
-        vehicleData['hoursReading'] = _hoursReadingController.text.toString();
-        vehicleData['prevHoursReadingValue'] =
-            _hoursReadingController.text.toString();
-      }
+      // 9. Save to Firestore
+      final docRef = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('Vehicles')
+          .add(vehicleData);
 
-      DocumentReference vehicleDocRef = await vehiclesRef.add(vehicleData);
+      // 10. Update with vehicle ID
+      await docRef.update({'vehicleId': docRef.id});
 
-      // Update the vehicle data with the vehicleId
-      await vehicleDocRef.update({'vehicleId': vehicleDocRef.id});
-
-      log('Vehicle added successfully with id: ${vehicleDocRef.id}');
-
-      // After the vehicle is added, call the cloud function to check and notify the user
-      final HttpsCallable callable = FirebaseFunctions.instance
+      // 11. Trigger cloud function
+      final callable = FirebaseFunctions.instance
           .httpsCallable('checkAndNotifyUserForVehicleService');
 
-      // Call the function with necessary data
       await callable.call({
-        'userId': currentUId, // Pass userId
-        'vehicleId': vehicleDocRef.id, // Pass the vehicleId
+        'userId': currentUId,
+        'vehicleId': docRef.id,
       });
 
-      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: $currentUId");
-
+      showToastMessage(
+          "Success", "Vehicle Data Uploaded Successfully", kSecondary);
       setState(() {
         isSaving = false;
+        excelData = [];
+        _isBtnEnable=false;
+        _currentMilesController.clear();
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vehicle added successfully')),
-      );
-      Navigator.pop(context);
     } catch (e) {
-      setState(() {
-        isSaving = false;
-      });
-
-      print('Error adding vehicle: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding vehicle: $e')),
-      );
+      throw 'Error saving vehicle data: ${e.toString()}';
     } finally {
       setState(() {
         isSaving = false;
@@ -384,104 +299,15 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchVehicleTypes();
     _fetchServicesData();
+    _currentMilesController = TextEditingController();
   }
 
   @override
   void dispose() {
     _engineNameSubscription?.cancel();
+    _currentMilesController.dispose();
     super.dispose();
-  }
-
-  Future<void> createSampleDocument(String vehicleType) async {
-    try {
-      Directory tempDir = await getTemporaryDirectory();
-      String filePath =
-          '${tempDir.path}/sample_${vehicleType.toLowerCase()}.xlsx';
-      List<List<String>> data = [];
-
-      // Common headers for both vehicle types
-      List<String> baseHeaders = [
-        'Vehicle Type',
-        'Company Name',
-        'Engine Name',
-        'Vehicle Number',
-        'VIN',
-        'DOT',
-        'ICCMS',
-        'License Plate',
-        'Year'
-      ];
-
-      if (vehicleType == 'Truck') {
-        data = [
-          [...baseHeaders, 'Current Miles'],
-          [
-            'Truck',
-            'Sample Company',
-            'Sample Engine',
-            'ABC-1234',
-            '1234567890',
-            'DOT-123',
-            'ICCMS-456',
-            'XYZ-5678',
-            '2023',
-            '1000' // Current Miles
-          ],
-        ];
-      } else {
-        data = [
-          [...baseHeaders, 'Oil Change Date', 'Hours Reading'],
-          [
-            'Trailer',
-            'Sample Trailer Co',
-            'Trailer Engine',
-            'DEF-5678',
-            '0987654321',
-            'DOT-789',
-            'ICCMS-012',
-            'UVW-9012',
-            '2022',
-            '2023-12-01', // Oil Change Date
-            '500' // Hours Reading
-          ],
-        ];
-      }
-
-      await _createExcelFile(filePath, data);
-      OpenFile.open(filePath);
-    } catch (e) {
-      print("Error creating sample: $e");
-      showToastMessage(
-          'Error', 'Failed to create sample: ${e.toString()}', kRed);
-    }
-  }
-
-  Future<void> _createExcelFile(
-      String filePath, List<List<String>> data) async {
-    try {
-      var excel = Excel.createExcel();
-      var sheet = excel.sheets[excel.sheets.keys.first]!;
-
-      for (int rowIdx = 0; rowIdx < data.length; rowIdx++) {
-        final row = data[rowIdx];
-        for (int colIdx = 0; colIdx < row.length; colIdx++) {
-          sheet
-              .cell(CellIndex.indexByColumnRow(
-                  columnIndex: colIdx, rowIndex: rowIdx))
-              .value = row[colIdx];
-        }
-      }
-
-      final fileBytes = excel.save();
-      if (fileBytes != null) {
-        await File(filePath).writeAsBytes(fileBytes);
-        log('Sample file created at: $filePath');
-      }
-    } catch (e) {
-      throw Exception('Excel creation failed: ${e.toString()}');
-    }
   }
 
   void _showInstructions(BuildContext context) {
@@ -497,14 +323,16 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 title: Text('Truck'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  createSampleDocument('Truck');
+                  downloadExcelFile(
+                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_vehicle_data_rabbit_vehicle_type_truck.xlsx?alt=media&token=c1851f45-3865-4052-89f8-0b5d0ab6e02e");
                 },
               ),
               ListTile(
                 title: Text('Trailer'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  createSampleDocument('Trailer');
+                  downloadExcelFile(
+                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=9eeed6bc-2d40-4a3d-bcd0-8df5bebaecfa");
                 },
               ),
             ],
@@ -512,180 +340,6 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         );
       },
     );
-  }
-
-  // Replace the existing _uploadExcelFile with this enhanced version
-  Future<void> _uploadExcelFile() async {
-    setState(() => _isProcessing = true);
-
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx'], // 🔥 CSV support removed
-        allowCompression: true,
-      );
-
-      if (result == null) {
-        showToastMessage('Cancelled', 'File selection cancelled', kSecondary);
-        return;
-      }
-
-      final file = result.files.first;
-      if (file.extension != 'xlsx') {
-        showToastMessage('Invalid File', 'Only XLSX files supported', kRed);
-        return;
-      }
-
-      final bytes = file.bytes;
-      if (bytes == null || bytes.isEmpty) {
-        showToastMessage('Error', 'Empty file content', kRed);
-        return;
-      }
-
-      final excel = Excel.decodeBytes(bytes);
-      if (excel.tables.isEmpty) {
-        showToastMessage('Error', 'No sheets found in Excel file', kRed);
-        return;
-      }
-
-      final sheet = excel.tables.values.first;
-      final processedData =
-          _processExcelSheet(sheet); // 🔥 New processing method
-
-      setState(() {
-        _uploadedData = processedData;
-        _updateControllersFromData(
-            processedData); // 🔥 Centralized data handling
-      });
-
-      showToastMessage('Success', 'File processed successfully', kSecondary);
-    } catch (e) {
-      log('Excel Processing Error: $e');
-      showToastMessage(
-          'Error', 'Failed to process file: ${e.toString()}', kRed);
-    } finally {
-      setState(() => _isProcessing = false);
-    }
-  }
-
-  // 🔥 Add these new helper methods to your state class
-  Map<String, dynamic> _processExcelSheet(Sheet sheet) {
-    if (sheet.rows.length < 2) {
-      throw Exception('Excel file must contain at least one data row');
-    }
-
-    final headers = _getSanitizedHeaders(sheet.rows[0]);
-    final dataRow = sheet.rows[1];
-    final vehicleType = _getVehicleType(dataRow, headers);
-
-    _validateHeaders(headers, vehicleType);
-    return _extractVehicleData(dataRow, headers, vehicleType);
-  }
-
-  List<String> _getSanitizedHeaders(List<Data?> headerRow) {
-    return headerRow
-        .map((cell) => cell?.value.toString().trim() ?? '')
-        .where((header) => header.isNotEmpty)
-        .toList();
-  }
-
-  String _getVehicleType(List<Data?> dataRow, List<String> headers) {
-    final typeIndex = headers.indexOf('Vehicle Type');
-    if (typeIndex == -1 || dataRow.length <= typeIndex) {
-      throw Exception('Missing "Vehicle Type" column');
-    }
-    return dataRow[typeIndex]?.value.toString().trim() ?? '';
-  }
-
-  void _validateHeaders(List<String> headers, String vehicleType) {
-    final requiredHeaders = {
-      'Vehicle Type',
-      'Company Name',
-      'Engine Name',
-      'Vehicle Number',
-      'VIN',
-      'DOT',
-      'ICCMS',
-      'License Plate',
-      'Year',
-      if (vehicleType == 'Truck') 'Current Miles',
-      if (vehicleType == 'Trailer') ...['Oil Change Date', 'Hours Reading'],
-    };
-
-    final missingHeaders = requiredHeaders.difference(headers.toSet());
-    if (missingHeaders.isNotEmpty) {
-      throw Exception('Missing required columns: ${missingHeaders.join(', ')}');
-    }
-  }
-
-  Map<String, dynamic> _extractVehicleData(
-    List<Data?> dataRow,
-    List<String> headers,
-    String vehicleType,
-  ) {
-    final data = <String, dynamic>{};
-
-    try {
-      for (int i = 0; i < headers.length; i++) {
-        final header = headers[i];
-        final value = dataRow[i]?.value?.toString().trim() ?? '';
-        data[header] = value;
-      }
-
-      // Special handling for vehicle type-specific fields
-      if (vehicleType == 'Truck') {
-        data['Current Miles'] = _parseNumber(data['Current Miles']);
-      } else if (vehicleType == 'Trailer') {
-        data['Oil Change Date'] = _parseDate(data['Oil Change Date']);
-        data['Hours Reading'] = _parseNumber(data['Hours Reading']);
-      }
-
-      data['Year'] = data['Year'].toString(); // Store year as string
-      return data;
-    } catch (e) {
-      throw Exception('Data extraction failed: ${e.toString()}');
-    }
-  }
-
-  void _updateControllersFromData(Map<String, dynamic> data) {
-    _selectedVehicleType = data['Vehicle Type'];
-    _selectedCompany = data['Company Name']?.toString().toUpperCase();
-    _selectedEngineName = data['Engine Name']?.toString().toUpperCase();
-    _vehicleNumberController.text = data['Vehicle Number'] ?? '';
-    _vinController.text = data['VIN'] ?? '';
-    _dotController.text = data['DOT'] ?? '';
-    _iccmsController.text = data['ICCMS'] ?? '';
-    _licensePlateController.text = data['License Plate'] ?? '';
-
-    // Handle year as string instead of DateTime
-    final yearString = data['Year']?.toString() ?? '';
-    _selectedYear = DateTime.tryParse(yearString);
-
-    if (_selectedVehicleType == 'Truck') {
-      _currentMilesController.text = data['Current Miles']?.toString() ?? '';
-    } else {
-      final oilChangeDate = data['Oil Change Date']?.toString() ?? '';
-      _oilChangeDate = DateTime.tryParse(oilChangeDate);
-      _hoursReadingController.text = data['Hours Reading']?.toString() ?? '';
-    }
-  }
-
-  DateTime? _parseDate(String dateString) {
-    try {
-      return DateFormat('yyyy-MM-dd').parse(dateString);
-    } catch (e) {
-      log('Invalid date format: $dateString');
-      return null;
-    }
-  }
-
-  int? _parseNumber(String value) {
-    try {
-      return int.parse(value);
-    } catch (e) {
-      log('Invalid number format: $value');
-      return null;
-    }
   }
 
   @override
@@ -697,84 +351,218 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         backgroundColor: kPrimary,
         iconTheme: IconThemeData(color: kWhite),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: CustomButton(
-                    text: "Upload Excel File",
-                    onPress: _uploadExcelFile,
-                    color: kSecondary,
-                  ),
-                ),
-                Container(
-                  margin: EdgeInsets.only(left: 10.w),
-                  decoration: BoxDecoration(
-                    color: kPrimary,
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: IconButton(
-                    onPressed: () => _showInstructions(context),
-                    icon: Icon(Icons.question_mark, color: kWhite),
-                  ),
-                )
-              ],
-            ),
-            SizedBox(height: 16.h),
-            if (_uploadedData != null)
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.all(16.w),
-                  children: [
-                    _buildDataRow(
-                        'Vehicle Type', _uploadedData!['Vehicle Type']),
-                    _buildDataRow(
-                        'Company Name', _uploadedData!['Company Name']),
-                    _buildDataRow('Engine Name', _uploadedData!['Engine Name']),
-                    _buildDataRow(
-                        'Vehicle Number', _uploadedData!['Vehicle Number']),
-                    _buildDataRow('VIN', _uploadedData!['VIN']),
-                    _buildDataRow('DOT', _uploadedData!['DOT']),
-                    _buildDataRow('ICCMS', _uploadedData!['ICCMS']),
-                    _buildDataRow(
-                        'License Plate', _uploadedData!['License Plate']),
-                    _buildDataRow('Year', _uploadedData!['Year']),
-                    if (_selectedVehicleType == 'Truck')
-                      _buildDataRow(
-                          'Current Miles', _uploadedData!['Current Miles'])
-                    else ...[
-                      _buildDataRow(
-                          'Oil Change Date', _uploadedData!['Oil Change Date']),
-                      _buildDataRow(
-                          'Hours Reading', _uploadedData!['Hours Reading']),
+      body: isSaving
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomButton(
+                          text: "Upload Excel File",
+                          onPress: () async {
+                            FilePickerResult? result =
+                                await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['xlsx'],
+                            );
+
+                            if (result != null) {
+                              setState(() => isParsing = true);
+                              try {
+                                String filePath = result.files.single.path!;
+                                var bytes = File(filePath).readAsBytesSync();
+                                var excel = Excel.decodeBytes(bytes);
+                                var sheet =
+                                    excel.tables[excel.tables.keys.first]!;
+
+                                List<String?> headers = sheet.rows[0]
+                                    .map((cell) => cell?.value.toString())
+                                    .toList();
+
+                                List<Map<String, dynamic>> data = [];
+                                for (int i = 1; i < sheet.rows.length; i++) {
+                                  var row = sheet.rows[i];
+                                  Map<String, dynamic> rowData = {};
+                                  for (int j = 0; j < headers.length; j++) {
+                                    rowData[headers[j]!] =
+                                        row[j]?.value?.toString() ?? '';
+                                  }
+                                  data.add(rowData);
+                                }
+
+                                setState(() {
+                                  excelData = data;
+                                  _isBtnEnable = data.isNotEmpty;
+                                  isParsing = false;
+                                });
+                              } catch (e) {
+                                setState(() => isParsing = false);
+                                showToastMessage('Error',
+                                    'Failed to parse Excel file: $e', kRed);
+                              }
+                            }
+                          },
+                          color: kSecondary,
+                        ),
+                      ),
+                      Container(
+                        margin: EdgeInsets.only(left: 10.w),
+                        decoration: BoxDecoration(
+                          color: kPrimary,
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: IconButton(
+                          onPressed: () => _showInstructions(context),
+                          icon: Icon(Icons.question_mark, color: kWhite),
+                        ),
+                      )
                     ],
-                  ],
-                ),
+                  ),
+                  SizedBox(height: 20.h),
+                  Expanded(
+                    child: isParsing
+                        ? Center(child: CircularProgressIndicator())
+                        : excelData.isEmpty
+                            ? Center(child: Text('No data found.'))
+                            : SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    buildDataRow(
+                                        "Vehicle Number",
+                                        excelData
+                                            .map((e) => e['vehicleNumber'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Type",
+                                        excelData
+                                            .map((e) => e['vehicleType'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Company",
+                                        excelData
+                                            .map((e) => e['companyName'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Engine",
+                                        excelData
+                                            .map((e) => e['engineName'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Miles/Hours",
+                                        excelData
+                                            .map((e) =>
+                                                e['vehicleType'] == 'Truck'
+                                                    ? e['currentMiles']
+                                                    : e['hoursReading'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Vin",
+                                        excelData
+                                            .map((e) => e['vin'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Dot",
+                                        excelData
+                                            .map((e) => e['dot'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Iccms",
+                                        excelData
+                                            .map((e) => e['iccms'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "License Plate",
+                                        excelData
+                                            .map((e) => e['licensePlate'])
+                                            .toList()),
+                                    buildDataRow(
+                                        "Year",
+                                        excelData
+                                            .map((e) => e['year'])
+                                            .toList()),
+                                  ],
+                                ),
+                              ),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+      bottomNavigationBar: Container(
+        child: _isBtnEnable
+            ? CustomButton(
+                text: "Upload",
+                onPress: () async {
+                  if (excelData.isEmpty) return;
+                  setState(() {
+                    isSaving = true;
+                    uploadErrors.clear();
+                  });
+
+                  int successCount = 0;
+                  for (var data in excelData) {
+                    try {
+                      await saveVehicleFromData(data);
+                      successCount++;
+                    } catch (e) {
+                      uploadErrors.add(e.toString());
+                    }
+                  }
+
+                  setState(() => isSaving = false);
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('Upload Complete'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Successfully uploaded $successCount vehicles.'),
+                          if (uploadErrors.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            Text('Errors:',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            ...uploadErrors.map((e) => Text(e)).toList(),
+                          ],
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: Navigator.of(ctx).pop,
+                          child: Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                color: kPrimary,
+              )
+            : SizedBox(),
       ),
     );
   }
 
-  // Helper widget to display data rows
-  Widget _buildDataRow(String title, String? value) {
+  // Function to build each row
+  Widget buildDataRow(String title, List<dynamic> values) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SizedBox(
+              width: 150,
+              child:
+                  Text(title, style: TextStyle(fontWeight: FontWeight.bold))),
           Expanded(
-            flex: 2,
-            child: Text(title, style: appStyle(14, kDark, FontWeight.w500)),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(value ?? 'Not provided',
-                style: appStyle(14, kGray, FontWeight.w400)),
+            child: Wrap(
+              spacing: 8.0,
+              runSpacing: 4.0,
+              children: values.map((value) => Text(value.toString())).toList(),
+            ),
           ),
         ],
       ),

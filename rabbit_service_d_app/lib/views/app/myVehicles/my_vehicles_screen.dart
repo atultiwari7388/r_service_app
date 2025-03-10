@@ -144,7 +144,7 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                             Icon(Icons.arrow_forward_ios, color: kPrimary),
                         onTap: () {
                           Get.to(() =>
-                              MyVehiclesDetailsScreen(vehicleData: vehicle));
+                              MyVehiclesDetailsScreen(vehicleData: vehicle, role: role));
                         },
                       ),
                     );

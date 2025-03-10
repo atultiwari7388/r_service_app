@@ -403,6 +403,44 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     }
   }
 
+  // Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
+  //     String perMileCharge, String driverId, String role) async {
+  //   double totalExpenses = 0;
+  //   double totalEarnings = 0;
+  //   String userId = driverId;
+  //   double perMile = double.tryParse(perMileCharge) ?? 0.0;
+  //
+  //   for (var trip in trips) {
+  //     // Calculate expenses from tripDetails
+  //     var expensesSnapshot = await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(userId)
+  //         .collection('trips')
+  //         .doc(trip.id)
+  //         .collection('tripDetails')
+  //         .where('type', isEqualTo: 'Expenses')
+  //         .get();
+  //
+  //     double tripExpenses = expensesSnapshot.docs
+  //         .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
+  //     totalExpenses += tripExpenses;
+  //
+  //     // Calculate earnings based on role
+  //     if (role == "Driver") {
+  //       int startMiles = trip['tripStartMiles'];
+  //       int endMiles = trip['tripEndMiles'];
+  //       int miles = endMiles - startMiles;
+  //       totalEarnings += miles * perMile;
+  //     } else if (role == "Owner") {
+  //       // Sum all oEarnings values
+  //       double ownerEarnings = (trip['oEarnings'] ?? 0.0).toDouble();
+  //       totalEarnings += ownerEarnings;
+  //     }
+  //   }
+  //
+  //   return {'expenses': totalExpenses, 'earnings': totalEarnings};
+  // }
+
   Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
       String perMileCharge, String driverId, String role) async {
     double totalExpenses = 0;
@@ -437,6 +475,10 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         totalEarnings += ownerEarnings;
       }
     }
+
+    // If any value is negative, set it to 0
+    totalExpenses = totalExpenses < 0 ? 0 : totalExpenses;
+    totalEarnings = totalEarnings < 0 ? 0 : totalEarnings;
 
     return {'expenses': totalExpenses, 'earnings': totalEarnings};
   }
@@ -528,7 +570,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                     child: TextField(
                                       controller: _oEarningController,
                                       decoration: const InputDecoration(
-                                        labelText: 'Earning',
+                                        labelText: 'Load Price',
                                         border: OutlineInputBorder(),
                                       ),
                                       keyboardType: TextInputType.number,
@@ -774,13 +816,15 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         DateTime tripStartDate = doc['tripStartDate'].toDate();
                         DateTime tripEndDate = doc['tripEndDate'].toDate();
 
-                        // ✅ Show trips if they fall **inside** or **overlap** the selected range
+                        // ✅ Show trips **only if** they overlap the selected range correctly
                         return (fromDate == null ||
                                 tripEndDate.isAfter(fromDate!
                                     .subtract(const Duration(days: 1)))) &&
                             (toDate == null ||
                                 tripStartDate.isBefore(
-                                    toDate!.add(const Duration(days: 1))));
+                                        toDate!.add(const Duration(days: 1))) &&
+                                    tripEndDate.isAfter(toDate!
+                                        .subtract(const Duration(days: 1))));
                       }).toList();
 
                       if (filteredTrips.isEmpty) {
