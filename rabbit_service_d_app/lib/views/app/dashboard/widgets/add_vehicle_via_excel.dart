@@ -14,7 +14,7 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/download_excel_file.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:regal_service_d_app/widgets/custom_container.dart';
 
 class AddVehicleViaExcelScreen extends StatefulWidget {
   const AddVehicleViaExcelScreen({super.key});
@@ -71,7 +71,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
 
   List<Map<String, dynamic>> calculateNextNotificationMiles(int currentMiles) {
     List<Map<String, dynamic>> nextNotificationMiles = [];
-     currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
+    currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
 
     log('Current Miles: $currentMiles');
     log('Selected Engine: $_selectedEngineName');
@@ -201,7 +201,9 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       // _currentMilesController.text = data['currentMiles']?.toString() ?? '';
 
       // 6. Calculate notification milestones
-      final nextNotificationMiles = calculateNextNotificationMiles(int.parse(data['currentMiles']));
+      final nextNotificationMiles = vehicleType == "Truck"
+          ? calculateNextNotificationMiles(int.parse(data['currentMiles']))
+          : calculateNextNotificationMiles(int.parse(data['hoursReading']));
 
       // 7. Prepare base vehicle data
       final vehicleData = {
@@ -255,8 +257,12 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           'firstTimeMiles': '',
           'oilChangeDate':
               oilChangeDate != null ? dateFormat.format(oilChangeDate) : '',
-          'hoursReading': data['hoursReading'].toString(),
-          'prevHoursReadingValue': data['hoursReading'].toString(),
+          'hoursReading': data['hoursReading'] != null
+              ? data['hoursReading'].toString()
+              : '',
+          'prevHoursReadingValue': data['hoursReading'] != null
+              ? data['hoursReading'].toString()
+              : '',
         });
       }
 
@@ -284,10 +290,12 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       setState(() {
         isSaving = false;
         excelData = [];
-        _isBtnEnable=false;
+        _isBtnEnable = false;
         _currentMilesController.clear();
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Error saving vehicle data: $e');
+      print('🔍 Stack Trace: $stackTrace');
       throw 'Error saving vehicle data: ${e.toString()}';
     } finally {
       setState(() {
@@ -332,7 +340,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 onTap: () {
                   Navigator.of(context).pop();
                   downloadExcelFile(
-                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=9eeed6bc-2d40-4a3d-bcd0-8df5bebaecfa");
+                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=fec03351-8645-4697-a914-35c4596062e8");
                 },
               ),
             ],
@@ -346,7 +354,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Add Vehicle Via Excel",
+        title: Text("Import Vehicle",
             style: appStyle(18, kWhite, FontWeight.w500)),
         backgroundColor: kPrimary,
         iconTheme: IconThemeData(color: kWhite),
@@ -357,11 +365,19 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
               padding: const EdgeInsets.all(8.0),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: CustomButton(
-                          text: "Upload Excel File",
+                  CustomContainerBox(
+                    color: kLightWhite,
+                    borderColor: kPrimary.withOpacity(0.3),
+                    height: 120,
+                    child: Column(
+                      children: [
+                        Text("Upload Excel File",
+                            style: appStyle(17, kDark, FontWeight.normal)),
+                        SizedBox(height: 5.h),
+                        Divider(),
+                        SizedBox(height: 5.h),
+                        CustomButton(
+                          text: "Select Excel File",
                           onPress: () async {
                             FilePickerResult? result =
                                 await FilePicker.platform.pickFiles(
@@ -407,26 +423,41 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                           },
                           color: kSecondary,
                         ),
-                      ),
-                      Container(
-                        margin: EdgeInsets.only(left: 10.w),
-                        decoration: BoxDecoration(
-                          color: kPrimary,
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: IconButton(
-                          onPressed: () => _showInstructions(context),
-                          icon: Icon(Icons.question_mark, color: kWhite),
-                        ),
-                      )
-                    ],
+                      ],
+                    ),
                   ),
+                  SizedBox(height: 20.h),
+
+                  //Download Sample Excel Files
+                  _isBtnEnable
+                      ? SizedBox()
+                      : CustomContainerBox(
+                          color: kLightWhite,
+                          borderColor: kPrimary.withOpacity(0.3),
+                          child: Column(
+                            children: [
+                              Text("Sample Excel Files",
+                                  style:
+                                      appStyle(17, kDark, FontWeight.normal)),
+                              SizedBox(height: 5.h),
+                              Divider(),
+                              SizedBox(height: 5.h),
+                              buildTextAndBtnRow("Vehicles Excel",
+                                  () => _showInstructions(context)),
+                              buildTextAndBtnRow(
+                                  "Vehicles Companies Excel", () {}),
+                              buildTextAndBtnRow(
+                                  "Vehicles Engine Excel", () {}),
+                            ],
+                          ),
+                        ),
+
                   SizedBox(height: 20.h),
                   Expanded(
                     child: isParsing
                         ? Center(child: CircularProgressIndicator())
                         : excelData.isEmpty
-                            ? Center(child: Text('No data found.'))
+                            ? Center(child: Text(''))
                             : SingleChildScrollView(
                                 scrollDirection: Axis.vertical,
                                 child: Column(
@@ -485,6 +516,11 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                                         excelData
                                             .map((e) => e['year'])
                                             .toList()),
+                                    buildDataRow(
+                                        "Oil Change Date",
+                                        excelData
+                                            .map((e) => e['oilChangeDate'])
+                                            .toList()),
                                   ],
                                 ),
                               ),
@@ -542,6 +578,28 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 color: kPrimary,
               )
             : SizedBox(),
+      ),
+    );
+  }
+
+  Widget buildTextAndBtnRow(String text, void Function()? onPressed) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(text, style: appStyle(13, kDark, FontWeight.w500)),
+          ElevatedButton.icon(
+            onPressed: onPressed,
+            label: Text("Download"),
+            icon: Icon(Icons.download, color: kWhite),
+            style: ElevatedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: kPrimary,
+                foregroundColor: kWhite,
+                minimumSize: Size(60.w, 35)),
+          ),
+        ],
       ),
     );
   }

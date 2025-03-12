@@ -7,6 +7,7 @@ import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 import 'package:regal_service_d_app/views/app/myVehicles/my_vehicles_details_screen.dart';
 
 class MyVehiclesScreen extends StatefulWidget {
@@ -92,7 +93,45 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
           role == "Owner"
               ? InkWell(
                   onTap: () {
-                    Get.to(() => AddVehicleScreen());
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text("Choose an option"),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: Icon(Icons.directions_car),
+                                title: Text("Add Vehicle"),
+                                onTap: () async {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => AddVehicleScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              ListTile(
+                                leading: Icon(Icons.upload_file),
+                                title: Text("Import Vehicle"),
+                                onTap: () {
+                                  Navigator.pop(context); // Close the dialog
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AddVehicleViaExcelScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
                   },
                   child: CircleAvatar(
                     backgroundColor: kWhite,
@@ -143,8 +182,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                         trailing:
                             Icon(Icons.arrow_forward_ios, color: kPrimary),
                         onTap: () {
-                          Get.to(() =>
-                              MyVehiclesDetailsScreen(vehicleData: vehicle, role: role));
+                          Get.to(() => MyVehiclesDetailsScreen(
+                              vehicleData: vehicle, role: role));
                         },
                       ),
                     );
