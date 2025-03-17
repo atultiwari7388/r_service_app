@@ -17,6 +17,7 @@ import '../../address/address_management_screen.dart';
 class FindMechanic extends StatefulWidget {
   const FindMechanic(
       {super.key, required this.controller, required this.setTab});
+
   final DashboardController controller;
   final Function? setTab;
 
@@ -28,9 +29,7 @@ class _FindMechanicState extends State<FindMechanic> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: kIsWeb
-          ? EdgeInsets.all(5)
-          : EdgeInsets.symmetric(horizontal: 8.w, vertical: 15.h),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 7.h),
       decoration: BoxDecoration(
           color: kSecondary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12.r)),
@@ -54,9 +53,13 @@ class _FindMechanicState extends State<FindMechanic> {
               }
 
               // Process the data and build the UI
-              List vehicleNames = snapshot.data!.docs.map((doc) {
+              // Process the data and build the UI
+              List<String> vehicleNames = snapshot.data!.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                return data['vehicleNumber'] ?? '';
+                String vehicleNumber = data['vehicleNumber'] ?? '';
+                String companyName = data['companyName'] ?? '';
+
+                return "$vehicleNumber ($companyName)";
               }).toList();
 
               // Update your controller or state here
@@ -73,7 +76,7 @@ class _FindMechanicState extends State<FindMechanic> {
                           .showSelectedVehicleAndCompanyOptions(context);
                     },
                     child: SizedBox(
-                      width: kIsWeb ? 620 : 270.w,
+                      width: 270.w,
                       child: AbsorbPointer(
                         child: DashBoardSearchTextField(
                           label: "Select your Vehicle",
@@ -143,7 +146,6 @@ class _FindMechanicState extends State<FindMechanic> {
                               },
                             );
                           },
-
                           child: CircleAvatar(
                             backgroundColor: kPrimary,
                             child: Icon(
@@ -159,7 +161,7 @@ class _FindMechanicState extends State<FindMechanic> {
             },
           ),
 
-          SizedBox(height: 20.h),
+          SizedBox(height: 10.h),
 //================================ Select Your Service ==========================================
           GestureDetector(
             onTap: () {
@@ -174,7 +176,7 @@ class _FindMechanicState extends State<FindMechanic> {
             ),
           ),
 
-          SizedBox(height: 20.h),
+          SizedBox(height: 10.h),
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('Users')
@@ -287,12 +289,12 @@ class _FindMechanicState extends State<FindMechanic> {
               );
             },
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 10.h),
           DashBoardSearchTextField(
               label: "Enter Description",
               controller: widget.controller.descriptionController,
               enable: true),
-          SizedBox(height: 20.h),
+          SizedBox(height: 5.h),
           widget.controller.imageUploadEnabled
               ? GestureDetector(
                   onTap: () => widget.controller.showImageSourceDialog(context),

@@ -889,100 +889,105 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ),
                             ),
-                            SizedBox(height: 16.h),
-                            Container(
-                              margin: kIsWeb
-                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                  : EdgeInsets.symmetric(vertical: 4.0.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: kIsWeb
-                                    ? BorderRadius.circular(12.r)
-                                    : BorderRadius.circular(12.0.r),
-                              ),
-                              child: TextField(
-                                controller: _dotController,
-                                decoration: InputDecoration(
-                                  labelText: 'DOT (Optional)',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1.0,
+                            // SizedBox(height: 16.h),
+                            if (_selectedVehicleType == 'Truck') ...[
+                              SizedBox(height: 16.h),
+                              Container(
+                                margin: kIsWeb
+                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                    : EdgeInsets.symmetric(vertical: 4.0.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: kIsWeb
+                                      ? BorderRadius.circular(12.r)
+                                      : BorderRadius.circular(12.0.r),
+                                ),
+                                child: TextField(
+                                  controller: _dotController,
+                                  decoration: InputDecoration(
+                                    labelText: 'DOT (Optional)',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
                                     ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1.0,
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1.0,
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
                                     ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: kIsWeb
+                                        ? EdgeInsets.all(2)
+                                        : const EdgeInsets.all(8),
+                                    labelStyle: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(
+                                            14, kPrimary, FontWeight.bold),
                                   ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  contentPadding: kIsWeb
-                                      ? EdgeInsets.all(2)
-                                      : const EdgeInsets.all(8),
-                                  labelStyle: kIsWeb
-                                      ? TextStyle()
-                                      : appStyle(14, kPrimary, FontWeight.bold),
                                 ),
                               ),
-                            ),
-                            SizedBox(height: 16.h),
-                            Container(
-                              margin: kIsWeb
-                                  ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                  : EdgeInsets.symmetric(vertical: 4.0.h),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: kIsWeb
-                                    ? BorderRadius.circular(12.r)
-                                    : BorderRadius.circular(12.0.r),
-                              ),
-                              child: TextField(
-                                controller: _iccmsController,
-                                decoration: InputDecoration(
-                                  labelText: 'ICCMS (Optional)',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1.0,
+                              SizedBox(height: 16.h),
+                              Container(
+                                margin: kIsWeb
+                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                    : EdgeInsets.symmetric(vertical: 4.0.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: kIsWeb
+                                      ? BorderRadius.circular(12.r)
+                                      : BorderRadius.circular(12.0.r),
+                                ),
+                                child: TextField(
+                                  controller: _iccmsController,
+                                  decoration: InputDecoration(
+                                    labelText: 'ICCMS (Optional)',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
                                     ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1.0,
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                      width: 1.0,
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.0,
+                                      ),
                                     ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: kIsWeb
+                                        ? EdgeInsets.all(2)
+                                        : const EdgeInsets.all(8),
+                                    labelStyle: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(
+                                            14, kPrimary, FontWeight.bold),
                                   ),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  contentPadding: kIsWeb
-                                      ? EdgeInsets.all(2)
-                                      : const EdgeInsets.all(8),
-                                  labelStyle: kIsWeb
-                                      ? TextStyle()
-                                      : appStyle(14, kPrimary, FontWeight.bold),
                                 ),
                               ),
-                            ),
+                            ],
                             SizedBox(height: 16.h),
                             Container(
                               margin: kIsWeb

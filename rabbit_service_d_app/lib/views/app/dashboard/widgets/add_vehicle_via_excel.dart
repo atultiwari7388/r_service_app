@@ -444,10 +444,15 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                               SizedBox(height: 5.h),
                               buildTextAndBtnRow("Vehicles Excel",
                                   () => _showInstructions(context)),
-                              buildTextAndBtnRow(
-                                  "Vehicles Companies Excel", () {}),
-                              buildTextAndBtnRow(
-                                  "Vehicles Engine Excel", () {}),
+                              buildTextAndBtnRow("Vehicles Companies Excel",
+                                  () {
+                                downloadExcelFile(
+                                    "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/vehicle_companies_list.xlsx?alt=media&token=79ec36cb-2d0c-44fc-a714-847995a9f3fd");
+                              }),
+                              buildTextAndBtnRow("Vehicles Engine Excel", () {
+                                downloadExcelFile(
+                                    "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/vehicle_engines_list.xlsx?alt=media&token=8cf23d67-bf85-42ff-9b6b-5f2be177d5ee");
+                              }),
                             ],
                           ),
                         ),

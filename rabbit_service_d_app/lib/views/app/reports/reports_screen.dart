@@ -173,6 +173,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                 (a['sName'] as String).compareTo(b['sName'] as String));
 
             services.addAll(sortedServices);
+            // debugPrint('Fetched ${services.length} services');
+            // debugPrint("All Services Data: $services");
             updateServiceDefaultValues();
           });
         }
