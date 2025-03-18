@@ -1163,13 +1163,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             int currentMiles =
                                 int.tryParse(currentMilesStr) ?? 0;
 
-                            if (currentMiles <= tripStartMiles) {
-                              showToastMessage(
-                                  "Warning",
-                                  "End miles must be greater than start miles.",
-                                  kRed);
-                              return; // Stop the status change
-                            }
+                            // if (currentMiles <= tripStartMiles) {
+                            //   showToastMessage(
+                            //       "Warning",
+                            //       "End miles must be greater than start miles.",
+                            //       kRed);
+                            //   return; // Stop the status change
+                            // }
 
                             WriteBatch batch =
                                 FirebaseFirestore.instance.batch();

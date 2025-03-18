@@ -646,6 +646,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                                 child: TextField(
                                   controller: _currentMilesController,
+                                  onChanged: (value) {
+                                    _currentMilesController.value =
+                                        TextEditingValue(
+                                          text: value.toUpperCase(),
+                                          selection:
+                                          _currentMilesController.selection,
+                                        );
+                                  },
                                   decoration: InputDecoration(
                                     labelText: 'Current Miles *',
                                     border: OutlineInputBorder(
@@ -758,8 +766,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                                 child: TextField(
                                   controller: _hoursReadingController,
+                                  onChanged: (value) {
+                                    _hoursReadingController.value =
+                                        TextEditingValue(
+                                          text: value.toUpperCase(),
+                                          selection:
+                                          _hoursReadingController.selection,
+                                        );
+                                  },
                                   decoration: InputDecoration(
-                                    labelText: 'Hours Reading *',
+                                    labelText: 'Hours Reading (optional)',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12.0),
                                       borderSide: BorderSide(
@@ -807,6 +823,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     : BorderRadius.circular(12.0.r),
                               ),
                               child: TextField(
+                                onChanged: (value) {
+                                  _vehicleNumberController.value =
+                                      TextEditingValue(
+                                    text: value.toUpperCase(),
+                                    selection:
+                                        _vehicleNumberController.selection,
+                                  );
+                                },
                                 controller: _vehicleNumberController,
                                 decoration: InputDecoration(
                                   labelText: 'Vehicle Number *',
@@ -842,6 +866,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ),
                             ),
+
                             SizedBox(height: 16.h),
                             Container(
                               margin: kIsWeb
@@ -855,6 +880,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               ),
                               child: TextField(
                                 controller: _vinController,
+                                onChanged: (value) {
+                                  _vinController.value =
+                                      TextEditingValue(
+                                    text: value.toUpperCase(),
+                                    selection:
+                                    _vinController.selection,
+                                  );
+                                },
                                 decoration: InputDecoration(
                                   labelText: 'VIN *',
                                   border: OutlineInputBorder(
@@ -904,6 +937,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                                 child: TextField(
                                   controller: _dotController,
+                                  onChanged: (value) {
+                                    _dotController.value =
+                                        TextEditingValue(
+                                          text: value.toUpperCase(),
+                                          selection:
+                                          _dotController.selection,
+                                        );
+                                  },
                                   decoration: InputDecoration(
                                     labelText: 'DOT (Optional)',
                                     border: OutlineInputBorder(
@@ -952,6 +993,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                                 child: TextField(
                                   controller: _iccmsController,
+                                  onChanged: (value) {
+                                    _iccmsController.value =
+                                        TextEditingValue(
+                                          text: value.toUpperCase(),
+                                          selection:
+                                          _iccmsController.selection,
+                                        );
+                                  },
                                   decoration: InputDecoration(
                                     labelText: 'ICCMS (Optional)',
                                     border: OutlineInputBorder(
@@ -1001,6 +1050,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               ),
                               child: TextField(
                                 controller: _licensePlateController,
+                                onChanged: (value) {
+                                  _licensePlateController.value =
+                                      TextEditingValue(
+                                        text: value.toUpperCase(),
+                                        selection:
+                                        _licensePlateController.selection,
+                                      );
+                                },
                                 decoration: InputDecoration(
                                   labelText: 'License Plate *',
                                   border: OutlineInputBorder(

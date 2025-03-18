@@ -58,6 +58,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   bool showDateSearch = false;
   bool showCombinedSearch = false;
   bool showRecordFilter = false;
+  bool showInvoiceSearch = false;
 
   //for records access
   bool? isView;
@@ -96,6 +97,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   String filterVehicle = '';
   String filterService = '';
   String filterMiles = '';
+  String filterInvoice='';
   DateTime? startDate;
   DateTime? endDate;
 
@@ -131,6 +133,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         .collection('Users')
         .doc(currentUId)
         .collection("Vehicles")
+        .where("active", isEqualTo: true)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.docs.isEmpty) {
@@ -186,7 +189,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         .collection('Users')
         .doc(currentUId)
         .collection('DataServices')
-        // .where('vehicleId', isEqualTo: selectedRecordsVehicle)
+        .where('active', isEqualTo: true)
         .snapshots()
         .listen((snapshot) {
       setState(() {
@@ -340,194 +343,21 @@ class _ReportsScreenState extends State<ReportsScreen>
           (DateTime.parse(record['date']).isAfter(startDate!) &&
               DateTime.parse(record['date']).isBefore(endDate!));
 
-      return matchesVehicle && matchesService && matchesDateRange;
+      final matchesInvoice = filterInvoice == null || record['invoice'].toString()
+          .toLowerCase()
+          .contains(filterInvoice.toLowerCase());;
+
+      return matchesVehicle && matchesService && matchesDateRange && matchesInvoice;
     }).toList();
 
     filteredRecords.sort((a, b) {
       final dateA = DateTime.parse(a['createdAt']);
       final dateB = DateTime.parse(b['createdAt']);
-      return dateB.compareTo(dateA); // Sort in descending order
+      return dateB.compareTo(dateA);
     });
 
     return filteredRecords;
   }
-
-  // Future<void> handleSaveRecords() async {
-  //   try {
-  //     if (selectedVehicle == null || selectedServices.isEmpty) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         const SnackBar(
-  //             content: Text('Please select vehicle and at least one service')),
-  //       );
-  //       return;
-  //     }
-  //
-  //     // final batch = FirebaseFirestore.instance.batch();
-  //
-  //     final dataServicesRef =
-  //         FirebaseFirestore.instance.collection("DataServicesRecords");
-  //
-  //     // final docId = dataServicesRef.doc().id;
-  //
-  //     final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
-  //
-  //     final currentMiles = int.tryParse(milesController.text) ?? 0;
-  //
-  //     List<Map<String, dynamic>> servicesData = [];
-  //     List<Map<String, dynamic>> notificationData = [];
-  //     List<int> allNextNotificationValues = [];
-  //
-  //     for (var serviceId in selectedServices) {
-  //       final service = services.firstWhere((s) => s['sId'] == serviceId);
-  //       final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-  //       //if the default value is 0 then the next notification value will be 0
-  //       final nextNotificationValue =
-  //           defaultValue == 0 ? 0 : currentMiles + defaultValue;
-  //
-  //       servicesData.add({
-  //         "serviceId": serviceId,
-  //         "serviceName": service['sName'],
-  //         "defaultNotificationValue": defaultValue,
-  //         "nextNotificationValue": nextNotificationValue,
-  //         "subServices": selectedSubServices[serviceId]
-  //                 ?.map((subService) => {
-  //                       "name": subService,
-  //                       "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
-  //                     })
-  //                 .toList() ??
-  //             [],
-  //       });
-  //
-  //       notificationData.add({
-  //         "serviceName": service['sName'],
-  //         "nextNotificationValue": nextNotificationValue,
-  //         "subServices": selectedSubServices[serviceId] ?? [],
-  //       });
-  //     }
-  //
-  //     final recordData = {
-  //       "userId": currentUId,
-  //       "vehicleId": selectedVehicle,
-  //       "vehicleDetails": {
-  //         ...selectedVehicleData!,
-  //         "currentMiles": currentMiles.toString(),
-  //         "nextNotificationMiles": notificationData,
-  //       },
-  //       "services": servicesData,
-  //       "invoice": invoiceController.text,
-  //       "invoiceAmount": invoiceAmountController.text,
-  //       "description": descriptionController.text.toString(),
-  //       'currentMilesArray': FieldValue.arrayUnion([
-  //         {
-  //           "miles": int.parse(currentMiles.toString()),
-  //           "date": DateTime.now().toIso8601String()
-  //         }
-  //       ]),
-  //       "allNextNotificationValues": allNextNotificationValues,
-  //       "totalMiles": currentMiles,
-  //       "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-  //               selectedServiceData.any((s) => s['vType'] == "Truck")
-  //           ? currentMiles
-  //           : 0,
-  //       "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-  //               selectedServiceData.any((s) => s['vType'] == "Trailer")
-  //           ? int.tryParse(hoursController.text) ?? 0
-  //           : 0,
-  //       "date":
-  //           selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
-  //       "workshopName": workshopController.text,
-  //       "createdAt": DateTime.now().toIso8601String(),
-  //     };
-  //
-  //     // 1. Save to Owner's DataServices
-  //     // final ownerDataServicesRef = FirebaseFirestore.instance
-  //     //     .collection('Users')
-  //     //     .doc(currentUId)
-  //     //     .collection('DataServices');
-  //     // batch.set(ownerDataServicesRef.doc(docId), recordData);
-  //     // batch.set(dataServicesRef.doc(docId), recordData);
-  //
-  //     final batch = FirebaseFirestore.instance.batch();
-  //     final ownerDataServicesRef = FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('DataServices');
-  //     batch.set(ownerDataServicesRef.doc(docId), recordData);
-  //
-  //
-  //
-  //     // 2. Query for Team Members (Drivers/Managers)
-  //     final teamMembersSnapshot = await FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .where('createdBy', isEqualTo: currentUId)
-  //         .where('isTeamMember', isEqualTo: true)
-  //         .get();
-  //
-  //     // 3. Save to Team Members' DataServices
-  //     for (final doc in teamMembersSnapshot.docs) {
-  //       final teamMemberUid = doc.id;
-  //       final teamMemberDataServicesRef = FirebaseFirestore.instance
-  //           .collection('Users')
-  //           .doc(teamMemberUid)
-  //           .collection('DataServices');
-  //       batch.set(teamMemberDataServicesRef.doc(docId), recordData);
-  //     }
-  //
-  //     // 4. Handle Team Member Creating Record (Save to Owner)
-  //     final currentUserDoc = await FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .get();
-  //     if (currentUserDoc.data()?['isTeamMember'] == true) {
-  //       final ownerSnapshot = await FirebaseFirestore.instance
-  //           .collection('Users')
-  //           .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
-  //           .get();
-  //       if (ownerSnapshot.docs.isNotEmpty) {
-  //         final ownerUid = ownerSnapshot.docs.first.id;
-  //         final ownerDataServicesRef = FirebaseFirestore.instance
-  //             .collection('Users')
-  //             .doc(ownerUid)
-  //             .collection('DataServices');
-  //         batch.set(ownerDataServicesRef.doc(docId), recordData);
-  //       }
-  //     }
-  //
-  //     // 5. Update Vehicle (Your existing code)
-  //     final vehicleRef = FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('Vehicles')
-  //         .doc(selectedVehicle);
-  //
-  //     batch.update(vehicleRef, {
-  //       'currentMiles': currentMiles.toString(),
-  //       'currentMilesArray': FieldValue.arrayUnion([
-  //         {
-  //           "miles": int.parse(currentMiles.toString()),
-  //           "date": DateTime.now().toIso8601String()
-  //         }
-  //       ]),
-  //       'nextNotificationMiles': notificationData,
-  //     });
-  //
-  //     await batch.commit();
-  //
-  //     resetForm();
-  //
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //           content: Text(isEditing
-  //               ? 'Record updated successfully'
-  //               : 'Record saved successfully')),
-  //     );
-  //   } catch (e) {
-  //     debugPrint('Error Saving records: ${e.toString()}');
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error saving records: ${e.toString()}')),
-  //     );
-  //   }
-  // }
 
   Future<void> handleSaveRecords() async {
     try {
@@ -540,8 +370,32 @@ class _ReportsScreenState extends State<ReportsScreen>
         return;
       }
 
+      // ** Subservice validation check **
+      for (var serviceId in selectedServices) {
+        final service = services.firstWhere(
+              (s) => s['sId'] == serviceId,
+          orElse: () => {},
+        );
+
+        if (service.isNotEmpty) {
+          final hasSubServices = service.containsKey('subServices') &&
+              (service['subServices'] as List).isNotEmpty;
+
+          final selectedSubServiceList = selectedSubServices[serviceId] ?? [];
+
+          if (hasSubServices && selectedSubServiceList.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Please select at least one subservice for ${service['sName']}'),
+              ),
+            );
+            return; // Stop execution if validation fails
+          }
+        }
+      }
+
       final dataServicesRef =
-          FirebaseFirestore.instance.collection("DataServicesRecords");
+      FirebaseFirestore.instance.collection("DataServicesRecords");
 
       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
@@ -553,7 +407,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
-          (s) => s['sId'] == serviceId,
+              (s) => s['sId'] == serviceId,
           orElse: () => {},
         );
 
@@ -564,7 +418,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
         final nextNotificationValue =
-            defaultValue == 0 ? 0 : currentMiles + defaultValue;
+        defaultValue == 0 ? 0 : currentMiles + defaultValue;
 
         servicesData.add({
           "serviceId": serviceId,
@@ -572,11 +426,11 @@ class _ReportsScreenState extends State<ReportsScreen>
           "defaultNotificationValue": defaultValue,
           "nextNotificationValue": nextNotificationValue,
           "subServices": selectedSubServices[serviceId]
-                  ?.map((subService) => {
-                        "name": subService,
-                        "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
-                      })
-                  .toList() ??
+              ?.map((subService) => {
+            "name": subService,
+            "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+          })
+              .toList() ??
               [],
         });
 
@@ -588,6 +442,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       }
 
       final recordData = {
+        "active": true,
         "userId": currentUId,
         "vehicleId": selectedVehicle,
         "vehicleDetails": {
@@ -605,15 +460,15 @@ class _ReportsScreenState extends State<ReportsScreen>
         "allNextNotificationValues": allNextNotificationValues,
         "totalMiles": currentMiles,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-                selectedServiceData.any((s) => s['vType'] == "Truck")
+            selectedServiceData.any((s) => s['vType'] == "Truck")
             ? currentMiles
             : 0,
         "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-                selectedServiceData.any((s) => s['vType'] == "Trailer")
+            selectedServiceData.any((s) => s['vType'] == "Trailer")
             ? int.tryParse(hoursController.text) ?? 0
             : 0,
         "date":
-            selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
         "workshopName": workshopController.text,
         "createdAt": DateTime.now().toIso8601String(),
       };
@@ -699,6 +554,9 @@ class _ReportsScreenState extends State<ReportsScreen>
       );
     }
   }
+
+
+
 
   void _handleEditRecord(Map<String, dynamic> record) {
     setState(() {
@@ -946,6 +804,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                               false;
                                                           showDateSearch =
                                                               false;
+                                                          showInvoiceSearch = false;
                                                           filterService = '';
                                                           startDate = null;
                                                           endDate = null;
@@ -969,6 +828,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                               true;
                                                           showDateSearch =
                                                               false;
+                                                          showInvoiceSearch = false;
                                                           filterVehicle = '';
                                                           startDate = null;
                                                           endDate = null;
@@ -989,6 +849,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                           showServiceSearch =
                                                               false;
                                                           showDateSearch = true;
+                                                          showInvoiceSearch = false;
                                                           filterVehicle = '';
                                                           filterService = '';
                                                         });
@@ -999,17 +860,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                     ),
                                                     ListTile(
                                                         title:
-                                                            Text('Search All'),
+                                                            Text('Search by Invoice'),
                                                         onTap: () {
                                                           setState(() {
                                                             showCombinedSearch =
-                                                                true;
+                                                                false;
                                                             showVehicleSearch =
                                                                 false;
                                                             showServiceSearch =
                                                                 false;
                                                             showDateSearch =
                                                                 false;
+                                                            showInvoiceSearch = true;
                                                             filterVehicle = '';
                                                             filterService = '';
                                                             startDate = null;
@@ -1018,6 +880,29 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                           Navigator.of(context)
                                                               .pop();
                                                         }),
+                                                    ListTile(
+                                                        title:
+                                                        Text('Search All'),
+                                                        onTap: () {
+                                                          setState(() {
+                                                            showCombinedSearch =
+                                                            true;
+                                                            showVehicleSearch =
+                                                            false;
+                                                            showServiceSearch =
+                                                            false;
+                                                            showDateSearch =
+                                                            false;
+                                                            showInvoiceSearch = false;
+                                                            filterVehicle = '';
+                                                            filterService = '';
+                                                            startDate = null;
+                                                            endDate = null;
+                                                          });
+                                                          Navigator.of(context)
+                                                              .pop();
+                                                        }),
+
                                                   ],
                                                 ),
                                                 actions: [
@@ -1073,6 +958,24 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       ),
                                     ),
                                   SizedBox(height: 16.h),
+                                  if (showInvoiceSearch || showCombinedSearch)
+                                    TextField(
+                                      decoration: InputDecoration(
+                                        labelText: 'Search by Invoice',
+                                        labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        prefixIcon: Icon(Icons.receipt, color: kPrimary),
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          filterInvoice = value;
+                                        });
+                                      },
+                                    ),
+                                  SizedBox(height: 16.h),
+
                                   if ((showVehicleSearch ||
                                           showCombinedSearch) &&
                                       (showServiceSearch || showDateSearch))
@@ -1214,6 +1117,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                               ),
                             ),
                           ),
+
                         ],
 
                         if (showAddRecords) ...[
@@ -1759,22 +1663,22 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             );
 
                                             // Validate the entered value
-                                            if (enteredValue < currentReading) {
-                                              showToastMessage(
-                                                  "Error",
-                                                  "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
-                                                  kRed);
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                      '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
-                                                  duration:
-                                                      Duration(seconds: 2),
-                                                ),
-                                              );
-                                              return; // Exit early to prevent further execution
-                                            }
+                                            // if (enteredValue < currentReading) {
+                                            //   showToastMessage(
+                                            //       "Error",
+                                            //       "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
+                                            //       kRed);
+                                            //   ScaffoldMessenger.of(context)
+                                            //       .showSnackBar(
+                                            //     SnackBar(
+                                            //       content: Text(
+                                            //           '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
+                                            //       duration:
+                                            //           Duration(seconds: 2),
+                                            //     ),
+                                            //   );
+                                            //   return; // Exit early to prevent further execution
+                                            // }
 
                                             // Proceed with saving the data
                                             await FirebaseFirestore.instance
@@ -1916,11 +1820,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             foregroundColor: kWhite,
                                             radius: 20.r,
                                             child: IconButton(
-                                              onPressed: ()  async{
+                                              onPressed: () async {
                                                 try {
-                                                  final pdfBytes = await generateRecordPdf(filteredRecords);
+                                                  final pdfBytes =
+                                                      await generateRecordPdf(
+                                                          filteredRecords);
                                                   await Printing.layoutPdf(
-                                                    onLayout: (format) => pdfBytes,
+                                                    onLayout: (format) =>
+                                                        pdfBytes,
                                                   );
                                                 } catch (e) {
                                                   print('Printing error: $e');
@@ -2476,6 +2383,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       selectedSubServices.clear();
       serviceDefaultValues.clear();
       milesController.clear();
+      invoiceAmountController.clear();
       hoursController.clear();
       workshopController.clear();
       invoiceController.clear();
@@ -2525,3 +2433,179 @@ class _ReportsScreenState extends State<ReportsScreen>
     super.dispose();
   }
 }
+
+
+
+
+// Future<void> handleSaveRecords() async {
+//   try {
+//     if (selectedVehicle == null || selectedServices.isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text('Please select a vehicle and at least one service'),
+//         ),
+//       );
+//       return;
+//     }
+//
+//     final dataServicesRef =
+//         FirebaseFirestore.instance.collection("DataServicesRecords");
+//
+//     final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
+//
+//     final currentMiles = int.tryParse(milesController.text) ?? 0;
+//
+//     List<Map<String, dynamic>> servicesData = [];
+//     List<Map<String, dynamic>> notificationData = [];
+//     List<int> allNextNotificationValues = [];
+//
+//     for (var serviceId in selectedServices) {
+//       final service = services.firstWhere(
+//         (s) => s['sId'] == serviceId,
+//         orElse: () => {},
+//       );
+//
+//       if (service == null) {
+//         debugPrint('Service with ID $serviceId not found.');
+//         continue; // Skip this iteration if service is not found
+//       }
+//
+//       final defaultValue = serviceDefaultValues[serviceId] ?? 0;
+//       final nextNotificationValue =
+//           defaultValue == 0 ? 0 : currentMiles + defaultValue;
+//
+//       servicesData.add({
+//         "serviceId": serviceId,
+//         "serviceName": service['sName'],
+//         "defaultNotificationValue": defaultValue,
+//         "nextNotificationValue": nextNotificationValue,
+//         "subServices": selectedSubServices[serviceId]
+//                 ?.map((subService) => {
+//                       "name": subService,
+//                       "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+//                     })
+//                 .toList() ??
+//             [],
+//       });
+//
+//       notificationData.add({
+//         "serviceName": service['sName'],
+//         "nextNotificationValue": nextNotificationValue,
+//         "subServices": selectedSubServices[serviceId] ?? [],
+//       });
+//     }
+//
+//     final recordData = {
+//       "active":true,
+//       "userId": currentUId,
+//       "vehicleId": selectedVehicle,
+//       "vehicleDetails": {
+//         ...selectedVehicleData!,
+//         "currentMiles": currentMiles.toString(),
+//         "nextNotificationMiles": notificationData,
+//       },
+//       "services": servicesData,
+//       "invoice": invoiceController.text,
+//       "invoiceAmount": invoiceAmountController.text,
+//       "description": descriptionController.text.toString(),
+//       'currentMilesArray': FieldValue.arrayUnion([
+//         {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+//       ]),
+//       "allNextNotificationValues": allNextNotificationValues,
+//       "totalMiles": currentMiles,
+//       "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
+//               selectedServiceData.any((s) => s['vType'] == "Truck")
+//           ? currentMiles
+//           : 0,
+//       "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
+//               selectedServiceData.any((s) => s['vType'] == "Trailer")
+//           ? int.tryParse(hoursController.text) ?? 0
+//           : 0,
+//       "date":
+//           selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+//       "workshopName": workshopController.text,
+//       "createdAt": DateTime.now().toIso8601String(),
+//     };
+//
+//     final batch = FirebaseFirestore.instance.batch();
+//     final ownerDataServicesRef = FirebaseFirestore.instance
+//         .collection('Users')
+//         .doc(currentUId)
+//         .collection('DataServices');
+//     batch.set(ownerDataServicesRef.doc(docId), recordData);
+//
+//     // Query Team Members (Drivers/Managers)
+//     final teamMembersSnapshot = await FirebaseFirestore.instance
+//         .collection('Users')
+//         .where('createdBy', isEqualTo: currentUId)
+//         .where('isTeamMember', isEqualTo: true)
+//         .get();
+//
+//     // Save to Team Members' DataServices
+//     for (final doc in teamMembersSnapshot.docs) {
+//       final teamMemberUid = doc.id;
+//       final teamMemberDataServicesRef = FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(teamMemberUid)
+//           .collection('DataServices');
+//       batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+//     }
+//
+//     // Handle Team Member Creating Record (Save to Owner)
+//     final currentUserDoc = await FirebaseFirestore.instance
+//         .collection('Users')
+//         .doc(currentUId)
+//         .get();
+//
+//     if (currentUserDoc.data()?['isTeamMember'] == true) {
+//       final ownerSnapshot = await FirebaseFirestore.instance
+//           .collection('Users')
+//           .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+//           .get();
+//
+//       if (ownerSnapshot.docs.isNotEmpty) {
+//         final ownerUid = ownerSnapshot.docs.first.id;
+//         final ownerDataServicesRef = FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(ownerUid)
+//             .collection('DataServices');
+//         batch.set(ownerDataServicesRef.doc(docId), recordData);
+//       }
+//     }
+//
+//     // Update Vehicle
+//     final vehicleRef = FirebaseFirestore.instance
+//         .collection('Users')
+//         .doc(currentUId)
+//         .collection('Vehicles')
+//         .doc(selectedVehicle);
+//
+//     batch.update(vehicleRef, {
+//       'currentMiles': currentMiles.toString(),
+//       'currentMilesArray': FieldValue.arrayUnion([
+//         {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+//       ]),
+//       'nextNotificationMiles': notificationData,
+//     });
+//
+//     await batch.commit();
+//
+//     resetForm();
+//
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(isEditing
+//             ? 'Record updated successfully'
+//             : 'Record saved successfully'),
+//       ),
+//     );
+//   } catch (e, stackTrace) {
+//     debugPrint('Error Saving records: ${e.toString()}');
+//     debugPrint(stackTrace.toString());
+//
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(content: Text('Error saving records: ${e.toString()}')),
+//     );
+//   }
+// }
+

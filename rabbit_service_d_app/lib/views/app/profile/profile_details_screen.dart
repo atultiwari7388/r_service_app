@@ -330,22 +330,73 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                               vehicle['vehicleNumber']),
                                           () => _deleteVehicle(vehicle.id),
                                           isActive,
-                                              (value) async {
+                                          (value) async {
+                                            final vehicleId = vehicle.id;
+
+                                            // Update the vehicle status
                                             await FirebaseFirestore.instance
                                                 .collection("Users")
                                                 .doc(currentUId)
                                                 .collection('Vehicles')
-                                                .doc(vehicle.id)
-                                                .update({'active': value}).then((value){
-                                                  showToastMessage("Msg", "Vehicle Status Updated", kSecondary);
+                                                .doc(vehicleId)
+                                                .update({'active': value}).then(
+                                                    (_) async {
+                                              showToastMessage(
+                                                  "Msg",
+                                                  "Vehicle Status Updated",
+                                                  kSecondary);
+
+                                              // Fetch all DataServices documents where vehicleId matches
+                                              final dataServicesSnapshot =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection("Users")
+                                                      .doc(currentUId)
+                                                      .collection(
+                                                          'DataServices')
+                                                      .where("vehicleId",
+                                                          isEqualTo: vehicleId)
+                                                      .get();
+
+                                              // Check if DataServices exists
+                                              if (dataServicesSnapshot
+                                                  .docs.isNotEmpty) {
+                                                final batch = FirebaseFirestore
+                                                    .instance
+                                                    .batch();
+
+                                                for (var doc
+                                                    in dataServicesSnapshot
+                                                        .docs) {
+                                                  batch.update(doc.reference,
+                                                      {'active': value});
+                                                }
+
+                                                await batch.commit();
+                                                // showToastMessage(
+                                                //     "Msg",
+                                                //     "DataServices Updated",
+                                                //     kSecondary);
+                                              }
                                             });
                                           },
+
+                                          //     (value) async {
+                                          //   await FirebaseFirestore.instance
+                                          //       .collection("Users")
+                                          //       .doc(currentUId)
+                                          //       .collection('Vehicles')
+                                          //       .doc(vehicle.id)
+                                          //       .update({'active': value}).then((value){
+                                          //         showToastMessage("Msg", "Vehicle Status Updated", kSecondary);
+                                          //   });
+                                          // },
+                                          //
                                         );
                                       },
                                     );
                                   },
                                 ),
-
                               ],
                             ),
 
@@ -398,9 +449,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     );
   }
 
-  Container buildVehicleNameEditDeleteSection(String vehcileName,
-      void Function()? onEditPress, void Function()? onDeletePress, bool isActive
-      ,ValueChanged<bool> onSwitchChanged) {
+  Container buildVehicleNameEditDeleteSection(
+      String vehcileName,
+      void Function()? onEditPress,
+      void Function()? onDeletePress,
+      bool isActive,
+      ValueChanged<bool> onSwitchChanged) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 2.0.h),
       padding: EdgeInsets.symmetric(vertical: 1.0.h, horizontal: 2.w),
