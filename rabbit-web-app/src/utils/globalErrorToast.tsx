@@ -5,3 +5,7 @@ export const GlobalToastError = (error: unknown) => {
     "Failed to fetch. Please try again. Error: " + String(error)
   );
 };
+
+export const GlobalToastSuccess = (message: string) => {
+  return toast.success(message);
+};
