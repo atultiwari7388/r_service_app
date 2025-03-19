@@ -20,9 +20,34 @@ import {
 import { useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-// import { Modal } from "@/components/Modal";
+import { Modal } from "@/components/Modal";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
+import { TripDetailsModal } from "@/components/trips/TripDetailsComp";
+
+export interface Trip {
+  id: string;
+  tripName: string;
+  vehicleId: string;
+  companyName: string;
+  vehicleNumber: string;
+  totalMiles: number;
+  tripStartMiles: number;
+  tripEndMiles: number;
+  currentMiles: number;
+  previousMiles: number;
+  milesArray: Array<{
+    mile: number;
+    date: Timestamp;
+  }>;
+  isPaid: boolean;
+  tripStatus: number;
+  tripStartDate: Timestamp;
+  tripEndDate: Timestamp;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  oEarnings?: number;
+}
 
 interface TripDetails {
   id: string;
@@ -30,8 +55,8 @@ interface TripDetails {
   vehicleId: string;
   currentUID: string;
   role: string;
-  companyName?: string;
-  vehicleNumber?: string;
+  companyName: string;
+  vehicleNumber: string;
   totalMiles: number;
   tripStartMiles: number;
   tripEndMiles: number;
@@ -342,6 +367,7 @@ export default function ManageTripPage() {
   };
 
   if (!user) return <div>Please login to view this page</div>;
+  if (userData === null) return <LoadingIndicator />;
   if (isLoading) return <LoadingIndicator />;
 
   return (
@@ -524,7 +550,7 @@ export default function ManageTripPage() {
         ))}
       </div>
 
-      {/* <Modal show={showEditModal} onClose={() => setShowEditModal(false)}>
+      <Modal show={showEditModal} onClose={() => setShowEditModal(false)}>
         {currentTripEdit && (
           <TripDetailsModal
             trip={currentTripEdit}
@@ -532,7 +558,7 @@ export default function ManageTripPage() {
             userId={user.uid}
           />
         )}
-      </Modal> */}
+      </Modal>
     </div>
   );
 }
