@@ -16,6 +16,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
 import { generateOrderId } from "@/utils/generateOrderId";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
+import PopupModal from "@/components/PopupModal";
+
+interface RedirectProps {
+  path: string;
+}
 
 const BookingSection: React.FC = () => {
   const { user } = useAuth() || { user: null };
@@ -35,6 +40,8 @@ const BookingSection: React.FC = () => {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+
+  const [showPopup, setShowPopup] = useState(false);
 
   // Handle selection changes
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -285,6 +292,11 @@ const BookingSection: React.FC = () => {
     }
   };
 
+  const handleRedirect = ({ path }: RedirectProps): void => {
+    setShowPopup(false);
+    window.location.href = path;
+  };
+
   if (loading) {
     return <LoadingIndicator />;
   }
@@ -335,14 +347,52 @@ const BookingSection: React.FC = () => {
                     ))}
                   </select>
 
-                  <Link href="/add-vehicle">
+                  {/* <Link href="/add-vehicle">
                     <button
                       className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
                       title="Add Vehicle"
                     >
                       +
                     </button>
-                  </Link>
+                  </Link> */}
+
+                  {/* <button
+                    className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                    title="Add Vehicle"
+                    onClick={() => setShowPopup(true)}
+                  >
+                    +
+                  </button> */}
+
+                  <button
+                    className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                    title="Add Vehicle"
+                    onClick={(e) => {
+                      e.preventDefault(); // Prevent default behavior
+                      setShowPopup(true); // Open the popup
+                    }}
+                  >
+                    +
+                  </button>
+
+                  {/* Reusable Popup Component */}
+                  <PopupModal
+                    isOpen={showPopup}
+                    onClose={() => setShowPopup(false)}
+                    title="Select Option"
+                    options={[
+                      {
+                        label: "Add Vehicle",
+                        onClick: () => handleRedirect({ path: "/add-vehicle" }),
+                      },
+                      {
+                        label: "Import Vehicle",
+                        onClick: () =>
+                          handleRedirect({ path: "/import-vehicle" }),
+                        bgColor: "blue",
+                      },
+                    ]}
+                  />
                 </div>
 
                 {/* Service Select */}
