@@ -97,7 +97,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   String filterVehicle = '';
   String filterService = '';
   String filterMiles = '';
-  String filterInvoice='';
+  String filterInvoice = '';
   DateTime? startDate;
   DateTime? endDate;
 
@@ -343,11 +343,17 @@ class _ReportsScreenState extends State<ReportsScreen>
           (DateTime.parse(record['date']).isAfter(startDate!) &&
               DateTime.parse(record['date']).isBefore(endDate!));
 
-      final matchesInvoice = filterInvoice == null || record['invoice'].toString()
-          .toLowerCase()
-          .contains(filterInvoice.toLowerCase());;
+      final matchesInvoice = filterInvoice == null ||
+          record['invoice']
+              .toString()
+              .toLowerCase()
+              .contains(filterInvoice.toLowerCase());
+      ;
 
-      return matchesVehicle && matchesService && matchesDateRange && matchesInvoice;
+      return matchesVehicle &&
+          matchesService &&
+          matchesDateRange &&
+          matchesInvoice;
     }).toList();
 
     filteredRecords.sort((a, b) {
@@ -373,7 +379,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       // ** Subservice validation check **
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
-              (s) => s['sId'] == serviceId,
+          (s) => s['sId'] == serviceId,
           orElse: () => {},
         );
 
@@ -386,7 +392,8 @@ class _ReportsScreenState extends State<ReportsScreen>
           if (hasSubServices && selectedSubServiceList.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Please select at least one subservice for ${service['sName']}'),
+                content: Text(
+                    'Please select at least one subservice for ${service['sName']}'),
               ),
             );
             return; // Stop execution if validation fails
@@ -395,7 +402,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       }
 
       final dataServicesRef =
-      FirebaseFirestore.instance.collection("DataServicesRecords");
+          FirebaseFirestore.instance.collection("DataServicesRecords");
 
       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
@@ -407,7 +414,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
-              (s) => s['sId'] == serviceId,
+          (s) => s['sId'] == serviceId,
           orElse: () => {},
         );
 
@@ -418,7 +425,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
         final nextNotificationValue =
-        defaultValue == 0 ? 0 : currentMiles + defaultValue;
+            defaultValue == 0 ? 0 : currentMiles + defaultValue;
 
         servicesData.add({
           "serviceId": serviceId,
@@ -426,11 +433,11 @@ class _ReportsScreenState extends State<ReportsScreen>
           "defaultNotificationValue": defaultValue,
           "nextNotificationValue": nextNotificationValue,
           "subServices": selectedSubServices[serviceId]
-              ?.map((subService) => {
-            "name": subService,
-            "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
-          })
-              .toList() ??
+                  ?.map((subService) => {
+                        "name": subService,
+                        "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+                      })
+                  .toList() ??
               [],
         });
 
@@ -460,15 +467,15 @@ class _ReportsScreenState extends State<ReportsScreen>
         "allNextNotificationValues": allNextNotificationValues,
         "totalMiles": currentMiles,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-            selectedServiceData.any((s) => s['vType'] == "Truck")
+                selectedServiceData.any((s) => s['vType'] == "Truck")
             ? currentMiles
             : 0,
         "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-            selectedServiceData.any((s) => s['vType'] == "Trailer")
+                selectedServiceData.any((s) => s['vType'] == "Trailer")
             ? int.tryParse(hoursController.text) ?? 0
             : 0,
         "date":
-        selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+            selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
         "workshopName": workshopController.text,
         "createdAt": DateTime.now().toIso8601String(),
       };
@@ -554,9 +561,6 @@ class _ReportsScreenState extends State<ReportsScreen>
       );
     }
   }
-
-
-
 
   void _handleEditRecord(Map<String, dynamic> record) {
     setState(() {
@@ -804,7 +808,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                               false;
                                                           showDateSearch =
                                                               false;
-                                                          showInvoiceSearch = false;
+                                                          showInvoiceSearch =
+                                                              false;
                                                           filterService = '';
                                                           startDate = null;
                                                           endDate = null;
@@ -828,7 +833,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                               true;
                                                           showDateSearch =
                                                               false;
-                                                          showInvoiceSearch = false;
+                                                          showInvoiceSearch =
+                                                              false;
                                                           filterVehicle = '';
                                                           startDate = null;
                                                           endDate = null;
@@ -849,7 +855,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                           showServiceSearch =
                                                               false;
                                                           showDateSearch = true;
-                                                          showInvoiceSearch = false;
+                                                          showInvoiceSearch =
+                                                              false;
                                                           filterVehicle = '';
                                                           filterService = '';
                                                         });
@@ -859,8 +866,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                       },
                                                     ),
                                                     ListTile(
-                                                        title:
-                                                            Text('Search by Invoice'),
+                                                        title: Text(
+                                                            'Search by Invoice'),
                                                         onTap: () {
                                                           setState(() {
                                                             showCombinedSearch =
@@ -871,7 +878,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                 false;
                                                             showDateSearch =
                                                                 false;
-                                                            showInvoiceSearch = true;
+                                                            showInvoiceSearch =
+                                                                true;
                                                             filterVehicle = '';
                                                             filterService = '';
                                                             startDate = null;
@@ -882,18 +890,19 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                         }),
                                                     ListTile(
                                                         title:
-                                                        Text('Search All'),
+                                                            Text('Search All'),
                                                         onTap: () {
                                                           setState(() {
                                                             showCombinedSearch =
-                                                            true;
+                                                                true;
                                                             showVehicleSearch =
-                                                            false;
+                                                                false;
                                                             showServiceSearch =
-                                                            false;
+                                                                false;
                                                             showDateSearch =
-                                                            false;
-                                                            showInvoiceSearch = false;
+                                                                false;
+                                                            showInvoiceSearch =
+                                                                false;
                                                             filterVehicle = '';
                                                             filterService = '';
                                                             startDate = null;
@@ -902,7 +911,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                           Navigator.of(context)
                                                               .pop();
                                                         }),
-
                                                   ],
                                                 ),
                                                 actions: [
@@ -962,11 +970,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     TextField(
                                       decoration: InputDecoration(
                                         labelText: 'Search by Invoice',
-                                        labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
-                                        prefixIcon: Icon(Icons.receipt, color: kPrimary),
+                                        prefixIcon: Icon(Icons.receipt,
+                                            color: kPrimary),
                                       ),
                                       onChanged: (value) {
                                         setState(() {
@@ -975,7 +986,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       },
                                     ),
                                   SizedBox(height: 16.h),
-
                                   if ((showVehicleSearch ||
                                           showCombinedSearch) &&
                                       (showServiceSearch || showDateSearch))
@@ -1117,7 +1127,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                               ),
                             ),
                           ),
-
                         ],
 
                         if (showAddRecords) ...[
@@ -1156,7 +1165,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   SizedBox(height: 10.h),
                                   // Select Package (Multiple Selection)
 
-                                  if (selectedVehicle != null) ...[
+                                  if (selectedVehicle != null &&
+                                      selectedVehicleData?['vehicleType'] ==
+                                          'Truck') ...[
                                     Text("Select Packages",
                                         style: appStyleUniverse(
                                             16, kDark, FontWeight.normal)),
@@ -2434,9 +2445,6 @@ class _ReportsScreenState extends State<ReportsScreen>
   }
 }
 
-
-
-
 // Future<void> handleSaveRecords() async {
 //   try {
 //     if (selectedVehicle == null || selectedServices.isEmpty) {
@@ -2608,4 +2616,3 @@ class _ReportsScreenState extends State<ReportsScreen>
 //     );
 //   }
 // }
-

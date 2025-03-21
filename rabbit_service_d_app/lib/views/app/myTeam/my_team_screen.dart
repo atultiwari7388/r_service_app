@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/edit_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/member_jobs_history.dart';
@@ -261,13 +262,42 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      // Switch(
+                                      //   activeColor: kPrimary,
+                                      //   value: isActive,
+                                      //   onChanged: (bool value) {
+                                      //     // Handle the switch change (update in Firestore if necessary)
+                                      //
+                                      //   },
+                                      // ),
                                       Switch(
                                         activeColor: kPrimary,
                                         value: isActive,
-                                        onChanged: (bool value) {
-                                          // Handle the switch change (update in Firestore if necessary)
+                                        onChanged: (bool value) async {
+                                          try {
+                                            await FirebaseFirestore.instance
+                                                .collection('Users')
+                                                .doc(memberId)
+                                                .update({'active': value});
+
+                                            setState(() {
+                                              _filteredMembers[index]
+                                                  ['isActive'] = value;
+                                            });
+
+                                            showToastMessage(
+                                                "Success",
+                                                "Member status updated",
+                                                Colors.green);
+                                          } catch (e) {
+                                            showToastMessage(
+                                                "Error",
+                                                "Failed to update status",
+                                                Colors.red);
+                                          }
                                         },
                                       ),
+
                                       PopupMenuButton<String>(
                                         icon: Icon(Icons
                                             .more_vert_rounded), // The 3-dot menu icon
@@ -331,7 +361,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           ),
         ],
       ),
-
     );
   }
 }
