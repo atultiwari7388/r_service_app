@@ -246,62 +246,6 @@ class _ReportsScreenState extends State<ReportsScreen>
     });
   }
 
-  void updateServiceDefaultValues() {
-    if (selectedVehicle != null && selectedServices.isNotEmpty) {
-      for (var serviceId in selectedServices) {
-        final selectedService = services.firstWhere(
-          (service) => service['sId'] == serviceId,
-          orElse: () => <String, dynamic>{},
-        );
-
-        final dValues = selectedService['dValues'] as List<dynamic>?;
-        if (dValues != null) {
-          // for (var dValue in dValues) {
-
-          for (var dValue in dValues) {
-            //now here we comparing the value of the brand with the engine name
-            if (dValue['brand'].toString().toUpperCase() ==
-                selectedVehicleData?['engineName'].toString().toUpperCase()) {
-              serviceDefaultValues[serviceId] =
-                  int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void updateSelectedVehicleAndService() {
-    if (selectedVehicle != null) {
-      selectedVehicleData = vehicles.firstWhere(
-        (vehicle) => vehicle['id'] == selectedVehicle,
-        orElse: () => <String, dynamic>{},
-      );
-    }
-
-    selectedServiceData = reorderServicesBasedOnPackages()
-        .where((service) => selectedServices.contains(service['sId']))
-        .toList();
-
-    serviceDefaultValues.clear();
-    for (var service in selectedServiceData) {
-      final dValues = service['dValues'] as List<dynamic>?;
-      if (dValues != null) {
-        for (var dValue in dValues) {
-          if (dValue['brand'].toString().toUpperCase() ==
-              selectedVehicleData?['engineName'].toString().toUpperCase()) {
-            serviceDefaultValues[service['sId']] =
-                int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-            break;
-          }
-        }
-      }
-    }
-
-    setState(() {}); // Refresh the UI with updated data
-  }
-
   List<Map<String, dynamic>> reorderServicesBasedOnPackages() {
     if (selectedPackages.isEmpty) {
       return services; // No packages selected, return original order
@@ -365,6 +309,148 @@ class _ReportsScreenState extends State<ReportsScreen>
     return filteredRecords;
   }
 
+  // void updateServiceDefaultValues() {
+  //   if (selectedVehicle != null && selectedServices.isNotEmpty) {
+  //     for (var serviceId in selectedServices) {
+  //       final selectedService = services.firstWhere(
+  //         (service) => service['sId'] == serviceId,
+  //         orElse: () => <String, dynamic>{},
+  //       );
+  //
+  //       final dValues = selectedService['dValues'] as List<dynamic>?;
+  //       if (dValues != null) {
+  //         // for (var dValue in dValues) {
+  //
+  //         for (var dValue in dValues) {
+  //           //now here we comparing the value of the brand with the engine name
+  //           if (dValue['brand'].toString().toUpperCase() ==
+  //               selectedVehicleData?['engineName'].toString().toUpperCase()) {
+  //             serviceDefaultValues[serviceId] =
+  //                 int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+  //             break;
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+  //
+  // void updateSelectedVehicleAndService() {
+  //   if (selectedVehicle != null) {
+  //     selectedVehicleData = vehicles.firstWhere(
+  //       (vehicle) => vehicle['id'] == selectedVehicle,
+  //       orElse: () => <String, dynamic>{},
+  //     );
+  //   }
+  //
+  //   selectedServiceData = reorderServicesBasedOnPackages()
+  //       .where((service) => selectedServices.contains(service['sId']))
+  //       .toList();
+  //
+  //   serviceDefaultValues.clear();
+  //   for (var service in selectedServiceData) {
+  //     final dValues = service['dValues'] as List<dynamic>?;
+  //
+  //     if (dValues != null) {
+  //       for (var dValue in dValues) {
+  //         if (dValue['brand'].toString().toUpperCase() ==
+  //             selectedVehicleData?['engineName'].toString().toUpperCase()) {
+  //           serviceDefaultValues[service['sId']] =
+  //               int.parse(dValue['value'].toString().split(',')[0]) * 1000;
+  //           break;
+  //         }
+  //       }
+  //     }
+  //   }
+  //
+  //   setState(() {}); // Refresh the UI with updated data
+  // }
+
+  void updateServiceDefaultValues() {
+    if (selectedVehicle != null && selectedServices.isNotEmpty) {
+      for (var serviceId in selectedServices) {
+        final selectedService = services.firstWhere(
+          (service) => service['sId'] == serviceId,
+          orElse: () => <String, dynamic>{},
+        );
+
+        final dValues = selectedService['dValues'] as List<dynamic>?;
+
+        if (dValues != null) {
+          for (var dValue in dValues) {
+            // Compare the brand with the engine name
+            if (dValue['brand'].toString().toUpperCase() ==
+                selectedVehicleData?['engineName'].toString().toUpperCase()) {
+              String type = dValue['type'].toString().toLowerCase();
+              int value =
+                  int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
+              int notificationValue;
+
+              if (type == "reading") {
+                notificationValue = value * 1000; // Convert to miles if needed
+              } else if (type == "day") {
+                notificationValue = value; // Store days directly
+              } else if (type == "hour") {
+                notificationValue = value; // Store hours directly
+              } else {
+                notificationValue = value; // Default case
+              }
+
+              serviceDefaultValues[serviceId] = notificationValue;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void updateSelectedVehicleAndService() {
+    if (selectedVehicle != null) {
+      selectedVehicleData = vehicles.firstWhere(
+        (vehicle) => vehicle['id'] == selectedVehicle,
+        orElse: () => <String, dynamic>{},
+      );
+    }
+
+    selectedServiceData = reorderServicesBasedOnPackages()
+        .where((service) => selectedServices.contains(service['sId']))
+        .toList();
+
+    serviceDefaultValues.clear();
+
+    for (var service in selectedServiceData) {
+      final dValues = service['dValues'] as List<dynamic>?;
+
+      if (dValues != null) {
+        for (var dValue in dValues) {
+          if (dValue['brand'].toString().toUpperCase() ==
+              selectedVehicleData?['engineName'].toString().toUpperCase()) {
+            String type = dValue['type'].toString().toLowerCase();
+            int value =
+                int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
+            int notificationValue;
+
+            if (type == "reading") {
+              notificationValue = value * 1000;
+            } else if (type == "day") {
+              notificationValue = value;
+            } else if (type == "hour") {
+              notificationValue = value;
+            } else {
+              notificationValue = value;
+            }
+
+            serviceDefaultValues[service['sId']] = notificationValue;
+            break;
+          }
+        }
+      }
+    }
+
+    setState(() {}); // Refresh the UI
+  }
+
   Future<void> handleSaveRecords() async {
     try {
       if (selectedVehicle == null || selectedServices.isEmpty) {
@@ -407,6 +493,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
       final currentMiles = int.tryParse(milesController.text) ?? 0;
+      final currentHours = int.tryParse(hoursController.text) ?? 0;
 
       List<Map<String, dynamic>> servicesData = [];
       List<Map<String, dynamic>> notificationData = [];
@@ -423,15 +510,56 @@ class _ReportsScreenState extends State<ReportsScreen>
           continue; // Skip this iteration if service is not found
         }
 
+        // Get matching dValue for vehicle's engine
+        final engineName =
+            selectedVehicleData?['engineName'].toString().toUpperCase();
+        final dValues = service['dValues'] as List<dynamic>;
+        final matchingDValue = dValues.firstWhere(
+          (dv) => dv['brand'].toString().toUpperCase() == engineName,
+          orElse: () => null,
+        );
+
+        if (matchingDValue == null) {
+          debugPrint('No matching dValue found for service $serviceId');
+          continue;
+        }
+
+        final type =
+            (matchingDValue['type'] ?? 'reading').toString().toLowerCase() ??
+                "";
         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-        final nextNotificationValue =
-            defaultValue == 0 ? 0 : currentMiles + defaultValue;
+        // Calculate and format dates
+        String formattedDate = '';
+        int numericValue = 0;
+
+        // Calculate next notification values
+        int nextNotificationValue;
+        DateTime? nextNotificationDate;
+
+        if (type == 'reading') {
+          nextNotificationValue = currentMiles + defaultValue;
+        } else if (type == 'day') {
+          // final baseDate = selectedDate ?? DateTime.now();
+          // nextNotificationDate = baseDate.add(Duration(days: defaultValue));
+          // nextNotificationValue = nextNotificationDate.millisecondsSinceEpoch;
+          final baseDate = selectedDate ?? DateTime.now();
+          final nextDate = baseDate.add(Duration(days: defaultValue));
+          formattedDate =
+              DateFormat('dd/MM/yyyy').format(nextDate); // Format here
+          numericValue = nextDate.millisecondsSinceEpoch;
+        } else if (type == 'hour') {
+          nextNotificationValue = currentHours + defaultValue;
+        } else {
+          nextNotificationValue = 0;
+        }
 
         servicesData.add({
           "serviceId": serviceId,
           "serviceName": service['sName'],
+          "type": type,
           "defaultNotificationValue": defaultValue,
-          "nextNotificationValue": nextNotificationValue,
+          "nextNotificationValue":
+              type == 'day' ? formattedDate : (currentMiles + defaultValue),
           "subServices": selectedSubServices[serviceId]
                   ?.map((subService) => {
                         "name": subService,
@@ -443,7 +571,9 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         notificationData.add({
           "serviceName": service['sName'],
-          "nextNotificationValue": nextNotificationValue,
+          "type": type,
+          "nextNotificationValue":
+              type == 'day' ? formattedDate : (currentMiles + defaultValue),
           "subServices": selectedSubServices[serviceId] ?? [],
         });
       }
@@ -1650,6 +1780,28 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           todayMilesController
                                               .text.isNotEmpty) {
                                         try {
+                                          // Check if DataServices subcollection exists and is not empty
+                                          final dataServicesSnapshot =
+                                              await FirebaseFirestore.instance
+                                                  .collection("Users")
+                                                  .doc(currentUId)
+                                                  .collection("DataServices")
+                                                  .get();
+
+                                          if (dataServicesSnapshot
+                                              .docs.isEmpty) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    "First add a record in DataServices, then continue to add miles."),
+                                                duration: Duration(seconds: 3),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                            return; // Exit the function early
+                                          }
+
                                           final int enteredValue = int.parse(
                                               todayMilesController.text);
                                           final vehicleId = selectedVehicle;
@@ -1692,18 +1844,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             // }
 
                                             // Proceed with saving the data
-                                            await FirebaseFirestore.instance
-                                                .collection("Users")
-                                                .doc(currentUId)
-                                                .collection("Vehicles")
-                                                .doc(vehicleId)
-                                                .update({
+
+                                            final data = {
                                               selectedVehicleType == 'Truck'
                                                       ? "prevMilesValue"
                                                       : "prevHoursReadingValue":
                                                   currentReading.toString(),
                                               selectedVehicleType == 'Truck'
                                                       ? "currentMiles"
+                                                      : "hoursReading":
+                                                  enteredValue.toString(),
+                                              selectedVehicleType == 'Truck'
+                                                      ? "miles"
                                                       : "hoursReading":
                                                   enteredValue.toString(),
                                               selectedVehicleType == 'Truck'
@@ -1718,7 +1870,30 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                       .toIso8601String(),
                                                 }
                                               ]),
-                                            });
+                                            };
+
+                                            await FirebaseFirestore.instance
+                                                .collection("Users")
+                                                .doc(currentUId)
+                                                .collection("Vehicles")
+                                                .doc(vehicleId)
+                                                .update(data);
+
+                                            // **Fetch & Update DataServices Subcollection**
+                                            final dataServicesSnapshot =
+                                                await FirebaseFirestore.instance
+                                                    .collection("Users")
+                                                    .doc(currentUId)
+                                                    .collection("DataServices")
+                                                    .where("vehicleId",
+                                                        isEqualTo:
+                                                            selectedVehicle) // Filter matching docs
+                                                    .get();
+
+                                            for (var doc
+                                                in dataServicesSnapshot.docs) {
+                                              await doc.reference.update(data);
+                                            }
 
                                             debugPrint(
                                                 '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
@@ -1742,6 +1917,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 FirebaseFunctions.instance
                                                     .httpsCallable(
                                                         'checkAndNotifyUserForVehicleService');
+
+                                            // After updating miles/hours in DataServices
+                                            final HttpsCallable checkServices =
+                                                FirebaseFunctions.instance
+                                                    .httpsCallable(
+                                                        'checkDataServicesAndNotify');
+
+                                            await checkServices.call({
+                                              'userId': currentUId,
+                                              'vehicleId': vehicleId
+                                            });
+
                                             final result = await callable.call({
                                               'userId': currentUId,
                                               'vehicleId': vehicleId,

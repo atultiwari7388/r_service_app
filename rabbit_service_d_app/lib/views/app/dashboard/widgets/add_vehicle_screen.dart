@@ -95,63 +95,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     }
   }
 
-  List<Map<String, dynamic>> calculateNextNotificationMiles() {
-    List<Map<String, dynamic>> nextNotificationMiles = [];
-    int currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
-
-    log('Current Miles: $currentMiles');
-    log('Selected Engine: $_selectedEngineName');
-    log('Selected Vehicle Type: $_selectedVehicleType');
-
-    for (var service in servicesData) {
-      log('\nChecking service: ${service['sName']}');
-
-      if (service['vType'] == _selectedVehicleType) {
-        String serviceName = service['sName'];
-        String serviceId = service['sId'] ?? '';
-        List<dynamic> subServices = service['subServices'] ?? [];
-        List<dynamic> defaultValues = service['dValues'] ?? [];
-
-        // Track if we found any matches for this service
-        bool foundMatch = false;
-
-        // Check all default values for brand matches
-        for (var defaultValue in defaultValues) {
-          if (defaultValue['brand'].toString().toLowerCase() ==
-              _selectedEngineName?.toLowerCase()) {
-            foundMatch = true;
-            int notificationValue =
-                (int.tryParse(defaultValue['value'].toString()) ?? 0) * 1000;
-
-            int nextMiles = notificationValue;
-            int defaultNotificationvalues = notificationValue;
-
-            log('Matched dValue - Brand: ${defaultValue['brand']}, Notification Value: $notificationValue, Next Miles: $nextMiles');
-
-            nextNotificationMiles.add({
-              'serviceId': serviceId,
-              'serviceName': serviceName,
-              'defaultNotificationValue': defaultNotificationvalues,
-              'nextNotificationValue': nextMiles,
-              'subServices':
-                  subServices.map((s) => s['sName'].toString()).toList(),
-            });
-          }
-        }
-
-        // If no brand match was found, log it
-        if (!foundMatch) {
-          log('No brand match found for service: $serviceName');
-        }
-      } else {
-        log('Skipping service: ${service['sName']} due to unmatched vehicle type.');
-      }
-    }
-
-    log('\nFinal nextNotificationMiles: $nextNotificationMiles');
-    return nextNotificationMiles;
-  }
-
   Future<void> _fetchVehicleTypes() async {
     try {
       DocumentSnapshot<Map<String, dynamic>> metadataSnapshot =
@@ -259,6 +202,73 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     });
   }
 
+
+  List<Map<String, dynamic>> calculateNextNotificationMiles() {
+    List<Map<String, dynamic>> nextNotificationMiles = [];
+    int currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
+
+    log('Current Miles: $currentMiles');
+    log('Selected Engine: $_selectedEngineName');
+    log('Selected Vehicle Type: $_selectedVehicleType');
+
+    for (var service in servicesData) {
+      log('\nChecking service: ${service['sName']}');
+
+      if (service['vType'] == _selectedVehicleType) {
+        String serviceName = service['sName'];
+        String serviceId = service['sId'] ?? '';
+        List<dynamic> subServices = service['subServices'] ?? [];
+        List<dynamic> defaultValues = service['dValues'] ?? [];
+
+        bool foundMatch = false;
+
+        for (var defaultValue in defaultValues) {
+          if (defaultValue['brand'].toString().toLowerCase() ==
+              _selectedEngineName?.toLowerCase()) {
+            foundMatch = true;
+
+            String type = defaultValue['type']
+                .toString()
+                .toLowerCase(); // Get type (reading, day, hour)
+            int value = int.tryParse(defaultValue['value'].toString()) ?? 0;
+            int notificationValue;
+
+            if (type == "reading") {
+              notificationValue = value * 1000;
+            } else if (type == "day") {
+              notificationValue = value;
+            } else if (type == "hour") {
+              notificationValue = value;
+            } else {
+              notificationValue = value;
+            }
+
+            log('Matched dValue - Brand: ${defaultValue['brand']}, Type: $type, Notification Value: $notificationValue');
+
+            nextNotificationMiles.add({
+              'serviceId': serviceId,
+              'serviceName': serviceName,
+              'defaultNotificationValue': notificationValue,
+              'nextNotificationValue': notificationValue,
+              'type': type,
+              'subServices':
+                  subServices.map((s) => s['sName'].toString()).toList(),
+            });
+          }
+        }
+
+        if (!foundMatch) {
+          log('No brand match found for service: $serviceName');
+        }
+      } else {
+        log('Skipping service: ${service['sName']} due to unmatched vehicle type.');
+      }
+    }
+
+    log('\nFinal nextNotificationMiles: $nextNotificationMiles');
+    return nextNotificationMiles;
+  }
+
   Future<void> _saveVehicleData() async {
     setState(() {
       isSaving = true;
@@ -341,6 +351,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   'nextNotificationValue': service['nextNotificationValue'],
                   'serviceId': service['serviceId'],
                   'serviceName': service['serviceName'],
+                  'type': service['type'],
                   'subServices': service['subServices'],
                 })
             .toList(),
@@ -649,10 +660,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                   onChanged: (value) {
                                     _currentMilesController.value =
                                         TextEditingValue(
-                                          text: value.toUpperCase(),
-                                          selection:
+                                      text: value.toUpperCase(),
+                                      selection:
                                           _currentMilesController.selection,
-                                        );
+                                    );
                                   },
                                   decoration: InputDecoration(
                                     labelText: 'Current Miles *',
@@ -769,10 +780,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                   onChanged: (value) {
                                     _hoursReadingController.value =
                                         TextEditingValue(
-                                          text: value.toUpperCase(),
-                                          selection:
+                                      text: value.toUpperCase(),
+                                      selection:
                                           _hoursReadingController.selection,
-                                        );
+                                    );
                                   },
                                   decoration: InputDecoration(
                                     labelText: 'Hours Reading (optional)',
@@ -881,11 +892,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               child: TextField(
                                 controller: _vinController,
                                 onChanged: (value) {
-                                  _vinController.value =
-                                      TextEditingValue(
+                                  _vinController.value = TextEditingValue(
                                     text: value.toUpperCase(),
-                                    selection:
-                                    _vinController.selection,
+                                    selection: _vinController.selection,
                                   );
                                 },
                                 decoration: InputDecoration(
@@ -938,12 +947,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 child: TextField(
                                   controller: _dotController,
                                   onChanged: (value) {
-                                    _dotController.value =
-                                        TextEditingValue(
-                                          text: value.toUpperCase(),
-                                          selection:
-                                          _dotController.selection,
-                                        );
+                                    _dotController.value = TextEditingValue(
+                                      text: value.toUpperCase(),
+                                      selection: _dotController.selection,
+                                    );
                                   },
                                   decoration: InputDecoration(
                                     labelText: 'DOT (Optional)',
@@ -994,12 +1001,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 child: TextField(
                                   controller: _iccmsController,
                                   onChanged: (value) {
-                                    _iccmsController.value =
-                                        TextEditingValue(
-                                          text: value.toUpperCase(),
-                                          selection:
-                                          _iccmsController.selection,
-                                        );
+                                    _iccmsController.value = TextEditingValue(
+                                      text: value.toUpperCase(),
+                                      selection: _iccmsController.selection,
+                                    );
                                   },
                                   decoration: InputDecoration(
                                     labelText: 'ICCMS (Optional)',
@@ -1053,10 +1058,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 onChanged: (value) {
                                   _licensePlateController.value =
                                       TextEditingValue(
-                                        text: value.toUpperCase(),
-                                        selection:
+                                    text: value.toUpperCase(),
+                                    selection:
                                         _licensePlateController.selection,
-                                      );
+                                  );
                                 },
                                 decoration: InputDecoration(
                                   labelText: 'License Plate *',
