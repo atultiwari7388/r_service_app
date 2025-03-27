@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import toast from "react-hot-toast";
+import { IoMdNotificationsOutline } from "react-icons/io";
 
 type MenuItems = {
   icon: JSX.Element;
@@ -56,6 +57,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       icon: <CiStar className="mr-2" />,
       label: "Ratings",
       path: "/account/ratings",
+    },
+    {
+      icon: <IoMdNotificationsOutline className="mr-2" />,
+      label: "Notifications",
+      path: "/account/notifications",
     },
     {
       icon: <FaSignOutAlt className="mr-2" />,

@@ -288,6 +288,7 @@ export default function ImportVehicle() {
       toast.error(`${errors.length} errors occurred during upload`, {
         autoClose: 5000,
       });
+      toast.error(`Errors: ${uploadErrors}`);
     }
   };
 
@@ -299,9 +300,9 @@ export default function ImportVehicle() {
     );
   }
 
-  if (uploadErrors) {
-    return <div></div>;
-  }
+  // if (uploadErrors) {
+  //   return <div></div>;
+  // }
 
   return (
     <div className="container mx-auto p-4">

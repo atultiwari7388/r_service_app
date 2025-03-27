@@ -49,7 +49,11 @@ interface RecordData extends ServiceRecord {
   vehicle: string;
 }
 
-export default function RecordsDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function RecordsDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const resolvedParams = use(params);
   const { id } = resolvedParams;
 
@@ -59,7 +63,9 @@ export default function RecordsDetailsPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     if (!user?.uid || !id) return;
 
-    const recordsQuery = query(collection(db, "Users", user.uid, "DataServices"));
+    const recordsQuery = query(
+      collection(db, "Users", user.uid, "DataServices")
+    );
 
     const unsubscribe = onSnapshot(recordsQuery, (snapshot) => {
       const recordsData: RecordData[] = snapshot.docs.map((doc) => ({
@@ -106,7 +112,7 @@ export default function RecordsDetailsPage({ params }: { params: Promise<{ id: s
               <ListItem key={service.serviceId}>
                 <ListItemText
                   primary={service.serviceName}
-                  secondary={`Default Value: ${service.defaultNotificationValue}`}
+                  secondary={`Next Notification: ${service.nextNotificationValue}`}
                 />
               </ListItem>
             ))}

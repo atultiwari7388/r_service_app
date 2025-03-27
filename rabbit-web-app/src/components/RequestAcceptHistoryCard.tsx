@@ -8,7 +8,6 @@ interface RequestAcceptHistoryCardProps {
   onAcceptOffer: () => void;
   onPayment: () => void;
   onStartJob: () => void;
-  onCompleteJob: () => void;
   selectedPaymentMode: string;
   setSelectedPaymentMode: (mode: string) => void;
 }
@@ -19,7 +18,6 @@ export default function RequestAcceptHistoryCard({
   onAcceptOffer,
   onPayment,
   onStartJob,
-  onCompleteJob,
   selectedPaymentMode,
   setSelectedPaymentMode,
 }: RequestAcceptHistoryCardProps) {
@@ -168,11 +166,8 @@ export default function RequestAcceptHistoryCard({
           )}
 
           {mechanic.status === 4 && (
-            <button
-              onClick={onCompleteJob}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-2.5 rounded-full hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-200"
-            >
-              Complete Job
+            <button className="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-2.5 rounded-full hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-200">
+              Ongoing
             </button>
           )}
 

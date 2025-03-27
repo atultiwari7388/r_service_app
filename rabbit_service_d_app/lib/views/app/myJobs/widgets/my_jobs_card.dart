@@ -159,48 +159,6 @@ class _MyJobsCardState extends State<MyJobsCard> {
     super.dispose();
   }
 
-  /// Calculates the remaining time based on job creation time.
-  // void calculateRemainingTime() {
-  //   DateTime jobTime = widget.dateTime;
-  //   DateTime now = DateTime.now();
-
-  //   // Calculate the difference in seconds
-  //   int elapsedSeconds = now.difference(jobTime).inSeconds;
-
-  //   // Set remaining time
-  //   _remainingTime = 5 * 60 - elapsedSeconds;
-
-  //   if (_remainingTime <= 0) {
-  //     _remainingTime = 0;
-  //     _showTimer = false;
-  //   }
-  // }
-
-  // /// Starts the countdown timer.
-  // void startTimer() {
-  //   _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-  //     if (_remainingTime > 0) {
-  //       setState(() {
-  //         _remainingTime--;
-  //       });
-  //     } else {
-  //       _timer?.cancel();
-  //       setState(() {
-  //         _showTimer = false;
-  //       });
-  //     }
-  //   });
-  // }
-
-  // /// Formats the remaining time as MM:SS.
-  // String getFormattedTime() {
-  //   int minutes = _remainingTime ~/ 60;
-  //   int seconds = _remainingTime % 60;
-  //   String formattedMinutes = minutes.toString().padLeft(2, '0');
-  //   String formattedSeconds = seconds.toString().padLeft(2, '0');
-  //   return '$formattedMinutes:$formattedSeconds';
-  // }
-
   @override
   void didUpdateWidget(covariant MyJobsCard oldWidget) {
     super.didUpdateWidget(oldWidget);

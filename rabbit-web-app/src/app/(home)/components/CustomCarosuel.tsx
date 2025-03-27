@@ -10,7 +10,7 @@ import "slick-carousel/slick/slick-theme.css";
 const sliderData = [
   {
     imageSrc: "/slider_1_n.png",
-    title: "5th Wheel",
+    title: "Coolant Leak",
     description:
       "Fast, reliable, and quality truck servicing with a personal touch.",
     buttonText: "Book Now",
@@ -26,7 +26,7 @@ const sliderData = [
   },
   {
     imageSrc: "/slider_3_n.png",
-    title: "Air Pressure",
+    title: "Computer Diagnostic",
     description:
       "High-quality repairs that won't break the bank. Get back on the road quickly!",
     buttonText: "Book Now",

@@ -405,39 +405,4 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
       );
     }
   }
-
-  // void _updateJobStatus(String orderId, String reason) async {
-  //   try {
-  //     // Update the job document in Firestore with the new status and reason
-
-  //     final data = {
-  //       'status': -1, // Update status to cancelled
-  //       'cancelReason': reason, // Store the selected reason
-  //       'cancelBy': 'Driver',
-  //     };
-  //     await FirebaseFirestore.instance
-  //         .collection('jobs')
-  //         .doc(orderId)
-  //         .update(data);
-
-  //     await FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('history')
-  //         .doc(orderId)
-  //         .update(data);
-
-  //     // Show a success message
-  //     Get.snackbar("Job Cancelled", "The job was cancelled due to: $reason",
-  //         snackPosition: SnackPosition.BOTTOM,
-  //         backgroundColor: Colors.green,
-  //         colorText: Colors.white);
-  //   } catch (error) {
-  //     // Handle any errors
-  //     Get.snackbar("Error", "Failed to cancel job: $error",
-  //         snackPosition: SnackPosition.BOTTOM,
-  //         backgroundColor: Colors.red,
-  //         colorText: Colors.white);
-  //   }
-  // }
 }

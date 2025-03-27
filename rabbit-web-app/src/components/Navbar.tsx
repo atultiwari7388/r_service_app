@@ -115,6 +115,12 @@ export default function NavBar() {
           <Link href="/contact-us" className="hover:text-[#F96176]">
             Contact us
           </Link>
+          <Link
+            href="/records"
+            className="hover:text-[#F96176] transition-all duration-300 transform hover:scale-105 animate-fadeIn"
+          >
+            Records
+          </Link>
           {isLoggedIn && userData && (
             <>
               <Link href="/my-jobs" className="hover:text-[#F96176]">
@@ -123,12 +129,7 @@ export default function NavBar() {
               <Link href="/history" className="hover:text-[#F96176]">
                 History
               </Link>
-              <Link
-                href="/records"
-                className="hover:text-[#F96176] transition-all duration-300 transform hover:scale-105 animate-fadeIn"
-              >
-                Records
-              </Link>
+
               {/* Profile Icon with Hover Effect */}
               <div
                 className="relative"

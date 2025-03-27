@@ -40,7 +40,9 @@ const AboutSection = () => {
               About Us
             </h6>
             <h1 className="mb-4 text-3xl">
-              <span className="text-[#F96176] font-bold">Rabbit Service</span>{" "}
+              <span className="text-[#F96176] font-bold">
+                Rabbit Mechanic Service
+              </span>{" "}
               Is The Best Place For Your Auto Care
             </h1>
             <p className="mb-4 text-lg">

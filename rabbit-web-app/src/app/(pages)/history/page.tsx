@@ -222,11 +222,11 @@ export default function HistoryPage(): JSX.Element {
                       <span className="text-yellow-500">In Progress</span>
                     )}
                   </td>
-                  <td className="px-4 py-2 border-b flex gap-3 justify-center">
+                  <td className="px-2 py-2 border-b flex gap-3 justify-center">
                     {item.status === 5 && (
                       <button
                         onClick={() => openRatingDialog(item)}
-                        className="bg-gradient-to-r from-[#F96176] to-[#eb4d64] text-white py-2 px-4 rounded-lg hover:from-[#eb4d64] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+                        className="bg-gradient-to-r from-[#F96176] to-[#eb4d64] text-white py-2 px-2 rounded-lg hover:from-[#eb4d64] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -242,7 +242,7 @@ export default function HistoryPage(): JSX.Element {
 
                     <Link
                       href={`/my-jobs/${item.id.replace("#", "")}`}
-                      className="bg-gradient-to-r from-[#F96176] to-[#eb4d64] text-white py-2 px-4 rounded-lg hover:from-[#eb4d64] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+                      className="bg-gradient-to-r from-[#F96176] to-[#eb4d64] text-white py-2 px-2 rounded-lg hover:from-[#eb4d64] hover:to-[#F96176] transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"

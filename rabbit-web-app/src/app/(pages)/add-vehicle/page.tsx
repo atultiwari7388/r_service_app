@@ -26,13 +26,25 @@ interface DValue {
 }
 
 interface Service {
-  serviceId: string;
-  serviceName: string;
+  sId: string;
+  sName: string;
   defaultNotificationValue: number;
   nextNotificationValue: number;
   subServices: { sName: string }[];
   vType: string;
   dValues: DValue[];
+  type?: string;
+}
+
+interface ServicesDB {
+  serviceId: string; // Changed from sId
+  serviceName: string; // Changed from sName
+  defaultNotificationValue: number;
+  nextNotificationValue: number;
+  subServices: { sName: string }[];
+  vType: string;
+  dValues: DValue[];
+  type?: string;
 }
 
 interface VehicleData {
@@ -49,7 +61,7 @@ interface VehicleData {
   createdAt: unknown;
   currentMilesArray: { miles: number; date: string }[];
   nextNotificationMiles: Service[];
-  services: Service[];
+  services: ServicesDB[];
   currentMiles?: string;
   prevMilesValue?: string;
   firstTimeMiles?: string;
@@ -150,56 +162,15 @@ export default function AddVehiclePage() {
 
   const fetchServicesData = async () => {
     try {
-      const servicesDoc = await getDoc(doc(db, "metadata", "servicesData"));
+      const servicesDoc = await getDoc(doc(db, "metadata", "serviceData"));
       if (servicesDoc.exists()) {
         const services = servicesDoc.data()?.data || [];
+        // console.log("services: ", services);
         setServicesData(services);
       }
     } catch (error) {
       toast.error("Error fetching services data: " + error);
     }
-  };
-
-  const calculateNextNotificationMiles = (): Service[] => {
-    const nextNotificationMiles: Service[] = [];
-    const currentMiles = parseInt(currentReading) || 0;
-
-    for (const service of servicesData) {
-      if (service.vType === selectedVehicleType) {
-        const subServices = service.subServices || [];
-        const defaultValues = service.dValues || [];
-        let foundMatch = false;
-
-        for (const defaultValue of defaultValues) {
-          if (
-            defaultValue.brand.toLowerCase() ===
-            selectedEngineName.toLowerCase()
-          ) {
-            foundMatch = true;
-            const notificationValue = parseInt(defaultValue.value) * 1000;
-            nextNotificationMiles.push({
-              serviceId: service.serviceId,
-              serviceName: service.serviceName,
-              defaultNotificationValue: notificationValue,
-              nextNotificationValue: currentMiles + notificationValue,
-              subServices: subServices.map((s: { sName: string }) => ({
-                sName: s.sName,
-              })),
-              vType: service.vType,
-              dValues: service.dValues,
-            });
-          }
-        }
-
-        if (!foundMatch) {
-          console.log(
-            `No brand match found for service: ${service.serviceName}`
-          );
-        }
-      }
-    }
-
-    return nextNotificationMiles;
   };
 
   const validateForm = () => {
@@ -230,6 +201,102 @@ export default function AddVehiclePage() {
     }
 
     return true;
+  };
+
+  // const calculateNextNotificationMiles = (): Service[] => {
+  //   const nextNotificationMiles: Service[] = [];
+  //   const currentMiles = parseInt(currentReading) || 0;
+
+  //   for (const service of servicesData) {
+  //     if (service.vType === selectedVehicleType) {
+  //       const subServices = service.subServices || [];
+  //       const defaultValues = service.dValues || [];
+  //       let foundMatch = false;
+
+  //       for (const defaultValue of defaultValues) {
+  //         if (
+  //           defaultValue.brand.toLowerCase() ===
+  //           selectedEngineName.toLowerCase()
+  //         ) {
+  //           foundMatch = true;
+  //           const notificationValue = parseInt(defaultValue.value) * 1000;
+  //           nextNotificationMiles.push({
+  //             serviceId: service.serviceId,
+  //             serviceName: service.serviceName,
+  //             defaultNotificationValue: notificationValue,
+  //             nextNotificationValue: currentMiles + notificationValue,
+  //             subServices: subServices.map((s: { sName: string }) => ({
+  //               sName: s.sName,
+  //             })),
+  //             vType: service.vType,
+  //             dValues: service.dValues,
+  //           });
+  //         }
+  //       }
+
+  //       if (!foundMatch) {
+  //         console.log(
+  //           `No brand match found for service: ${service.serviceName}`
+  //         );
+  //       }
+  //     }
+  //   }
+
+  //   return nextNotificationMiles;
+  // };
+
+  const calculateNextNotificationMiles = (): Service[] => {
+    const nextNotificationMiles: Service[] = [];
+    const currentMiles = parseInt(currentReading) || 0;
+
+    for (const service of servicesData) {
+      if (service.vType === selectedVehicleType) {
+        const serName = service.sName;
+        const serId = service.sId || "";
+        const subServices = service.subServices || [];
+        const defaultValues = service.dValues || [];
+        let foundMatch = false;
+
+        for (const defaultValue of defaultValues) {
+          if (
+            defaultValue.brand.toString().toLowerCase() ===
+            selectedEngineName.toLowerCase()
+          ) {
+            foundMatch = true;
+
+            const type = defaultValue.type.toString().toLowerCase();
+            const value = parseInt(defaultValue.value.toString()) || 0;
+            let notificationValue = value;
+
+            if (type === "reading") {
+              notificationValue = value * 1000;
+            } // day/hour remain as-is
+
+            nextNotificationMiles.push({
+              sId: serId,
+              sName: serName,
+              defaultNotificationValue: notificationValue,
+              nextNotificationValue:
+                type == "reading"
+                  ? currentMiles + notificationValue
+                  : notificationValue,
+              type: type,
+              vType: service.vType,
+              dValues: service.dValues,
+              subServices: subServices.map((s: { sName: string }) => ({
+                sName: s.sName,
+              })), // Array of strings
+            });
+          }
+        }
+
+        if (!foundMatch) {
+          console.log(`No brand match found for service: ${serName}`);
+        }
+      }
+    }
+
+    return nextNotificationMiles;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -277,8 +344,8 @@ export default function AddVehiclePage() {
         engineName: selectedEngineName.toUpperCase(),
         vehicleNumber,
         vin,
-        dot: dot || null,
-        iccms: iccms || null,
+        dot: dot || "",
+        iccms: iccms || "",
         licensePlate,
         year,
         isSet: true,
@@ -290,24 +357,26 @@ export default function AddVehiclePage() {
           },
         ],
         nextNotificationMiles,
-        services: nextNotificationMiles.map((service) => ({
-          defaultNotificationValue: service.defaultNotificationValue,
-          nextNotificationValue: service.nextNotificationValue,
-          serviceId: service.serviceId,
-          serviceName: service.serviceName,
-          subServices: service.subServices,
-          vType: service.vType,
-          dValues: service.dValues,
-        })),
+        services:
+          nextNotificationMiles?.map((service) => ({
+            defaultNotificationValue: service.defaultNotificationValue || 0,
+            nextNotificationValue: service.nextNotificationValue || 0,
+            serviceId: service.sId || "",
+            serviceName: service.sName || "",
+            subServices: service.subServices || [],
+            vType: service.vType || "",
+            type: service.type || "",
+            dValues: service.dValues || [],
+          })) || [],
 
         lastServiceMiles: currentReading ? parseInt(currentReading) : 0,
         lastServiceHours: hoursReading ? parseInt(hoursReading) : 0,
       };
 
       if (selectedVehicleType === "Truck") {
-        vehicleData.currentMiles = currentReading;
-        vehicleData.prevMilesValue = currentReading;
-        vehicleData.firstTimeMiles = currentReading;
+        vehicleData.currentMiles = currentReading || "";
+        vehicleData.prevMilesValue = currentReading || "";
+        vehicleData.firstTimeMiles = currentReading || "";
         vehicleData.oilChangeDate = "";
         vehicleData.hoursReading = "";
         vehicleData.prevHoursReadingValue = "";
@@ -318,8 +387,8 @@ export default function AddVehiclePage() {
         vehicleData.prevMilesValue = "";
         vehicleData.firstTimeMiles = "";
         vehicleData.oilChangeDate = oilChangeDate || null;
-        vehicleData.hoursReading = hoursReading;
-        vehicleData.prevHoursReadingValue = hoursReading;
+        vehicleData.hoursReading = hoursReading || "";
+        vehicleData.prevHoursReadingValue = hoursReading || "";
       }
 
       const vehicleDocRef = await addDoc(vehiclesRef, vehicleData);
@@ -327,8 +396,10 @@ export default function AddVehiclePage() {
 
       toast.success("Vehicle added successfully!");
       router.push("/account/my-profile");
+      console.log("vehicle Data: ", vehicleData);
     } catch (error) {
       toast.error("Error adding vehicle: " + error);
+      console.log("Error adding vehicle: ", error);
     } finally {
       setLoading(false);
     }
@@ -446,13 +517,15 @@ export default function AddVehiclePage() {
                 htmlFor="currentReading"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Current Reading *
+                Current Miles *
               </label>
               <input
                 type="number"
                 id="currentReading"
                 value={currentReading}
-                onChange={(e) => setCurrentReading(e.target.value)}
+                onChange={(e) =>
+                  setCurrentReading(e.target.value.toUpperCase())
+                }
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                 placeholder="Enter current reading"
               />
@@ -472,7 +545,9 @@ export default function AddVehiclePage() {
                   type="date"
                   id="oilChangeDate"
                   value={oilChangeDate}
-                  onChange={(e) => setOilChangeDate(e.target.value)}
+                  onChange={(e) =>
+                    setOilChangeDate(e.target.value.toUpperCase())
+                  }
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                 />
               </div>
@@ -488,7 +563,9 @@ export default function AddVehiclePage() {
                   type="number"
                   id="hoursReading"
                   value={hoursReading}
-                  onChange={(e) => setHoursReading(e.target.value)}
+                  onChange={(e) =>
+                    setHoursReading(e.target.value.toUpperCase())
+                  }
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                   placeholder="Enter hours reading"
                 />
@@ -508,7 +585,7 @@ export default function AddVehiclePage() {
               type="text"
               id="vehicleNumber"
               value={vehicleNumber}
-              onChange={(e) => setVehicleNumber(e.target.value)}
+              onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
               placeholder="Enter vehicle number"
             />
@@ -526,7 +603,7 @@ export default function AddVehiclePage() {
               type="text"
               id="vin"
               value={vin}
-              onChange={(e) => setVin(e.target.value)}
+              onChange={(e) => setVin(e.target.value.toUpperCase())}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
               placeholder="Enter VIN"
             />
@@ -544,7 +621,7 @@ export default function AddVehiclePage() {
               type="text"
               id="dot"
               value={dot}
-              onChange={(e) => setDot(e.target.value)}
+              onChange={(e) => setDot(e.target.value.toUpperCase())}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
               placeholder="Enter DOT"
             />
@@ -562,7 +639,7 @@ export default function AddVehiclePage() {
               type="text"
               id="iccms"
               value={iccms}
-              onChange={(e) => setIccms(e.target.value)}
+              onChange={(e) => setIccms(e.target.value.toUpperCase())}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
               placeholder="Enter ICCMS"
             />
@@ -580,7 +657,7 @@ export default function AddVehiclePage() {
               type="text"
               id="licensePlate"
               value={licensePlate}
-              onChange={(e) => setLicensePlate(e.target.value)}
+              onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
               placeholder="Enter license plate number"
             />

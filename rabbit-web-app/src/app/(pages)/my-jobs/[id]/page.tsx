@@ -4,7 +4,7 @@
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { HistoryItem } from "@/types/types";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { HashLoader } from "react-spinners";
 import { use } from "react";
@@ -22,32 +22,54 @@ export default function JobIdDetails({
 
   const { id } = use(params);
 
+  // useEffect(() => {
+  //   const fetchJobDetails = async () => {
+  //     if (!user) return;
+
+  //     try {
+  //       const jobRef = doc(db, "Users", user.uid, "history", `#${id}`);
+  //       const jobSnap = await getDoc(jobRef);
+
+  //       if (jobSnap.exists()) {
+  //         const data = jobSnap.data() as HistoryItem;
+  //         setJobDetails(data);
+  //       } else {
+  //         console.log("No such job!");
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching job details:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchJobDetails();
+  // }, [user, id]);
+
   useEffect(() => {
-    const fetchJobDetails = async () => {
-      if (!user) return;
+    if (!user) return;
 
-      try {
-        const jobRef = doc(db, "Users", user.uid, "history", `#${id}`);
-        const jobSnap = await getDoc(jobRef);
+    const jobRef = doc(db, "Users", user.uid, "history", `#${id}`);
 
-        if (jobSnap.exists()) {
-          const data = jobSnap.data() as HistoryItem;
-          setJobDetails(data);
-        } else {
-          console.log("No such job!");
-        }
-      } catch (error) {
-        console.error("Error fetching job details:", error);
-      } finally {
-        setLoading(false);
+    const unsubscribe = onSnapshot(jobRef, (jobSnap) => {
+      if (jobSnap.exists()) {
+        setJobDetails(jobSnap.data() as HistoryItem);
+      } else {
+        console.log("No such job!");
       }
-    };
+      setLoading(false);
+    });
 
-    fetchJobDetails();
+    return () => unsubscribe(); // Cleanup on unmount
   }, [user, id]);
 
   const handleAcceptOffer = async (mechanicId: string) => {
     if (!jobDetails || !user) return;
+
+    const confirmAccept = window.confirm(
+      "Are you sure you want to accept this offer?"
+    );
+    if (!confirmAccept) return;
 
     try {
       const updates = {
@@ -107,6 +129,11 @@ export default function JobIdDetails({
   const handleStartJob = async (mechanicId: string) => {
     if (!jobDetails || !user) return;
 
+    const confirmAccept = window.confirm(
+      "Are you sure the Mechanic has arrived and you want to start the job?"
+    );
+    if (!confirmAccept) return;
+
     try {
       const updates = {
         status: 4,
@@ -128,34 +155,6 @@ export default function JobIdDetails({
       }
     } catch (error) {
       console.error("Error starting job:", error);
-    }
-  };
-
-  const handleCompleteJob = async (mechanicId: string) => {
-    if (!jobDetails || !user) return;
-
-    try {
-      const updates = {
-        status: 5,
-        mechanicsOffer: jobDetails.mechanicsOffer.map((offer) => ({
-          ...offer,
-          status: offer.mId === mechanicId ? 5 : offer.status,
-        })),
-        reviewSubmitted: false,
-      };
-
-      const userHistoryRef = doc(db, "Users", user.uid, "history", `#${id}`);
-      const jobRef = doc(db, "jobs", `#${id}`);
-
-      await updateDoc(userHistoryRef, updates);
-      await updateDoc(jobRef, updates);
-
-      const updatedJobSnap = await getDoc(userHistoryRef);
-      if (updatedJobSnap.exists()) {
-        setJobDetails(updatedJobSnap.data() as HistoryItem);
-      }
-    } catch (error) {
-      console.error("Error completing job:", error);
     }
   };
 
@@ -296,7 +295,6 @@ export default function JobIdDetails({
                     onAcceptOffer={() => handleAcceptOffer(mechanic.mId)}
                     onPayment={() => handlePayment(mechanic.mId)}
                     onStartJob={() => handleStartJob(mechanic.mId)}
-                    onCompleteJob={() => handleCompleteJob(mechanic.mId)}
                     selectedPaymentMode={selectedPaymentMode}
                     setSelectedPaymentMode={setSelectedPaymentMode}
                   />

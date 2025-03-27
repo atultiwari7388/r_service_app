@@ -115,9 +115,9 @@ export default function RecordsPage() {
     new Set()
   );
   const [servicePackages, setServicePackages] = useState<ServicePackage[]>([]);
-  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
-
-
+  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(
+    new Set()
+  );
 
   const [selectedSubServices, setSelectedSubServices] = useState<{
     [key: string]: string[];
@@ -151,10 +151,10 @@ export default function RecordsPage() {
       const vehiclesSnapshot = await getDocs(vehiclesRef);
       const vehiclesList = vehiclesSnapshot.docs.map(
         (doc) =>
-        ({
-          id: doc.id,
-          ...doc.data(),
-        } as VehicleTypes)
+          ({
+            id: doc.id,
+            ...doc.data(),
+          } as VehicleTypes)
       );
       setVehicles(vehiclesList);
     } catch (error) {
@@ -165,7 +165,7 @@ export default function RecordsPage() {
 
   const fetchServices = async () => {
     try {
-      const servicesDoc = await getDoc(doc(db, "metadata", "servicesData"));
+      const servicesDoc = await getDoc(doc(db, "metadata", "serviceData"));
       if (servicesDoc.exists()) {
         const servicesData = servicesDoc.data().data || [];
         setServices(servicesData);
@@ -186,7 +186,9 @@ export default function RecordsPage() {
 
   const fetchServicePackages = async () => {
     try {
-      const packagesDoc = await getDoc(doc(db, "metadata", "nServicesPackages"));
+      const packagesDoc = await getDoc(
+        doc(db, "metadata", "nServicesPackages")
+      );
       if (packagesDoc.exists()) {
         const packagesData = packagesDoc.data().data || [];
         console.log("Fetched packages:", packagesData); // Debug log
@@ -213,7 +215,7 @@ export default function RecordsPage() {
               dValue?.brand &&
               selectedVehicleData?.engineNumber &&
               dValue.brand.toString().toUpperCase() ===
-              selectedVehicleData.engineNumber.toString().toUpperCase()
+                selectedVehicleData.engineNumber.toString().toUpperCase()
             ) {
               // Add null check for dValue.value
               if (dValue.value) {
@@ -265,8 +267,6 @@ export default function RecordsPage() {
     updateServiceDefaultValues();
   };
 
-
-
   const handleAddMiles = async () => {
     if (!selectedVehicle || !todayMiles || !user?.uid) {
       toast.error("Please select a vehicle and enter miles/hours.");
@@ -308,7 +308,8 @@ export default function RecordsPage() {
 
       if (enteredValue < currentReading) {
         toast.error(
-          `${selectedVehicleType === "Truck" ? "Miles" : "Hours"
+          `${
+            selectedVehicleType === "Truck" ? "Miles" : "Hours"
           } cannot be less than the current value.`
         );
         return;
@@ -323,7 +324,8 @@ export default function RecordsPage() {
       });
 
       toast.success(
-        `${selectedVehicleType === "Truck" ? "Miles" : "Hours"
+        `${
+          selectedVehicleType === "Truck" ? "Miles" : "Hours"
         } updated successfully!`
       );
       setTodayMiles("");
@@ -433,8 +435,6 @@ export default function RecordsPage() {
     }
   };
 
-
-
   const handleVehicleSelect = async (value: string) => {
     setSelectedVehicle(value);
     setSelectedVehicleData(null);
@@ -462,16 +462,20 @@ export default function RecordsPage() {
   };
 
   const normalizePackageName = (name: string) => {
-    return name.toLowerCase().replace(/\s+/g, '');
+    return name.toLowerCase().replace(/\s+/g, "");
   };
-
 
   const handlePackageSelect = (selectedPackages: string[]) => {
     const newSelectedServices = new Set(selectedServices);
 
     selectedPackages.forEach((pkg) => {
       services.forEach((service) => {
-        if (service.pName && service.pName.some(p => normalizePackageName(p) === normalizePackageName(pkg))) {
+        if (
+          service.pName &&
+          service.pName.some(
+            (p) => normalizePackageName(p) === normalizePackageName(pkg)
+          )
+        ) {
           newSelectedServices.add(service.sId);
         }
       });
@@ -480,9 +484,6 @@ export default function RecordsPage() {
     setSelectedServices(newSelectedServices);
     setSelectedPackages(new Set(selectedPackages));
   };
-
-
-
 
   const resetForm = () => {
     setSelectedVehicle("");
@@ -532,9 +533,15 @@ export default function RecordsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVehicle, selectedServices]);
 
-
-
-
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <h1 className="text-xl font-semibold text-gray-700">
+          Please Login to access the page..
+        </h1>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
@@ -571,28 +578,45 @@ export default function RecordsPage() {
         <DialogContent>
           <Card className="mt-4 shadow-lg rounded-lg">
             <CardContent>
-              <FormControl fullWidth className="mb-4">
-                <InputLabel>Select Vehicle</InputLabel>
-                <Select
-                  value={selectedVehicle}
-                  onChange={(e) => handleVehicleSelect(e.target.value)}
-                  className="rounded-lg"
-                >
-                  {vehicles.map((vehicle) => (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.vehicleNumber} ({vehicle.companyName})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <div className="mb-4">
+                <FormControl fullWidth className="mb-4">
+                  <InputLabel>Select Vehicle</InputLabel>
+                  {/* <Select
+                    value={selectedVehicle}
+                    onChange={(e) => handleVehicleSelect(e.target.value)}
+                    className="rounded-lg"
+                    sx={{ minHeight: "56px" }} // Adjust the minimum height and padding
+                  >
+                    {vehicles.map((vehicle) => (
+                      <MenuItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.vehicleNumber} ({vehicle.companyName})
+                      </MenuItem>
+                    ))}
+                  </Select> */}
+
+                  <Select
+                    value={selectedVehicle}
+                    onChange={(e) => handleVehicleSelect(e.target.value)}
+                    className="rounded-lg"
+                    sx={{ minHeight: "56px" }}
+                    label="Select Vehicle"
+                  >
+                    {vehicles.map((vehicle) => (
+                      <MenuItem key={vehicle.id} value={vehicle.id}>
+                        {vehicle.vehicleNumber} ({vehicle.companyName})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </div>
 
               {selectedVehicleType && (
                 <TextField
                   fullWidth
                   label={
                     selectedVehicleType === "Truck"
-                      ? "Enter Miles"
-                      : "Enter Hours"
+                      ? "Miles/Hours"
+                      : "Hours/Miles"
                   }
                   type="number"
                   value={todayMiles}
@@ -636,18 +660,21 @@ export default function RecordsPage() {
             <CardContent>
               <div className="mb-4">
                 <FormControl fullWidth variant="outlined">
-                  <InputLabel id="select-vehicle-label">Select Vehicle</InputLabel>
+                  <InputLabel id="select-vehicle-label">
+                    Select Vehicle
+                  </InputLabel>
                   <Select
                     labelId="select-vehicle-label"
                     value={selectedVehicle}
                     onChange={(e) => {
                       const value = e.target.value;
                       setSelectedVehicle(value);
-                      const vehicleData = vehicles.find((v) => v.id === value) || null;
+                      const vehicleData =
+                        vehicles.find((v) => v.id === value) || null;
                       setSelectedVehicleData(vehicleData);
                     }}
                     className="rounded-lg"
-                    sx={{ minHeight: '56px' }} // Adjust the minimum height and padding
+                    sx={{ minHeight: "56px" }} // Adjust the minimum height and padding
                     label="Select Vehicle" // Ensure the label is associated with the Select
                   >
                     {vehicles.map((vehicle) => (
@@ -657,50 +684,31 @@ export default function RecordsPage() {
                     ))}
                   </Select>
                 </FormControl>
-
               </div>
               {/** Select packages */}
 
-              {/* <div className="mb-4">
-                <FormControl fullWidth>
-                  <InputLabel>Select Packages</InputLabel>
-                  <Select
-                    multiple
-                    value={Array.from(selectedPackages)}
-                    onChange={(e) => setSelectedPackages(new Set(e.target.value as string[]))}
-                    renderValue={(selected) => selected.join(", ")}
-                  >
-                    {servicePackages
-                      .filter((pkg) =>
-                        pkg.type.some(t =>
-                          t.toLowerCase() === selectedVehicleData?.vehicleType?.toLowerCase()
-                        )
-                      )
-                      .map((pkg) => (
-                        <MenuItem key={pkg.name} value={pkg.name}>
-                          <Checkbox checked={selectedPackages.has(pkg.name)} />
-                          {pkg.name}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
-              </div> */}
               <div className="mb-4">
                 <FormControl fullWidth variant="outlined">
-                  <InputLabel id="select-packages-label">Select Packages</InputLabel>
+                  <InputLabel id="select-packages-label">
+                    Select Packages
+                  </InputLabel>
                   <Select
                     labelId="select-packages-label"
                     multiple
                     value={Array.from(selectedPackages)}
-                    onChange={(e) => handlePackageSelect(e.target.value as string[])}
+                    onChange={(e) =>
+                      handlePackageSelect(e.target.value as string[])
+                    }
                     renderValue={(selected) => selected.join(", ")}
                     label="Select Packages" // Ensure the label is associated with the Select
-                    sx={{ minHeight: '56px' }} // Adjust the minimum height if needed
+                    sx={{ minHeight: "56px" }} // Adjust the minimum height if needed
                   >
                     {servicePackages
                       .filter((pkg) =>
-                        pkg.type.some(t =>
-                          t.toLowerCase() === selectedVehicleData?.vehicleType?.toLowerCase()
+                        pkg.type.some(
+                          (t) =>
+                            t.toLowerCase() ===
+                            selectedVehicleData?.vehicleType?.toLowerCase()
                         )
                       )
                       .map((pkg) => (
@@ -730,13 +738,15 @@ export default function RecordsPage() {
               </div>
               {/** Select Services */}
 
-
               <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter(
                     (service) =>
-                      service.sName.toLowerCase().includes(serviceSearchText.toLowerCase()) &&
-                      (!selectedVehicleData || service.vType === selectedVehicleData.vehicleType)
+                      service.sName
+                        .toLowerCase()
+                        .includes(serviceSearchText.toLowerCase()) &&
+                      (!selectedVehicleData ||
+                        service.vType === selectedVehicleData.vehicleType)
                   )
                   .map((service) => (
                     <div key={service.sId} className="flex justify-center">
@@ -745,98 +755,109 @@ export default function RecordsPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           handleServiceSelect(service.sId);
-                          setExpandedService(expandedService === service.sId ? null : service.sId);
+                          setExpandedService(
+                            expandedService === service.sId ? null : service.sId
+                          );
                         }}
                         sx={{
-                          backgroundColor: selectedServices.has(service.sId) ? "#F96176" : "default",
-                          color: selectedServices.has(service.sId) ? "white" : "inherit",
+                          backgroundColor: selectedServices.has(service.sId)
+                            ? "#F96176"
+                            : "default",
+                          color: selectedServices.has(service.sId)
+                            ? "white"
+                            : "inherit",
                           "&:hover": {
-                            backgroundColor: selectedServices.has(service.sId) ? "#F96176" : "#FFCDD2",
+                            backgroundColor: selectedServices.has(service.sId)
+                              ? "#F96176"
+                              : "#FFCDD2",
                           },
                         }}
-                        variant={selectedServices.has(service.sId) ? "filled" : "outlined"}
+                        variant={
+                          selectedServices.has(service.sId)
+                            ? "filled"
+                            : "outlined"
+                        }
                         className="w-full min-w-[120px] text-center transition duration-300 hover:shadow-lg"
                       />
                     </div>
                   ))}
               </div>
 
+              <div className="mb-4 flex flex-col gap-4">
+                {selectedVehicleData?.vehicleType === "Truck" && (
+                  <TextField
+                    fullWidth
+                    label="Miles"
+                    type="number"
+                    value={miles}
+                    onChange={(e) => setMiles(e.target.value)}
+                    className="mb-4 rounded-lg"
+                  />
+                )}
 
-
-
-              {selectedVehicleData?.vehicleType === "Truck" && (
                 <TextField
                   fullWidth
-                  label="Miles"
-                  type="number"
-                  value={miles}
-                  onChange={(e) => setMiles(e.target.value)}
+                  label="Date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  className="mb-4 rounded-lg mt-4"
+                />
+
+                {selectedVehicleData?.vehicleType === "Trailer" && (
+                  <>
+                    <TextField
+                      fullWidth
+                      label="Hours"
+                      type="number"
+                      value={hours}
+                      onChange={(e) => setHours(e.target.value)}
+                      className="mb-4 rounded-lg"
+                    />
+                    <TextField
+                      fullWidth
+                      label="Date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      InputLabelProps={{ shrink: true }}
+                      className="mb-4 rounded-lg"
+                    />
+                  </>
+                )}
+
+                <TextField
+                  fullWidth
+                  label="Workshop Name"
+                  value={workshopName}
+                  onChange={(e) => setWorkshopName(e.target.value)}
                   className="mb-4 rounded-lg"
                 />
-              )}
-
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                className="mb-4 rounded-lg"
-              />
-
-              {selectedVehicleData?.vehicleType === "Trailer" && (
-                <>
-                  <TextField
-                    fullWidth
-                    label="Hours"
-                    type="number"
-                    value={hours}
-                    onChange={(e) => setHours(e.target.value)}
-                    className="mb-4 rounded-lg"
-                  />
-                  <TextField
-                    fullWidth
-                    label="Date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    className="mb-4 rounded-lg"
-                  />
-                </>
-              )}
-
-              <TextField
-                fullWidth
-                label="Workshop Name"
-                value={workshopName}
-                onChange={(e) => setWorkshopName(e.target.value)}
-                className="mb-4 rounded-lg"
-              />
-              <TextField
-                fullWidth
-                label="Invoice Number (Optional)"
-                value={invoice}
-                onChange={(e) => setInvoice(e.target.value)}
-                className="mb-4 rounded-lg"
-              />
-              <TextField
-                fullWidth
-                label="Invoice Amount (Optional)"
-                value={invoiceAmount}
-                onChange={(e) => setInvoiceAmount(e.target.value)}
-                className="mb-4 rounded-lg"
-              />
-              <TextField
-                fullWidth
-                label="Description (Optional)"
-                multiline
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="rounded-lg"
-              />
+                <TextField
+                  fullWidth
+                  label="Invoice Number (Optional)"
+                  value={invoice}
+                  onChange={(e) => setInvoice(e.target.value)}
+                  className="mb-4 rounded-lg"
+                />
+                <TextField
+                  fullWidth
+                  label="Invoice Amount (Optional)"
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  className="mb-4 rounded-lg"
+                />
+                <TextField
+                  fullWidth
+                  label="Description (Optional)"
+                  multiline
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="rounded-lg"
+                />
+              </div>
             </CardContent>
           </Card>
         </DialogContent>
@@ -890,7 +911,10 @@ export default function RecordsPage() {
                 <TableCell>
                   {new Date(record.date).toLocaleDateString()}
                 </TableCell>
-                <TableCell>{record.vehicleDetails.companyName}</TableCell>
+                <TableCell>
+                  {record.vehicleDetails.companyName} ({" "}
+                  {record.vehicleDetails.vehicleNumber})
+                </TableCell>
                 <TableCell>{record.workshopName}</TableCell>
                 {record.miles > 0 && <TableCell>{record.miles}</TableCell>}
                 {record.hours > 0 && <TableCell>{record.hours}</TableCell>}

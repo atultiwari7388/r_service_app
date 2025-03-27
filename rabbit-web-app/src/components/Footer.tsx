@@ -151,11 +151,11 @@ const Footer: React.FC = () => {
                 href="#"
                 className="hover:underline text-[#F96176] font-mono font-semibold"
               >
-                RabbitService
+                Regal Application LLC
               </a>
               , All Right Reserved.
             </p>
-            <p className="text-black">
+            {/* <p className="text-black">
               Designed by{" "}
               <a
                 href="https://www.mylexinfotech.com/"
@@ -164,6 +164,7 @@ const Footer: React.FC = () => {
                 Mylex Infotech
               </a>
             </p>
+           */}
           </div>
         </div>
       </div>

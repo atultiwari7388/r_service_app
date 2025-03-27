@@ -10,6 +10,7 @@ import {
   onSnapshot,
   query,
   where,
+  getDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -105,6 +106,78 @@ export default function MyJobsPage() {
     return () => unsubscribe();
   }, []);
 
+  //show reason dialog
+  const handleCancelClick = (orderId: string) => {
+    if (window.confirm("Are you sure you want to cancel this job?")) {
+      showReasonDialog(orderId);
+    }
+  };
+
+  const showReasonDialog = (orderId: string) => {
+    const reasons = [
+      "Driver Late",
+      "Mis-Communication",
+      "Language Problem",
+      "Other",
+    ];
+    const selectedReason = prompt("Select a reason:\n" + reasons.join("\n"));
+
+    if (selectedReason && reasons.includes(selectedReason)) {
+      updateJobStatus(orderId, selectedReason);
+    } else {
+      alert("Invalid reason selected.");
+    }
+  };
+
+  const updateJobStatus = async (orderId: string, reason: string) => {
+    try {
+      const jobRef = doc(db, "jobs", orderId);
+      const jobSnapshot = await getDoc(jobRef);
+
+      if (jobSnapshot.exists()) {
+        const jobData = jobSnapshot.data();
+        let mechanicsOffer = jobData.mechanicsOffer || [];
+
+        interface MechanicsOffer {
+          status: number;
+          fixPrice?: number;
+          arrivalCharges?: number;
+          // [key: string]: any; // for other potential properties we want to preserve
+        }
+
+        mechanicsOffer = mechanicsOffer.map(
+          (offer: MechanicsOffer): MechanicsOffer => ({
+            ...offer,
+            status: -1,
+          })
+        );
+
+        const updateData = {
+          status: -1,
+          cancelReason: reason,
+          cancelBy: "Driver",
+          mechanicsOffer: mechanicsOffer,
+        };
+
+        await updateDoc(jobRef, updateData);
+
+        // Update in User's History
+        if (user?.uid) {
+          const userHistoryRef = doc(db, "Users", user.uid, "history", orderId);
+          await updateDoc(userHistoryRef, updateData);
+        }
+
+        alert(`Job Cancelled due to: ${reason}`);
+      }
+    } catch (error) {
+      alert(
+        `Failed to cancel job: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -184,7 +257,7 @@ export default function MyJobsPage() {
                     {item.mechanicsOffer.some((offer) => offer.status === 1)
                       ? item.fixPriceEnabled
                         ? `$${item.mechanicsOffer[0]?.fixPrice} (Fix Price)`
-                        : `$${item.mechanicsOffer[0]?.arrivalCharges} (Arrival Charges)`
+                        : `$${item.mechanicsOffer[0]?.arrivalCharges} (Arrival Charges) $${item.mechanicsOffer[0]?.perHourCharges} (Per Hour Charges) `
                       : "0"}
                   </td>
                   <td className="px-4 py-2 border-b">{item.payMode}</td>
@@ -197,6 +270,28 @@ export default function MyJobsPage() {
                       <span className="text-yellow-500">In Progress</span>
                     )}
                   </td>
+                  {/* <td className="px-4 py-2 border-b">
+                    {item.status === 0 ? (
+                      <button
+                        onClick={() => handleCancelClick(item.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded-sm"
+                      >
+                        Cancel
+                      </button>
+                    ) : item.mechanicsOffer.some(
+                        (offer) => offer.status === 1
+                      ) ? (
+                      <Link
+                        href={`/my-jobs/${item.id.replace("#", "")}`}
+                        className="bg-[#F96176] text-white px-2 py-2 rounded-sm"
+                      >
+                        View
+                      </Link>
+                    ) : (
+                      ""
+                    )}
+                  </td> */}
+
                   <td className="px-4 py-2 border-b">
                     {item.mechanicsOffer.some((offer) => offer.status === 1) ? (
                       <Link
@@ -205,6 +300,13 @@ export default function MyJobsPage() {
                       >
                         View
                       </Link>
+                    ) : item.status === 0 ? (
+                      <button
+                        onClick={() => handleCancelClick(item.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded-sm"
+                      >
+                        Cancel
+                      </button>
                     ) : (
                       ""
                     )}
