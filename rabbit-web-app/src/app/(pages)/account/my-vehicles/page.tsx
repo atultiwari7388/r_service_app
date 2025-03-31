@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 import Image from "next/image";
 import Link from "next/link";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
+import PopupModal from "@/components/PopupModal";
 
 interface Vehicle {
   id: string;
@@ -16,10 +17,16 @@ interface Vehicle {
   image: string;
 }
 
+interface RedirectProps {
+  path: string;
+}
+
 export default function MyVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
+
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -46,6 +53,11 @@ export default function MyVehiclesPage() {
     return () => unsubscribe();
   }, [user]);
 
+  const handleRedirect = ({ path }: RedirectProps): void => {
+    setShowPopup(false);
+    window.location.href = path;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -56,7 +68,39 @@ export default function MyVehiclesPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold text-center mb-8">My Vehicles</h1>
+      {/* Header Row with Flexbox */}
+      <div className="flex items-center justify-between w-full mb-6 flex-wrap gap-4">
+        <h1 className="text-3xl font-bold">My Vehicles</h1>
+        <button
+          className="btn bg-[#F96176] text-white text-lg px-5 py-2 rounded-md hover:bg-[#eb929e] transition"
+          title="Add Vehicle"
+          onClick={(e) => {
+            e.preventDefault();
+            setShowPopup(true);
+          }}
+        >
+          Add Vehicle
+        </button>
+      </div>
+
+      {/* Reusable Popup Component */}
+      <PopupModal
+        isOpen={showPopup}
+        onClose={() => setShowPopup(false)}
+        title="Select Option"
+        options={[
+          {
+            label: "Add Vehicle",
+            onClick: () => handleRedirect({ path: "/add-vehicle" }),
+          },
+          {
+            label: "Import Vehicle",
+            onClick: () => handleRedirect({ path: "/import-vehicle" }),
+            bgColor: "blue",
+          },
+        ]}
+      />
+
       {vehicles.length === 0 ? (
         <p className="text-center text-gray-500">No vehicles found</p>
       ) : (

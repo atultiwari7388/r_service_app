@@ -309,63 +309,6 @@ class _ReportsScreenState extends State<ReportsScreen>
     return filteredRecords;
   }
 
-  // void updateServiceDefaultValues() {
-  //   if (selectedVehicle != null && selectedServices.isNotEmpty) {
-  //     for (var serviceId in selectedServices) {
-  //       final selectedService = services.firstWhere(
-  //         (service) => service['sId'] == serviceId,
-  //         orElse: () => <String, dynamic>{},
-  //       );
-  //
-  //       final dValues = selectedService['dValues'] as List<dynamic>?;
-  //       if (dValues != null) {
-  //         // for (var dValue in dValues) {
-  //
-  //         for (var dValue in dValues) {
-  //           //now here we comparing the value of the brand with the engine name
-  //           if (dValue['brand'].toString().toUpperCase() ==
-  //               selectedVehicleData?['engineName'].toString().toUpperCase()) {
-  //             serviceDefaultValues[serviceId] =
-  //                 int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-  //             break;
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-  //
-  // void updateSelectedVehicleAndService() {
-  //   if (selectedVehicle != null) {
-  //     selectedVehicleData = vehicles.firstWhere(
-  //       (vehicle) => vehicle['id'] == selectedVehicle,
-  //       orElse: () => <String, dynamic>{},
-  //     );
-  //   }
-  //
-  //   selectedServiceData = reorderServicesBasedOnPackages()
-  //       .where((service) => selectedServices.contains(service['sId']))
-  //       .toList();
-  //
-  //   serviceDefaultValues.clear();
-  //   for (var service in selectedServiceData) {
-  //     final dValues = service['dValues'] as List<dynamic>?;
-  //
-  //     if (dValues != null) {
-  //       for (var dValue in dValues) {
-  //         if (dValue['brand'].toString().toUpperCase() ==
-  //             selectedVehicleData?['engineName'].toString().toUpperCase()) {
-  //           serviceDefaultValues[service['sId']] =
-  //               int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-  //           break;
-  //         }
-  //       }
-  //     }
-  //   }
-  //
-  //   setState(() {}); // Refresh the UI with updated data
-  // }
-
   void updateServiceDefaultValues() {
     if (selectedVehicle != null && selectedServices.isNotEmpty) {
       for (var serviceId in selectedServices) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
 import {
   arrayUnion,
@@ -29,6 +29,8 @@ import {
   CardContent,
   InputAdornment,
   Checkbox,
+  IconButton,
+  Collapse,
 } from "@mui/material";
 import {
   Table,
@@ -43,9 +45,14 @@ import toast from "react-hot-toast";
 import { VehicleTypes } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContexts";
 import { GlobalToastError } from "@/utils/globalErrorToast";
-import { CiSearch } from "react-icons/ci";
+import { CiSearch, CiTurnL1 } from "react-icons/ci";
 import { IoMdAdd } from "react-icons/io";
 import Link from "next/link";
+import DatePicker from "react-datepicker";
+import { BiFilter, BiSearch } from "react-icons/bi";
+import { FaPrint } from "react-icons/fa";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface Vehicle {
   brand: string;
@@ -69,6 +76,7 @@ interface ServiceData {
 
 interface ServiceRecord {
   id: string;
+  vehicleId: string;
   vehicleDetails: {
     vehicleNumber: string;
     vehicleType: string;
@@ -96,6 +104,7 @@ interface ServiceRecord {
   workshopName: string;
   invoice?: string;
   description?: string;
+  invoiceAmount: string;
 }
 
 interface RecordData extends ServiceRecord {
@@ -108,6 +117,16 @@ export default function RecordsPage() {
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const { user } = useAuth() || { user: null };
+
+  // Search & Filter State
+  const [filterVehicle, setFilterVehicle] = useState("");
+  const [filterService, setFilterService] = useState("");
+  const [filterInvoice, setFilterInvoice] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [searchType, setSearchType] = useState<
+    "vehicle" | "service" | "date" | "invoice" | "all"
+  >("all");
 
   // Add Records Form State
   const [selectedVehicle, setSelectedVehicle] = useState("");
@@ -134,7 +153,12 @@ export default function RecordsPage() {
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [description, setDescription] = useState("");
   const [showAddRecords, setShowAddRecords] = useState(false);
+  const [showSearchFilter, setShowSearchFilter] = useState(false);
   const [serviceSearchText, setServiceSearchText] = useState("");
+
+  //for editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
   const [selectedVehicleData, setSelectedVehicleData] =
     useState<VehicleTypes | null>(null);
@@ -143,6 +167,7 @@ export default function RecordsPage() {
   const [showAddMiles, setShowAddMiles] = useState(false);
   const [todayMiles, setTodayMiles] = useState("");
   const [selectedVehicleType, setSelectedVehicleType] = useState("");
+  const printRef = useRef<HTMLDivElement>(null);
 
   const fetchVehicles = async () => {
     if (!user) return;
@@ -202,34 +227,61 @@ export default function RecordsPage() {
     }
   };
 
+  // const updateServiceDefaultValues = () => {
+  //   if (selectedVehicle && selectedServices.size > 0 && selectedVehicleData) {
+  //     const newDefaultValues: { [key: string]: number } = {};
+
+  //     selectedServices.forEach((serviceId) => {
+  //       const selectedService = services.find((s) => s.sId === serviceId);
+  //       if (selectedService?.dValues) {
+  //         for (const dValue of selectedService.dValues) {
+  //           // Add null checks for dValue.brand and selectedVehicleData.engineNumber
+  //           if (
+  //             dValue?.brand &&
+  //             selectedVehicleData?.engineNumber &&
+  //             dValue.brand.toString().toUpperCase() ===
+  //               selectedVehicleData.engineNumber.toString().toUpperCase()
+  //           ) {
+  //             // Add null check for dValue.value
+  //             if (dValue.value) {
+  //               newDefaultValues[serviceId] =
+  //                 parseInt(dValue.value.toString().split(",")[0]) * 1000;
+  //               break;
+  //             }
+  //           }
+  //         }
+  //       }
+  //     });
+
+  //     setServiceDefaultValues(newDefaultValues);
+  //   }
+  // };
+
   const updateServiceDefaultValues = () => {
-    if (selectedVehicle && selectedServices.size > 0 && selectedVehicleData) {
-      const newDefaultValues: { [key: string]: number } = {};
+    const newDefaults: { [key: string]: number } = {};
 
-      selectedServices.forEach((serviceId) => {
-        const selectedService = services.find((s) => s.sId === serviceId);
-        if (selectedService?.dValues) {
-          for (const dValue of selectedService.dValues) {
-            // Add null checks for dValue.brand and selectedVehicleData.engineNumber
-            if (
-              dValue?.brand &&
-              selectedVehicleData?.engineNumber &&
-              dValue.brand.toString().toUpperCase() ===
-                selectedVehicleData.engineNumber.toString().toUpperCase()
-            ) {
-              // Add null check for dValue.value
-              if (dValue.value) {
-                newDefaultValues[serviceId] =
-                  parseInt(dValue.value.toString().split(",")[0]) * 1000;
-                break;
-              }
-            }
-          }
+    selectedServices.forEach((serviceId) => {
+      const service = services.find((s) => s.sId === serviceId);
+      const vehicleEngine = selectedVehicleData?.engineNumber?.toUpperCase();
+
+      if (service?.dValues && vehicleEngine) {
+        const dValue = service.dValues.find(
+          (dv) => dv.brand?.toUpperCase() === vehicleEngine
+        );
+
+        if (dValue) {
+          const [baseValue] = dValue.value.toString().split(",").map(Number);
+          let value = baseValue * 1000; // Default for 'reading'
+
+          if (dValue.type?.toLowerCase() === "day") value = baseValue;
+          if (dValue.type?.toLowerCase() === "hour") value = baseValue;
+
+          newDefaults[serviceId] = value;
         }
-      });
+      }
+    });
 
-      setServiceDefaultValues(newDefaultValues);
-    }
+    setServiceDefaultValues(newDefaults);
   };
 
   const handleServiceSelect = (serviceId: string) => {
@@ -336,105 +388,6 @@ export default function RecordsPage() {
     }
   };
 
-  const handleSaveRecords = async () => {
-    try {
-      if (!user || !selectedVehicle) {
-        toast.error("Please select vehicle and services");
-        return;
-      }
-
-      const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
-      if (!vehicleData) {
-        toast.error("Vehicle data not found");
-        return;
-      }
-
-      const currentMiles = Number(miles);
-
-      const servicesData = Array.from(selectedServices).map((serviceId) => {
-        const service = services.find((s) => s.sId === serviceId);
-        const defaultValue = serviceDefaultValues[serviceId] || 0;
-        const nextNotificationValue =
-          defaultValue === 0 ? 0 : currentMiles + defaultValue;
-
-        return {
-          serviceId,
-          serviceName: service?.sName || "",
-          defaultNotificationValue: defaultValue,
-          nextNotificationValue: nextNotificationValue,
-          subServices:
-            selectedSubServices[serviceId]?.map((subService, index) => ({
-              name: subService,
-              id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`, // Add index to make unique
-            })) || [],
-        };
-      });
-
-      const notificationData = servicesData.map((service) => ({
-        serviceName: service.serviceName,
-        nextNotificationValue: service.nextNotificationValue,
-        subServices: selectedSubServices[service.serviceId] || [],
-      }));
-
-      const recordData = {
-        userId: user.uid,
-        vehicleId: selectedVehicle,
-        vehicleDetails: {
-          ...vehicleData,
-          currentMiles: currentMiles.toString(),
-          nextNotificationMiles: notificationData,
-        },
-        services: servicesData,
-        currentMilesArray: [
-          {
-            miles: currentMiles,
-            date: new Date().toISOString(),
-          },
-        ],
-        miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
-        hours: vehicleData.vehicleType === "Trailer" ? Number(hours) : 0,
-        totalMiles: currentMiles,
-        date: date || new Date().toISOString(),
-        workshopName,
-        invoice,
-        invoiceAmount,
-        description,
-        createdAt: new Date().toISOString(),
-      };
-
-      const batch = {
-        newRecord: doc(collection(db, "Users", user.uid, "DataServices")),
-        globalRecord: doc(collection(db, "DataServicesRecords")),
-        vehicle: doc(db, "Users", user.uid, "Vehicles", selectedVehicle),
-      };
-
-      await Promise.all([
-        setDoc(batch.newRecord, recordData),
-        setDoc(batch.globalRecord, recordData),
-        setDoc(
-          batch.vehicle,
-          {
-            currentMiles: currentMiles.toString(),
-            currentMilesArray: [
-              {
-                miles: currentMiles,
-                date: new Date().toISOString(),
-              },
-            ],
-            nextNotificationMiles: notificationData,
-          },
-          { merge: true }
-        ),
-      ]);
-
-      toast.success("Record added successfully!");
-      resetForm();
-    } catch (error) {
-      console.error("Error saving record:", error);
-      toast.error("Failed to save record");
-    }
-  };
-
   const handleVehicleSelect = async (value: string) => {
     setSelectedVehicle(value);
     setSelectedVehicleData(null);
@@ -500,6 +453,186 @@ export default function RecordsPage() {
     setShowAddRecords(false);
   };
 
+  const filteredRecords = records
+    .filter((record) => {
+      const recordDate = new Date(record.date);
+      const matchesVehicle =
+        !filterVehicle ||
+        record.vehicleDetails.vehicleNumber
+          .toLowerCase()
+          .includes(filterVehicle.toLowerCase());
+      const matchesService =
+        !filterService ||
+        record.services.some((s: { serviceName: string }) =>
+          s.serviceName.toLowerCase().includes(filterService.toLowerCase())
+        );
+      const matchesInvoice =
+        !filterInvoice ||
+        (record.invoice || "")
+          .toLowerCase()
+          .includes(filterInvoice.toLowerCase());
+      const matchesDate =
+        !startDate ||
+        !endDate ||
+        (recordDate >= startDate && recordDate <= endDate);
+
+      switch (searchType) {
+        case "vehicle":
+          return matchesVehicle;
+        case "service":
+          return matchesService;
+        case "date":
+          return matchesDate;
+        case "invoice":
+          return matchesInvoice;
+        case "all":
+          return (
+            matchesVehicle && matchesService && matchesDate && matchesInvoice
+          );
+        default:
+          return true;
+      }
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+  const handleSearchFilterOpen = () => setShowSearchFilter(true);
+  const handleSearchFilterClose = () => setShowSearchFilter(false);
+
+  const handleSaveRecords = async () => {
+    try {
+      if (!user || !selectedVehicle) {
+        toast.error("Please select vehicle and services");
+        return;
+      }
+
+      const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
+      if (!vehicleData) {
+        toast.error("Vehicle data not found");
+        return;
+      }
+
+      const currentMiles = Number(miles);
+      const currentHours = Number(hours) || 0;
+
+      // const recordRef = doc(db, "Users", user.uid, "DataServices", recordId); // Use recordId for editing
+
+      const servicesData = Array.from(selectedServices).map((serviceId) => {
+        const service = services.find((s) => s.sId === serviceId);
+        const defaultValue = serviceDefaultValues[serviceId] || 0;
+        const serviceObj = services.find((s) => s.sId === serviceId);
+        const type = (
+          serviceObj?.dValues?.[0]?.type || "reading"
+        ).toLowerCase();
+        // const nextNotificationValue =
+        //   defaultValue === 0 ? 0 : currentMiles + defaultValue;
+        let nextNotificationValue = 0;
+
+        if (type === "reading") {
+          nextNotificationValue = currentMiles + defaultValue;
+        } else if (type === "day") {
+          const date = new Date();
+          date.setDate(date.getDate() + defaultValue);
+          nextNotificationValue = date.getTime();
+        } else if (type === "hour") {
+          nextNotificationValue = currentHours + defaultValue;
+        }
+
+        return {
+          serviceId,
+          serviceName: service?.sName || "",
+          defaultNotificationValue: defaultValue,
+          nextNotificationValue: nextNotificationValue,
+          subServices:
+            selectedSubServices[serviceId]?.map((subService, index) => ({
+              name: subService,
+              id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`, // Add index to make unique
+            })) || [],
+        };
+      });
+
+      const notificationData = servicesData.map((service) => ({
+        serviceName: service.serviceName,
+        nextNotificationValue: service.nextNotificationValue,
+        subServices: selectedSubServices[service.serviceId] || [],
+      }));
+
+      const recordData = {
+        userId: user.uid,
+        vehicleId: selectedVehicle,
+        vehicleDetails: {
+          ...vehicleData,
+          currentMiles: currentMiles.toString(),
+          nextNotificationMiles: notificationData,
+        },
+        services: servicesData,
+        currentMilesArray: [
+          {
+            miles: currentMiles,
+            date: new Date().toISOString(),
+          },
+        ],
+        miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
+        hours: vehicleData.vehicleType === "Trailer" ? Number(hours) : 0,
+        totalMiles: currentMiles,
+        date: date || new Date().toISOString(),
+        workshopName,
+        invoice,
+        invoiceAmount,
+        description,
+        createdAt: new Date().toISOString(),
+        active: true,
+      };
+
+      if (isEditing && editingRecordId) {
+        // Update existing record
+        const recordRef = doc(
+          db,
+          "Users",
+          user.uid,
+          "DataServices",
+          editingRecordId
+        );
+        await updateDoc(recordRef, recordData);
+        toast.success("Record updated successfully!");
+      } else {
+        //create new record
+        const batch = {
+          newRecord: doc(collection(db, "Users", user.uid, "DataServices")),
+          globalRecord: doc(collection(db, "DataServicesRecords")),
+          vehicle: doc(db, "Users", user.uid, "Vehicles", selectedVehicle),
+        };
+
+        await Promise.all([
+          setDoc(batch.newRecord, recordData),
+          setDoc(batch.globalRecord, recordData),
+          setDoc(
+            batch.vehicle,
+            {
+              currentMiles: currentMiles.toString(),
+              currentMilesArray: [
+                {
+                  miles: currentMiles,
+                  date: new Date().toISOString(),
+                },
+              ],
+              nextNotificationMiles: notificationData,
+            },
+            { merge: true }
+          ),
+        ]);
+      }
+
+      toast.success("Record added successfully!");
+      resetForm();
+    } catch (error) {
+      console.error("Error saving record:", error);
+      toast.error("Failed to save record");
+    }
+  };
+
   useEffect(() => {
     fetchVehicles();
     fetchServices();
@@ -533,6 +666,80 @@ export default function RecordsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVehicle, selectedServices]);
 
+  //print Records details
+  const handlePrint = async () => {
+    if (!printRef.current) return;
+
+    const canvas = await html2canvas(printRef.current);
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    pdf.addImage(imgData, "PNG", 10, 10, 190, 0);
+    pdf.save(`record_details${records}.pdf`);
+  };
+
+  // Add this function to handle editing records
+  const handleEditRecord = (record: ServiceRecord) => {
+    setIsEditing(true);
+    setEditingRecordId(record.id);
+
+    // Set form values from the selected record
+    setSelectedVehicle(record.vehicleId);
+    setSelectedVehicleData(
+      vehicles.find((v) => v.id === record.vehicleId) || null
+    );
+
+    // Set selected services and subservices
+    const servicesSet = new Set(
+      record.services.map((s: { serviceId: string }) => s.serviceId)
+    );
+    setSelectedServices(servicesSet);
+
+    // Set subservices
+    const subServices: { [key: string]: string[] } = {};
+    record.services.forEach((service) => {
+      subServices[service.serviceId] =
+        service.subServices?.map((ss) => ss.name) || [];
+    });
+    setSelectedSubServices(subServices);
+
+    // const subServices: { [key: string]: string[] } = {};
+    // record.services.forEach(
+    //   (service: {
+    //     serviceId: string;
+    //     subServices?: Array<{ name: string }>;
+    //   }) => {
+    //     if (service.subServices?.length) {
+    //       subServices[service.serviceId] = service.subServices.map(
+    //         (ss) => ss.name
+    //       );
+    //     }
+    //   }
+    // );
+    // setSelectedSubServices(subServices);
+
+    // Set other form fields
+    setMiles(record.miles.toString());
+    setHours(record.hours.toString());
+    setDate(record.date);
+    setWorkshopName(record.workshopName);
+    setInvoice(record.invoice || "");
+    setInvoiceAmount(record.invoiceAmount || "");
+    setDescription(record.description || "");
+
+    setShowAddRecords(true);
+  };
+
+  const handleSubserviceToggle = (serviceId: string, subName: string) => {
+    setSelectedSubServices((prev) => {
+      const currentSubs = prev[serviceId] || [];
+      const newSubs = currentSubs.includes(subName)
+        ? currentSubs.filter((name) => name !== subName)
+        : [...currentSubs, subName];
+      return { ...prev, [serviceId]: newSubs };
+    });
+  };
+
   if (!user) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -547,6 +754,7 @@ export default function RecordsPage() {
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
       {/* Button Container */}
       <div className="flex justify-center gap-4 mb-6">
+        {/** Add Record */}
         <Button
           variant="contained"
           startIcon={<IoMdAdd />}
@@ -556,6 +764,7 @@ export default function RecordsPage() {
           Add Record
         </Button>
 
+        {/** Add mile */}
         <Button
           variant="contained"
           onClick={() => setShowAddMiles(true)}
@@ -563,7 +772,161 @@ export default function RecordsPage() {
         >
           Add Miles/Hours
         </Button>
+
+        {/** Search Functionality */}
+        {/* <IconButton onClick={handleSearchFilterOpen}> */}
+
+        <Button
+          variant="contained"
+          onClick={() => handleSearchFilterOpen()}
+          className="bg-[#58BB87] hover:bg-[#58BB87] text-white transition duration-300"
+        >
+          Search <BiFilter />
+        </Button>
+        {/* </IconButton> */}
+
+        {/** Print pdf */}
+        <button
+          onClick={handlePrint}
+          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
+        >
+          <FaPrint /> Print
+        </button>
       </div>
+
+      {/* Search & Filter Dialog */}
+      <Dialog
+        fullWidth
+        maxWidth="sm"
+        open={showSearchFilter}
+        onClose={handleSearchFilterClose}
+      >
+        <DialogTitle>
+          <div className="flex justify-between items-center">
+            <span>Search & Filter</span>
+            <IconButton onClick={handleSearchFilterClose}>
+              <CiTurnL1 />
+            </IconButton>
+          </div>
+        </DialogTitle>
+
+        <DialogContent>
+          <div className="grid gap-4 mt-4">
+            <FormControl fullWidth>
+              <InputLabel>Search Type</InputLabel>
+              <Select
+                value={searchType}
+                onChange={(e) =>
+                  setSearchType(
+                    e.target.value as
+                      | "vehicle"
+                      | "service"
+                      | "date"
+                      | "invoice"
+                      | "all"
+                  )
+                }
+                label="Search Type"
+              >
+                <MenuItem value="all">Search All</MenuItem>
+                <MenuItem value="vehicle">Search by Vehicle</MenuItem>
+                <MenuItem value="service">Search by Service</MenuItem>
+                <MenuItem value="date">Search by Date</MenuItem>
+                <MenuItem value="invoice">Search by Invoice</MenuItem>
+              </Select>
+            </FormControl>
+
+            {(searchType === "vehicle" || searchType === "all") && (
+              <FormControl fullWidth>
+                <InputLabel>Vehicle</InputLabel>
+                <Select
+                  value={filterVehicle}
+                  onChange={(e) => setFilterVehicle(e.target.value as string)}
+                  label="Vehicle"
+                >
+                  {vehicles.map((vehicle) => (
+                    <MenuItem key={vehicle.id} value={vehicle.vehicleNumber}>
+                      {vehicle.vehicleNumber} ({vehicle.companyName})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {(searchType === "service" || searchType === "all") && (
+              <FormControl fullWidth>
+                <InputLabel>Service</InputLabel>
+                <Select
+                  value={filterService}
+                  onChange={(e) => setFilterService(e.target.value as string)}
+                  label="Service"
+                >
+                  {services.map((service) => (
+                    <MenuItem key={service.sId} value={service.sName}>
+                      {service.sName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            {(searchType === "date" || searchType === "all") && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <label className="mb-2">Start Date</label>
+                  <DatePicker
+                    selected={startDate}
+                    onChange={(date) => setStartDate(date)}
+                    dateFormat="yyyy-MM-dd"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="mb-2">End Date</label>
+                  <DatePicker
+                    selected={endDate}
+                    onChange={(date) => setEndDate(date)}
+                    dateFormat="yyyy-MM-dd"
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+              </div>
+            )}
+
+            {(searchType === "invoice" || searchType === "all") && (
+              <TextField
+                fullWidth
+                label="Invoice Number"
+                value={filterInvoice}
+                onChange={(e) => setFilterInvoice(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BiSearch />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+          </div>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setFilterVehicle("");
+              setFilterService("");
+              setFilterInvoice("");
+              setStartDate(null);
+              setEndDate(null);
+              setSearchType("all");
+            }}
+          >
+            Reset
+          </Button>
+          <Button onClick={handleSearchFilterClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Add Miles Dialog Box */}
       <Dialog
@@ -653,7 +1016,8 @@ export default function RecordsPage() {
         fullWidth
       >
         <DialogTitle className="bg-[#F96176] text-white">
-          Add Service Record
+          {/* Add Service Record */}
+          {isEditing ? "Edit Service Record" : "Add Service Record"}
         </DialogTitle>
         <DialogContent>
           <Card className="mt-4 shadow-lg rounded-lg">
@@ -738,7 +1102,7 @@ export default function RecordsPage() {
               </div>
               {/** Select Services */}
 
-              <div className="grid grid-cols-4 gap-3 mb-4">
+              {/* <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter(
                     (service) =>
@@ -779,6 +1143,152 @@ export default function RecordsPage() {
                         }
                         className="w-full min-w-[120px] text-center transition duration-300 hover:shadow-lg"
                       />
+                    </div>
+                  ))}
+              </div> */}
+
+              {/* <div className="grid grid-cols-4 gap-3 mb-4">
+                {services
+                  .filter(
+                    (service) =>
+                      service.sName
+                        .toLowerCase()
+                        .includes(serviceSearchText.toLowerCase()) &&
+                      (!selectedVehicleData ||
+                        service.vType === selectedVehicleData.vehicleType)
+                  )
+                  .map((service) => (
+                    <div key={service.sId} className="w-full">
+                      <Chip
+                        label={service.sName}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleServiceSelect(service.sId);
+                          setExpandedService(
+                            expandedService === service.sId ? null : service.sId
+                          );
+                        }}
+                        sx={{
+                          backgroundColor: selectedServices.has(service.sId)
+                            ? "#F96176"
+                            : "default",
+                          color: selectedServices.has(service.sId)
+                            ? "white"
+                            : "inherit",
+                          "&:hover": {
+                            backgroundColor: selectedServices.has(service.sId)
+                              ? "#F96176"
+                              : "#FFCDD2", // Optional hover color
+                          },
+                        }}
+                        variant={
+                          selectedServices.has(service.sId)
+                            ? "filled"
+                            : "outlined"
+                        }
+                        className="mb-2 transition duration-300 hover:shadow-lg"
+                      />
+
+                      <Collapse
+                        in={
+                          expandedService === service.sId &&
+                          selectedServices.has(service.sId)
+                        }
+                        timeout="auto"
+                      >
+                        {service.subServices && (
+                          <div className="ml-4 mt-2">
+                            {service.subServices.map((subService) =>
+                              subService.sName.map((name, idx) => (
+                                <Chip
+                                  key={`${service.sId}-${name}-${idx}`}
+                                  label={name}
+                                  size="small"
+                                  className="m-1 transition duration-300 hover:bg-gray-200"
+                                />
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </Collapse>
+                    </div>
+                  ))}
+              </div> */}
+
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                {services
+                  .filter(
+                    (service) =>
+                      service.sName
+                        .toLowerCase()
+                        .includes(serviceSearchText.toLowerCase()) &&
+                      (!selectedVehicleData ||
+                        service.vType === selectedVehicleData.vehicleType)
+                  )
+                  .map((service) => (
+                    <div key={service.sId} className="w-full">
+                      <Chip
+                        label={service.sName}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleServiceSelect(service.sId);
+                          setExpandedService(
+                            expandedService === service.sId ? null : service.sId
+                          );
+                        }}
+                        sx={{
+                          backgroundColor: selectedServices.has(service.sId)
+                            ? "#F96176"
+                            : "default",
+                          color: selectedServices.has(service.sId)
+                            ? "white"
+                            : "inherit",
+                          "&:hover": {
+                            backgroundColor: selectedServices.has(service.sId)
+                              ? "#F96176"
+                              : "#FFCDD2",
+                          },
+                        }}
+                        variant={
+                          selectedServices.has(service.sId)
+                            ? "filled"
+                            : "outlined"
+                        }
+                        className="mb-2 transition duration-300 hover:shadow-lg"
+                      />
+
+                      <Collapse
+                        in={
+                          expandedService === service.sId &&
+                          selectedServices.has(service.sId)
+                        }
+                        timeout="auto"
+                      >
+                        {service.subServices && (
+                          <div className="ml-4 mt-2">
+                            {service.subServices.map((subService) =>
+                              subService.sName.map((name, idx) => (
+                                <Chip
+                                  key={`${service.sId}-${name}-${idx}`}
+                                  label={name}
+                                  size="small"
+                                  className={`m-1 transition duration-300 ${
+                                    selectedSubServices[service.sId]?.includes(
+                                      name
+                                    )
+                                      ? "bg-green-500 text-white"
+                                      : "hover:bg-gray-200"
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSubserviceToggle(service.sId, name);
+                                  }}
+                                />
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </Collapse>
                     </div>
                   ))}
               </div>
@@ -874,64 +1384,101 @@ export default function RecordsPage() {
             color="primary"
             className="bg-[#F96176] hover:bg-[#F96176] transition duration-300"
           >
-            Save Record
+            {/* Save Record */}
+            {isEditing ? "Update Record" : "Save Record"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Records Table */}
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Vehicle</TableCell>
-              <TableCell>Workshop Name</TableCell>
-              {records.some((record) => record.miles > 0) && (
-                <TableCell>Miles</TableCell>
-              )}
-              {records.some((record) => record.hours > 0) && (
-                <TableCell>Hours</TableCell>
-              )}
-              {records.some((record) => record.description) && (
-                <TableCell>Description</TableCell>
-              )}
-              <TableCell>Services</TableCell>
-              <TableCell>Invoice</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {records.map((record) => (
-              <TableRow
-                key={record.id}
-                component={Link}
-                href={`/records/${record.id}`}
-              >
-                <TableCell>
-                  {new Date(record.date).toLocaleDateString()}
-                </TableCell>
-                <TableCell>
-                  {record.vehicleDetails.companyName} ({" "}
-                  {record.vehicleDetails.vehicleNumber})
-                </TableCell>
-                <TableCell>{record.workshopName}</TableCell>
-                {record.miles > 0 && <TableCell>{record.miles}</TableCell>}
-                {record.hours > 0 && <TableCell>{record.hours}</TableCell>}
-                {record.description && (
-                  <TableCell>{record.description}</TableCell>
-                )}
-                <TableCell>
-                  {record.services
-                    .map((service) => service.serviceName)
-                    .join(", ")}{" "}
-                </TableCell>
-                <TableCell>{record.invoice}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {records.length === 0 ? (
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <h1 className="text-xl font-semibold text-gray-700">
+            No records found.
+          </h1>
+        </div>
+      ) : (
+        <div ref={printRef} className="table-container">
+          <TableContainer component={Paper}>
+            <Table className="table">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Vehicle</TableCell>
+                  <TableCell>Workshop Name</TableCell>
+                  {records.some((record) => record.miles > 0) && (
+                    <TableCell>Miles</TableCell>
+                  )}
+                  {records.some((record) => record.hours > 0) && (
+                    <TableCell>Hours</TableCell>
+                  )}
+                  {records.some((record) => record.description) && (
+                    <TableCell>Description</TableCell>
+                  )}
+                  <TableCell>Services</TableCell>
+                  <TableCell>Invoice</TableCell>
+                  <TableCell>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredRecords.map((record) => (
+                  <TableRow
+                    key={record.id}
+                    component={Link}
+                    href={`/records/${record.id}`}
+                    className="link"
+                  >
+                    <TableCell className="table-cell">
+                      {new Date(record.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="table-cell">
+                      {record.vehicleDetails.companyName} ({" "}
+                      {record.vehicleDetails.vehicleNumber})
+                    </TableCell>
+                    <TableCell className="table-cell">
+                      {record.workshopName}
+                    </TableCell>
+                    {record.miles > 0 && (
+                      <TableCell className="table-cell">
+                        {record.miles}
+                      </TableCell>
+                    )}
+                    {record.hours > 0 && (
+                      <TableCell className="table-cell">
+                        {record.hours}
+                      </TableCell>
+                    )}
+                    {record.description && (
+                      <TableCell className="table-cell">
+                        {record.description}
+                      </TableCell>
+                    )}
+                    <TableCell className="table-cell">
+                      {record.services
+                        .map((service) => service.serviceName)
+                        .join(", ")}{" "}
+                    </TableCell>
+
+                    <TableCell className="table-cell">
+                      {record.invoice}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleEditRecord(record)}
+                      >
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </div>
+      )}
     </div>
   );
 }

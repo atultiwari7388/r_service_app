@@ -1,6 +1,12 @@
+"use client";
+
+import { db } from "@/lib/firebase";
+import { GlobalToastError } from "@/utils/globalErrorToast";
+import { LoadingIndicator } from "@/utils/LoadinIndicator";
+import { doc, getDoc } from "firebase/firestore";
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   FaMapMarkerAlt,
   FaPhoneAlt,
@@ -12,6 +18,42 @@ import {
 } from "react-icons/fa";
 
 const Footer: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [contactInfo, setContactInfo] = useState<{
+    contactMail?: string;
+    contactNumber?: string;
+    address?: string;
+  }>({});
+
+  // const { user } = useAuth() || { user: null };
+
+  const fetchContactUs = async () => {
+    setIsLoading(true);
+    try {
+      const contactUsRef = doc(db, "metadata", "helpCenter");
+      const contactUsSnapshot = await getDoc(contactUsRef);
+
+      if (contactUsSnapshot.exists()) {
+        const contactMail = contactUsSnapshot.data()?.mail || "";
+        const contactNumber = contactUsSnapshot.data()?.phone || "";
+        const address = contactUsSnapshot.data()?.address || "";
+        setContactInfo({ contactMail, contactNumber, address });
+      }
+    } catch (error) {
+      GlobalToastError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContactUs();
+  }, []);
+
+  if (isLoading) {
+    return <LoadingIndicator />;
+  }
+
   return (
     <footer className="bg-[#F5F5F5] text-black pt-10">
       <div className="container mx-auto px-6 md:px-12">
@@ -23,10 +65,13 @@ const Footer: React.FC = () => {
               <FaMapMarkerAlt className="mr-2 text-[#F96176]" />
               New York, NY 10001, USA
             </p>
-            <p className="mb-2 flex items-center">
-              <FaPhoneAlt className="mr-2 text-[#F96176]" />
-              (+1)202 555 088
-            </p>
+            {contactInfo.contactNumber &&
+              +(
+                <p className="mb-2 flex items-center">
+                  <FaPhoneAlt className="mr-2 text-[#F96176]" />
+                  {contactInfo.contactNumber}
+                </p>
+              )}
             <p className="mb-2 flex items-center">
               <FaEnvelope className="mr-2 text-[#F96176]" />
               info@rabbitmechanicservices.com

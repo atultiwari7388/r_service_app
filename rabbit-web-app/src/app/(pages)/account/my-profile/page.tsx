@@ -10,7 +10,6 @@ import {
   doc,
   onSnapshot,
   collection,
-  deleteDoc,
   getDocs,
   updateDoc,
 } from "firebase/firestore";
@@ -19,6 +18,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { updatePassword } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export default function MyProfile() {
   const { user } = useAuth() || { user: null };
@@ -34,6 +34,8 @@ export default function MyProfile() {
   });
   const [newPassword, setNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     if (!user) return;
@@ -151,18 +153,10 @@ export default function MyProfile() {
     }
   };
 
-  const handleDeleteVehicle = async (docId: string) => {
+  const handleEditVehicle = async (docId: string) => {
     if (!user) return;
 
-    if (window.confirm("Are you sure you want to delete this vehicle?")) {
-      try {
-        await deleteDoc(doc(db, "Users", user.uid, "Vehicles", docId));
-        toast.success("Vehicle deleted successfully!");
-        fetchVehicles();
-      } catch (error) {
-        GlobalToastError(error);
-      }
-    }
+    router.push(`/account/my-profile/edit-vehicle/${docId}`); //redirect to edit vehicle details screen
   };
 
   if (!user) {
@@ -383,7 +377,7 @@ export default function MyProfile() {
                       {vehicle.vehicleNumber}
                     </span>
                     <button
-                      onClick={() => handleDeleteVehicle(vehicle.id)}
+                      onClick={() => handleEditVehicle(vehicle.id)}
                       className="text-red-500 hover:text-red-700 transition-colors"
                     >
                       <svg
@@ -397,7 +391,7 @@ export default function MyProfile() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          d="M11 4h6m-3-3v6m5 3l-3-3m0 0L12 15m9-9l-9 9M2 20h18"
                         />
                       </svg>
                     </button>
