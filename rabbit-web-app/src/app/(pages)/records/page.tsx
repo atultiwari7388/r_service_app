@@ -1437,7 +1437,9 @@ export default function RecordsPage() {
                       {record.vehicleDetails.vehicleNumber})
                     </TableCell>
                     <TableCell className="table-cell">
-                      {record.workshopName}
+                      {record.workshopName && record.workshopName.trim() !== ""
+                        ? record.workshopName
+                        : "N/A"}
                     </TableCell>
                     {record.miles > 0 && (
                       <TableCell className="table-cell">
@@ -1449,19 +1451,24 @@ export default function RecordsPage() {
                         {record.hours}
                       </TableCell>
                     )}
-                    {record.description && (
-                      <TableCell className="table-cell">
-                        {record.description}
-                      </TableCell>
-                    )}
+
                     <TableCell className="table-cell">
-                      {record.services
-                        .map((service) => service.serviceName)
-                        .join(", ")}{" "}
+                      {record.description && record.description.trim() !== ""
+                        ? record.description
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell className="table-cell">
+                      {record.services && record.services.length > 0
+                        ? record.services
+                            .map((service) => service.serviceName)
+                            .join(", ")
+                        : "N/A"}
                     </TableCell>
 
                     <TableCell className="table-cell">
-                      {record.invoice}
+                      {record.invoice && record.invoice.trim() !== ""
+                        ? record.invoice
+                        : "N/A"}
                     </TableCell>
                     <TableCell>
                       <Button
