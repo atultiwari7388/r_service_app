@@ -20,10 +20,10 @@ import {
 import { useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { Modal } from "@/components/Modal";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
-import { TripDetailsModal } from "@/components/trips/TripDetailsComp";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export interface Trip {
   id: string;
@@ -103,6 +103,9 @@ export default function ManageTripPage() {
   const [currentTripEdit, setCurrentTripEdit] = useState<TripDetails | null>(
     null
   );
+  const [totals, setTotals] = useState({ totalExpenses: 0, totalEarnings: 0 });
+
+  const router = useRouter();
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -341,6 +344,61 @@ export default function ManageTripPage() {
     }
   };
 
+  const calculateTotals = async () => {
+    // setIsCalculatingTotals(true);
+    try {
+      // Parallel expense calculations
+      const expensesPromises = filteredTrips.map(async (trip) => {
+        try {
+          const snapshot = await getDocs(
+            query(
+              collection(
+                db,
+                "Users",
+                user!.uid,
+                "trips",
+                trip.id,
+                "tripDetails"
+              ),
+              where("type", "==", "Expenses")
+            )
+          );
+          return snapshot.docs.reduce(
+            (sum, doc) => sum + (doc.data().amount || 0),
+            0
+          );
+        } catch (error) {
+          console.error(`Error processing trip ${trip.id}:`, error);
+          return 0;
+        }
+      });
+
+      // Earnings calculations
+      const perMile = userData?.perMileCharge || 0;
+      const earnings = filteredTrips.reduce((sum, trip) => {
+        if (role === "Driver") {
+          const miles = (trip.tripEndMiles || 0) - (trip.tripStartMiles || 0);
+          return sum + Math.max(miles, 0) * Number(perMile);
+        }
+        return sum + (trip.oEarnings || 0);
+      }, 0);
+
+      const expenses = (await Promise.all(expensesPromises)).reduce(
+        (a, b) => a + b,
+        0
+      );
+
+      setTotals({
+        totalExpenses: Math.max(expenses, 0),
+        totalEarnings: Math.max(earnings, 0),
+      });
+    } catch (error) {
+      console.error("Calculation error:", error);
+    } finally {
+      // setIsCalculatingTotals(false);
+    }
+  };
+
   const filteredTrips = trips.filter((trip) => {
     const startDate = trip.tripStartDate.toDate();
     const endDate = trip.tripEndDate.toDate();
@@ -366,9 +424,75 @@ export default function ManageTripPage() {
     setShowAddExpense(false);
   };
 
+  useEffect(() => {
+    const calculate = () => {
+      if (filteredTrips.length > 0) {
+        calculateTotals();
+      } else {
+        setTotals((prev) =>
+          prev.totalExpenses === 0 && prev.totalEarnings === 0
+            ? prev
+            : { totalExpenses: 0, totalEarnings: 0 }
+        );
+      }
+    };
+
+    calculate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTrips, userData?.perMileCharge, role]);
+
+  useEffect(() => {
+    // console.log("Updated userData:", userData);
+    // console.log("Updated perMileCharge:", userData?.perMileCharge);
+  }, [userData]);
+
+  const handleUpdateTrip = async () => {
+    if (!currentTripEdit) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      // Update user's trip
+      const userTripRef = doc(
+        db,
+        "Users",
+        user!.uid,
+        "trips",
+        currentTripEdit.id
+      );
+      batch.update(userTripRef, {
+        tripStartDate: currentTripEdit.tripStartDate,
+        tripStartMiles: currentTripEdit.tripStartMiles,
+        updatedAt: Timestamp.now(),
+        milesArray: [
+          {
+            mile: currentTripEdit.tripStartMiles,
+            date: Timestamp.now(),
+          },
+          ...currentTripEdit.milesArray.slice(1),
+        ],
+      });
+
+      // Update global trip
+      const globalTripRef = doc(db, "trips", currentTripEdit.id);
+      batch.update(globalTripRef, {
+        tripStartDate: currentTripEdit.tripStartDate,
+        tripStartMiles: currentTripEdit.tripStartMiles,
+        updatedAt: Timestamp.now(),
+      });
+
+      await batch.commit();
+      GlobalToastSuccess("Trip updated successfully");
+      setShowEditModal(false);
+    } catch (error) {
+      GlobalToastError("Failed to update trip");
+      console.error("Update error:", error);
+    }
+  };
+
   if (!user) return <div>Please login to view this page</div>;
-  if (userData === null) return <LoadingIndicator />;
   if (isLoading) return <LoadingIndicator />;
+  if (userData === null) return <LoadingIndicator />;
 
   return (
     <div className="container mx-auto p-4">
@@ -408,7 +532,7 @@ export default function ManageTripPage() {
             {role === "Owner" && (
               <input
                 type="number"
-                placeholder="Owner Earnings"
+                placeholder="Load Price"
                 value={oEarnings}
                 onChange={(e) => setOEarnings(e.target.value)}
                 className="border p-2 rounded"
@@ -485,80 +609,227 @@ export default function ManageTripPage() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center gap-4">
-        <DatePicker
-          selectsRange
-          startDate={fromDate}
-          endDate={toDate}
-          onChange={(update: [Date | null, Date | null]) => {
-            setFromDate(update[0]);
-            setToDate(update[1]);
-          }}
-          className="border p-2 rounded"
-          placeholderText="Select date range"
-        />
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold mb-4">Trip List</h2>
+        <div className="mb-6 flex items-center gap-4">
+          <DatePicker
+            selectsRange
+            startDate={fromDate}
+            endDate={toDate}
+            onChange={(update: [Date | null, Date | null]) => {
+              setFromDate(update[0]);
+              setToDate(update[1]);
+            }}
+            className="border p-2 rounded"
+            placeholderText="Select date range"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/** Total Expenses and Total Loads */}
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Total Expenses */}
+        <div className="bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
+          <h3 className="text-lg font-bold">Total Expenses</h3>
+          <p className="text-xl font-semibold">
+            ${totals.totalExpenses.toFixed(2)}
+          </p>
+        </div>
+
+        {/* Total Loads */}
+        <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
+          <h3 className="text-lg font-bold">Total Loads</h3>
+          <p className="text-xl font-semibold">
+            ${totals.totalEarnings.toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
         {filteredTrips.map((trip) => (
           <div key={trip.id} className="bg-white p-4 rounded-lg shadow-md">
             <h3 className="text-lg font-bold mb-2">{trip.tripName}</h3>
             <div className="space-y-2">
               <p>
-                Start Date: {trip.tripStartDate.toDate().toLocaleDateString()}
+                Start Date:{" "}
+                <span className="text-[#F96176] font-semibold">
+                  {trip.tripStartDate.toDate().toLocaleDateString()}
+                </span>
               </p>
-              <p>Start Miles: {trip.tripStartMiles}</p>
+              <p>
+                Start Miles:{" "}
+                <span className="text-[#F96176] font-semibold">
+                  {trip.tripStartMiles}
+                </span>
+              </p>
               {trip.tripStatus === 2 && (
                 <>
                   <p>
-                    End Date: {trip.tripEndDate.toDate().toLocaleDateString()}
+                    End Date:{" "}
+                    <span className="text-[#F96176] font-semibold">
+                      {trip.tripEndDate.toDate().toLocaleDateString()}
+                    </span>
                   </p>
-                  <p>End Miles: {trip.tripEndMiles}</p>
-                  <p>Total Miles: {trip.tripEndMiles - trip.tripStartMiles}</p>
+                  <p>
+                    End Miles:{" "}
+                    <span className="text-[#F96176] font-semibold">
+                      {trip.tripEndMiles}
+                    </span>
+                  </p>
+                  <p>
+                    Total Miles:{" "}
+                    <span className="text-[#F96176] font-semibold">
+                      {trip.tripEndMiles - trip.tripStartMiles}
+                    </span>
+                  </p>
+                  {role === "Owner" ? (
+                    <p>
+                      Load Price:{" "}
+                      <span className="text-[#F96176] font-semibold">
+                        {trip.oEarnings}
+                      </span>
+                    </p>
+                  ) : (
+                    <>
+                      {trip.tripStatus === 2 && userData?.perMileCharge ? (
+                        <p>
+                          Earnings:{" "}
+                          <span className="text-[#F96176] font-semibold">
+                            {((trip.tripEndMiles || 0) -
+                              (trip.tripStartMiles || 0)) *
+                              Number(userData.perMileCharge)}
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="text-gray-400">
+                          {trip.tripStatus === 2
+                            ? "Earnings calculation missing"
+                            : "Earnings unavailable"}
+                        </p>
+                      )}
+                    </>
+                  )}
                 </>
               )}
               <div className="flex justify-between items-center">
-                <span
-                  className={`badge ${
-                    trip.isPaid ? "bg-green-500" : "bg-red-500"
-                  }`}
-                >
-                  {trip.isPaid ? "Paid" : "Unpaid"}
-                </span>
-                <select
-                  value={trip.tripStatus}
-                  onChange={(e) =>
-                    handleUpdateTripStatus(trip, parseInt(e.target.value))
-                  }
-                  className="border p-1 rounded"
-                >
-                  <option value={1}>Started</option>
-                  <option value={2}>Completed</option>
-                </select>
+                {role === "Driver" && (
+                  <span
+                    className={`badge ${
+                      trip.isPaid ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  >
+                    {trip.isPaid ? "Paid" : "Unpaid"}
+                  </span>
+                )}
+
+                {trip.tripStatus === 1 ? (
+                  <div className="flex justify-between items-center">
+                    <h3>Trip Status: </h3>
+                    <span></span>
+                    <select
+                      value={trip.tripStatus}
+                      onChange={(e) =>
+                        handleUpdateTripStatus(trip, parseInt(e.target.value))
+                      }
+                      className="border p-1 rounded"
+                    >
+                      <option value={1}>Started</option>
+                      <option value={2}>Completed</option>
+                    </select>
+                  </div>
+                ) : (
+                  <h3>
+                    Trip Status:{" "}
+                    <span className="text-[#F96176] font-semibold">
+                      Completed
+                    </span>
+                  </h3>
+                )}
               </div>
-              <button
-                onClick={() => {
-                  setCurrentTripEdit(trip);
-                  setShowEditModal(true);
-                }}
-                className="text-blue-500 hover:underline"
-              >
-                View Details
-              </button>
+              <div className="flex justify-between items-center mt-4">
+                {trip.tripStatus === 1 && (
+                  <Button
+                    onClick={() => {
+                      setCurrentTripEdit(trip);
+                      setShowEditModal(true);
+                    }}
+                    className="text-white bg-[#F96176] hover:underline"
+                  >
+                    Edit Trip
+                  </Button>
+                )}
+
+                <Button
+                  onClick={() => {
+                    router.push(
+                      `/account/manage-trip/${trip.id}?userId=${user?.uid}`
+                    );
+                  }}
+                  className="text-white bg-green-500 hover:underline"
+                >
+                  View
+                </Button>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      <Modal show={showEditModal} onClose={() => setShowEditModal(false)}>
-        {currentTripEdit && (
-          <TripDetailsModal
-            trip={currentTripEdit}
-            onClose={() => setShowEditModal(false)}
-            userId={user.uid}
-          />
-        )}
-      </Modal>
+      {/** Edit Section */}
+
+      {showEditModal && currentTripEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit Trip</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-2">Start Date</label>
+                <DatePicker
+                  selected={currentTripEdit.tripStartDate.toDate()}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      setCurrentTripEdit({
+                        ...currentTripEdit,
+                        tripStartDate: Timestamp.fromDate(date),
+                      });
+                    }
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+              <div>
+                <label className="block mb-2">Start Miles</label>
+                <input
+                  type="number"
+                  value={currentTripEdit.tripStartMiles}
+                  onChange={(e) =>
+                    setCurrentTripEdit({
+                      ...currentTripEdit,
+                      tripStartMiles: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateTrip}
+                className="bg-[#F96176] text-white px-6 py-2 rounded hover:bg-[#F96176]"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

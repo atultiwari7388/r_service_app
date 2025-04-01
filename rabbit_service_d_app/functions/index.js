@@ -245,8 +245,8 @@ exports.updateUserEmail = functions.https.onCall(async (data, context) => {
 // check and notify User for Service
 exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
   async (data) => {
-    const userId = data.userId; // User ID passed from Flutter
-    const vehicleId = data.vehicleId; // Vehicle ID passed from Flutter
+    const userId = data.userId;
+    const vehicleId = data.vehicleId;
 
     try {
       // Fetch the user's data

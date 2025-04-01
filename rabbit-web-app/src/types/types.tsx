@@ -51,6 +51,7 @@ export interface ProfileValues {
   updated_at: Timestamp;
   userName: string;
   wallet: number;
+  perMileCharge: string;
 }
 
 /** Services */

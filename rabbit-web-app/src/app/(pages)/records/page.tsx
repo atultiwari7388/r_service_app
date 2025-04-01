@@ -1405,19 +1405,21 @@ export default function RecordsPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
+                  <TableCell>Invoice</TableCell>
                   <TableCell>Vehicle</TableCell>
-                  <TableCell>Workshop Name</TableCell>
                   {records.some((record) => record.miles > 0) && (
                     <TableCell>Miles</TableCell>
                   )}
                   {records.some((record) => record.hours > 0) && (
                     <TableCell>Hours</TableCell>
                   )}
+                  <TableCell>Services</TableCell>
+                  <TableCell>Workshop Name</TableCell>
+
                   {records.some((record) => record.description) && (
                     <TableCell>Description</TableCell>
                   )}
-                  <TableCell>Services</TableCell>
-                  <TableCell>Invoice</TableCell>
+
                   <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -1433,14 +1435,15 @@ export default function RecordsPage() {
                       {new Date(record.date).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="table-cell">
+                      {record.invoice && record.invoice.trim() !== ""
+                        ? record.invoice
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell className="table-cell">
                       {record.vehicleDetails.companyName} ({" "}
                       {record.vehicleDetails.vehicleNumber})
                     </TableCell>
-                    <TableCell className="table-cell">
-                      {record.workshopName && record.workshopName.trim() !== ""
-                        ? record.workshopName
-                        : "N/A"}
-                    </TableCell>
+
                     {record.miles > 0 && (
                       <TableCell className="table-cell">
                         {record.miles}
@@ -1451,12 +1454,6 @@ export default function RecordsPage() {
                         {record.hours}
                       </TableCell>
                     )}
-
-                    <TableCell className="table-cell">
-                      {record.description && record.description.trim() !== ""
-                        ? record.description
-                        : "N/A"}
-                    </TableCell>
                     <TableCell className="table-cell">
                       {record.services && record.services.length > 0
                         ? record.services
@@ -1466,10 +1463,17 @@ export default function RecordsPage() {
                     </TableCell>
 
                     <TableCell className="table-cell">
-                      {record.invoice && record.invoice.trim() !== ""
-                        ? record.invoice
+                      {record.workshopName && record.workshopName.trim() !== ""
+                        ? record.workshopName
                         : "N/A"}
                     </TableCell>
+
+                    <TableCell className="table-cell">
+                      {record.description && record.description.trim() !== ""
+                        ? record.description
+                        : "N/A"}
+                    </TableCell>
+
                     <TableCell>
                       <Button
                         variant="outlined"

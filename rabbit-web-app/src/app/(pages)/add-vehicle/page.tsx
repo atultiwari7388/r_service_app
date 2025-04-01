@@ -29,6 +29,8 @@ interface DValue {
 interface Service {
   sId: string;
   sName: string;
+  serviceId: string;
+  serviceName: string;
   defaultNotificationValue: number;
   nextNotificationValue: number;
   subServices: { sName: string }[];
@@ -38,13 +40,11 @@ interface Service {
 }
 
 interface ServicesDB {
-  serviceId: string; // Changed from sId
-  serviceName: string; // Changed from sName
+  serviceId: string;
+  serviceName: string;
   defaultNotificationValue: number;
   nextNotificationValue: number;
   subServices: { sName: string }[];
-  vType: string;
-  dValues: DValue[];
   type?: string;
 }
 
@@ -64,6 +64,7 @@ interface VehicleData {
   uploadedDocuments: [];
   createdAt: unknown;
   currentMilesArray: { miles: number; date: string }[];
+  hoursReadingArray: { hours: number; date: string }[];
   nextNotificationMiles: Service[];
   services: ServicesDB[];
   currentMiles?: string;
@@ -213,8 +214,10 @@ export default function AddVehiclePage() {
 
     for (const service of servicesData) {
       if (service.vType === selectedVehicleType) {
-        const serName = service.sName;
-        const serId = service.sId || "";
+        // const serName = service.sName;
+        // const serId = service.sId || "";
+        const serviceId = service.sId || ""; // Renamed from serId
+        const serviceName = service.sName; // Renamed from serName
         const subServices = service.subServices || [];
         const defaultValues = service.dValues || [];
         let foundMatch = false;
@@ -235,8 +238,10 @@ export default function AddVehiclePage() {
             } // day/hour remain as-is
 
             nextNotificationMiles.push({
-              sId: serId,
-              sName: serName,
+              sId: "",
+              sName: "",
+              serviceId: serviceId,
+              serviceName: serviceName,
               defaultNotificationValue: notificationValue,
               nextNotificationValue:
                 type == "reading"
@@ -253,7 +258,7 @@ export default function AddVehiclePage() {
         }
 
         if (!foundMatch) {
-          console.log(`No brand match found for service: ${serName}`);
+          console.log(`No brand match found for service: ${serviceName}`);
         }
       }
     }
@@ -315,6 +320,12 @@ export default function AddVehiclePage() {
         isSet: true,
         uploadedDocuments: [],
         createdAt: serverTimestamp(),
+        hoursReadingArray: [
+          {
+            hours: hoursReading ? parseInt(hoursReading) : 0,
+            date: new Date().toISOString(),
+          },
+        ],
         currentMilesArray: [
           {
             miles: currentReading ? parseInt(currentReading) : 0,
@@ -329,9 +340,9 @@ export default function AddVehiclePage() {
             serviceId: service.sId || "",
             serviceName: service.sName || "",
             subServices: service.subServices || [],
-            vType: service.vType || "",
+            // vType: service.vType || "",
             type: service.type || "",
-            dValues: service.dValues || [],
+            // dValues: service.dValues || [],
           })) || [],
 
         lastServiceMiles: currentReading ? parseInt(currentReading) : 0,
@@ -339,6 +350,7 @@ export default function AddVehiclePage() {
       };
 
       if (selectedVehicleType === "Truck") {
+        vehicleData.hoursReadingArray = [];
         vehicleData.currentMiles = currentReading || "";
         vehicleData.prevMilesValue = currentReading || "";
         vehicleData.firstTimeMiles = currentReading || "";
@@ -367,13 +379,20 @@ export default function AddVehiclePage() {
       );
 
       await checkAndNotifyUser({
-        userId: user?.uid, // Pass userId
+        userId: user.uid, // Pass userId
         vehicleId: vehicleDocRef.id, // Pass the vehicleId
       });
 
       toast.success("Vehicle added successfully!");
       router.push("/account/my-profile");
-      console.log("vehicle Data: ", vehicleData);
+      console.log(
+        "My Current Miles is : ",
+        currentReading,
+        "And my User id is : ",
+        user.uid,
+        "and my vehicle id is : ",
+        vehicleDocRef.id
+      );
     } catch (error) {
       toast.error("Error adding vehicle: " + error);
       console.log("Error adding vehicle: ", error);
@@ -500,9 +519,7 @@ export default function AddVehiclePage() {
                 type="number"
                 id="currentReading"
                 value={currentReading}
-                onChange={(e) =>
-                  setCurrentReading(e.target.value.toUpperCase())
-                }
+                onChange={(e) => setCurrentReading(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                 placeholder="Enter current reading"
               />
@@ -522,9 +539,7 @@ export default function AddVehiclePage() {
                   type="date"
                   id="oilChangeDate"
                   value={oilChangeDate}
-                  onChange={(e) =>
-                    setOilChangeDate(e.target.value.toUpperCase())
-                  }
+                  onChange={(e) => setOilChangeDate(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                 />
               </div>
