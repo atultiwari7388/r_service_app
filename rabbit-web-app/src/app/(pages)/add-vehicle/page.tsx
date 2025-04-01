@@ -13,6 +13,7 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -357,6 +358,18 @@ export default function AddVehiclePage() {
 
       const vehicleDocRef = await addDoc(vehiclesRef, vehicleData);
       await updateDoc(vehicleDocRef, { vehicleId: vehicleDocRef.id });
+
+      // ✅ Call the Firebase Cloud Function
+      const functions = getFunctions();
+      const checkAndNotifyUser = httpsCallable(
+        functions,
+        "checkAndNotifyUserForVehicleService"
+      );
+
+      await checkAndNotifyUser({
+        userId: user?.uid, // Pass userId
+        vehicleId: vehicleDocRef.id, // Pass the vehicleId
+      });
 
       toast.success("Vehicle added successfully!");
       router.push("/account/my-profile");
