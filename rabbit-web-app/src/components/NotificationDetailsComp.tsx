@@ -18,6 +18,7 @@ interface NotificationData {
 interface Service {
   serviceName: string;
   defaultNotificationValue: number;
+  nextNotificationValue: number;
   subServices?: string[];
 }
 
@@ -154,12 +155,10 @@ const ServiceItem = ({ service }: { service: Service }) => (
         <span className="text-gray-700 font-medium">{service.serviceName}</span>
       </div>
 
-      {service.defaultNotificationValue > 0 && (
+      {service.nextNotificationValue > 0 && (
         <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
           <FaBell className="text-blue-500" />
-          <span className="text-gray-700">
-            {service.defaultNotificationValue}
-          </span>
+          <span className="text-gray-700">{service.nextNotificationValue}</span>
         </div>
       )}
     </div>

@@ -442,6 +442,9 @@ class _ReportsScreenState extends State<ReportsScreen>
       List<Map<String, dynamic>> notificationData = [];
       List<int> allNextNotificationValues = [];
 
+      // Store service details for vehicle update
+      Map<String, dynamic> serviceDetailsMap = {};
+
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
           (s) => s['sId'] == serviceId,
@@ -482,9 +485,6 @@ class _ReportsScreenState extends State<ReportsScreen>
         if (type == 'reading') {
           nextNotificationValue = currentMiles + defaultValue;
         } else if (type == 'day') {
-          // final baseDate = selectedDate ?? DateTime.now();
-          // nextNotificationDate = baseDate.add(Duration(days: defaultValue));
-          // nextNotificationValue = nextNotificationDate.millisecondsSinceEpoch;
           final baseDate = selectedDate ?? DateTime.now();
           final nextDate = baseDate.add(Duration(days: defaultValue));
           formattedDate =
@@ -495,6 +495,17 @@ class _ReportsScreenState extends State<ReportsScreen>
         } else {
           nextNotificationValue = 0;
         }
+
+        // Store details for vehicle update
+        serviceDetailsMap[serviceId] = {
+          'type': type,
+          'defaultValue': defaultValue,
+          "nextNotificationValue":
+              type == 'day' ? formattedDate : (currentMiles + defaultValue),
+          'formattedDate': formattedDate,
+          'serviceName': service['sName'],
+          'subServices': selectedSubServices[serviceId],
+        };
 
         servicesData.add({
           "serviceId": serviceId,
@@ -534,11 +545,6 @@ class _ReportsScreenState extends State<ReportsScreen>
         "invoice": invoiceController.text,
         "invoiceAmount": invoiceAmountController.text,
         "description": descriptionController.text.toString(),
-        'currentMilesArray': FieldValue.arrayUnion([
-          {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-        ]),
-        "allNextNotificationValues": allNextNotificationValues,
-        "totalMiles": currentMiles,
         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
                 selectedServiceData.any((s) => s['vType'] == "Truck")
             ? currentMiles
@@ -606,7 +612,46 @@ class _ReportsScreenState extends State<ReportsScreen>
           .collection('Vehicles')
           .doc(selectedVehicle);
 
+      final vehicleSnapshot = await vehicleRef.get();
+      Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
+      List<dynamic> vehicleServices = List.from(vehicleData['services'] ?? []);
+
+      for (var serviceId in selectedServices) {
+        final serviceInfo = serviceDetailsMap[serviceId];
+        if (serviceInfo == null) continue;
+
+        final type = serviceInfo['type'];
+        final defaultValue = serviceInfo['defaultValue'];
+        final nextNotificationValue = serviceInfo['nextNotificationValue'];
+        final formattedDate = serviceInfo['formattedDate'];
+        final serviceName = serviceInfo['serviceName'];
+        final subServices = serviceInfo['subServices'];
+
+        int index =
+            vehicleServices.indexWhere((s) => s['serviceId'] == serviceId);
+
+        if (index != -1) {
+          // Update existing service
+          vehicleServices[index] = {
+            ...vehicleServices[index],
+            'nextNotificationValue':
+                type == 'day' ? formattedDate : nextNotificationValue,
+            'type': type,
+            'defaultNotificationValue': defaultValue,
+            'subServices': (subServices as List<dynamic>?)
+                    ?.map((subService) => {
+                          "name": subService.toString(),
+                          "id":
+                              "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+                        })
+                    .toList() ??
+                [],
+          };
+        }
+      }
+
       batch.update(vehicleRef, {
+        'services': vehicleServices,
         'currentMiles': currentMiles.toString(),
         'currentMilesArray': FieldValue.arrayUnion([
           {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
@@ -1723,28 +1768,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           todayMilesController
                                               .text.isNotEmpty) {
                                         try {
-                                          // Check if DataServices subcollection exists and is not empty
-                                          final dataServicesSnapshot =
-                                              await FirebaseFirestore.instance
-                                                  .collection("Users")
-                                                  .doc(currentUId)
-                                                  .collection("DataServices")
-                                                  .get();
-
-                                          if (dataServicesSnapshot
-                                              .docs.isEmpty) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    "First add a record in DataServices, then continue to add miles."),
-                                                duration: Duration(seconds: 3),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                            return; // Exit the function early
-                                          }
-
                                           final int enteredValue = int.parse(
                                               todayMilesController.text);
                                           final vehicleId = selectedVehicle;
@@ -1822,22 +1845,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 .doc(vehicleId)
                                                 .update(data);
 
-                                            // **Fetch & Update DataServices Subcollection**
-                                            final dataServicesSnapshot =
-                                                await FirebaseFirestore.instance
-                                                    .collection("Users")
-                                                    .doc(currentUId)
-                                                    .collection("DataServices")
-                                                    .where("vehicleId",
-                                                        isEqualTo:
-                                                            selectedVehicle) // Filter matching docs
-                                                    .get();
-
-                                            for (var doc
-                                                in dataServicesSnapshot.docs) {
-                                              await doc.reference.update(data);
-                                            }
-
                                             debugPrint(
                                                 '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
                                             todayMilesController.clear();
@@ -1859,22 +1866,11 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             final HttpsCallable callable =
                                                 FirebaseFunctions.instance
                                                     .httpsCallable(
-                                                        'checkAndNotifyUserForVehicleService');
-
-                                            // After updating miles/hours in DataServices
-                                            final HttpsCallable checkServices =
-                                                FirebaseFunctions.instance
-                                                    .httpsCallable(
                                                         'checkDataServicesAndNotify');
-
-                                            await checkServices.call({
-                                              'userId': currentUId,
-                                              'vehicleId': vehicleId
-                                            });
 
                                             final result = await callable.call({
                                               'userId': currentUId,
-                                              'vehicleId': vehicleId,
+                                              'vehicleId': vehicleId
                                             });
 
                                             log('Cloud function result: ${result.data} vehicle Id $vehicleId');

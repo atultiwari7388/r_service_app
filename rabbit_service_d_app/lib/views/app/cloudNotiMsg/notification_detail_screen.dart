@@ -68,7 +68,7 @@ class NotificationDetailsScreen extends StatelessWidget {
                             final service = services[index];
                             final serviceName = service['serviceName'];
                             final nextNotificationValue =
-                                service['defaultNotificationValue'];
+                                service['nextNotificationValue'];
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
