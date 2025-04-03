@@ -162,6 +162,10 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 final currentMilesArray =
                     vehicleData['currentMilesArray'] ?? [];
 
+                final rawDate = vehicleData['year'] ?? '';
+                final formattedDate =
+                    DateFormat('MM-dd-yyyy').format(DateTime.parse(rawDate));
+
                 return SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -180,7 +184,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                               children: [
                                 _buildInfoRow('Vehicle Number:',
                                     vehicleData['vehicleNumber']),
-                                _buildInfoRow('Year:', vehicleData['year']),
+                                _buildInfoRow('Year:', formattedDate),
                                 _buildInfoRow('Current Miles:',
                                     vehicleData['currentMiles']),
                                 _buildInfoRow('License Plate:',
@@ -436,7 +440,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 content:
                                     currentMilesArray.map<Widget>((milesEntry) {
                                   final rawDate = milesEntry['date'] ?? '';
-                                  final formattedDate = DateFormat('yyyy-MM-dd')
+                                  final formattedDate = DateFormat('MM-dd-yyyy')
                                       .format(DateTime.parse(rawDate));
                                   return ListTile(
                                     leading: const Icon(Icons.timeline,

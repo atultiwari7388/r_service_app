@@ -1985,7 +1985,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                   record['services']
                                                       as List<dynamic>;
                                               final date =
-                                                  DateFormat('dd-MM-yy').format(
+                                                  DateFormat('MM-dd-yy').format(
                                                       DateTime.parse(
                                                           record['createdAt']));
 

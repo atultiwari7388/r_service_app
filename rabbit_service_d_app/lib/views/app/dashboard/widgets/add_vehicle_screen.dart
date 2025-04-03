@@ -202,7 +202,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     });
   }
 
-
   List<Map<String, dynamic>> calculateNextNotificationMiles() {
     List<Map<String, dynamic>> nextNotificationMiles = [];
     int currentMiles = int.tryParse(_currentMilesController.text) ?? 0;

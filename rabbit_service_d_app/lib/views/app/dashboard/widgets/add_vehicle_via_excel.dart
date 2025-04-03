@@ -86,34 +86,43 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         List<dynamic> subServices = service['subServices'] ?? [];
         List<dynamic> defaultValues = service['dValues'] ?? [];
 
-        // Track if we found any matches for this service
         bool foundMatch = false;
 
-        // Check all default values for brand matches
         for (var defaultValue in defaultValues) {
           if (defaultValue['brand'].toString().toLowerCase() ==
               _selectedEngineName?.toLowerCase()) {
             foundMatch = true;
-            int notificationValue =
-                (int.tryParse(defaultValue['value'].toString()) ?? 0) * 1000;
 
-            int nextMiles = notificationValue;
-            int defaultNotificationvalues = notificationValue;
+            String type = defaultValue['type']
+                .toString()
+                .toLowerCase(); // Get type (reading, day, hour)
+            int value = int.tryParse(defaultValue['value'].toString()) ?? 0;
+            int notificationValue;
 
-            log('Matched dValue - Brand: ${defaultValue['brand']}, Notification Value: $notificationValue, Next Miles: $nextMiles');
+            if (type == "reading") {
+              notificationValue = value * 1000;
+            } else if (type == "day") {
+              notificationValue = value;
+            } else if (type == "hour") {
+              notificationValue = value;
+            } else {
+              notificationValue = value;
+            }
+
+            log('Matched dValue - Brand: ${defaultValue['brand']}, Type: $type, Notification Value: $notificationValue');
 
             nextNotificationMiles.add({
               'serviceId': serviceId,
               'serviceName': serviceName,
-              'defaultNotificationValue': defaultNotificationvalues,
-              'nextNotificationValue': nextMiles,
+              'defaultNotificationValue': notificationValue,
+              'nextNotificationValue': notificationValue,
+              'type': type,
               'subServices':
                   subServices.map((s) => s['sName'].toString()).toList(),
             });
           }
         }
 
-        // If no brand match was found, log it
         if (!foundMatch) {
           log('No brand match found for service: $serviceName');
         }
@@ -200,7 +209,6 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       _selectedEngineName = engine;
       // _currentMilesController.text = data['currentMiles']?.toString() ?? '';
 
-      // 6. Calculate notification milestones
       final nextNotificationMiles = vehicleType == "Truck"
           ? calculateNextNotificationMiles(int.parse(data['currentMiles']))
           : calculateNextNotificationMiles(int.parse(data['hoursReading']));
