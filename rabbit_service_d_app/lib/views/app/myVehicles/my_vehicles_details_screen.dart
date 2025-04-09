@@ -651,16 +651,28 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 children: [
                   _buildTableCell(index.toString()), // Serial Number
                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
-                  _buildTableCell(service['nextNotificationValue'].toString() +
-                      ' (' +
-                      (service['type'] == 'day'
-                          ? 'Day'
-                          : service['type'] == 'reading'
-                              ? 'Miles'
-                              : service['type'] == 'hours'
-                                  ? 'Hours'
-                                  : '') +
-                      ')'),
+
+                  _buildTableCell(service['type'] == "day"
+                      ? service['defaultNotificationValue'].toString() +
+                          ' (' +
+                          (service['type'] == 'day'
+                              ? 'Day'
+                              : service['type'] == 'reading'
+                                  ? 'Miles'
+                                  : service['type'] == 'hours'
+                                      ? 'Hours'
+                                      : '') +
+                          ')'
+                      : service['nextNotificationValue'].toString() +
+                          ' (' +
+                          (service['type'] == 'day'
+                              ? 'Day'
+                              : service['type'] == 'reading'
+                                  ? 'Miles'
+                                  : service['type'] == 'hours'
+                                      ? 'Hours'
+                                      : '') +
+                          ')'),
 
                   TableCell(
                     child: Container(

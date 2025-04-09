@@ -282,10 +282,17 @@ class _ReportsScreenState extends State<ReportsScreen>
               .toLowerCase()
               .contains(filterService.toLowerCase()));
 
+      // final matchesDateRange = startDate == null ||
+      //     endDate == null ||
+      //     (DateTime.parse(record['date']).isAfter(startDate!) &&
+      //         DateTime.parse(record['date']).isBefore(endDate!));
+      final recordDate = DateTime.parse(record['date']);
       final matchesDateRange = startDate == null ||
           endDate == null ||
-          (DateTime.parse(record['date']).isAfter(startDate!) &&
-              DateTime.parse(record['date']).isBefore(endDate!));
+          (recordDate.isAtSameMomentAs(startDate!) ||
+              recordDate.isAtSameMomentAs(endDate!) ||
+              (recordDate.isAfter(startDate!) &&
+                  recordDate.isBefore(endDate!)));
 
       final matchesInvoice = filterInvoice == null ||
           record['invoice']
@@ -456,7 +463,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           continue; // Skip this iteration if service is not found
         }
 
-        // Get matching dValue for vehicle's engine
+        // Get matching dValue for vehicle's engine or use defaults
         final engineName =
             selectedVehicleData?['engineName'].toString().toUpperCase();
         final dValues = service['dValues'] as List<dynamic>;
@@ -465,35 +472,43 @@ class _ReportsScreenState extends State<ReportsScreen>
           orElse: () => null,
         );
 
-        if (matchingDValue == null) {
-          debugPrint('No matching dValue found for service $serviceId');
-          continue;
+        // Determine type and defaultValue
+        String type = "reading";
+        int defaultValue = 0;
+
+        if (matchingDValue != null) {
+          type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
+          defaultValue = serviceDefaultValues[serviceId] ?? 0;
         }
 
-        final type =
-            (matchingDValue['type'] ?? 'reading').toString().toLowerCase() ??
-                "";
-        final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-        // Calculate and format dates
         String formattedDate = '';
         int numericValue = 0;
 
         // Calculate next notification values
-        int nextNotificationValue;
-        DateTime? nextNotificationDate;
+        int nextNotificationValue = 0;
+        // DateTime? nextNotificationDate;
 
-        if (type == 'reading') {
-          nextNotificationValue = currentMiles + defaultValue;
-        } else if (type == 'day') {
-          final baseDate = selectedDate ?? DateTime.now();
-          final nextDate = baseDate.add(Duration(days: defaultValue));
-          formattedDate =
-              DateFormat('dd/MM/yyyy').format(nextDate); // Format here
-          numericValue = nextDate.millisecondsSinceEpoch;
-        } else if (type == 'hour') {
-          nextNotificationValue = currentHours + defaultValue;
-        } else {
-          nextNotificationValue = 0;
+        if (matchingDValue != null) {
+          if (defaultValue > 0) {
+            if (type == 'reading') {
+              nextNotificationValue = currentMiles + defaultValue;
+            } else if (type == 'day') {
+              final baseDate = selectedDate ?? DateTime.now();
+              final nextDate = baseDate.add(Duration(days: defaultValue));
+              formattedDate =
+                  DateFormat('dd/MM/yyyy').format(nextDate); // Format here
+              numericValue = nextDate.millisecondsSinceEpoch;
+            } else if (type == 'hour') {
+              nextNotificationValue = currentHours + defaultValue;
+            } else {
+              // Force 0 if defaultValue is 0 (even with matching engine)
+              nextNotificationValue = 0;
+              formattedDate = '';
+            }
+          } else {
+            // No engine match, force 0
+            nextNotificationValue = 0;
+          }
         }
 
         // Store details for vehicle update
@@ -501,7 +516,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           'type': type,
           'defaultValue': defaultValue,
           "nextNotificationValue":
-              type == 'day' ? formattedDate : (currentMiles + defaultValue),
+              type == 'day' ? formattedDate : nextNotificationValue,
           'formattedDate': formattedDate,
           'serviceName': service['sName'],
           'subServices': selectedSubServices[serviceId],
@@ -513,7 +528,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           "type": type,
           "defaultNotificationValue": defaultValue,
           "nextNotificationValue":
-              type == 'day' ? formattedDate : (currentMiles + defaultValue),
+              type == 'day' ? formattedDate : nextNotificationValue,
           "subServices": selectedSubServices[serviceId]
                   ?.map((subService) => {
                         "name": subService,
@@ -527,7 +542,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           "serviceName": service['sName'],
           "type": type,
           "nextNotificationValue":
-              type == 'day' ? formattedDate : (currentMiles + defaultValue),
+              type == 'day' ? formattedDate : nextNotificationValue,
           "subServices": selectedSubServices[serviceId] ?? [],
         });
       }
@@ -1185,7 +1200,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               ),
                                               child: Text(
                                                 startDate != null
-                                                    ? DateFormat('dd-MM-yyyy')
+                                                    ? DateFormat('MM-dd-yyyy')
                                                         .format(startDate!)
                                                     : 'Select Start Date',
                                               ),
@@ -1225,7 +1240,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               ),
                                               child: Text(
                                                 endDate != null
-                                                    ? DateFormat('dd-MM-yyyy')
+                                                    ? DateFormat('MM-dd-yyyy')
                                                         .format(endDate!)
                                                     : 'Select End Date',
                                               ),
@@ -1573,21 +1588,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         });
                                       }
                                     },
-                                    child: SizedBox(
-                                      height: 50.h,
-                                      child: InputDecorator(
-                                        decoration: const InputDecoration(
-                                          labelText: 'Date',
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        child: Text(
-                                          selectedDate != null
-                                              ? selectedDate!
-                                                  .toLocal()
-                                                  .toString()
-                                                  .split(' ')[0]
-                                              : 'Select Date',
-                                        ),
+                                    child: InputDecorator(
+                                      decoration: const InputDecoration(
+                                        labelText: 'Date',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      child: Text(
+                                        selectedDate != null
+                                            ? selectedDate!
+                                                .toLocal()
+                                                .toString()
+                                                .split(' ')[0]
+                                            : 'Select Date',
                                       ),
                                     ),
                                   ),
@@ -1987,7 +1999,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               final date =
                                                   DateFormat('MM-dd-yy').format(
                                                       DateTime.parse(
-                                                          record['createdAt']));
+                                                          record['date']));
 
                                               return Container(
                                                 child: GestureDetector(

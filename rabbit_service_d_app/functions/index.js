@@ -336,6 +336,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
           serviceNotifications.push({
             serviceName,
             defaultNotificationValue, // Keep original default value
+            nextNotificationValue: defaultNotificationValue,
             currentMiles,
             message: `Hey ${userName}, your ${serviceName} for vehicle ${
               vehicleData.vehicleType || "unknown"
@@ -354,6 +355,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
           serviceNotifications.push({
             serviceName,
             defaultNotificationValue,
+            nextNotificationValue: defaultNotificationValue,
             hoursReading,
             message: `Hey ${userName}, your ${serviceName} for vehicle ${
               vehicleData.vehicleType || "unknown"
