@@ -85,7 +85,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                             final parsedDate = DateFormat('dd/MM/yyyy')
                                 .parse(rawNotificationValue);
                             nextNotificationValue =
-                                DateFormat('MM//dd//yyyy').format(parsedDate);
+                                DateFormat('MM-dd-yyyy').format(parsedDate);
                           } catch (e) {
                             nextNotificationValue = "Invalid Date";
                           }
