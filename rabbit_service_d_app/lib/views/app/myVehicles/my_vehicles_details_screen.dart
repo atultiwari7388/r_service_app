@@ -163,6 +163,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     vehicleData['currentMilesArray'] ?? [];
 
                 final rawDate = vehicleData['year'] ?? '';
+                final oilChangeDate = vehicleData['oilChangeDate'] ?? '';
+                final formattedOilChangeDate = DateFormat('MM-dd-yyyy')
+                    .format(DateTime.parse(oilChangeDate));
                 final formattedDate =
                     DateFormat('MM-dd-yyyy').format(DateTime.parse(rawDate));
 
@@ -204,7 +207,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 vehicleData['oilChangeDate'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('Oil Change Date:',
-                                        vehicleData['oilChangeDate']),
+                                        formattedOilChangeDate),
                                 vehicleData['hoursReading'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('Hours Reading:',
@@ -652,27 +655,44 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   _buildTableCell(index.toString()), // Serial Number
                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
 
-                  _buildTableCell(service['type'] == "day"
-                      ? service['defaultNotificationValue'].toString() +
-                          ' (' +
-                          (service['type'] == 'day'
-                              ? 'Day'
-                              : service['type'] == 'reading'
-                                  ? 'Miles'
-                                  : service['type'] == 'hours'
-                                      ? 'Hours'
-                                      : '') +
-                          ')'
-                      : service['nextNotificationValue'].toString() +
-                          ' (' +
-                          (service['type'] == 'day'
-                              ? 'Day'
-                              : service['type'] == 'reading'
-                                  ? 'Miles'
-                                  : service['type'] == 'hours'
-                                      ? 'Hours'
-                                      : '') +
-                          ')'),
+                  // _buildTableCell(service['type'] == "day"
+                  //     ? service['defaultNotificationValue'].toString() +
+                  //         ' (' +
+                  //         (service['type'] == 'day'
+                  //             ? 'Day'
+                  //             : service['type'] == 'reading'
+                  //                 ? 'Miles'
+                  //                 : service['type'] == 'hours'
+                  //                     ? 'Hours'
+                  //                     : '') +
+                  //         ')'
+                  //     : service['nextNotificationValue'].toString() +
+                  //         ' (' +
+                  //         (service['type'] == 'day'
+                  //             ? 'Day'
+                  //             : service['type'] == 'reading'
+                  //                 ? 'Miles'
+                  //                 : service['type'] == 'hours'
+                  //                     ? 'Hours'
+                  //                     : '') +
+                  //         ')'),
+
+                  _buildTableCell(
+                    service['type'] == 'day'
+                        ? _isDate(service['nextNotificationValue'])
+                            ? service['defaultNotificationValue'].toString() +
+                                ' (Day)'
+                            : service['nextNotificationValue'].toString() +
+                                ' (Day)'
+                        : service['nextNotificationValue'].toString() +
+                            ' (' +
+                            (service['type'] == 'reading'
+                                ? 'Miles'
+                                : service['type'] == 'hours'
+                                    ? 'Hours'
+                                    : '') +
+                            ')',
+                  ),
 
                   TableCell(
                     child: Container(
@@ -692,6 +712,25 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         ),
       ),
     );
+  }
+
+  bool _isDate(dynamic value) {
+    if (value is String) {
+      try {
+        // Try to parse dd/MM/yyyy format
+        final parts = value.split('/');
+        if (parts.length == 3) {
+          final day = int.tryParse(parts[0]);
+          final month = int.tryParse(parts[1]);
+          final year = int.tryParse(parts[2]);
+          if (day != null && month != null && year != null) {
+            DateTime parsedDate = DateTime(year, month, day);
+            return true;
+          }
+        }
+      } catch (_) {}
+    }
+    return false;
   }
 
   Widget _buildTableHeader(String text) {
@@ -778,16 +817,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   return;
                 }
 
-                if (newValue < currentValue) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text('New value must be greater than $currentValue'),
-                    ),
-                  );
-                  return;
-                }
-
                 try {
                   final vehicleDocRef = FirebaseFirestore.instance
                       .collection('Users')
@@ -823,11 +852,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     SnackBar(content: Text('Error updating service: $e')),
                   );
                 }
-                // final newValue = int.tryParse(controller.text);
-                // if (newValue != null) {
-                //   service['nextNotificationValue'] = newValue;
-                //   Navigator.pop(context);
-                // }
               },
               child: const Text('Update'),
             ),

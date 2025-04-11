@@ -36,12 +36,11 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
   List<Map<String, dynamic>> vehicles = []; // To store vehicle details
   List<String> selectedVehicles = []; // To store selected vehicles' IDs
-  List<String> roles = ["Manager", "Driver"];
+  List<String> roles = ["Manager", "Driver", "Vendor"];
   String? selectedRole;
   List<String> recordAccessCheckBox = [
     "View",
     "Edit",
-    // "Delete",
     "Add",
   ];
   List<String> selectedRecordAccess = [];
@@ -56,7 +55,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     try {
       QuerySnapshot vehiclesSnapshot = await _firestore
           .collection('Users')
-          .doc(currentUId) // Replace with the owner's UID
+          .doc(currentUId)
           .collection('Vehicles')
           .get();
 
@@ -95,6 +94,31 @@ class _AddTeamMemberState extends State<AddTeamMember> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                "Assign Role",
+                style: appStyle(16, Colors.black, FontWeight.bold),
+              ),
+              SizedBox(height: 10.h),
+              Divider(),
+              Padding(
+                padding: const EdgeInsets.only(left: 10, right: 10),
+                child: DropdownButtonFormField<String>(
+                  hint: Text("Select Role"),
+                  value: selectedRole,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedRole = newValue;
+                    });
+                  },
+                  items: roles.map((String role) {
+                    return DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(role),
+                    );
+                  }).toList(),
+                ),
+              ),
+
               SizedBox(height: 24.h),
               buildTextFieldInputWidget(
                 "Enter member name",
@@ -153,30 +177,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                       }).toList(),
                     ),
               SizedBox(height: 10.h),
-              Text(
-                "Assign Role",
-                style: appStyle(16, Colors.black, FontWeight.bold),
-              ),
-              SizedBox(height: 10.h),
-              Divider(),
-              Padding(
-                padding: const EdgeInsets.only(left: 10, right: 10),
-                child: DropdownButtonFormField<String>(
-                  hint: Text("Select Role"),
-                  value: selectedRole,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      selectedRole = newValue;
-                    });
-                  },
-                  items: roles.map((String role) {
-                    return DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(role),
-                    );
-                  }).toList(),
-                ),
-              ),
+
               SizedBox(height: 24.h),
               Text(
                 "Assign Record Access",

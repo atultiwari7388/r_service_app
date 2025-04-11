@@ -15,10 +15,13 @@ class AuthController extends GetxController {
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
+  final TextEditingController _vehicleRangeController = TextEditingController();
+
   var isUserSign = false;
   var isUserAcCreated = false;
   var forgotPass = false;
@@ -29,6 +32,10 @@ class AuthController extends GetxController {
 
   TextEditingController get nameController => _nameController;
 
+  TextEditingController get companyNameController => _companyNameController;
+
+  TextEditingController get vehicleRangeController => _vehicleRangeController;
+
   TextEditingController get emailController => _emailController;
 
   TextEditingController get addressController => _addressController;
@@ -36,6 +43,19 @@ class AuthController extends GetxController {
   TextEditingController get phoneNumberController => _phoneNumberController;
 
   TextEditingController get passController => _passController;
+
+  final RxString selectedVehicleRange = '1 to 5'.obs;
+
+  final List<String> vehicleRanges = [
+    '1 to 5',
+    '1 to 10',
+    '1 to 20',
+    '1 to 30',
+    '1 to 50',
+    '1 to 100',
+    '1 to 200',
+    '1 to 500',
+  ];
 
 //========================== Create account with email and password =================
 
@@ -47,10 +67,13 @@ class AuthController extends GetxController {
           email: _emailController.text, password: _passController.text);
 
       await DatabaseServices(uid: user.user!.uid).savingUserData(
-          _emailController.text,
-          _nameController.text,
-          _phoneNumberController.text,
-          _addressController.text);
+        _emailController.text,
+        _nameController.text,
+        _phoneNumberController.text,
+        _addressController.text,
+        _companyNameController.text,
+        selectedVehicleRange.value,
+      );
 
       // Send email verification
       await user.user!.sendEmailVerification();

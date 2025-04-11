@@ -16,10 +16,14 @@ class DatabaseServices {
     String userName,
     String phoneNumber,
     String address,
+    String companyName,
+    String selectedVehicleRange,
   ) async {
     return fireStoreDatabase.doc(uid!).set({
       "uid": uid,
       "email": emailAddress,
+      "companyName": companyName,
+      "vehicleRange": selectedVehicleRange,
       "active": true,
       "userName": userName,
       "phoneNumber": phoneNumber,

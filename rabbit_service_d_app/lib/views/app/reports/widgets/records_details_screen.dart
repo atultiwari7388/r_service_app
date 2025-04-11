@@ -19,6 +19,7 @@ class RecordsDetailsScreen extends StatelessWidget {
     final services = record['services'] as List<dynamic>? ?? [];
     final date =
         DateFormat('dd-MM-yy').format(DateTime.parse(record['createdAt']));
+    final vehicleType = record['vehicleDetails']['vehicleType'] ?? 'N/A';
 
     return Scaffold(
       appBar: AppBar(
@@ -57,7 +58,11 @@ class RecordsDetailsScreen extends StatelessWidget {
                   buildInfoRow(
                       Icons.store_outlined, record['workshopName'] ?? 'N/A'),
                   Divider(height: 24.h),
-                  buildInfoRow(Icons.tire_repair, record['miles'].toString()),
+                  vehicleType == "Truck"
+                      ? buildInfoRow(
+                          Icons.tire_repair, record['miles'].toString())
+                      : buildInfoRow(
+                          Icons.tire_repair, record['hours'].toString()),
                   SizedBox(height: 10.h),
                   Text("Services:",
                       style: appStyleUniverse(18, kDark, FontWeight.bold)),

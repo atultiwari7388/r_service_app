@@ -33,188 +33,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             builder: (controller) {
               if (!controller.isUserAcCreated) {
                 if (isDesktop) {
-                  return SizedBox(
-                    height: double.maxFinite,
-                    width: double.maxFinite,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Text(
-                                "Create Account",
-                                style: TextStyle(fontSize: 60),
-                              ),
-
-                              const SizedBox(height: 30),
-                              //create a new account using email and password
-                              Form(
-                                key: controller.formKey,
-                                child: SizedBox(
-                                  width: 350,
-                                  child: Column(
-                                    children: [
-                                      TextFormField(
-                                        controller: controller.nameController,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Name",
-                                            prefixIcon:
-                                                Icon(Icons.alternate_email)),
-                                        validator: (value) {
-                                          return value!.isEmpty
-                                              ? "Enter your name"
-                                              : null;
-                                        },
-                                      ),
-                                      TextFormField(
-                                        controller: controller.emailController,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Email",
-                                            prefixIcon:
-                                                Icon(Icons.alternate_email)),
-                                        validator: (value) {
-                                          return value!.isEmpty
-                                              ? "Enter your email"
-                                              : null;
-                                        },
-                                      ),
-                                      TextFormField(
-                                        controller:
-                                            controller.phoneNumberController,
-                                        keyboardType: TextInputType.phone,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Phone number",
-                                            prefixIcon:
-                                                Icon(Icons.alternate_email)),
-                                        validator: (value) {
-                                          return value!.isEmpty
-                                              ? "Enter your phone number"
-                                              : null;
-                                        },
-                                      ),
-                                      TextFormField(
-                                        controller:
-                                            controller.addressController,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Address",
-                                            prefixIcon:
-                                                Icon(Icons.alternate_email)),
-                                        validator: (value) {
-                                          return value!.isEmpty
-                                              ? "Enter your address"
-                                              : null;
-                                        },
-                                      ),
-                                      TextFormField(
-                                        controller: controller.passController,
-                                        keyboardType:
-                                            TextInputType.visiblePassword,
-                                        obscureText: true,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Password",
-                                            prefixIcon: Icon(Icons.visibility)),
-                                        validator: (value) {
-                                          return value!.isEmpty
-                                              ? "Enter your password"
-                                              : null;
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 30),
-                              //signup button
-                              InkWell(
-                                onTap: () {
-                                  if (_formKey.currentState != null &&
-                                      _formKey.currentState!.validate()) {
-                                    controller.createUserWithEmailAndPassword();
-                                  } else {
-                                    showToastMessage(
-                                        "Error",
-                                        "Please enter valid inputs",
-                                        Colors.red);
-                                  }
-                                },
-                                child: controller.isUserAcCreated
-                                    ? const CircularProgressIndicator()
-                                    : Material(
-                                        elevation: 5,
-                                        borderRadius: BorderRadius.circular(10),
-                                        color: kPrimary,
-                                        child: const SizedBox(
-                                          height: 45,
-                                          width: 400,
-                                          child: Center(
-                                            child: Text(
-                                              "Create account",
-                                              style: TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(height: 30),
-                              SizedBox(
-                                width: 260,
-                                child: RichText(
-                                  textAlign: TextAlign.center,
-                                  text: TextSpan(
-                                    text: "By continuing, you agree to our ",
-                                    style: TextStyle(color: kDark),
-                                    children: <TextSpan>[
-                                      TextSpan(
-                                        text: "Terms of Services",
-                                        style: TextStyle(color: kPrimary),
-                                        recognizer: TapGestureRecognizer()
-                                          ..onTap = () {
-                                            // Handle tap for Terms of Services
-                                            print("Terms of Services tapped");
-                                          },
-                                      ),
-                                      TextSpan(
-                                        text: " and ",
-                                        style: TextStyle(color: kDark),
-                                      ),
-                                      TextSpan(
-                                        text: "Privacy Policy.",
-                                        style: TextStyle(color: kPrimary),
-                                        recognizer: TapGestureRecognizer()
-                                          ..onTap = () {
-                                            // Handle tap for Privacy Policy
-                                            print("Privacy Policy tapped");
-                                          },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.only(
-                                bottom: 80, top: 80, left: 80, right: 80),
-                            child: Image.asset(
-                              "assets/no-background-logo.png",
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return SizedBox();
                 } else {
                   return buildMobileLayout(controller, context);
                 }
@@ -303,6 +122,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   SizedBox(height: 15.h),
                   buildTextFieldInputWidget(
+                    "Enter Company name",
+                    TextInputType.text,
+                    controller.companyNameController,
+                    MaterialCommunityIcons.account,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Please enter your company name";
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 15.h),
+                  buildTextFieldInputWidget(
                     "Enter your phone number",
                     TextInputType.number,
                     controller.phoneNumberController,
@@ -328,6 +160,59 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 15.h),
+                  Obx(() => DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: "Number of Vehicles",
+                          labelStyle: appStyle(15, kPrimary, FontWeight.normal),
+                          fillColor: Colors.white,
+                          filled: true,
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Rounded corners
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300, // Border color
+                              width: 1.0,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Rounded corners
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300, // Border color
+                              width: 1.0,
+                            ),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Rounded corners
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300, // Border color
+                              width: 1.0,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.all(8),
+                        ),
+                        value: controller.selectedVehicleRange.value,
+                        icon: const Icon(Icons.arrow_drop_down),
+                        items: controller.vehicleRanges.map((String range) {
+                          return DropdownMenuItem<String>(
+                            value: range,
+                            child: Text(range),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            controller.selectedVehicleRange.value = value;
+                          }
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Please select a vehicle range";
+                          }
+                          return null;
+                        },
+                      )),
                   SizedBox(height: 15.h),
                   SizedBox(
                     width: 260.w,

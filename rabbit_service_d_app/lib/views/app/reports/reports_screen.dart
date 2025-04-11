@@ -48,6 +48,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   final TextEditingController vehicleSearchController = TextEditingController();
   final TextEditingController dateSearchController = TextEditingController();
   DateTime? selectedDate;
+  DateTime? _originalRecordDate;
   late TabController _tabController;
 
   bool showAddRecords = false;
@@ -282,10 +283,6 @@ class _ReportsScreenState extends State<ReportsScreen>
               .toLowerCase()
               .contains(filterService.toLowerCase()));
 
-      // final matchesDateRange = startDate == null ||
-      //     endDate == null ||
-      //     (DateTime.parse(record['date']).isAfter(startDate!) &&
-      //         DateTime.parse(record['date']).isBefore(endDate!));
       final recordDate = DateTime.parse(record['date']);
       final matchesDateRange = startDate == null ||
           endDate == null ||
@@ -308,8 +305,8 @@ class _ReportsScreenState extends State<ReportsScreen>
     }).toList();
 
     filteredRecords.sort((a, b) {
-      final dateA = DateTime.parse(a['createdAt']);
-      final dateB = DateTime.parse(b['createdAt']);
+      final dateA = DateTime.parse(a['date']);
+      final dateB = DateTime.parse(b['date']);
       return dateB.compareTo(dateA);
     });
 
@@ -447,10 +444,15 @@ class _ReportsScreenState extends State<ReportsScreen>
 
       List<Map<String, dynamic>> servicesData = [];
       List<Map<String, dynamic>> notificationData = [];
-      List<int> allNextNotificationValues = [];
-
       // Store service details for vehicle update
       Map<String, dynamic> serviceDetailsMap = {};
+
+      // Get selected services data
+      final selectedServiceData = selectedServices
+          .map((serviceId) => services.firstWhere((s) => s['sId'] == serviceId,
+              orElse: () => {}))
+          .where((s) => s.isNotEmpty)
+          .toList();
 
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
@@ -458,10 +460,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           orElse: () => {},
         );
 
-        if (service == null) {
-          debugPrint('Service with ID $serviceId not found.');
-          continue; // Skip this iteration if service is not found
-        }
+        if (service.isEmpty) continue;
 
         // Get matching dValue for vehicle's engine or use defaults
         final engineName =
@@ -475,6 +474,44 @@ class _ReportsScreenState extends State<ReportsScreen>
         // Determine type and defaultValue
         String type = "reading";
         int defaultValue = 0;
+        DateTime? nextNotificationDate;
+
+        // if (matchingDValue != null) {
+        //   type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
+        //   defaultValue = serviceDefaultValues[serviceId] ?? 0;
+        // }
+
+        // String formattedDate = '';
+        // int numericValue = 0;
+        // int nextNotificationValue = 0;
+
+        // if (matchingDValue != null) {
+        //   if (defaultValue > 0) {
+        //     if (type == 'reading') {
+        //       nextNotificationValue = currentMiles + defaultValue;
+        //     } else if (type == 'day') {
+        //       // final baseDate = selectedDate ?? DateTime.now();
+        //       final baseDate = isEditing
+        //           ? _originalRecordDate ?? selectedDate ?? DateTime.now()
+        //           : selectedDate ?? DateTime.now();
+        //       final nextDate = baseDate.add(Duration(days: defaultValue));
+        //       formattedDate =
+        //           DateFormat('dd/MM/yyyy').format(nextDate); // Format here
+        //       numericValue = nextDate.millisecondsSinceEpoch;
+        //     } else if (type == 'hour') {
+        //       nextNotificationValue = currentHours + defaultValue;
+        //     } else {
+        //       // Force 0 if defaultValue is 0 (even with matching engine)
+        //       nextNotificationValue = 0;
+        //       formattedDate = '';
+        //     }
+        //   } else {
+        //     // No engine match, force 0
+        //     nextNotificationValue = 0;
+        //   }
+        // }
+
+        // Inside handleSaveRecords, replace the notification calculation with:
 
         if (matchingDValue != null) {
           type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
@@ -483,32 +520,24 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         String formattedDate = '';
         int numericValue = 0;
-
-        // Calculate next notification values
         int nextNotificationValue = 0;
-        // DateTime? nextNotificationDate;
 
-        if (matchingDValue != null) {
-          if (defaultValue > 0) {
-            if (type == 'reading') {
-              nextNotificationValue = currentMiles + defaultValue;
-            } else if (type == 'day') {
-              final baseDate = selectedDate ?? DateTime.now();
-              final nextDate = baseDate.add(Duration(days: defaultValue));
-              formattedDate =
-                  DateFormat('dd/MM/yyyy').format(nextDate); // Format here
-              numericValue = nextDate.millisecondsSinceEpoch;
-            } else if (type == 'hour') {
-              nextNotificationValue = currentHours + defaultValue;
-            } else {
-              // Force 0 if defaultValue is 0 (even with matching engine)
-              nextNotificationValue = 0;
-              formattedDate = '';
-            }
-          } else {
-            // No engine match, force 0
-            nextNotificationValue = 0;
+// Only calculate next notification if there's a default value
+        if (defaultValue > 0) {
+          if (type == 'reading') {
+            nextNotificationValue = currentMiles + defaultValue;
+          } else if (type == 'day') {
+            final baseDate = selectedDate ?? DateTime.now();
+            final nextDate = baseDate.add(Duration(days: defaultValue));
+            formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
+            numericValue = nextDate.millisecondsSinceEpoch;
+          } else if (type == 'hour') {
+            nextNotificationValue = currentHours + defaultValue;
           }
+        } else {
+          // No default value, keep notification at 0
+          nextNotificationValue = 0;
+          formattedDate = '';
         }
 
         // Store details for vehicle update
@@ -560,14 +589,18 @@ class _ReportsScreenState extends State<ReportsScreen>
         "invoice": invoiceController.text,
         "invoiceAmount": invoiceAmountController.text,
         "description": descriptionController.text.toString(),
-        "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-                selectedServiceData.any((s) => s['vType'] == "Truck")
+        "miles": isEditing
             ? currentMiles
-            : 0,
-        "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-                selectedServiceData.any((s) => s['vType'] == "Trailer")
+            : selectedVehicleData?['vehicleType'] == "Truck" &&
+                    selectedServiceData.any((s) => s['vType'] == "Truck")
+                ? int.parse(currentMiles.toString())
+                : 0,
+        "hours": isEditing
             ? int.tryParse(hoursController.text) ?? 0
-            : 0,
+            : selectedVehicleData?['vehicleType'] == "Trailer" &&
+                    selectedServiceData.any((s) => s['vType'] == "Trailer")
+                ? int.tryParse(hoursController.text) ?? 0
+                : 0,
         "date":
             selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
         "workshopName": workshopController.text,
@@ -699,18 +732,23 @@ class _ReportsScreenState extends State<ReportsScreen>
     setState(() {
       isEditing = true;
       editingRecordId = record['id'];
+      _originalRecordDate = DateTime.parse(record['date']);
       selectedVehicle = record['vehicleId'];
-      selectedVehicleData = vehicles.firstWhere(
-        (v) => v['id'] == selectedVehicle,
-        orElse: () => {},
-      );
+      selectedVehicleData = record['vehicleDetails'];
+
+      // Initialize serviceDefaultValues from the record
+      serviceDefaultValues.clear();
+      for (var service in record['services']) {
+        String serviceId = service['serviceId'];
+        serviceDefaultValues[serviceId] =
+            service['defaultNotificationValue'] ?? 0;
+      }
 
       selectedServices.clear();
       selectedSubServices.clear();
       for (var service in record['services']) {
         String serviceId = service['serviceId'];
         selectedServices.add(serviceId);
-        // Handle sub-services
         if (service['subServices'] != null) {
           selectedSubServices[serviceId] = (service['subServices'] as List)
               .map<String>((sub) => sub['name'].toString())
@@ -718,8 +756,8 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
 
-      milesController.text = record['miles']?.toString() ?? '';
-      hoursController.text = record['hours']?.toString() ?? '';
+      milesController.text = record['miles'].toString();
+      hoursController.text = record['hours'].toString();
       workshopController.text = record['workshopName'] ?? '';
       invoiceController.text = record['invoice'] ?? '';
       invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
@@ -728,6 +766,40 @@ class _ReportsScreenState extends State<ReportsScreen>
       showAddRecords = true;
     });
   }
+
+  // void _handleEditRecord(Map<String, dynamic> record) {
+  //   setState(() {
+  //     isEditing = true;
+  //     editingRecordId = record['id'];
+  //     _originalRecordDate = DateTime.parse(record['date']);
+  //     selectedVehicle = record['vehicleId'];
+  //     selectedVehicleData = record['vehicleDetails'];
+
+  //     // Parse services
+  //     selectedServices.clear();
+  //     selectedSubServices.clear();
+  //     for (var service in record['services']) {
+  //       final serviceId = service['serviceId'];
+  //       selectedServices.add(serviceId);
+
+  //       // Handle subservices
+  //       final subs = (service['subServices'] as List<dynamic>?)
+  //               ?.map((s) => s['name'].toString())
+  //               .toList() ??
+  //           [];
+  //       selectedSubServices[serviceId] = subs;
+  //     }
+
+  //     // Set controllers
+  //     milesController.text = record['miles'].toString();
+  //     hoursController.text = record['hours'].toString();
+  //     workshopController.text = record['workshopName'] ?? '';
+  //     invoiceController.text = record['invoice'] ?? '';
+  //     invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
+  //     descriptionController.text = record['description'] ?? '';
+  //     selectedDate = _originalRecordDate;
+  //   });
+  // }
 
   String normalizeString(String value) {
     // Convert to lowercase and remove spaces
@@ -851,6 +923,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Search Record Add Miles Button Section
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
@@ -866,6 +939,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                             }),
                             buildCustomRowButton(
                                 Icons.add, "Records", kSecondary, () {
+                              //firstly clear the filters if any are applied
+                              resetFilters();
+
                               if (isAdd == true) {
                                 setState(() {
                                   showAddRecords = !showAddRecords;
@@ -1252,7 +1328,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   ],
                                   SizedBox(height: 16.h),
                                   CustomButton(
-                                      text: "Hide",
+                                      text: "Clear",
                                       onPress: resetFilters,
                                       color: kPrimary),
                                   SizedBox(height: 16.h),
@@ -1272,10 +1348,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   // Vehicle Dropdown
+
                                   DropdownButtonFormField<String>(
                                     value: selectedVehicle,
                                     hint: const Text('Select Vehicle'),
-                                    items: vehicles.map((vehicle) {
+                                    items: (vehicles
+                                          ..sort((a, b) => a['companyName']
+                                              .toString()
+                                              .toLowerCase()
+                                              .compareTo(b['companyName']
+                                                  .toString()
+                                                  .toLowerCase())))
+                                        .map((vehicle) {
                                       return DropdownMenuItem<String>(
                                         value: vehicle['id'],
                                         child: Text(
@@ -1784,6 +1868,16 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               todayMilesController.text);
                                           final vehicleId = selectedVehicle;
 
+                                          // Check if DataServices subcollection exists and is not empty
+                                          final dataServicesSnapshot =
+                                              await FirebaseFirestore.instance
+                                                  .collection("Users")
+                                                  .doc(currentUId)
+                                                  .collection("DataServices")
+                                                  .where("vehicleId",
+                                                      isEqualTo: vehicleId)
+                                                  .get();
+
                                           // Fetch current reading (Miles/Hours) for the selected vehicle
                                           final vehicleDoc =
                                               await FirebaseFirestore.instance
@@ -1874,18 +1968,35 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               ),
                                             );
 
-                                            // Call the cloud function to check for notifications
-                                            final HttpsCallable callable =
-                                                FirebaseFunctions.instance
-                                                    .httpsCallable(
-                                                        'checkDataServicesAndNotify');
+                                            if (dataServicesSnapshot
+                                                .docs.isEmpty) {
+                                              // Call cloud function to notify about missing services
+                                              final HttpsCallable callable =
+                                                  FirebaseFunctions.instance
+                                                      .httpsCallable(
+                                                          'checkAndNotifyUserForVehicleService');
 
-                                            final result = await callable.call({
-                                              'userId': currentUId,
-                                              'vehicleId': vehicleId
-                                            });
+                                              await callable.call({
+                                                'userId': currentUId,
+                                                'vehicleId': vehicleId,
+                                              });
 
-                                            log('Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                              log('Called checkAndNotifyUserForVehicleService for $vehicleId');
+                                            } else {
+                                              // Call the cloud function to check for notifications
+                                              final HttpsCallable callable =
+                                                  FirebaseFunctions.instance
+                                                      .httpsCallable(
+                                                          'checkDataServicesAndNotify');
+
+                                              final result = await callable
+                                                  .call({
+                                                'userId': currentUId,
+                                                'vehicleId': vehicleId
+                                              });
+
+                                              log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                            }
                                           } else {
                                             throw 'Vehicle data not found';
                                           }
@@ -1928,11 +2039,12 @@ class _ReportsScreenState extends State<ReportsScreen>
                             ),
                           ],
                         ),
-                        SizedBox(height: 10.h),
+                        // SizedBox(height: 10.h),
 
                         //my records section
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.6,
+                        Container(
+                          // color: kPrimary,
+                          height: MediaQuery.of(context).size.height * 0.7,
                           child: TabBarView(
                             controller: _tabController,
                             children: [
