@@ -204,10 +204,12 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 vehicleData['vin'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('VIN:', vehicleData['vin']),
-                                vehicleData['oilChangeDate'].isEmpty
-                                    ? SizedBox()
-                                    : _buildInfoRow('Oil Change Date:',
-                                        formattedOilChangeDate),
+                                vehicleData['vehicleType'] == "Trailer"
+                                    ? vehicleData['oilChangeDate'].isEmpty
+                                        ? SizedBox()
+                                        : _buildInfoRow('Oil Change Date:',
+                                            formattedOilChangeDate.toString())
+                                    : SizedBox(),
                                 vehicleData['hoursReading'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('Hours Reading:',
@@ -327,6 +329,47 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 20),
+                                  // ...uploadedFiles.map((file) {
+                                  //   return Card(
+                                  //     margin: const EdgeInsets.only(bottom: 16),
+                                  //     shape: RoundedRectangleBorder(
+                                  //       borderRadius: BorderRadius.circular(15),
+                                  //     ),
+                                  //     elevation: 4,
+                                  //     child: Padding(
+                                  //       padding: const EdgeInsets.all(12),
+                                  //       child: Column(
+                                  //         children: [
+                                  //           if (file['image'] != null)
+                                  //             ClipRRect(
+                                  //               borderRadius:
+                                  //                   BorderRadius.circular(10),
+                                  //               child: Image.file(
+                                  //                 file['image'],
+                                  //                 height: 200,
+                                  //                 width: double.infinity,
+                                  //                 fit: BoxFit.cover,
+                                  //               ),
+                                  //             ),
+                                  //           const SizedBox(height: 12),
+                                  //           TextField(
+                                  //             controller:
+                                  //                 file['textController'],
+                                  //             decoration: InputDecoration(
+                                  //               labelText: 'Enter Description',
+                                  //               border: OutlineInputBorder(
+                                  //                 borderRadius:
+                                  //                     BorderRadius.circular(10),
+                                  //               ),
+                                  //               filled: true,
+                                  //               fillColor: Colors.grey[100],
+                                  //             ),
+                                  //           ),
+                                  //         ],
+                                  //       ),
+                                  //     ),
+                                  //   );
+                                  // }).toList(),
                                   ...uploadedFiles.map((file) {
                                     return Card(
                                       margin: const EdgeInsets.only(bottom: 16),
@@ -339,14 +382,38 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                         child: Column(
                                           children: [
                                             if (file['image'] != null)
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                child: Image.file(
-                                                  file['image'],
-                                                  height: 200,
-                                                  width: double.infinity,
-                                                  fit: BoxFit.cover,
+                                              GestureDetector(
+                                                onTap: () {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (_) => Dialog(
+                                                      backgroundColor:
+                                                          Colors.black,
+                                                      insetPadding:
+                                                          EdgeInsets.all(10),
+                                                      child: InteractiveViewer(
+                                                        child: ClipRRect(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(10),
+                                                          child: Image.file(
+                                                            file['image'],
+                                                            fit: BoxFit.contain,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  child: Image.file(
+                                                    file['image'],
+                                                    height: 200,
+                                                    width: double.infinity,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                                 ),
                                               ),
                                             const SizedBox(height: 12),
@@ -368,6 +435,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                       ),
                                     );
                                   }).toList(),
+
                                   const SizedBox(height: 20),
                                   uploadedFiles.isEmpty
                                       ? const SizedBox()

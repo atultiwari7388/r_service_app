@@ -153,46 +153,6 @@ class DashboardController extends GetxController {
     update(); // Use your state management (like GetX) to update the UI
   }
 
-  // Future<void> fetchByDefaultUserVehicle() async {
-  //   try {
-  //     QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('Vehicles')
-  //         .where('isSet', isEqualTo: true)
-  //         .get();
-  //
-  //     if (vehiclesSnapshot.docs.isNotEmpty) {
-  //       // Set the selected vehicle name
-  //       final vehicleData =
-  //           vehiclesSnapshot.docs.first.data() as Map<String, dynamic>;
-  //
-  //       selectedCompanyAndVehcileName =
-  //           vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
-  //       selectedCompanyAndVehcileNameController.text =
-  //           vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
-  //
-  //       companyNameController.text =
-  //           vehicleData['companyName'] ?? 'Company Name';
-  //       isVehicleSelected = true; // Vehicle selected
-  //       checkIfAllSelected();
-  //
-  //       print("new function called $selectedCompanyAndVehcileNameController");
-  //       update();
-  //     } else {
-  //       // No vehicles found, set default label
-  //       selectedCompanyAndVehcileName = 'Select your Vehicle';
-  //       update();
-  //     }
-  //   } catch (e) {
-  //     log("Error fetching user vehicles: $e");
-  //     // In case of error, also set default label
-  //     selectedCompanyAndVehcileName = 'Select your Vehicle';
-  //     update();
-  //   }
-  // }
-
-
   Future<void> fetchByDefaultUserVehicle() async {
     try {
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
@@ -200,14 +160,16 @@ class DashboardController extends GetxController {
           .doc(currentUId)
           .collection('Vehicles')
           .where('isSet', isEqualTo: true)
+          // .orderBy('vehicleNumber')
           .get();
 
       if (vehiclesSnapshot.docs.isNotEmpty) {
         // Fetch first matching vehicle
         final vehicleData =
-        vehiclesSnapshot.docs.first.data() as Map<String, dynamic>;
+            vehiclesSnapshot.docs.first.data() as Map<String, dynamic>;
 
-        String vehicleNumber = vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
+        String vehicleNumber =
+            vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
         String companyName = vehicleData['companyName'] ?? 'Company Name';
 
         // Format as "BZDPT6650G (MACK)"
@@ -239,43 +201,13 @@ class DashboardController extends GetxController {
     }
   }
 
-
-  // Future<void> fetchUserVehicles() async {
-  //   try {
-  //     QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('Vehicles')
-  //         .get();
-  //
-  //     if (vehiclesSnapshot.docs.isNotEmpty) {
-  //       List vehicleNames = vehiclesSnapshot.docs.map((doc) {
-  //         final data = doc.data() as Map<String, dynamic>;
-  //         return data['vehicleNumber'] ?? '';
-  //       }).toList();
-  //
-  //       print('Vehicle Names with isSet true: $vehicleNames'); // Debugging line
-  //
-  //       hasVehicles = true;
-  //       allVehicleAndCompanyName = vehicleNames;
-  //       filterSelectedCompanyAndvehicleName =
-  //           List.from(allVehicleAndCompanyName);
-  //       update();
-  //     } else {
-  //       hasVehicles = false;
-  //       update();
-  //     }
-  //   } catch (e) {
-  //     log("Error fetching user vehicles: $e");
-  //   }
-  // }
-
   Future<void> fetchUserVehicles() async {
     try {
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
           .collection('Vehicles')
+          .orderBy('vehicleNumber')
           .get();
 
       if (vehiclesSnapshot.docs.isNotEmpty) {
@@ -386,30 +318,63 @@ class DashboardController extends GetxController {
                       },
                     ),
                   ),
+                  // Expanded(
+                  //   child: ListView.builder(
+                  //     controller: scrollController,
+                  //     itemCount: filterSelectedCompanyAndvehicleName.length,
+                  //     itemBuilder: (context, index) {
+                  //       return ListTile(
+                  //         title:
+                  //             Text(filterSelectedCompanyAndvehicleName[index]),
+                  //         onTap: () async {
+                  //           selectedCompanyAndVehcileName =
+                  //               filterSelectedCompanyAndvehicleName[index];
+                  //           log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
+
+                  //           await updateVehicleSelection(
+                  //               filterSelectedCompanyAndvehicleName[
+                  //                   index]); // Database update
+                  //           selectedCompanyAndVehcileNameController.text =
+                  //               filterSelectedCompanyAndvehicleName[index];
+
+                  //           // _isLoading = false; // Hide loading indicator
+                  //           isVehicleSelected = true; // Vehicle selected
+                  //           checkIfAllSelected();
+                  //           update(); // UI update
+                  //           Navigator.pop(context); // Close dialog
+                  //         },
+                  //       );
+                  //     },
+                  //   ),
+                  // ),
+
                   Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: filterSelectedCompanyAndvehicleName.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title:
-                              Text(filterSelectedCompanyAndvehicleName[index]),
-                          onTap: () async {
-                            selectedCompanyAndVehcileName =
-                                filterSelectedCompanyAndvehicleName[index];
-                            log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
+                    child: Builder(
+                      builder: (_) {
+                        filterSelectedCompanyAndvehicleName.sort((a, b) =>
+                            a.toLowerCase().compareTo(b.toLowerCase()));
+                        return ListView.builder(
+                          controller: scrollController,
+                          itemCount: filterSelectedCompanyAndvehicleName.length,
+                          itemBuilder: (context, index) {
+                            return ListTile(
+                              title: Text(
+                                  filterSelectedCompanyAndvehicleName[index]),
+                              onTap: () async {
+                                selectedCompanyAndVehcileName =
+                                    filterSelectedCompanyAndvehicleName[index];
+                                log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
 
-                            await updateVehicleSelection(
-                                filterSelectedCompanyAndvehicleName[
-                                    index]); // Database update
-                            selectedCompanyAndVehcileNameController.text =
-                                filterSelectedCompanyAndvehicleName[index];
-
-                            // _isLoading = false; // Hide loading indicator
-                            isVehicleSelected = true; // Vehicle selected
-                            checkIfAllSelected();
-                            update(); // UI update
-                            Navigator.pop(context); // Close dialog
+                                await updateVehicleSelection(
+                                    filterSelectedCompanyAndvehicleName[index]);
+                                selectedCompanyAndVehcileNameController.text =
+                                    filterSelectedCompanyAndvehicleName[index];
+                                isVehicleSelected = true;
+                                checkIfAllSelected();
+                                update();
+                                Navigator.pop(context);
+                              },
+                            );
                           },
                         );
                       },

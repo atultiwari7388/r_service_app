@@ -21,16 +21,30 @@ class DatabaseServices {
   ) async {
     return fireStoreDatabase.doc(uid!).set({
       "uid": uid,
-      "email": emailAddress,
+      "userName": userName, //name
+      "phoneNumber": phoneNumber, //phone number
+      "telephoneNumber": "", //telephone number
+      "email": emailAddress, //email address
+      "address": address, //address
+      "city": "", //city
+      "state": "", //state
+      "country": "", //country
+      "postalCode": "", //postal code
+      "licNumber": "", //license number
+      "licExpDate": DateTime.now().toString(), //license expiry date
+      "dob": DateTime.now().toString(), //Date of birth
+      "lastDrugTest": DateTime.now().toString(), //last drug test
+      "dateOfHire": DateTime.now().toString(), //date of hire
+      "dateOfTermination": DateTime.now().toString(), //date of termination
+      "socialSecurity": "", //social security number
+      "active": true,
+      'perMileCharge': "",
       "companyName": companyName,
       "vehicleRange": selectedVehicleRange,
-      "active": true,
-      "userName": userName,
-      "phoneNumber": phoneNumber,
       "isTeamMember": false,
-      "address": address,
       "lastAddress": "",
-      "profilePicture": "",
+      "profilePicture":
+          "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
       "wallet": 0,
       "isNotificationOn": true,
       'createdBy': uid,
@@ -38,7 +52,7 @@ class DatabaseServices {
       'isOwner': true,
       'isManager': false,
       'isDriver': false,
-      'perMileCharge': "",
+      'isVendor': false,
       "isView": true,
       "isEdit": true,
       "isDelete": true,

@@ -767,40 +767,6 @@ class _ReportsScreenState extends State<ReportsScreen>
     });
   }
 
-  // void _handleEditRecord(Map<String, dynamic> record) {
-  //   setState(() {
-  //     isEditing = true;
-  //     editingRecordId = record['id'];
-  //     _originalRecordDate = DateTime.parse(record['date']);
-  //     selectedVehicle = record['vehicleId'];
-  //     selectedVehicleData = record['vehicleDetails'];
-
-  //     // Parse services
-  //     selectedServices.clear();
-  //     selectedSubServices.clear();
-  //     for (var service in record['services']) {
-  //       final serviceId = service['serviceId'];
-  //       selectedServices.add(serviceId);
-
-  //       // Handle subservices
-  //       final subs = (service['subServices'] as List<dynamic>?)
-  //               ?.map((s) => s['name'].toString())
-  //               .toList() ??
-  //           [];
-  //       selectedSubServices[serviceId] = subs;
-  //     }
-
-  //     // Set controllers
-  //     milesController.text = record['miles'].toString();
-  //     hoursController.text = record['hours'].toString();
-  //     workshopController.text = record['workshopName'] ?? '';
-  //     invoiceController.text = record['invoice'] ?? '';
-  //     invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
-  //     descriptionController.text = record['description'] ?? '';
-  //     selectedDate = _originalRecordDate;
-  //   });
-  // }
-
   String normalizeString(String value) {
     // Convert to lowercase and remove spaces
     return value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
@@ -1140,39 +1106,68 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   ),
                                   SizedBox(height: 16.h),
                                   if (showVehicleSearch || showCombinedSearch)
+                                    // DropdownButtonFormField<String>(
+                                    //   decoration: InputDecoration(
+                                    //     labelText: 'Search by Vehicle',
+                                    //     border: OutlineInputBorder(
+                                    //       borderRadius:
+                                    //           BorderRadius.circular(8),
+                                    //     ),
+                                    //     prefixIcon: Icon(Icons.directions_car,
+                                    //         color: kPrimary),
+                                    //   ),
+                                    //   items: vehicles.map((vehicle) {
+                                    //     return DropdownMenuItem<String>(
+                                    //       value: vehicle['vehicleNumber'],
+                                    //       child: Text(
+                                    //         "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+                                    //         style: appStyleUniverse(
+                                    //             14, kDark, FontWeight.normal),
+                                    //       ),
+                                    //     );
+                                    //   }).toList(),
+                                    //   onChanged: (value) {
+                                    //     setState(() {
+                                    //       filterVehicle = value ?? '';
+                                    //     });
+                                    //   },
+                                    //   value: filterVehicle.isEmpty
+                                    //       ? null
+                                    //       : filterVehicle,
+                                    //   hint: Text(
+                                    //     'Select Vehicle',
+                                    //     style: appStyleUniverse(
+                                    //         14, kDark, FontWeight.normal),
+                                    //   ),
+                                    // ),
+
                                     DropdownButtonFormField<String>(
-                                      decoration: InputDecoration(
-                                        labelText: 'Search by Vehicle',
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        prefixIcon: Icon(Icons.directions_car,
-                                            color: kPrimary),
-                                      ),
-                                      items: vehicles.map((vehicle) {
+                                      hint: const Text('Select Vehicle'),
+                                      items: (vehicles
+                                            ..sort((a, b) => a['vehicleNumber']
+                                                .toString()
+                                                .toLowerCase()
+                                                .compareTo(b['vehicleNumber']
+                                                    .toString()
+                                                    .toLowerCase())))
+                                          .map((vehicle) {
                                         return DropdownMenuItem<String>(
-                                          value: vehicle['vehicleNumber'],
+                                          value: vehicle['id'],
                                           child: Text(
-                                            "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+                                            '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
                                             style: appStyleUniverse(
-                                                14, kDark, FontWeight.normal),
+                                                13, kDark, FontWeight.normal),
                                           ),
                                         );
                                       }).toList(),
                                       onChanged: (value) {
                                         setState(() {
-                                          filterVehicle = value ?? '';
+                                          selectedVehicle = value;
+                                          selectedServices
+                                              .clear(); // Clear selected services when vehicle changes
+                                          updateSelectedVehicleAndService();
                                         });
                                       },
-                                      value: filterVehicle.isEmpty
-                                          ? null
-                                          : filterVehicle,
-                                      hint: Text(
-                                        'Select Vehicle',
-                                        style: appStyleUniverse(
-                                            14, kDark, FontWeight.normal),
-                                      ),
                                     ),
                                   SizedBox(height: 16.h),
                                   if (showInvoiceSearch || showCombinedSearch)
@@ -1353,10 +1348,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     value: selectedVehicle,
                                     hint: const Text('Select Vehicle'),
                                     items: (vehicles
-                                          ..sort((a, b) => a['companyName']
+                                          ..sort((a, b) => a['vehicleNumber']
                                               .toString()
                                               .toLowerCase()
-                                              .compareTo(b['companyName']
+                                              .compareTo(b['vehicleNumber']
                                                   .toString()
                                                   .toLowerCase())))
                                         .map((vehicle) {
@@ -1395,8 +1390,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             selectedVehicleData?['vehicleType']
                                                 .toString()
                                                 .toLowerCase()
-                                                .split(
-                                                    '/'); // Convert "Truck/Trailer" into ["truck", "trailer"]
+                                                .split('/');
 
                                         List<String> packageTypes = List<
                                                 String>.from(package['type'])
@@ -1788,46 +1782,36 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   // Vehicle Dropdown
+
                                   DropdownButtonFormField<String>(
                                     value: selectedVehicle,
                                     hint: const Text('Select Vehicle'),
-                                    items: vehicles.map((vehicle) {
+                                    items: (vehicles
+                                          ..sort((a, b) => a['vehicleNumber']
+                                              .toString()
+                                              .toLowerCase()
+                                              .compareTo(b['vehicleNumber']
+                                                  .toString()
+                                                  .toLowerCase())))
+                                        .map((vehicle) {
                                       return DropdownMenuItem<String>(
                                         value: vehicle['id'],
                                         child: Text(
                                           '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
                                           style: appStyleUniverse(
-                                              14, kDark, FontWeight.normal),
+                                              13, kDark, FontWeight.normal),
                                         ),
                                       );
                                     }).toList(),
-                                    onChanged: (value) async {
+                                    onChanged: (value) {
                                       setState(() {
                                         selectedVehicle = value;
-                                        todayMilesController.clear();
-                                        log("Selected vehicle: $value");
+                                        selectedServices.clear();
+                                        updateSelectedVehicleAndService();
                                       });
-
-                                      // Fetch the selected vehicle type from Firestore
-                                      final vehicleDoc = await FirebaseFirestore
-                                          .instance
-                                          .collection('Users')
-                                          .doc(currentUId)
-                                          .collection('Vehicles')
-                                          .doc(value)
-                                          .get();
-
-                                      if (vehicleDoc.exists) {
-                                        setState(() {
-                                          selectedVehicleType =
-                                              vehicleDoc['vehicleType'];
-                                          log("Selected vehicle type: $selectedVehicleType");
-                                        });
-                                      } else {
-                                        log("Vehicle data not found.");
-                                      }
                                     },
                                   ),
+
                                   SizedBox(height: 16.h),
 
                                   // Dynamically show input field based on vehicle type
@@ -1897,26 +1881,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                   '0',
                                             );
 
-                                            // Validate the entered value
-                                            // if (enteredValue < currentReading) {
-                                            //   showToastMessage(
-                                            //       "Error",
-                                            //       "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
-                                            //       kRed);
-                                            //   ScaffoldMessenger.of(context)
-                                            //       .showSnackBar(
-                                            //     SnackBar(
-                                            //       content: Text(
-                                            //           '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
-                                            //       duration:
-                                            //           Duration(seconds: 2),
-                                            //     ),
-                                            //   );
-                                            //   return; // Exit early to prevent further execution
-                                            // }
-
-                                            // Proceed with saving the data
-
                                             final data = {
                                               selectedVehicleType == 'Truck'
                                                       ? "prevMilesValue"
@@ -1950,6 +1914,62 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 .collection("Vehicles")
                                                 .doc(vehicleId)
                                                 .update(data);
+
+                                            // Query Team Members (Drivers/Managers)
+                                            final teamMembersSnapshot =
+                                                await FirebaseFirestore.instance
+                                                    .collection('Users')
+                                                    .where('createdBy',
+                                                        isEqualTo: currentUId)
+                                                    .where('isTeamMember',
+                                                        isEqualTo: true)
+                                                    .get();
+
+                                            // Save to Team Members' miles
+                                            for (final doc
+                                                in teamMembersSnapshot.docs) {
+                                              final teamMemberUid = doc.id;
+                                              await FirebaseFirestore.instance
+                                                  .collection('Users')
+                                                  .doc(teamMemberUid)
+                                                  .collection("Vehicles")
+                                                  .doc(vehicleId)
+                                                  .update(data);
+                                            }
+
+                                            // Handle Team Member Creating Record (Save to Owner)
+                                            final currentUserDoc =
+                                                await FirebaseFirestore.instance
+                                                    .collection('Users')
+                                                    .doc(currentUId)
+                                                    .get();
+
+                                            if (currentUserDoc
+                                                    .data()?['isTeamMember'] ==
+                                                true) {
+                                              final ownerSnapshot =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('Users')
+                                                      .where('uid',
+                                                          isEqualTo:
+                                                              currentUserDoc
+                                                                      .data()?[
+                                                                  'createdBy'])
+                                                      .get();
+
+                                              if (ownerSnapshot
+                                                  .docs.isNotEmpty) {
+                                                final ownerUid =
+                                                    ownerSnapshot.docs.first.id;
+                                                await FirebaseFirestore.instance
+                                                    .collection('Users')
+                                                    .doc(ownerUid)
+                                                    .collection("Vehicles")
+                                                    .doc(vehicleId)
+                                                    .update(data);
+                                              }
+                                            }
 
                                             debugPrint(
                                                 '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');

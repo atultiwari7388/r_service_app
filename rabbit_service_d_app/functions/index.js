@@ -85,6 +85,134 @@ exports.sendContactEmail = functions.https.onCall(async (data, context) => {
 
 //create team memeber function
 
+// exports.createTeamMember = functions.https.onCall(async (data, context) => {
+//   if (!context.auth) {
+//     throw new functions.https.HttpsError(
+//       "unauthenticated",
+//       "User must be logged in."
+//     );
+//   }
+
+//   const {
+//     email,
+//     password,
+//     name,
+//     phone,
+//     currentUId,
+//     selectedRole,
+//     selectedVehicles,
+//     perMileCharge,
+//     selectedRecordAccess,
+//   } = data;
+
+//   if (
+//     !email ||
+//     !password ||
+//     !name ||
+//     !phone ||
+//     !selectedRole ||
+//     selectedVehicles.length === 0
+//   ) {
+//     throw new functions.https.HttpsError(
+//       "invalid-argument",
+//       "All fields, role, and vehicle selection are required."
+//     );
+//   }
+
+//   try {
+//     // Create Firebase Authentication User
+//     const userRecord = await admin.auth().createUser({
+//       email: email,
+//       password: password,
+//       displayName: name,
+//     });
+
+//     // Prepare User Data
+//     const userData = {
+//       uid: userRecord.uid,
+//       email: email,
+//       active: true,
+//       userName: name,
+//       phoneNumber: phone,
+//       createdBy: currentUId,
+//       profilePicture:
+//         "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+//       role: selectedRole,
+//       isManager: selectedRole === "Manager",
+//       isDriver: selectedRole === "Driver",
+//       perMileCharge: selectedRole === "Driver" ? perMileCharge : "",
+//       isView: selectedRecordAccess.includes("View"),
+//       isEdit: selectedRecordAccess.includes("Edit"),
+//       isDelete: selectedRecordAccess.includes("Delete"),
+//       isAdd: selectedRecordAccess.includes("Add"),
+//       isOwner: false,
+//       isTeamMember: true,
+//       created_at: admin.firestore.Timestamp.now(),
+//       updated_at: admin.firestore.Timestamp.now(),
+//     };
+
+//     // Store in Firestore
+//     await admin
+//       .firestore()
+//       .collection("Users")
+//       .doc(userRecord.uid)
+//       .set(userData);
+
+//     // Copy Vehicles from the Creator to the New User
+//     for (let vehicleId of selectedVehicles) {
+//       const vehicleDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(currentUId)
+//         .collection("Vehicles")
+//         .doc(vehicleId)
+//         .get();
+
+//       if (vehicleDoc.exists) {
+//         await admin
+//           .firestore()
+//           .collection("Users")
+//           .doc(userRecord.uid)
+//           .collection("Vehicles")
+//           .doc(vehicleId)
+//           .set(vehicleDoc.data());
+//       }
+
+//       // Copy DataServices for each vehicle
+//       const dataServicesSnapshot = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(currentUId)
+//         .collection("DataServices")
+//         .where("vehicleId", "==", vehicleId)
+//         .get();
+
+//       for (let doc of dataServicesSnapshot.docs) {
+//         await admin
+//           .firestore()
+//           .collection("Users")
+//           .doc(userRecord.uid)
+//           .collection("DataServices")
+//           .doc(doc.id)
+//           .set(doc.data());
+//       }
+//     }
+
+//     return {
+//       success: true,
+//       message: "Team member added successfully!",
+//       uid: userRecord.uid,
+//     };
+//   } catch (error) {
+//     console.error("Error creating team member:", error);
+//     throw new functions.https.HttpsError(
+//       "internal",
+//       "Something went wrong.",
+//       error
+//     );
+//   }
+// });
+
 exports.createTeamMember = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -98,11 +226,24 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     password,
     name,
     phone,
+    telephone,
+    address,
+    city,
+    state,
+    country,
+    postal,
+    licenseNum,
+    socialSecurity,
+    perMileCharge,
     currentUId,
     selectedRole,
     selectedVehicles,
-    perMileCharge,
     selectedRecordAccess,
+    licExpiryDate,
+    dob,
+    lastDrugTest,
+    dateOfHire,
+    dateOfTermination,
   } = data;
 
   if (
@@ -111,11 +252,11 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     !name ||
     !phone ||
     !selectedRole ||
-    selectedVehicles.length === 0
+    (selectedRole === "Driver" && selectedVehicles.length === 0)
   ) {
     throw new functions.https.HttpsError(
       "invalid-argument",
-      "All fields, role, and vehicle selection are required."
+      "All required fields must be provided."
     );
   }
 
@@ -127,23 +268,48 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       displayName: name,
     });
 
-    // Prepare User Data
+    // Prepare User Data with all fields
     const userData = {
       uid: userRecord.uid,
       email: email,
       active: true,
       userName: name,
       phoneNumber: phone,
+      vehicleRange: "",
+      companyName: "",
+      telephone: telephone || "",
+      address: address || "",
+      city: city || "",
+      state: state || "",
+      country: country || "",
+      postalCode: postal || "",
+      licenseNumber: licenseNum || "",
+      socialSecurityNumber: socialSecurity || "",
+      licenseExpiryDate: licExpiryDate
+        ? admin.firestore.Timestamp.fromDate(new Date(licExpiryDate))
+        : null,
+      dateOfBirth: dob
+        ? admin.firestore.Timestamp.fromDate(new Date(dob))
+        : null,
+      lastDrugTestDate: lastDrugTest
+        ? admin.firestore.Timestamp.fromDate(new Date(lastDrugTest))
+        : null,
+      dateOfHire: dateOfHire
+        ? admin.firestore.Timestamp.fromDate(new Date(dateOfHire))
+        : null,
+      dateOfTermination: dateOfTermination
+        ? admin.firestore.Timestamp.fromDate(new Date(dateOfTermination))
+        : null,
       createdBy: currentUId,
       profilePicture:
         "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
       role: selectedRole,
       isManager: selectedRole === "Manager",
       isDriver: selectedRole === "Driver",
-      perMileCharge: selectedRole === "Driver" ? perMileCharge : "",
+      isVendor: selectedRole === "Vendor",
+      perMileCharge: selectedRole === "Driver" ? perMileCharge || "0" : "0",
       isView: selectedRecordAccess.includes("View"),
       isEdit: selectedRecordAccess.includes("Edit"),
-      isDelete: selectedRecordAccess.includes("Delete"),
       isAdd: selectedRecordAccess.includes("Add"),
       isOwner: false,
       isTeamMember: true,
@@ -158,43 +324,45 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       .doc(userRecord.uid)
       .set(userData);
 
-    // Copy Vehicles from the Creator to the New User
-    for (let vehicleId of selectedVehicles) {
-      const vehicleDoc = await admin
-        .firestore()
-        .collection("Users")
-        .doc(currentUId)
-        .collection("Vehicles")
-        .doc(vehicleId)
-        .get();
-
-      if (vehicleDoc.exists) {
-        await admin
+    // Copy Vehicles from the Creator to the New User if any are selected
+    if (selectedVehicles && selectedVehicles.length > 0) {
+      for (let vehicleId of selectedVehicles) {
+        const vehicleDoc = await admin
           .firestore()
           .collection("Users")
-          .doc(userRecord.uid)
+          .doc(currentUId)
           .collection("Vehicles")
           .doc(vehicleId)
-          .set(vehicleDoc.data());
-      }
+          .get();
 
-      // Copy DataServices for each vehicle
-      const dataServicesSnapshot = await admin
-        .firestore()
-        .collection("Users")
-        .doc(currentUId)
-        .collection("DataServices")
-        .where("vehicleId", "==", vehicleId)
-        .get();
+        if (vehicleDoc.exists) {
+          await admin
+            .firestore()
+            .collection("Users")
+            .doc(userRecord.uid)
+            .collection("Vehicles")
+            .doc(vehicleId)
+            .set(vehicleDoc.data());
+        }
 
-      for (let doc of dataServicesSnapshot.docs) {
-        await admin
+        // Copy DataServices for each vehicle
+        const dataServicesSnapshot = await admin
           .firestore()
           .collection("Users")
-          .doc(userRecord.uid)
+          .doc(currentUId)
           .collection("DataServices")
-          .doc(doc.id)
-          .set(doc.data());
+          .where("vehicleId", "==", vehicleId)
+          .get();
+
+        for (let doc of dataServicesSnapshot.docs) {
+          await admin
+            .firestore()
+            .collection("Users")
+            .doc(userRecord.uid)
+            .collection("DataServices")
+            .doc(doc.id)
+            .set(doc.data());
+        }
       }
     }
 
@@ -212,8 +380,6 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     );
   }
 });
-
-//update user Email
 
 exports.updateUserEmail = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -243,6 +409,200 @@ exports.updateUserEmail = functions.https.onCall(async (data, context) => {
 });
 
 // check and notify User for Service
+// exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
+//   async (data) => {
+//     const userId = data.userId;
+//     const vehicleId = data.vehicleId;
+
+//     try {
+//       // Fetch the user's data
+//       const userDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(userId)
+//         .get();
+//       if (!userDoc.exists) {
+//         console.error(`User with ID ${userId} not found.`);
+//         return { error: `User not found for ${userId}` };
+//       }
+
+//       const userData = userDoc.data();
+//       const userName = userData.userName || "User";
+//       const fcmToken = userData.fcmToken;
+
+//       // Fetch the vehicle's data
+//       const vehicleDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(userId)
+//         .collection("Vehicles")
+//         .doc(vehicleId)
+//         .get();
+
+//       if (!vehicleDoc.exists) {
+//         console.error(`Vehicle with ID ${vehicleId} not found.`);
+//         return { error: `Vehicle not found for ${vehicleId}` };
+//       }
+
+//       const vehicleData = vehicleDoc.data();
+//       const vehicleType = vehicleData.vehicleType; // Get vehicle type
+//       let currentMiles = 0;
+//       let hoursReading = 0;
+//       let prevMilesValue = 0;
+//       let prevHoursReadingValue = 0;
+
+//       // Determine which values to check based on vehicle type
+//       if (vehicleType === "Truck") {
+//         const currentMilesArray = vehicleData.currentMilesArray || [];
+//         if (currentMilesArray.length === 0) {
+//           console.error("No miles data found.");
+//           return { error: "No miles data found." };
+//         }
+//         const latestMilesEntry =
+//           currentMilesArray[currentMilesArray.length - 1];
+//         currentMiles = parseInt(latestMilesEntry.miles || "0", 10);
+//         prevMilesValue = parseInt(vehicleData.prevMilesValue || "0", 10);
+//       } else if (vehicleType === "Trailer") {
+//         hoursReading = parseInt(vehicleData.hoursReading || "0", 10);
+//         prevHoursReadingValue = parseInt(
+//           vehicleData.prevHoursReadingValue || "0",
+//           10
+//         );
+//       } else {
+//         console.error(`Unknown vehicle type: ${vehicleType}`);
+//         return { error: `Unknown vehicle type: ${vehicleType}` };
+//       }
+
+//       const nextNotificationMiles = vehicleData.nextNotificationMiles || [];
+//       const serviceNotifications = [];
+//       let hasNotifications = false;
+
+//       for (const service of nextNotificationMiles) {
+//         const defaultNotificationValue = service.defaultNotificationValue || 0;
+//         const serviceName = service.serviceName || "Unknown Service";
+//         const type = (service.type || "").toLowerCase(); // Get type from Firestore
+
+//         // 1. ADD THIS CONDITION TO SKIP NON-READING SERVICES
+//         if (type !== "reading") {
+//           console.log(`Skipping ${serviceName} - not a reading-based service`);
+//           continue;
+//         }
+
+//         // Skip if the notification for this service was already sent
+//         if (service.notificationSent) continue;
+
+//         // Check conditions based on vehicle type
+//         if (
+//           vehicleType === "Truck" &&
+//           defaultNotificationValue > 0 &&
+//           currentMiles >= defaultNotificationValue &&
+//           !service.lastNotifiedMiles
+//         ) {
+//           hasNotifications = true;
+//           serviceNotifications.push({
+//             serviceName,
+//             defaultNotificationValue, // Keep original default value
+//             nextNotificationValue: defaultNotificationValue,
+//             currentMiles,
+//             message: `Hey ${userName}, your ${serviceName} for vehicle ${
+//               vehicleData.vehicleType || "unknown"
+//             } needs attention. Your mileage has reached ${currentMiles}.`,
+//           });
+
+//           // Update the service to mark it as notified
+//           service.lastNotifiedMiles = currentMiles;
+//         } else if (
+//           vehicleType === "Trailer" &&
+//           defaultNotificationValue > 0 &&
+//           hoursReading >= defaultNotificationValue &&
+//           hoursReading > prevHoursReadingValue
+//         ) {
+//           hasNotifications = true;
+//           serviceNotifications.push({
+//             serviceName,
+//             defaultNotificationValue,
+//             nextNotificationValue: defaultNotificationValue,
+//             hoursReading,
+//             message: `Hey ${userName}, your ${serviceName} for vehicle ${
+//               vehicleData.vehicleType || "unknown"
+//             } needs attention. Your hours reading has reached ${hoursReading}.`,
+//           });
+//         }
+//       }
+
+//       if (hasNotifications) {
+//         // Save a new notification in a new document every time miles are updated
+//         await admin
+//           .firestore()
+//           .collection("Users")
+//           .doc(userId)
+//           .collection("UserNotifications")
+//           .doc() // New document every time
+//           .set({
+//             vehicleId,
+//             notifications: serviceNotifications,
+//             date: admin.firestore.FieldValue.serverTimestamp(),
+//             isRead: false,
+//             message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+//             currentMiles: vehicleType === "Truck" ? currentMiles : null,
+//             hoursReading: vehicleType === "Trailer" ? hoursReading : null,
+//           });
+
+//         // Save notification in ServiceNotifications collection
+//         await admin
+//           .firestore()
+//           .collection("ServiceNotifications")
+//           .doc() // New document every time
+//           .set({
+//             vehicleId,
+//             notifications: admin.firestore.FieldValue.arrayUnion(
+//               ...serviceNotifications
+//             ),
+//             date: admin.firestore.FieldValue.serverTimestamp(),
+//             isRead: false,
+//             message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+//             currentMiles: vehicleType === "Truck" ? currentMiles : 0,
+//             hoursReading: vehicleType === "Trailer" ? hoursReading : 0,
+//           });
+
+//         // Send a push notification if FCM token exists
+//         if (fcmToken) {
+//           await admin.messaging().send({
+//             token: fcmToken,
+//             notification: {
+//               title: "Service Reminder 🚗",
+//               body: `Hey ${userName}, some of your vehicle services need attention.`,
+//             },
+//             data: {
+//               userId,
+//               vehicleId,
+//               type: "service_reminder",
+//             },
+//           });
+//         }
+//       }
+
+//       console.log(
+//         "Notifications processed successfully. Vehicle ID is:",
+//         vehicleId,
+//         "Updated Current miles are:",
+//         currentMiles,
+//         "Current hours reading are:",
+//         hoursReading,
+//         "User ID is:",
+//         userId,
+//         "New notification docs created.",
+//         "And doc data is:",
+//         serviceNotifications
+//       );
+//       return { message: "Notifications sent successfully." };
+//     } catch (error) {
+//       console.error("Error in checkAndNotifyUserForVehicleService:", error);
+//       return { error: "Error in sending notifications" };
+//     }
+//   }
+// );
+
 exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
   async (data) => {
     const userId = data.userId;
@@ -261,14 +621,39 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       }
 
       const userData = userDoc.data();
-      const userName = userData.userName || "User";
-      const fcmToken = userData.fcmToken;
+      const isTeamMember = userData.isTeamMember || false;
+      const createdBy = userData.createdBy; // Owner's ID if this is a team member
 
-      // Fetch the vehicle's data
+      // Determine who should receive notifications
+      const notificationRecipients = new Set();
+
+      // Always notify the current user if they have notifications enabled
+      notificationRecipients.add(userId);
+
+      // If this is a team member, notify the owner
+      if (isTeamMember && createdBy) {
+        notificationRecipients.add(createdBy);
+      }
+      // If this is the owner, notify all team members
+      else if (!isTeamMember) {
+        const teamMembersSnapshot = await admin
+          .firestore()
+          .collection("Users")
+          .where("createdBy", "==", userId)
+          .where("isTeamMember", "==", true)
+          .get();
+
+        teamMembersSnapshot.forEach((doc) => {
+          notificationRecipients.add(doc.id);
+        });
+      }
+
+      // Fetch the vehicle's data from the owner's collection (single source of truth)
+      const ownerId = isTeamMember ? createdBy : userId;
       const vehicleDoc = await admin
         .firestore()
         .collection("Users")
-        .doc(userId)
+        .doc(ownerId)
         .collection("Vehicles")
         .doc(vehicleId)
         .get();
@@ -279,7 +664,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       }
 
       const vehicleData = vehicleDoc.data();
-      const vehicleType = vehicleData.vehicleType; // Get vehicle type
+      const vehicleType = vehicleData.vehicleType;
       let currentMiles = 0;
       let hoursReading = 0;
       let prevMilesValue = 0;
@@ -314,9 +699,9 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       for (const service of nextNotificationMiles) {
         const defaultNotificationValue = service.defaultNotificationValue || 0;
         const serviceName = service.serviceName || "Unknown Service";
-        const type = (service.type || "").toLowerCase(); // Get type from Firestore
+        const type = (service.type || "").toLowerCase();
 
-        // 1. ADD THIS CONDITION TO SKIP NON-READING SERVICES
+        // Skip non-reading services
         if (type !== "reading") {
           console.log(`Skipping ${serviceName} - not a reading-based service`);
           continue;
@@ -335,10 +720,10 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
           hasNotifications = true;
           serviceNotifications.push({
             serviceName,
-            defaultNotificationValue, // Keep original default value
+            defaultNotificationValue,
             nextNotificationValue: defaultNotificationValue,
             currentMiles,
-            message: `Hey ${userName}, your ${serviceName} for vehicle ${
+            message: `Your ${serviceName} for vehicle ${
               vehicleData.vehicleType || "unknown"
             } needs attention. Your mileage has reached ${currentMiles}.`,
           });
@@ -357,7 +742,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
             defaultNotificationValue,
             nextNotificationValue: defaultNotificationValue,
             hoursReading,
-            message: `Hey ${userName}, your ${serviceName} for vehicle ${
+            message: `Your ${serviceName} for vehicle ${
               vehicleData.vehicleType || "unknown"
             } needs attention. Your hours reading has reached ${hoursReading}.`,
           });
@@ -365,28 +750,67 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       }
 
       if (hasNotifications) {
-        // Save a new notification in a new document every time miles are updated
-        await admin
-          .firestore()
-          .collection("Users")
-          .doc(userId)
-          .collection("UserNotifications")
-          .doc() // New document every time
-          .set({
-            vehicleId,
-            notifications: serviceNotifications,
-            date: admin.firestore.FieldValue.serverTimestamp(),
-            isRead: false,
-            message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
-            currentMiles: vehicleType === "Truck" ? currentMiles : null,
-            hoursReading: vehicleType === "Trailer" ? hoursReading : null,
-          });
+        // Process notifications for each recipient
+        for (const recipientId of notificationRecipients) {
+          // Check if notifications are enabled for this user
+          const recipientDoc = await admin
+            .firestore()
+            .collection("Users")
+            .doc(recipientId)
+            .get();
 
-        // Save notification in ServiceNotifications collection
+          const recipientData = recipientDoc.data();
+          const isNotificationOn = recipientData.isNotificationOn !== false; // Default to true if not set
+
+          if (!isNotificationOn) {
+            console.log(
+              `Skipping notifications for user ${recipientId} - notifications disabled`
+            );
+            continue;
+          }
+
+          const userName = recipientData.userName || "User";
+          const fcmToken = recipientData.fcmToken;
+
+          // Save a new notification in the recipient's collection
+          await admin
+            .firestore()
+            .collection("Users")
+            .doc(recipientId)
+            .collection("UserNotifications")
+            .doc()
+            .set({
+              vehicleId,
+              notifications: serviceNotifications,
+              date: admin.firestore.FieldValue.serverTimestamp(),
+              isRead: false,
+              message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+              currentMiles: vehicleType === "Truck" ? currentMiles : null,
+              hoursReading: vehicleType === "Trailer" ? hoursReading : null,
+            });
+
+          // Send a push notification if FCM token exists
+          if (fcmToken) {
+            await admin.messaging().send({
+              token: fcmToken,
+              notification: {
+                title: "Service Reminder 🚗",
+                body: `Hey ${userName}, some of your vehicle services need attention.`,
+              },
+              data: {
+                userId: recipientId,
+                vehicleId,
+                type: "service_reminder",
+              },
+            });
+          }
+        }
+
+        // Save notification in ServiceNotifications collection (global)
         await admin
           .firestore()
           .collection("ServiceNotifications")
-          .doc() // New document every time
+          .doc()
           .set({
             vehicleId,
             notifications: admin.firestore.FieldValue.arrayUnion(
@@ -394,39 +818,26 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
             ),
             date: admin.firestore.FieldValue.serverTimestamp(),
             isRead: false,
-            message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+            message: `Vehicle services need attention for vehicle ${vehicleId}`,
             currentMiles: vehicleType === "Truck" ? currentMiles : 0,
             hoursReading: vehicleType === "Trailer" ? hoursReading : 0,
+            triggeredBy: userId,
+            recipients: Array.from(notificationRecipients),
           });
-
-        // Send a push notification if FCM token exists
-        if (fcmToken) {
-          await admin.messaging().send({
-            token: fcmToken,
-            notification: {
-              title: "Service Reminder 🚗",
-              body: `Hey ${userName}, some of your vehicle services need attention.`,
-            },
-            data: {
-              userId,
-              vehicleId,
-              type: "service_reminder",
-            },
-          });
-        }
       }
 
       console.log(
-        "Notifications processed successfully. Vehicle ID is:",
+        "Notifications processed successfully. Vehicle ID:",
         vehicleId,
-        "Updated Current miles are:",
+        "Current miles:",
         currentMiles,
-        "Current hours reading are:",
+        "Current hours:",
         hoursReading,
-        "User ID is:",
+        "User ID:",
         userId,
-        "New notification docs created.",
-        "And doc data is:",
+        "Recipients:",
+        Array.from(notificationRecipients),
+        "Service notifications:",
         serviceNotifications
       );
       return { message: "Notifications sent successfully." };
@@ -588,151 +999,6 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
     };
   }
 );
-
-//check and notify User for Data Service
-// exports.checkDataServicesAndNotify = functions.https.onCall(
-//   async (data, context) => {
-//     const userId = data.userId;
-//     const vehicleId = data.vehicleId;
-//     const currentDate = new Date();
-
-//     // Fetch user data
-//     const userDoc = await admin
-//       .firestore()
-//       .collection("Users")
-//       .doc(userId)
-//       .get();
-//     if (!userDoc.exists) {
-//       throw new functions.https.HttpsError("not-found", "User not found");
-//     }
-//     const userData = userDoc.data();
-//     const fcmToken = userData.fcmToken;
-//     const userName = userData.userName || "User";
-
-//     // Fetch vehicle data
-//     const vehicleDoc = await admin
-//       .firestore()
-//       .collection("Users")
-//       .doc(userId)
-//       .collection("Vehicles")
-//       .doc(vehicleId)
-//       .get();
-//     if (!vehicleDoc.exists) {
-//       throw new functions.https.HttpsError("not-found", "Vehicle not found");
-//     }
-
-//     const vehicleData = vehicleDoc.data();
-//     const vehicleType = vehicleData.vehicleType;
-//     const currentValue =
-//       vehicleType === "Truck"
-//         ? parseInt(vehicleData.currentMiles || 0)
-//         : parseInt(vehicleData.hoursReading || 0);
-
-//     // Query all DataServices documents for this vehicle
-//     const dataServicesQuery = admin
-//       .firestore()
-//       .collection("Users")
-//       .doc(userId)
-//       .collection("DataServices")
-//       .where("vehicleId", "==", vehicleId);
-
-//     const snapshot = await dataServicesQuery.get();
-//     const batch = admin.firestore().batch();
-//     const notifications = [];
-
-//     snapshot.forEach((doc) => {
-//       const services = doc.data().services || [];
-//       let needsUpdate = false;
-
-//       const updatedServices = services.map((service) => {
-//         if (service.notificationSent) return service;
-
-//         const type = (service.type || "reading").toLowerCase();
-//         const threshold = parseInt(service.nextNotificationValue) || 0;
-//         let shouldNotify = false;
-
-//         switch (type) {
-//           case "reading":
-//             shouldNotify = vehicleType === "Truck" && currentValue >= threshold;
-//             break;
-//           case "hour":
-//             shouldNotify =
-//               vehicleType === "Trailer" && currentValue >= threshold;
-//             break;
-//           case "day":
-//             const [day, month, year] = service.nextNotificationValue.split("/");
-//             const dueDate = new Date(`${year}-${month}-${day}`);
-//             shouldNotify = currentDate >= dueDate;
-//             break;
-//         }
-
-//         if (shouldNotify) {
-//           notifications.push({
-//             serviceName: service.serviceName,
-//             type: type,
-//             threshold: service.nextNotificationValue,
-//             currentValue: currentValue,
-//             message: `Hey ${userName}, ${service.serviceName} for your ${vehicleType} is due!`,
-//           });
-
-//           needsUpdate = true;
-//           return { ...service, notificationSent: true };
-//         }
-
-//         return service;
-//       });
-
-//       if (needsUpdate) {
-//         const docRef = admin
-//           .firestore()
-//           .collection("Users")
-//           .doc(userId)
-//           .collection("DataServices")
-//           .doc(doc.id);
-//         batch.update(docRef, { services: updatedServices });
-//       }
-//     });
-
-//     if (notifications.length > 0) {
-//       // Save notifications
-//       const notificationDocRef = admin
-//         .firestore()
-//         .collection("Users")
-//         .doc(userId)
-//         .collection("UserNotifications")
-//         .doc();
-
-//       batch.set(notificationDocRef, {
-//         vehicleId: vehicleId,
-//         date: admin.firestore.FieldValue.serverTimestamp(),
-//         isRead: false,
-//         notifications: notifications,
-//         message: `${notifications.length} service(s) require attention`,
-//       });
-
-//       // Send push notification
-//       if (fcmToken) {
-//         await admin.messaging().send({
-//           token: fcmToken,
-//           notification: {
-//             title: "Service Reminder ⚠️",
-//             body: `${notifications.length} service(s) need attention`,
-//           },
-//           data: {
-//             type: "service_reminder",
-//             vehicleId: vehicleId,
-//           },
-//         });
-//       }
-//     }
-
-//     await batch.commit();
-//     return {
-//       success: true,
-//       message: `${notifications.length} notifications sent`,
-//     };
-//   }
-// );
 
 // Function to send a new notification to the nearby Mechanics when a job is created
 exports.sendNewMechanicNotification = functions.firestore

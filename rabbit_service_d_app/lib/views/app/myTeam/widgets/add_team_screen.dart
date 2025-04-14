@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
@@ -14,7 +15,6 @@ import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../../utils/show_toast_msg.dart';
 import '../../../../widgets/text_field.dart';
-import '../../auth/login_screen.dart';
 
 class AddTeamMember extends StatefulWidget {
   const AddTeamMember({super.key});
@@ -25,13 +25,26 @@ class AddTeamMember extends StatefulWidget {
 
 class _AddTeamMemberState extends State<AddTeamMember> {
   TextEditingController nameController = TextEditingController();
-  TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
+  TextEditingController telephoneController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController addressController = TextEditingController();
+  TextEditingController cityController = TextEditingController();
+  TextEditingController stateController = TextEditingController();
+  TextEditingController countryController = TextEditingController();
+  TextEditingController postalController = TextEditingController();
+  TextEditingController licenseNumController = TextEditingController();
+  TextEditingController socialSecurityController = TextEditingController();
   TextEditingController passController = TextEditingController();
   TextEditingController perMileChargeController = TextEditingController();
 
+  DateTime? licExpiryDate;
+  DateTime? dob;
+  DateTime? lastDrugTest;
+  DateTime? dateOfHire;
+  DateTime? dateOfTermination;
+
   var isUserAcCreated = false;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   List<Map<String, dynamic>> vehicles = []; // To store vehicle details
@@ -128,17 +141,128 @@ class _AddTeamMemberState extends State<AddTeamMember> {
               ),
               SizedBox(height: 15.h),
               buildTextFieldInputWidget(
-                "Enter member email",
+                "Enter member cell phone number",
+                TextInputType.number,
+                phoneController,
+                MaterialCommunityIcons.phone,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member tele phone number",
+                TextInputType.number,
+                telephoneController,
+                MaterialCommunityIcons.phone,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member email address",
                 TextInputType.emailAddress,
                 emailController,
                 MaterialCommunityIcons.email,
               ),
               SizedBox(height: 15.h),
               buildTextFieldInputWidget(
-                "Enter member phone number",
+                "Enter member address",
+                TextInputType.streetAddress,
+                addressController,
+                MaterialCommunityIcons.home,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member city",
+                TextInputType.streetAddress,
+                cityController,
+                MaterialCommunityIcons.city,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member state",
+                TextInputType.streetAddress,
+                stateController,
+                MaterialCommunityIcons.city,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member country",
+                TextInputType.streetAddress,
+                countryController,
+                MaterialCommunityIcons.city,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member postal/zip",
                 TextInputType.number,
-                phoneController,
-                MaterialCommunityIcons.phone,
+                postalController,
+                MaterialCommunityIcons.numeric,
+              ),
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter member license number",
+                TextInputType.text,
+                licenseNumController,
+                MaterialCommunityIcons.numeric,
+              ),
+              SizedBox(height: 15.h),
+              _buildDatePickerField(
+                label: 'License Expiry Date*',
+                selectedDate: licExpiryDate,
+                onDateSelected: (date) {
+                  setState(() {
+                    licExpiryDate = date;
+                  });
+                },
+              ),
+              SizedBox(height: 15.h),
+              _buildDatePickerField(
+                label: 'DOB*',
+                selectedDate: dob,
+                onDateSelected: (date) {
+                  setState(() {
+                    dob = date;
+                  });
+                },
+              ),
+              SizedBox(height: 15.h),
+
+              _buildDatePickerField(
+                label: 'Last drug test*',
+                selectedDate: lastDrugTest,
+                onDateSelected: (date) {
+                  setState(() {
+                    lastDrugTest = date;
+                  });
+                },
+              ),
+              SizedBox(height: 15.h),
+
+              _buildDatePickerField(
+                label: 'Date of hire*',
+                selectedDate: dateOfHire,
+                onDateSelected: (date) {
+                  setState(() {
+                    dateOfHire = date;
+                  });
+                },
+              ),
+
+              SizedBox(height: 15.h),
+
+              _buildDatePickerField(
+                label: 'Date of termination*',
+                selectedDate: dateOfTermination,
+                onDateSelected: (date) {
+                  setState(() {
+                    dateOfTermination = date;
+                  });
+                },
+              ),
+
+              SizedBox(height: 15.h),
+              buildTextFieldInputWidget(
+                "Enter social security number",
+                TextInputType.number,
+                socialSecurityController,
+                MaterialCommunityIcons.numeric,
               ),
               SizedBox(height: 15.h),
               buildTextFieldInputWidget(
@@ -314,6 +438,71 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     );
   }
 
+  Widget _buildDatePickerField({
+    required String label,
+    required DateTime? selectedDate,
+    required Function(DateTime?) onDateSelected,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        final DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate: selectedDate ?? DateTime.now(),
+          firstDate: DateTime(1900),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null && picked != selectedDate) {
+          onDateSelected(picked);
+        }
+      },
+      child: AbsorbPointer(
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 4.0.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12.0.r),
+          ),
+          child: TextField(
+            decoration: InputDecoration(
+              labelText: label,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade300,
+                  width: 1.0,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade300,
+                  width: 1.0,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.0),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade300,
+                  width: 1.0,
+                ),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.all(8),
+              labelStyle: appStyle(14, kPrimary, FontWeight.bold),
+              suffixIcon: Icon(Icons.calendar_today, size: 20),
+            ),
+            controller: TextEditingController(
+              text: selectedDate == null
+                  ? ''
+                  : DateFormat('MM-dd-yyyy').format(selectedDate),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   TextFieldInputWidget buildTextFieldInputWidget(
     String hintText,
     TextInputType type,
@@ -329,6 +518,60 @@ class _AddTeamMemberState extends State<AddTeamMember> {
       isPass: isPass,
     );
   }
+
+  // Future<void> createMemberWithCloudFunction({
+  //   required String name,
+  //   required String email,
+  //   required String phone,
+  //   required String password,
+  //   required String currentUId,
+  //   required String selectedRole,
+  //   required List<String> selectedVehicles,
+  //   required String perMileCharge,
+  //   required List<String> selectedRecordAccess,
+  // }) async {
+  //   setState(() {
+  //     isUserAcCreated = true;
+  //   });
+
+  //   try {
+  //     HttpsCallable callable =
+  //         FirebaseFunctions.instance.httpsCallable('createTeamMember');
+  //     final result = await callable.call({
+  //       'name': name,
+  //       'email': email,
+  //       'phone': phone,
+  //       'password': password,
+  //       'currentUId': currentUId,
+  //       'selectedRole': selectedRole,
+  //       'selectedVehicles': selectedVehicles,
+  //       'perMileCharge': perMileCharge,
+  //       'selectedRecordAccess': selectedRecordAccess,
+  //     });
+
+  //     if (result.data['success']) {
+  //       showToastMessage("Success", "Team Member Created ", kSecondary);
+  //       nameController.clear();
+  //       emailController.clear();
+  //       phoneController.clear();
+  //       passController.clear();
+  //       perMileChargeController.clear();
+  //       selectedVehicles.clear();
+  //       selectedRole = "";
+  //       selectedRecordAccess.clear();
+
+  //       setState(() {});
+
+  //       Get.off(() => MyTeamScreen());
+  //     }
+  //   } catch (e) {
+  //     print("Error creating team member: $e");
+  //   } finally {
+  //     setState(() {
+  //       isUserAcCreated = false;
+  //     });
+  //   }
+  // }
 
   Future<void> createMemberWithCloudFunction({
     required String name,
@@ -352,24 +595,51 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'name': name,
         'email': email,
         'phone': phone,
+        'telephone': telephoneController.text,
+        'address': addressController.text,
+        'city': cityController.text,
+        'state': stateController.text,
+        'country': countryController.text,
+        'postal': postalController.text,
+        'licenseNum': licenseNumController.text,
+        'socialSecurity': socialSecurityController.text,
         'password': password,
         'currentUId': currentUId,
         'selectedRole': selectedRole,
         'selectedVehicles': selectedVehicles,
         'perMileCharge': perMileCharge,
         'selectedRecordAccess': selectedRecordAccess,
+        'licExpiryDate': licExpiryDate?.toIso8601String(),
+        'dob': dob?.toIso8601String(),
+        'lastDrugTest': lastDrugTest?.toIso8601String(),
+        'dateOfHire': dateOfHire?.toIso8601String(),
+        'dateOfTermination': dateOfTermination?.toIso8601String(),
       });
 
       if (result.data['success']) {
         showToastMessage("Success", "Team Member Created ", kSecondary);
+        // Clear all controllers
         nameController.clear();
         emailController.clear();
         phoneController.clear();
+        telephoneController.clear();
+        addressController.clear();
+        cityController.clear();
+        stateController.clear();
+        countryController.clear();
+        postalController.clear();
+        licenseNumController.clear();
+        socialSecurityController.clear();
         passController.clear();
         perMileChargeController.clear();
         selectedVehicles.clear();
         selectedRole = "";
         selectedRecordAccess.clear();
+        licExpiryDate = null;
+        dob = null;
+        lastDrugTest = null;
+        dateOfHire = null;
+        dateOfTermination = null;
 
         setState(() {});
 
@@ -377,6 +647,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
       }
     } catch (e) {
       print("Error creating team member: $e");
+      showToastMessage("Error", "Failed to create team member", Colors.red);
     } finally {
       setState(() {
         isUserAcCreated = false;
@@ -452,117 +723,3 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     perMileChargeController.dispose();
   }
 }
-
-// Future<void> createMemberWithEmailAndPassword() async {
-//   if (nameController.text.isEmpty ||
-//       emailController.text.isEmpty ||
-//       phoneController.text.isEmpty ||
-//       passController.text.isEmpty ||
-//       selectedVehicles.isEmpty ||
-//       selectedRole == null) {
-//     showToastMessage("Error",
-//         "All fields, role, and vehicle selection are required", Colors.red);
-//     return;
-//   }
-//
-//   final emailValid = RegExp(
-//       r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
-//   if (!emailValid.hasMatch(emailController.text)) {
-//     showToastMessage("Error", "Please enter a valid email", Colors.red);
-//     return;
-//   }
-//
-//   isUserAcCreated = true;
-//   setState(() {});
-//
-//   try {
-//     var user = await _auth.createUserWithEmailAndPassword(
-//       email: emailController.text,
-//       password: passController.text,
-//     );
-//
-//     await _firestore.collection('Users').doc(user.user!.uid).set({
-//       "uid": user.user!.uid,
-//       "email": emailController.text,
-//       "active": true,
-//       "userName": nameController.text,
-//       "phoneNumber": phoneController.text,
-//       "createdBy": currentUId,
-//       "profilePicture":
-//           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
-//       "role": selectedRole,
-//       "isManager": selectedRole == "Manager" ? true : false,
-//       "isDriver": selectedRole == "Driver" ? true : false,
-//       "perMileCharge":
-//           selectedRole == "Driver" ? perMileChargeController.text : "",
-//       "isView": selectedRecordAccess.contains("View"),
-//       "isEdit": selectedRecordAccess.contains("Edit"),
-//       "isDelete": selectedRecordAccess.contains("Delete"),
-//       "isAdd": selectedRecordAccess.contains("Add"),
-//       "isOwner": false,
-//       "isTeamMember": true,
-//       "created_at": DateTime.now(),
-//       "updated_at": DateTime.now(),
-//     });
-//
-//     for (String vehicleId in selectedVehicles) {
-//       DocumentSnapshot vehicleDoc = await _firestore
-//           .collection('Users')
-//           .doc(currentUId)
-//           .collection('Vehicles')
-//           .doc(vehicleId)
-//           .get();
-//
-//       if (vehicleDoc.exists) {
-//         await _firestore
-//             .collection('Users')
-//             .doc(user.user!.uid)
-//             .collection('Vehicles')
-//             .doc(vehicleId)
-//             .set(vehicleDoc.data() as Map<String, dynamic>);
-//
-//         QuerySnapshot dataServicesSnapshot = await _firestore
-//             .collection('Users')
-//             .doc(currentUId)
-//             .collection('DataServices')
-//             .where('vehicleId', isEqualTo: vehicleId)
-//             .get();
-//
-//         for (var doc in dataServicesSnapshot.docs) {
-//           await _firestore
-//               .collection('Users')
-//               .doc(user.user!.uid)
-//               .collection('DataServices')
-//               .doc(doc.id)
-//               .set(doc.data() as Map<String, dynamic>);
-//         }
-//       }
-//     }
-//
-//     await user.user!.sendEmailVerification();
-//     showToastMessage(
-//       "Verification Sent",
-//       "A verification email has been sent to ${emailController.text}.",
-//       Colors.orange,
-//     );
-//
-//     nameController.clear();
-//     emailController.clear();
-//     phoneController.clear();
-//     passController.clear();
-//     perMileChargeController.clear();
-//     selectedVehicles.clear();
-//     selectedRole = null;
-//     selectedRecordAccess.clear();
-//
-//     setState(() {});
-//
-//     Get.off(() => MyTeamScreen());
-//     // Get.back();
-//   } on FirebaseAuthException catch (e) {
-//     handleError(e);
-//   } finally {
-//     isUserAcCreated = false;
-//     setState(() {});
-//   }
-// }

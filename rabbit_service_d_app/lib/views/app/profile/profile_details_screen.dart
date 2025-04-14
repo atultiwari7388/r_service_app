@@ -26,15 +26,28 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
   String profilePictureUrl = "";
+  String selectedVehicleRange = '';
 
   bool isLoading = false;
   bool _isPersonalDetailsExpanded = false;
   bool _isVehicleDetailsExpanded = false;
   bool _isChangePasswordExpanded = false;
+
+  final List<String> vehicleRanges = [
+    '1 to 5',
+    '1 to 10',
+    '1 to 20',
+    '1 to 30',
+    '1 to 50',
+    '1 to 100',
+    '1 to 200',
+    '1 to 500',
+  ];
 
   File? _image;
 
@@ -59,6 +72,8 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         'phoneNumber': _phoneNumberController.text,
         'address': _addressController.text,
         'profilePicture': imageUrl,
+        'companyName': _companyNameController.text,
+        "vehicleRange": selectedVehicleRange,
         "updated_at": DateTime.now(),
       }).then((value) {
         Navigator.pop(context);
@@ -152,6 +167,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _emailController.text = data['email'] ?? '';
       _phoneNumberController.text = data['phoneNumber'] ?? '';
       _addressController.text = data['address'] ?? '';
+      _companyNameController.text = data['companyName'] ?? '';
+      selectedVehicleRange = data['vehicleRange'] ?? '';
+      profilePictureUrl = data['profilePicture'] ?? '';
     }).catchError((error) {
       print("Failed to fetch user data: $error");
     });
@@ -183,6 +201,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 _userNameController.text = data['userName'] ?? '';
                 _emailController.text = data['email'] ?? '';
                 _phoneNumberController.text = data['phoneNumber'] ?? '';
+                _addressController.text = data['address'] ?? '';
+                _companyNameController.text = data['companyName'] ?? '';
+                selectedVehicleRange = data['vehicleRange'] ?? '';
 
                 return data.isNotEmpty
                     ? SingleChildScrollView(
@@ -258,9 +279,73 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                 TextFieldInputWidget(
                                   hintText: "Address",
                                   textEditingController: _addressController,
-                                  textInputType: TextInputType.visiblePassword,
+                                  textInputType: TextInputType.streetAddress,
                                   icon: Icons.abc,
                                   isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Company Name",
+                                  textEditingController: _companyNameController,
+                                  textInputType: TextInputType.text,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                SizedBox(height: 10.0.h),
+                                DropdownButtonFormField<String>(
+                                  decoration: InputDecoration(
+                                    labelText: "Number of Vehicles",
+                                    labelStyle: appStyle(
+                                        15, kPrimary, FontWeight.normal),
+                                    fillColor: Colors.white,
+                                    filled: true,
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          12.0), // Rounded corners
+                                      borderSide: BorderSide(
+                                        color: Colors
+                                            .grey.shade300, // Border color
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          12.0), // Rounded corners
+                                      borderSide: BorderSide(
+                                        color: Colors
+                                            .grey.shade300, // Border color
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          12.0), // Rounded corners
+                                      borderSide: BorderSide(
+                                        color: Colors
+                                            .grey.shade300, // Border color
+                                        width: 1.0,
+                                      ),
+                                    ),
+                                    contentPadding: const EdgeInsets.all(8),
+                                  ),
+                                  value: selectedVehicleRange,
+                                  icon: const Icon(Icons.arrow_drop_down),
+                                  items: vehicleRanges.map((String range) {
+                                    return DropdownMenuItem<String>(
+                                      value: range,
+                                      child: Text(range),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      selectedVehicleRange = value;
+                                    }
+                                  },
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Please select a vehicle range";
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ],
                             ),

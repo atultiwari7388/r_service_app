@@ -361,7 +361,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         vehicleData['currentMiles'] = _currentMilesController.text.toString();
         vehicleData['prevMilesValue'] = _currentMilesController.text.toString();
         vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();
-        vehicleData['oilChangeDate'] = '';
+        vehicleData['oilChangeDate'] = '2025-04-12';
         vehicleData['hoursReading'] = '';
         vehicleData['prevHoursReadingValue'] = '';
       }
@@ -1157,6 +1157,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ),
                             ),
+
                             SizedBox(height: 24.h),
                             CustomButton(
                               text: "Save Vehicle",

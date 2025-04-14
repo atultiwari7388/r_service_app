@@ -202,7 +202,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                 _buildDetailRow('🏭', record['workshopName'] ?? 'N/A'),
                 _buildSectionTitle('Service Details'),
                 _buildDetailRow('🛠️', 'Miles: ${record['miles']}'),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 2),
               ],
             ),
           ),
@@ -236,12 +236,12 @@ class RecordsDetailsScreen extends StatelessWidget {
           [];
 
       return pw.Container(
-        margin: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        margin: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 2),
         decoration: pw.BoxDecoration(
           border: pw.Border.all(color: PdfColors.grey300),
           borderRadius: pw.BorderRadius.circular(8),
         ),
-        padding: const pw.EdgeInsets.all(12),
+        padding: const pw.EdgeInsets.all(7),
         child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -251,7 +251,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                   child: pw.Text(
                     service['serviceName'],
                     style: pw.TextStyle(
-                      fontSize: 16,
+                      fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColor.fromInt(kSecondary.value),
                     ),
@@ -269,7 +269,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                 child: pw.Text(
                   'Subservices: ${subServices.join(', ')}',
                   style: const pw.TextStyle(
-                    fontSize: 14,
+                    fontSize: 11,
                     color: PdfColors.grey600,
                   ),
                 ),
@@ -286,7 +286,7 @@ class RecordsDetailsScreen extends StatelessWidget {
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: 18,
+          fontSize: 12,
           fontWeight: pw.FontWeight.bold,
           color: PdfColor.fromInt(kSecondary.value),
         ),
@@ -300,16 +300,16 @@ class RecordsDetailsScreen extends StatelessWidget {
         pw.Text(
           'Service Record',
           style: pw.TextStyle(
-            fontSize: 24,
+            fontSize: 17,
             fontWeight: pw.FontWeight.bold,
             color: PdfColor.fromInt(kPrimary.value),
           ),
         ),
-        pw.SizedBox(height: 4),
+        pw.SizedBox(height: 1),
         pw.Text(
           DateFormat('dd-MM-yyyy').format(DateTime.parse(record['createdAt'])),
           style: pw.TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             color: PdfColors.grey600,
           ),
         ),
@@ -325,12 +325,12 @@ class RecordsDetailsScreen extends StatelessWidget {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           // pw.Text(icon, style: const pw.TextStyle(fontSize: 16)),
-          pw.SizedBox(width: 8),
+          pw.SizedBox(width: 1),
           pw.Expanded(
             child: pw.Text(
               text,
               style: const pw.TextStyle(
-                fontSize: 14,
+                fontSize: 11,
                 color: PdfColors.grey800,
               ),
             ),
@@ -342,16 +342,12 @@ class RecordsDetailsScreen extends StatelessWidget {
 
   pw.Widget _buildNotificationBadge(String text) {
     return pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: pw.BoxDecoration(
-        color: PdfColors.blue50,
-        borderRadius: pw.BorderRadius.circular(12),
-      ),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: pw.Row(
         children: [
           // pw.Text('⏰', style: const pw.TextStyle(fontSize: 12)),
-          pw.SizedBox(width: 4),
-          pw.Text(text, style: const pw.TextStyle(fontSize: 12)),
+          pw.SizedBox(width: 1),
+          pw.Text(text, style: const pw.TextStyle(fontSize: 10)),
         ],
       ),
     );

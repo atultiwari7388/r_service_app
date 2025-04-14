@@ -17,6 +17,7 @@ import 'package:regal_service_d_app/views/app/history/history_screen.dart';
 import 'package:regal_service_d_app/views/app/manageTrips/manage_trips_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myVehicles/my_vehicles_screen.dart';
+import 'package:regal_service_d_app/views/app/notificationScreen/notification_setting.dart';
 import 'package:regal_service_d_app/views/app/privacyPolicy/privacy_policy.dart';
 import 'package:regal_service_d_app/views/app/profile/profile_details_screen.dart';
 import 'package:regal_service_d_app/views/app/ratings/ratings_screen.dart';
@@ -132,24 +133,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Get.to(() => MyTeamScreen());
                           })
                         : SizedBox(),
-
-
                     if (role == "Owner" || role == "Driver") ...[
                       buildListTile("assets/manage_trip.png", "Manage Trips",
                           () {
                         Get.to(() => ManageTripsScreen());
                       }),
                     ],
-
                     if (role == "Owner" || role == "Manager") ...[
-                      buildListTile("assets/manage_trip.png", "Trips Wise Vehicle",
-                              () {
-                            Get.to(() => TripWiseVehicleScreen());
-                          }),
+                      buildListTile(
+                          "assets/manage_trip.png", "Trips Wise Vehicle", () {
+                        Get.to(() => TripWiseVehicleScreen());
+                      }),
                     ],
-
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());
+                    }),
+                    buildListTile(
+                        "assets/notification_setting.png", "Notification", () {
+                      Get.to(() => NotificationScreenSetting());
                     }),
                   ],
                 ),
@@ -196,15 +197,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         builder: (BuildContext dialogContext) {
                           return AlertDialog(
                             title: Text('Logout'),
-                            content: Text('Are you sure you want to log out from this account'),
+                            content: Text(
+                                'Are you sure you want to log out from this account'),
                             actions: <Widget>[
                               TextButton(
-                                child: Text('Yes',style: appStyle(15, kSecondary, FontWeight.normal)),
+                                child: Text('Yes',
+                                    style: appStyle(
+                                        15, kSecondary, FontWeight.normal)),
                                 onPressed: () {
-                                 logOutUser(context);
+                                  logOutUser(context);
                                 },
                               ),
-                              TextButton(onPressed: ()=> Navigator.pop(context), child: Text("No",style: appStyle(15, kPrimary, FontWeight.normal)))
+                              TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text("No",
+                                      style: appStyle(
+                                          15, kPrimary, FontWeight.normal)))
                             ],
                           );
                         },

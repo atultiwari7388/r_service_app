@@ -161,58 +161,60 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     },
                   ),
                   SizedBox(height: 15.h),
-                  Obx(() => DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: "Number of Vehicles",
-                          labelStyle: appStyle(15, kPrimary, FontWeight.normal),
-                          fillColor: Colors.white,
-                          filled: true,
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Rounded corners
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300, // Border color
-                              width: 1.0,
-                            ),
+                  Obx(
+                    () => DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: "Number of Vehicles",
+                        labelStyle: appStyle(15, kPrimary, FontWeight.normal),
+                        fillColor: Colors.white,
+                        filled: true,
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(12.0), // Rounded corners
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300, // Border color
+                            width: 1.0,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Rounded corners
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300, // Border color
-                              width: 1.0,
-                            ),
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Rounded corners
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300, // Border color
-                              width: 1.0,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.all(8),
                         ),
-                        value: controller.selectedVehicleRange.value,
-                        icon: const Icon(Icons.arrow_drop_down),
-                        items: controller.vehicleRanges.map((String range) {
-                          return DropdownMenuItem<String>(
-                            value: range,
-                            child: Text(range),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            controller.selectedVehicleRange.value = value;
-                          }
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Please select a vehicle range";
-                          }
-                          return null;
-                        },
-                      )),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(12.0), // Rounded corners
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300, // Border color
+                            width: 1.0,
+                          ),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(12.0), // Rounded corners
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300, // Border color
+                            width: 1.0,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.all(8),
+                      ),
+                      value: controller.selectedVehicleRange.value,
+                      icon: const Icon(Icons.arrow_drop_down),
+                      items: controller.vehicleRanges.map((String range) {
+                        return DropdownMenuItem<String>(
+                          value: range,
+                          child: Text(range),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          controller.selectedVehicleRange.value = value;
+                        }
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please select a vehicle range";
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
                   SizedBox(height: 15.h),
                   SizedBox(
                     width: 260.w,
