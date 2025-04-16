@@ -25,6 +25,7 @@ class DatabaseServices {
       "phoneNumber": phoneNumber, //phone number
       "telephoneNumber": "", //telephone number
       "email": emailAddress, //email address
+      "email2": "",
       "address": address, //address
       "city": "", //city
       "state": "", //state
@@ -54,6 +55,8 @@ class DatabaseServices {
       'isDriver': false,
       'isVendor': false,
       "isView": true,
+      "isCheque": true,
+
       "isEdit": true,
       "isDelete": true,
       "isAdd": true,

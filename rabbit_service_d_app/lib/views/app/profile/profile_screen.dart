@@ -148,8 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());
                     }),
-                    buildListTile(
-                        "assets/notification_setting.png", "Notification", () {
+                    buildListTile("assets/notification_setting.png",
+                        "Notification ON/OFF", () {
                       Get.to(() => NotificationScreenSetting());
                     }),
                   ],

@@ -1522,42 +1522,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ),
                                   ),
                                   SizedBox(height: 8.h),
-                                  //Serial-wise and top
-                                  // Wrap(
-                                  //   spacing: 4.w,
-                                  //   runSpacing: 4.h,
-                                  //   children: [
-                                  //     ...services.where((service) {
-                                  //       // Show selected services first
-                                  //       return selectedServices
-                                  //           .contains(service['sId']);
-                                  //     }).map((service) =>
-                                  //         buildServiceChip(service, true)),
-                                  //     ...services.where((service) {
-                                  //       // Show non-selected services next
-                                  //       final searchTerm = serviceSearchController
-                                  //           .text
-                                  //           .toLowerCase();
-                                  //       final matchesSearch = searchTerm.isEmpty ||
-                                  //           service['sName']
-                                  //               .toString()
-                                  //               .toLowerCase()
-                                  //               .contains(searchTerm);
-                                  //
-                                  //       final matchesVehicleType =
-                                  //           selectedVehicleData == null ||
-                                  //               service['vType'] ==
-                                  //                   selectedVehicleData?[
-                                  //                       'vehicleType'];
-                                  //
-                                  //       return matchesSearch &&
-                                  //           matchesVehicleType &&
-                                  //           !selectedServices
-                                  //               .contains(service['sId']);
-                                  //     }).map((service) =>
-                                  //         buildServiceChip(service, false)),
-                                  //   ],
-                                  // ),
 
                                   Wrap(
                                     spacing: 4.w,
@@ -2491,6 +2455,97 @@ class _ReportsScreenState extends State<ReportsScreen>
               ));
   }
 
+  // Widget buildServiceChip(Map<String, dynamic> service, bool isSelected) {
+  //   List<dynamic> subServices = service['subServices'] as List<dynamic>? ?? [];
+
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       FilterChip(
+  //         backgroundColor: kPrimary.withOpacity(0.1),
+  //         selectedColor: kPrimary,
+  //         labelPadding: EdgeInsets.only(left: 2.0, right: 2.0),
+  //         showCheckmark: false,
+  //         label: Row(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             Text(service['sName']),
+  //             if (isSelected) // Show tick only when selected
+
+  //               buildCustomTickBox()
+  //           ],
+  //         ),
+  //         labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
+  //         selected: isSelected,
+  //         onSelected: (bool selected) {
+  //           if (selectedVehicle == null) {
+  //             ScaffoldMessenger.of(context).showSnackBar(
+  //               const SnackBar(content: Text('First select the vehicle')),
+  //             );
+  //             return;
+  //           }
+  //           setState(() {
+  //             if (selected) {
+  //               selectedServices.add(service['sId']);
+  //               selectedSubServices[service['sId']] = [];
+  //             } else {
+  //               selectedServices.remove(service['sId']);
+  //               selectedSubServices.remove(service['sId']);
+  //             }
+  //             updateSelectedVehicleAndService();
+  //           });
+  //         },
+  //       ),
+  //       if (isSelected && subServices.isNotEmpty)
+  //         Padding(
+  //           padding: EdgeInsets.only(left: 2.w, top: 4.h),
+  //           child: Wrap(
+  //             direction: Axis.horizontal,
+  //             spacing: 2.w,
+  //             children: subServices.expand((subService) {
+  //               List<String> sNames =
+  //                   List<String>.from(subService['sName'] ?? []);
+  //               return sNames.map((subServiceName) {
+  //                 if (subServiceName.isEmpty) return Container();
+  //                 bool isSubSelected = selectedSubServices[service['sId']]
+  //                         ?.contains(subServiceName) ??
+  //                     false;
+  //                 return FilterChip(
+  //                   backgroundColor: kSecondary.withOpacity(0.1),
+  //                   selectedColor: kSecondary.withOpacity(0.5),
+  //                   labelPadding: EdgeInsets.only(left: 8.0, right: 4.0),
+  //                   showCheckmark: false,
+  //                   label: Row(
+  //                     mainAxisSize: MainAxisSize.min,
+  //                     children: [
+  //                       Text(subServiceName),
+  //                       if (isSubSelected) // Show tick only when sub-service is selected
+  //                         buildCustomTickBox()
+  //                     ],
+  //                   ),
+  //                   labelStyle: appStyle(13, kDark, FontWeight.normal),
+  //                   selected: isSubSelected,
+  //                   onSelected: (bool selected) {
+  //                     setState(() {
+  //                       if (selected) {
+  //                         selectedSubServices[service['sId']] ??= [];
+  //                         selectedSubServices[service['sId']]!
+  //                             .add(subServiceName);
+  //                       } else {
+  //                         selectedSubServices[service['sId']]
+  //                             ?.remove(subServiceName);
+  //                       }
+  //                     });
+  //                   },
+  //                 );
+  //               });
+  //             }).toList(),
+  //           ),
+  //         ),
+  //     ],
+  //   );
+  // }
+
   Widget buildServiceChip(Map<String, dynamic> service, bool isSelected) {
     List<dynamic> subServices = service['subServices'] as List<dynamic>? ?? [];
 
@@ -2507,7 +2562,6 @@ class _ReportsScreenState extends State<ReportsScreen>
             children: [
               Text(service['sName']),
               if (isSelected) // Show tick only when selected
-
                 buildCustomTickBox()
             ],
           ),
@@ -2562,6 +2616,26 @@ class _ReportsScreenState extends State<ReportsScreen>
                     labelStyle: appStyle(13, kDark, FontWeight.normal),
                     selected: isSubSelected,
                     onSelected: (bool selected) {
+                      // Check if this is the "steer tires" service
+                      if (service['sName']
+                          .toString()
+                          .toLowerCase()
+                          .contains('steer tires')) {
+                        // Get current selected subservices for steer tires
+                        final currentSubs =
+                            selectedSubServices[service['sId']] ?? [];
+
+                        if (selected && currentSubs.isNotEmpty) {
+                          // Don't allow selecting another subservice if one is already selected
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'You can only select one sub-service for steer tires')),
+                          );
+                          return;
+                        }
+                      }
+
                       setState(() {
                         if (selected) {
                           selectedSubServices[service['sId']] ??= [];

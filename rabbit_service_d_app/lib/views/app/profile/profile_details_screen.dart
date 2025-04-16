@@ -32,6 +32,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       TextEditingController();
   String profilePictureUrl = "";
   String selectedVehicleRange = '';
+  String role = "";
 
   bool isLoading = false;
   bool _isPersonalDetailsExpanded = false;
@@ -170,6 +171,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _companyNameController.text = data['companyName'] ?? '';
       selectedVehicleRange = data['vehicleRange'] ?? '';
       profilePictureUrl = data['profilePicture'] ?? '';
+      role = data['role'] ?? '';
     }).catchError((error) {
       print("Failed to fetch user data: $error");
     });
@@ -204,6 +206,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 _addressController.text = data['address'] ?? '';
                 _companyNameController.text = data['companyName'] ?? '';
                 selectedVehicleRange = data['vehicleRange'] ?? '';
+                role = data['role'] ?? '';
 
                 return data.isNotEmpty
                     ? SingleChildScrollView(
@@ -283,70 +286,77 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                   icon: Icons.abc,
                                   isIconApply: false,
                                 ),
-                                TextFieldInputWidget(
-                                  hintText: "Company Name",
-                                  textEditingController: _companyNameController,
-                                  textInputType: TextInputType.text,
-                                  icon: Icons.abc,
-                                  isIconApply: false,
-                                ),
+                                role == "Owner"
+                                    ? TextFieldInputWidget(
+                                        hintText: "Company Name",
+                                        textEditingController:
+                                            _companyNameController,
+                                        textInputType: TextInputType.text,
+                                        icon: Icons.abc,
+                                        isIconApply: false,
+                                      )
+                                    : SizedBox(),
                                 SizedBox(height: 10.0.h),
-                                DropdownButtonFormField<String>(
-                                  decoration: InputDecoration(
-                                    labelText: "Number of Vehicles",
-                                    labelStyle: appStyle(
-                                        15, kPrimary, FontWeight.normal),
-                                    fillColor: Colors.white,
-                                    filled: true,
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                          12.0), // Rounded corners
-                                      borderSide: BorderSide(
-                                        color: Colors
-                                            .grey.shade300, // Border color
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                          12.0), // Rounded corners
-                                      borderSide: BorderSide(
-                                        color: Colors
-                                            .grey.shade300, // Border color
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(
-                                          12.0), // Rounded corners
-                                      borderSide: BorderSide(
-                                        color: Colors
-                                            .grey.shade300, // Border color
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    contentPadding: const EdgeInsets.all(8),
-                                  ),
-                                  value: selectedVehicleRange,
-                                  icon: const Icon(Icons.arrow_drop_down),
-                                  items: vehicleRanges.map((String range) {
-                                    return DropdownMenuItem<String>(
-                                      value: range,
-                                      child: Text(range),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      selectedVehicleRange = value;
-                                    }
-                                  },
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return "Please select a vehicle range";
-                                    }
-                                    return null;
-                                  },
-                                ),
+                                role == "Owner"
+                                    ? DropdownButtonFormField<String>(
+                                        decoration: InputDecoration(
+                                          labelText: "Number of Vehicles",
+                                          labelStyle: appStyle(
+                                              15, kPrimary, FontWeight.normal),
+                                          fillColor: Colors.white,
+                                          filled: true,
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                                12.0), // Rounded corners
+                                            borderSide: BorderSide(
+                                              color: Colors.grey
+                                                  .shade300, // Border color
+                                              width: 1.0,
+                                            ),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                                12.0), // Rounded corners
+                                            borderSide: BorderSide(
+                                              color: Colors.grey
+                                                  .shade300, // Border color
+                                              width: 1.0,
+                                            ),
+                                          ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                                12.0), // Rounded corners
+                                            borderSide: BorderSide(
+                                              color: Colors.grey
+                                                  .shade300, // Border color
+                                              width: 1.0,
+                                            ),
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.all(8),
+                                        ),
+                                        value: selectedVehicleRange,
+                                        icon: const Icon(Icons.arrow_drop_down),
+                                        items:
+                                            vehicleRanges.map((String range) {
+                                          return DropdownMenuItem<String>(
+                                            value: range,
+                                            child: Text(range),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value != null) {
+                                            selectedVehicleRange = value;
+                                          }
+                                        },
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return "Please select a vehicle range";
+                                          }
+                                          return null;
+                                        },
+                                      )
+                                    : SizedBox(),
                               ],
                             ),
                             SizedBox(height: 20.0.h),

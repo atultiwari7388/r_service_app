@@ -28,6 +28,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   TextEditingController phoneController = TextEditingController();
   TextEditingController telephoneController = TextEditingController();
   TextEditingController emailController = TextEditingController();
+  TextEditingController email2Controller = TextEditingController();
+  TextEditingController companyController = TextEditingController();
   TextEditingController addressController = TextEditingController();
   TextEditingController cityController = TextEditingController();
   TextEditingController stateController = TextEditingController();
@@ -35,7 +37,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   TextEditingController postalController = TextEditingController();
   TextEditingController licenseNumController = TextEditingController();
   TextEditingController socialSecurityController = TextEditingController();
-  TextEditingController passController = TextEditingController();
+  TextEditingController passController =
+      TextEditingController(text: "12345678");
   TextEditingController perMileChargeController = TextEditingController();
 
   DateTime? licExpiryDate;
@@ -49,14 +52,18 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
   List<Map<String, dynamic>> vehicles = []; // To store vehicle details
   List<String> selectedVehicles = []; // To store selected vehicles' IDs
-  List<String> roles = ["Manager", "Driver", "Vendor"];
+  List<String> roles = ["Manager", "Driver", "Vendor", "Accountant"];
   String? selectedRole;
+  List<String> selectedRecordAccess = [];
+  List<String> selectedChequeAccess = [];
   List<String> recordAccessCheckBox = [
     "View",
     "Edit",
     "Add",
   ];
-  List<String> selectedRecordAccess = [];
+  List<String> chequeAccessCheckBox = [
+    "Cheque",
+  ];
 
   @override
   void initState() {
@@ -131,199 +138,240 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   }).toList(),
                 ),
               ),
-
               SizedBox(height: 24.h),
-              buildTextFieldInputWidget(
-                "Enter member name",
-                TextInputType.text,
-                nameController,
-                MaterialCommunityIcons.account,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member cell phone number",
-                TextInputType.number,
-                phoneController,
-                MaterialCommunityIcons.phone,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member tele phone number",
-                TextInputType.number,
-                telephoneController,
-                MaterialCommunityIcons.phone,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member email address",
-                TextInputType.emailAddress,
-                emailController,
-                MaterialCommunityIcons.email,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member address",
-                TextInputType.streetAddress,
-                addressController,
-                MaterialCommunityIcons.home,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member city",
-                TextInputType.streetAddress,
-                cityController,
-                MaterialCommunityIcons.city,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member state",
-                TextInputType.streetAddress,
-                stateController,
-                MaterialCommunityIcons.city,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member country",
-                TextInputType.streetAddress,
-                countryController,
-                MaterialCommunityIcons.city,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member postal/zip",
-                TextInputType.number,
-                postalController,
-                MaterialCommunityIcons.numeric,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member license number",
-                TextInputType.text,
-                licenseNumController,
-                MaterialCommunityIcons.numeric,
-              ),
-              SizedBox(height: 15.h),
-              _buildDatePickerField(
-                label: 'License Expiry Date*',
-                selectedDate: licExpiryDate,
-                onDateSelected: (date) {
-                  setState(() {
-                    licExpiryDate = date;
-                  });
-                },
-              ),
-              SizedBox(height: 15.h),
-              _buildDatePickerField(
-                label: 'DOB*',
-                selectedDate: dob,
-                onDateSelected: (date) {
-                  setState(() {
-                    dob = date;
-                  });
-                },
-              ),
-              SizedBox(height: 15.h),
-
-              _buildDatePickerField(
-                label: 'Last drug test*',
-                selectedDate: lastDrugTest,
-                onDateSelected: (date) {
-                  setState(() {
-                    lastDrugTest = date;
-                  });
-                },
-              ),
-              SizedBox(height: 15.h),
-
-              _buildDatePickerField(
-                label: 'Date of hire*',
-                selectedDate: dateOfHire,
-                onDateSelected: (date) {
-                  setState(() {
-                    dateOfHire = date;
-                  });
-                },
-              ),
-
-              SizedBox(height: 15.h),
-
-              _buildDatePickerField(
-                label: 'Date of termination*',
-                selectedDate: dateOfTermination,
-                onDateSelected: (date) {
-                  setState(() {
-                    dateOfTermination = date;
-                  });
-                },
-              ),
-
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter social security number",
-                TextInputType.number,
-                socialSecurityController,
-                MaterialCommunityIcons.numeric,
-              ),
-              SizedBox(height: 15.h),
-              buildTextFieldInputWidget(
-                "Enter member password",
-                TextInputType.visiblePassword,
-                passController,
-                MaterialCommunityIcons.security,
-                isPass: true,
-              ),
-              // Vehicle selection with checkboxes
-              SizedBox(height: 10.h),
-              Text(
-                "Assign Vehicles",
-                style: appStyle(16, Colors.black, FontWeight.bold),
-              ),
-              SizedBox(height: 15.h),
-              Divider(),
-              vehicles.isEmpty
-                  ? Text("No Vehicles")
-                  : Column(
-                      children: vehicles.map((vehicle) {
-                        return CheckboxListTile(
-                          title: Text(
-                              "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
-                          value: selectedVehicles.contains(vehicle['id']),
-                          onChanged: (bool? selected) {
-                            setState(() {
-                              if (selected == true) {
-                                selectedVehicles.add(vehicle['id']);
-                              } else {
-                                selectedVehicles.remove(vehicle['id']);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
+              if (selectedRole == "Vendor")
+                _buildVendorForm()
+              else if (selectedRole != null)
+                Column(
+                  children: [
+                    buildTextFieldInputWidget(
+                      "Enter member name*",
+                      TextInputType.text,
+                      nameController,
+                      MaterialCommunityIcons.account,
                     ),
-              SizedBox(height: 10.h),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member cellphone*",
+                      TextInputType.number,
+                      phoneController,
+                      MaterialCommunityIcons.phone,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member telephone number",
+                      TextInputType.number,
+                      telephoneController,
+                      MaterialCommunityIcons.phone,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member email*",
+                      TextInputType.emailAddress,
+                      emailController,
+                      MaterialCommunityIcons.email,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member address",
+                      TextInputType.streetAddress,
+                      addressController,
+                      MaterialCommunityIcons.home,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member city*",
+                      TextInputType.streetAddress,
+                      cityController,
+                      MaterialCommunityIcons.city,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member state*",
+                      TextInputType.streetAddress,
+                      stateController,
+                      MaterialCommunityIcons.city,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member country*",
+                      TextInputType.streetAddress,
+                      countryController,
+                      MaterialCommunityIcons.city,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member postal/zip",
+                      TextInputType.number,
+                      postalController,
+                      MaterialCommunityIcons.numeric,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member license number",
+                      TextInputType.text,
+                      licenseNumController,
+                      MaterialCommunityIcons.numeric,
+                    ),
+                    SizedBox(height: 15.h),
+                    _buildDatePickerField(
+                      label: 'License Expiry Date*',
+                      selectedDate: licExpiryDate,
+                      onDateSelected: (date) {
+                        setState(() {
+                          licExpiryDate = date;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    _buildDatePickerField(
+                      label: 'DOB*',
+                      selectedDate: dob,
+                      onDateSelected: (date) {
+                        setState(() {
+                          dob = date;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 15.h),
 
-              SizedBox(height: 24.h),
+                    _buildDatePickerField(
+                      label: 'Last drug test*',
+                      selectedDate: lastDrugTest,
+                      onDateSelected: (date) {
+                        setState(() {
+                          lastDrugTest = date;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+
+                    _buildDatePickerField(
+                      label: 'Date of hire*',
+                      selectedDate: dateOfHire,
+                      onDateSelected: (date) {
+                        setState(() {
+                          dateOfHire = date;
+                        });
+                      },
+                    ),
+
+                    SizedBox(height: 15.h),
+
+                    _buildDatePickerField(
+                      label: 'Date of termination*',
+                      selectedDate: dateOfTermination,
+                      onDateSelected: (date) {
+                        setState(() {
+                          dateOfTermination = date;
+                        });
+                      },
+                    ),
+
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter social security number",
+                      TextInputType.number,
+                      socialSecurityController,
+                      MaterialCommunityIcons.numeric,
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter member password",
+                      TextInputType.visiblePassword,
+                      passController,
+                      MaterialCommunityIcons.security,
+                      isPass: true,
+                    ),
+                    // Vehicle selection with checkboxes
+                  ],
+                )
+              else
+                Text("Firstly select a role"),
+              SizedBox(height: 10.h),
+              if (selectedRole != null && selectedRole != "Vendor") ...[
+                Text(
+                  "Assign Vehicles",
+                  style: appStyle(16, Colors.black, FontWeight.bold),
+                ),
+                SizedBox(height: 15.h),
+                Divider(),
+                vehicles.isEmpty
+                    ? Text("No Vehicles")
+                    : Column(
+                        children: vehicles.map((vehicle) {
+                          return CheckboxListTile(
+                            title: Text(
+                                "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
+                            value: selectedVehicles.contains(vehicle['id']),
+                            onChanged: (bool? selected) {
+                              setState(() {
+                                if (selected == true) {
+                                  selectedVehicles.add(vehicle['id']);
+                                } else {
+                                  selectedVehicles.remove(vehicle['id']);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                SizedBox(height: 10.h),
+
+                //record access
+                Text(
+                  "Assign Record Access",
+                  style: appStyle(16, Colors.black, FontWeight.bold),
+                ),
+                SizedBox(height: 10.h),
+                Divider(),
+
+                Column(
+                  children: recordAccessCheckBox.map((recordAccess) {
+                    return CheckboxListTile(
+                      title: Text(recordAccess),
+                      value: selectedRecordAccess
+                          .contains(recordAccess), // Check if selected
+                      onChanged: (bool? selected) {
+                        setState(() {
+                          if (selected == true) {
+                            selectedRecordAccess
+                                .add(recordAccess); // Add to list
+                            print(selectedRecordAccess);
+                          } else {
+                            selectedRecordAccess
+                                .remove(recordAccess); // Remove from list
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+              SizedBox(height: 15.h),
+
+              //record access
               Text(
-                "Assign Record Access",
+                "Assign Cheque Access",
                 style: appStyle(16, Colors.black, FontWeight.bold),
               ),
               SizedBox(height: 10.h),
               Divider(),
 
               Column(
-                children: recordAccessCheckBox.map((recordAccess) {
+                children: chequeAccessCheckBox.map((chequeAccess) {
                   return CheckboxListTile(
-                    title: Text(recordAccess),
-                    value: selectedRecordAccess
-                        .contains(recordAccess), // Check if selected
+                    title: Text(chequeAccess),
+                    value: selectedChequeAccess
+                        .contains(chequeAccess), // Check if selected
                     onChanged: (bool? selected) {
                       setState(() {
                         if (selected == true) {
-                          selectedRecordAccess.add(recordAccess); // Add to list
+                          selectedChequeAccess.add(chequeAccess); // Add to list
                           print(selectedRecordAccess);
                         } else {
-                          selectedRecordAccess
-                              .remove(recordAccess); // Remove from list
+                          selectedChequeAccess
+                              .remove(chequeAccess); // Remove from list
                         }
                       });
                     },
@@ -331,8 +379,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 }).toList(),
               ),
 
-              SizedBox(height: 15.h),
-
+              SizedBox(height: 10.h),
               selectedRole == "Driver"
                   ? buildTextFieldInputWidget(
                       "Enter per mile charge",
@@ -342,7 +389,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     )
                   : Container(),
               SizedBox(height: 24.h),
-
               isUserAcCreated
                   ? CircularProgressIndicator()
                   : CustomButton(
@@ -425,16 +471,102 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           selectedVehicles: selectedVehicles,
                           perMileCharge: perMileChargeController.text,
                           selectedRecordAccess: selectedRecordAccess,
+                          selectedChequeAccess: selectedChequeAccess,
                         );
                       },
                       color: kPrimary,
                     ),
-
               SizedBox(height: 24.h),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildVendorForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Company Name*",
+          TextInputType.text,
+          companyController,
+          MaterialCommunityIcons.office_building,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Name*",
+          TextInputType.text,
+          nameController,
+          MaterialCommunityIcons.account,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Cell Phone*",
+          TextInputType.phone,
+          phoneController,
+          MaterialCommunityIcons.phone,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Telephone",
+          TextInputType.phone,
+          telephoneController,
+          MaterialCommunityIcons.phone,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Email*",
+          TextInputType.emailAddress,
+          emailController,
+          MaterialCommunityIcons.email,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Email 2",
+          TextInputType.emailAddress,
+          email2Controller,
+          MaterialCommunityIcons.email,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Address*",
+          TextInputType.streetAddress,
+          addressController,
+          MaterialCommunityIcons.home,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "City*",
+          TextInputType.text,
+          cityController,
+          MaterialCommunityIcons.city,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "State*",
+          TextInputType.text,
+          stateController,
+          MaterialCommunityIcons.city,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Country*",
+          TextInputType.text,
+          countryController,
+          MaterialCommunityIcons.earth,
+        ),
+        SizedBox(height: 15.h),
+        buildTextFieldInputWidget(
+          "Postal/Zip",
+          TextInputType.number,
+          postalController,
+          MaterialCommunityIcons.numeric,
+        ),
+        SizedBox(height: 15.h),
+      ],
     );
   }
 
@@ -519,60 +651,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     );
   }
 
-  // Future<void> createMemberWithCloudFunction({
-  //   required String name,
-  //   required String email,
-  //   required String phone,
-  //   required String password,
-  //   required String currentUId,
-  //   required String selectedRole,
-  //   required List<String> selectedVehicles,
-  //   required String perMileCharge,
-  //   required List<String> selectedRecordAccess,
-  // }) async {
-  //   setState(() {
-  //     isUserAcCreated = true;
-  //   });
-
-  //   try {
-  //     HttpsCallable callable =
-  //         FirebaseFunctions.instance.httpsCallable('createTeamMember');
-  //     final result = await callable.call({
-  //       'name': name,
-  //       'email': email,
-  //       'phone': phone,
-  //       'password': password,
-  //       'currentUId': currentUId,
-  //       'selectedRole': selectedRole,
-  //       'selectedVehicles': selectedVehicles,
-  //       'perMileCharge': perMileCharge,
-  //       'selectedRecordAccess': selectedRecordAccess,
-  //     });
-
-  //     if (result.data['success']) {
-  //       showToastMessage("Success", "Team Member Created ", kSecondary);
-  //       nameController.clear();
-  //       emailController.clear();
-  //       phoneController.clear();
-  //       passController.clear();
-  //       perMileChargeController.clear();
-  //       selectedVehicles.clear();
-  //       selectedRole = "";
-  //       selectedRecordAccess.clear();
-
-  //       setState(() {});
-
-  //       Get.off(() => MyTeamScreen());
-  //     }
-  //   } catch (e) {
-  //     print("Error creating team member: $e");
-  //   } finally {
-  //     setState(() {
-  //       isUserAcCreated = false;
-  //     });
-  //   }
-  // }
-
   Future<void> createMemberWithCloudFunction({
     required String name,
     required String email,
@@ -583,6 +661,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     required List<String> selectedVehicles,
     required String perMileCharge,
     required List<String> selectedRecordAccess,
+    required List<String> selectedChequeAccess,
   }) async {
     setState(() {
       isUserAcCreated = true;
@@ -594,6 +673,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
       final result = await callable.call({
         'name': name,
         'email': email,
+        "email2": email2Controller.text,
+        'companyName': companyController.text,
         'phone': phone,
         'telephone': telephoneController.text,
         'address': addressController.text,
@@ -609,6 +690,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'selectedVehicles': selectedVehicles,
         'perMileCharge': perMileCharge,
         'selectedRecordAccess': selectedRecordAccess,
+        'selectedChequeAccess': selectedChequeAccess,
         'licExpiryDate': licExpiryDate?.toIso8601String(),
         'dob': dob?.toIso8601String(),
         'lastDrugTest': lastDrugTest?.toIso8601String(),
@@ -721,5 +803,20 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     phoneController.dispose();
     passController.dispose();
     perMileChargeController.dispose();
+    telephoneController.dispose();
+    addressController.dispose();
+    email2Controller.dispose();
+    companyController.dispose();
+    cityController.dispose();
+    stateController.dispose();
+    postalController.dispose();
+    countryController.dispose();
+    licenseNumController.dispose();
+    socialSecurityController.dispose();
+    dob = null;
+    lastDrugTest = null;
+    dateOfHire = null;
+    dateOfTermination = null;
+    selectedVehicles.clear();
   }
 }
