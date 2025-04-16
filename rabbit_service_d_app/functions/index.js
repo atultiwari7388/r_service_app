@@ -85,134 +85,6 @@ exports.sendContactEmail = functions.https.onCall(async (data, context) => {
 
 //create team memeber function
 
-// exports.createTeamMember = functions.https.onCall(async (data, context) => {
-//   if (!context.auth) {
-//     throw new functions.https.HttpsError(
-//       "unauthenticated",
-//       "User must be logged in."
-//     );
-//   }
-
-//   const {
-//     email,
-//     password,
-//     name,
-//     phone,
-//     currentUId,
-//     selectedRole,
-//     selectedVehicles,
-//     perMileCharge,
-//     selectedRecordAccess,
-//   } = data;
-
-//   if (
-//     !email ||
-//     !password ||
-//     !name ||
-//     !phone ||
-//     !selectedRole ||
-//     selectedVehicles.length === 0
-//   ) {
-//     throw new functions.https.HttpsError(
-//       "invalid-argument",
-//       "All fields, role, and vehicle selection are required."
-//     );
-//   }
-
-//   try {
-//     // Create Firebase Authentication User
-//     const userRecord = await admin.auth().createUser({
-//       email: email,
-//       password: password,
-//       displayName: name,
-//     });
-
-//     // Prepare User Data
-//     const userData = {
-//       uid: userRecord.uid,
-//       email: email,
-//       active: true,
-//       userName: name,
-//       phoneNumber: phone,
-//       createdBy: currentUId,
-//       profilePicture:
-//         "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
-//       role: selectedRole,
-//       isManager: selectedRole === "Manager",
-//       isDriver: selectedRole === "Driver",
-//       perMileCharge: selectedRole === "Driver" ? perMileCharge : "",
-//       isView: selectedRecordAccess.includes("View"),
-//       isEdit: selectedRecordAccess.includes("Edit"),
-//       isDelete: selectedRecordAccess.includes("Delete"),
-//       isAdd: selectedRecordAccess.includes("Add"),
-//       isOwner: false,
-//       isTeamMember: true,
-//       created_at: admin.firestore.Timestamp.now(),
-//       updated_at: admin.firestore.Timestamp.now(),
-//     };
-
-//     // Store in Firestore
-//     await admin
-//       .firestore()
-//       .collection("Users")
-//       .doc(userRecord.uid)
-//       .set(userData);
-
-//     // Copy Vehicles from the Creator to the New User
-//     for (let vehicleId of selectedVehicles) {
-//       const vehicleDoc = await admin
-//         .firestore()
-//         .collection("Users")
-//         .doc(currentUId)
-//         .collection("Vehicles")
-//         .doc(vehicleId)
-//         .get();
-
-//       if (vehicleDoc.exists) {
-//         await admin
-//           .firestore()
-//           .collection("Users")
-//           .doc(userRecord.uid)
-//           .collection("Vehicles")
-//           .doc(vehicleId)
-//           .set(vehicleDoc.data());
-//       }
-
-//       // Copy DataServices for each vehicle
-//       const dataServicesSnapshot = await admin
-//         .firestore()
-//         .collection("Users")
-//         .doc(currentUId)
-//         .collection("DataServices")
-//         .where("vehicleId", "==", vehicleId)
-//         .get();
-
-//       for (let doc of dataServicesSnapshot.docs) {
-//         await admin
-//           .firestore()
-//           .collection("Users")
-//           .doc(userRecord.uid)
-//           .collection("DataServices")
-//           .doc(doc.id)
-//           .set(doc.data());
-//       }
-//     }
-
-//     return {
-//       success: true,
-//       message: "Team member added successfully!",
-//       uid: userRecord.uid,
-//     };
-//   } catch (error) {
-//     console.error("Error creating team member:", error);
-//     throw new functions.https.HttpsError(
-//       "internal",
-//       "Something went wrong.",
-//       error
-//     );
-//   }
-// });
-
 exports.createTeamMember = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -239,6 +111,7 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     perMileCharge,
     currentUId,
     selectedRole,
+    selectedPayType,
     selectedVehicles,
     selectedRecordAccess,
     selectedChequeAccess,
@@ -309,10 +182,12 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       profilePicture:
         "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
       role: selectedRole,
+      payMode: selectedPayType || "",
       isManager: selectedRole === "Manager",
       isDriver: selectedRole === "Driver",
       isVendor: selectedRole === "Vendor",
       isAccountant: selectedRole === "Accountant",
+      isOtherStaff: selectedRole === "Other Staff",
       perMileCharge: selectedRole === "Driver" ? perMileCharge || "0" : "0",
       isView: selectedRecordAccess.includes("View"),
       isEdit: selectedRecordAccess.includes("Edit"),

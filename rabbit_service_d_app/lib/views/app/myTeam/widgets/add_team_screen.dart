@@ -52,8 +52,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
   List<Map<String, dynamic>> vehicles = []; // To store vehicle details
   List<String> selectedVehicles = []; // To store selected vehicles' IDs
-  List<String> roles = ["Manager", "Driver", "Vendor", "Accountant"];
   String? selectedRole;
+  String? selectedPayType;
   List<String> selectedRecordAccess = [];
   List<String> selectedChequeAccess = [];
   List<String> recordAccessCheckBox = [
@@ -64,10 +64,32 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   List<String> chequeAccessCheckBox = [
     "Cheque",
   ];
+  List<String> roles = [
+    "Manager",
+    "Driver",
+    "Vendor",
+    "Accountant",
+    "Other Staff"
+  ];
+
+  // List<String> payTypeModes = [
+  //   "Per Mile",
+  //   "Per Trip",
+  //   "Per Hour",
+  //   "Per Month",
+  // ];
+
+  List<String> payTypeModes = [];
 
   @override
   void initState() {
     super.initState();
+    payTypeModes = [
+      "Per Mile",
+      "Per Trip",
+      "Per Hour",
+      "Per Month",
+    ];
     fetchOwnerVehiclesDetails();
   }
 
@@ -128,6 +150,19 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   onChanged: (String? newValue) {
                     setState(() {
                       selectedRole = newValue;
+                      // Update payTypeModes based on selected role
+                      if (newValue == "Other Staff") {
+                        payTypeModes = ["Per Hour", "Per Month"];
+                      } else {
+                        payTypeModes = [
+                          "Per Mile",
+                          "Per Trip",
+                          "Per Hour",
+                          "Per Month",
+                        ];
+                      }
+                      // Reset selected pay type when role changes
+                      selectedPayType = null;
                     });
                   },
                   items: roles.map((String role) {
@@ -349,37 +384,69 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 ),
               ],
               SizedBox(height: 15.h),
+              if (selectedRole == "Manager")
+                Column(
+                  children: [
+                    //cheque access
+                    Text(
+                      "Assign Cheque Access",
+                      style: appStyle(16, Colors.black, FontWeight.bold),
+                    ),
+                    SizedBox(height: 10.h),
+                    Divider(),
 
-              //record access
-              Text(
-                "Assign Cheque Access",
-                style: appStyle(16, Colors.black, FontWeight.bold),
-              ),
+                    Column(
+                      children: chequeAccessCheckBox.map((chequeAccess) {
+                        return CheckboxListTile(
+                          title: Text(chequeAccess),
+                          value: selectedChequeAccess
+                              .contains(chequeAccess), // Check if selected
+                          onChanged: (bool? selected) {
+                            setState(() {
+                              if (selected == true) {
+                                selectedChequeAccess
+                                    .add(chequeAccess); // Add to list
+                                print(selectedRecordAccess);
+                              } else {
+                                selectedChequeAccess
+                                    .remove(chequeAccess); // Remove from list
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               SizedBox(height: 10.h),
-              Divider(),
+              if (selectedRole != null && selectedRole != "Vendor") ...[
+                //payment type access
+                Text(
+                  "Assign Payment Type Access",
+                  style: appStyle(16, Colors.black, FontWeight.bold),
+                ),
+                SizedBox(height: 10.h),
+                Divider(),
 
-              Column(
-                children: chequeAccessCheckBox.map((chequeAccess) {
-                  return CheckboxListTile(
-                    title: Text(chequeAccess),
-                    value: selectedChequeAccess
-                        .contains(chequeAccess), // Check if selected
-                    onChanged: (bool? selected) {
+                Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 10),
+                  child: DropdownButtonFormField<String>(
+                    hint: Text("Select Pay Type"),
+                    value: selectedPayType,
+                    onChanged: (String? newValue) {
                       setState(() {
-                        if (selected == true) {
-                          selectedChequeAccess.add(chequeAccess); // Add to list
-                          print(selectedRecordAccess);
-                        } else {
-                          selectedChequeAccess
-                              .remove(chequeAccess); // Remove from list
-                        }
+                        selectedPayType = newValue;
                       });
                     },
-                  );
-                }).toList(),
-              ),
-
-              SizedBox(height: 10.h),
+                    items: payTypeModes.map((String payMode) {
+                      return DropdownMenuItem<String>(
+                        value: payMode,
+                        child: Text(payMode),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
               selectedRole == "Driver"
                   ? buildTextFieldInputWidget(
                       "Enter per mile charge",
@@ -468,6 +535,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           password: passController.text,
                           currentUId: currentUId,
                           selectedRole: selectedRole!,
+                          selectedPayType: selectedPayType!,
                           selectedVehicles: selectedVehicles,
                           perMileCharge: perMileChargeController.text,
                           selectedRecordAccess: selectedRecordAccess,
@@ -658,6 +726,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     required String password,
     required String currentUId,
     required String selectedRole,
+    required String selectedPayType,
     required List<String> selectedVehicles,
     required String perMileCharge,
     required List<String> selectedRecordAccess,
@@ -687,6 +756,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'password': password,
         'currentUId': currentUId,
         'selectedRole': selectedRole,
+        'selectedPayType': selectedPayType,
         'selectedVehicles': selectedVehicles,
         'perMileCharge': perMileCharge,
         'selectedRecordAccess': selectedRecordAccess,

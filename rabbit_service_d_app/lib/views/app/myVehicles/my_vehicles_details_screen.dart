@@ -164,8 +164,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
                 final rawDate = vehicleData['year'] ?? '';
                 final oilChangeDate = vehicleData['oilChangeDate'] ?? '';
-                final formattedOilChangeDate = DateFormat('MM-dd-yyyy')
-                    .format(DateTime.parse(oilChangeDate));
+                final formattedOilChangeDate = oilChangeDate.isNotEmpty
+                    ? DateFormat('MM-dd-yyyy')
+                        .format(DateTime.parse(oilChangeDate))
+                    : "";
+
                 final formattedDate =
                     DateFormat('MM-dd-yyyy').format(DateTime.parse(rawDate));
 

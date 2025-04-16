@@ -15,6 +15,8 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/generate_pdf.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 import 'package:regal_service_d_app/views/app/profile/profile_screen.dart';
 import 'package:regal_service_d_app/views/app/reports/widgets/miles_details_screen.dart';
 import 'package:regal_service_d_app/views/app/reports/widgets/records_details_screen.dart';
@@ -68,6 +70,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   bool? isDelete;
   bool isEditing = false;
   String? editingRecordId;
+  late String role = "";
 
   // Define a new variable to track the selected filter option
   String? selectedFilterOption;
@@ -124,6 +127,7 @@ class _ReportsScreenState extends State<ReportsScreen>
             isEdit = userData['isEdit'];
             isAdd = userData['isAdd'];
             isDelete = userData['isDelete'];
+            role = userData['role'];
           });
         }
       }
@@ -475,43 +479,6 @@ class _ReportsScreenState extends State<ReportsScreen>
         String type = "reading";
         int defaultValue = 0;
         DateTime? nextNotificationDate;
-
-        // if (matchingDValue != null) {
-        //   type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
-        //   defaultValue = serviceDefaultValues[serviceId] ?? 0;
-        // }
-
-        // String formattedDate = '';
-        // int numericValue = 0;
-        // int nextNotificationValue = 0;
-
-        // if (matchingDValue != null) {
-        //   if (defaultValue > 0) {
-        //     if (type == 'reading') {
-        //       nextNotificationValue = currentMiles + defaultValue;
-        //     } else if (type == 'day') {
-        //       // final baseDate = selectedDate ?? DateTime.now();
-        //       final baseDate = isEditing
-        //           ? _originalRecordDate ?? selectedDate ?? DateTime.now()
-        //           : selectedDate ?? DateTime.now();
-        //       final nextDate = baseDate.add(Duration(days: defaultValue));
-        //       formattedDate =
-        //           DateFormat('dd/MM/yyyy').format(nextDate); // Format here
-        //       numericValue = nextDate.millisecondsSinceEpoch;
-        //     } else if (type == 'hour') {
-        //       nextNotificationValue = currentHours + defaultValue;
-        //     } else {
-        //       // Force 0 if defaultValue is 0 (even with matching engine)
-        //       nextNotificationValue = 0;
-        //       formattedDate = '';
-        //     }
-        //   } else {
-        //     // No engine match, force 0
-        //     nextNotificationValue = 0;
-        //   }
-        // }
-
-        // Inside handleSaveRecords, replace the notification calculation with:
 
         if (matchingDValue != null) {
           type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
@@ -1344,34 +1311,107 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 children: [
                                   // Vehicle Dropdown
 
-                                  DropdownButtonFormField<String>(
-                                    value: selectedVehicle,
-                                    hint: const Text('Select Vehicle'),
-                                    items: (vehicles
-                                          ..sort((a, b) => a['vehicleNumber']
-                                              .toString()
-                                              .toLowerCase()
-                                              .compareTo(b['vehicleNumber']
-                                                  .toString()
-                                                  .toLowerCase())))
-                                        .map((vehicle) {
-                                      return DropdownMenuItem<String>(
-                                        value: vehicle['id'],
-                                        child: Text(
-                                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                          style: appStyleUniverse(
-                                              17, kDark, FontWeight.normal),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonFormField<String>(
+                                          value: selectedVehicle,
+                                          hint: const Text('Select Vehicle'),
+                                          items: (vehicles
+                                                ..sort((a, b) => a[
+                                                        'vehicleNumber']
+                                                    .toString()
+                                                    .toLowerCase()
+                                                    .compareTo(
+                                                        b['vehicleNumber']
+                                                            .toString()
+                                                            .toLowerCase())))
+                                              .map((vehicle) {
+                                            return DropdownMenuItem<String>(
+                                              value: vehicle['id'],
+                                              child: Text(
+                                                '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                                style: appStyleUniverse(14,
+                                                    kDark, FontWeight.normal),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              selectedVehicle = value;
+                                              selectedServices
+                                                  .clear(); // Clear selected services when vehicle changes
+                                              updateSelectedVehicleAndService();
+                                            });
+                                          },
                                         ),
-                                      );
-                                    }).toList(),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        selectedVehicle = value;
-                                        selectedServices
-                                            .clear(); // Clear selected services when vehicle changes
-                                        updateSelectedVehicleAndService();
-                                      });
-                                    },
+                                      ),
+                                      if (role == "Owner")
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(left: 8.0),
+                                          child: InkWell(
+                                            onTap: () {
+                                              showDialog(
+                                                context: context,
+                                                builder:
+                                                    (BuildContext context) {
+                                                  return AlertDialog(
+                                                    title: Text(
+                                                        "Choose an option"),
+                                                    content: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        ListTile(
+                                                          leading: Icon(Icons
+                                                              .directions_car),
+                                                          title: Text(
+                                                              "Add Vehicle"),
+                                                          onTap: () {
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        AddVehicleScreen(),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                        ListTile(
+                                                          leading: Icon(Icons
+                                                              .upload_file),
+                                                          title: Text(
+                                                              "Import Vehicle"),
+                                                          onTap: () {
+                                                            Navigator.pop(
+                                                                context);
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        AddVehicleViaExcelScreen(),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                              );
+                                            },
+                                            child: CircleAvatar(
+                                              backgroundColor: kWhite,
+                                              child: Icon(Icons.add,
+                                                  color: kPrimary),
+                                            ),
+                                          ),
+                                        )
+                                    ],
                                   ),
 
                                   SizedBox(height: 10.h),
@@ -2454,97 +2494,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                 ),
               ));
   }
-
-  // Widget buildServiceChip(Map<String, dynamic> service, bool isSelected) {
-  //   List<dynamic> subServices = service['subServices'] as List<dynamic>? ?? [];
-
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       FilterChip(
-  //         backgroundColor: kPrimary.withOpacity(0.1),
-  //         selectedColor: kPrimary,
-  //         labelPadding: EdgeInsets.only(left: 2.0, right: 2.0),
-  //         showCheckmark: false,
-  //         label: Row(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             Text(service['sName']),
-  //             if (isSelected) // Show tick only when selected
-
-  //               buildCustomTickBox()
-  //           ],
-  //         ),
-  //         labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
-  //         selected: isSelected,
-  //         onSelected: (bool selected) {
-  //           if (selectedVehicle == null) {
-  //             ScaffoldMessenger.of(context).showSnackBar(
-  //               const SnackBar(content: Text('First select the vehicle')),
-  //             );
-  //             return;
-  //           }
-  //           setState(() {
-  //             if (selected) {
-  //               selectedServices.add(service['sId']);
-  //               selectedSubServices[service['sId']] = [];
-  //             } else {
-  //               selectedServices.remove(service['sId']);
-  //               selectedSubServices.remove(service['sId']);
-  //             }
-  //             updateSelectedVehicleAndService();
-  //           });
-  //         },
-  //       ),
-  //       if (isSelected && subServices.isNotEmpty)
-  //         Padding(
-  //           padding: EdgeInsets.only(left: 2.w, top: 4.h),
-  //           child: Wrap(
-  //             direction: Axis.horizontal,
-  //             spacing: 2.w,
-  //             children: subServices.expand((subService) {
-  //               List<String> sNames =
-  //                   List<String>.from(subService['sName'] ?? []);
-  //               return sNames.map((subServiceName) {
-  //                 if (subServiceName.isEmpty) return Container();
-  //                 bool isSubSelected = selectedSubServices[service['sId']]
-  //                         ?.contains(subServiceName) ??
-  //                     false;
-  //                 return FilterChip(
-  //                   backgroundColor: kSecondary.withOpacity(0.1),
-  //                   selectedColor: kSecondary.withOpacity(0.5),
-  //                   labelPadding: EdgeInsets.only(left: 8.0, right: 4.0),
-  //                   showCheckmark: false,
-  //                   label: Row(
-  //                     mainAxisSize: MainAxisSize.min,
-  //                     children: [
-  //                       Text(subServiceName),
-  //                       if (isSubSelected) // Show tick only when sub-service is selected
-  //                         buildCustomTickBox()
-  //                     ],
-  //                   ),
-  //                   labelStyle: appStyle(13, kDark, FontWeight.normal),
-  //                   selected: isSubSelected,
-  //                   onSelected: (bool selected) {
-  //                     setState(() {
-  //                       if (selected) {
-  //                         selectedSubServices[service['sId']] ??= [];
-  //                         selectedSubServices[service['sId']]!
-  //                             .add(subServiceName);
-  //                       } else {
-  //                         selectedSubServices[service['sId']]
-  //                             ?.remove(subServiceName);
-  //                       }
-  //                     });
-  //                   },
-  //                 );
-  //               });
-  //             }).toList(),
-  //           ),
-  //         ),
-  //     ],
-  //   );
-  // }
 
   Widget buildServiceChip(Map<String, dynamic> service, bool isSelected) {
     List<dynamic> subServices = service['subServices'] as List<dynamic>? ?? [];

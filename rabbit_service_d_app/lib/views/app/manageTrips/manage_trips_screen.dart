@@ -403,44 +403,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     }
   }
 
-  // Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
-  //     String perMileCharge, String driverId, String role) async {
-  //   double totalExpenses = 0;
-  //   double totalEarnings = 0;
-  //   String userId = driverId;
-  //   double perMile = double.tryParse(perMileCharge) ?? 0.0;
-  //
-  //   for (var trip in trips) {
-  //     // Calculate expenses from tripDetails
-  //     var expensesSnapshot = await FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .doc(userId)
-  //         .collection('trips')
-  //         .doc(trip.id)
-  //         .collection('tripDetails')
-  //         .where('type', isEqualTo: 'Expenses')
-  //         .get();
-  //
-  //     double tripExpenses = expensesSnapshot.docs
-  //         .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
-  //     totalExpenses += tripExpenses;
-  //
-  //     // Calculate earnings based on role
-  //     if (role == "Driver") {
-  //       int startMiles = trip['tripStartMiles'];
-  //       int endMiles = trip['tripEndMiles'];
-  //       int miles = endMiles - startMiles;
-  //       totalEarnings += miles * perMile;
-  //     } else if (role == "Owner") {
-  //       // Sum all oEarnings values
-  //       double ownerEarnings = (trip['oEarnings'] ?? 0.0).toDouble();
-  //       totalEarnings += ownerEarnings;
-  //     }
-  //   }
-  //
-  //   return {'expenses': totalExpenses, 'earnings': totalEarnings};
-  // }
-
   Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
       String perMileCharge, String driverId, String role) async {
     double totalExpenses = 0;
@@ -1304,6 +1266,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                       elevation: 0,
                       minimumSize: Size(70.w, 35.h)),
                   onPressed: () {
+                    log("Doc ID  " + doc.id);
                     Get.to(() => TripDetailsScreen(
                           docId: doc.id,
                           userId: currentUId,

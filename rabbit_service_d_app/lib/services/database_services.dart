@@ -56,7 +56,7 @@ class DatabaseServices {
       'isVendor': false,
       "isView": true,
       "isCheque": true,
-
+      'payMode': '',
       "isEdit": true,
       "isDelete": true,
       "isAdd": true,
