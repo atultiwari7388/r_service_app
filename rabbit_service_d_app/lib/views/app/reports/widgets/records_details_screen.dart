@@ -34,6 +34,7 @@ class RecordsDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Container(
@@ -52,11 +53,15 @@ class RecordsDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  buildInfoRow(Icons.directions_car_outlined,
-                      '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
+                  buildInfoRow(
+                    Icons.directions_car_outlined,
+                    '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                  ),
                   Divider(height: 24.h),
                   buildInfoRow(
-                      Icons.store_outlined, record['workshopName'] ?? 'N/A'),
+                    Icons.store_outlined,
+                    record['workshopName'] ?? 'N/A',
+                  ),
                   Divider(height: 24.h),
                   vehicleType == "Truck"
                       ? buildInfoRow(
@@ -64,92 +69,113 @@ class RecordsDetailsScreen extends StatelessWidget {
                       : buildInfoRow(
                           Icons.tire_repair, record['hours'].toString()),
                   SizedBox(height: 10.h),
-                  Text("Services:",
-                      style: appStyleUniverse(18, kDark, FontWeight.bold)),
+                  Text(
+                    "Services:",
+                    style: appStyleUniverse(18, kDark, FontWeight.bold),
+                  ),
                   SizedBox(height: 8.h),
-                  ListView.separated(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: services.length,
-                    separatorBuilder: (context, index) => Divider(height: 24.h),
-                    itemBuilder: (context, index) {
-                      final service = services[index];
-                      final serviceName = service['serviceName'];
-                      final serviceType = service['type'];
-                      // final nextNotificationValue =
-                      //     service['nextNotificationValue'] ?? "N/A";
-                      final rawNotificationValue =
-                          service['nextNotificationValue'];
-                      var nextNotificationValue;
 
-                      if (rawNotificationValue != null &&
-                          rawNotificationValue != 0 &&
-                          rawNotificationValue != "0") {
-                        if (serviceType == 'day') {
-                          try {
-                            final parsedDate = DateFormat('dd/MM/yyyy')
-                                .parse(rawNotificationValue);
+                  /// Sort services by name
+                  Builder(builder: (context) {
+                    final sortedServices = [...services];
+                    sortedServices.sort((a, b) => (a['serviceName'] ?? '')
+                        .toString()
+                        .toLowerCase()
+                        .compareTo(
+                            (b['serviceName'] ?? '').toString().toLowerCase()));
+
+                    return ListView.separated(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: sortedServices.length,
+                      separatorBuilder: (context, index) =>
+                          Divider(height: 24.h),
+                      itemBuilder: (context, index) {
+                        final service = sortedServices[index];
+                        final serviceName = service['serviceName'];
+                        final serviceType = service['type'];
+                        final rawNotificationValue =
+                            service['nextNotificationValue'];
+                        var nextNotificationValue;
+
+                        if (rawNotificationValue != null &&
+                            rawNotificationValue != 0 &&
+                            rawNotificationValue != "0") {
+                          if (serviceType == 'day') {
+                            try {
+                              final parsedDate = DateFormat('dd/MM/yyyy')
+                                  .parse(rawNotificationValue);
+                              nextNotificationValue =
+                                  DateFormat('MM-dd-yyyy').format(parsedDate);
+                            } catch (e) {
+                              nextNotificationValue = "Invalid Date";
+                            }
+                          } else {
                             nextNotificationValue =
-                                DateFormat('MM-dd-yyyy').format(parsedDate);
-                          } catch (e) {
-                            nextNotificationValue = "Invalid Date";
+                                rawNotificationValue.toString();
                           }
-                        } else {
-                          nextNotificationValue =
-                              rawNotificationValue.toString();
                         }
-                      }
-                      final subServices = (service['subServices'] as List?)
-                              ?.map((s) => s['name'])
-                              .toList() ??
-                          [];
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.build_outlined,
-                                  size: 16, color: kSecondary),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text("$serviceName ",
+                        final subServices = (service['subServices'] as List?)
+                                ?.map((s) => s['name'])
+                                .toList() ??
+                            [];
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.build_outlined,
+                                    size: 16, color: kSecondary),
+                                SizedBox(width: 8.w),
+                                Expanded(
+                                  child: Text(
+                                    "$serviceName ",
                                     style: appStyleUniverse(
-                                        14, kDark, FontWeight.w500)),
-                              ),
-                              if (nextNotificationValue != null)
-                                Container(
-                                  padding:
-                                      EdgeInsets.symmetric(horizontal: 6.w),
-                                  decoration: BoxDecoration(
-                                    color: kPrimary.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.notifications_active_outlined,
-                                          size: 15, color: kPrimary),
-                                      SizedBox(width: 2.w),
-                                      Text("$nextNotificationValue",
-                                          style: appStyleUniverse(
-                                              14, kDark, FontWeight.w500)),
-                                    ],
+                                        14, kDark, FontWeight.w500),
                                   ),
                                 ),
-                            ],
-                          ),
-                          if (subServices.isNotEmpty)
-                            Padding(
-                              padding: EdgeInsets.only(left: 28.w, top: 4.h),
-                              child: Text(
+                                if (nextNotificationValue != null)
+                                  Container(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 6.w),
+                                    decoration: BoxDecoration(
+                                      color: kPrimary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                            Icons.notifications_active_outlined,
+                                            size: 15,
+                                            color: kPrimary),
+                                        SizedBox(width: 2.w),
+                                        Text(
+                                          "$nextNotificationValue",
+                                          style: appStyleUniverse(
+                                              14, kDark, FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (subServices.isNotEmpty)
+                              Padding(
+                                padding: EdgeInsets.only(left: 28.w, top: 4.h),
+                                child: Text(
                                   "Subservices: ${subServices.join(', ')}",
                                   style: appStyleUniverse(
-                                      14, kDarkGray, FontWeight.w400)),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
+                                      14, kDarkGray, FontWeight.w400),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    );
+                  }),
+
                   if (record["description"].isNotEmpty) ...[
                     Divider(height: 24.h),
                     buildInfoRow(
@@ -161,6 +187,134 @@ class RecordsDetailsScreen extends StatelessWidget {
           ),
         ),
       ),
+
+      // body: SingleChildScrollView(
+      //   padding: const EdgeInsets.all(16.0),
+      //   child: Container(
+      //     margin: EdgeInsets.symmetric(vertical: 8.h),
+      //     child: Card(
+      //       elevation: 0,
+      //       shape: RoundedRectangleBorder(
+      //         borderRadius: BorderRadius.circular(15.r),
+      //         side: BorderSide(
+      //           color: kPrimary.withOpacity(0.2),
+      //           width: 1,
+      //         ),
+      //       ),
+      //       child: Padding(
+      //         padding: EdgeInsets.all(16.w),
+      //         child: Column(
+      //           crossAxisAlignment: CrossAxisAlignment.start,
+      //           children: [
+      //             buildInfoRow(Icons.directions_car_outlined,
+      //                 '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
+      //             Divider(height: 24.h),
+      //             buildInfoRow(
+      //                 Icons.store_outlined, record['workshopName'] ?? 'N/A'),
+      //             Divider(height: 24.h),
+      //             vehicleType == "Truck"
+      //                 ? buildInfoRow(
+      //                     Icons.tire_repair, record['miles'].toString())
+      //                 : buildInfoRow(
+      //                     Icons.tire_repair, record['hours'].toString()),
+      //             SizedBox(height: 10.h),
+      //             Text("Services:",
+      //                 style: appStyleUniverse(18, kDark, FontWeight.bold)),
+      //             SizedBox(height: 8.h),
+      //             ListView.separated(
+      //               physics: const NeverScrollableScrollPhysics(),
+      //               shrinkWrap: true,
+      //               itemCount: services.length,
+      //               separatorBuilder: (context, index) => Divider(height: 24.h),
+      //               itemBuilder: (context, index) {
+      //                 final service = services[index];
+      //                 final serviceName = service['serviceName'];
+      //                 final serviceType = service['type'];
+      //                 // final nextNotificationValue =
+      //                 //     service['nextNotificationValue'] ?? "N/A";
+      //                 final rawNotificationValue =
+      //                     service['nextNotificationValue'];
+      //                 var nextNotificationValue;
+
+      //                 if (rawNotificationValue != null &&
+      //                     rawNotificationValue != 0 &&
+      //                     rawNotificationValue != "0") {
+      //                   if (serviceType == 'day') {
+      //                     try {
+      //                       final parsedDate = DateFormat('dd/MM/yyyy')
+      //                           .parse(rawNotificationValue);
+      //                       nextNotificationValue =
+      //                           DateFormat('MM-dd-yyyy').format(parsedDate);
+      //                     } catch (e) {
+      //                       nextNotificationValue = "Invalid Date";
+      //                     }
+      //                   } else {
+      //                     nextNotificationValue =
+      //                         rawNotificationValue.toString();
+      //                   }
+      //                 }
+      //                 final subServices = (service['subServices'] as List?)
+      //                         ?.map((s) => s['name'])
+      //                         .toList() ??
+      //                     [];
+
+      //                 return Column(
+      //                   crossAxisAlignment: CrossAxisAlignment.start,
+      //                   children: [
+      //                     Row(
+      //                       children: [
+      //                         Icon(Icons.build_outlined,
+      //                             size: 16, color: kSecondary),
+      //                         SizedBox(width: 8.w),
+      //                         Expanded(
+      //                           child: Text("$serviceName ",
+      //                               style: appStyleUniverse(
+      //                                   14, kDark, FontWeight.w500)),
+      //                         ),
+      //                         if (nextNotificationValue != null)
+      //                           Container(
+      //                             padding:
+      //                                 EdgeInsets.symmetric(horizontal: 6.w),
+      //                             decoration: BoxDecoration(
+      //                               color: kPrimary.withOpacity(0.1),
+      //                               borderRadius: BorderRadius.circular(12.r),
+      //                             ),
+      //                             child: Row(
+      //                               children: [
+      //                                 Icon(Icons.notifications_active_outlined,
+      //                                     size: 15, color: kPrimary),
+      //                                 SizedBox(width: 2.w),
+      //                                 Text("$nextNotificationValue",
+      //                                     style: appStyleUniverse(
+      //                                         14, kDark, FontWeight.w500)),
+      //                               ],
+      //                             ),
+      //                           ),
+      //                       ],
+      //                     ),
+      //                     if (subServices.isNotEmpty)
+      //                       Padding(
+      //                         padding: EdgeInsets.only(left: 28.w, top: 4.h),
+      //                         child: Text(
+      //                             "Subservices: ${subServices.join(', ')}",
+      //                             style: appStyleUniverse(
+      //                                 14, kDarkGray, FontWeight.w400)),
+      //                       ),
+      //                   ],
+      //                 );
+      //               },
+      //             ),
+      //             if (record["description"].isNotEmpty) ...[
+      //               Divider(height: 24.h),
+      //               buildInfoRow(
+      //                   Icons.description_outlined, record['description']),
+      //             ],
+      //           ],
+      //         ),
+      //       ),
+      //     ),
+      //   ),
+      // ),
     );
   }
 

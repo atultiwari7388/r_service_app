@@ -707,6 +707,8 @@ class _EditTeamMemberState extends State<EditTeamMember> {
 
     // Remove unselected vehicles
     for (String vehicleId in toRemove) {
+      // First delete the DataServices documents
+      await _deleteVehicleDataServices(vehicleId);
       await _firestore
           .collection('Users')
           .doc(widget.memberId)
@@ -736,6 +738,30 @@ class _EditTeamMemberState extends State<EditTeamMember> {
           'assigned_at': DateTime.now(),
         });
       }
+    }
+  }
+
+  Future<void> _deleteVehicleDataServices(String vehicleId) async {
+    try {
+      // Get all DataServices documents for this vehicle
+      QuerySnapshot dataServicesSnapshot = await _firestore
+          .collection('Users')
+          .doc(widget.memberId)
+          .collection('DataServices')
+          .where('vehicleId', isEqualTo: vehicleId)
+          .get();
+
+      // Delete all matching documents in a batch
+      WriteBatch batch = _firestore.batch();
+      for (var doc in dataServicesSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+      log('Deleted ${dataServicesSnapshot.docs.length} DataServices documents for vehicle $vehicleId');
+    } catch (e) {
+      log('Error deleting DataServices for vehicle $vehicleId: $e');
+      throw Exception('Failed to clean up vehicle data');
     }
   }
 

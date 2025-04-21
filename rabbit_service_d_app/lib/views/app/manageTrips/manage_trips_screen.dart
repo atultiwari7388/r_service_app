@@ -862,7 +862,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       child: Column(
                                         children: [
                                           Text(
-                                            'Total Loads',
+                                            role == "Owner"
+                                                ? 'Total Loads'
+                                                : 'Total Earnings',
                                             style: appStyle(
                                                 16, kWhite, FontWeight.w500),
                                           ),

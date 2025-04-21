@@ -1130,8 +1130,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       onChanged: (value) {
                                         setState(() {
                                           selectedVehicle = value;
-                                          selectedServices
-                                              .clear(); // Clear selected services when vehicle changes
+                                          selectedServices.clear();
                                           updateSelectedVehicleAndService();
                                         });
                                       },
@@ -1340,8 +1339,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           onChanged: (value) {
                                             setState(() {
                                               selectedVehicle = value;
-                                              selectedServices
-                                                  .clear(); // Clear selected services when vehicle changes
+                                              selectedServices.clear();
                                               updateSelectedVehicleAndService();
                                             });
                                           },
@@ -1819,7 +1817,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   SizedBox(height: 16.h),
 
                                   // Dynamically show input field based on vehicle type
-                                  if (selectedVehicleType == 'Truck') ...[
+                                  if (selectedVehicle != null &&
+                                      selectedVehicleData?['vehicleType'] ==
+                                          'Truck') ...[
                                     TextField(
                                       controller: todayMilesController,
                                       decoration: InputDecoration(
@@ -1830,7 +1830,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       ),
                                       keyboardType: TextInputType.number,
                                     ),
-                                  ] else if (selectedVehicleType ==
+                                  ] else if (selectedVehicleData?[
+                                          'vehicleType'] ==
                                       'Trailer') ...[
                                     TextField(
                                       controller: todayMilesController,

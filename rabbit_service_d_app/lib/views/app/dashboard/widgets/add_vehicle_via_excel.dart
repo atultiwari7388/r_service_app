@@ -245,6 +245,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                   'nextNotificationValue': service['nextNotificationValue'],
                   'serviceId': service['serviceId'],
                   'serviceName': service['serviceName'],
+                  'type': service['type'],
                   'subServices': service['subServices'],
                 })
             .toList(),
@@ -256,9 +257,10 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           'currentMiles': data['currentMiles'].toString(),
           'prevMilesValue': data['currentMiles'].toString(),
           'firstTimeMiles': data['currentMiles'].toString(),
-          'oilChangeDate': '',
+          'oilChangeDate': '2025-04-12',
           'hoursReading': '',
           'prevHoursReadingValue': '',
+          'hoursReadingArray': [],
         });
       } else {
         vehicleData.addAll({
