@@ -1830,9 +1830,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       ),
                                       keyboardType: TextInputType.number,
                                     ),
-                                  ] else if (selectedVehicleData?[
-                                          'vehicleType'] ==
-                                      'Trailer') ...[
+                                  ] else if (selectedVehicle != null &&
+                                      selectedVehicleData?['vehicleType'] ==
+                                          'Trailer') ...[
                                     TextField(
                                       controller: todayMilesController,
                                       decoration: InputDecoration(
@@ -2715,8 +2715,44 @@ class _ReportsScreenState extends State<ReportsScreen>
     });
   }
 
+  // Future<void> _refreshPage() async {
+  //   await Future.delayed(Duration(seconds: 2));
+  // }
+
   Future<void> _refreshPage() async {
-    await Future.delayed(Duration(seconds: 2));
+    try {
+      resetForm();
+      resetFilters();
+
+      setState(() {
+        showAddRecords = false;
+        showSearchFilter = false;
+        showAddMiles = false;
+        showVehicleSearch = false;
+        showServiceSearch = false;
+        showDateSearch = false;
+        showCombinedSearch = false;
+      });
+
+      if (mounted) setState(() {});
+
+      await Future.delayed(Duration(milliseconds: 500));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Page refreshed'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Refresh error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Refresh failed'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   @override
@@ -2738,175 +2774,3 @@ class _ReportsScreenState extends State<ReportsScreen>
     super.dispose();
   }
 }
-
-// Future<void> handleSaveRecords() async {
-//   try {
-//     if (selectedVehicle == null || selectedServices.isEmpty) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         const SnackBar(
-//           content: Text('Please select a vehicle and at least one service'),
-//         ),
-//       );
-//       return;
-//     }
-//
-//     final dataServicesRef =
-//         FirebaseFirestore.instance.collection("DataServicesRecords");
-//
-//     final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
-//
-//     final currentMiles = int.tryParse(milesController.text) ?? 0;
-//
-//     List<Map<String, dynamic>> servicesData = [];
-//     List<Map<String, dynamic>> notificationData = [];
-//     List<int> allNextNotificationValues = [];
-//
-//     for (var serviceId in selectedServices) {
-//       final service = services.firstWhere(
-//         (s) => s['sId'] == serviceId,
-//         orElse: () => {},
-//       );
-//
-//       if (service == null) {
-//         debugPrint('Service with ID $serviceId not found.');
-//         continue; // Skip this iteration if service is not found
-//       }
-//
-//       final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-//       final nextNotificationValue =
-//           defaultValue == 0 ? 0 : currentMiles + defaultValue;
-//
-//       servicesData.add({
-//         "serviceId": serviceId,
-//         "serviceName": service['sName'],
-//         "defaultNotificationValue": defaultValue,
-//         "nextNotificationValue": nextNotificationValue,
-//         "subServices": selectedSubServices[serviceId]
-//                 ?.map((subService) => {
-//                       "name": subService,
-//                       "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
-//                     })
-//                 .toList() ??
-//             [],
-//       });
-//
-//       notificationData.add({
-//         "serviceName": service['sName'],
-//         "nextNotificationValue": nextNotificationValue,
-//         "subServices": selectedSubServices[serviceId] ?? [],
-//       });
-//     }
-//
-//     final recordData = {
-//       "active":true,
-//       "userId": currentUId,
-//       "vehicleId": selectedVehicle,
-//       "vehicleDetails": {
-//         ...selectedVehicleData!,
-//         "currentMiles": currentMiles.toString(),
-//         "nextNotificationMiles": notificationData,
-//       },
-//       "services": servicesData,
-//       "invoice": invoiceController.text,
-//       "invoiceAmount": invoiceAmountController.text,
-//       "description": descriptionController.text.toString(),
-//       'currentMilesArray': FieldValue.arrayUnion([
-//         {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-//       ]),
-//       "allNextNotificationValues": allNextNotificationValues,
-//       "totalMiles": currentMiles,
-//       "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-//               selectedServiceData.any((s) => s['vType'] == "Truck")
-//           ? currentMiles
-//           : 0,
-//       "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-//               selectedServiceData.any((s) => s['vType'] == "Trailer")
-//           ? int.tryParse(hoursController.text) ?? 0
-//           : 0,
-//       "date":
-//           selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
-//       "workshopName": workshopController.text,
-//       "createdAt": DateTime.now().toIso8601String(),
-//     };
-//
-//     final batch = FirebaseFirestore.instance.batch();
-//     final ownerDataServicesRef = FirebaseFirestore.instance
-//         .collection('Users')
-//         .doc(currentUId)
-//         .collection('DataServices');
-//     batch.set(ownerDataServicesRef.doc(docId), recordData);
-//
-//     // Query Team Members (Drivers/Managers)
-//     final teamMembersSnapshot = await FirebaseFirestore.instance
-//         .collection('Users')
-//         .where('createdBy', isEqualTo: currentUId)
-//         .where('isTeamMember', isEqualTo: true)
-//         .get();
-//
-//     // Save to Team Members' DataServices
-//     for (final doc in teamMembersSnapshot.docs) {
-//       final teamMemberUid = doc.id;
-//       final teamMemberDataServicesRef = FirebaseFirestore.instance
-//           .collection('Users')
-//           .doc(teamMemberUid)
-//           .collection('DataServices');
-//       batch.set(teamMemberDataServicesRef.doc(docId), recordData);
-//     }
-//
-//     // Handle Team Member Creating Record (Save to Owner)
-//     final currentUserDoc = await FirebaseFirestore.instance
-//         .collection('Users')
-//         .doc(currentUId)
-//         .get();
-//
-//     if (currentUserDoc.data()?['isTeamMember'] == true) {
-//       final ownerSnapshot = await FirebaseFirestore.instance
-//           .collection('Users')
-//           .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
-//           .get();
-//
-//       if (ownerSnapshot.docs.isNotEmpty) {
-//         final ownerUid = ownerSnapshot.docs.first.id;
-//         final ownerDataServicesRef = FirebaseFirestore.instance
-//             .collection('Users')
-//             .doc(ownerUid)
-//             .collection('DataServices');
-//         batch.set(ownerDataServicesRef.doc(docId), recordData);
-//       }
-//     }
-//
-//     // Update Vehicle
-//     final vehicleRef = FirebaseFirestore.instance
-//         .collection('Users')
-//         .doc(currentUId)
-//         .collection('Vehicles')
-//         .doc(selectedVehicle);
-//
-//     batch.update(vehicleRef, {
-//       'currentMiles': currentMiles.toString(),
-//       'currentMilesArray': FieldValue.arrayUnion([
-//         {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-//       ]),
-//       'nextNotificationMiles': notificationData,
-//     });
-//
-//     await batch.commit();
-//
-//     resetForm();
-//
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(
-//         content: Text(isEditing
-//             ? 'Record updated successfully'
-//             : 'Record saved successfully'),
-//       ),
-//     );
-//   } catch (e, stackTrace) {
-//     debugPrint('Error Saving records: ${e.toString()}');
-//     debugPrint(stackTrace.toString());
-//
-//     ScaffoldMessenger.of(context).showSnackBar(
-//       SnackBar(content: Text('Error saving records: ${e.toString()}')),
-//     );
-//   }
-// }
