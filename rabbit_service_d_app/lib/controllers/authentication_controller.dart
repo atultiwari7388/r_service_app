@@ -55,6 +55,7 @@ class AuthController extends GetxController {
     '1 to 100',
     '1 to 200',
     '1 to 500',
+    'above 500'
   ];
 
 //========================== Create account with email and password =================
