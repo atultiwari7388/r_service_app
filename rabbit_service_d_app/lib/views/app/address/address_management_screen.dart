@@ -76,11 +76,12 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Future<void> selectAddressFromMap() async {
     LatLng? selectedLocation = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => SelectLocationScreen(
-          userLat: widget.userLat,
-          userLng: widget.userLng,
-        ),
-      ),
+          builder: (context) =>
+              // SelectLocationScreen(
+              //   userLat: widget.userLat,
+              //   userLng: widget.userLng,
+              // ),
+              Container()),
     );
 
     if (selectedLocation != null) {

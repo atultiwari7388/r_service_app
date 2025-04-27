@@ -768,6 +768,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         .collection("Users")
                         .doc(currentUId)
                         .collection('trips')
+                        .orderBy("createdAt", descending: false)
                         .snapshots(),
                     builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                       if (!snapshot.hasData) {

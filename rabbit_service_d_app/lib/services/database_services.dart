@@ -17,6 +17,9 @@ class DatabaseServices {
     String phoneNumber,
     String address,
     String companyName,
+    String city,
+    String state,
+    String country,
     String selectedVehicleRange,
   ) async {
     return fireStoreDatabase.doc(uid!).set({
@@ -27,9 +30,9 @@ class DatabaseServices {
       "email": emailAddress, //email address
       "email2": "",
       "address": address, //address
-      "city": "", //city
-      "state": "", //state
-      "country": "", //country
+      "city": city, //city
+      "state": state, //state
+      "country": country, //country
       "postalCode": "", //postal code
       "licNumber": "", //license number
       "licExpDate": DateTime.now().toString(), //license expiry date

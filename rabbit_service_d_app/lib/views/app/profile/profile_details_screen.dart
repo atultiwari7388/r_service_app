@@ -48,6 +48,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     '1 to 100',
     '1 to 200',
     '1 to 500',
+    'above 500'
   ];
 
   File? _image;

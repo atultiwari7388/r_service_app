@@ -695,6 +695,53 @@ class _EditTeamMemberState extends State<EditTeamMember> {
     }
   }
 
+  // Future<void> _updateVehicleAssignments() async {
+  //   List<dynamic> currentVehicleIds =
+  //       memberVehicles.map((v) => v['id']).toList();
+  //   List<dynamic> toRemove = currentVehicleIds
+  //       .where((id) => !selectedVehicles.contains(id))
+  //       .toList();
+  //   List<dynamic> toAdd = selectedVehicles
+  //       .where((id) => !currentVehicleIds.contains(id))
+  //       .toList();
+
+  //   // Remove unselected vehicles
+  //   for (String vehicleId in toRemove) {
+  //     // First delete the DataServices documents
+  //     await _deleteVehicleDataServices(vehicleId);
+  //     await _firestore
+  //         .collection('Users')
+  //         .doc(widget.memberId)
+  //         .collection('Vehicles')
+  //         .doc(vehicleId)
+  //         .delete();
+  //   }
+
+  //   // Add new vehicles
+  //   for (String vehicleId in toAdd) {
+  //     DocumentSnapshot vehicleDoc = await _firestore
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('Vehicles')
+  //         .doc(vehicleId)
+  //         .get();
+
+  //     if (vehicleDoc.exists) {
+  //       final Map<String, dynamic> vehicleData =
+  //           vehicleDoc.data() as Map<String, dynamic>;
+  //       await _firestore
+  //           .collection('Users')
+  //           .doc(widget.memberId)
+  //           .collection('Vehicles')
+  //           .doc(vehicleId)
+  //           .set({
+  //         ...vehicleData,
+  //         'assigned_at': DateTime.now(),
+  //       });
+  //     }
+  //   }
+  // }
+
   Future<void> _updateVehicleAssignments() async {
     List<dynamic> currentVehicleIds =
         memberVehicles.map((v) => v['id']).toList();
@@ -719,6 +766,7 @@ class _EditTeamMemberState extends State<EditTeamMember> {
 
     // Add new vehicles
     for (String vehicleId in toAdd) {
+      // Step 1: Copy the Vehicle document
       DocumentSnapshot vehicleDoc = await _firestore
           .collection('Users')
           .doc(currentUId)
@@ -727,16 +775,44 @@ class _EditTeamMemberState extends State<EditTeamMember> {
           .get();
 
       if (vehicleDoc.exists) {
+        final Map<String, dynamic> vehicleData =
+            vehicleDoc.data() as Map<String, dynamic>;
+
         await _firestore
             .collection('Users')
             .doc(widget.memberId)
             .collection('Vehicles')
             .doc(vehicleId)
             .set({
-          'companyName': vehicleDoc['companyName'],
-          'vehicleNumber': vehicleDoc['vehicleNumber'],
-          'assigned_at': DateTime.now(),
+          ...vehicleData,
+          'assigned_at': FieldValue.serverTimestamp(),
         });
+      }
+
+      // Step 2: Also copy all related DataServices
+      QuerySnapshot dataServicesSnapshot = await _firestore
+          .collection('Users')
+          .doc(currentUId)
+          .collection('DataServices')
+          .where('vehicleId', isEqualTo: vehicleId)
+          .get();
+
+      WriteBatch batch = _firestore.batch();
+
+      for (var doc in dataServicesSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        DocumentReference newDocRef = _firestore
+            .collection('Users')
+            .doc(widget.memberId)
+            .collection('DataServices')
+            .doc(doc.id);
+
+        batch.set(newDocRef, data);
+      }
+
+      if (dataServicesSnapshot.docs.isNotEmpty) {
+        await batch.commit();
       }
     }
   }

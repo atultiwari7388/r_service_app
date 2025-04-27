@@ -18,6 +18,9 @@ class AuthController extends GetxController {
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _countryController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _vehicleRangeController = TextEditingController();
@@ -39,6 +42,12 @@ class AuthController extends GetxController {
   TextEditingController get emailController => _emailController;
 
   TextEditingController get addressController => _addressController;
+
+  TextEditingController get cityController => _addressController;
+
+  TextEditingController get countryController => _addressController;
+
+  TextEditingController get stateController => _addressController;
 
   TextEditingController get phoneNumberController => _phoneNumberController;
 
@@ -73,6 +82,9 @@ class AuthController extends GetxController {
         _phoneNumberController.text,
         _addressController.text,
         _companyNameController.text,
+        _cityController.text,
+        _stateController.text,
+        _countryController.text,
         selectedVehicleRange.value,
       );
 
@@ -228,6 +240,10 @@ class AuthController extends GetxController {
     _addressController.dispose();
     _phoneNumberController.dispose();
     _passController.dispose();
+    _companyNameController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _countryController.dispose();
     super.onClose();
   }
 }

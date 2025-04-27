@@ -591,11 +591,27 @@ class _ReportsScreenState extends State<ReportsScreen>
       // Save to Team Members' DataServices
       for (final doc in teamMembersSnapshot.docs) {
         final teamMemberUid = doc.id;
-        final teamMemberDataServicesRef = FirebaseFirestore.instance
+
+        // Check if team member has a vehicle with the same ID
+        final vehicleSnapshot = await FirebaseFirestore.instance
             .collection('Users')
             .doc(teamMemberUid)
-            .collection('DataServices');
-        batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+            .collection('Vehicles')
+            .doc(selectedVehicle)
+            .get();
+
+        if (vehicleSnapshot.exists) {
+          final teamMemberDataServicesRef = FirebaseFirestore.instance
+              .collection('Users')
+              .doc(teamMemberUid)
+              .collection('DataServices');
+          batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+        }
+        // final teamMemberDataServicesRef = FirebaseFirestore.instance
+        //     .collection('Users')
+        //     .doc(teamMemberUid)
+        //     .collection('DataServices');
+        // batch.set(teamMemberDataServicesRef.doc(docId), recordData);
       }
 
       // Handle Team Member Creating Record (Save to Owner)
@@ -1725,7 +1741,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             14, kDark, FontWeight.normal),
                                         border: OutlineInputBorder(),
                                       ),
-                                      keyboardType: TextInputType.streetAddress,
+                                      keyboardType: TextInputType.number,
                                     ),
                                   ),
                                   SizedBox(height: 10.h),
@@ -1810,6 +1826,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         selectedVehicle = value;
                                         selectedServices.clear();
                                         updateSelectedVehicleAndService();
+                                        selectedVehicleType =
+                                            selectedVehicleData?['vehicleType'];
                                       });
                                     },
                                   ),
@@ -2041,7 +2059,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     },
                                     color: kPrimary,
                                     text:
-                                        'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
+                                        'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
                                   ),
                                 ],
                               ),
@@ -2723,6 +2741,7 @@ class _ReportsScreenState extends State<ReportsScreen>
     try {
       resetForm();
       resetFilters();
+      initializeStreams();
 
       setState(() {
         showAddRecords = false;

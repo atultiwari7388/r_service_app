@@ -101,10 +101,10 @@ class PushNotification {
     // iOS Initialization Settings
     final DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-      onDidReceiveLocalNotification: (id, title, body, payload) async {
-        // Handle iOS local notification
-      },
-    );
+            // onDidReceiveLocalNotification: (id, title, body, payload) async {
+            //   // Handle iOS local notification
+            // },
+            );
 
     // Linux Initialization Settings
     final LinuxInitializationSettings initializationSettingsLinux =

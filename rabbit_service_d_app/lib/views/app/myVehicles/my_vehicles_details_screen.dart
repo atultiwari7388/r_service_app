@@ -664,9 +664,17 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
   Widget _buildServicesTable(
       BuildContext context, List services, String vehicleId) {
+    // final filteredServices = services
+    //     .where((service) => service['nextNotificationValue'] != 0)
+    //     .toList();
+
     final filteredServices = services
         .where((service) => service['nextNotificationValue'] != 0)
-        .toList();
+        .toList()
+      ..sort((a, b) => (a['serviceName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['serviceName'] ?? '').toString().toLowerCase()));
 
     if (filteredServices.isEmpty) {
       return Center(
@@ -765,15 +773,39 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             ')',
                   ),
 
+                  // TableCell(
+                  //   child: Container(
+                  //     padding: const EdgeInsets.all(2.0),
+                  //     child: service['type'] == 'day'
+                  //         ? SizedBox()
+                  //         : service['type'] == 'hours'
+                  //             ? SizedBox()
+                  //             : service['type'] == 'reading'
+                  //                 ? IconButton(
+                  //                     icon: const Icon(Icons.edit,
+                  //                         color: kPrimary, size: 20),
+                  //                     onPressed: () {
+                  //                       _showEditDialog(
+                  //                           context, service, vehicleId);
+                  //                     },
+                  //                   )
+                  //                 : SizedBox(),
+                  //   ),
+                  // ),
+
                   TableCell(
                     child: Container(
                       padding: const EdgeInsets.all(2.0),
-                      child: IconButton(
-                        icon: const Icon(Icons.edit, color: kPrimary, size: 20),
-                        onPressed: () {
-                          _showEditDialog(context, service, vehicleId);
-                        },
-                      ),
+                      child: (service['type'] == 'hours' ||
+                              service['type'] == 'reading')
+                          ? IconButton(
+                              icon: const Icon(Icons.edit,
+                                  color: kPrimary, size: 20),
+                              onPressed: () {
+                                _showEditDialog(context, service, vehicleId);
+                              },
+                            )
+                          : const SizedBox(),
                     ),
                   ),
                 ],
