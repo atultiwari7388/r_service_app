@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,6 +28,8 @@ class MyVehiclesDetailsScreen extends StatefulWidget {
 }
 
 class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   final List<Map<String, dynamic>> uploadedFiles = [];
   final ImagePicker _imagePicker = ImagePicker();
   bool isLoading = false;

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:intl/intl.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
@@ -24,6 +23,8 @@ class EditTeamMember extends StatefulWidget {
 }
 
 class _EditTeamMemberState extends State<EditTeamMember> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   // Controllers
   TextEditingController nameController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -135,6 +136,28 @@ class _EditTeamMemberState extends State<EditTeamMember> {
     }
   }
 
+  // Future<void> fetchOwnerVehiclesDetails() async {
+  //   try {
+  //     QuerySnapshot vehiclesSnapshot = await _firestore
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('Vehicles')
+  //         .get();
+
+  //     ownerVehicles = vehiclesSnapshot.docs.map((doc) {
+  //       return {
+  //         'id': doc.id,
+  //         'companyName': doc['companyName'],
+  //         'vehicleNumber': doc['vehicleNumber'],
+  //       };
+  //     }).toList();
+
+  //     setState(() {});
+  //   } catch (e) {
+  //     log("Error fetching owner vehicles: $e");
+  //   }
+  // }
+
   Future<void> fetchOwnerVehiclesDetails() async {
     try {
       QuerySnapshot vehiclesSnapshot = await _firestore
@@ -143,17 +166,27 @@ class _EditTeamMemberState extends State<EditTeamMember> {
           .collection('Vehicles')
           .get();
 
+      // Store fetched vehicle details into the list and sort alphabetically by vehicleNumber
       ownerVehicles = vehiclesSnapshot.docs.map((doc) {
         return {
           'id': doc.id,
           'companyName': doc['companyName'],
+          'licensePlate': doc['licensePlate'],
           'vehicleNumber': doc['vehicleNumber'],
+          'year': doc['year'],
+          'vin': doc['vin'],
+          'isSet': doc['isSet']
         };
       }).toList();
 
-      setState(() {});
+      // Sort vehicles alphabetically by vehicleNumber
+      ownerVehicles.sort((a, b) => (a['vehicleNumber'] as String)
+          .toLowerCase()
+          .compareTo((b['vehicleNumber'] as String).toLowerCase()));
+
+      setState(() {}); // Update the UI after fetching vehicles
     } catch (e) {
-      log("Error fetching owner vehicles: $e");
+      log("Error fetching user vehicles: $e");
     }
   }
 
@@ -338,8 +371,9 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                           : Column(
                               children: ownerVehicles.map((vehicle) {
                                 return CheckboxListTile(
-                                  title: Text(
-                                      "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
+                                  // title: Text(
+                                  //     "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
+                                  title: Text("${vehicle['vehicleNumber']}"),
                                   value:
                                       selectedVehicles.contains(vehicle['id']),
                                   onChanged: (bool? selected) {
@@ -385,34 +419,72 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                     SizedBox(height: 15.h),
 
                     //record access
-                    Text(
-                      "Assign Cheque Access",
-                      style: appStyle(16, Colors.black, FontWeight.bold),
-                    ),
-                    SizedBox(height: 10.h),
-                    Divider(),
+                    // Text(
+                    //   "Assign Cheque Access",
+                    //   style: appStyle(16, Colors.black, FontWeight.bold),
+                    // ),
+                    // SizedBox(height: 10.h),
+                    // Divider(),
 
-                    Column(
-                      children: chequeAccessCheckBox.map((chequeAccess) {
-                        return CheckboxListTile(
-                          title: Text(chequeAccess),
-                          value: selectedChequeAccess
-                              .contains(chequeAccess), // Check if selected
-                          onChanged: (bool? selected) {
-                            setState(() {
-                              if (selected == true) {
-                                selectedChequeAccess
-                                    .add(chequeAccess); // Add to list
-                                print(selectedRecordAccess);
-                              } else {
-                                selectedChequeAccess
-                                    .remove(chequeAccess); // Remove from list
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
+                    // Column(
+                    //   children: chequeAccessCheckBox.map((chequeAccess) {
+                    //     return CheckboxListTile(
+                    //       title: Text(chequeAccess),
+                    //       value: selectedChequeAccess
+                    //           .contains(chequeAccess), // Check if selected
+                    //       onChanged: (bool? selected) {
+                    //         setState(() {
+                    //           if (selected == true) {
+                    //             selectedChequeAccess
+                    //                 .add(chequeAccess); // Add to list
+                    //             print(selectedRecordAccess);
+                    //           } else {
+                    //             selectedChequeAccess
+                    //                 .remove(chequeAccess); // Remove from list
+                    //           }
+                    //         });
+                    //       },
+                    //     );
+                    //   }).toList(),
+                    // ),
+
+                    if (selectedRole == "Manager" ||
+                        selectedRole == "Accountant") ...[
+                      Column(
+                        children: [
+                          //cheque access
+                          Text(
+                            "Assign Cheque Access",
+                            style: appStyle(16, Colors.black, FontWeight.bold),
+                          ),
+                          SizedBox(height: 10.h),
+                          Divider(),
+
+                          Column(
+                            children: chequeAccessCheckBox.map((chequeAccess) {
+                              return CheckboxListTile(
+                                title: Text(chequeAccess),
+                                value: selectedChequeAccess.contains(
+                                    chequeAccess), // Check if selected
+                                onChanged: (bool? selected) {
+                                  setState(() {
+                                    if (selected == true) {
+                                      selectedChequeAccess
+                                          .add(chequeAccess); // Add to list
+                                      print(selectedRecordAccess);
+                                    } else {
+                                      selectedChequeAccess.remove(
+                                          chequeAccess); // Remove from list
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ],
+
                     SizedBox(height: 15.h),
                     // Per mile charge (only for drivers)
                     if (selectedRole == "Driver") ...[

@@ -8,6 +8,8 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/controllers/authentication_controller.dart';
 import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/controllers/tab_index_controller.dart';
+import 'package:regal_service_d_app/services/userRoleService.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
@@ -37,6 +39,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late String role = "";
   final _firebaseAuth = FirebaseAuth.instance;
+  final userService = UserService.to;
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   Future<void> fetchUserDetails() async {
     try {
@@ -190,43 +194,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
-                    buildListTile("assets/out_bw.png", "Logout", () {
-                      showDialog<void>(
-                        context: context,
-                        barrierDismissible: true,
-                        builder: (BuildContext dialogContext) {
-                          return AlertDialog(
-                            title: Text('Logout'),
-                            content: Text(
-                                'Are you sure you want to log out from this account'),
-                            actions: <Widget>[
-                              TextButton(
-                                  child: Text('Yes',
-                                      style: appStyle(
-                                          15, kSecondary, FontWeight.normal)),
-                                  // onPressed: () {
-                                  //   // logOutUser(context);
+                    // buildListTile("assets/out_bw.png", "Logout", () {
+                    //   showDialog<void>(
+                    //     context: context,
+                    //     barrierDismissible: true,
+                    //     builder: (BuildContext dialogContext) {
+                    //       return AlertDialog(
+                    //         title: Text('Logout'),
+                    //         content: Text(
+                    //             'Are you sure you want to log out from this account'),
+                    //         actions: <Widget>[
+                    //           TextButton(
+                    //               child: Text('Yes',
+                    //                   style: appStyle(
+                    //                       15, kSecondary, FontWeight.normal)),
+                    //               // onPressed: () {
+                    //               //   // logOutUser(context);
+                    //               // },
+                    //               onPressed: () async {
+                    //                 await signOut();
+                    //                 Navigator.pushAndRemoveUntil(
+                    //                   context,
+                    //                   MaterialPageRoute(
+                    //                       builder: (BuildContext context) =>
+                    //                           const OnBoardingScreen()),
+                    //                   (Route<dynamic> route) => false,
+                    //                 );
+                    //               }),
+                    //           TextButton(
+                    //               onPressed: () => Navigator.pop(context),
+                    //               child: Text("No",
+                    //                   style: appStyle(
+                    //                       15, kPrimary, FontWeight.normal)))
+                    //         ],
+                    //       );
+                    //     },
+                    //   );
+                    // })
+
+                    buildListTile(
+                      "assets/out_bw.png",
+                      "Logout",
+                      () {
+                        showDialog<void>(
+                          context: context,
+                          barrierDismissible: true,
+                          builder: (BuildContext dialogContext) {
+                            return AlertDialog(
+                              title: const Text('Logout'),
+                              content: const Text(
+                                  'Are you sure you want to log out from this account'),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text(
+                                    'Yes',
+                                    style: appStyle(
+                                        15, kSecondary, FontWeight.normal),
+                                  ),
+                                  // onPressed: () async {
+                                  //   try {
+                                  //     // Get the auth controller
+                                  //     final authController =
+                                  //         Get.put(AuthController());
+
+                                  //     // Show loading indicator
+                                  //     Get.dialog(
+                                  //       const Center(
+                                  //           child: CircularProgressIndicator()),
+                                  //       barrierDismissible: false,
+                                  //     );
+
+                                  //     // Perform logout operations
+                                  //     await authController.signOut();
+                                  //     authController.clearUserData();
+
+                                  //     // Close all dialogs
+                                  //     Get.back();
+                                  //     Get.back();
+
+                                  //     Get.offAll(
+                                  //         () => const OnBoardingScreen());
+                                  //     log("User signed out successfully userid : $currentUId");
+                                  //   } catch (e) {
+                                  //     // Close dialogs if error occurs
+                                  //     Get.back();
+                                  //     Get.back();
+
+                                  //     // Show error message
+                                  //     showToastMessage(
+                                  //       "Logout Error",
+                                  //       "An error occurred during logout. Please try again.",
+                                  //       Colors.red,
+                                  //     );
+
+                                  //     if (kDebugMode) {
+                                  //       print("Logout error: $e");
+                                  //     }
+                                  //   }
                                   // },
                                   onPressed: () async {
-                                    await signOut();
-                                    Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (BuildContext context) =>
-                                              const OnBoardingScreen()),
-                                      (Route<dynamic> route) => false,
-                                    );
-                                  }),
-                              TextButton(
+                                    try {
+                                      await userService.signOut();
+                                      log("User signed out successfully userid : $currentUId");
+                                    } catch (e) {
+                                      log("Error signing out: $e");
+                                    }
+                                  },
+                                ),
+                                TextButton(
                                   onPressed: () => Navigator.pop(context),
-                                  child: Text("No",
-                                      style: appStyle(
-                                          15, kPrimary, FontWeight.normal)))
-                            ],
-                          );
-                        },
-                      );
-                    })
+                                  child: Text(
+                                    "No",
+                                    style: appStyle(
+                                        15, kPrimary, FontWeight.normal),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    )
                   ],
                 ),
               ),

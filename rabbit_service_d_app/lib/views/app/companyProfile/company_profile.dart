@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
@@ -17,7 +18,8 @@ class _CompanyProfileScreenState extends State<CompanyProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  String userId = currentUId;
+  // String userId = currentUId;
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void dispose() {

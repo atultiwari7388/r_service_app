@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -32,6 +33,8 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen>
     with SingleTickerProviderStateMixin {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   // State variables
   String? selectedVehicle;
   Set<String> selectedPackages = {}; // Changed to Set for multiple selections
@@ -1865,6 +1868,204 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   SizedBox(height: 16.h),
 
                                   // Save Button
+                                  // CustomButton(
+                                  //   onPress: () async {
+                                  //     if (selectedVehicle != null &&
+                                  //         todayMilesController
+                                  //             .text.isNotEmpty) {
+                                  //       try {
+                                  //         final int enteredValue = int.parse(
+                                  //             todayMilesController.text);
+                                  //         final vehicleId = selectedVehicle;
+
+                                  //         // Check if DataServices subcollection exists and is not empty
+                                  //         final dataServicesSnapshot =
+                                  //             await FirebaseFirestore.instance
+                                  //                 .collection("Users")
+                                  //                 .doc(currentUId)
+                                  //                 .collection("DataServices")
+                                  //                 .where("vehicleId",
+                                  //                     isEqualTo: vehicleId)
+                                  //                 .get();
+
+                                  //         // Fetch current reading (Miles/Hours) for the selected vehicle
+                                  //         final vehicleDoc =
+                                  //             await FirebaseFirestore.instance
+                                  //                 .collection("Users")
+                                  //                 .doc(currentUId)
+                                  //                 .collection("Vehicles")
+                                  //                 .doc(vehicleId)
+                                  //                 .get();
+
+                                  //         if (vehicleDoc.exists) {
+                                  //           final int currentReading =
+                                  //               int.parse(
+                                  //             vehicleDoc[selectedVehicleType ==
+                                  //                         'Truck'
+                                  //                     ? 'currentMiles'
+                                  //                     : 'hoursReading'] ??
+                                  //                 '0',
+                                  //           );
+
+                                  //           final data = {
+                                  //             selectedVehicleType == 'Truck'
+                                  //                     ? "prevMilesValue"
+                                  //                     : "prevHoursReadingValue":
+                                  //                 currentReading.toString(),
+                                  //             selectedVehicleType == 'Truck'
+                                  //                     ? "currentMiles"
+                                  //                     : "hoursReading":
+                                  //                 enteredValue.toString(),
+                                  //             selectedVehicleType == 'Truck'
+                                  //                     ? "miles"
+                                  //                     : "hoursReading":
+                                  //                 enteredValue.toString(),
+                                  //             selectedVehicleType == 'Truck'
+                                  //                     ? 'currentMilesArray'
+                                  //                     : 'hoursReadingArray':
+                                  //                 FieldValue.arrayUnion([
+                                  //               {
+                                  //                 selectedVehicleType == 'Truck'
+                                  //                     ? "miles"
+                                  //                     : "hours": enteredValue,
+                                  //                 "date": DateTime.now()
+                                  //                     .toIso8601String(),
+                                  //               }
+                                  //             ]),
+                                  //           };
+
+                                  //           await FirebaseFirestore.instance
+                                  //               .collection("Users")
+                                  //               .doc(currentUId)
+                                  //               .collection("Vehicles")
+                                  //               .doc(vehicleId)
+                                  //               .update(data);
+
+                                  //           // Query Team Members (Drivers/Managers)
+                                  //           final teamMembersSnapshot =
+                                  //               await FirebaseFirestore.instance
+                                  //                   .collection('Users')
+                                  //                   .where('createdBy',
+                                  //                       isEqualTo: currentUId)
+                                  //                   .where('isTeamMember',
+                                  //                       isEqualTo: true)
+                                  //                   .get();
+
+                                  //           // Save to Team Members' miles
+                                  //           for (final doc
+                                  //               in teamMembersSnapshot.docs) {
+                                  //             final teamMemberUid = doc.id;
+                                  //             await FirebaseFirestore.instance
+                                  //                 .collection('Users')
+                                  //                 .doc(teamMemberUid)
+                                  //                 .collection("Vehicles")
+                                  //                 .doc(vehicleId)
+                                  //                 .update(data);
+                                  //           }
+
+                                  //           // Handle Team Member Creating Record (Save to Owner)
+                                  //           final currentUserDoc =
+                                  //               await FirebaseFirestore.instance
+                                  //                   .collection('Users')
+                                  //                   .doc(currentUId)
+                                  //                   .get();
+
+                                  //           if (currentUserDoc
+                                  //                   .data()?['isTeamMember'] ==
+                                  //               true) {
+                                  //             final ownerSnapshot =
+                                  //                 await FirebaseFirestore
+                                  //                     .instance
+                                  //                     .collection('Users')
+                                  //                     .where('uid',
+                                  //                         isEqualTo:
+                                  //                             currentUserDoc
+                                  //                                     .data()?[
+                                  //                                 'createdBy'])
+                                  //                     .get();
+
+                                  //             if (ownerSnapshot
+                                  //                 .docs.isNotEmpty) {
+                                  //               final ownerUid =
+                                  //                   ownerSnapshot.docs.first.id;
+                                  //               await FirebaseFirestore.instance
+                                  //                   .collection('Users')
+                                  //                   .doc(ownerUid)
+                                  //                   .collection("Vehicles")
+                                  //                   .doc(vehicleId)
+                                  //                   .update(data);
+                                  //             }
+                                  //           }
+
+                                  //           debugPrint(
+                                  //               '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
+                                  //           todayMilesController.clear();
+                                  //           setState(() {
+                                  //             selectedVehicle = null;
+                                  //             selectedVehicleType = '';
+                                  //           });
+
+                                  //           ScaffoldMessenger.of(context)
+                                  //               .showSnackBar(
+                                  //             SnackBar(
+                                  //               content:
+                                  //                   Text('saved successfully!'),
+                                  //               duration: Duration(seconds: 2),
+                                  //             ),
+                                  //           );
+
+                                  //           if (dataServicesSnapshot
+                                  //               .docs.isEmpty) {
+                                  //             // Call cloud function to notify about missing services
+                                  //             final HttpsCallable callable =
+                                  //                 FirebaseFunctions.instance
+                                  //                     .httpsCallable(
+                                  //                         'checkAndNotifyUserForVehicleService');
+
+                                  //             await callable.call({
+                                  //               'userId': currentUId,
+                                  //               'vehicleId': vehicleId,
+                                  //             });
+
+                                  //             log('Called checkAndNotifyUserForVehicleService for $vehicleId');
+                                  //           } else {
+                                  //             // Call the cloud function to check for notifications
+                                  //             final HttpsCallable callable =
+                                  //                 FirebaseFunctions.instance
+                                  //                     .httpsCallable(
+                                  //                         'checkDataServicesAndNotify');
+
+                                  //             final result = await callable
+                                  //                 .call({
+                                  //               'userId': currentUId,
+                                  //               'vehicleId': vehicleId
+                                  //             });
+
+                                  //             log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                  //           }
+                                  //         } else {
+                                  //           throw 'Vehicle data not found';
+                                  //         }
+                                  //       } catch (e) {
+                                  //         debugPrint(
+                                  //             'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
+                                  //         ScaffoldMessenger.of(context)
+                                  //             .showSnackBar(
+                                  //           SnackBar(
+                                  //             content: Text(
+                                  //                 'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
+                                  //             duration: Duration(seconds: 2),
+                                  //           ),
+                                  //         );
+                                  //       }
+                                  //     }
+                                  //   },
+                                  //   color: kPrimary,
+                                  //   text:
+                                  //       'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
+                                  // ),
+
+                                  // Save Button
                                   CustomButton(
                                     onPress: () async {
                                       if (selectedVehicle != null &&
@@ -1931,6 +2132,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                               ]),
                                             };
 
+                                            // Update owner's vehicle first
                                             await FirebaseFirestore.instance
                                                 .collection("Users")
                                                 .doc(currentUId)
@@ -1948,16 +2150,29 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                         isEqualTo: true)
                                                     .get();
 
-                                            // Save to Team Members' miles
+                                            // Save to Team Members' miles ONLY if they have this vehicle
                                             for (final doc
                                                 in teamMembersSnapshot.docs) {
                                               final teamMemberUid = doc.id;
-                                              await FirebaseFirestore.instance
-                                                  .collection('Users')
-                                                  .doc(teamMemberUid)
-                                                  .collection("Vehicles")
-                                                  .doc(vehicleId)
-                                                  .update(data);
+
+                                              // Check if this team member has this vehicle
+                                              final teamMemberVehicleDoc =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('Users')
+                                                      .doc(teamMemberUid)
+                                                      .collection('Vehicles')
+                                                      .doc(vehicleId)
+                                                      .get();
+
+                                              if (teamMemberVehicleDoc.exists) {
+                                                await FirebaseFirestore.instance
+                                                    .collection('Users')
+                                                    .doc(teamMemberUid)
+                                                    .collection("Vehicles")
+                                                    .doc(vehicleId)
+                                                    .update(data);
+                                              }
                                             }
 
                                             // Handle Team Member Creating Record (Save to Owner)
@@ -2006,7 +2221,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 .showSnackBar(
                                               SnackBar(
                                                 content:
-                                                    Text('saved successfully!'),
+                                                    Text('Saved successfully!'),
                                                 duration: Duration(seconds: 2),
                                               ),
                                             );
@@ -2585,20 +2800,43 @@ class _ReportsScreenState extends State<ReportsScreen>
                     selected: isSubSelected,
                     onSelected: (bool selected) {
                       // Check if this is the "steer tires" service
-                      if (service['sName']
-                          .toString()
-                          .toLowerCase()
-                          .contains('steer tires')) {
-                        // Get current selected subservices for steer tires
+                      // if (service['sName']
+                      //     .toString()
+                      //     .toLowerCase()
+                      //     .contains('steer tires')) {
+                      //   // Get current selected subservices for steer tires
+                      //   final currentSubs =
+                      //       selectedSubServices[service['sId']] ?? [];
+
+                      //   if (selected && currentSubs.isNotEmpty) {
+                      //     // Don't allow selecting another subservice if one is already selected
+                      //     ScaffoldMessenger.of(context).showSnackBar(
+                      //       const SnackBar(
+                      //           content: Text(
+                      //               'You can only select one sub-service for steer tires')),
+                      //     );
+                      //     return;
+                      //   }
+                      // }
+                      final serviceName =
+                          service['sName'].toString().toLowerCase();
+                      final isSingleSubService =
+                          serviceName.contains('steer tires') ||
+                              serviceName.contains('dpf clean');
+
+                      if (isSingleSubService) {
+                        // Get current selected subservices
                         final currentSubs =
                             selectedSubServices[service['sId']] ?? [];
 
                         if (selected && currentSubs.isNotEmpty) {
                           // Don't allow selecting another subservice if one is already selected
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'You can only select one sub-service for steer tires')),
+                            SnackBar(
+                              content: Text(
+                                'You can only select one sub-service for ${service['sName']}',
+                              ),
+                            ),
                           );
                           return;
                         }

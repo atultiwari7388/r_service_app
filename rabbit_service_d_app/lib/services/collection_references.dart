@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 //for currentUser id
 final FirebaseAuth auth = FirebaseAuth.instance;
-final currentUId = FirebaseAuth.instance.currentUser!.uid;
+// final currentUId = FirebaseAuth.instance.currentUser!.uid;
 
 //for user collection
 final CollectionReference usersCollection =

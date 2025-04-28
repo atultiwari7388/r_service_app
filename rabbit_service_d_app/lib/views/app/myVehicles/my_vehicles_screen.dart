@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -18,6 +19,8 @@ class MyVehiclesScreen extends StatefulWidget {
 }
 
 class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   final TextEditingController _searchController = TextEditingController();
   final List<Map<String, dynamic>> _vehicles = [];
   final List<Map<String, dynamic>> _filteredVehicles = [];

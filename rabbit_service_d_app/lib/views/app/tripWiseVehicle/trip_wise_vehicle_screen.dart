@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -16,6 +17,7 @@ class TripWiseVehicleScreen extends StatefulWidget {
 class _TripWiseVehicleScreenState extends State<TripWiseVehicleScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
@@ -57,6 +59,7 @@ class _TripWiseVehicleScreenState extends State<TripWiseVehicleScreen>
 
 class AssignTripScreen extends StatelessWidget {
   const AssignTripScreen({super.key});
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   Stream<List<Map<String, dynamic>>> fetchTrips(String ownerId) {
     return FirebaseFirestore.instance
@@ -118,6 +121,8 @@ class AssignTripScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: fetchTrips(currentUId),
       builder: (context, snapshot) {
@@ -276,6 +281,8 @@ class NotAssignedTripScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: fetchNotAssignedVehicles(currentUId),
       builder: (context, snapshot) {

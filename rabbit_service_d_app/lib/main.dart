@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/splash/splash_screen.dart';
 import 'services/push_notification.dart';
@@ -85,6 +86,9 @@ void main() async {
     }
   }
 
+  // Initialize services
+  await Get.putAsync(() async => UserService());
+
   runApp(MyApp());
 }
 
@@ -124,7 +128,19 @@ class MyApp extends StatelessWidget {
           themeMode: ThemeMode.system,
           debugShowCheckedModeBanner: false,
           title: appName,
-          home: SplashScreen(),
+          // home: SplashScreen(),
+          home: FutureBuilder(
+              future: Get.putAsync(() async => UserService()),
+              builder: (context, snapshot) {
+                return Obx(() {
+                  final userService = UserService.to;
+                  if (userService.currentUser.value == null) {
+                    return const SplashScreen();
+                  } else {
+                    return const EntryScreen();
+                  }
+                });
+              }),
         );
       },
     );

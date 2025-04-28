@@ -322,14 +322,14 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             ReusableText(
               text: "New to Rabbit Mechanic Service?",
-              style: appStyle(14, kDark, FontWeight.w500),
+              style: appStyle(13, kDark, FontWeight.w500),
             ),
             SizedBox(width: 5.w),
             GestureDetector(
               onTap: () => Get.to(() => const RegistrationScreen()),
               child: ReusableText(
                 text: "Register",
-                style: appStyle(14, kPrimary, FontWeight.bold),
+                style: appStyle(11, kPrimary, FontWeight.bold),
               ),
             ),
           ],

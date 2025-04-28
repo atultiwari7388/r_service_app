@@ -177,13 +177,12 @@ class AuthController extends GetxController {
         if (userDoc.exists && userDoc['uid'] == user.uid) {
           isUserSign = false;
           update();
-          if (kIsWeb) {
-            Get.offAll(() => WebDashboardScreen(setTab: () {}));
-          } else {
-            //navigate to mobile view
-            Get.offAll(() => EntryScreen());
-          }
+          //navigate to mobile view
+          Get.offAll(() => EntryScreen());
           showToastMessage("Success", "Login Successful", Colors.green);
+          // Clear all controllers after successful login
+          _emailController.clear();
+          _passController.clear();
         } else {
           Get.to(() => RegistrationScreen());
         }
@@ -231,6 +230,51 @@ class AuthController extends GetxController {
         showToastMessage("Error",
             "Invalid email or password , create new account", Colors.red);
     }
+  }
+
+  Future<void> signOut() async {
+    try {
+      // Clear all text controllers
+      _nameController.clear();
+      _companyNameController.clear();
+      _emailController.clear();
+      _addressController.clear();
+      _cityController.clear();
+      _stateController.clear();
+      _countryController.clear();
+      _phoneNumberController.clear();
+      _passController.clear();
+      _vehicleRangeController.clear();
+
+      // Reset observable values
+      selectedVehicleRange.value = '1 to 5';
+
+      // Sign out from Firebase
+      await _auth.signOut();
+
+      // Get.reset();
+      // Get.offAll(() => const LoginScreen());
+    } catch (e) {
+      throw Exception(e);
+    }
+  }
+
+  void clearUserData() {
+    _nameController.clear();
+    _companyNameController.clear();
+    _emailController.clear();
+    _addressController.clear();
+    _cityController.clear();
+    _stateController.clear();
+    _countryController.clear();
+    _phoneNumberController.clear();
+    _passController.clear();
+    _vehicleRangeController.clear();
+    selectedVehicleRange.value = '1 to 5';
+    isUserSign = false;
+    isUserAcCreated = false;
+    forgotPass = false;
+    update();
   }
 
   @override

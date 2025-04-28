@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -26,6 +27,7 @@ class AddVehicleViaExcelScreen extends StatefulWidget {
 
 class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
   late final TextEditingController _currentMilesController;
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   String? _selectedVehicleType;
   String? _selectedEngineName;

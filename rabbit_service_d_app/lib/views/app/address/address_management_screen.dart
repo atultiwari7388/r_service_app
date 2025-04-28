@@ -28,6 +28,8 @@ class AddressManagementScreen extends StatefulWidget {
 }
 
 class _AddressManagementScreenState extends State<AddressManagementScreen> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   final TextEditingController _addressController = TextEditingController();
   LocationData? currentLocation;
   String selectedAddressType = "Home";

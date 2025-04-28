@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:location/location.dart';
+import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
 import '../services/collection_references.dart';
 import '../services/find_mechanic.dart';
 import '../services/generate_order_id.dart';
@@ -17,6 +19,8 @@ import '../utils/constants.dart';
 import '../utils/show_toast_msg.dart';
 
 class DashboardController extends GetxController {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   // bool _showMenu = false;
   String appbarTitle = "";
   bool firstTimeAppLaunch = true; // Boolean flag to track first app launch
@@ -37,7 +41,9 @@ class DashboardController extends GetxController {
   bool imageUploadEnabled = false; // To handle the upload button visibility
   bool isImageMandatory = false; // To handle the upload button visibility
   bool fixPriceEnabled = false; // for the fix price
-  String role = "";
+  // String role = "";
+  final RxString _role = ''.obs;
+  String get role => _role.value;
   String ownerEmail = "";
   String ownerId = "";
 
@@ -80,11 +86,62 @@ class DashboardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    checkIfLocationIsSet();
-    fetchServicesName();
-    fetchUserVehicles();
-    fetchByDefaultUserVehicle();
-    fetchUserDetails();
+    // checkIfLocationIsSet();
+    // fetchServicesName();
+    // fetchUserVehicles();
+    // fetchByDefaultUserVehicle();
+    // fetchUserDetails();
+    _initializeController();
+  }
+
+  Future<void> _initializeController() async {
+    try {
+      setLoading(true);
+      await _fetchAndVerifyUserRole();
+      if (_role.value.isEmpty) {
+        Get.offAll(() => const OnBoardingScreen());
+        return;
+      }
+      await _loadAllData();
+    } catch (e) {
+      log("DashboardController init error: $e");
+      Get.offAll(() => const OnBoardingScreen());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  Future<void> _fetchAndVerifyUserRole() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("No authenticated user");
+
+      final doc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get(GetOptions(source: Source.server)); // Force server fetch
+
+      if (!doc.exists) throw Exception("User document not found");
+
+      final role = doc.get('role')?.toString() ?? '';
+      if (role.isEmpty) throw Exception("Role not set");
+
+      _role.value = role;
+      log("Role definitively set to: $role");
+    } catch (e) {
+      _role.value = '';
+      rethrow;
+    }
+  }
+
+  Future<void> _loadAllData() async {
+    // Load other data only after role is confirmed
+    await Future.wait([
+      checkIfLocationIsSet(),
+      fetchServicesName(),
+      fetchUserVehicles(),
+      fetchByDefaultUserVehicle(),
+    ]);
   }
 
 //======================== Fetch Services Name=============================
@@ -243,28 +300,28 @@ class DashboardController extends GetxController {
     });
   }
 
-  Future<void> fetchUserDetails() async {
-    try {
-      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .get();
+  // Future<void> fetchUserDetails() async {
+  //   try {
+  //     DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .get();
 
-      if (userSnapshot.exists) {
-        // Cast the document data to a map
-        final userData = userSnapshot.data() as Map<String, dynamic>;
-        role = userData["role"] ?? "";
-        ownerId = userData["createdBy"] ?? "";
-        update();
-        log("Role is set to " + role);
-      } else {
-        log("No user document found for ID: $currentUId");
-      }
-    } catch (e) {
-      log("Error fetching user details: $e");
-      update();
-    }
-  }
+  //     if (userSnapshot.exists) {
+  //       // Cast the document data to a map
+  //       final userData = userSnapshot.data() as Map<String, dynamic>;
+  //       _role.value = userData["role"] ?? "";
+  //       ownerId = userData["createdBy"] ?? "";
+  //       update();
+  //       log("Role is set to " + role);
+  //     } else {
+  //       log("No user document found for ID: $currentUId");
+  //     }
+  //   } catch (e) {
+  //     log("Error fetching user details: $e");
+  //     update();
+  //   }
+  // }
 
   void filterselectedCompanyAndvehicle(String query) {
     final filteredList = allVehicleAndCompanyName

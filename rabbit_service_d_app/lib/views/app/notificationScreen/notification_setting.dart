@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
@@ -15,6 +16,8 @@ class NotificationScreenSetting extends StatefulWidget {
 }
 
 class _NotificationScreenSettingState extends State<NotificationScreenSetting> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   bool _isNotificationOn = true;
   bool _isLoading = true;
 

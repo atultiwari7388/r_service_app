@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:developer";
 import "package:cloud_firestore/cloud_firestore.dart";
 import "package:cloud_functions/cloud_functions.dart";
+import "package:firebase_auth/firebase_auth.dart";
 import "package:flutter/material.dart";
 import "package:get/get.dart";
 import "package:intl/intl.dart";
@@ -10,6 +11,8 @@ import "package:regal_service_d_app/utils/constants.dart";
 import "package:regal_service_d_app/utils/show_toast_msg.dart";
 
 class AddVehicleController extends GetxController {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   final vehicleNumberController = TextEditingController();
   final vinController = TextEditingController();
   final licensePlateController = TextEditingController();

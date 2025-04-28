@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,6 +24,8 @@ class ManageTripsScreen extends StatefulWidget {
 }
 
 class _ManageTripsScreenState extends State<ManageTripsScreen> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   final TextEditingController _tripNameController = TextEditingController();
   final TextEditingController _currentMilesController = TextEditingController();
   final TextEditingController _oEarningController = TextEditingController();

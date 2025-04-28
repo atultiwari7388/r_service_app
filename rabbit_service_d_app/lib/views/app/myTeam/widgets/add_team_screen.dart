@@ -24,6 +24,8 @@ class AddTeamMember extends StatefulWidget {
 }
 
 class _AddTeamMemberState extends State<AddTeamMember> {
+  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
   TextEditingController nameController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
   TextEditingController telephoneController = TextEditingController();
@@ -72,13 +74,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     "Other Staff"
   ];
 
-  // List<String> payTypeModes = [
-  //   "Per Mile",
-  //   "Per Trip",
-  //   "Per Hour",
-  //   "Per Month",
-  // ];
-
   List<String> payTypeModes = [];
 
   @override
@@ -101,7 +96,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
           .collection('Vehicles')
           .get();
 
-      // Store fetched vehicle details into the list
+      // Store fetched vehicle details into the list and sort alphabetically by vehicleNumber
       vehicles = vehiclesSnapshot.docs.map((doc) {
         return {
           'id': doc.id,
@@ -113,6 +108,11 @@ class _AddTeamMemberState extends State<AddTeamMember> {
           'isSet': doc['isSet']
         };
       }).toList();
+
+      // Sort vehicles alphabetically by vehicleNumber
+      vehicles.sort((a, b) => (a['vehicleNumber'] as String)
+          .toLowerCase()
+          .compareTo((b['vehicleNumber'] as String).toLowerCase()));
 
       setState(() {}); // Update the UI after fetching vehicles
     } catch (e) {
@@ -337,7 +337,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                         children: vehicles.map((vehicle) {
                           return CheckboxListTile(
                             title: Text(
-                                "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
+                                "${vehicle['vehicleNumber']} (${vehicle['companyName']})"),
                             value: selectedVehicles.contains(vehicle['id']),
                             onChanged: (bool? selected) {
                               setState(() {
@@ -384,7 +384,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 ),
               ],
               SizedBox(height: 15.h),
-              if (selectedRole == "Manager")
+              if (selectedRole == "Manager" ||
+                  selectedRole == "Accountant") ...[
                 Column(
                   children: [
                     //cheque access
@@ -418,6 +419,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     ),
                   ],
                 ),
+              ],
               SizedBox(height: 10.h),
               if (selectedRole != null && selectedRole != "Vendor") ...[
                 //payment type access
