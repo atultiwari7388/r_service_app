@@ -458,14 +458,16 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                               SizedBox(height: 5.h),
                               buildTextAndBtnRow("Vehicles Excel",
                                   () => _showInstructions(context)),
-                              buildTextAndBtnRow("Vehicles Companies Excel",
+                              buildTextAndBtnRow(
+                                  "Truck Vehicle Engine and Company Excel", () {
+                                downloadExcelFile(
+                                    "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/truck_company_name_and_engine_name_29_april.xlsx?alt=media&token=a163409a-a60f-4bbe-b2ac-882b97bd60b3");
+                              }),
+                              buildTextAndBtnRow(
+                                  "Trailer Vehicle Engine and Company Excel",
                                   () {
                                 downloadExcelFile(
-                                    "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/vehicle_companies_list.xlsx?alt=media&token=79ec36cb-2d0c-44fc-a714-847995a9f3fd");
-                              }),
-                              buildTextAndBtnRow("Vehicles Engine Excel", () {
-                                downloadExcelFile(
-                                    "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/vehicle_engines_list.xlsx?alt=media&token=8cf23d67-bf85-42ff-9b6b-5f2be177d5ee");
+                                    "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/trailer_company_name_and_engine_name_29_april.xlsx?alt=media&token=63e5fb03-1dce-4ec0-bf91-2aed82ddabb1");
                               }),
                             ],
                           ),
@@ -607,7 +609,14 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(text, style: appStyle(13, kDark, FontWeight.w500)),
+          SizedBox(
+            width: 200.w,
+            child: Text(
+              text,
+              maxLines: 2,
+              style: appStyle(12, kDark, FontWeight.w500),
+            ),
+          ),
           ElevatedButton.icon(
             onPressed: onPressed,
             label: Text("Download"),
@@ -616,7 +625,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 elevation: 0,
                 backgroundColor: kPrimary,
                 foregroundColor: kWhite,
-                minimumSize: Size(60.w, 35)),
+                minimumSize: Size(50.w, 35)),
           ),
         ],
       ),
