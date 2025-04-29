@@ -52,6 +52,10 @@ export interface ProfileValues {
   userName: string;
   wallet: number;
   perMileCharge: string;
+  city: string;
+  country: string;
+  state: string;
+  vehicleRange: string;
 }
 
 /** Services */
