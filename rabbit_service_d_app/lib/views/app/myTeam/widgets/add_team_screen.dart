@@ -467,6 +467,14 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                             emailController.text.isEmpty ||
                             phoneController.text.isEmpty ||
                             passController.text.isEmpty ||
+                            countryController.text.isEmpty ||
+                            stateController.text.isEmpty ||
+                            cityController.text.isEmpty ||
+                            addressController.text.isEmpty ||
+                            postalController.text.isEmpty ||
+                            licenseNumController.text.isEmpty ||
+                            socialSecurityController.text.isEmpty ||
+                            selectedPayType == null ||
                             selectedRole == null ||
                             (selectedRole == 'Driver' &&
                                 selectedVehicles.isEmpty)) {
@@ -492,7 +500,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                          "The following vehicles are already assigned to other drivers:"),
+                                          "The following vehicles are already assigned to other members:"),
                                       const SizedBox(height: 10),
                                       ...conflicts.map((conflict) => Padding(
                                             padding: const EdgeInsets.symmetric(
@@ -800,8 +808,12 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         Get.off(() => MyTeamScreen());
       }
     } catch (e) {
-      print("Error creating team member: $e");
-      showToastMessage("Error", "Failed to create team member", Colors.red);
+      // log(e.toString());
+      // handleError(e as FirebaseFunctionsException);
+      showToastMessage("Error",
+          "Email Id Already exists or something went wrong", Colors.red);
+      // print("Error creating team member: $e");
+      // showToastMessage("Error", "Failed to create team member", Colors.red);
     } finally {
       setState(() {
         isUserAcCreated = false;
@@ -849,20 +861,10 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     return conflicts; // Return conflicts if any exist
   }
 
-  void handleError(FirebaseAuthException e) {
-    String errorMessage;
-    switch (e.code) {
-      case 'email-already-in-use':
-        errorMessage = "The email is already in use by another account.";
-        break;
-      case 'invalid-email':
-        errorMessage = "The email address is invalid.";
-        break;
-      case 'weak-password':
-        errorMessage = "The password is too weak.";
-        break;
-      default:
-        errorMessage = e.message ?? "An unknown error occurred.";
+  void handleError(FirebaseFunctionsException e) {
+    String errorMessage = e.message ?? "An unknown error occurred.";
+    if (e.code == 'already-exists') {
+      errorMessage = "A user with this email already exists.";
     }
     showToastMessage("Error", errorMessage, Colors.red);
   }

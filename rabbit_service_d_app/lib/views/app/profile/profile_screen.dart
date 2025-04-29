@@ -194,44 +194,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
-                    // buildListTile("assets/out_bw.png", "Logout", () {
-                    //   showDialog<void>(
-                    //     context: context,
-                    //     barrierDismissible: true,
-                    //     builder: (BuildContext dialogContext) {
-                    //       return AlertDialog(
-                    //         title: Text('Logout'),
-                    //         content: Text(
-                    //             'Are you sure you want to log out from this account'),
-                    //         actions: <Widget>[
-                    //           TextButton(
-                    //               child: Text('Yes',
-                    //                   style: appStyle(
-                    //                       15, kSecondary, FontWeight.normal)),
-                    //               // onPressed: () {
-                    //               //   // logOutUser(context);
-                    //               // },
-                    //               onPressed: () async {
-                    //                 await signOut();
-                    //                 Navigator.pushAndRemoveUntil(
-                    //                   context,
-                    //                   MaterialPageRoute(
-                    //                       builder: (BuildContext context) =>
-                    //                           const OnBoardingScreen()),
-                    //                   (Route<dynamic> route) => false,
-                    //                 );
-                    //               }),
-                    //           TextButton(
-                    //               onPressed: () => Navigator.pop(context),
-                    //               child: Text("No",
-                    //                   style: appStyle(
-                    //                       15, kPrimary, FontWeight.normal)))
-                    //         ],
-                    //       );
-                    //     },
-                    //   );
-                    // })
-
                     buildListTile(
                       "assets/out_bw.png",
                       "Logout",
@@ -251,47 +213,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     style: appStyle(
                                         15, kSecondary, FontWeight.normal),
                                   ),
-                                  // onPressed: () async {
-                                  //   try {
-                                  //     // Get the auth controller
-                                  //     final authController =
-                                  //         Get.put(AuthController());
-
-                                  //     // Show loading indicator
-                                  //     Get.dialog(
-                                  //       const Center(
-                                  //           child: CircularProgressIndicator()),
-                                  //       barrierDismissible: false,
-                                  //     );
-
-                                  //     // Perform logout operations
-                                  //     await authController.signOut();
-                                  //     authController.clearUserData();
-
-                                  //     // Close all dialogs
-                                  //     Get.back();
-                                  //     Get.back();
-
-                                  //     Get.offAll(
-                                  //         () => const OnBoardingScreen());
-                                  //     log("User signed out successfully userid : $currentUId");
-                                  //   } catch (e) {
-                                  //     // Close dialogs if error occurs
-                                  //     Get.back();
-                                  //     Get.back();
-
-                                  //     // Show error message
-                                  //     showToastMessage(
-                                  //       "Logout Error",
-                                  //       "An error occurred during logout. Please try again.",
-                                  //       Colors.red,
-                                  //     );
-
-                                  //     if (kDebugMode) {
-                                  //       print("Logout error: $e");
-                                  //     }
-                                  //   }
-                                  // },
                                   onPressed: () async {
                                     try {
                                       await userService.signOut();

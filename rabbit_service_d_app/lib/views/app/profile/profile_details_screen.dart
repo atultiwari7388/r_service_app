@@ -12,7 +12,6 @@ import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/text_field.dart';
-import '../../../services/collection_references.dart';
 import '../../../utils/constants.dart';
 
 class ProfileDetailsScreen extends StatefulWidget {
@@ -33,6 +32,10 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _stateController = TextEditingController();
+  final TextEditingController _countryController = TextEditingController();
+
   String profilePictureUrl = "";
   String selectedVehicleRange = '';
   String role = "";
@@ -75,6 +78,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
         'userName': _userNameController.text,
         'email': _emailController.text,
         'phoneNumber': _phoneNumberController.text,
+        'city': _cityController.text,
+        'state': _stateController.text,
+        'country': _countryController.text,
         'address': _addressController.text,
         'profilePicture': imageUrl,
         'companyName': _companyNameController.text,
@@ -172,6 +178,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
       _emailController.text = data['email'] ?? '';
       _phoneNumberController.text = data['phoneNumber'] ?? '';
       _addressController.text = data['address'] ?? '';
+      _cityController.text = data['city'] ?? '';
+      _stateController.text = data['state'] ?? '';
+      _countryController.text = data['country'] ?? '';
       _companyNameController.text = data['companyName'] ?? '';
       selectedVehicleRange = data['vehicleRange'] ?? '';
       profilePictureUrl = data['profilePicture'] ?? '';
@@ -211,6 +220,9 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                 _companyNameController.text = data['companyName'] ?? '';
                 selectedVehicleRange = data['vehicleRange'] ?? '';
                 role = data['role'] ?? '';
+                _cityController.text = data['city'] ?? '';
+                _stateController.text = data['state'] ?? '';
+                _countryController.text = data['country'] ?? '';
 
                 return data.isNotEmpty
                     ? SingleChildScrollView(
@@ -286,6 +298,27 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                 TextFieldInputWidget(
                                   hintText: "Address",
                                   textEditingController: _addressController,
+                                  textInputType: TextInputType.streetAddress,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "City",
+                                  textEditingController: _cityController,
+                                  textInputType: TextInputType.streetAddress,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "State",
+                                  textEditingController: _stateController,
+                                  textInputType: TextInputType.streetAddress,
+                                  icon: Icons.abc,
+                                  isIconApply: false,
+                                ),
+                                TextFieldInputWidget(
+                                  hintText: "Country",
+                                  textEditingController: _countryController,
                                   textInputType: TextInputType.streetAddress,
                                   icon: Icons.abc,
                                   isIconApply: false,

@@ -96,12 +96,23 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
             .collection('Vehicles')
             .get();
 
+        // List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
+        //   return {
+        //     'companyName': doc['companyName'] ?? 'No Company',
+        //     'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+        //   };
+        // }).toList();
         List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
           return {
             'companyName': doc['companyName'] ?? 'No Company',
             'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
           };
         }).toList();
+
+        vehicles.sort((a, b) => a['vehicleNumber']
+            .toString()
+            .toLowerCase()
+            .compareTo(b['vehicleNumber'].toString().toLowerCase()));
 
         print('Member $name has ${vehicles.length} vehicles');
 
@@ -144,7 +155,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           String name = member['name'].toLowerCase();
           String vehicleDetails = member['vehicles']
               .map<String>((vehicle) =>
-                  "${vehicle['companyName'].toLowerCase()} (${vehicle['vehicleNumber'].toLowerCase()})")
+                  "${vehicle['vehicleNumber'].toLowerCase()} (${vehicle['companyName'].toLowerCase()})")
               .join(' ')
               .toLowerCase();
           bool matchesName = name.contains(query);
@@ -234,7 +245,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                               String vehicleDetails = vehicles.isNotEmpty
                                   ? vehicles
                                       .map<String>((vehicle) =>
-                                          "${vehicle['companyName']} (${vehicle['vehicleNumber']})")
+                                          "${vehicle['vehicleNumber']} (${vehicle['companyName']})")
                                       .join('\n')
                                   : 'No Vehicles';
 
@@ -265,14 +276,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // Switch(
-                                      //   activeColor: kPrimary,
-                                      //   value: isActive,
-                                      //   onChanged: (bool value) {
-                                      //     // Handle the switch change (update in Firestore if necessary)
-                                      //
-                                      //   },
-                                      // ),
                                       Switch(
                                         activeColor: kPrimary,
                                         value: isActive,
@@ -300,7 +303,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                           }
                                         },
                                       ),
-
                                       PopupMenuButton<String>(
                                         icon: Icon(Icons
                                             .more_vert_rounded), // The 3-dot menu icon

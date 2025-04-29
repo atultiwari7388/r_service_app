@@ -43,11 +43,11 @@ class AuthController extends GetxController {
 
   TextEditingController get addressController => _addressController;
 
-  TextEditingController get cityController => _addressController;
+  TextEditingController get cityController => _cityController;
 
-  TextEditingController get countryController => _addressController;
+  TextEditingController get countryController => _countryController;
 
-  TextEditingController get stateController => _addressController;
+  TextEditingController get stateController => _stateController;
 
   TextEditingController get phoneNumberController => _phoneNumberController;
 

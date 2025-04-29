@@ -114,34 +114,88 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     },
                   ),
                   SizedBox(height: 15.h),
+                  // buildTextFieldInputWidget(
+                  //   "Enter your address*",
+                  //   TextInputType.streetAddress,
+                  //   controller.addressController,
+                  //   MaterialCommunityIcons.home,
+                  // ),
+                  // SizedBox(height: 15.h),
+                  // buildTextFieldInputWidget(
+                  //   "Enter your city*",
+                  //   TextInputType.streetAddress,
+                  //   controller.cityController,
+                  //   MaterialCommunityIcons.home,
+                  // ),
+                  // SizedBox(height: 15.h),
+                  // buildTextFieldInputWidget(
+                  //   "Enter your state*",
+                  //   TextInputType.streetAddress,
+                  //   controller.stateController,
+                  //   MaterialCommunityIcons.home,
+                  // ),
+                  // SizedBox(height: 15.h),
+                  // buildTextFieldInputWidget(
+                  //   "Enter your country*",
+                  //   TextInputType.streetAddress,
+                  //   controller.countryController,
+                  //   MaterialCommunityIcons.home,
+                  // ),
+                  // SizedBox(height: 15.h),
+
                   buildTextFieldInputWidget(
                     "Enter your address*",
                     TextInputType.streetAddress,
                     controller.addressController,
                     MaterialCommunityIcons.home,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Please enter your address";
+                      }
+                      return null;
+                    },
                   ),
                   SizedBox(height: 15.h),
                   buildTextFieldInputWidget(
                     "Enter your city*",
                     TextInputType.streetAddress,
                     controller.cityController,
-                    MaterialCommunityIcons.home,
+                    MaterialCommunityIcons.city,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Please enter your city";
+                      }
+                      return null;
+                    },
                   ),
                   SizedBox(height: 15.h),
                   buildTextFieldInputWidget(
                     "Enter your state*",
                     TextInputType.streetAddress,
                     controller.stateController,
-                    MaterialCommunityIcons.home,
+                    MaterialCommunityIcons.home_account,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Please enter your state";
+                      }
+                      return null;
+                    },
                   ),
                   SizedBox(height: 15.h),
                   buildTextFieldInputWidget(
                     "Enter your country*",
                     TextInputType.streetAddress,
                     controller.countryController,
-                    MaterialCommunityIcons.home,
+                    MaterialCommunityIcons.earth,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Please enter your country";
+                      }
+                      return null;
+                    },
                   ),
                   SizedBox(height: 15.h),
+
                   buildTextFieldInputWidget(
                     "Enter Company name*",
                     TextInputType.text,
@@ -274,17 +328,49 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   SizedBox(height: 24.h),
                   CustomButton(
                     text: "Continue",
+                    // onPress: controller.isUserAcCreated
+                    //     ? null
+                    //     : () {
+                    //         // controller.createUserWithEmailAndPassword();
+
+                    //         if (controller.formKey.currentState != null &&
+                    //             controller.formKey.currentState!.validate()) {
+                    //           controller.createUserWithEmailAndPassword();
+                    //         } else {
+                    //           showToastMessage("Error",
+                    //               "Please enter valid inputs", Colors.red);
+                    //         }
+                    //       },
                     onPress: controller.isUserAcCreated
                         ? null
                         : () {
-                            // controller.createUserWithEmailAndPassword();
-
-                            if (controller.formKey.currentState != null &&
-                                controller.formKey.currentState!.validate()) {
-                              controller.createUserWithEmailAndPassword();
-                            } else {
-                              showToastMessage("Error",
-                                  "Please enter valid inputs", Colors.red);
+                            if (controller.formKey.currentState != null) {
+                              if (controller.formKey.currentState!.validate()) {
+                                controller.createUserWithEmailAndPassword();
+                              } else {
+                                // Check which fields are empty and show specific message
+                                if (controller.addressController.text.isEmpty) {
+                                  showToastMessage("Error",
+                                      "Please enter your address", Colors.red);
+                                } else if (controller
+                                    .cityController.text.isEmpty) {
+                                  showToastMessage("Error",
+                                      "Please enter your city", Colors.red);
+                                } else if (controller
+                                    .stateController.text.isEmpty) {
+                                  showToastMessage("Error",
+                                      "Please enter your state", Colors.red);
+                                } else if (controller
+                                    .countryController.text.isEmpty) {
+                                  showToastMessage("Error",
+                                      "Please enter your country", Colors.red);
+                                } else {
+                                  showToastMessage(
+                                      "Error",
+                                      "Please fill all required fields",
+                                      Colors.red);
+                                }
+                              }
                             }
                           },
                     color: kPrimary,
