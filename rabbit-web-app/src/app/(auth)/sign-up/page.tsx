@@ -214,16 +214,20 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  signOut,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { useAuth } from "@/contexts/AuthContexts";
+import { FirebaseError } from "firebase/app";
+import { RiEyeOffFill } from "react-icons/ri";
+import { CgEye } from "react-icons/cg";
+// import { useAuth } from "@/contexts/AuthContexts";
 
 const Signup: React.FC = () => {
   const [formValues, setFormValues] = useState({
@@ -241,6 +245,7 @@ const Signup: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const vehicleOptions = [
@@ -256,17 +261,7 @@ const Signup: React.FC = () => {
   ];
 
   // Auth state check
-  const { user } = useAuth() || { user: null };
-
-  useEffect(() => {
-    if (user) {
-      if (user.emailVerified) {
-        router.push("/"); // Redirect if user is already verified
-      } else {
-        router.push("/login"); // Redirect if user is not verified
-      }
-    }
-  }, [router, user]);
+  // const { user } = useAuth() || { user: null };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -277,6 +272,102 @@ const Signup: React.FC = () => {
       [name]: value,
     }));
   };
+
+  // const handleSignup = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+
+  //   if (
+  //     !formValues.name ||
+  //     !formValues.email ||
+  //     !formValues.address ||
+  //     !formValues.city ||
+  //     !formValues.state ||
+  //     !formValues.country ||
+  //     !formValues.phoneNumber ||
+  //     !formValues.password ||
+  //     !formValues.companyName ||
+  //     !formValues.numberOfVehicles
+  //   ) {
+  //     setError("All fields are required.");
+  //     return;
+  //   }
+
+  //   setError(null);
+  //   setLoading(true);
+
+  //   try {
+  //     // Firebase Auth: Create a new user with email and password
+  //     const userCredential = await createUserWithEmailAndPassword(
+  //       auth,
+  //       formValues.email,
+  //       formValues.password
+  //     );
+  //     const user = userCredential.user;
+
+  //     if (user) {
+  //       // Store additional user details in Firestore
+  //       const uid = user.uid;
+  //       const userData = {
+  //         uid: uid,
+  //         email: formValues.email,
+  //         email2: "",
+  //         active: true,
+  //         userName: formValues.name,
+  //         phoneNumber: formValues.phoneNumber,
+  //         telephoneNumber: "",
+  //         address: formValues.address,
+  //         city: formValues.city,
+  //         state: formValues.state,
+  //         country: formValues.country,
+  //         postalCode: "",
+  //         licNumber: "",
+  //         licExpDate: new Date(),
+  //         dob: new Date(),
+  //         lastDrugTest: new Date(),
+  //         dateOfHire: new Date(),
+  //         dateOfTermination: new Date(),
+  //         socialSecurity: "",
+  //         perMileCharge: "",
+  //         companyName: formValues.companyName,
+  //         vehicleRange: formValues.numberOfVehicles,
+  //         profilePicture:
+  //           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+  //         wallet: 0,
+  //         created_at: new Date(),
+  //         updated_at: new Date(),
+  //         createdBy: uid,
+  //         isTeamMember: false,
+  //         lastAddress: "",
+  //         isNotificationOn: true,
+  //         role: "Owner",
+  //         isOwner: true,
+  //         isManager: false,
+  //         isDriver: false,
+  //         isVendor: false,
+  //         isView: true,
+  //         isCheque: true,
+  //         payMode: "",
+  //         isEdit: true,
+  //         isDelete: true,
+  //         isAdd: true,
+  //       };
+
+  //       // Save user data in Firestore (replace with your Firestore collection name)
+  //       await setDoc(doc(db, "Users", uid), userData);
+
+  //       // Send email verification
+  //       await sendEmailVerification(user);
+
+  //       setLoading(false);
+  //       alert("Signup successful! Please check your email for verification.");
+  //       router.push("/login");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error during signup:", error);
+  //     setError("An error occurred during signup. Please try again.");
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -357,21 +448,34 @@ const Signup: React.FC = () => {
           isAdd: true,
         };
 
-        // Save user data in Firestore (replace with your Firestore collection name)
+        // Save user data in Firestore
         await setDoc(doc(db, "Users", uid), userData);
 
         // Send email verification
         await sendEmailVerification(user);
 
+        // Sign out the user immediately after signup
+        await signOut(auth);
+
         setLoading(false);
         alert("Signup successful! Please check your email for verification.");
         router.push("/login");
       }
-    } catch (error) {
+    } catch (error: FirebaseError | unknown) {
       console.error("Error during signup:", error);
-      setError("An error occurred during signup. Please try again.");
+      if (error instanceof FirebaseError) {
+        setError(
+          error.message || "An error occurred during signup. Please try again."
+        );
+      } else {
+        setError("An error occurred during signup. Please try again.");
+      }
       setLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -525,7 +629,7 @@ const Signup: React.FC = () => {
             </select>
           </div>
 
-          <div className="form-control w-full">
+          {/* <div className="form-control w-full">
             <label htmlFor="password" className="label text-sm">
               <span className="label-text text-gray-700">Password</span>
             </label>
@@ -538,6 +642,34 @@ const Signup: React.FC = () => {
               className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5"
               required
             />
+          </div> */}
+
+          <div className="form-control w-full">
+            <label htmlFor="password" className="label text-sm">
+              <span className="label-text text-gray-700">Password</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formValues.password}
+                onChange={handleChange}
+                className="input input-bordered w-full bg-gray-50 text-gray-900 py-1.5 pr-10"
+                required
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-600"
+                onClick={togglePasswordVisibility}
+              >
+                {showPassword ? (
+                  <RiEyeOffFill className="h-5 w-5" />
+                ) : (
+                  <CgEye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
           </div>
 
           <Button
