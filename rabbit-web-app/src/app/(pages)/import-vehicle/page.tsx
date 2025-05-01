@@ -533,9 +533,9 @@ export default function ImportVehicle() {
     trailer:
       "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=fec03351-8645-4697-a914-35c4596062e8",
     truckCompanies:
-      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/truck_company_name_and_engine_name_29_april.xlsx?alt=media&token=a163409a-a60f-4bbe-b2ac-882b97bd60b3",
+      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/truck_company_name_and_engine_name_1_may.xlsx?alt=media&token=49408842-98d9-4ecf-9761-22e7aac16fe1",
     trailerCompanies:
-      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/trailer_company_name_and_engine_name_29_april.xlsx?alt=media&token=63e5fb03-1dce-4ec0-bf91-2aed82ddabb1",
+      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/trailer_company_name_and_engine_name_1_may.xlsx?alt=media&token=0593d7e7-24bd-4b57-b85c-4f6543e8d564",
   };
 
   useEffect(() => {
@@ -872,12 +872,12 @@ export default function ImportVehicle() {
               </Button>
               <Button variant="outline" asChild>
                 <Link href={sampleFiles.truckCompanies} target="_blank">
-                  Download Companies List
+                  Truck Companies and Engine names
                 </Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href={sampleFiles.trailerCompanies} target="_blank">
-                  Download Engines List
+                  Trailer Companies and Engine names
                 </Link>
               </Button>
             </div>

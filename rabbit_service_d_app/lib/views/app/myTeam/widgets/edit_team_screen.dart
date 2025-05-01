@@ -371,9 +371,8 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                           : Column(
                               children: ownerVehicles.map((vehicle) {
                                 return CheckboxListTile(
-                                  // title: Text(
-                                  //     "${vehicle['companyName']} (${vehicle['vehicleNumber']})"),
-                                  title: Text("${vehicle['vehicleNumber']}"),
+                                  title: Text(
+                                      "${vehicle['vehicleNumber']} (${vehicle['companyName']})"),
                                   value:
                                       selectedVehicles.contains(vehicle['id']),
                                   onChanged: (bool? selected) {

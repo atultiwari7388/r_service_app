@@ -610,11 +610,6 @@ class _ReportsScreenState extends State<ReportsScreen>
               .collection('DataServices');
           batch.set(teamMemberDataServicesRef.doc(docId), recordData);
         }
-        // final teamMemberDataServicesRef = FirebaseFirestore.instance
-        //     .collection('Users')
-        //     .doc(teamMemberUid)
-        //     .collection('DataServices');
-        // batch.set(teamMemberDataServicesRef.doc(docId), recordData);
       }
 
       // Handle Team Member Creating Record (Save to Owner)
@@ -639,14 +634,14 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
 
-      // Update Vehicle
-      final vehicleRef = FirebaseFirestore.instance
+      // Update current user's vehicle (owner or team member)
+      final currentUserVehicleref = FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
           .collection('Vehicles')
           .doc(selectedVehicle);
 
-      final vehicleSnapshot = await vehicleRef.get();
+      final vehicleSnapshot = await currentUserVehicleref.get();
       Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
       List<dynamic> vehicleServices = List.from(vehicleData['services'] ?? []);
 
@@ -684,7 +679,13 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
 
-      batch.update(vehicleRef, {
+      // Update current user's vehicle (owner or team member)
+      final currentUserVehicleRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('Vehicles')
+          .doc(selectedVehicle);
+      batch.update(currentUserVehicleRef, {
         'services': vehicleServices,
         'currentMiles': currentMiles.toString(),
         'currentMilesArray': FieldValue.arrayUnion([
@@ -692,6 +693,68 @@ class _ReportsScreenState extends State<ReportsScreen>
         ]),
         'nextNotificationMiles': notificationData,
       });
+
+      // If current user is team member, update owner's vehicle too
+      if (currentUserDoc.data()?['isTeamMember'] == true) {
+        final ownerSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+            .get();
+
+        if (ownerSnapshot.docs.isNotEmpty) {
+          final ownerUid = ownerSnapshot.docs.first.id;
+          final ownerVehicleRef = FirebaseFirestore.instance
+              .collection('Users')
+              .doc(ownerUid)
+              .collection('Vehicles')
+              .doc(selectedVehicle);
+
+          final ownerVehicle = await ownerVehicleRef.get();
+          if (ownerVehicle.exists) {
+            batch.update(ownerVehicleRef, {
+              'services': vehicleServices,
+              'currentMiles': currentMiles.toString(),
+              'currentMilesArray': FieldValue.arrayUnion([
+                {
+                  "miles": currentMiles,
+                  "date": DateTime.now().toIso8601String()
+                }
+              ]),
+              'nextNotificationMiles': notificationData,
+            });
+          }
+        }
+      }
+      // Update team members' vehicles who have this vehicle
+      for (final doc in teamMembersSnapshot.docs) {
+        final teamMemberUid = doc.id;
+        final teamMemberVehicleRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(teamMemberUid)
+            .collection('Vehicles')
+            .doc(selectedVehicle);
+
+        final teamMemberVehicle = await teamMemberVehicleRef.get();
+        if (teamMemberVehicle.exists) {
+          batch.update(teamMemberVehicleRef, {
+            'services': vehicleServices,
+            'currentMiles': currentMiles.toString(),
+            'currentMilesArray': FieldValue.arrayUnion([
+              {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+            ]),
+            'nextNotificationMiles': notificationData,
+          });
+        }
+      }
+
+      // batch.update(currentUserVehicleref, {
+      //   'services': vehicleServices,
+      //   'currentMiles': currentMiles.toString(),
+      //   'currentMilesArray': FieldValue.arrayUnion([
+      //     {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+      //   ]),
+      //   'nextNotificationMiles': notificationData,
+      // });
 
       await batch.commit();
 
@@ -1092,41 +1155,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   ),
                                   SizedBox(height: 16.h),
                                   if (showVehicleSearch || showCombinedSearch)
-                                    // DropdownButtonFormField<String>(
-                                    //   decoration: InputDecoration(
-                                    //     labelText: 'Search by Vehicle',
-                                    //     border: OutlineInputBorder(
-                                    //       borderRadius:
-                                    //           BorderRadius.circular(8),
-                                    //     ),
-                                    //     prefixIcon: Icon(Icons.directions_car,
-                                    //         color: kPrimary),
-                                    //   ),
-                                    //   items: vehicles.map((vehicle) {
-                                    //     return DropdownMenuItem<String>(
-                                    //       value: vehicle['vehicleNumber'],
-                                    //       child: Text(
-                                    //         "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
-                                    //         style: appStyleUniverse(
-                                    //             14, kDark, FontWeight.normal),
-                                    //       ),
-                                    //     );
-                                    //   }).toList(),
-                                    //   onChanged: (value) {
-                                    //     setState(() {
-                                    //       filterVehicle = value ?? '';
-                                    //     });
-                                    //   },
-                                    //   value: filterVehicle.isEmpty
-                                    //       ? null
-                                    //       : filterVehicle,
-                                    //   hint: Text(
-                                    //     'Select Vehicle',
-                                    //     style: appStyleUniverse(
-                                    //         14, kDark, FontWeight.normal),
-                                    //   ),
-                                    // ),
-
                                     DropdownButtonFormField<String>(
                                       hint: const Text('Select Vehicle'),
                                       items: (vehicles
@@ -1866,204 +1894,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ),
                                   ],
                                   SizedBox(height: 16.h),
-
-                                  // Save Button
-                                  // CustomButton(
-                                  //   onPress: () async {
-                                  //     if (selectedVehicle != null &&
-                                  //         todayMilesController
-                                  //             .text.isNotEmpty) {
-                                  //       try {
-                                  //         final int enteredValue = int.parse(
-                                  //             todayMilesController.text);
-                                  //         final vehicleId = selectedVehicle;
-
-                                  //         // Check if DataServices subcollection exists and is not empty
-                                  //         final dataServicesSnapshot =
-                                  //             await FirebaseFirestore.instance
-                                  //                 .collection("Users")
-                                  //                 .doc(currentUId)
-                                  //                 .collection("DataServices")
-                                  //                 .where("vehicleId",
-                                  //                     isEqualTo: vehicleId)
-                                  //                 .get();
-
-                                  //         // Fetch current reading (Miles/Hours) for the selected vehicle
-                                  //         final vehicleDoc =
-                                  //             await FirebaseFirestore.instance
-                                  //                 .collection("Users")
-                                  //                 .doc(currentUId)
-                                  //                 .collection("Vehicles")
-                                  //                 .doc(vehicleId)
-                                  //                 .get();
-
-                                  //         if (vehicleDoc.exists) {
-                                  //           final int currentReading =
-                                  //               int.parse(
-                                  //             vehicleDoc[selectedVehicleType ==
-                                  //                         'Truck'
-                                  //                     ? 'currentMiles'
-                                  //                     : 'hoursReading'] ??
-                                  //                 '0',
-                                  //           );
-
-                                  //           final data = {
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? "prevMilesValue"
-                                  //                     : "prevHoursReadingValue":
-                                  //                 currentReading.toString(),
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? "currentMiles"
-                                  //                     : "hoursReading":
-                                  //                 enteredValue.toString(),
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? "miles"
-                                  //                     : "hoursReading":
-                                  //                 enteredValue.toString(),
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? 'currentMilesArray'
-                                  //                     : 'hoursReadingArray':
-                                  //                 FieldValue.arrayUnion([
-                                  //               {
-                                  //                 selectedVehicleType == 'Truck'
-                                  //                     ? "miles"
-                                  //                     : "hours": enteredValue,
-                                  //                 "date": DateTime.now()
-                                  //                     .toIso8601String(),
-                                  //               }
-                                  //             ]),
-                                  //           };
-
-                                  //           await FirebaseFirestore.instance
-                                  //               .collection("Users")
-                                  //               .doc(currentUId)
-                                  //               .collection("Vehicles")
-                                  //               .doc(vehicleId)
-                                  //               .update(data);
-
-                                  //           // Query Team Members (Drivers/Managers)
-                                  //           final teamMembersSnapshot =
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .where('createdBy',
-                                  //                       isEqualTo: currentUId)
-                                  //                   .where('isTeamMember',
-                                  //                       isEqualTo: true)
-                                  //                   .get();
-
-                                  //           // Save to Team Members' miles
-                                  //           for (final doc
-                                  //               in teamMembersSnapshot.docs) {
-                                  //             final teamMemberUid = doc.id;
-                                  //             await FirebaseFirestore.instance
-                                  //                 .collection('Users')
-                                  //                 .doc(teamMemberUid)
-                                  //                 .collection("Vehicles")
-                                  //                 .doc(vehicleId)
-                                  //                 .update(data);
-                                  //           }
-
-                                  //           // Handle Team Member Creating Record (Save to Owner)
-                                  //           final currentUserDoc =
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .doc(currentUId)
-                                  //                   .get();
-
-                                  //           if (currentUserDoc
-                                  //                   .data()?['isTeamMember'] ==
-                                  //               true) {
-                                  //             final ownerSnapshot =
-                                  //                 await FirebaseFirestore
-                                  //                     .instance
-                                  //                     .collection('Users')
-                                  //                     .where('uid',
-                                  //                         isEqualTo:
-                                  //                             currentUserDoc
-                                  //                                     .data()?[
-                                  //                                 'createdBy'])
-                                  //                     .get();
-
-                                  //             if (ownerSnapshot
-                                  //                 .docs.isNotEmpty) {
-                                  //               final ownerUid =
-                                  //                   ownerSnapshot.docs.first.id;
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .doc(ownerUid)
-                                  //                   .collection("Vehicles")
-                                  //                   .doc(vehicleId)
-                                  //                   .update(data);
-                                  //             }
-                                  //           }
-
-                                  //           debugPrint(
-                                  //               '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
-                                  //           todayMilesController.clear();
-                                  //           setState(() {
-                                  //             selectedVehicle = null;
-                                  //             selectedVehicleType = '';
-                                  //           });
-
-                                  //           ScaffoldMessenger.of(context)
-                                  //               .showSnackBar(
-                                  //             SnackBar(
-                                  //               content:
-                                  //                   Text('saved successfully!'),
-                                  //               duration: Duration(seconds: 2),
-                                  //             ),
-                                  //           );
-
-                                  //           if (dataServicesSnapshot
-                                  //               .docs.isEmpty) {
-                                  //             // Call cloud function to notify about missing services
-                                  //             final HttpsCallable callable =
-                                  //                 FirebaseFunctions.instance
-                                  //                     .httpsCallable(
-                                  //                         'checkAndNotifyUserForVehicleService');
-
-                                  //             await callable.call({
-                                  //               'userId': currentUId,
-                                  //               'vehicleId': vehicleId,
-                                  //             });
-
-                                  //             log('Called checkAndNotifyUserForVehicleService for $vehicleId');
-                                  //           } else {
-                                  //             // Call the cloud function to check for notifications
-                                  //             final HttpsCallable callable =
-                                  //                 FirebaseFunctions.instance
-                                  //                     .httpsCallable(
-                                  //                         'checkDataServicesAndNotify');
-
-                                  //             final result = await callable
-                                  //                 .call({
-                                  //               'userId': currentUId,
-                                  //               'vehicleId': vehicleId
-                                  //             });
-
-                                  //             log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
-                                  //           }
-                                  //         } else {
-                                  //           throw 'Vehicle data not found';
-                                  //         }
-                                  //       } catch (e) {
-                                  //         debugPrint(
-                                  //             'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
-                                  //         ScaffoldMessenger.of(context)
-                                  //             .showSnackBar(
-                                  //           SnackBar(
-                                  //             content: Text(
-                                  //                 'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
-                                  //             duration: Duration(seconds: 2),
-                                  //           ),
-                                  //         );
-                                  //       }
-                                  //     }
-                                  //   },
-                                  //   color: kPrimary,
-                                  //   text:
-                                  //       'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
-                                  // ),
 
                                   // Save Button
                                   CustomButton(
