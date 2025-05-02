@@ -34,6 +34,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   TextEditingController milesController = TextEditingController();
   TextEditingController amountController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   DateTime? fromDate;
   DateTime? toDate;
   late StreamSubscription usersSubscription;
@@ -53,6 +54,167 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   File? _selectedImage;
   String _imageUrl = '';
   DateTime? selectedDate;
+
+  // void addTrip() async {
+  //   if (_tripNameController.text.isEmpty ||
+  //       _currentMilesController.text.isEmpty) {
+  //     showToastMessage("Error", "Please fill all required fields", kRed);
+  //     return;
+  //   }
+
+  //   if (selectedDate == null) {
+  //     showToastMessage("Error", "Please select a trip start date", kRed);
+  //     return;
+  //   }
+
+  //   if (selectedVehicle == null) {
+  //     showToastMessage("Error", "Please select a vehicle", kRed);
+  //     return;
+  //   }
+
+  //   setState(() {
+  //     isLoading = true;
+  //   });
+
+  //   try {
+  //     // Get selected vehicle details from Firestore
+  //     DocumentSnapshot vehicleSnapshot = await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(currentUId)
+  //         .collection("Vehicles")
+  //         .doc(selectedVehicle)
+  //         .get();
+
+  //     if (!vehicleSnapshot.exists) {
+  //       showToastMessage("Error", "Selected vehicle not found", kRed);
+  //       setState(() {
+  //         isLoading = false;
+  //       });
+  //       return;
+  //     }
+
+  //     Map<String, dynamic> selectedVehicleData =
+  //         vehicleSnapshot.data() as Map<String, dynamic>;
+
+  //     if (selectedVehicleData.containsKey('tripAssign') &&
+  //         selectedVehicleData['tripAssign'] == true) {
+  //       showToastMessage(
+  //           "Error",
+  //           "Your vehicle is already assigned. Please complete your ongoing ride.",
+  //           kRed);
+  //       setState(() {
+  //         isLoading = false;
+  //       });
+  //       return;
+  //     }
+
+  //     String vehicleName = selectedVehicleData['companyName'] ?? "Unknown";
+  //     String vehicleNumber = selectedVehicleData['vehicleNumber'] ?? "Unknown";
+
+  //     // Generate docId for consistency
+  //     String docId = FirebaseFirestore.instance.collection('trips').doc().id;
+
+  //     final tripData = {
+  //       'tripName': _tripNameController.text,
+  //       'vehicleId': selectedVehicle,
+  //       'currentUID': currentUId,
+  //       'role': role,
+  //       'companyName': vehicleName,
+  //       'vehicleNumber': vehicleNumber,
+  //       'totalMiles': 0,
+  //       'tripStartMiles': int.parse(_currentMilesController.text),
+  //       'tripEndMiles': 0,
+  //       'currentMiles': int.parse(_currentMilesController.text),
+  //       'previousMiles': int.parse(_currentMilesController.text),
+  //       'milesArray': [
+  //         {
+  //           'mile': int.parse(_currentMilesController.text),
+  //           'date': Timestamp.now(),
+  //         }
+  //       ],
+  //       'isPaid': false,
+  //       'tripStatus': 1,
+  //       'tripStartDate': selectedDate,
+  //       'tripEndDate': DateTime.now(),
+  //       'createdAt': Timestamp.now(),
+  //       'updatedAt': Timestamp.now(),
+  //       'oEarnings': (role == "Owner" && _oEarningController.text.isNotEmpty)
+  //           ? int.parse(_oEarningController.text)
+  //           : 0,
+  //     };
+
+  //     WriteBatch batch = FirebaseFirestore.instance.batch();
+
+  //     DocumentReference userTripRef = FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(currentUId)
+  //         .collection('trips')
+  //         .doc(docId);
+
+  //     DocumentReference tripRef =
+  //         FirebaseFirestore.instance.collection('trips').doc(docId);
+
+  //     DocumentReference vehicleRef = FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(currentUId)
+  //         .collection("Vehicles")
+  //         .doc(selectedVehicle);
+
+  //     // Update current user's vehicle
+  //     batch.set(userTripRef, tripData);
+  //     batch.set(tripRef, tripData);
+  //     batch.update(vehicleRef, {'tripAssign': true});
+
+  //     // **Find and update assigned drivers' vehicles**
+  //     QuerySnapshot driverDocs = await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .where("createdBy", isEqualTo: ownerId)
+  //         .where("isDriver", isEqualTo: true)
+  //         .where("isTeamMember", isEqualTo: true)
+  //         .get();
+
+  //     for (var driverDoc in driverDocs.docs) {
+  //       String driverId = driverDoc.id;
+
+  //       DocumentReference driverVehicleRef = FirebaseFirestore.instance
+  //           .collection("Users")
+  //           .doc(driverId)
+  //           .collection("Vehicles")
+  //           .doc(selectedVehicle);
+
+  //       batch.update(driverVehicleRef, {'tripAssign': true});
+  //     }
+
+  //     // **If driver creates a trip, update owner's vehicle**
+  //     if (role == "Driver") {
+  //       DocumentReference ownerVehicleRef = FirebaseFirestore.instance
+  //           .collection("Users")
+  //           .doc(ownerId)
+  //           .collection("Vehicles")
+  //           .doc(selectedVehicle);
+
+  //       batch.update(ownerVehicleRef, {'tripAssign': true});
+  //     }
+
+  //     await batch.commit();
+
+  //     showToastMessage("Success", "Trip added successfully", kSecondary);
+
+  //     _tripNameController.clear();
+  //     _currentMilesController.clear();
+  //     _oEarningController.clear();
+
+  //     setState(() {
+  //       selectedDate = null;
+  //     });
+  //   } catch (e) {
+  //     showToastMessage("Error", e.toString(), kRed);
+  //   } finally {
+  //     setState(() {
+  //       isLoading = false;
+  //     });
+  //   }
+  // }
 
   void addTrip() async {
     if (_tripNameController.text.isEmpty ||
@@ -159,32 +321,50 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
           .collection("Vehicles")
           .doc(selectedVehicle);
 
-      // Update current user's vehicle
+      // Update current user's vehicle and create trip
       batch.set(userTripRef, tripData);
       batch.set(tripRef, tripData);
       batch.update(vehicleRef, {'tripAssign': true});
 
-      // **Find and update assigned drivers' vehicles**
-      QuerySnapshot driverDocs = await FirebaseFirestore.instance
-          .collection("Users")
-          .where("createdBy", isEqualTo: ownerId)
-          .where("isDriver", isEqualTo: true)
-          .where("isTeamMember", isEqualTo: true)
-          .get();
-
-      for (var driverDoc in driverDocs.docs) {
-        String driverId = driverDoc.id;
-
-        DocumentReference driverVehicleRef = FirebaseFirestore.instance
+      // **Find and update assigned drivers' vehicles - only if they have the vehicle**
+      if (role == "Owner") {
+        QuerySnapshot driverDocs = await FirebaseFirestore.instance
             .collection("Users")
-            .doc(driverId)
-            .collection("Vehicles")
-            .doc(selectedVehicle);
+            .where("createdBy", isEqualTo: ownerId)
+            .where("isDriver", isEqualTo: true)
+            .where("isTeamMember", isEqualTo: true)
+            .get();
 
-        batch.update(driverVehicleRef, {'tripAssign': true});
+        for (var driverDoc in driverDocs.docs) {
+          String driverId = driverDoc.id;
+
+          // Check if driver has this vehicle before trying to update
+          DocumentReference driverVehicleRef = FirebaseFirestore.instance
+              .collection("Users")
+              .doc(driverId)
+              .collection("Vehicles")
+              .doc(selectedVehicle);
+
+          // First check if the vehicle exists for this driver
+          DocumentSnapshot driverVehicleSnapshot = await driverVehicleRef.get();
+
+          if (driverVehicleSnapshot.exists) {
+            // Only update if the vehicle exists for this driver
+            batch.update(driverVehicleRef, {'tripAssign': true});
+
+            // Also create the trip in the driver's trips collection
+            DocumentReference driverTripRef = FirebaseFirestore.instance
+                .collection("Users")
+                .doc(driverId)
+                .collection('trips')
+                .doc(docId);
+
+            batch.set(driverTripRef, tripData);
+          }
+        }
       }
 
-      // **If driver creates a trip, update owner's vehicle**
+      // **If driver creates a trip, update owner's vehicle if it exists**
       if (role == "Driver") {
         DocumentReference ownerVehicleRef = FirebaseFirestore.instance
             .collection("Users")
@@ -192,7 +372,21 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
             .collection("Vehicles")
             .doc(selectedVehicle);
 
-        batch.update(ownerVehicleRef, {'tripAssign': true});
+        // First check if the owner has this vehicle
+        DocumentSnapshot ownerVehicleSnapshot = await ownerVehicleRef.get();
+
+        if (ownerVehicleSnapshot.exists) {
+          batch.update(ownerVehicleRef, {'tripAssign': true});
+
+          // Also create the trip in the owner's trips collection
+          DocumentReference ownerTripRef = FirebaseFirestore.instance
+              .collection("Users")
+              .doc(ownerId)
+              .collection('trips')
+              .doc(docId);
+
+          batch.set(ownerTripRef, tripData);
+        }
       }
 
       await batch.commit();
@@ -205,6 +399,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
       setState(() {
         selectedDate = null;
+        selectedVehicle = null;
       });
     } catch (e) {
       showToastMessage("Error", e.toString(), kRed);
@@ -471,6 +666,33 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 10.h),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search by Trip Name or Vehicle Number',
+                        prefixIcon: Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {}); // Trigger rebuild
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {});
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+
                   // Add Trip and add mileage or expense
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12.w),
@@ -778,12 +1000,26 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         return const CircularProgressIndicator();
                       }
 
+                      // var filteredTrips = snapshot.data!.docs.where((doc) {
+                      //   DateTime tripStartDate = doc['tripStartDate'].toDate();
+                      //   DateTime tripEndDate = doc['tripEndDate'].toDate();
+
+                      //   // ✅ Show trips **only if** they overlap the selected range correctly
+                      //   return (fromDate == null ||
+                      //           tripEndDate.isAfter(fromDate!
+                      //               .subtract(const Duration(days: 1)))) &&
+                      //       (toDate == null ||
+                      //           tripStartDate.isBefore(
+                      //                   toDate!.add(const Duration(days: 1))) &&
+                      //               tripEndDate.isAfter(toDate!
+                      //                   .subtract(const Duration(days: 1))));
+                      // }).toList();
                       var filteredTrips = snapshot.data!.docs.where((doc) {
+                        // Date range filtering
                         DateTime tripStartDate = doc['tripStartDate'].toDate();
                         DateTime tripEndDate = doc['tripEndDate'].toDate();
 
-                        // ✅ Show trips **only if** they overlap the selected range correctly
-                        return (fromDate == null ||
+                        bool dateInRange = (fromDate == null ||
                                 tripEndDate.isAfter(fromDate!
                                     .subtract(const Duration(days: 1)))) &&
                             (toDate == null ||
@@ -791,6 +1027,21 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                         toDate!.add(const Duration(days: 1))) &&
                                     tripEndDate.isAfter(toDate!
                                         .subtract(const Duration(days: 1))));
+
+                        // Search filtering
+                        String searchTerm =
+                            _searchController.text.toLowerCase();
+                        bool matchesSearch = searchTerm.isEmpty ||
+                            doc['tripName']
+                                .toString()
+                                .toLowerCase()
+                                .contains(searchTerm) ||
+                            doc['vehicleNumber']
+                                .toString()
+                                .toLowerCase()
+                                .contains(searchTerm);
+
+                        return dateInRange && matchesSearch;
                       }).toList();
 
                       if (filteredTrips.isEmpty) {
@@ -798,7 +1049,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           padding: const EdgeInsets.only(top: 20),
                           child: Center(
                             child: Text(
-                              "No trips found",
+                              _searchController.text.isEmpty
+                                  ? "No trips found"
+                                  : "No trips match your search",
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -908,6 +1161,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
                               num oEarnings = doc['oEarnings'];
                               String vehicleID = doc['vehicleId'];
+                              String vehicleNumber = doc['vehicleNumber'];
+                              String companyName = doc['companyName'];
 
                               return FutureBuilder<QuerySnapshot>(
                                 future: FirebaseFirestore.instance
@@ -930,29 +1185,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       snapshot.data == null ||
                                       snapshot.data!.docs.isEmpty) {
                                     return buildTripCard(
-                                        doc,
-                                        formattedStartDate,
-                                        tripStartMiles,
-                                        tripStatus,
-                                        formattedEndDate,
-                                        tripEndMiles,
-                                        totalMiles,
-                                        earnings,
-                                        isPaid,
-                                        0,
-                                        context,
-                                        role,
-                                        oEarnings,
-                                        vehicleID);
-                                  }
-
-                                  // ✅ Sum all "amount" values ONLY if tripId matches
-                                  num totalExpenses = snapshot.data!.docs.fold(
-                                    0,
-                                    (sum, item) => sum + (item['amount'] ?? 0),
-                                  );
-
-                                  return buildTripCard(
                                       doc,
                                       formattedStartDate,
                                       tripStartMiles,
@@ -962,16 +1194,42 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       totalMiles,
                                       earnings,
                                       isPaid,
-                                      totalExpenses,
-                                      // Show total expenses if exists
+                                      0,
                                       context,
                                       role,
                                       oEarnings,
-                                      vehicleID);
+                                      vehicleID,
+                                      vehicleNumber,
+                                      companyName,
+                                    );
+                                  }
+
+                                  // ✅ Sum all "amount" values ONLY if tripId matches
+                                  num totalExpenses = snapshot.data!.docs.fold(
+                                    0,
+                                    (sum, item) => sum + (item['amount'] ?? 0),
+                                  );
+
+                                  return buildTripCard(
+                                    doc,
+                                    formattedStartDate,
+                                    tripStartMiles,
+                                    tripStatus,
+                                    formattedEndDate,
+                                    tripEndMiles,
+                                    totalMiles,
+                                    earnings,
+                                    isPaid,
+                                    totalExpenses,
+                                    // Show total expenses if exists
+                                    context,
+                                    role,
+                                    oEarnings,
+                                    vehicleID, vehicleNumber,
+                                    companyName,
+                                  );
                                 },
                               );
-
-                              // return buildTripCard(doc, formattedStartDate, tripStartMiles, tripStatus, formattedEndDate, tripEndMiles, totalMiles, earnings, isPaid, context);
                             }).toList(),
                           ),
                         ],
@@ -985,20 +1243,23 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   }
 
   GestureDetector buildTripCard(
-      QueryDocumentSnapshot<Object?> doc,
-      String formattedStartDate,
-      num tripStartMiles,
-      String tripStatus,
-      String formattedEndDate,
-      num tripEndMiles,
-      num totalMiles,
-      num earnings,
-      bool isPaid,
-      num totalExpenses,
-      BuildContext context,
-      String role,
-      num oEarnings,
-      String vehicleID) {
+    QueryDocumentSnapshot<Object?> doc,
+    String formattedStartDate,
+    num tripStartMiles,
+    String tripStatus,
+    String formattedEndDate,
+    num tripEndMiles,
+    num totalMiles,
+    num earnings,
+    bool isPaid,
+    num totalExpenses,
+    BuildContext context,
+    String role,
+    num oEarnings,
+    String vehicleID,
+    String vehicleNumber,
+    String companyName,
+  ) {
     return GestureDetector(
       // onTap: () => Get.to(() => TripDetailsScreen(
       //       docId: doc.id,
@@ -1019,6 +1280,15 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
             Center(
               child: Text(doc['tripName'],
                   style: appStyle(16, kDark, FontWeight.w500)),
+            ),
+            SizedBox(height: 10.h),
+            Row(
+              children: [
+                Text("${vehicleNumber} (${companyName})",
+                    textAlign: TextAlign.left,
+                    style: appStyle(14, kPrimary, FontWeight.w500)),
+                Container(),
+              ],
             ),
             SizedBox(height: 10.h),
             Row(

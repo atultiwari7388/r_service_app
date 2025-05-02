@@ -299,8 +299,8 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         'vehicleId': docRef.id,
       });
 
-      showToastMessage(
-          "Success", "Vehicle Data Uploaded Successfully", kSecondary);
+      // showToastMessage(
+      //     "Success", "Vehicle Data Uploaded Successfully", kSecondary);
       setState(() {
         isSaving = false;
         excelData = [];
@@ -314,6 +314,85 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
     } finally {
       setState(() {
         isSaving = false;
+      });
+    }
+  }
+
+  Future<void> uploadMultipleVehicles(
+      List<Map<String, dynamic>> vehiclesData) async {
+    setState(() {
+      isSaving = true;
+      uploadErrors.clear();
+    });
+
+    int successCount = 0;
+
+    for (var vehicleData in vehiclesData) {
+      try {
+        await saveVehicleFromData(vehicleData);
+        successCount++;
+      } catch (e) {
+        uploadErrors.add(
+            'Failed to upload vehicle ${vehicleData['vehicleNumber']}: $e');
+        log('Error uploading vehicle: $e');
+      }
+    }
+
+    setState(() => isSaving = false);
+
+    if (uploadErrors.isEmpty) {
+      showToastMessage(
+        "Success",
+        "$successCount vehicle(s) uploaded successfully",
+        kSecondary,
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(uploadErrors.length == vehiclesData.length
+              ? 'Upload Failed'
+              : 'Partial Success'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                  'Successfully uploaded $successCount out of ${vehiclesData.length} vehicles.'),
+              if (uploadErrors.isNotEmpty) ...[
+                SizedBox(height: 16),
+                Text('Errors:', style: TextStyle(fontWeight: FontWeight.bold)),
+                SizedBox(
+                  height: 150,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: uploadErrors
+                          .map((e) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                child: Text(e,
+                                    style: TextStyle(color: Colors.red)),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (successCount > 0) {
+      setState(() {
+        excelData = [];
+        _isBtnEnable = false;
       });
     }
   }
@@ -548,52 +627,66 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 ],
               ),
             ),
+      // bottomNavigationBar: Container(
+      //   child: _isBtnEnable
+      //       ? CustomButton(
+      //           text: "Upload",
+      //           onPress: () async {
+      //             if (excelData.isEmpty) return;
+      //             setState(() {
+      //               isSaving = true;
+      //               uploadErrors.clear();
+      //             });
+
+      //             int successCount = 0;
+      //             for (var data in excelData) {
+      //               try {
+      //                 await uploadMultipleVehicles(
+      //                     data as List<Map<String, dynamic>>);
+      //                 successCount++;
+      //               } catch (e) {
+      //                 uploadErrors.add(e.toString());
+      //               }
+      //             }
+
+      //             setState(() => isSaving = false);
+      //             showDialog(
+      //               context: context,
+      //               builder: (ctx) => AlertDialog(
+      //                 title: Text('Upload Complete'),
+      //                 content: Column(
+      //                   mainAxisSize: MainAxisSize.min,
+      //                   children: [
+      //                     Text('Successfully uploaded $successCount vehicles.'),
+      //                     if (uploadErrors.isNotEmpty) ...[
+      //                       SizedBox(height: 16),
+      //                       Text('Errors:',
+      //                           style: TextStyle(fontWeight: FontWeight.bold)),
+      //                       ...uploadErrors.map((e) => Text(e)).toList(),
+      //                     ],
+      //                   ],
+      //                 ),
+      //                 actions: [
+      //                   TextButton(
+      //                     onPressed: Navigator.of(ctx).pop,
+      //                     child: Text('OK'),
+      //                   ),
+      //                 ],
+      //               ),
+      //             );
+      //           },
+      //           color: kPrimary,
+      //         )
+      //       : SizedBox(),
+      // ),
+
       bottomNavigationBar: Container(
         child: _isBtnEnable
             ? CustomButton(
                 text: "Upload",
                 onPress: () async {
                   if (excelData.isEmpty) return;
-                  setState(() {
-                    isSaving = true;
-                    uploadErrors.clear();
-                  });
-
-                  int successCount = 0;
-                  for (var data in excelData) {
-                    try {
-                      await saveVehicleFromData(data);
-                      successCount++;
-                    } catch (e) {
-                      uploadErrors.add(e.toString());
-                    }
-                  }
-
-                  setState(() => isSaving = false);
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: Text('Upload Complete'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Successfully uploaded $successCount vehicles.'),
-                          if (uploadErrors.isNotEmpty) ...[
-                            SizedBox(height: 16),
-                            Text('Errors:',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                            ...uploadErrors.map((e) => Text(e)).toList(),
-                          ],
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: Navigator.of(ctx).pop,
-                          child: Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
+                  await uploadMultipleVehicles(excelData);
                 },
                 color: kPrimary,
               )

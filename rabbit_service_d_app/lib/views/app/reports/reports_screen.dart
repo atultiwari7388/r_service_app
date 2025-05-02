@@ -10,7 +10,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/generate_pdf.dart';
@@ -747,15 +746,6 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
 
-      // batch.update(currentUserVehicleref, {
-      //   'services': vehicleServices,
-      //   'currentMiles': currentMiles.toString(),
-      //   'currentMilesArray': FieldValue.arrayUnion([
-      //     {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-      //   ]),
-      //   'nextNotificationMiles': notificationData,
-      // });
-
       await batch.commit();
 
       resetForm();
@@ -1387,6 +1377,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             setState(() {
                                               selectedVehicle = value;
                                               selectedServices.clear();
+                                              selectedPackages.clear();
                                               updateSelectedVehicleAndService();
                                             });
                                           },

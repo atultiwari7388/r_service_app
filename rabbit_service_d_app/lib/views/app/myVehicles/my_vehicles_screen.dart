@@ -224,15 +224,25 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen> {
                                     fit: BoxFit.contain,
                                   ),
                                 ),
-                                title: Text(vehicleName,
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.normal)),
-                                subtitle: Text(
-                                  vehicleNumber,
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                title: Row(
+                                  children: [
+                                    Text(vehicleNumber,
+                                        style: TextStyle(
+                                            fontSize: 17,
+                                            color: const Color.fromARGB(
+                                                255, 12, 12, 12),
+                                            fontWeight: FontWeight.normal)),
+                                    Text("(${vehicleName})",
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.normal)),
+                                  ],
                                 ),
+                                // subtitle: Text(
+                                //   vehicleNumber,
+                                //   style: TextStyle(fontWeight: FontWeight.bold),
+                                // ),
                                 trailing: Icon(Icons.arrow_forward_ios,
                                     color: kPrimary),
                                 onTap: () {
