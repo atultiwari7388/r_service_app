@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 
 class MemberVehiclesScreen extends StatelessWidget {
   final String memberName;
+  final String memberContact;
   final String memberId;
   final List<Map<String, dynamic>> vehicles;
 
   const MemberVehiclesScreen({
     super.key,
     required this.memberName,
+    required this.memberContact,
     required this.memberId,
     required this.vehicles,
   });
@@ -19,7 +22,7 @@ class MemberVehiclesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text("$memberName's Vehicles",
-            style: appStyle(18, Colors.white, FontWeight.bold)),
+            style: appStyle(18, Colors.white, FontWeight.normal)),
         centerTitle: true,
         backgroundColor: kPrimary,
         elevation: 0,
@@ -110,6 +113,33 @@ class MemberVehiclesScreen extends StatelessWidget {
                   ),
           ),
         ],
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: kPrimary,
+        child: InkWell(
+          onTap: () async {
+            await makePhoneCall(memberContact);
+          },
+          child: Container(
+            height: 50,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  backgroundColor: kSecondary,
+                  child: Icon(Icons.phone, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  "Call now",
+                  style: appStyle(16, Colors.white, FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

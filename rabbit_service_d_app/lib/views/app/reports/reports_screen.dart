@@ -817,12 +817,13 @@ class _ReportsScreenState extends State<ReportsScreen>
 
     return Scaffold(
         appBar: AppBar(
-          title: Text('Records',
-                  style: appStyleUniverse(28, kDark, FontWeight.normal))
-              .animate()
-              .fadeIn(duration: 600.ms)
-              .slideX(begin: -0.2, end: 0),
-          elevation: 0,
+          backgroundColor: kWhite,
+          elevation: 1,
+          centerTitle: true,
+          title: Image.asset(
+            'assets/h_n_logo-removebg.png',
+            height: 50.h,
+          ),
           actions: [
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -917,7 +918,6 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             SizedBox(width: 20.w),
           ],
-          backgroundColor: Colors.white,
         ),
         body: isView == true
             ? RefreshIndicator(

@@ -13,6 +13,7 @@ import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
+import 'package:regal_service_d_app/views/app/manageCheck/manage_check_screen.dart';
 import 'package:regal_service_d_app/views/app/manageTrips/manage_trips_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myVehicles/my_vehicles_screen.dart';
@@ -38,6 +39,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late String role = "";
+  bool isCheque = false;
   final _firebaseAuth = FirebaseAuth.instance;
   final userService = UserService.to;
   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
@@ -55,8 +57,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         setState(() {
           role = userData["role"] ?? "";
+          isCheque = userData["isCheque"] ?? false;
         });
-        log("Role set to " + role);
+        log("Role set to ${role} and isCheque set to ${isCheque} for user ID: $currentUId");
       } else {
         log("No user document found for ID: $currentUId");
       }
@@ -130,6 +133,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/myvehicles.png", "My Vehicles", () {
                       Get.to(() => MyVehiclesScreen());
                     }),
+                    isCheque
+                        ? buildListTile("assets/cheque.png", "Manage Check",
+                            () {
+                            Get.to(() => ManageCheckScreen());
+                          })
+                        : Container(),
                     if (role == "Owner" ||
                         role == "Manager" ||
                         role == "Accountant") ...[

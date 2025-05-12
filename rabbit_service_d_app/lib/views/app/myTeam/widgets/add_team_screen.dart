@@ -250,7 +250,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     ),
                     SizedBox(height: 15.h),
                     _buildDatePickerField(
-                      label: 'License Expiry Date*',
+                      label: 'License Expiry Date',
                       selectedDate: licExpiryDate,
                       onDateSelected: (date) {
                         setState(() {
@@ -260,7 +260,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     ),
                     SizedBox(height: 15.h),
                     _buildDatePickerField(
-                      label: 'DOB*',
+                      label: 'DOB',
                       selectedDate: dob,
                       onDateSelected: (date) {
                         setState(() {
@@ -271,7 +271,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     SizedBox(height: 15.h),
 
                     _buildDatePickerField(
-                      label: 'Last drug test*',
+                      label: 'Last drug test',
                       selectedDate: lastDrugTest,
                       onDateSelected: (date) {
                         setState(() {
@@ -282,7 +282,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     SizedBox(height: 15.h),
 
                     _buildDatePickerField(
-                      label: 'Date of hire*',
+                      label: 'Date of hire',
                       selectedDate: dateOfHire,
                       onDateSelected: (date) {
                         setState(() {
@@ -294,7 +294,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     SizedBox(height: 15.h),
 
                     _buildDatePickerField(
-                      label: 'Date of termination*',
+                      label: 'Date of termination',
                       selectedDate: dateOfTermination,
                       onDateSelected: (date) {
                         setState(() {

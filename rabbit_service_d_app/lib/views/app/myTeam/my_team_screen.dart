@@ -1,12 +1,10 @@
 import 'dart:developer';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
@@ -72,9 +70,10 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
         setState(() {
           role = userData["role"] ?? "";
         });
-        // log("Role set to " + role);
       } else {
-        // log("No user document found for ID: $currentUId");
+        setState(() {
+          _errorMessage = 'User not found';
+        });
       }
     } catch (e) {
       // log("Error fetching user details: $e");
@@ -123,17 +122,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
 
         log('Member $name has ${vehicles.length} vehicles');
 
-        // Add member data along with their vehicles to the list
-        // membersWithVehicles.add({
-        //   'name': name,
-        //   'email': email,
-        //   'isActive': isActive,
-        //   'memberId': memberId,
-        //   'ownerId': member['createdBy'],
-        //   'vehicles': vehicles, // List of vehicles
-        //   'perMileCharge': member['perMileCharge'],
-        // });
-        // Inside the loop where you process each member
         membersWithVehicles.add({
           'name': name,
           'email': email,
@@ -142,7 +130,8 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           'ownerId': member['createdBy'],
           'vehicles': vehicles,
           'perMileCharge': member['perMileCharge'],
-          'role': member['role']
+          'role': member['role'],
+          'phoneNumber': member['phoneNumber'],
         });
       }
 
@@ -161,29 +150,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
       });
     }
   }
-
-  // void _filterMembers() {
-  //   String query = _searchController.text.toLowerCase();
-  //   print('Filtering members with query: "$query"');
-  //   setState(() {
-  //     if (query.isEmpty) {
-  //       _filteredMembers = _allMembers;
-  //     } else {
-  //       _filteredMembers = _allMembers.where((member) {
-  //         String name = member['name'].toLowerCase();
-  //         String vehicleDetails = member['vehicles']
-  //             .map<String>((vehicle) =>
-  //                 "${vehicle['vehicleNumber'].toLowerCase()} (${vehicle['companyName'].toLowerCase()})")
-  //             .join(' ')
-  //             .toLowerCase();
-  //         bool matchesName = name.contains(query);
-  //         bool matchesVehicle = vehicleDetails.contains(query);
-  //         return matchesName || matchesVehicle;
-  //       }).toList();
-  //     }
-  //     log('Filtered members count: ${_filteredMembers.length}');
-  //   });
-  // }
 
   void _filterMembers() {
     String query = _searchController.text.toLowerCase();
@@ -336,6 +302,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                               var member = _filteredMembers[index];
                               String name = member['name'];
                               String email = member['email'];
+                              String phone = member['phoneNumber'];
                               bool isActive = member['isActive'];
                               String memberId = member['memberId'];
                               String ownerId = member['ownerId'];
@@ -428,6 +395,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                           } else if (value == 'view_vehicles') {
                                             Get.to(() => MemberVehiclesScreen(
                                                       memberName: name,
+                                                      memberContact: phone,
                                                       memberId: memberId,
                                                       vehicles:
                                                           member['vehicles'],
