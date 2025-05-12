@@ -130,11 +130,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/myvehicles.png", "My Vehicles", () {
                       Get.to(() => MyVehiclesScreen());
                     }),
-                    role == "Owner"
-                        ? buildListTile("assets/team.png", "Manage Team", () {
-                            Get.to(() => MyTeamScreen());
-                          })
-                        : SizedBox(),
+                    if (role == "Owner" ||
+                        role == "Manager" ||
+                        role == "Accountant") ...[
+                      buildListTile("assets/team.png", "Manage Team", () {
+                        Get.to(() => MyTeamScreen());
+                      })
+                    ],
                     if (role == "Owner" ||
                         role == "Driver" ||
                         role == "Manager") ...[

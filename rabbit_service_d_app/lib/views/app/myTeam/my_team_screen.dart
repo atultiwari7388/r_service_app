@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -11,6 +13,7 @@ import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dar
 import 'package:regal_service_d_app/views/app/myTeam/widgets/edit_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/member_jobs_history.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/view_members_trip.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/view_vehicles_screen.dart';
 import '../../../utils/app_styles.dart';
 
 class MyTeamScreen extends StatefulWidget {
@@ -29,6 +32,16 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
   bool _isLoading = true;
   String _errorMessage = '';
   late String role = "";
+
+  List<String> _selectedRoles = ['All'];
+  List<String> _availableRoles = [
+    'All',
+    'Manager',
+    'Driver',
+    'Vendor',
+    'Accountant',
+    'Other Staff'
+  ];
 
   @override
   void initState() {
@@ -96,12 +109,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
             .collection('Vehicles')
             .get();
 
-        // List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
-        //   return {
-        //     'companyName': doc['companyName'] ?? 'No Company',
-        //     'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
-        //   };
-        // }).toList();
         List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
           return {
             'companyName': doc['companyName'] ?? 'No Company',
@@ -114,17 +121,28 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
             .toLowerCase()
             .compareTo(b['vehicleNumber'].toString().toLowerCase()));
 
-        print('Member $name has ${vehicles.length} vehicles');
+        log('Member $name has ${vehicles.length} vehicles');
 
         // Add member data along with their vehicles to the list
+        // membersWithVehicles.add({
+        //   'name': name,
+        //   'email': email,
+        //   'isActive': isActive,
+        //   'memberId': memberId,
+        //   'ownerId': member['createdBy'],
+        //   'vehicles': vehicles, // List of vehicles
+        //   'perMileCharge': member['perMileCharge'],
+        // });
+        // Inside the loop where you process each member
         membersWithVehicles.add({
           'name': name,
           'email': email,
           'isActive': isActive,
           'memberId': memberId,
           'ownerId': member['createdBy'],
-          'vehicles': vehicles, // List of vehicles
+          'vehicles': vehicles,
           'perMileCharge': member['perMileCharge'],
+          'role': member['role']
         });
       }
 
@@ -134,7 +152,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
         _isLoading = false;
       });
 
-      print('Total members fetched: ${_allMembers.length}');
+      log('Total members fetched: ${_allMembers.length}');
     } catch (e) {
       print('Error fetching team members: $e');
       setState(() {
@@ -144,14 +162,48 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
     }
   }
 
+  // void _filterMembers() {
+  //   String query = _searchController.text.toLowerCase();
+  //   print('Filtering members with query: "$query"');
+  //   setState(() {
+  //     if (query.isEmpty) {
+  //       _filteredMembers = _allMembers;
+  //     } else {
+  //       _filteredMembers = _allMembers.where((member) {
+  //         String name = member['name'].toLowerCase();
+  //         String vehicleDetails = member['vehicles']
+  //             .map<String>((vehicle) =>
+  //                 "${vehicle['vehicleNumber'].toLowerCase()} (${vehicle['companyName'].toLowerCase()})")
+  //             .join(' ')
+  //             .toLowerCase();
+  //         bool matchesName = name.contains(query);
+  //         bool matchesVehicle = vehicleDetails.contains(query);
+  //         return matchesName || matchesVehicle;
+  //       }).toList();
+  //     }
+  //     log('Filtered members count: ${_filteredMembers.length}');
+  //   });
+  // }
+
   void _filterMembers() {
     String query = _searchController.text.toLowerCase();
     print('Filtering members with query: "$query"');
+
     setState(() {
-      if (query.isEmpty) {
+      if (query.isEmpty &&
+          (_selectedRoles.contains('All') || _selectedRoles.isEmpty)) {
         _filteredMembers = _allMembers;
       } else {
         _filteredMembers = _allMembers.where((member) {
+          // Filter by role first
+          bool roleMatches = _selectedRoles.contains('All') ||
+              _selectedRoles.contains(member['role']);
+
+          if (!roleMatches) return false;
+
+          // Then filter by search query if needed
+          if (query.isEmpty) return true;
+
           String name = member['name'].toLowerCase();
           String vehicleDetails = member['vehicles']
               .map<String>((vehicle) =>
@@ -163,7 +215,7 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           return matchesName || matchesVehicle;
         }).toList();
       }
-      print('Filtered members count: ${_filteredMembers.length}');
+      log('Filtered members count: ${_filteredMembers.length}');
     });
   }
 
@@ -186,42 +238,90 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
       ),
       body: Column(
         children: [
-          // Attractive Search Bar
+          // // Attractive Search Bar
+          // Padding(
+          //   padding: const EdgeInsets.all(16.0),
+          //   child: TextField(
+          //     controller: _searchController,
+          //     decoration: InputDecoration(
+          //       hintText: 'Search by Name or Vehicle Number',
+          //       prefixIcon: Icon(Icons.search, color: Colors.grey),
+          //       filled: true,
+          //       fillColor: Colors.grey[200],
+          //       contentPadding: const EdgeInsets.symmetric(
+          //           vertical: 12.0, horizontal: 20.0),
+          //       border: OutlineInputBorder(
+          //         borderRadius: BorderRadius.circular(30.0),
+          //         borderSide: BorderSide.none,
+          //       ),
+          //       enabledBorder: OutlineInputBorder(
+          //         borderRadius: BorderRadius.circular(30.0),
+          //         borderSide: BorderSide.none,
+          //       ),
+          //       focusedBorder: OutlineInputBorder(
+          //         borderRadius: BorderRadius.circular(30.0),
+          //         borderSide: BorderSide(color: kPrimary),
+          //       ),
+          //       suffixIcon: _searchController.text.isNotEmpty
+          //           ? IconButton(
+          //               icon: Icon(Icons.clear, color: Colors.grey),
+          //               onPressed: () {
+          //                 _searchController.clear();
+          //                 _filterMembers(); // Clear search results
+          //               },
+          //             )
+          //           : null,
+          //     ),
+          //   ),
+          // ),
+
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by Name or Vehicle Number',
-                prefixIcon: Icon(Icons.search, color: Colors.grey),
-                filled: true,
-                fillColor: Colors.grey[200],
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 20.0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                  borderSide: BorderSide.none,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by Name or Vehicle Number',
+                      prefixIcon: Icon(Icons.search, color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12.0, horizontal: 20.0),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                        borderSide: BorderSide(color: kPrimary),
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear, color: Colors.grey),
+                              onPressed: () {
+                                _searchController.clear();
+                                _filterMembers();
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                  borderSide: BorderSide.none,
+                SizedBox(width: 10.w),
+                IconButton(
+                  icon: Icon(Icons.filter_list, color: kPrimary),
+                  onPressed: _showFilterDialog,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                  borderSide: BorderSide(color: kPrimary),
-                ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear, color: Colors.grey),
-                        onPressed: () {
-                          _searchController.clear();
-                          _filterMembers(); // Clear search results
-                        },
-                      )
-                    : null,
-              ),
+              ],
             ),
           ),
+
           // Display content based on loading, error, or data state
           Expanded(
             child: _isLoading
@@ -266,8 +366,15 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                         ? TextStyle()
                                         : appStyle(16, kDark, FontWeight.bold),
                                   ),
+                                  // subtitle: Text(
+                                  //   vehicleDetails,
+                                  //   style: kIsWeb
+                                  //       ? TextStyle()
+                                  //       : appStyle(
+                                  //           14, kDark, FontWeight.normal),
+                                  // ),
                                   subtitle: Text(
-                                    vehicleDetails,
+                                    "Role: ${member['role']}",
                                     style: kIsWeb
                                         ? TextStyle()
                                         : appStyle(
@@ -318,6 +425,19 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                                   perMileCharge:
                                                       num.parse(perMileCharge),
                                                 ));
+                                          } else if (value == 'view_vehicles') {
+                                            Get.to(() => MemberVehiclesScreen(
+                                                      memberName: name,
+                                                      memberId: memberId,
+                                                      vehicles:
+                                                          member['vehicles'],
+                                                    )
+                                                // MemberJobsHistoryScreen(
+                                                //   memberName: name,
+                                                //   memebrId: memberId,
+                                                //   ownerId: ownerId,
+                                                // ),
+                                                );
                                           } else if (value == 'view_jobs') {
                                             Get.to(
                                                 () => MemberJobsHistoryScreen(
@@ -336,7 +456,9 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                               title: Text('Edit'),
                                             ),
                                           ),
-                                          if (role == "Owner")
+                                          if (role == "Owner" ||
+                                              role == "Manager" ||
+                                              role == "Accountant")
                                             PopupMenuItem(
                                               value: 'view_trip',
                                               child: ListTile(
@@ -346,7 +468,20 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                                 title: Text('View Trip'),
                                               ),
                                             ),
-                                          if (role == "Owner")
+                                          if (role == "Owner" ||
+                                              role == "Manager" ||
+                                              role == "Accountant")
+                                            PopupMenuItem(
+                                              value: 'view_vehicles',
+                                              child: ListTile(
+                                                leading: Icon(Icons.work,
+                                                    color: kPrimary),
+                                                title: Text('View Vehicles'),
+                                              ),
+                                            ),
+                                          if (role == "Owner" ||
+                                              role == "Manager" ||
+                                              role == "Accountant")
                                             PopupMenuItem(
                                               value: 'view_jobs',
                                               child: ListTile(
@@ -366,6 +501,62 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Filter by Role"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _availableRoles.map((role) {
+                    return CheckboxListTile(
+                      title: Text(role),
+                      value: _selectedRoles.contains(role),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            if (role == 'All') {
+                              _selectedRoles = ['All'];
+                            } else {
+                              _selectedRoles.remove('All');
+                              _selectedRoles.add(role);
+                            }
+                          } else {
+                            _selectedRoles.remove(role);
+                            if (_selectedRoles.isEmpty) {
+                              _selectedRoles.add('All');
+                            }
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: Text("Cancel"),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text("Apply"),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _filterMembers();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -993,7 +993,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         .collection("Users")
                         .doc(currentUId)
                         .collection('trips')
-                        .orderBy("createdAt", descending: false)
+                        .orderBy("createdAt", descending: true)
                         .snapshots(),
                     builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                       if (!snapshot.hasData) {
@@ -1102,7 +1102,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                                 16, kWhite, FontWeight.w500),
                                           ),
                                           Text(
-                                            "\$${totals['expenses']!.toStringAsFixed(2)}",
+                                            "\$${totals['expenses']!.truncateToDouble() == totals['expenses'] ? totals['expenses']!.toInt() : totals['expenses']}",
                                             style: appStyle(
                                                 15, kWhite, FontWeight.w500),
                                           ),
@@ -1119,14 +1119,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       child: Column(
                                         children: [
                                           Text(
-                                            role == "Owner"
-                                                ? 'Total Loads'
-                                                : 'Total Earnings',
+                                            getTitleForRole(role),
                                             style: appStyle(
                                                 16, kWhite, FontWeight.w500),
                                           ),
                                           Text(
-                                              "\$${totals['earnings']!.toStringAsFixed(2)}",
+                                              "\$${totals['earnings']!.truncateToDouble() == totals['earnings'] ? totals['earnings']!.toInt() : totals['earnings']}",
                                               style: appStyle(15, kWhite,
                                                   FontWeight.normal))
                                         ],
@@ -1240,6 +1238,14 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
               ),
       ),
     );
+  }
+
+  String getTitleForRole(String role) {
+    if (role == "Owner" || role == "Manager") {
+      return 'Total Loads';
+    } else {
+      return 'Total Earnings';
+    }
   }
 
   GestureDetector buildTripCard(

@@ -136,10 +136,10 @@ class _EntryScreenState extends State<EntryScreen>
     }
 
     final pages = <Widget>[
-      DashBoardScreen(setTab: setTab),
+      const ReportsScreen(),
       const MyJobsScreen(),
       const HistoryScreen(),
-      const ReportsScreen(),
+      DashBoardScreen(setTab: setTab),
     ];
 
     return Scaffold(
@@ -155,18 +155,6 @@ class _EntryScreenState extends State<EntryScreen>
     return BottomNavigationBar(
       elevation: kIsWeb ? 1 : 5,
       items: [
-        const BottomNavigationBarItem(
-          icon: Icon(AntDesign.home),
-          label: "Home",
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(AntDesign.jpgfile1),
-          label: "My Jobs",
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(AntDesign.book),
-          label: "History",
-        ),
         BottomNavigationBarItem(
           backgroundColor: kPrimary,
           tooltip: "Records",
@@ -184,6 +172,18 @@ class _EntryScreenState extends State<EntryScreen>
             },
           ),
           label: "RECORDS",
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(AntDesign.jpgfile1),
+          label: "My Jobs",
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(AntDesign.book),
+          label: "History",
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(AntDesign.search1),
+          label: "Mechanic",
         ),
       ],
       currentIndex: tab,
