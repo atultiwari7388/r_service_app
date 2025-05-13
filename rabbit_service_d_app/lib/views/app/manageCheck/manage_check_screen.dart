@@ -406,7 +406,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('Add Check',
+              title: Text('Write  Check',
                   style: appStyle(18, kDark, FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(

@@ -1000,20 +1000,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         return const CircularProgressIndicator();
                       }
 
-                      // var filteredTrips = snapshot.data!.docs.where((doc) {
-                      //   DateTime tripStartDate = doc['tripStartDate'].toDate();
-                      //   DateTime tripEndDate = doc['tripEndDate'].toDate();
-
-                      //   // ✅ Show trips **only if** they overlap the selected range correctly
-                      //   return (fromDate == null ||
-                      //           tripEndDate.isAfter(fromDate!
-                      //               .subtract(const Duration(days: 1)))) &&
-                      //       (toDate == null ||
-                      //           tripStartDate.isBefore(
-                      //                   toDate!.add(const Duration(days: 1))) &&
-                      //               tripEndDate.isAfter(toDate!
-                      //                   .subtract(const Duration(days: 1))));
-                      // }).toList();
                       var filteredTrips = snapshot.data!.docs.where((doc) {
                         // Date range filtering
                         DateTime tripStartDate = doc['tripStartDate'].toDate();
@@ -1241,7 +1227,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   }
 
   String getTitleForRole(String role) {
-    if (role == "Owner" || role == "Manager") {
+    if (role == "Owner") {
       return 'Total Loads';
     } else {
       return 'Total Earnings';
@@ -1267,11 +1253,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     String companyName,
   ) {
     return GestureDetector(
-      // onTap: () => Get.to(() => TripDetailsScreen(
-      //       docId: doc.id,
-      //       userId: currentUId,
-      //       tripName: doc['tripName'],
-      //     )),
       child: Container(
         padding: EdgeInsets.all(5.w),
         margin: EdgeInsets.all(5.w),
@@ -1407,14 +1388,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             int currentMiles =
                                 int.tryParse(currentMilesStr) ?? 0;
 
-                            // if (currentMiles <= tripStartMiles) {
-                            //   showToastMessage(
-                            //       "Warning",
-                            //       "End miles must be greater than start miles.",
-                            //       kRed);
-                            //   return; // Stop the status change
-                            // }
-
                             WriteBatch batch =
                                 FirebaseFirestore.instance.batch();
 
@@ -1447,15 +1420,15 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             });
 
                             // **Update the current user's vehicle to remove trip assignment**
-                            DocumentReference currentUserVehicleRef =
-                                FirebaseFirestore.instance
-                                    .collection("Users")
-                                    .doc(currentUId)
-                                    .collection("Vehicles")
-                                    .doc(vehicleID);
+                            // DocumentReference currentUserVehicleRef =
+                            //     FirebaseFirestore.instance
+                            //         .collection("Users")
+                            //         .doc(currentUId)
+                            //         .collection("Vehicles")
+                            //         .doc(vehicleID);
 
-                            batch.update(
-                                currentUserVehicleRef, {'tripAssign': false});
+                            // batch.update(
+                            //     currentUserVehicleRef, {'tripAssign': false});
 
                             // **Find and update all assigned drivers' vehicles**
                             QuerySnapshot driverDocs = await FirebaseFirestore
@@ -1468,7 +1441,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
                             for (var driverDoc in driverDocs.docs) {
                               String driverId = driverDoc.id;
-
                               DocumentReference driverVehicleRef =
                                   FirebaseFirestore.instance
                                       .collection("Users")
@@ -1476,8 +1448,29 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       .collection("Vehicles")
                                       .doc(vehicleID);
 
+                              // Check if the document exists before updating
+                              DocumentSnapshot driverVehicleSnap =
+                                  await driverVehicleRef.get();
+                              if (driverVehicleSnap.exists) {
+                                batch.update(
+                                    driverVehicleRef, {'tripAssign': false});
+                              }
+                            }
+
+                            // **Update the current user's vehicle to remove trip assignment**
+                            DocumentReference currentUserVehicleRef =
+                                FirebaseFirestore.instance
+                                    .collection("Users")
+                                    .doc(currentUId)
+                                    .collection("Vehicles")
+                                    .doc(vehicleID);
+
+                            // Check if the document exists before updating
+                            DocumentSnapshot currentUserVehicleSnap =
+                                await currentUserVehicleRef.get();
+                            if (currentUserVehicleSnap.exists) {
                               batch.update(
-                                  driverVehicleRef, {'tripAssign': false});
+                                  currentUserVehicleRef, {'tripAssign': false});
                             }
 
                             // **If the current user is a driver, update the owner's vehicle**
@@ -1489,9 +1482,48 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       .collection("Vehicles")
                                       .doc(vehicleID);
 
-                              batch.update(
-                                  ownerVehicleRef, {'tripAssign': false});
+                              // Check if the document exists before updating
+                              DocumentSnapshot ownerVehicleSnap =
+                                  await ownerVehicleRef.get();
+                              if (ownerVehicleSnap.exists) {
+                                batch.update(
+                                    ownerVehicleRef, {'tripAssign': false});
+                              }
                             }
+                            // QuerySnapshot driverDocs = await FirebaseFirestore
+                            //     .instance
+                            //     .collection("Users")
+                            //     .where("createdBy", isEqualTo: ownerId)
+                            //     .where("isDriver", isEqualTo: true)
+                            //     .where("isTeamMember", isEqualTo: true)
+                            //     .get();
+
+                            // for (var driverDoc in driverDocs.docs) {
+                            //   String driverId = driverDoc.id;
+
+                            //   DocumentReference driverVehicleRef =
+                            //       FirebaseFirestore.instance
+                            //           .collection("Users")
+                            //           .doc(driverId)
+                            //           .collection("Vehicles")
+                            //           .doc(vehicleID);
+
+                            //   batch.update(
+                            //       driverVehicleRef, {'tripAssign': false});
+                            // }
+
+                            // // **If the current user is a driver, update the owner's vehicle**
+                            // if (role == "Driver") {
+                            //   DocumentReference ownerVehicleRef =
+                            //       FirebaseFirestore.instance
+                            //           .collection("Users")
+                            //           .doc(ownerId)
+                            //           .collection("Vehicles")
+                            //           .doc(vehicleID);
+
+                            //   batch.update(
+                            //       ownerVehicleRef, {'tripAssign': false});
+                            // }
 
                             await batch.commit();
                           } else {

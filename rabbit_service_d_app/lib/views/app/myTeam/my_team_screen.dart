@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
@@ -135,9 +136,12 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
         });
       }
 
+      membersWithVehicles.sort(
+          (a, b) => a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
+
       setState(() {
         _allMembers = membersWithVehicles;
-        _filteredMembers = membersWithVehicles; // Initialize filtered list
+        _filteredMembers = membersWithVehicles;
         _isLoading = false;
       });
 
@@ -181,6 +185,8 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
           return matchesName || matchesVehicle;
         }).toList();
       }
+      _filteredMembers.sort(
+          (a, b) => a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
       log('Filtered members count: ${_filteredMembers.length}');
     });
   }
@@ -204,43 +210,6 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
       ),
       body: Column(
         children: [
-          // // Attractive Search Bar
-          // Padding(
-          //   padding: const EdgeInsets.all(16.0),
-          //   child: TextField(
-          //     controller: _searchController,
-          //     decoration: InputDecoration(
-          //       hintText: 'Search by Name or Vehicle Number',
-          //       prefixIcon: Icon(Icons.search, color: Colors.grey),
-          //       filled: true,
-          //       fillColor: Colors.grey[200],
-          //       contentPadding: const EdgeInsets.symmetric(
-          //           vertical: 12.0, horizontal: 20.0),
-          //       border: OutlineInputBorder(
-          //         borderRadius: BorderRadius.circular(30.0),
-          //         borderSide: BorderSide.none,
-          //       ),
-          //       enabledBorder: OutlineInputBorder(
-          //         borderRadius: BorderRadius.circular(30.0),
-          //         borderSide: BorderSide.none,
-          //       ),
-          //       focusedBorder: OutlineInputBorder(
-          //         borderRadius: BorderRadius.circular(30.0),
-          //         borderSide: BorderSide(color: kPrimary),
-          //       ),
-          //       suffixIcon: _searchController.text.isNotEmpty
-          //           ? IconButton(
-          //               icon: Icon(Icons.clear, color: Colors.grey),
-          //               onPressed: () {
-          //                 _searchController.clear();
-          //                 _filterMembers(); // Clear search results
-          //               },
-          //             )
-          //           : null,
-          //     ),
-          //   ),
-          // ),
-
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -334,22 +303,25 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                         : appStyle(16, kDark, FontWeight.bold),
                                   ),
                                   // subtitle: Text(
-                                  //   vehicleDetails,
+                                  //   "Role: ${member['role']}",
                                   //   style: kIsWeb
                                   //       ? TextStyle()
                                   //       : appStyle(
                                   //           14, kDark, FontWeight.normal),
                                   // ),
-                                  subtitle: Text(
-                                    "Role: ${member['role']}",
-                                    style: kIsWeb
-                                        ? TextStyle()
-                                        : appStyle(
-                                            14, kDark, FontWeight.normal),
-                                  ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      InkWell(
+                                        onTap: () => makePhoneCall(phone),
+                                        child: CircleAvatar(
+                                          radius: 18.r,
+                                          backgroundColor: kSecondary,
+                                          child:
+                                              Icon(Icons.call, color: kWhite),
+                                        ),
+                                      ),
+                                      SizedBox(width: 2.w),
                                       Switch(
                                         activeColor: kPrimary,
                                         value: isActive,
@@ -394,18 +366,11 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                                 ));
                                           } else if (value == 'view_vehicles') {
                                             Get.to(() => MemberVehiclesScreen(
-                                                      memberName: name,
-                                                      memberContact: phone,
-                                                      memberId: memberId,
-                                                      vehicles:
-                                                          member['vehicles'],
-                                                    )
-                                                // MemberJobsHistoryScreen(
-                                                //   memberName: name,
-                                                //   memebrId: memberId,
-                                                //   ownerId: ownerId,
-                                                // ),
-                                                );
+                                                  memberName: name,
+                                                  memberContact: phone,
+                                                  memberId: memberId,
+                                                  vehicles: member['vehicles'],
+                                                ));
                                           } else if (value == 'view_jobs') {
                                             Get.to(
                                                 () => MemberJobsHistoryScreen(

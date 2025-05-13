@@ -86,11 +86,7 @@ class DashboardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // checkIfLocationIsSet();
-    // fetchServicesName();
-    // fetchUserVehicles();
-    // fetchByDefaultUserVehicle();
-    // fetchUserDetails();
+
     _initializeController();
   }
 
@@ -264,6 +260,7 @@ class DashboardController extends GetxController {
           .collection('Users')
           .doc(currentUId)
           .collection('Vehicles')
+          .where("active", isEqualTo: true)
           .orderBy('vehicleNumber')
           .get();
 
@@ -375,36 +372,6 @@ class DashboardController extends GetxController {
                       },
                     ),
                   ),
-                  // Expanded(
-                  //   child: ListView.builder(
-                  //     controller: scrollController,
-                  //     itemCount: filterSelectedCompanyAndvehicleName.length,
-                  //     itemBuilder: (context, index) {
-                  //       return ListTile(
-                  //         title:
-                  //             Text(filterSelectedCompanyAndvehicleName[index]),
-                  //         onTap: () async {
-                  //           selectedCompanyAndVehcileName =
-                  //               filterSelectedCompanyAndvehicleName[index];
-                  //           log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
-
-                  //           await updateVehicleSelection(
-                  //               filterSelectedCompanyAndvehicleName[
-                  //                   index]); // Database update
-                  //           selectedCompanyAndVehcileNameController.text =
-                  //               filterSelectedCompanyAndvehicleName[index];
-
-                  //           // _isLoading = false; // Hide loading indicator
-                  //           isVehicleSelected = true; // Vehicle selected
-                  //           checkIfAllSelected();
-                  //           update(); // UI update
-                  //           Navigator.pop(context); // Close dialog
-                  //         },
-                  //       );
-                  //     },
-                  //   ),
-                  // ),
-
                   Expanded(
                     child: Builder(
                       builder: (_) {

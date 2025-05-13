@@ -57,7 +57,14 @@ class _EditTeamMemberState extends State<EditTeamMember> {
   List<Map<String, dynamic>> ownerVehicles = [];
   List<Map<String, dynamic>> memberVehicles = [];
   List<dynamic> selectedVehicles = [];
-  List<String> roles = ["Manager", "Driver", "Vendor", "Accountant"];
+  List<String> roles = [
+    "Manager",
+    "Driver",
+    "Vendor",
+    "Accountant",
+    "Other Staff"
+  ];
+
   String? selectedRole;
   List<String> selectedRecordAccess = [];
   List<String> selectedChequeAccess = [];
@@ -135,28 +142,6 @@ class _EditTeamMemberState extends State<EditTeamMember> {
       Navigator.pop(context);
     }
   }
-
-  // Future<void> fetchOwnerVehiclesDetails() async {
-  //   try {
-  //     QuerySnapshot vehiclesSnapshot = await _firestore
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('Vehicles')
-  //         .get();
-
-  //     ownerVehicles = vehiclesSnapshot.docs.map((doc) {
-  //       return {
-  //         'id': doc.id,
-  //         'companyName': doc['companyName'],
-  //         'vehicleNumber': doc['vehicleNumber'],
-  //       };
-  //     }).toList();
-
-  //     setState(() {});
-  //   } catch (e) {
-  //     log("Error fetching owner vehicles: $e");
-  //   }
-  // }
 
   Future<void> fetchOwnerVehiclesDetails() async {
     try {
@@ -416,37 +401,6 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                     ],
 
                     SizedBox(height: 15.h),
-
-                    //record access
-                    // Text(
-                    //   "Assign Cheque Access",
-                    //   style: appStyle(16, Colors.black, FontWeight.bold),
-                    // ),
-                    // SizedBox(height: 10.h),
-                    // Divider(),
-
-                    // Column(
-                    //   children: chequeAccessCheckBox.map((chequeAccess) {
-                    //     return CheckboxListTile(
-                    //       title: Text(chequeAccess),
-                    //       value: selectedChequeAccess
-                    //           .contains(chequeAccess), // Check if selected
-                    //       onChanged: (bool? selected) {
-                    //         setState(() {
-                    //           if (selected == true) {
-                    //             selectedChequeAccess
-                    //                 .add(chequeAccess); // Add to list
-                    //             print(selectedRecordAccess);
-                    //           } else {
-                    //             selectedChequeAccess
-                    //                 .remove(chequeAccess); // Remove from list
-                    //           }
-                    //         });
-                    //       },
-                    //     );
-                    //   }).toList(),
-                    // ),
-
                     if (selectedRole == "Manager" ||
                         selectedRole == "Accountant") ...[
                       Column(
@@ -765,53 +719,6 @@ class _EditTeamMemberState extends State<EditTeamMember> {
       rethrow;
     }
   }
-
-  // Future<void> _updateVehicleAssignments() async {
-  //   List<dynamic> currentVehicleIds =
-  //       memberVehicles.map((v) => v['id']).toList();
-  //   List<dynamic> toRemove = currentVehicleIds
-  //       .where((id) => !selectedVehicles.contains(id))
-  //       .toList();
-  //   List<dynamic> toAdd = selectedVehicles
-  //       .where((id) => !currentVehicleIds.contains(id))
-  //       .toList();
-
-  //   // Remove unselected vehicles
-  //   for (String vehicleId in toRemove) {
-  //     // First delete the DataServices documents
-  //     await _deleteVehicleDataServices(vehicleId);
-  //     await _firestore
-  //         .collection('Users')
-  //         .doc(widget.memberId)
-  //         .collection('Vehicles')
-  //         .doc(vehicleId)
-  //         .delete();
-  //   }
-
-  //   // Add new vehicles
-  //   for (String vehicleId in toAdd) {
-  //     DocumentSnapshot vehicleDoc = await _firestore
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .collection('Vehicles')
-  //         .doc(vehicleId)
-  //         .get();
-
-  //     if (vehicleDoc.exists) {
-  //       final Map<String, dynamic> vehicleData =
-  //           vehicleDoc.data() as Map<String, dynamic>;
-  //       await _firestore
-  //           .collection('Users')
-  //           .doc(widget.memberId)
-  //           .collection('Vehicles')
-  //           .doc(vehicleId)
-  //           .set({
-  //         ...vehicleData,
-  //         'assigned_at': DateTime.now(),
-  //       });
-  //     }
-  //   }
-  // }
 
   Future<void> _updateVehicleAssignments() async {
     List<dynamic> currentVehicleIds =

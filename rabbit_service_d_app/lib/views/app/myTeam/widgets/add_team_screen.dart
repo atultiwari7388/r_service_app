@@ -208,7 +208,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     ),
                     SizedBox(height: 15.h),
                     buildTextFieldInputWidget(
-                      "Enter member address",
+                      "Enter member address*",
                       TextInputType.streetAddress,
                       addressController,
                       MaterialCommunityIcons.home,
@@ -236,14 +236,14 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     ),
                     SizedBox(height: 15.h),
                     buildTextFieldInputWidget(
-                      "Enter member postal/zip",
+                      "Enter member postal/zip*",
                       TextInputType.number,
                       postalController,
                       MaterialCommunityIcons.numeric,
                     ),
                     SizedBox(height: 15.h),
                     buildTextFieldInputWidget(
-                      "Enter member license number",
+                      "Enter member license number*",
                       TextInputType.text,
                       licenseNumController,
                       MaterialCommunityIcons.numeric,
@@ -305,7 +305,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
                     SizedBox(height: 15.h),
                     buildTextFieldInputWidget(
-                      "Enter social security number",
+                      "Enter social security number*",
                       TextInputType.number,
                       socialSecurityController,
                       MaterialCommunityIcons.numeric,
@@ -638,7 +638,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         ),
         SizedBox(height: 15.h),
         buildTextFieldInputWidget(
-          "Postal/Zip",
+          "Postal/Zip*",
           TextInputType.number,
           postalController,
           MaterialCommunityIcons.numeric,

@@ -212,7 +212,7 @@ class NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4.0),
                   Text(
-                    "$vehicleName ($vehicleNumber)",
+                    "$vehicleNumber ($vehicleName)",
                     style: appStyle(14, kDark, FontWeight.normal),
                   ),
                   const SizedBox(height: 4.0),

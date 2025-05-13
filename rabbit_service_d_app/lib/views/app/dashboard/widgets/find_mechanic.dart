@@ -10,7 +10,6 @@ import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_scre
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'dart:developer';
-import '../../../../services/collection_references.dart';
 import '../../../../widgets/dashboard_search_text_field.dart';
 import '../../address/address_management_screen.dart';
 
@@ -43,6 +42,7 @@ class _FindMechanicState extends State<FindMechanic> {
                 .collection('Users')
                 .doc(currentUId)
                 .collection('Vehicles')
+                .where("active", isEqualTo: true)
                 .snapshots(),
             builder:
                 (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -54,7 +54,6 @@ class _FindMechanicState extends State<FindMechanic> {
                 return Container();
               }
 
-              // Process the data and build the UI
               // Process the data and build the UI
               List<String> vehicleNames = snapshot.data!.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;

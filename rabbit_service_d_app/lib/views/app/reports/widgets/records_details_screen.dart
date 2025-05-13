@@ -17,8 +17,7 @@ class RecordsDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final services = record['services'] as List<dynamic>? ?? [];
-    final date =
-        DateFormat('dd-MM-yy').format(DateTime.parse(record['createdAt']));
+    final date = DateFormat('dd-MM-yy').format(DateTime.parse(record['date']));
     final vehicleType = record['vehicleDetails']['vehicleType'] ?? 'N/A';
 
     return Scaffold(
@@ -61,6 +60,11 @@ class RecordsDetailsScreen extends StatelessWidget {
                   buildInfoRow(
                     Icons.store_outlined,
                     record['workshopName'] ?? 'N/A',
+                  ),
+                  Divider(height: 24.h),
+                  buildInfoRow(
+                    Icons.date_range,
+                    date,
                   ),
                   Divider(height: 24.h),
                   vehicleType == "Truck"
