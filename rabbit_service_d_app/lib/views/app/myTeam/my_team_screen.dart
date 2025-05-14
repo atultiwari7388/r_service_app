@@ -302,13 +302,13 @@ class _MyTeamScreenState extends State<MyTeamScreen> {
                                         ? TextStyle()
                                         : appStyle(16, kDark, FontWeight.bold),
                                   ),
-                                  // subtitle: Text(
-                                  //   "Role: ${member['role']}",
-                                  //   style: kIsWeb
-                                  //       ? TextStyle()
-                                  //       : appStyle(
-                                  //           14, kDark, FontWeight.normal),
-                                  // ),
+                                  subtitle: Text(
+                                    "${member['role']}",
+                                    style: kIsWeb
+                                        ? TextStyle()
+                                        : appStyle(
+                                            14, kDark, FontWeight.normal),
+                                  ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [

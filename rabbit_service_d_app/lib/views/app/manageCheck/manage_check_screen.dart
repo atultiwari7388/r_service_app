@@ -794,7 +794,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             children: [
               // Add Check Button
               CustomButton(
-                text: "Add Check",
+                text: "Write Check",
                 onPress: _showAddCheckDialog,
                 color: kPrimary,
               ),

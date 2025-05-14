@@ -17,7 +17,7 @@ class RecordsDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final services = record['services'] as List<dynamic>? ?? [];
-    final date = DateFormat('dd-MM-yy').format(DateTime.parse(record['date']));
+    final date = DateFormat('MM-dd-yy').format(DateTime.parse(record['date']));
     final vehicleType = record['vehicleDetails']['vehicleType'] ?? 'N/A';
 
     return Scaffold(

@@ -275,48 +275,83 @@ class _ReportsScreenState extends State<ReportsScreen>
     return [...selectedPackageServices, ...remainingServices];
   }
 
-  List<Map<String, dynamic>> getFilteredRecords() {
-    final filteredRecords = records.where((record) {
-      final matchesVehicle = filterVehicle.isEmpty ||
-          record['vehicleDetails']['vehicleNumber']
-              .toString()
-              .toLowerCase()
-              .contains(filterVehicle.toLowerCase());
+  // List<Map<String, dynamic>> getFilteredRecords() {
+  //   final filteredRecords = records.where((record) {
+  //     final matchesVehicle = filterVehicle.isEmpty ||
+  //         record['vehicleDetails']['vehicleNumber']
+  //             .toString()
+  //             .toLowerCase()
+  //             .contains(filterVehicle.toLowerCase());
 
-      final matchesService = filterService.isEmpty ||
+  //     final matchesService = filterService.isEmpty ||
+  //         (record['services'] as List).any((service) => service['serviceName']
+  //             .toString()
+  //             .toLowerCase()
+  //             .contains(filterService.toLowerCase()));
+
+  //     final recordDate = DateTime.parse(record['date']);
+  //     final matchesDateRange = startDate == null ||
+  //         endDate == null ||
+  //         (recordDate.isAtSameMomentAs(startDate!) ||
+  //             recordDate.isAtSameMomentAs(endDate!) ||
+  //             (recordDate.isAfter(startDate!) &&
+  //                 recordDate.isBefore(endDate!)));
+
+  //     final matchesInvoice = filterInvoice == null ||
+  //         record['invoice']
+  //             .toString()
+  //             .toLowerCase()
+  //             .contains(filterInvoice.toLowerCase());
+  //     ;
+
+  //     return matchesVehicle &&
+  //         matchesService &&
+  //         matchesDateRange &&
+  //         matchesInvoice;
+  //   }).toList();
+
+  //   filteredRecords.sort((a, b) {
+  //     final dateA = DateTime.parse(a['date']);
+  //     final dateB = DateTime.parse(b['date']);
+  //     return dateB.compareTo(dateA);
+  //   });
+
+  //   return filteredRecords;
+  // }
+
+  List<Map<String, dynamic>> getFilteredRecords() {
+    return records.where((record) {
+      // Vehicle filter
+      final vehicleMatch =
+          selectedVehicle == null || record['vehicleId'] == selectedVehicle;
+
+      // Service filter
+      final serviceMatch = filterService.isEmpty ||
           (record['services'] as List).any((service) => service['serviceName']
               .toString()
               .toLowerCase()
               .contains(filterService.toLowerCase()));
 
+      // Date range filter
       final recordDate = DateTime.parse(record['date']);
-      final matchesDateRange = startDate == null ||
+      final dateMatch = startDate == null ||
           endDate == null ||
-          (recordDate.isAtSameMomentAs(startDate!) ||
-              recordDate.isAtSameMomentAs(endDate!) ||
-              (recordDate.isAfter(startDate!) &&
-                  recordDate.isBefore(endDate!)));
+          (recordDate.isAfter(startDate!) &&
+              recordDate.isBefore(
+                  endDate!.add(Duration(days: 1)))); // Include end date
 
-      final matchesInvoice = filterInvoice == null ||
-          record['invoice']
-              .toString()
-              .toLowerCase()
+      // Invoice filter
+      final invoiceMatch = filterInvoice.isEmpty ||
+          (record['invoice']?.toString().toLowerCase() ?? '')
               .contains(filterInvoice.toLowerCase());
-      ;
 
-      return matchesVehicle &&
-          matchesService &&
-          matchesDateRange &&
-          matchesInvoice;
-    }).toList();
-
-    filteredRecords.sort((a, b) {
-      final dateA = DateTime.parse(a['date']);
-      final dateB = DateTime.parse(b['date']);
-      return dateB.compareTo(dateA);
-    });
-
-    return filteredRecords;
+      return vehicleMatch && serviceMatch && dateMatch && invoiceMatch;
+    }).toList()
+      ..sort((a, b) {
+        final dateA = DateTime.parse(a['date']);
+        final dateB = DateTime.parse(b['date']);
+        return dateB.compareTo(dateA); // Newest first
+      });
   }
 
   void updateServiceDefaultValues() {

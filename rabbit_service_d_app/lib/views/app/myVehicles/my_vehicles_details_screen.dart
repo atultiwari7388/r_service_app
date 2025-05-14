@@ -8,9 +8,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -33,6 +33,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
   final List<Map<String, dynamic>> uploadedFiles = [];
   final ImagePicker _imagePicker = ImagePicker();
   bool isLoading = false;
+  late bool isActive;
 
   Future<void> _pickImage() async {
     final pickedFile =
@@ -114,8 +115,15 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    isActive = widget.vehicleData['active'];
+  }
+
+  @override
   Widget build(BuildContext context) {
     final String vehicleId = widget.vehicleData['vehicleId'];
+    // final bool isActive = widget.vehicleData['active'];
 
     return Scaffold(
       appBar: AppBar(
@@ -125,6 +133,43 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         iconTheme: IconThemeData(color: kWhite),
         backgroundColor: kPrimary,
         actions: [
+          Switch(
+            value: isActive,
+            activeColor: kSecondary,
+            onChanged: (value) async {
+              setState(() {
+                isActive = value;
+              });
+              // Update the vehicle status
+              await FirebaseFirestore.instance
+                  .collection("Users")
+                  .doc(currentUId)
+                  .collection('Vehicles')
+                  .doc(vehicleId)
+                  .update({'active': value}).then((_) async {
+                showToastMessage("Msg", "Vehicle Status Updated", kSecondary);
+
+                // Fetch all DataServices documents where vehicleId matches
+                final dataServicesSnapshot = await FirebaseFirestore.instance
+                    .collection("Users")
+                    .doc(currentUId)
+                    .collection('DataServices')
+                    .where("vehicleId", isEqualTo: vehicleId)
+                    .get();
+
+                // Check if DataServices exists
+                if (dataServicesSnapshot.docs.isNotEmpty) {
+                  final batch = FirebaseFirestore.instance.batch();
+
+                  for (var doc in dataServicesSnapshot.docs) {
+                    batch.update(doc.reference, {'active': value});
+                  }
+
+                  await batch.commit();
+                }
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
@@ -672,7 +717,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     //     .toList();
 
     final filteredServices = services
-        .where((service) => service['nextNotificationValue'] != 0)
+        .where((service) => service['defaultNotificationValue'] != 0)
         .toList()
       ..sort((a, b) => (a['serviceName'] ?? '')
           .toString()
@@ -761,12 +806,12 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
                   _buildTableCell(
                     service['type'] == 'day'
-                        ? _isDate(service['nextNotificationValue'])
+                        ? _isDate(service['defaultNotificationValue'])
                             ? service['defaultNotificationValue'].toString() +
                                 ' (Day)'
-                            : service['nextNotificationValue'].toString() +
+                            : service['defaultNotificationValue'].toString() +
                                 ' (Day)'
-                        : service['nextNotificationValue'].toString() +
+                        : service['defaultNotificationValue'].toString() +
                             ' (' +
                             (service['type'] == 'reading'
                                 ? 'Miles'

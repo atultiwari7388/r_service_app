@@ -396,141 +396,129 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                     : SizedBox(),
                               ],
                             ),
-                            SizedBox(height: 20.0.h),
+                            // SizedBox(height: 20.0.h),
 
-                            _buildSectionCard(
-                              context,
-                              title: "Vehicle Details",
-                              icon: Icons.directions_car,
-                              isExpanded: _isVehicleDetailsExpanded,
-                              onToggle: () => _toggleSection('vehicle'),
-                              onTap: () async {
-                                var result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddVehicleScreen(),
-                                  ),
-                                );
-                                if (result != null) {
-                                  String? company = result['company'];
-                                  String? vehicleNumber =
-                                      result['vehicleNumber'];
-                                  log("Company: $company, Vehicle Number: $vehicleNumber");
+                            // Vehicle Details Section
+                            // _buildSectionCard(
+                            //   context,
+                            //   title: "Vehicle Details",
+                            //   icon: Icons.directions_car,
+                            //   isExpanded: _isVehicleDetailsExpanded,
+                            //   onToggle: () => _toggleSection('vehicle'),
+                            //   onTap: () async {
+                            //     var result = await Navigator.push(
+                            //       context,
+                            //       MaterialPageRoute(
+                            //         builder: (context) => AddVehicleScreen(),
+                            //       ),
+                            //     );
+                            //     if (result != null) {
+                            //       String? company = result['company'];
+                            //       String? vehicleNumber =
+                            //           result['vehicleNumber'];
+                            //       log("Company: $company, Vehicle Number: $vehicleNumber");
+                            //     }
+                            //   },
+                            //   isAddIconEnabled: true,
+                            //   children: [
+                            //     StreamBuilder(
+                            //       stream: FirebaseFirestore.instance
+                            //           .collection("Users")
+                            //           .doc(currentUId)
+                            //           .collection('Vehicles')
+                            //           .snapshots(),
+                            //       builder: (BuildContext context,
+                            //           AsyncSnapshot<
+                            //                   QuerySnapshot<
+                            //                       Map<String, dynamic>>>
+                            //               snapshot) {
+                            //         if (snapshot.hasError) {
+                            //           return Text('Error: ${snapshot.error}');
+                            //         }
+                            //         if (snapshot.connectionState ==
+                            //             ConnectionState.waiting) {
+                            //           return CircularProgressIndicator();
+                            //         }
+                            //         if (!snapshot.hasData ||
+                            //             snapshot.data!.docs.isEmpty) {
+                            //           return Text("No Vehicles Added");
+                            //         }
 
-                                  // Save the vehicle details in Firestore
-                                  // await _saveVehicleDetails(
-                                  //     company, vehicleNumber);
-                                }
-                              },
-                              isAddIconEnabled: true,
-                              children: [
-                                StreamBuilder(
-                                  stream: FirebaseFirestore.instance
-                                      .collection("Users")
-                                      .doc(currentUId)
-                                      .collection('Vehicles')
-                                      .snapshots(),
-                                  builder: (BuildContext context,
-                                      AsyncSnapshot<
-                                              QuerySnapshot<
-                                                  Map<String, dynamic>>>
-                                          snapshot) {
-                                    if (snapshot.hasError) {
-                                      return Text('Error: ${snapshot.error}');
-                                    }
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return CircularProgressIndicator();
-                                    }
-                                    if (!snapshot.hasData ||
-                                        snapshot.data!.docs.isEmpty) {
-                                      return Text("No Vehicles Added");
-                                    }
+                            //         final vehicles = snapshot.data!.docs;
+                            //         vehicles.sort((a, b) => a['vehicleNumber']
+                            //             .compareTo(b['vehicleNumber']));
+                            //         return ListView.builder(
+                            //           shrinkWrap: true,
+                            //           itemCount: vehicles.length,
+                            //           itemBuilder: (context, index) {
+                            //             final vehicle = vehicles[index];
+                            //             final bool isActive = vehicle['active'];
+                            //             final vehicleNumber =
+                            //                 vehicle['vehicleNumber'];
+                            //             final vehicleCompanyName =
+                            //                 vehicle['companyName'];
+                            //             return buildVehicleNameEditDeleteSection(
+                            //               vehicleNumber,
+                            //               vehicleCompanyName,
+                            //               () => _editVehicle(
+                            //                   vehicle.id,
+                            //                   vehicle['company'],
+                            //                   vehicle['vehicleNumber']),
+                            //               () => _deleteVehicle(vehicle.id),
+                            //               isActive,
+                            //               (value) async {
+                            //                 final vehicleId = vehicle.id;
 
-                                    final vehicles = snapshot.data!.docs;
-                                    return ListView.builder(
-                                      shrinkWrap: true,
-                                      itemCount: vehicles.length,
-                                      itemBuilder: (context, index) {
-                                        final vehicle = vehicles[index];
-                                        final bool isActive = vehicle['active'];
-                                        return buildVehicleNameEditDeleteSection(
-                                          vehicle['vehicleNumber'],
-                                          () => _editVehicle(
-                                              vehicle.id,
-                                              vehicle['company'],
-                                              vehicle['vehicleNumber']),
-                                          () => _deleteVehicle(vehicle.id),
-                                          isActive,
-                                          (value) async {
-                                            final vehicleId = vehicle.id;
+                            //                 // Update the vehicle status
+                            //                 await FirebaseFirestore.instance
+                            //                     .collection("Users")
+                            //                     .doc(currentUId)
+                            //                     .collection('Vehicles')
+                            //                     .doc(vehicleId)
+                            //                     .update({'active': value}).then(
+                            //                         (_) async {
+                            //                   showToastMessage(
+                            //                       "Msg",
+                            //                       "Vehicle Status Updated",
+                            //                       kSecondary);
 
-                                            // Update the vehicle status
-                                            await FirebaseFirestore.instance
-                                                .collection("Users")
-                                                .doc(currentUId)
-                                                .collection('Vehicles')
-                                                .doc(vehicleId)
-                                                .update({'active': value}).then(
-                                                    (_) async {
-                                              showToastMessage(
-                                                  "Msg",
-                                                  "Vehicle Status Updated",
-                                                  kSecondary);
+                            //                   // Fetch all DataServices documents where vehicleId matches
+                            //                   final dataServicesSnapshot =
+                            //                       await FirebaseFirestore
+                            //                           .instance
+                            //                           .collection("Users")
+                            //                           .doc(currentUId)
+                            //                           .collection(
+                            //                               'DataServices')
+                            //                           .where("vehicleId",
+                            //                               isEqualTo: vehicleId)
+                            //                           .get();
 
-                                              // Fetch all DataServices documents where vehicleId matches
-                                              final dataServicesSnapshot =
-                                                  await FirebaseFirestore
-                                                      .instance
-                                                      .collection("Users")
-                                                      .doc(currentUId)
-                                                      .collection(
-                                                          'DataServices')
-                                                      .where("vehicleId",
-                                                          isEqualTo: vehicleId)
-                                                      .get();
+                            //                   // Check if DataServices exists
+                            //                   if (dataServicesSnapshot
+                            //                       .docs.isNotEmpty) {
+                            //                     final batch = FirebaseFirestore
+                            //                         .instance
+                            //                         .batch();
 
-                                              // Check if DataServices exists
-                                              if (dataServicesSnapshot
-                                                  .docs.isNotEmpty) {
-                                                final batch = FirebaseFirestore
-                                                    .instance
-                                                    .batch();
+                            //                     for (var doc
+                            //                         in dataServicesSnapshot
+                            //                             .docs) {
+                            //                       batch.update(doc.reference,
+                            //                           {'active': value});
+                            //                     }
 
-                                                for (var doc
-                                                    in dataServicesSnapshot
-                                                        .docs) {
-                                                  batch.update(doc.reference,
-                                                      {'active': value});
-                                                }
-
-                                                await batch.commit();
-                                                // showToastMessage(
-                                                //     "Msg",
-                                                //     "DataServices Updated",
-                                                //     kSecondary);
-                                              }
-                                            });
-                                          },
-
-                                          //     (value) async {
-                                          //   await FirebaseFirestore.instance
-                                          //       .collection("Users")
-                                          //       .doc(currentUId)
-                                          //       .collection('Vehicles')
-                                          //       .doc(vehicle.id)
-                                          //       .update({'active': value}).then((value){
-                                          //         showToastMessage("Msg", "Vehicle Status Updated", kSecondary);
-                                          //   });
-                                          // },
-                                          //
-                                        );
-                                      },
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
+                            //                     await batch.commit();
+                            //                   }
+                            //                 });
+                            //               },
+                            //             );
+                            //           },
+                            //         );
+                            //       },
+                            //     ),
+                            //   ],
+                            // ),
 
                             SizedBox(height: 20.0.h),
 
@@ -583,6 +571,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
 
   Container buildVehicleNameEditDeleteSection(
       String vehcileName,
+      String vehicleCompany,
       void Function()? onEditPress,
       void Function()? onDeletePress,
       bool isActive,
@@ -601,19 +590,12 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
           SizedBox(
             width: 190.w,
             child: Text(
-              vehcileName,
+              "${vehcileName} (${vehicleCompany})",
               textAlign: TextAlign.left,
               style: appStyle(13, kDark, FontWeight.normal),
             ),
           ),
           Expanded(child: SizedBox()),
-          // IconButton(
-          //     onPressed: onEditPress,
-          //     icon: Icon(Icons.edit, color: kSecondary)),
-          // IconButton(
-          //     onPressed: onDeletePress,
-          //     icon: Icon(Icons.delete, color: kPrimary))
-          //
           Switch(
             value: isActive,
             activeColor: kPrimary,
