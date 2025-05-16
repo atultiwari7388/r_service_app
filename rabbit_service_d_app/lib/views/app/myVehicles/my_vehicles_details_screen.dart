@@ -912,7 +912,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
   void _showEditDialog(
       BuildContext context, Map<String, dynamic> service, String vehicleId) {
     final TextEditingController controller = TextEditingController(
-      text: service['nextNotificationValue'].toString(),
+      text: service['defaultNotificationValue'].toString(),
     );
 
     showDialog(

@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
 import 'package:regal_service_d_app/views/app/splash/splash_screen.dart';
 import 'services/push_notification.dart';
 import 'entry_screen.dart';
@@ -135,9 +136,9 @@ class MyApp extends StatelessWidget {
                 return Obx(() {
                   final userService = UserService.to;
                   if (userService.currentUser.value == null) {
-                    return const SplashScreen();
+                    return const OnBoardingScreen();
                   } else {
-                    return const EntryScreen();
+                    return const SplashScreen();
                   }
                 });
               }),

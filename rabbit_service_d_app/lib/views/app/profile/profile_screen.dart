@@ -40,6 +40,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late String role = "";
   bool isCheque = false;
+  bool isTeamMember = false;
   final _firebaseAuth = FirebaseAuth.instance;
   final userService = UserService.to;
   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
@@ -58,8 +59,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           role = userData["role"] ?? "";
           isCheque = userData["isCheque"] ?? false;
+          isTeamMember = userData["isTeamMember"] ?? false;
         });
-        log("Role set to ${role} and isCheque set to ${isCheque} for user ID: $currentUId");
+        log("Role set to ${role} and isCheque set to ${isCheque} for user ID: $currentUId and isTeamMember set to ${isTeamMember}");
       } else {
         log("No user document found for ID: $currentUId");
       }
@@ -215,7 +217,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             return AlertDialog(
                               title: const Text('Logout'),
                               content: const Text(
-                                  'Are you sure you want to log out from this account'),
+                                'Are you sure you want to log out from this account',
+                              ),
                               actions: <Widget>[
                                 TextButton(
                                   child: Text(
@@ -225,15 +228,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                   onPressed: () async {
                                     try {
+                                      if (isTeamMember == true) {
+                                        await FirebaseFirestore.instance
+                                            .collection('Users')
+                                            .doc(currentUId)
+                                            .update({
+                                          'fcmToken': '',
+                                          'active': false,
+                                        });
+                                      } else {
+                                        await FirebaseFirestore.instance
+                                            .collection('Users')
+                                            .doc(currentUId)
+                                            .update({
+                                          'fcmToken': '',
+                                        });
+                                      }
+
                                       await userService.signOut();
                                       log("User signed out successfully userid : $currentUId");
+
+                                      // if (context.mounted)
+                                      //   Navigator.pop(
+                                      //       dialogContext); // close dialog
+                                      // Get.offAll(() => const LoginScreen(),
+                                      //     transition: Transition.cupertino,
+                                      //     duration: const Duration(
+                                      //         milliseconds: 900));
                                     } catch (e) {
                                       log("Error signing out: $e");
+                                      if (context.mounted) {
+                                        Navigator.pop(dialogContext);
+                                        showToastMessage("Error",
+                                            "Failed to logout", Colors.red);
+                                      }
                                     }
                                   },
                                 ),
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context),
+                                  onPressed: () => Navigator.pop(dialogContext),
                                   child: Text(
                                     "No",
                                     style: appStyle(

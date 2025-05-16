@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/adminContact/admin_contact_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
 import 'package:regal_service_d_app/views/web/web_dashboard_screen.dart';
@@ -67,39 +68,26 @@ class _SplashScreenState extends State<SplashScreen> {
         }
 
         if (userDoc.exists && userDoc['uid'] == user!.uid) {
-          // User exists in Users collection
-          log("User exists in Users collection, navigating to EntryScreen");
-          if (kIsWeb) {
-            Get.offAll(() => WebDashboardScreen(setTab: () {}),
-                transition: Transition.cupertino,
-                duration: const Duration(milliseconds: 900));
-          } else {
-            //navigate to mobile screen
+          // Check if the user is active
+          if (userDoc['active'] == true) {
+            log("User is active and exists in Users collection, navigating to EntryScreen");
             Get.offAll(() => EntryScreen(),
                 transition: Transition.cupertino,
                 duration: const Duration(milliseconds: 900));
+          } else {
+            // User is not active, navigate to ContactWithAdmin screen
+            log("User exists but is not active, navigating to ContactWithAdminScreen");
+            Get.offAll(() => const AdminContactScreen(),
+                transition: Transition.cupertino,
+                duration: const Duration(milliseconds: 900));
           }
-        } else {
-          // If the user does not exist in the Users collection, navigate to Registration
-          log("User does not exist in Users collection, navigating to RegistrationScreen");
-          Get.offAll(() => const LoginScreen(),
-              transition: Transition.cupertino,
-              duration: const Duration(milliseconds: 900));
         }
       }
     } else {
-      // Navigate based on platform
-      if (kIsWeb) {
-        Get.offAll(() => const LoginScreen(),
-            transition: Transition.cupertino,
-            duration: const Duration(milliseconds: 900));
-        log("User is null, navigating to LoginScreen");
-      } else {
-        Get.offAll(() => const OnBoardingScreen(),
-            transition: Transition.cupertino,
-            duration: const Duration(milliseconds: 900));
-        log("User is null, navigating to OnBoardingScreen");
-      }
+      Get.offAll(() => const OnBoardingScreen(),
+          transition: Transition.cupertino,
+          duration: const Duration(milliseconds: 900));
+      log("User is null, navigating to OnBoardingScreen");
     }
   }
 
@@ -128,9 +116,6 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
-
-
 
 // import 'dart:async';
 // import 'dart:developer';
