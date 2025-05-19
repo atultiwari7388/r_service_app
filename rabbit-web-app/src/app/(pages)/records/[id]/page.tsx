@@ -3,14 +3,6 @@
 import { use, useEffect, useRef, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
-// import {
-//   Card,
-//   CardContent,
-//   Typography,
-//   List,
-//   ListItem,
-//   ListItemText,
-// } from "@mui/material";
 import { useAuth } from "@/contexts/AuthContexts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -85,15 +77,20 @@ export default function RecordsDetailsPage({
     return () => unsubscribe();
   }, [user, id]);
 
-  //print details
   const handlePrint = async () => {
     if (!printRef.current) return;
 
-    const canvas = await html2canvas(printRef.current);
-    const imgData = canvas.toDataURL("image/png");
+    const canvas = await html2canvas(printRef.current, {
+      scale: 2, // higher scale for better quality
+    });
 
+    const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
-    pdf.addImage(imgData, "PNG", 10, 10, 190, 0);
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight); // no margins
     pdf.save(`Record_details${record?.invoice}.pdf`);
   };
 
@@ -106,7 +103,8 @@ export default function RecordsDetailsPage({
       className="p-6 flex justify-center items-center min-h-screen bg-gray-100"
       ref={printRef}
     >
-      <div className="w-full max-w-2xl bg-white shadow-lg rounded-lg p-6">
+      {/* <div className="w-full max-w-2xl bg-white shadow-lg rounded-lg p-6"> */}
+      <div className="w-full bg-white shadow-lg rounded-lg p-6">
         <h2 className="text-2xl font-semibold text-gray-800 border-b pb-3 mb-4">
           Record Details
         </h2>
@@ -132,17 +130,35 @@ export default function RecordsDetailsPage({
 
         <h3 className="text-lg font-semibold text-gray-800 mt-5">Services</h3>
         <div className="mt-3 border rounded-lg p-3 bg-gray-50">
-          {record.services.map((service) => (
+          {/* {record.services.map((service) => (
             <div
               key={service.serviceId}
               className="p-3 border-b last:border-none flex justify-between"
             >
               <span className="font-medium">{service.serviceName}</span>
               <span className="text-gray-600 text-sm">
-                Next: {service.nextNotificationValue}
+                {service.nextNotificationValue}
               </span>
             </div>
-          ))}
+          ))} */}
+
+          {record.services
+            .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+            .map((service) => (
+              <div
+                key={service.serviceId}
+                className="p-3 border-b last:border-none flex justify-between"
+              >
+                <span className="font-medium">{service.serviceName}</span>
+                {service.nextNotificationValue !== 0 ? (
+                  <span className="text-gray-600 text-sm">
+                    {service.nextNotificationValue}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-sm">—</span> // or leave it empty
+                )}
+              </div>
+            ))}
         </div>
 
         <button

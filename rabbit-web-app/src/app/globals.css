@@ -105,5 +105,5 @@
 }
 
 .link:hover {
-  text-decoration: underline; /* Underline on hover */
+  text-decoration: none; /* Underline on hover */
 }

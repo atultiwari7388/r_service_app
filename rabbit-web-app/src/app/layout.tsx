@@ -28,13 +28,16 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
-  twitter: {
+  twitter:
+
+  {
     card: "summary_large_image",
     title: "Rabbit Mechanic Services",
     description: "Expert truck and vehicle repair services.",
     images: ["https://www.rabbitmechanic.com/rabbit-mechanic-logo.png"],
   },
 };
+
 
 export default function RootLayout({
   children,

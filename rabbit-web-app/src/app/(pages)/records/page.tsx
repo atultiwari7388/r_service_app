@@ -227,36 +227,6 @@ export default function RecordsPage() {
     }
   };
 
-  // const updateServiceDefaultValues = () => {
-  //   if (selectedVehicle && selectedServices.size > 0 && selectedVehicleData) {
-  //     const newDefaultValues: { [key: string]: number } = {};
-
-  //     selectedServices.forEach((serviceId) => {
-  //       const selectedService = services.find((s) => s.sId === serviceId);
-  //       if (selectedService?.dValues) {
-  //         for (const dValue of selectedService.dValues) {
-  //           // Add null checks for dValue.brand and selectedVehicleData.engineNumber
-  //           if (
-  //             dValue?.brand &&
-  //             selectedVehicleData?.engineNumber &&
-  //             dValue.brand.toString().toUpperCase() ===
-  //               selectedVehicleData.engineNumber.toString().toUpperCase()
-  //           ) {
-  //             // Add null check for dValue.value
-  //             if (dValue.value) {
-  //               newDefaultValues[serviceId] =
-  //                 parseInt(dValue.value.toString().split(",")[0]) * 1000;
-  //               break;
-  //             }
-  //           }
-  //         }
-  //       }
-  //     });
-
-  //     setServiceDefaultValues(newDefaultValues);
-  //   }
-  // };
-
   const updateServiceDefaultValues = () => {
     const newDefaults: { [key: string]: number } = {};
 
@@ -291,28 +261,36 @@ export default function RecordsPage() {
       // Deselect the service
       newSelectedServices.delete(serviceId);
 
+      // Remove its subservices
       const newSubServices = { ...selectedSubServices };
       delete newSubServices[serviceId];
       setSelectedSubServices(newSubServices);
+
+      // Collapse if this was the expanded service
+      if (expandedService === serviceId) {
+        setExpandedService(null);
+      }
     } else {
       // Select the service
       newSelectedServices.add(serviceId);
 
+      // Initialize subservices if they exist
       const service = services.find((s) => s.sId === serviceId);
-
       if (service?.subServices) {
-        // Flatten and filter the sub-services to ensure valid entries
         const subServiceNames = service.subServices
-          .flatMap((subService) => subService.sName)
-          .filter((name) => name.trim().length > 0); // Remove empty strings
+          .flatMap((sub) => sub.sName)
+          .filter((name) => name.trim().length > 0);
 
         if (subServiceNames.length > 0) {
           setSelectedSubServices((prev) => ({
             ...prev,
-            [serviceId]: subServiceNames, // Assign valid sub-services
+            [serviceId]: [],
           }));
         }
       }
+
+      // Expand this service
+      setExpandedService(serviceId);
     }
 
     setSelectedServices(newSelectedServices);
@@ -666,16 +644,104 @@ export default function RecordsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVehicle, selectedServices]);
 
-  //print Records details
+  //print record lists
   const handlePrint = async () => {
     if (!printRef.current) return;
 
-    const canvas = await html2canvas(printRef.current);
-    const imgData = canvas.toDataURL("image/png");
+    const root = document.documentElement;
+    const originalStyles = {
+      background: root.style.getPropertyValue("--background"),
+      foreground: root.style.getPropertyValue("--foreground"),
+      primary: root.style.getPropertyValue("--primary"),
+      card: root.style.getPropertyValue("--card"),
+    };
 
-    const pdf = new jsPDF("p", "mm", "a4");
-    pdf.addImage(imgData, "PNG", 10, 10, 190, 0);
-    pdf.save(`record_details${records}.pdf`);
+    // Step 1: Use compatible color formats (hsl or rgb)
+    root.style.setProperty("--background", "rgb(255, 255, 255)"); // white
+    root.style.setProperty("--foreground", "rgb(26, 26, 26)"); // dark gray
+    root.style.setProperty("--primary", "rgb(0, 123, 255)"); // blue
+    root.style.setProperty("--card", "rgb(245, 245, 245)"); // light gray
+
+    window.scrollTo(0, 0); // scroll to top
+
+    // Helper function to convert color to RGB
+    const convertColorToRGB = (color: string): string => {
+      const tempElement: HTMLDivElement = document.createElement("div");
+      tempElement.style.color = color;
+      document.body.appendChild(tempElement);
+      const computedColor: string = getComputedStyle(tempElement).color;
+      document.body.removeChild(tempElement);
+      return computedColor; // Returns the color in RGB format
+    };
+
+    // Step 2: Force computed styles into inline style to avoid oklch leak
+    const elements = printRef.current.querySelectorAll<HTMLElement>("*");
+    elements.forEach((el) => {
+      const style = getComputedStyle(el);
+
+      // Convert colors if they are in unsupported formats
+      el.style.color = style.color.includes("oklch")
+        ? convertColorToRGB(style.color)
+        : style.color;
+      el.style.backgroundColor = style.backgroundColor.includes("oklch")
+        ? convertColorToRGB(style.backgroundColor)
+        : style.backgroundColor;
+      el.style.borderColor = style.borderColor.includes("oklch")
+        ? convertColorToRGB(style.borderColor)
+        : style.borderColor;
+
+      // Check for other unsupported formats and replace them
+      const unsupportedColorRegex = /oklch\(([^)]+)\)/g;
+      if (unsupportedColorRegex.test(style.color)) {
+        el.style.color = "rgb(0, 0, 0)"; // Fallback color
+      }
+      if (unsupportedColorRegex.test(style.backgroundColor)) {
+        el.style.backgroundColor = "rgb(255, 255, 255)"; // Fallback color
+      }
+      if (unsupportedColorRegex.test(style.borderColor)) {
+        el.style.borderColor = "rgb(0, 0, 0)"; // Fallback color
+      }
+    });
+
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        scrollY: -window.scrollY,
+        backgroundColor: null,
+        ignoreElements: (el) => el.classList.contains("no-print"),
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position -= pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save("record_details.pdf");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    } finally {
+      // Step 3: Restore Tailwind CSS variable values
+      root.style.setProperty("--background", originalStyles.background);
+      root.style.setProperty("--foreground", originalStyles.foreground);
+      root.style.setProperty("--primary", originalStyles.primary);
+      root.style.setProperty("--card", originalStyles.card);
+    }
   };
 
   // Add this function to handle editing records
@@ -703,21 +769,6 @@ export default function RecordsPage() {
     });
     setSelectedSubServices(subServices);
 
-    // const subServices: { [key: string]: string[] } = {};
-    // record.services.forEach(
-    //   (service: {
-    //     serviceId: string;
-    //     subServices?: Array<{ name: string }>;
-    //   }) => {
-    //     if (service.subServices?.length) {
-    //       subServices[service.serviceId] = service.subServices.map(
-    //         (ss) => ss.name
-    //       );
-    //     }
-    //   }
-    // );
-    // setSelectedSubServices(subServices);
-
     // Set other form fields
     setMiles(record.miles.toString());
     setHours(record.hours.toString());
@@ -733,10 +784,25 @@ export default function RecordsPage() {
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
     setSelectedSubServices((prev) => {
       const currentSubs = prev[serviceId] || [];
-      const newSubs = currentSubs.includes(subName)
-        ? currentSubs.filter((name) => name !== subName)
-        : [...currentSubs, subName];
-      return { ...prev, [serviceId]: newSubs };
+
+      // Check if this is a service that should only have one subservice selected
+      const service = services.find((s) => s.sId === serviceId);
+      const isSingleSubService =
+        service?.sName === "Steer Tires" || service?.sName === "DPF Clean";
+
+      if (isSingleSubService) {
+        // If already selected, deselect it, otherwise select only this one
+        return {
+          ...prev,
+          [serviceId]: currentSubs.includes(subName) ? [] : [subName],
+        };
+      } else {
+        // For normal services, allow multiple selections
+        const newSubs = currentSubs.includes(subName)
+          ? currentSubs.filter((name) => name !== subName)
+          : [...currentSubs, subName];
+        return { ...prev, [serviceId]: newSubs };
+      }
     });
   };
 
@@ -1038,8 +1104,8 @@ export default function RecordsPage() {
                       setSelectedVehicleData(vehicleData);
                     }}
                     className="rounded-lg"
-                    sx={{ minHeight: "56px" }} // Adjust the minimum height and padding
-                    label="Select Vehicle" // Ensure the label is associated with the Select
+                    sx={{ minHeight: "56px" }}
+                    label="Select Vehicle"
                   >
                     {vehicles.map((vehicle) => (
                       <MenuItem key={vehicle.id} value={vehicle.id}>
@@ -1064,8 +1130,8 @@ export default function RecordsPage() {
                       handlePackageSelect(e.target.value as string[])
                     }
                     renderValue={(selected) => selected.join(", ")}
-                    label="Select Packages" // Ensure the label is associated with the Select
-                    sx={{ minHeight: "56px" }} // Adjust the minimum height if needed
+                    label="Select Packages"
+                    sx={{ minHeight: "56px" }}
                   >
                     {servicePackages
                       .filter((pkg) =>
@@ -1102,119 +1168,6 @@ export default function RecordsPage() {
               </div>
               {/** Select Services */}
 
-              {/* <div className="grid grid-cols-4 gap-3 mb-4">
-                {services
-                  .filter(
-                    (service) =>
-                      service.sName
-                        .toLowerCase()
-                        .includes(serviceSearchText.toLowerCase()) &&
-                      (!selectedVehicleData ||
-                        service.vType === selectedVehicleData.vehicleType)
-                  )
-                  .map((service) => (
-                    <div key={service.sId} className="flex justify-center">
-                      <Chip
-                        label={service.sName}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleServiceSelect(service.sId);
-                          setExpandedService(
-                            expandedService === service.sId ? null : service.sId
-                          );
-                        }}
-                        sx={{
-                          backgroundColor: selectedServices.has(service.sId)
-                            ? "#F96176"
-                            : "default",
-                          color: selectedServices.has(service.sId)
-                            ? "white"
-                            : "inherit",
-                          "&:hover": {
-                            backgroundColor: selectedServices.has(service.sId)
-                              ? "#F96176"
-                              : "#FFCDD2",
-                          },
-                        }}
-                        variant={
-                          selectedServices.has(service.sId)
-                            ? "filled"
-                            : "outlined"
-                        }
-                        className="w-full min-w-[120px] text-center transition duration-300 hover:shadow-lg"
-                      />
-                    </div>
-                  ))}
-              </div> */}
-
-              {/* <div className="grid grid-cols-4 gap-3 mb-4">
-                {services
-                  .filter(
-                    (service) =>
-                      service.sName
-                        .toLowerCase()
-                        .includes(serviceSearchText.toLowerCase()) &&
-                      (!selectedVehicleData ||
-                        service.vType === selectedVehicleData.vehicleType)
-                  )
-                  .map((service) => (
-                    <div key={service.sId} className="w-full">
-                      <Chip
-                        label={service.sName}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleServiceSelect(service.sId);
-                          setExpandedService(
-                            expandedService === service.sId ? null : service.sId
-                          );
-                        }}
-                        sx={{
-                          backgroundColor: selectedServices.has(service.sId)
-                            ? "#F96176"
-                            : "default",
-                          color: selectedServices.has(service.sId)
-                            ? "white"
-                            : "inherit",
-                          "&:hover": {
-                            backgroundColor: selectedServices.has(service.sId)
-                              ? "#F96176"
-                              : "#FFCDD2", // Optional hover color
-                          },
-                        }}
-                        variant={
-                          selectedServices.has(service.sId)
-                            ? "filled"
-                            : "outlined"
-                        }
-                        className="mb-2 transition duration-300 hover:shadow-lg"
-                      />
-
-                      <Collapse
-                        in={
-                          expandedService === service.sId &&
-                          selectedServices.has(service.sId)
-                        }
-                        timeout="auto"
-                      >
-                        {service.subServices && (
-                          <div className="ml-4 mt-2">
-                            {service.subServices.map((subService) =>
-                              subService.sName.map((name, idx) => (
-                                <Chip
-                                  key={`${service.sId}-${name}-${idx}`}
-                                  label={name}
-                                  size="small"
-                                  className="m-1 transition duration-300 hover:bg-gray-200"
-                                />
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </Collapse>
-                    </div>
-                  ))}
-              </div> */}
-
               <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter(
@@ -1225,6 +1178,7 @@ export default function RecordsPage() {
                       (!selectedVehicleData ||
                         service.vType === selectedVehicleData.vehicleType)
                   )
+                  .sort((a, b) => a.sName.localeCompare(b.sName)) // ✅ Sort alphabetically
                   .map((service) => (
                     <div key={service.sId} className="w-full">
                       <Chip
@@ -1281,7 +1235,20 @@ export default function RecordsPage() {
                                   }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleSubserviceToggle(service.sId, name);
+                                    // For "Steer Tires" and "DPF Clean", allow only one selection
+                                    if (
+                                      service.sName === "Steer Tires" ||
+                                      service.sName === "DPF Clean"
+                                    ) {
+                                      const newSubServices = {
+                                        ...selectedSubServices,
+                                        [service.sId]: [name],
+                                      };
+                                      setSelectedSubServices(newSubServices);
+                                    } else {
+                                      // For other services, allow multiple selections
+                                      handleSubserviceToggle(service.sId, name);
+                                    }
                                   }}
                                 />
                               ))
@@ -1399,7 +1366,12 @@ export default function RecordsPage() {
           </h1>
         </div>
       ) : (
-        <div ref={printRef} className="table-container">
+        // <div ref={printRef} className="table-container">
+        <div
+          ref={printRef}
+          className="w-full bg-white"
+          style={{ overflow: "visible", maxHeight: "none" }}
+        >
           <TableContainer component={Paper}>
             <Table className="table">
               <TableHead>
@@ -1410,7 +1382,7 @@ export default function RecordsPage() {
                   {records.some((record) => record.miles > 0) && (
                     <TableCell>Miles</TableCell>
                   )}
-                  {records.some((record) => record.hours > 0) && (
+                  {records.some((record) => record.hours < 0) && (
                     <TableCell>Hours</TableCell>
                   )}
                   <TableCell>Services</TableCell>
@@ -1475,13 +1447,25 @@ export default function RecordsPage() {
                     </TableCell>
 
                     <TableCell>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => handleEditRecord(record)}
-                      >
-                        Edit
-                      </Button>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleEditRecord(record)}
+                        >
+                          Edit
+                        </Button>
+
+                        <Link href={`/records/${record.id}`} passHref>
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            component="a"
+                          >
+                            View
+                          </Button>
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

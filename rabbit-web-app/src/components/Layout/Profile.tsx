@@ -3,6 +3,7 @@ import { FaSignOutAlt } from "react-icons/fa";
 import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { CiDeliveryTruck, CiStar } from "react-icons/ci";
+import { FaMoneyCheckDollar } from "react-icons/fa6";
 import { BiTrip } from "react-icons/bi";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
@@ -53,15 +54,17 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       path: "/account/manage-trip",
     },
     {
+      icon: <FaMoneyCheckDollar className="mr-2" />,
+      label: "Manage Check",
+      path: "/account/manage-check",
+    },
+
+    {
       icon: <CiStar className="mr-2" />,
       label: "Ratings",
       path: "/account/ratings",
     },
-    // {
-    //   icon: <IoMdNotificationsOutline className="mr-2" />,
-    //   label: "Notifications",
-    //   path: "/account/notifications",
-    // },
+
     {
       icon: <FaSignOutAlt className="mr-2" />,
       label: "Logout",

@@ -128,9 +128,15 @@ export default function NotificationDetailsComponent({
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-800">Services:</h2>
               <div className="space-y-4">
-                {notification.notifications.map((service, index) => (
+                {/* {notification.notifications.map((service, index) => (
                   <ServiceItem key={index} service={service} />
-                ))}
+                ))} */}
+
+                {[...notification.notifications]
+                  .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+                  .map((service, index) => (
+                    <ServiceItem key={index} service={service} />
+                  ))}
               </div>
             </div>
           </div>
@@ -162,11 +168,5 @@ const ServiceItem = ({ service }: { service: Service }) => (
         </div>
       )}
     </div>
-
-    {/* {service.subServices?.length > 0 && (
-      <div className="ml-8 text-sm text-gray-500">
-        Subservices: {service.subServices.join(", ")}
-      </div>
-    )} */}
   </div>
 );

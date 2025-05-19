@@ -1,7 +1,7 @@
 // pages/my-vehicles.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { collection, doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
@@ -25,13 +25,22 @@ export default function MyVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
-
   const [showPopup, setShowPopup] = useState(false);
+
+  // Sort vehicles alphabetically by vehicleNumber
+  const sortedVehicles = useMemo(() => {
+    return [...vehicles].sort((a, b) => {
+      // Handle cases where vehicleNumber might be undefined
+      const numA = a.vehicleNumber || "";
+      const numB = b.vehicleNumber || "";
+      return numA.localeCompare(numB);
+    });
+  }, [vehicles]);
 
   useEffect(() => {
     if (!user) {
       setLoading(false);
-      return; // Exit if user is not available
+      return;
     }
 
     const unsubscribe = onSnapshot(
@@ -101,11 +110,11 @@ export default function MyVehiclesPage() {
         ]}
       />
 
-      {vehicles.length === 0 ? (
+      {sortedVehicles.length === 0 ? (
         <p className="text-center text-gray-500">No vehicles found</p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {vehicles.map((vehicle) => (
+          {sortedVehicles.map((vehicle) => (
             <Link
               href={`/account/my-vehicles/${vehicle.id}`}
               key={vehicle.id}
@@ -120,10 +129,10 @@ export default function MyVehiclesPage() {
               />
               <div className="text-center">
                 <h2 className="text-xl font-semibold mb-1">
-                  {vehicle.companyName || "Unknown Vehicle"}
+                  {vehicle.vehicleNumber || "Unknown Vehicle"}
                 </h2>
                 <p className="text-gray-500">
-                  {vehicle.vehicleNumber || "Unknown Number"}
+                  {vehicle.companyName || "Unknown Number"}
                 </p>
               </div>
             </Link>

@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import HashLoader from "react-spinners/HashLoader";
+import { FiSearch, FiFilter, FiX } from "react-icons/fi";
 
 interface ManageTeamProps {
   active: boolean;
@@ -45,7 +46,21 @@ export default function ManageTeam(): JSX.Element {
   const [firstDoc, setFirstDoc] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>("All");
+  const [filteredMembers, setFilteredMembers] = useState<ManageTeamProps[]>([]);
+
   const itemsPerPage = 5;
+
+  const roles = [
+    "All",
+    "Manager",
+    "Driver",
+    "Vendor",
+    "Accountant",
+    "Other staff",
+  ];
 
   const handleToggleActive = async (
     memberId: string,
@@ -124,6 +139,7 @@ export default function ManageTeam(): JSX.Element {
           });
 
           setTeamMembers(fetchedData);
+          setFilteredMembers(fetchedData);
 
           setFirstDoc(querySnapshot.docs[0]);
           setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
@@ -147,8 +163,39 @@ export default function ManageTeam(): JSX.Element {
     fetchTeamMembers("initial");
   }, [user]);
 
+  useEffect(() => {
+    let results = teamMembers;
+
+    // Apply role filter
+    if (roleFilter !== "All") {
+      results = results.filter(
+        (member) => member.role.toLowerCase() === roleFilter.toLowerCase()
+      );
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      results = results.filter(
+        (member) =>
+          member.userName.toLowerCase().includes(query) ||
+          member.email.toLowerCase().includes(query) ||
+          (member.phoneNumber && member.phoneNumber.includes(query)) ||
+          member.role.toLowerCase().includes(query)
+      );
+    }
+
+    setFilteredMembers(results);
+  }, [searchQuery, roleFilter, teamMembers]);
+
   const handleNext = () => fetchTeamMembers("next");
   const handlePrevious = () => fetchTeamMembers("prev");
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setRoleFilter("All");
+    setFilteredMembers(teamMembers);
+  };
 
   if (!user) {
     return <div>Please log in to access the manage team page.</div>;
@@ -178,6 +225,86 @@ export default function ManageTeam(): JSX.Element {
           </Link>
         </div>
 
+        {/* Search and Filter Section */}
+        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-grow">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search by name, email, phone or role..."
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md transition-colors"
+              >
+                <FiFilter />
+                <span>Filter</span>
+              </button>
+
+              {showFilters && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 p-4 border border-gray-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium">Filter by Role</h3>
+                    <button onClick={() => setShowFilters(false)}>
+                      <FiX />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {roles.map((role) => (
+                      <div key={role} className="flex items-center">
+                        <input
+                          type="radio"
+                          id={`role-${role}`}
+                          name="roleFilter"
+                          checked={roleFilter === role}
+                          onChange={() => setRoleFilter(role)}
+                          className="h-4 w-4 text-[#F96176] focus:ring-[#F96176] border-gray-300"
+                        />
+                        <label
+                          htmlFor={`role-${role}`}
+                          className="ml-2 text-sm text-gray-700"
+                        >
+                          {role}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {(searchQuery || roleFilter !== "All") && (
+                    <button
+                      onClick={resetFilters}
+                      className="mt-3 text-sm text-[#F96176] hover:text-[#e54d62]"
+                    >
+                      Reset all filters
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {(searchQuery || roleFilter !== "All") && (
+            <div className="mt-3 text-sm text-gray-600">
+              Showing {filteredMembers.length} results
+              {(searchQuery || roleFilter !== "All") && (
+                <button
+                  onClick={resetFilters}
+                  className="ml-2 text-[#F96176] hover:text-[#e54d62]"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Desktop Table View */}
         <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
@@ -193,6 +320,9 @@ export default function ManageTeam(): JSX.Element {
                   Phone Number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -201,57 +331,62 @@ export default function ManageTeam(): JSX.Element {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {teamMembers.length > 0 ? (
-                teamMembers.map((member) => (
-                  <tr
-                    key={member.uid}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <img
-                          src={member.profilePicture || "/default-avatar.png"}
-                          alt={member.userName}
-                          className="h-10 w-10 rounded-full mr-3"
-                        />
-                        <div className="text-sm font-medium text-gray-900">
-                          {member.userName}
+              {filteredMembers.length > 0 ? (
+                [...filteredMembers]
+                  .sort((a, b) => a.userName.localeCompare(b.userName))
+                  .map((member) => (
+                    <tr
+                      key={member.uid}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <img
+                            src={member.profilePicture || "/default-avatar.png"}
+                            alt={member.userName}
+                            className="h-10 w-10 rounded-full mr-3"
+                          />
+                          <div className="text-sm font-medium text-gray-900">
+                            {member.userName} ({member.role})
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {member.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {member.phoneNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          member.active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {member.active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <input
-                        type="checkbox"
-                        className="toggle toggle-success"
-                        checked={member.active}
-                        onChange={() =>
-                          handleToggleActive(member.uid, member.active)
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {member.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {member.phoneNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {member.role}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            member.active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {member.active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input
+                          type="checkbox"
+                          className="toggle toggle-success"
+                          checked={member.active}
+                          onChange={() =>
+                            handleToggleActive(member.uid, member.active)
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))
               ) : (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-6 py-4 text-center text-sm text-gray-500"
                   >
                     No team members found
@@ -264,8 +399,8 @@ export default function ManageTeam(): JSX.Element {
 
         {/* Mobile Card View */}
         <div className="lg:hidden space-y-4">
-          {teamMembers.length > 0 ? (
-            teamMembers.map((member) => (
+          {filteredMembers.length > 0 ? (
+            filteredMembers.map((member) => (
               <div
                 key={member.uid}
                 className="bg-white rounded-lg shadow-md p-4"
@@ -283,6 +418,7 @@ export default function ManageTeam(): JSX.Element {
                     <h3 className="text-lg font-medium text-gray-900">
                       {member.userName}
                     </h3>
+                    <p className="text-sm text-gray-500">{member.role}</p>
                     <span
                       className={`px-2 text-xs leading-5 font-semibold rounded-full ${
                         member.active
