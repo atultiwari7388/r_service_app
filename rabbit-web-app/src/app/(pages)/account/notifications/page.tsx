@@ -226,7 +226,7 @@ const NotificationCard = ({
 
           {vehicleDetails && (
             <p className="text-gray-600 text-sm mb-2">
-              {vehicleDetails.companyName} ({vehicleDetails.vehicleNumber})
+              {vehicleDetails.vehicleNumber} ({vehicleDetails.companyName})
             </p>
           )}
 
