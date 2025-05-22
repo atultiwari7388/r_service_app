@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -133,43 +134,108 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         iconTheme: IconThemeData(color: kWhite),
         backgroundColor: kPrimary,
         actions: [
-          Switch(
-            value: isActive,
-            activeColor: kSecondary,
-            onChanged: (value) async {
-              setState(() {
-                isActive = value;
-              });
-              // Update the vehicle status
-              await FirebaseFirestore.instance
-                  .collection("Users")
-                  .doc(currentUId)
-                  .collection('Vehicles')
-                  .doc(vehicleId)
-                  .update({'active': value}).then((_) async {
-                showToastMessage("Msg", "Vehicle Status Updated", kSecondary);
+          widget.role == "Owner"
+              ? Switch(
+                  value: isActive,
+                  activeColor: kSecondary,
+                  onChanged: (value) async {
+                    setState(() {
+                      isActive = value;
+                    });
 
-                // Fetch all DataServices documents where vehicleId matches
-                final dataServicesSnapshot = await FirebaseFirestore.instance
-                    .collection("Users")
-                    .doc(currentUId)
-                    .collection('DataServices')
-                    .where("vehicleId", isEqualTo: vehicleId)
-                    .get();
+                    try {
+                      final batch = FirebaseFirestore.instance.batch();
 
-                // Check if DataServices exists
-                if (dataServicesSnapshot.docs.isNotEmpty) {
-                  final batch = FirebaseFirestore.instance.batch();
+                      // 1. Always update owner's vehicle and DataServices
+                      final ownerVehicleRef = FirebaseFirestore.instance
+                          .collection("Users")
+                          .doc(currentUId)
+                          .collection('Vehicles')
+                          .doc(vehicleId);
+                      batch.update(ownerVehicleRef, {'active': value});
 
-                  for (var doc in dataServicesSnapshot.docs) {
-                    batch.update(doc.reference, {'active': value});
-                  }
+                      // Update owner's DataServices
+                      final ownerDataServices = await FirebaseFirestore.instance
+                          .collection("Users")
+                          .doc(currentUId)
+                          .collection('DataServices')
+                          .where("vehicleId", isEqualTo: vehicleId)
+                          .get();
 
-                  await batch.commit();
-                }
-              });
-            },
-          ),
+                      for (var doc in ownerDataServices.docs) {
+                        batch.update(doc.reference, {'active': value});
+                      }
+
+                      // 2. Check if owner has any team members
+                      final teamCheck = await FirebaseFirestore.instance
+                          .collection('Users')
+                          .where('createdBy', isEqualTo: currentUId)
+                          .where('isTeamMember', isEqualTo: true)
+                          .limit(1)
+                          .get();
+
+                      if (teamCheck.docs.isNotEmpty) {
+                        // Owner has team members - get all members
+                        final teamMembers = await FirebaseFirestore.instance
+                            .collection('Users')
+                            .where('createdBy', isEqualTo: currentUId)
+                            .where('isTeamMember', isEqualTo: true)
+                            .get();
+
+                        for (var member in teamMembers.docs) {
+                          final memberId = member.id;
+
+                          try {
+                            // Check if team member has this specific vehicle
+                            final memberVehicleRef = FirebaseFirestore.instance
+                                .collection("Users")
+                                .doc(memberId)
+                                .collection('Vehicles')
+                                .doc(vehicleId);
+
+                            final memberVehicleDoc =
+                                await memberVehicleRef.get();
+
+                            if (memberVehicleDoc.exists) {
+                              // Only update if vehicle exists for team member
+                              batch.update(memberVehicleRef, {'active': value});
+
+                              // Update team member's DataServices if they have any
+                              final memberDataServices = await FirebaseFirestore
+                                  .instance
+                                  .collection("Users")
+                                  .doc(memberId)
+                                  .collection('DataServices')
+                                  .where("vehicleId", isEqualTo: vehicleId)
+                                  .get();
+
+                              for (var doc in memberDataServices.docs) {
+                                batch.update(doc.reference, {'active': value});
+                              }
+                            }
+                          } catch (e) {
+                            // Skip if team member has no Vehicles collection or other error
+                            log("Team member $memberId has no Vehicles collection or error: $e");
+                            continue;
+                          }
+                        }
+                      }
+
+                      await batch.commit();
+                      showToastMessage(
+                          "Success", "Vehicle Status Updated", kSecondary);
+                      log("Vehicle status updated for owner and applicable team members");
+                    } catch (e) {
+                      showToastMessage("Error",
+                          "Failed to update vehicle status", Colors.red);
+                      setState(() {
+                        isActive = !value;
+                      });
+                      log("Error updating vehicle status: $e");
+                    }
+                  },
+                )
+              : SizedBox(),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
@@ -240,7 +306,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     vehicleData['vehicleNumber']),
                                 _buildInfoRow('Year:', formattedDate),
                                 _buildInfoRow('Current Miles:',
-                                    vehicleData['currentMiles']),
+                                    vehicleData['currentMiles'].toString()),
                                 _buildInfoRow('License Plate:',
                                     vehicleData['licensePlate']),
                                 _buildInfoRow('Company Name:',
@@ -712,10 +778,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
   Widget _buildServicesTable(
       BuildContext context, List services, String vehicleId) {
-    // final filteredServices = services
-    //     .where((service) => service['nextNotificationValue'] != 0)
-    //     .toList();
-
     final filteredServices = services
         .where((service) => service['defaultNotificationValue'] != 0)
         .toList()
@@ -781,28 +843,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 children: [
                   _buildTableCell(index.toString()), // Serial Number
                   _buildTableCell(service['serviceName'] ?? 'Unknown'),
-
-                  // _buildTableCell(service['type'] == "day"
-                  //     ? service['defaultNotificationValue'].toString() +
-                  //         ' (' +
-                  //         (service['type'] == 'day'
-                  //             ? 'Day'
-                  //             : service['type'] == 'reading'
-                  //                 ? 'Miles'
-                  //                 : service['type'] == 'hours'
-                  //                     ? 'Hours'
-                  //                     : '') +
-                  //         ')'
-                  //     : service['nextNotificationValue'].toString() +
-                  //         ' (' +
-                  //         (service['type'] == 'day'
-                  //             ? 'Day'
-                  //             : service['type'] == 'reading'
-                  //                 ? 'Miles'
-                  //                 : service['type'] == 'hours'
-                  //                     ? 'Hours'
-                  //                     : '') +
-                  //         ')'),
 
                   _buildTableCell(
                     service['type'] == 'day'
@@ -909,6 +949,109 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
+  // void _showEditDialog(
+  //     BuildContext context, Map<String, dynamic> service, String vehicleId) {
+  //   final TextEditingController controller = TextEditingController(
+  //     text: service['defaultNotificationValue'].toString(),
+  //   );
+
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(15),
+  //         ),
+  //         title: const Text(
+  //           'Edit Default Notification Value',
+  //           style: TextStyle(color: kPrimary),
+  //         ),
+  //         content: TextField(
+  //           controller: controller,
+  //           keyboardType: TextInputType.number,
+  //           decoration: InputDecoration(
+  //             labelText: 'Enter New Value',
+  //             border: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(10),
+  //             ),
+  //             focusedBorder: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(10),
+  //               borderSide: const BorderSide(color: kPrimary, width: 2),
+  //             ),
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.pop(context);
+  //             },
+  //             child: Text('Cancel',
+  //                 style: appStyle(17, kPrimary, FontWeight.normal)),
+  //           ),
+  //           ElevatedButton(
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: kSecondary,
+  //               foregroundColor: kWhite,
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(8),
+  //               ),
+  //             ),
+  //             onPressed: () async {
+  //               final newValue = int.tryParse(controller.text);
+  //               // final currentValue = service['nextNotificationValue'];
+
+  //               if (newValue == null) {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   const SnackBar(
+  //                       content: Text('Please enter a valid number')),
+  //                 );
+  //                 return;
+  //               }
+
+  //               try {
+  //                 final vehicleDocRef = FirebaseFirestore.instance
+  //                     .collection('Users')
+  //                     .doc(currentUId)
+  //                     .collection('Vehicles')
+  //                     .doc(vehicleId);
+
+  //                 await FirebaseFirestore.instance
+  //                     .runTransaction((transaction) async {
+  //                   final docSnapshot = await transaction.get(vehicleDocRef);
+  //                   if (!docSnapshot.exists)
+  //                     throw Exception('Document not found');
+
+  //                   List<dynamic> services = List.from(docSnapshot['services']);
+  //                   int index = services.indexWhere(
+  //                     (s) => s['serviceName'] == service['serviceName'],
+  //                   );
+
+  //                   if (index == -1) throw Exception('Service not found');
+
+  //                   // Update the specific service
+  //                   Map<String, dynamic> updatedService =
+  //                       Map.from(services[index]);
+  //                   updatedService['defaultNotificationValue'] = newValue;
+  //                   services[index] = updatedService;
+
+  //                   transaction.update(vehicleDocRef, {'services': services});
+  //                 });
+
+  //                 Navigator.pop(context); // Close dialog on success
+  //               } catch (e) {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   SnackBar(content: Text('Error updating service: $e')),
+  //                 );
+  //               }
+  //             },
+  //             child: const Text('Update'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
   void _showEditDialog(
       BuildContext context, Map<String, dynamic> service, String vehicleId) {
     final TextEditingController controller = TextEditingController(
@@ -958,8 +1101,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
               ),
               onPressed: () async {
                 final newValue = int.tryParse(controller.text);
-                final currentValue = service['nextNotificationValue'];
-
                 if (newValue == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -988,10 +1129,32 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
                     if (index == -1) throw Exception('Service not found');
 
-                    // Update the specific service
-                    Map<String, dynamic> updatedService =
+                    // Get current values
+                    Map<String, dynamic> currentService =
                         Map.from(services[index]);
-                    updatedService['nextNotificationValue'] = newValue;
+                    int currentDefault =
+                        currentService['defaultNotificationValue'];
+                    int currentNext = currentService['nextNotificationValue'];
+
+                    // Calculate the difference between current values
+                    int difference = currentNext - currentDefault;
+
+                    // Calculate new next value based on the difference
+                    int newNextValue = newValue + difference;
+
+                    // Ensure the new next value is not less than the new default
+                    if (newNextValue < newValue) {
+                      newNextValue = newValue;
+                    }
+
+                    // Update the service
+                    Map<String, dynamic> updatedService =
+                        Map.from(currentService);
+                    updatedService['defaultNotificationValue'] = newValue;
+                    updatedService['nextNotificationValue'] = newNextValue;
+                    updatedService['preValue'] =
+                        currentDefault; // Store previous value
+
                     services[index] = updatedService;
 
                     transaction.update(vehicleDocRef, {'services': services});

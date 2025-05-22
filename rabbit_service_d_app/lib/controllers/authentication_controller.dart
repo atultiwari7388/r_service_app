@@ -187,7 +187,7 @@ class AuthController extends GetxController {
             // User is not active, navigate to ContactWithAdmin screen
             showToastMessage(
                 "Error",
-                "Your account is deactivated. Kindly contact with administrator.",
+                "Your Account is deactivated, kindly contact with your office.",
                 Colors.red);
             Get.offAll(() => const AdminContactScreen());
           }

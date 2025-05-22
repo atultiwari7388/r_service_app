@@ -245,6 +245,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                   'defaultNotificationValue':
                       service['defaultNotificationValue'],
                   'nextNotificationValue': service['nextNotificationValue'],
+                  'preValue': service['defaultNotificationValue'],
                   'serviceId': service['serviceId'],
                   'serviceName': service['serviceName'],
                   'type': service['type'],
@@ -627,59 +628,6 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 ],
               ),
             ),
-      // bottomNavigationBar: Container(
-      //   child: _isBtnEnable
-      //       ? CustomButton(
-      //           text: "Upload",
-      //           onPress: () async {
-      //             if (excelData.isEmpty) return;
-      //             setState(() {
-      //               isSaving = true;
-      //               uploadErrors.clear();
-      //             });
-
-      //             int successCount = 0;
-      //             for (var data in excelData) {
-      //               try {
-      //                 await uploadMultipleVehicles(
-      //                     data as List<Map<String, dynamic>>);
-      //                 successCount++;
-      //               } catch (e) {
-      //                 uploadErrors.add(e.toString());
-      //               }
-      //             }
-
-      //             setState(() => isSaving = false);
-      //             showDialog(
-      //               context: context,
-      //               builder: (ctx) => AlertDialog(
-      //                 title: Text('Upload Complete'),
-      //                 content: Column(
-      //                   mainAxisSize: MainAxisSize.min,
-      //                   children: [
-      //                     Text('Successfully uploaded $successCount vehicles.'),
-      //                     if (uploadErrors.isNotEmpty) ...[
-      //                       SizedBox(height: 16),
-      //                       Text('Errors:',
-      //                           style: TextStyle(fontWeight: FontWeight.bold)),
-      //                       ...uploadErrors.map((e) => Text(e)).toList(),
-      //                     ],
-      //                   ],
-      //                 ),
-      //                 actions: [
-      //                   TextButton(
-      //                     onPressed: Navigator.of(ctx).pop,
-      //                     child: Text('OK'),
-      //                   ),
-      //                 ],
-      //               ),
-      //             );
-      //           },
-      //           color: kPrimary,
-      //         )
-      //       : SizedBox(),
-      // ),
-
       bottomNavigationBar: Container(
         child: _isBtnEnable
             ? CustomButton(

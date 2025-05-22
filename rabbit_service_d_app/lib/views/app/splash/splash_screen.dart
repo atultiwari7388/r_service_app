@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -9,7 +8,6 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/adminContact/admin_contact_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
-import 'package:regal_service_d_app/views/web/web_dashboard_screen.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../onBoard/on_boarding_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

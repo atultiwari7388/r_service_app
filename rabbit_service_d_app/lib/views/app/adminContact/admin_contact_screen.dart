@@ -64,7 +64,7 @@ class _AdminContactScreenState extends State<AdminContactScreen> {
             ),
             SizedBox(height: 10),
             Text(
-              "Your account has been deactivated. Please contact the admin for assistance.",
+              "Your Account is deactivated, kindly contact with your office.",
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[700],

@@ -351,6 +351,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                   'defaultNotificationValue':
                       service['defaultNotificationValue'],
                   'nextNotificationValue': service['nextNotificationValue'],
+                  'preValue': service['defaultNotificationValue'],
                   'serviceId': service['serviceId'],
                   'serviceName': service['serviceName'],
                   'type': service['type'],
