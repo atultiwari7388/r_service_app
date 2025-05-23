@@ -31,6 +31,7 @@ import {
   Checkbox,
   IconButton,
   Collapse,
+  Box,
 } from "@mui/material";
 import {
   Table,
@@ -112,6 +113,10 @@ interface RecordData extends ServiceRecord {
   vehicle: string;
 }
 
+interface RedirectProps {
+  path: string;
+}
+
 export default function RecordsPage() {
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
@@ -165,9 +170,16 @@ export default function RecordsPage() {
 
   // Add Miles Form State
   const [showAddMiles, setShowAddMiles] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+
   const [todayMiles, setTodayMiles] = useState("");
   const [selectedVehicleType, setSelectedVehicleType] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
+
+  const handleRedirect = ({ path }: RedirectProps): void => {
+    setShowPopup(false);
+    window.location.href = path;
+  };
 
   const fetchVehicles = async () => {
     if (!user) return;
@@ -821,35 +833,31 @@ export default function RecordsPage() {
       {/* Button Container */}
       <div className="flex justify-center gap-4 mb-6">
         {/** Add Record */}
-        <Button
-          variant="contained"
-          startIcon={<IoMdAdd />}
+
+        <button
           onClick={() => setShowAddRecords(true)}
-          className="bg-[#F96176] hover:bg-[#F96176] text-white transition duration-300"
+          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
         >
-          Add Record
-        </Button>
+          <IoMdAdd /> Add Record
+        </button>
 
         {/** Add mile */}
-        <Button
-          variant="contained"
+
+        <button
           onClick={() => setShowAddMiles(true)}
-          className="bg-[#58BB87] hover:bg-[#58BB87] text-white transition duration-300"
+          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
         >
-          Add Miles/Hours
-        </Button>
+          <IoMdAdd /> Add Miles/Hours
+        </button>
 
         {/** Search Functionality */}
-        {/* <IconButton onClick={handleSearchFilterOpen}> */}
 
-        <Button
-          variant="contained"
+        <button
           onClick={() => handleSearchFilterOpen()}
-          className="bg-[#58BB87] hover:bg-[#58BB87] text-white transition duration-300"
+          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
         >
           Search <BiFilter />
-        </Button>
-        {/* </IconButton> */}
+        </button>
 
         {/** Print pdf */}
         <button
@@ -1010,18 +1018,6 @@ export default function RecordsPage() {
               <div className="mb-4">
                 <FormControl fullWidth className="mb-4">
                   <InputLabel>Select Vehicle</InputLabel>
-                  {/* <Select
-                    value={selectedVehicle}
-                    onChange={(e) => handleVehicleSelect(e.target.value)}
-                    className="rounded-lg"
-                    sx={{ minHeight: "56px" }} // Adjust the minimum height and padding
-                  >
-                    {vehicles.map((vehicle) => (
-                      <MenuItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.vehicleNumber} ({vehicle.companyName})
-                      </MenuItem>
-                    ))}
-                  </Select> */}
 
                   <Select
                     value={selectedVehicle}
@@ -1093,28 +1089,149 @@ export default function RecordsPage() {
                   <InputLabel id="select-vehicle-label">
                     Select Vehicle
                   </InputLabel>
-                  <Select
-                    labelId="select-vehicle-label"
-                    value={selectedVehicle}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedVehicle(value);
-                      const vehicleData =
-                        vehicles.find((v) => v.id === value) || null;
-                      setSelectedVehicleData(vehicleData);
-                    }}
-                    className="rounded-lg"
-                    sx={{ minHeight: "56px" }}
-                    label="Select Vehicle"
-                  >
-                    {vehicles.map((vehicle) => (
-                      <MenuItem key={vehicle.id} value={vehicle.id}>
-                        {vehicle.vehicleNumber} ({vehicle.companyName})
-                      </MenuItem>
-                    ))}
-                  </Select>
+                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <Select
+                      labelId="select-vehicle-label"
+                      value={selectedVehicle}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedVehicle(value);
+                        const vehicleData =
+                          vehicles.find((v) => v.id === value) || null;
+                        setSelectedVehicleData(vehicleData);
+                      }}
+                      className="rounded-lg"
+                      sx={{ minHeight: "56px", flex: 1, marginRight: "8px" }}
+                      label="Select Vehicle"
+                    >
+                      {vehicles.map((vehicle) => (
+                        <MenuItem key={vehicle.id} value={vehicle.id}>
+                          {vehicle.vehicleNumber} ({vehicle.companyName})
+                        </MenuItem>
+                      ))}
+                    </Select>
+
+                    {/* Circular + Add Button */}
+                    <button
+                      className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                      title="Add Vehicle"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowPopup(true);
+                      }}
+                    >
+                      +
+                    </button>
+                    {/* Reusable Popup Component */}
+                    {/* <Dialog
+                      open={showPopup}
+                      onClose={() => setShowPopup(false)}
+                      maxWidth="xs"
+                    >
+                      <DialogTitle>Select Option</DialogTitle>
+                      <DialogContent>
+                        <Button
+                          onClick={() =>
+                            handleRedirect({ path: "/add-vehicle" })
+                          }
+                        >
+                          Add Vehicle
+                        </Button>
+                        <Button
+                          onClick={() =>
+                            handleRedirect({ path: "/import-vehicle" })
+                          }
+                          style={{
+                            backgroundColor: "blue",
+                            color: "white",
+                            marginTop: "10px",
+                          }}
+                        >
+                          Import Vehicle
+                        </Button>
+                      </DialogContent>
+                    </Dialog> */}
+
+                    <Dialog
+                      open={showPopup}
+                      onClose={() => setShowPopup(false)}
+                      maxWidth="xs"
+                      PaperProps={{
+                        sx: {
+                          borderRadius: 3,
+                          p: 2,
+                          backgroundColor: "#fefefe",
+                          boxShadow: 24,
+                        },
+                      }}
+                    >
+                      <DialogTitle
+                        sx={{
+                          textAlign: "center",
+                          fontWeight: "bold",
+                          fontSize: 20,
+                          mb: 1,
+                        }}
+                      >
+                        Select Option
+                      </DialogTitle>
+
+                      <DialogContent
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                        }}
+                      >
+                        <Box
+                          onClick={() =>
+                            handleRedirect({ path: "/add-vehicle" })
+                          }
+                          sx={{
+                            backgroundColor: "#F96176",
+                            color: "#fff",
+                            borderRadius: 2,
+                            textAlign: "center",
+                            py: 1.5,
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            fontSize: "16px",
+                            transition: "all 0.3s",
+                            "&:hover": {
+                              backgroundColor: "#e14a60",
+                            },
+                          }}
+                        >
+                          Add Vehicle
+                        </Box>
+
+                        <Box
+                          onClick={() =>
+                            handleRedirect({ path: "/import-vehicle" })
+                          }
+                          sx={{
+                            backgroundColor: "#58BB87",
+                            color: "#fff",
+                            borderRadius: 2,
+                            textAlign: "center",
+                            py: 1.5,
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            fontSize: "16px",
+                            transition: "all 0.3s",
+                            "&:hover": {
+                              backgroundColor: "#4aa975",
+                            },
+                          }}
+                        >
+                          Import Vehicle
+                        </Box>
+                      </DialogContent>
+                    </Dialog>
+                  </Box>
                 </FormControl>
               </div>
+
               {/** Select packages */}
 
               <div className="mb-4">

@@ -377,20 +377,7 @@ const BookingSection: React.FC = () => {
                     ]}
                   />
                 </div>
-                {/* Service Select */}
-                {/* <div className="col-span-1">
-                  <select
-                    onChange={handleServiceChange}
-                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                  >
-                    <option value="">Select A Service</option>
-                    {services.map((service, index) => (
-                      <option key={index} value={service.title}>
-                        {service.title}
-                      </option>
-                    ))}
-                  </select>
-                </div> */}
+
                 {/* Service Select */}
                 <div className="col-span-1">
                   <select

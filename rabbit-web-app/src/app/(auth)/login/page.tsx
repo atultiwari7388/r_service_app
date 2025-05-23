@@ -75,7 +75,7 @@ const Login: React.FC = () => {
         }
 
         if (userDoc.exists()) {
-          router.push("/");
+          router.push("/records");
           toast.success("Login Successfull");
         } else {
           router.push("/sign-up");
@@ -97,7 +97,7 @@ const Login: React.FC = () => {
   const { user } = useAuth() || { user: null };
   useEffect(() => {
     if (user) {
-      router.push("/");
+      router.push("/records");
     }
   }, [router, user]);
 

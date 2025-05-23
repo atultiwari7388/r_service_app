@@ -77,20 +77,48 @@ export default function RecordsDetailsPage({
     return () => unsubscribe();
   }, [user, id]);
 
+  // const handlePrint = async () => {
+  //   if (!printRef.current) return;
+
+  //   const canvas = await html2canvas(printRef.current, {
+  //     scale: 2, // higher scale for better quality
+  //   });
+
+  //   const imgData = canvas.toDataURL("image/png");
+  //   const pdf = new jsPDF("p", "mm", "a4");
+
+  //   const pdfWidth = pdf.internal.pageSize.getWidth();
+  //   const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  //   pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight); // no margins
+  //   pdf.save(`Record_details${record?.invoice}.pdf`);
+  // };
+
   const handlePrint = async () => {
     if (!printRef.current) return;
 
+    // Hide elements with "no-print" class
+    const elementsToHide = printRef.current.querySelectorAll(".no-print");
+    elementsToHide.forEach((el) => {
+      (el as HTMLElement).style.display = "none";
+    });
+
+    // Capture the canvas
     const canvas = await html2canvas(printRef.current, {
-      scale: 2, // higher scale for better quality
+      scale: 2,
+    });
+
+    // Restore hidden elements
+    elementsToHide.forEach((el) => {
+      (el as HTMLElement).style.display = "";
     });
 
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
-
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight); // no margins
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`Record_details${record?.invoice}.pdf`);
   };
 
@@ -111,6 +139,15 @@ export default function RecordsDetailsPage({
 
         <div className="space-y-3 text-gray-700">
           <p className="flex justify-between">
+            <span className="font-medium">Vehicle Number:</span>
+            <span>{record.vehicleDetails.vehicleNumber || "N/A"}</span>
+          </p>
+          <p className="flex justify-between">
+            <span className="font-medium">Company Name:</span>
+            <span>{record.vehicleDetails.companyName || "N/A"}</span>
+          </p>
+
+          <p className="flex justify-between">
             <span className="font-medium">Invoice Number:</span>
             <span>{record.invoice || "N/A"}</span>
           </p>
@@ -123,25 +160,13 @@ export default function RecordsDetailsPage({
             <span>{record.workshopName}</span>
           </p>
           <p className="flex justify-between">
-            <span className="font-medium">Miles:</span>
+            <span className="font-medium">Miles/Hours:</span>
             <span>{record.miles}</span>
           </p>
         </div>
 
         <h3 className="text-lg font-semibold text-gray-800 mt-5">Services</h3>
         <div className="mt-3 border rounded-lg p-3 bg-gray-50">
-          {/* {record.services.map((service) => (
-            <div
-              key={service.serviceId}
-              className="p-3 border-b last:border-none flex justify-between"
-            >
-              <span className="font-medium">{service.serviceName}</span>
-              <span className="text-gray-600 text-sm">
-                {service.nextNotificationValue}
-              </span>
-            </div>
-          ))} */}
-
           {record.services
             .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
             .map((service) => (
@@ -163,7 +188,7 @@ export default function RecordsDetailsPage({
 
         <button
           onClick={handlePrint}
-          className="mt-6 w-full bg-red-500 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-md hover:bg-red-600 transition"
+          className="no-print mt-6 w-full bg-red-500 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 shadow-md hover:bg-red-600 transition"
         >
           <FaPrint /> Print
         </button>

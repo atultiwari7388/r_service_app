@@ -276,6 +276,7 @@ interface ServiceData {
   nextNotificationValue: number;
   serviceId: string;
   serviceName: string;
+  type: string;
 }
 
 interface VehicleData {
@@ -557,8 +558,10 @@ export default function MyVehicleDetailsScreen() {
                   <tr key={service.serviceId} className="border-b">
                     <td className="px-4 py-2">{service.serviceName}</td>
                     <td className="px-4 py-2">
-                      {service.defaultNotificationValue || "N/A"}
+                      {service.defaultNotificationValue || "N/A"} (
+                      {service.type === "reading" ? "Miles" : service.type})
                     </td>
+
                     <td className="px-4 py-2">
                       <button
                         onClick={() => handleEditService(index, service)}
