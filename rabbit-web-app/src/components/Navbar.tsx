@@ -87,7 +87,7 @@ export default function NavBar() {
   return (
     <nav className="flex items-center justify-between bg-white shadow-md py-4 px-6 relative">
       {/* Left Section: Logo */}
-      <Link href={isLoggedIn ? "/dashboard" : "/"}>
+      <Link href={isLoggedIn ? "/" : "/"}>
         <div className="flex items-center cursor-pointer">
           <Image
             src="/Logo_Topbar.png"
@@ -118,17 +118,18 @@ export default function NavBar() {
           ) : (
             <>
               <Link
-                href="/account/my-vehicles"
-                className="hover:text-[#F96176]"
-              >
-                Vehicles
-              </Link>
-              <Link
                 href="/records"
                 className="hover:text-[#F96176] transition-all duration-300 transform hover:scale-105 animate-fadeIn"
               >
                 Records
               </Link>
+              <Link
+                href="/account/my-vehicles"
+                className="hover:text-[#F96176]"
+              >
+                Vehicles
+              </Link>
+
               <Link
                 href="/account/manage-team"
                 className="hover:text-[#F96176]"

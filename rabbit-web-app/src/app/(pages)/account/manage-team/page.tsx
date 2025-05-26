@@ -20,7 +20,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import HashLoader from "react-spinners/HashLoader";
-import { FiSearch, FiFilter, FiX } from "react-icons/fi";
+import {
+  FiSearch,
+  FiFilter,
+  FiX,
+  FiMoreVertical,
+  FiEdit,
+  FiCalendar,
+  FiTruck,
+  FiBriefcase,
+} from "react-icons/fi";
+import { Menu, Switch, Transition } from "@headlessui/react";
 
 interface ManageTeamProps {
   active: boolean;
@@ -306,7 +316,7 @@ export default function ManageTeam(): JSX.Element {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="hidden lg:block bg-white rounded-lg shadow-md overflow-visible">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr className="bg-gray-50">
@@ -371,15 +381,111 @@ export default function ManageTeam(): JSX.Element {
                           {member.active ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <input
-                          type="checkbox"
-                          className="toggle toggle-success"
-                          checked={member.active}
-                          onChange={() =>
-                            handleToggleActive(member.uid, member.active)
-                          }
-                        />
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 relative">
+                        <div className="flex items-center space-x-4">
+                          <Switch
+                            checked={member.active || false}
+                            onChange={() =>
+                              handleToggleActive(member.uid, member.active)
+                            }
+                            className={`${
+                              member.active ? "bg-[#F96176]" : "bg-gray-200"
+                            }
+        relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                          >
+                            <span
+                              className={`${
+                                member.active
+                                  ? "translate-x-6"
+                                  : "translate-x-1"
+                              }
+          inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                            />
+                          </Switch>
+
+                          <Menu as="div" className="relative">
+                            <div>
+                              <Menu.Button className="inline-flex justify-center w-8 h-8 p-1 text-gray-400 hover:text-gray-500 focus:outline-none">
+                                <FiMoreVertical className="h-5 w-5" />
+                              </Menu.Button>
+                            </div>
+
+                            <Transition
+                              enter="transition ease-out duration-100"
+                              enterFrom="transform opacity-0 scale-95"
+                              enterTo="transform opacity-100 scale-100"
+                              leave="transition ease-in duration-75"
+                              leaveFrom="transform opacity-100 scale-100"
+                              leaveTo="transform opacity-0 scale-95"
+                            >
+                              <Menu.Items className="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                <div className="py-1">
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        href={`/account/manage-team/edit/${member.uid}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 text-gray-900"
+                                            : "text-gray-700"
+                                        } flex items-center px-4 py-2 text-sm`}
+                                      >
+                                        <FiEdit className="mr-3 h-5 w-5 text-gray-400" />
+                                        Edit
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        href={`/account/trips?userId=${member.uid}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 text-gray-900"
+                                            : "text-gray-700"
+                                        } flex items-center px-4 py-2 text-sm`}
+                                      >
+                                        <FiCalendar className="mr-3 h-5 w-5 text-gray-400" />
+                                        View Trips
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        href={`/account/my-vehicles?userId=${member.uid}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 text-gray-900"
+                                            : "text-gray-700"
+                                        } flex items-center px-4 py-2 text-sm`}
+                                      >
+                                        <FiTruck className="mr-3 h-5 w-5 text-gray-400" />
+                                        View Vehicles
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
+                                  <Menu.Item>
+                                    {({ active }) => (
+                                      <Link
+                                        href={`/account/manage-team/member-jobs/${member.uid}`}
+                                        className={`${
+                                          active
+                                            ? "bg-gray-100 text-gray-900"
+                                            : "text-gray-700"
+                                        } flex items-center px-4 py-2 text-sm`}
+                                      >
+                                        <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
+                                        View Jobs
+                                      </Link>
+                                    )}
+                                  </Menu.Item>
+                                </div>
+                              </Menu.Items>
+                            </Transition>
+                          </Menu>
+                        </div>
                       </td>
                     </tr>
                   ))

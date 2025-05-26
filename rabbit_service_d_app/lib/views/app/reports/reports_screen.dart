@@ -174,8 +174,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       'vType': service['vType'],
                       'dValues': service['dValues'],
                       'subServices': service['subServices'] ?? [],
-                      'pName': service['pName'] ??
-                          [], // Handle empty or missing pName
+                      'pName': service['pName'] ?? [],
                     })
                 .toList();
 

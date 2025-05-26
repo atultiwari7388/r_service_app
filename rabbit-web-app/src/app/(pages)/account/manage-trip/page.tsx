@@ -22,7 +22,6 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 export interface Trip {
@@ -499,13 +498,13 @@ export default function ManageTripPage() {
       <div className="flex gap-4 mb-6">
         <button
           onClick={() => setShowAddTrip(!showAddTrip)}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
+          className="bg-[#F96176] text-white px-4 py-2 rounded"
         >
           {showAddTrip ? "Cancel" : "Add Trip"}
         </button>
         <button
           onClick={() => setShowAddExpense(!showAddExpense)}
-          className="bg-green-500 text-white px-4 py-2 rounded"
+          className="bg-[#58BB87] text-white px-4 py-2 rounded"
         >
           {showAddExpense ? "Cancel" : "Add Expense"}
         </button>
@@ -558,7 +557,7 @@ export default function ManageTripPage() {
           </div>
           <button
             onClick={handleAddTrip}
-            className="mt-4 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+            className="mt-4 bg-[#F96176] text-white px-6 py-2 rounded hover:bg-[#F96176]"
           >
             Save Trip
           </button>
@@ -602,7 +601,7 @@ export default function ManageTripPage() {
           </div>
           <button
             onClick={handleAddExpense}
-            className="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+            className="mt-4 bg-[#58BB87] text-white px-6 py-2 rounded hover:bg-[#58BB87]"
           >
             Save Expense
           </button>
@@ -646,7 +645,7 @@ export default function ManageTripPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
         {filteredTrips.map((trip) => (
           <div key={trip.id} className="bg-white p-4 rounded-lg shadow-md">
             <h3 className="text-lg font-bold mb-2">{trip.tripName}</h3>
@@ -716,7 +715,7 @@ export default function ManageTripPage() {
                 {role === "Driver" && (
                   <span
                     className={`badge ${
-                      trip.isPaid ? "bg-green-500" : "bg-red-500"
+                      trip.isPaid ? "bg-[#58BB87]" : "bg-[#F96176]"
                     }`}
                   >
                     {trip.isPaid ? "Paid" : "Unpaid"}
@@ -749,28 +748,154 @@ export default function ManageTripPage() {
               </div>
               <div className="flex justify-between items-center mt-4">
                 {trip.tripStatus === 1 && (
-                  <Button
+                  <button
                     onClick={() => {
                       setCurrentTripEdit(trip);
                       setShowEditModal(true);
                     }}
-                    className="text-white bg-[#F96176] hover:underline"
+                    className="mt-4 bg-[#58BB87] text-white px-6 py-2 rounded hover:bg-[#58BB87]"
                   >
                     Edit Trip
-                  </Button>
+                  </button>
                 )}
 
-                <Button
+                <button
                   onClick={() => {
                     router.push(
                       `/account/manage-trip/${trip.id}?userId=${user?.uid}`
                     );
                   }}
-                  className="text-white bg-green-500 hover:underline"
+                  className="mt-4 bg-[#F96176] text-white px-6 py-2 rounded hover:bg-[#F96176]"
                 >
                   View
-                </Button>
+                </button>
               </div>
+            </div>
+          </div>
+        ))}
+      </div> */}
+
+      <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 bg-[#F96176] p-4 font-bold text-white border-b">
+          <div className="col-span-3">Trip Name</div>
+          <div className="col-span-2">Dates</div>
+          <div className="col-span-1">Miles</div>
+          <div className="col-span-2">Earnings</div>
+          <div className="col-span-2">Status</div>
+          <div className="col-span-2">Actions</div>
+        </div>
+
+        {/* Table Rows */}
+        {filteredTrips.map((trip) => (
+          <div
+            key={trip.id}
+            className="grid grid-cols-12 p-4 border-b hover:bg-gray-50"
+          >
+            {/* Trip Name */}
+            <div className="col-span-3 font-medium">{trip.tripName}</div>
+
+            {/* Dates */}
+            <div className="col-span-2">
+              <div className="text-sm">
+                Start: {trip.tripStartDate.toDate().toLocaleDateString()}
+              </div>
+              {trip.tripStatus === 2 && (
+                <div className="text-sm">
+                  End: {trip.tripEndDate.toDate().toLocaleDateString()}
+                </div>
+              )}
+            </div>
+
+            {/* Miles */}
+            <div className="col-span-1">
+              <div className="text-sm">Start: {trip.tripStartMiles}</div>
+              {trip.tripStatus === 2 && (
+                <>
+                  <div className="text-sm">End: {trip.tripEndMiles}</div>
+                  <div className="font-semibold text-[#F96176]">
+                    Total: {trip.tripEndMiles - trip.tripStartMiles}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Earnings */}
+            <div className="col-span-2">
+              {trip.tripStatus === 2 ? (
+                role === "Owner" ? (
+                  <span className="font-semibold">${trip.oEarnings}</span>
+                ) : userData?.perMileCharge ? (
+                  <span className="font-semibold">
+                    $
+                    {((trip.tripEndMiles || 0) - (trip.tripStartMiles || 0)) *
+                      Number(userData.perMileCharge)}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-sm">N/A</span>
+                )
+              ) : (
+                <span className="text-gray-400 text-sm">Pending</span>
+              )}
+            </div>
+
+            {/* Status - Now with dropdown for active trips */}
+            <div className="col-span-2">
+              {trip.tripStatus === 1 ? (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={trip.tripStatus}
+                    onChange={(e) =>
+                      handleUpdateTripStatus(trip, parseInt(e.target.value))
+                    }
+                    className="border p-1 rounded text-sm"
+                  >
+                    <option value={1}>Started</option>
+                    <option value={2}>Completed</option>
+                  </select>
+                  {role === "Driver" && (
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        trip.isPaid
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {trip.isPaid ? "Paid" : "Unpaid"}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                  <span>Completed</span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="col-span-2 flex gap-2">
+              {trip.tripStatus === 1 && (
+                <button
+                  onClick={() => {
+                    setCurrentTripEdit(trip);
+                    setShowEditModal(true);
+                  }}
+                  className="px-3 py-1 bg-blue-100 text-blue-600 rounded text-sm hover:bg-blue-200"
+                >
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={() =>
+                  router.push(
+                    `/account/manage-trip/${trip.id}?userId=${user?.uid}`
+                  )
+                }
+                className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200"
+              >
+                View
+              </button>
             </div>
           </div>
         ))}

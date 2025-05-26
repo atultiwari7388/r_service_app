@@ -1,10 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { FaSignOutAlt } from "react-icons/fa";
-import { RiTeamLine } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
-import { CiDeliveryTruck, CiStar } from "react-icons/ci";
-import { FaMoneyCheckDollar } from "react-icons/fa6";
-import { BiTrip } from "react-icons/bi";
+import { CiStar } from "react-icons/ci";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -38,27 +35,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       label: "My Profile",
       path: "/account/my-profile",
     },
-    {
-      icon: <CiDeliveryTruck className="mr-2" />,
-      label: "My Vehicles",
-      path: "/account/my-vehicles",
-    },
-    {
-      icon: <RiTeamLine className="mr-2" />,
-      label: "Manage Team",
-      path: "/account/manage-team",
-    },
-    {
-      icon: <BiTrip className="mr-2" />,
-      label: "Manage Trip",
-      path: "/account/manage-trip",
-    },
-    {
-      icon: <FaMoneyCheckDollar className="mr-2" />,
-      label: "Manage Check",
-      path: "/account/manage-check",
-    },
-
     {
       icon: <CiStar className="mr-2" />,
       label: "Ratings",

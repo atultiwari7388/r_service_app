@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { db } from "@/lib/firebase";
+import { db, functions } from "@/lib/firebase";
 import {
   arrayUnion,
   collection,
@@ -12,6 +12,7 @@ import {
   updateDoc,
   onSnapshot,
   query,
+  where,
 } from "firebase/firestore";
 import {
   FormControl,
@@ -54,6 +55,7 @@ import { BiFilter, BiSearch } from "react-icons/bi";
 import { FaPrint } from "react-icons/fa";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { httpsCallable } from "firebase/functions";
 
 interface Vehicle {
   brand: string;
@@ -185,7 +187,8 @@ export default function RecordsPage() {
     if (!user) return;
     try {
       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-      const vehiclesSnapshot = await getDocs(vehiclesRef);
+      const q = query(vehiclesRef, where("active", "==", true));
+      const vehiclesSnapshot = await getDocs(q);
       const vehiclesList = vehiclesSnapshot.docs.map(
         (doc) =>
           ({
@@ -338,10 +341,16 @@ export default function RecordsPage() {
 
       const currentReadingField =
         selectedVehicleType === "Truck" ? "currentMiles" : "hoursReading";
-      const currentReadingArrayField =
+      const prevReadingField =
+        selectedVehicleType === "Truck"
+          ? "prevMilesValue"
+          : "prevHoursReadingValue";
+      const readingArrayField =
         selectedVehicleType === "Truck"
           ? "currentMilesArray"
           : "hoursReadingArray";
+      const readingValueField =
+        selectedVehicleType === "Truck" ? "miles" : "hours";
 
       const currentReading = parseInt(
         vehicleDoc.data()[currentReadingField] || "0"
@@ -357,13 +366,98 @@ export default function RecordsPage() {
         return;
       }
 
-      await updateDoc(vehicleRef, {
-        [currentReadingField]: enteredValue,
-        [currentReadingArrayField]: arrayUnion({
-          [selectedVehicleType === "Truck" ? "miles" : "hours"]: enteredValue,
+      const data = {
+        [prevReadingField]: currentReading.toString(),
+        [currentReadingField]: enteredValue.toString(),
+        [readingValueField]: enteredValue.toString(),
+        [readingArrayField]: arrayUnion({
+          [readingValueField]: enteredValue,
           date: new Date().toISOString(),
         }),
-      });
+      };
+
+      // Update owner's vehicle first
+      await updateDoc(vehicleRef, data);
+
+      // Check if current user is team member
+      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+      const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
+
+      if (isTeamMember) {
+        // If current user is team member, update owner's vehicle
+        const ownerId = currentUserDoc.data()?.createdBy;
+        if (ownerId) {
+          const ownerVehicleRef = doc(
+            db,
+            "Users",
+            ownerId,
+            "Vehicles",
+            selectedVehicle
+          );
+          await updateDoc(ownerVehicleRef, data);
+        }
+      } else {
+        // If current user is owner, update all team members who have this vehicle
+        const teamMembersQuery = query(
+          collection(db, "Users"),
+          where("createdBy", "==", user.uid),
+          where("isTeamMember", "==", true)
+        );
+
+        const teamMembersSnapshot = await getDocs(teamMembersQuery);
+
+        for (const memberDoc of teamMembersSnapshot.docs) {
+          const teamMemberUid = memberDoc.id;
+          const teamMemberVehicleRef = doc(
+            db,
+            "Users",
+            teamMemberUid,
+            "Vehicles",
+            selectedVehicle
+          );
+          const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
+
+          if (teamMemberVehicleDoc.exists()) {
+            await updateDoc(teamMemberVehicleRef, data);
+          }
+        }
+      }
+
+      // Check DataServices
+      const dataServicesQuery = query(
+        collection(db, "Users", user.uid, "DataServices"),
+        where("vehicleId", "==", selectedVehicle)
+      );
+      const dataServicesSnapshot = await getDocs(dataServicesQuery);
+
+      if (dataServicesSnapshot.empty) {
+        // Call cloud function to notify about missing services
+        const checkAndNotify = httpsCallable(
+          functions,
+          "checkAndNotifyUserForVehicleService"
+        );
+        await checkAndNotify({ userId: user.uid, vehicleId: selectedVehicle });
+        console.log(
+          "Called checkAndNotifyUserForVehicleService for",
+          selectedVehicle
+        );
+      } else {
+        // Call the cloud function to check for notifications
+        const checkDataServices = httpsCallable(
+          functions,
+          "checkDataServicesAndNotify"
+        );
+        const result = await checkDataServices({
+          userId: user.uid,
+          vehicleId: selectedVehicle,
+        });
+        console.log(
+          "Check Data Services Cloud function result:",
+          result.data,
+          "vehicle Id",
+          selectedVehicle
+        );
+      }
 
       toast.success(
         `${
@@ -372,9 +466,15 @@ export default function RecordsPage() {
       );
       setTodayMiles("");
       setShowAddMiles(false);
+      setSelectedVehicle("");
+      setSelectedVehicleType("");
     } catch (error) {
       console.error("Error updating miles/hours:", error);
-      toast.error("Failed to save miles/hours.");
+      toast.error(
+        `Failed to save ${
+          selectedVehicleType === "Truck" ? "miles" : "hours"
+        }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+      );
     }
   };
 
@@ -1122,36 +1222,8 @@ export default function RecordsPage() {
                     >
                       +
                     </button>
-                    {/* Reusable Popup Component */}
-                    {/* <Dialog
-                      open={showPopup}
-                      onClose={() => setShowPopup(false)}
-                      maxWidth="xs"
-                    >
-                      <DialogTitle>Select Option</DialogTitle>
-                      <DialogContent>
-                        <Button
-                          onClick={() =>
-                            handleRedirect({ path: "/add-vehicle" })
-                          }
-                        >
-                          Add Vehicle
-                        </Button>
-                        <Button
-                          onClick={() =>
-                            handleRedirect({ path: "/import-vehicle" })
-                          }
-                          style={{
-                            backgroundColor: "blue",
-                            color: "white",
-                            marginTop: "10px",
-                          }}
-                        >
-                          Import Vehicle
-                        </Button>
-                      </DialogContent>
-                    </Dialog> */}
 
+                    {/* Popup Dialog for Add/Import Vehicle */}
                     <Dialog
                       open={showPopup}
                       onClose={() => setShowPopup(false)}
@@ -1496,19 +1568,15 @@ export default function RecordsPage() {
                   <TableCell>Date</TableCell>
                   <TableCell>Invoice</TableCell>
                   <TableCell>Vehicle</TableCell>
+                  <TableCell>Company</TableCell>
                   {records.some((record) => record.miles > 0) && (
-                    <TableCell>Miles</TableCell>
+                    <TableCell>Miles/Hours</TableCell>
                   )}
                   {records.some((record) => record.hours < 0) && (
                     <TableCell>Hours</TableCell>
                   )}
                   <TableCell>Services</TableCell>
                   <TableCell>Workshop Name</TableCell>
-
-                  {records.some((record) => record.description) && (
-                    <TableCell>Description</TableCell>
-                  )}
-
                   <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -1516,9 +1584,9 @@ export default function RecordsPage() {
                 {filteredRecords.map((record) => (
                   <TableRow
                     key={record.id}
-                    component={Link}
-                    href={`/records/${record.id}`}
-                    className="link"
+                    // component={Link}
+                    // href={`/records/${record.id}`}
+                    // className="link"
                   >
                     <TableCell className="table-cell">
                       {new Date(record.date).toLocaleDateString()}
@@ -1529,8 +1597,11 @@ export default function RecordsPage() {
                         : "N/A"}
                     </TableCell>
                     <TableCell className="table-cell">
-                      {record.vehicleDetails.companyName} ({" "}
-                      {record.vehicleDetails.vehicleNumber})
+                      {record.vehicleDetails.vehicleNumber}
+                    </TableCell>
+
+                    <TableCell className="table-cell">
+                      {record.vehicleDetails.companyName}
                     </TableCell>
 
                     {record.miles > 0 && (
@@ -1557,30 +1628,19 @@ export default function RecordsPage() {
                         : "N/A"}
                     </TableCell>
 
-                    <TableCell className="table-cell">
-                      {record.description && record.description.trim() !== ""
-                        ? record.description
-                        : "N/A"}
-                    </TableCell>
-
                     <TableCell>
                       <div style={{ display: "flex", gap: "8px" }}>
-                        <Button
-                          variant="outlined"
-                          color="primary"
+                        <button
                           onClick={() => handleEditRecord(record)}
+                          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
                         >
                           Edit
-                        </Button>
+                        </button>
 
                         <Link href={`/records/${record.id}`} passHref>
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            component="a"
-                          >
+                          <button className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]">
                             View
-                          </Button>
+                          </button>
                         </Link>
                       </div>
                     </TableCell>

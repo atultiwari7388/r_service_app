@@ -2,19 +2,36 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { collection, doc, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  query,
+  where,
+  writeBatch,
+} from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import Image from "next/image";
 import Link from "next/link";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import PopupModal from "@/components/PopupModal";
+import { Switch } from "@headlessui/react";
+import toast from "react-hot-toast";
 
 interface Vehicle {
   id: string;
   companyName: string;
   vehicleNumber: string;
   image: string;
+  active?: boolean;
+}
+
+interface UserData {
+  role?: string;
 }
 
 interface RedirectProps {
@@ -26,11 +43,11 @@ export default function MyVehiclesPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
   const [showPopup, setShowPopup] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
   // Sort vehicles alphabetically by vehicleNumber
   const sortedVehicles = useMemo(() => {
     return [...vehicles].sort((a, b) => {
-      // Handle cases where vehicleNumber might be undefined
       const numA = a.vehicleNumber || "";
       const numB = b.vehicleNumber || "";
       return numA.localeCompare(numB);
@@ -43,7 +60,14 @@ export default function MyVehiclesPage() {
       return;
     }
 
-    const unsubscribe = onSnapshot(
+    // Fetch user data to check role
+    const userUnsubscribe = onSnapshot(doc(db, "Users", user.uid), (doc) => {
+      if (doc.exists()) {
+        setUserData(doc.data() as UserData);
+      }
+    });
+
+    const vehiclesUnsubscribe = onSnapshot(
       collection(doc(db, "Users", user.uid), "Vehicles"),
       (snapshot) => {
         const vehiclesData: Vehicle[] = [];
@@ -59,12 +83,106 @@ export default function MyVehiclesPage() {
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      userUnsubscribe();
+      vehiclesUnsubscribe();
+    };
   }, [user]);
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
     window.location.href = path;
+  };
+
+  const handleToggleActive = async (vehicleId: string, newValue: boolean) => {
+    if (!user) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Update owner's vehicle
+      const ownerVehicleRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+      batch.update(ownerVehicleRef, { active: newValue });
+
+      // Update owner's DataServices
+      const ownerDataServices = await getDocs(
+        query(
+          collection(db, "Users", user.uid, "DataServices"),
+          where("vehicleId", "==", vehicleId)
+        )
+      );
+
+      ownerDataServices.forEach((doc) => {
+        batch.update(doc.ref, { active: newValue });
+      });
+
+      // 2. Check if owner has any team members
+      const teamCheck = await getDocs(
+        query(
+          collection(db, "Users"),
+          where("createdBy", "==", user.uid),
+          where("isTeamMember", "==", true),
+          limit(1)
+        )
+      );
+
+      if (!teamCheck.empty) {
+        // Owner has team members - get all members
+        const teamMembers = await getDocs(
+          query(
+            collection(db, "Users"),
+            where("createdBy", "==", user.uid),
+            where("isTeamMember", "==", true)
+          )
+        );
+
+        for (const member of teamMembers.docs) {
+          const memberId = member.id;
+
+          try {
+            // Check if team member has this specific vehicle
+            const memberVehicleRef = doc(
+              db,
+              "Users",
+              memberId,
+              "Vehicles",
+              vehicleId
+            );
+            const memberVehicleDoc = await getDoc(memberVehicleRef);
+
+            if (memberVehicleDoc.exists()) {
+              // Only update if vehicle exists for team member
+              batch.update(memberVehicleRef, { active: newValue });
+
+              // Update team member's DataServices if they have any
+              const memberDataServices = await getDocs(
+                query(
+                  collection(db, "Users", memberId, "DataServices"),
+                  where("vehicleId", "==", vehicleId)
+                )
+              );
+
+              memberDataServices.forEach((doc) => {
+                batch.update(doc.ref, { active: newValue });
+              });
+            }
+          } catch (e) {
+            console.error(`Team member ${memberId} error:`, e);
+            continue;
+          }
+        }
+      }
+
+      await batch.commit();
+      toast.success("Vehicle status updated successfully");
+    } catch (e) {
+      console.error("Error updating vehicle status:", e);
+      toast.error("Failed to update vehicle status");
+      // Revert the UI state if the update fails
+      setVehicles((prev) =>
+        prev.map((v) => (v.id === vehicleId ? { ...v, active: !newValue } : v))
+      );
+    }
   };
 
   if (loading) {
@@ -113,30 +231,110 @@ export default function MyVehiclesPage() {
       {sortedVehicles.length === 0 ? (
         <p className="text-center text-gray-500">No vehicles found</p>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {sortedVehicles.map((vehicle) => (
-            <Link
-              href={`/account/my-vehicles/${vehicle.id}`}
-              key={vehicle.id}
-              className="border rounded-lg shadow-lg p-4 flex flex-col items-center hover:shadow-xl transition-shadow duration-300 bg-white"
-            >
-              <Image
-                src={vehicle.image || "/Logo_Login.png"}
-                alt={vehicle.companyName}
-                width={100}
-                height={100}
-                className="rounded-full mb-4"
-              />
-              <div className="text-center">
-                <h2 className="text-xl font-semibold mb-1">
-                  {vehicle.vehicleNumber || "Unknown Vehicle"}
-                </h2>
-                <p className="text-gray-500">
-                  {vehicle.companyName || "Unknown Number"}
-                </p>
-              </div>
-            </Link>
-          ))}
+        <div className="overflow-x-auto bg-white rounded-lg shadow">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-[#F96176] text-white">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                >
+                  Vehicle Image
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                >
+                  Vehicle Number
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                >
+                  Company Name
+                </th>
+                {userData?.role === "Owner" && (
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                  >
+                    Active
+                  </th>
+                )}
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedVehicles.map((vehicle) => (
+                <tr key={vehicle.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex-shrink-0 h-10 w-10">
+                      <Image
+                        src={vehicle.image || "/Logo_Login.png"}
+                        alt={vehicle.companyName}
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                      />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {vehicle.vehicleNumber || "Unknown Vehicle"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">
+                      {vehicle.companyName || "Unknown Company"}
+                    </div>
+                  </td>
+                  {userData?.role === "Owner" && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Switch
+                        checked={vehicle.active || false}
+                        onChange={(value) => {
+                          // Optimistic UI update
+                          setVehicles((prev) =>
+                            prev.map((v) =>
+                              v.id === vehicle.id ? { ...v, active: value } : v
+                            )
+                          );
+                          handleToggleActive(vehicle.id, value);
+                        }}
+                        className={`${
+                          vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
+                        }
+                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
+                      >
+                        <span
+                          className={`${
+                            vehicle.active ? "translate-x-6" : "translate-x-1"
+                          }
+                            inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                        />
+                      </Switch>
+                    </td>
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <Link
+                      href={`/account/my-vehicles/${vehicle.id}`}
+                      className="text-[#F96176] hover:text-[#eb929e] mr-4"
+                    >
+                      View
+                    </Link>
+                    <button className="text-gray-600 hover:text-gray-900">
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
