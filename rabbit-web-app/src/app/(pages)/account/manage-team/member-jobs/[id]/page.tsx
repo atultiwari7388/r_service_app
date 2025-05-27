@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import MemberJobsCard from "@/components/memberJobsCard/memberJobsCard";
+import MemberJobsCard from "@/components/memberJobsCard/MemberJobsCard";
 
 export interface Job {
   id: string;
