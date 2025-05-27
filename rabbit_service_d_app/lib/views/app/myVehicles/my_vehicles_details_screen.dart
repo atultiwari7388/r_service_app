@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
@@ -12,6 +14,8 @@ import 'package:printing/printing.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
+import 'package:regal_service_d_app/views/app/dashboard/widgets/edit_vehicle_screen.dart';
+import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -124,7 +128,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final String vehicleId = widget.vehicleData['vehicleId'];
-    // final bool isActive = widget.vehicleData['active'];
 
     return Scaffold(
       appBar: AppBar(
@@ -335,6 +338,17 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     "Engine Name:", vehicleData['engineName']),
                                 _buildInfoRow("Vehicle Type:",
                                     vehicleData['vehicleType']),
+                                SizedBox(height: 10.h),
+                                widget.role == "Owner"
+                                    ? CustomButton(
+                                        text: "Edit Vehicle",
+                                        onPress: () {
+                                          Get.to(() => EditVehicleScreen(
+                                              vehicleId: vehicleId,
+                                              vehicleData: vehicleData));
+                                        },
+                                        color: kPrimary)
+                                    : SizedBox(),
                               ],
                             ),
                           ),
@@ -446,47 +460,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 20),
-                                  // ...uploadedFiles.map((file) {
-                                  //   return Card(
-                                  //     margin: const EdgeInsets.only(bottom: 16),
-                                  //     shape: RoundedRectangleBorder(
-                                  //       borderRadius: BorderRadius.circular(15),
-                                  //     ),
-                                  //     elevation: 4,
-                                  //     child: Padding(
-                                  //       padding: const EdgeInsets.all(12),
-                                  //       child: Column(
-                                  //         children: [
-                                  //           if (file['image'] != null)
-                                  //             ClipRRect(
-                                  //               borderRadius:
-                                  //                   BorderRadius.circular(10),
-                                  //               child: Image.file(
-                                  //                 file['image'],
-                                  //                 height: 200,
-                                  //                 width: double.infinity,
-                                  //                 fit: BoxFit.cover,
-                                  //               ),
-                                  //             ),
-                                  //           const SizedBox(height: 12),
-                                  //           TextField(
-                                  //             controller:
-                                  //                 file['textController'],
-                                  //             decoration: InputDecoration(
-                                  //               labelText: 'Enter Description',
-                                  //               border: OutlineInputBorder(
-                                  //                 borderRadius:
-                                  //                     BorderRadius.circular(10),
-                                  //               ),
-                                  //               filled: true,
-                                  //               fillColor: Colors.grey[100],
-                                  //             ),
-                                  //           ),
-                                  //         ],
-                                  //       ),
-                                  //     ),
-                                  //   );
-                                  // }).toList(),
                                   ...uploadedFiles.map((file) {
                                     return Card(
                                       margin: const EdgeInsets.only(bottom: 16),
@@ -552,7 +525,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                       ),
                                     );
                                   }).toList(),
-
                                   const SizedBox(height: 20),
                                   uploadedFiles.isEmpty
                                       ? const SizedBox()
@@ -861,26 +833,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             ')',
                   ),
 
-                  // TableCell(
-                  //   child: Container(
-                  //     padding: const EdgeInsets.all(2.0),
-                  //     child: service['type'] == 'day'
-                  //         ? SizedBox()
-                  //         : service['type'] == 'hours'
-                  //             ? SizedBox()
-                  //             : service['type'] == 'reading'
-                  //                 ? IconButton(
-                  //                     icon: const Icon(Icons.edit,
-                  //                         color: kPrimary, size: 20),
-                  //                     onPressed: () {
-                  //                       _showEditDialog(
-                  //                           context, service, vehicleId);
-                  //                     },
-                  //                   )
-                  //                 : SizedBox(),
-                  //   ),
-                  // ),
-
                   TableCell(
                     child: Container(
                       padding: const EdgeInsets.all(2.0),
@@ -948,109 +900,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       ),
     );
   }
-
-  // void _showEditDialog(
-  //     BuildContext context, Map<String, dynamic> service, String vehicleId) {
-  //   final TextEditingController controller = TextEditingController(
-  //     text: service['defaultNotificationValue'].toString(),
-  //   );
-
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) {
-  //       return AlertDialog(
-  //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(15),
-  //         ),
-  //         title: const Text(
-  //           'Edit Default Notification Value',
-  //           style: TextStyle(color: kPrimary),
-  //         ),
-  //         content: TextField(
-  //           controller: controller,
-  //           keyboardType: TextInputType.number,
-  //           decoration: InputDecoration(
-  //             labelText: 'Enter New Value',
-  //             border: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(10),
-  //             ),
-  //             focusedBorder: OutlineInputBorder(
-  //               borderRadius: BorderRadius.circular(10),
-  //               borderSide: const BorderSide(color: kPrimary, width: 2),
-  //             ),
-  //           ),
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () {
-  //               Navigator.pop(context);
-  //             },
-  //             child: Text('Cancel',
-  //                 style: appStyle(17, kPrimary, FontWeight.normal)),
-  //           ),
-  //           ElevatedButton(
-  //             style: ElevatedButton.styleFrom(
-  //               backgroundColor: kSecondary,
-  //               foregroundColor: kWhite,
-  //               shape: RoundedRectangleBorder(
-  //                 borderRadius: BorderRadius.circular(8),
-  //               ),
-  //             ),
-  //             onPressed: () async {
-  //               final newValue = int.tryParse(controller.text);
-  //               // final currentValue = service['nextNotificationValue'];
-
-  //               if (newValue == null) {
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   const SnackBar(
-  //                       content: Text('Please enter a valid number')),
-  //                 );
-  //                 return;
-  //               }
-
-  //               try {
-  //                 final vehicleDocRef = FirebaseFirestore.instance
-  //                     .collection('Users')
-  //                     .doc(currentUId)
-  //                     .collection('Vehicles')
-  //                     .doc(vehicleId);
-
-  //                 await FirebaseFirestore.instance
-  //                     .runTransaction((transaction) async {
-  //                   final docSnapshot = await transaction.get(vehicleDocRef);
-  //                   if (!docSnapshot.exists)
-  //                     throw Exception('Document not found');
-
-  //                   List<dynamic> services = List.from(docSnapshot['services']);
-  //                   int index = services.indexWhere(
-  //                     (s) => s['serviceName'] == service['serviceName'],
-  //                   );
-
-  //                   if (index == -1) throw Exception('Service not found');
-
-  //                   // Update the specific service
-  //                   Map<String, dynamic> updatedService =
-  //                       Map.from(services[index]);
-  //                   updatedService['defaultNotificationValue'] = newValue;
-  //                   services[index] = updatedService;
-
-  //                   transaction.update(vehicleDocRef, {'services': services});
-  //                 });
-
-  //                 Navigator.pop(context); // Close dialog on success
-  //               } catch (e) {
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   SnackBar(content: Text('Error updating service: $e')),
-  //                 );
-  //               }
-  //             },
-  //             child: const Text('Update'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 
   void _showEditDialog(
       BuildContext context, Map<String, dynamic> service, String vehicleId) {

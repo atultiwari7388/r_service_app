@@ -119,16 +119,16 @@ export default function ManageTripPage() {
       }
     };
 
-    const unsubscribeVehicles = onSnapshot(
-      collection(db, "Users", user.uid, "Vehicles"),
-      (snapshot) => {
-        const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as VehicleTypes[];
-        setVehicles(vehiclesData);
-      }
-    );
+    const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+    const q = query(vehiclesRef, where("active", "==", true));
+
+    const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
+      const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as VehicleTypes[];
+      setVehicles(vehiclesData);
+    });
 
     const unsubscribeTrips = onSnapshot(
       collection(db, "Users", user.uid, "trips"),
@@ -398,11 +398,25 @@ export default function ManageTripPage() {
     }
   };
 
+  // const filteredTrips = trips.filter((trip) => {
+  //   const startDate = trip.tripStartDate.toDate();
+  //   const endDate = trip.tripEndDate.toDate();
+  //   return (
+  //     (!fromDate || endDate >= fromDate) && (!toDate || startDate <= toDate)
+  //   );
+  // });
+
   const filteredTrips = trips.filter((trip) => {
     const startDate = trip.tripStartDate.toDate();
     const endDate = trip.tripEndDate.toDate();
+    const isVehicleActive = vehicles.some(
+      (v) => v.id === trip.vehicleId && v.active
+    );
+
     return (
-      (!fromDate || endDate >= fromDate) && (!toDate || startDate <= toDate)
+      (!fromDate || endDate >= fromDate) &&
+      (!toDate || startDate <= toDate) &&
+      isVehicleActive
     );
   });
 
@@ -626,10 +640,9 @@ export default function ManageTripPage() {
       </div>
 
       {/** Total Expenses and Total Loads */}
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="flex justify-center gap-4 mb-6">
         {/* Total Expenses */}
-        <div className="bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
+        <div className="w-60 bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
           <h3 className="text-lg font-bold">Total Expenses</h3>
           <p className="text-xl font-semibold">
             ${totals.totalExpenses.toFixed(2)}
@@ -637,143 +650,13 @@ export default function ManageTripPage() {
         </div>
 
         {/* Total Loads */}
-        <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
+        <div className="w-60 bg-[#F96176] p-4 rounded-xl shadow-md text-white">
           <h3 className="text-lg font-bold">Total Loads</h3>
           <p className="text-xl font-semibold">
             ${totals.totalEarnings.toFixed(2)}
           </p>
         </div>
       </div>
-
-      {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
-        {filteredTrips.map((trip) => (
-          <div key={trip.id} className="bg-white p-4 rounded-lg shadow-md">
-            <h3 className="text-lg font-bold mb-2">{trip.tripName}</h3>
-            <div className="space-y-2">
-              <p>
-                Start Date:{" "}
-                <span className="text-[#F96176] font-semibold">
-                  {trip.tripStartDate.toDate().toLocaleDateString()}
-                </span>
-              </p>
-              <p>
-                Start Miles:{" "}
-                <span className="text-[#F96176] font-semibold">
-                  {trip.tripStartMiles}
-                </span>
-              </p>
-              {trip.tripStatus === 2 && (
-                <>
-                  <p>
-                    End Date:{" "}
-                    <span className="text-[#F96176] font-semibold">
-                      {trip.tripEndDate.toDate().toLocaleDateString()}
-                    </span>
-                  </p>
-                  <p>
-                    End Miles:{" "}
-                    <span className="text-[#F96176] font-semibold">
-                      {trip.tripEndMiles}
-                    </span>
-                  </p>
-                  <p>
-                    Total Miles:{" "}
-                    <span className="text-[#F96176] font-semibold">
-                      {trip.tripEndMiles - trip.tripStartMiles}
-                    </span>
-                  </p>
-                  {role === "Owner" ? (
-                    <p>
-                      Load Price:{" "}
-                      <span className="text-[#F96176] font-semibold">
-                        {trip.oEarnings}
-                      </span>
-                    </p>
-                  ) : (
-                    <>
-                      {trip.tripStatus === 2 && userData?.perMileCharge ? (
-                        <p>
-                          Earnings:{" "}
-                          <span className="text-[#F96176] font-semibold">
-                            {((trip.tripEndMiles || 0) -
-                              (trip.tripStartMiles || 0)) *
-                              Number(userData.perMileCharge)}
-                          </span>
-                        </p>
-                      ) : (
-                        <p className="text-gray-400">
-                          {trip.tripStatus === 2
-                            ? "Earnings calculation missing"
-                            : "Earnings unavailable"}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-              <div className="flex justify-between items-center">
-                {role === "Driver" && (
-                  <span
-                    className={`badge ${
-                      trip.isPaid ? "bg-[#58BB87]" : "bg-[#F96176]"
-                    }`}
-                  >
-                    {trip.isPaid ? "Paid" : "Unpaid"}
-                  </span>
-                )}
-
-                {trip.tripStatus === 1 ? (
-                  <div className="flex justify-between items-center">
-                    <h3>Trip Status: </h3>
-                    <span></span>
-                    <select
-                      value={trip.tripStatus}
-                      onChange={(e) =>
-                        handleUpdateTripStatus(trip, parseInt(e.target.value))
-                      }
-                      className="border p-1 rounded"
-                    >
-                      <option value={1}>Started</option>
-                      <option value={2}>Completed</option>
-                    </select>
-                  </div>
-                ) : (
-                  <h3>
-                    Trip Status:{" "}
-                    <span className="text-[#F96176] font-semibold">
-                      Completed
-                    </span>
-                  </h3>
-                )}
-              </div>
-              <div className="flex justify-between items-center mt-4">
-                {trip.tripStatus === 1 && (
-                  <button
-                    onClick={() => {
-                      setCurrentTripEdit(trip);
-                      setShowEditModal(true);
-                    }}
-                    className="mt-4 bg-[#58BB87] text-white px-6 py-2 rounded hover:bg-[#58BB87]"
-                  >
-                    Edit Trip
-                  </button>
-                )}
-
-                <button
-                  onClick={() => {
-                    router.push(
-                      `/account/manage-trip/${trip.id}?userId=${user?.uid}`
-                    );
-                  }}
-                  className="mt-4 bg-[#F96176] text-white px-6 py-2 rounded hover:bg-[#F96176]"
-                >
-                  View
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div> */}
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
         {/* Table Header */}

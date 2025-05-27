@@ -52,6 +52,40 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   }
 
   // this helper function calculate the total Earning and expenses
+  // Future<Map<String, double>> calculateTotals(
+  //     List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
+  //   double totalExpenses = 0;
+  //   double totalEarnings = 0;
+  //   String userId = driverId;
+  //   double perMile = double.tryParse(perMileCharge) ?? 0.0;
+
+  //   for (var trip in trips) {
+  //     // Calculate expenses from tripDetails
+  //     var expensesSnapshot = await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(userId)
+  //         .collection('trips')
+  //         .doc(trip.id)
+  //         .collection('tripDetails')
+  //         .where('type', isEqualTo: 'Expenses')
+  //         .get();
+
+  //     double tripExpenses = expensesSnapshot.docs
+  //         .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
+  //     totalExpenses += tripExpenses;
+
+  //     // Calculate earnings only for completed trips
+
+  //     int startMiles = trip['tripStartMiles'];
+  //     int endMiles = trip['tripEndMiles'];
+  //     int miles = endMiles - startMiles;
+  //     double earnings = miles * perMile;
+  //     totalEarnings += earnings;
+  //   }
+
+  //   return {'expenses': totalExpenses, 'earnings': totalEarnings};
+  // }
+
   Future<Map<String, double>> calculateTotals(
       List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
     double totalExpenses = 0;
@@ -75,15 +109,21 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
       totalExpenses += tripExpenses;
 
       // Calculate earnings only for completed trips
-
       int startMiles = trip['tripStartMiles'];
       int endMiles = trip['tripEndMiles'];
       int miles = endMiles - startMiles;
-      double earnings = miles * perMile;
-      totalEarnings += earnings;
+
+      // Only calculate earnings if miles is positive
+      if (miles > 0) {
+        double earnings = miles * perMile;
+        totalEarnings += earnings;
+      }
     }
 
-    return {'expenses': totalExpenses, 'earnings': totalEarnings};
+    return {
+      'expenses': totalExpenses,
+      'earnings': totalEarnings < 0 ? 0 : totalEarnings
+    };
   }
 
   @override
@@ -290,8 +330,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                 totalExpenses);
                           },
                         );
-
-                        // return buildTripCard(doc, formattedStartDate, tripStartMiles, tripStatus, formattedEndDate, tripEndMiles, totalMiles, earnings);
                       }).toList(),
                     ),
                   ],
@@ -363,16 +401,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
               children: [
                 Text("Expenses: \$${totalExpenses}",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
-                // Row(
-                //   children: [
-                //     Text("P'Status: "),
-                //     isPaid
-                //         ? Text("Paid",
-                //             style: appStyle(16, kSecondary, FontWeight.w500))
-                //         : Text("UnPaid",
-                //             style: appStyle(16, kPrimary, FontWeight.w500))
-                //   ],
-                // ),
               ],
             ),
             SizedBox(height: 5.h),

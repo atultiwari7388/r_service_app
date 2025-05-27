@@ -85,6 +85,7 @@ export interface VehicleTypes {
   vehicleType: string;
   vin: string | null;
   year: Timestamp;
+  active: boolean;
 }
 
 /** Mechanics Offer and User History Interface */

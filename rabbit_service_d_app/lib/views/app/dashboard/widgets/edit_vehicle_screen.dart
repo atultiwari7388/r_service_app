@@ -6,19 +6,25 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
-import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 
-class AddVehicleScreen extends StatefulWidget {
+class EditVehicleScreen extends StatefulWidget {
+  final String vehicleId;
+  final Map<String, dynamic> vehicleData;
+
+  const EditVehicleScreen({
+    Key? key,
+    required this.vehicleId,
+    required this.vehicleData,
+  }) : super(key: key);
+
   @override
-  _AddVehicleScreenState createState() => _AddVehicleScreenState();
+  _EditVehicleScreenState createState() => _EditVehicleScreenState();
 }
 
-class _AddVehicleScreenState extends State<AddVehicleScreen> {
+class _EditVehicleScreenState extends State<EditVehicleScreen> {
   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   final _vehicleNumberController = TextEditingController();
@@ -41,6 +47,70 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   bool isLoading = true;
   bool isSaving = false;
   StreamSubscription<DocumentSnapshot>? _engineNameSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFormWithExistingData();
+    _fetchVehicleTypes();
+    _fetchServicesData();
+  }
+
+  void _initializeFormWithExistingData() {
+    final data = widget.vehicleData;
+
+    setState(() {
+      _selectedVehicleType = data['vehicleType'];
+      _selectedCompany = data['companyName'];
+      _selectedEngineName = data['engineName'];
+      _vehicleNumberController.text = data['vehicleNumber'] ?? '';
+      _vinController.text = data['vin'] ?? '';
+      _licensePlateController.text = data['licensePlate'] ?? '';
+
+      if (data['year'] != null) {
+        try {
+          _selectedYear = DateTime.parse(data['year']);
+        } catch (e) {
+          print('Error parsing year: $e');
+        }
+      }
+
+      // Handle miles and hours based on vehicle type
+      if (_selectedVehicleType == 'Truck') {
+        if (data['currentMilesArray'] != null &&
+            data['currentMilesArray'].isNotEmpty) {
+          _currentMilesController.text =
+              data['currentMilesArray'].last['miles'].toString();
+        } else if (data['currentMiles'] != null) {
+          _currentMilesController.text = data['currentMiles'].toString();
+        }
+      } else if (_selectedVehicleType == 'Trailer') {
+        if (data['oilChangeDate'] != null) {
+          try {
+            _oilChangeDate = DateTime.parse(data['oilChangeDate']);
+          } catch (e) {
+            print('Error parsing oil change date: $e');
+          }
+        }
+
+        if (data['hoursReadingArray'] != null &&
+            data['hoursReadingArray'].isNotEmpty) {
+          _hoursReadingController.text =
+              data['hoursReadingArray'].last['hours'].toString();
+        } else if (data['hoursReading'] != null) {
+          _hoursReadingController.text = data['hoursReading'].toString();
+        }
+      }
+
+      _dotController.text = data['dot'] ?? '';
+      _iccmsController.text = data['iccms'] ?? '';
+
+      // Fetch companies and engine names after setting initial values
+      _fetchCompanyNames().then((_) {
+        _setupEngineNameListener();
+      });
+    });
+  }
 
   Future<void> _selectYear(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -73,7 +143,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final CollectionReference metadataCollection =
       FirebaseFirestore.instance.collection('metadata');
 
-  // Fetch services data
   Future<void> _fetchServicesData() async {
     try {
       DocumentSnapshot doc = await metadataCollection.doc('serviceData').get();
@@ -130,7 +199,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       if (metadataSnapshot.exists) {
         List<dynamic> companyList = metadataSnapshot.data()?['data'] ?? [];
 
-        // Filter companies based on vehicle type
         List<String> filteredCompanies = companyList
             .where((company) => company['type'] == _selectedVehicleType)
             .map((company) => company['cName'].toString().toUpperCase())
@@ -138,9 +206,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
         setState(() {
           _companies = filteredCompanies;
-          // Reset company selection when vehicle type changes
-          _selectedCompany = null;
-          _selectedEngineName = null;
         });
       }
     } catch (e) {
@@ -149,11 +214,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   void _setupEngineNameListener() {
-    print('Setting up engine name listener');
     _engineNameSubscription?.cancel();
 
     if (_selectedVehicleType == null || _selectedCompany == null) {
-      print('Vehicle type or company not selected');
       setState(() {
         _engineNameList = [];
         _selectedEngineName = null;
@@ -161,21 +224,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       return;
     }
 
-    print('Subscribing to engine name list updates');
     _engineNameSubscription = FirebaseFirestore.instance
         .collection('metadata')
         .doc('engineNameList')
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
-        print('Received engine name list snapshot');
         List<dynamic> engineNameList = snapshot.data()?['data'] ?? [];
-        print('Raw engine name list: $engineNameList');
 
         String selectedCompanyUpper = _selectedCompany!.toUpperCase().trim();
         String selectedType = _selectedVehicleType!.trim();
-        print(
-            'Filtering for company: $selectedCompanyUpper, type: $selectedType');
 
         List<String> filteredList = engineNameList
             .where((engine) {
@@ -189,132 +247,30 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             .map((engine) => engine['eName'].toString().toUpperCase())
             .toList();
 
-        print('Filtered engine list: $filteredList');
-
         setState(() {
           _engineNameList = filteredList;
           if (!_engineNameList.contains(_selectedEngineName)) {
-            print(
-                'Previously selected engine name no longer valid, resetting selection');
             _selectedEngineName = null;
           }
         });
-      } else {
-        print('Engine name list snapshot does not exist');
       }
     });
   }
 
-  List<Map<String, dynamic>> calculateNextNotificationMiles() {
-    List<Map<String, dynamic>> nextNotificationMiles = [];
-    int currentMiles = int.tryParse(_currentMilesController.text) ?? 0;
-
-    log('Current Miles: $currentMiles');
-    log('Selected Engine: $_selectedEngineName');
-    log('Selected Vehicle Type: $_selectedVehicleType');
-
-    for (var service in servicesData) {
-      log('\nChecking service: ${service['sName']}');
-
-      if (service['vType'] == _selectedVehicleType) {
-        String serviceName = service['sName'];
-        String serviceId = service['sId'] ?? '';
-        List<dynamic> subServices = service['subServices'] ?? [];
-        List<dynamic> defaultValues = service['dValues'] ?? [];
-
-        bool foundMatch = false;
-
-        for (var defaultValue in defaultValues) {
-          if (defaultValue['brand'].toString().toLowerCase() ==
-              _selectedEngineName?.toLowerCase()) {
-            foundMatch = true;
-
-            String type = defaultValue['type']
-                .toString()
-                .toLowerCase(); // Get type (reading, day, hour)
-            int value = int.tryParse(defaultValue['value'].toString()) ?? 0;
-            int notificationValue;
-
-            if (type == "reading") {
-              notificationValue = value * 1000;
-            } else if (type == "day") {
-              notificationValue = value;
-            } else if (type == "hour") {
-              notificationValue = value;
-            } else {
-              notificationValue = value;
-            }
-
-            log('Matched dValue - Brand: ${defaultValue['brand']}, Type: $type, Notification Value: $notificationValue');
-
-            nextNotificationMiles.add({
-              'serviceId': serviceId,
-              'serviceName': serviceName,
-              'defaultNotificationValue': notificationValue,
-              'nextNotificationValue': notificationValue,
-              'type': type,
-              'subServices':
-                  subServices.map((s) => s['sName'].toString()).toList(),
-            });
-          }
-        }
-
-        if (!foundMatch) {
-          log('No brand match found for service: $serviceName');
-        }
-      } else {
-        log('Skipping service: ${service['sName']} due to unmatched vehicle type.');
-      }
-    }
-
-    log('\nFinal nextNotificationMiles: $nextNotificationMiles');
-    return nextNotificationMiles;
-  }
-
-  Future<void> _saveVehicleData() async {
+  Future<void> _updateVehicleData() async {
     setState(() {
       isSaving = true;
     });
 
     try {
-      CollectionReference vehiclesRef = FirebaseFirestore.instance
+      DocumentReference vehicleRef = FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
-          .collection('Vehicles');
+          .collection('Vehicles')
+          .doc(widget.vehicleId);
 
-      // Check if the vehicle already exists based on vehicle number, vehicleType, companyName, and engineName
-      QuerySnapshot existingVehicles = await vehiclesRef
-          .where('vehicleNumber',
-              isEqualTo: _vehicleNumberController.text.toString())
-          .where('vehicleType', isEqualTo: _selectedVehicleType)
-          .where('companyName', isEqualTo: _selectedCompany?.toUpperCase())
-          .where('engineName', isEqualTo: _selectedEngineName?.toUpperCase())
-          .get();
-
-      if (existingVehicles.docs.isNotEmpty) {
-        setState(() {
-          isSaving = false;
-        });
-        showToastMessage('Already', 'Vehicle already added', kRed);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vehicle already added')),
-        );
-        return;
-      }
-
-      QuerySnapshot vehiclesSnapshot = await vehiclesRef.get();
-      for (QueryDocumentSnapshot vehicleDoc in vehiclesSnapshot.docs) {
-        await vehicleDoc.reference.update({
-          'isSet': false,
-        });
-      }
-
-      List<Map<String, dynamic>> nextNotificationMiles =
-          calculateNextNotificationMiles();
-
-      Map<String, dynamic> vehicleData = {
-        'active': true,
-        'tripAssign': false,
+      // Prepare the update data
+      Map<String, dynamic> updateData = {
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
         'engineName': _selectedEngineName?.toUpperCase(),
@@ -326,91 +282,61 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'year': _selectedYear != null
             ? DateFormat('yyyy-MM-dd').format(_selectedYear!)
             : null,
-        'isSet': true,
-        "uploadedDocuments": [],
-        'createdAt': FieldValue.serverTimestamp(),
-        'hoursReadingArray': [
-          {
-            "hours": _hoursReadingController.text.isNotEmpty
-                ? int.parse(_hoursReadingController.text)
-                : 0,
-            "date": DateTime.now().toIso8601String()
-          }
-        ],
-        'currentMilesArray': [
-          {
-            "miles": _currentMilesController.text.isNotEmpty
-                ? int.parse(_currentMilesController.text)
-                : 0,
-            "date": DateTime.now().toIso8601String()
-          }
-        ],
-        'nextNotificationMiles': nextNotificationMiles,
-        'services': nextNotificationMiles
-            .map((service) => {
-                  'defaultNotificationValue':
-                      service['defaultNotificationValue'],
-                  'nextNotificationValue': service['nextNotificationValue'],
-                  'preValue': service['defaultNotificationValue'],
-                  'serviceId': service['serviceId'],
-                  'serviceName': service['serviceName'],
-                  'type': service['type'],
-                  'subServices': service['subServices'],
-                })
-            .toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
+      // Handle vehicle type specific fields
       if (_selectedVehicleType == 'Truck') {
-        vehicleData['hoursReadingArray'] = [];
-        vehicleData['currentMiles'] = _currentMilesController.text.toString();
-        vehicleData['prevMilesValue'] = _currentMilesController.text.toString();
-        vehicleData['firstTimeMiles'] = _currentMilesController.text.toString();
-        vehicleData['oilChangeDate'] = '2025-04-12';
-        vehicleData['hoursReading'] = '';
-        vehicleData['prevHoursReadingValue'] = '';
+        int? currentMiles = int.tryParse(_currentMilesController.text);
+        if (currentMiles != null) {
+          List<dynamic> currentMilesArray =
+              widget.vehicleData['currentMilesArray'] ?? [];
+
+          // Only add new entry if miles have changed
+          if (currentMilesArray.isEmpty ||
+              currentMilesArray.last['miles'] != currentMiles) {
+            currentMilesArray.add({
+              "miles": currentMiles,
+              "date": DateTime.now().toIso8601String()
+            });
+          }
+
+          updateData['currentMilesArray'] = currentMilesArray;
+          updateData['currentMiles'] = currentMiles.toString();
+        }
+      } else if (_selectedVehicleType == 'Trailer') {
+        if (_oilChangeDate != null) {
+          updateData['oilChangeDate'] =
+              DateFormat('yyyy-MM-dd').format(_oilChangeDate!);
+        }
+
+        int? hoursReading = int.tryParse(_hoursReadingController.text);
+        if (hoursReading != null) {
+          List<dynamic> hoursReadingArray =
+              widget.vehicleData['hoursReadingArray'] ?? [];
+
+          // Only add new entry if hours have changed
+          if (hoursReadingArray.isEmpty ||
+              hoursReadingArray.last['hours'] != hoursReading) {
+            hoursReadingArray.add({
+              "hours": hoursReading,
+              "date": DateTime.now().toIso8601String()
+            });
+          }
+
+          updateData['hoursReadingArray'] = hoursReadingArray;
+          updateData['hoursReading'] = hoursReading.toString();
+        }
       }
 
-      if (_selectedVehicleType == 'Trailer') {
-        vehicleData['currentMiles'] = '';
-        vehicleData['prevMilesValue'] = '';
-        vehicleData['firstTimeMiles'] = '';
-        vehicleData['oilChangeDate'] = _selectedCompany == "DRY VAN"
-            ? '2025-04-12'
-            : _oilChangeDate != null
-                ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
-                : null;
-        vehicleData['hoursReading'] = _selectedCompany == "DRT VAN"
-            ? "1000"
-            : _hoursReadingController.text.toString();
-        vehicleData['prevHoursReadingValue'] =
-            _hoursReadingController.text.toString();
-      }
-
-      DocumentReference vehicleDocRef = await vehiclesRef.add(vehicleData);
-
-      // Update the vehicle data with the vehicleId
-      await vehicleDocRef.update({'vehicleId': vehicleDocRef.id});
-
-      log('Vehicle added successfully with id: ${vehicleDocRef.id}');
-
-      // After the vehicle is added, call the cloud function to check and notify the user
-      final HttpsCallable callable = FirebaseFunctions.instance
-          .httpsCallable('checkAndNotifyUserForVehicleService');
-
-      // Call the function with necessary data
-      await callable.call({
-        'userId': currentUId, // Pass userId
-        'vehicleId': vehicleDocRef.id, // Pass the vehicleId
-      });
-
-      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: $currentUId");
+      await vehicleRef.update(updateData);
 
       setState(() {
         isSaving = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vehicle added successfully')),
+        SnackBar(content: Text('Vehicle updated successfully')),
       );
       Navigator.pop(context);
     } catch (e) {
@@ -418,27 +344,23 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         isSaving = false;
       });
 
-      print('Error adding vehicle: $e');
+      print('Error updating vehicle: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding vehicle: $e')),
+        SnackBar(content: Text('Error updating vehicle: $e')),
       );
-    } finally {
-      setState(() {
-        isSaving = false;
-      });
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchVehicleTypes();
-    _fetchServicesData();
   }
 
   @override
   void dispose() {
     _engineNameSubscription?.cancel();
+    _vehicleNumberController.dispose();
+    _vinController.dispose();
+    _licensePlateController.dispose();
+    _currentMilesController.dispose();
+    _hoursReadingController.dispose();
+    _dotController.dispose();
+    _iccmsController.dispose();
     super.dispose();
   }
 
@@ -446,7 +368,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Your Vehicle',
+        title: Text('Edit Vehicle',
             style: appStyle(22, kWhite, FontWeight.normal)),
         iconTheme: IconThemeData(color: kWhite),
         backgroundColor: kPrimary,
@@ -465,6 +387,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         padding: EdgeInsets.all(16.0),
                         child: Column(
                           children: [
+                            // Vehicle Type Dropdown
                             Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)
@@ -519,13 +442,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     _selectedVehicleType = newValue;
-                                    // Fetch companies when vehicle type changes
                                     _fetchCompanyNames();
                                   });
                                 },
                               ),
                             ),
                             SizedBox(height: 16.h),
+
+                            // Company Name Dropdown
                             Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)
@@ -588,6 +512,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               ),
                             ),
                             SizedBox(height: 16.h),
+
+                            // Engine Name Dropdown
                             Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)
@@ -650,6 +576,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                       },
                               ),
                             ),
+
+                            // Vehicle type specific fields
                             if (_selectedVehicleType == 'Truck') ...[
                               SizedBox(height: 16.h),
                               Container(
@@ -709,6 +637,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ),
                             ],
+
                             if (_selectedVehicleType == 'Trailer') ...[
                               SizedBox(height: 16.h),
                               _selectedCompany == "DRY VAN"
@@ -843,6 +772,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                       ),
                                     ),
                             ],
+
+                            // Common fields
                             _selectedCompany == "DRY VAN"
                                 ? SizedBox()
                                 : SizedBox(height: 16.h),
@@ -954,7 +885,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 ),
                               ),
                             ),
-                            // SizedBox(height: 16.h),
+
                             if (_selectedVehicleType == 'Truck') ...[
                               SizedBox(height: 16.h),
                               Container(
@@ -1184,7 +1115,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
                             SizedBox(height: 24.h),
                             CustomButton(
-                              text: "Save Vehicle",
+                              text: "Update Vehicle",
                               onPress: () {
                                 if (_selectedVehicleType != null &&
                                     _selectedCompany != null &&
@@ -1193,7 +1124,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     _vinController.text.isNotEmpty &&
                                     _licensePlateController.text.isNotEmpty &&
                                     _selectedYear != null) {
-                                  _saveVehicleData();
+                                  _updateVehicleData();
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(

@@ -148,9 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Get.to(() => MyTeamScreen());
                       })
                     ],
-                    if (role == "Owner" ||
-                        role == "Driver" ||
-                        role == "Manager") ...[
+                    if (role == "Owner" || role == "Driver") ...[
                       buildListTile("assets/manage_trip.png", "My Trips", () {
                         Get.to(() => ManageTripsScreen());
                       }),

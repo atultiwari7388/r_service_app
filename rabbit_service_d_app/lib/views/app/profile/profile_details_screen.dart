@@ -287,6 +287,7 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                                   textInputType: TextInputType.emailAddress,
                                   icon: Icons.abc,
                                   isIconApply: false,
+                                  enabled: false,
                                 ),
                                 TextFieldInputWidget(
                                   hintText: "Phone Number",

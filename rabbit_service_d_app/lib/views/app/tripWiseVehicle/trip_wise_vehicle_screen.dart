@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/getStringFromStatus.dart';
 
@@ -161,7 +159,7 @@ class AssignTripScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${trip['companyName']} - ${trip['vehicleNumber']}",
+                      "${trip['vehicleNumber']} - ${trip['companyName']}",
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
