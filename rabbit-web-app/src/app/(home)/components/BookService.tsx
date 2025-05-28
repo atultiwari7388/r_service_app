@@ -109,6 +109,7 @@ const BookingSection: React.FC = () => {
               engineNumber: data.engineNumber,
               iccms: data.iccms,
               vehicleType: data.vehicleType,
+              active: data.active,
             };
           });
         }
