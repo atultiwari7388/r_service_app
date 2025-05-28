@@ -148,6 +148,92 @@ export default function ManageTripPage() {
     };
   }, [user]);
 
+  // const handleAddTrip = async () => {
+  //   if (!tripName || !currentMiles || !selectedVehicle) {
+  //     GlobalToastError("Please fill all required fields");
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+  //   try {
+  //     const batch = writeBatch(db);
+  //     const tripRef = doc(collection(db, "trips"));
+  //     const userTripRef = doc(
+  //       collection(db, "Users", user!.uid, "trips"),
+  //       tripRef.id
+  //     );
+
+  //     const tripData = {
+  //       tripName,
+  //       vehicleId: selectedVehicle,
+  //       currentUID: user!.uid,
+  //       role,
+  //       companyName: vehicles.find((v) => v.id === selectedVehicle)
+  //         ?.companyName,
+  //       vehicleNumber: vehicles.find((v) => v.id === selectedVehicle)
+  //         ?.vehicleNumber,
+  //       totalMiles: 0,
+  //       tripStartMiles: parseInt(currentMiles),
+  //       tripEndMiles: 0,
+  //       currentMiles: parseInt(currentMiles),
+  //       previousMiles: parseInt(currentMiles),
+  //       milesArray: [{ mile: parseInt(currentMiles), date: Timestamp.now() }],
+  //       isPaid: false,
+  //       tripStatus: 1,
+  //       tripStartDate: selectedDate,
+  //       tripEndDate: new Date(),
+  //       createdAt: Timestamp.now(),
+  //       updatedAt: Timestamp.now(),
+  //       oEarnings: role === "Owner" ? parseInt(oEarnings) : 0,
+  //     };
+
+  //     batch.set(tripRef, tripData);
+  //     batch.set(userTripRef, tripData);
+
+  //     // Update vehicle status
+  //     const vehicleRef = doc(
+  //       db,
+  //       "Users",
+  //       user!.uid,
+  //       "Vehicles",
+  //       selectedVehicle
+  //     );
+  //     batch.update(vehicleRef, { tripAssign: true });
+
+  //     // Update driver vehicles if owner
+  //     if (role === "Owner") {
+  //       const driversSnapshot = await getDocs(
+  //         query(
+  //           collection(db, "Users"),
+  //           where("createdBy", "==", ownerId),
+  //           where("isDriver", "==", true),
+  //           where("isTeamMember", "==", true)
+  //         )
+  //       );
+
+  //       driversSnapshot.forEach((driverDoc) => {
+  //         const driverVehicleRef = doc(
+  //           db,
+  //           "Users",
+  //           driverDoc.id,
+  //           "Vehicles",
+  //           selectedVehicle
+  //         );
+  //         batch.update(driverVehicleRef, { tripAssign: true });
+  //       });
+  //     }
+
+  //     await batch.commit();
+  //     GlobalToastSuccess("Trip added successfully");
+  //     resetTripForm();
+  //   } catch (error) {
+  //     GlobalToastError(error);
+  //     console.error("Error adding trip:", error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleAddTrip = async () => {
     if (!tripName || !currentMiles || !selectedVehicle) {
       GlobalToastError("Please fill all required fields");
@@ -190,7 +276,7 @@ export default function ManageTripPage() {
       batch.set(tripRef, tripData);
       batch.set(userTripRef, tripData);
 
-      // Update vehicle status
+      // Update vehicle status for owner
       const vehicleRef = doc(
         db,
         "Users",
@@ -211,16 +297,37 @@ export default function ManageTripPage() {
           )
         );
 
-        driversSnapshot.forEach((driverDoc) => {
-          const driverVehicleRef = doc(
-            db,
-            "Users",
-            driverDoc.id,
-            "Vehicles",
-            selectedVehicle
-          );
-          batch.update(driverVehicleRef, { tripAssign: true });
-        });
+        // Check if owner has any drivers
+        if (!driversSnapshot.empty) {
+          // For each driver, check if they have the vehicle before updating
+          const updatePromises = driversSnapshot.docs.map(async (driverDoc) => {
+            const driverVehicleRef = doc(
+              db,
+              "Users",
+              driverDoc.id,
+              "Vehicles",
+              selectedVehicle
+            );
+
+            try {
+              // Check if the vehicle exists for this driver
+              const vehicleSnap = await getDoc(driverVehicleRef);
+              if (vehicleSnap.exists()) {
+                batch.update(driverVehicleRef, { tripAssign: true });
+              }
+              // If vehicle doesn't exist, skip silently
+            } catch (error) {
+              console.error(
+                `Error checking vehicle for driver ${driverDoc.id}:`,
+                error
+              );
+              // Skip this driver if there's an error
+            }
+          });
+
+          await Promise.all(updatePromises);
+        }
+        // If no drivers, just continue with owner update
       }
 
       await batch.commit();
@@ -228,6 +335,7 @@ export default function ManageTripPage() {
       resetTripForm();
     } catch (error) {
       GlobalToastError(error);
+      console.error("Error adding trip:", error);
     } finally {
       setIsLoading(false);
     }
@@ -397,14 +505,6 @@ export default function ManageTripPage() {
       // setIsCalculatingTotals(false);
     }
   };
-
-  // const filteredTrips = trips.filter((trip) => {
-  //   const startDate = trip.tripStartDate.toDate();
-  //   const endDate = trip.tripEndDate.toDate();
-  //   return (
-  //     (!fromDate || endDate >= fromDate) && (!toDate || startDate <= toDate)
-  //   );
-  // });
 
   const filteredTrips = trips.filter((trip) => {
     const startDate = trip.tripStartDate.toDate();

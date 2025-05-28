@@ -730,7 +730,8 @@ export default function RecordsPage() {
     if (!user?.uid) return;
 
     const recordsQuery = query(
-      collection(db, "Users", user.uid, "DataServices")
+      collection(db, "Users", user.uid, "DataServices"),
+      where("active", "==", true)
     );
 
     const unsubscribe = onSnapshot(recordsQuery, (snapshot) => {
