@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import PopupModal from "@/components/PopupModal";
@@ -28,6 +28,7 @@ interface Vehicle {
   vehicleNumber: string;
   image: string;
   active?: boolean;
+  type: string;
 }
 
 interface UserData {
@@ -239,7 +240,7 @@ export default function MyVehiclesPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
                 >
-                  Vehicle Image
+                  Vehicle Type
                 </th>
                 <th
                   scope="col"
@@ -274,13 +275,7 @@ export default function MyVehiclesPage() {
                 <tr key={vehicle.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex-shrink-0 h-10 w-10">
-                      <Image
-                        src={vehicle.image || "/Logo_Login.png"}
-                        alt={vehicle.companyName}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                      />
+                      {vehicle.type || "Truck"}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

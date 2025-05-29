@@ -1583,12 +1583,7 @@ export default function RecordsPage() {
               </TableHead>
               <TableBody>
                 {filteredRecords.map((record) => (
-                  <TableRow
-                    key={record.id}
-                    // component={Link}
-                    // href={`/records/${record.id}`}
-                    // className="link"
-                  >
+                  <TableRow key={record.id}>
                     <TableCell className="table-cell">
                       {new Date(record.date).toLocaleDateString()}
                     </TableCell>
@@ -1605,7 +1600,7 @@ export default function RecordsPage() {
                       {record.vehicleDetails.companyName}
                     </TableCell>
 
-                    {record.miles > 0 && (
+                    {/* {record.miles > 0 && (
                       <TableCell className="table-cell">
                         {record.miles}
                       </TableCell>
@@ -1614,7 +1609,17 @@ export default function RecordsPage() {
                       <TableCell className="table-cell">
                         {record.hours}
                       </TableCell>
-                    )}
+                    )} */}
+
+                    <TableCell className="table-cell">
+                      {record.vehicleDetails.vehicleType === "Trailer"
+                        ? record.hours
+                          ? `${record.hours}`
+                          : "N/A"
+                        : record.miles
+                        ? `${record.miles}`
+                        : "N/A"}
+                    </TableCell>
                     <TableCell className="table-cell">
                       {record.services && record.services.length > 0
                         ? record.services

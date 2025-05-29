@@ -439,7 +439,7 @@ export default function ManageTeam(): JSX.Element {
                                   <Menu.Item>
                                     {({ active }) => (
                                       <Link
-                                        href={`/account/trips?userId=${member.uid}`}
+                                        href={`/account/manage-team/member-trips/${member.uid}`}
                                         className={`${
                                           active
                                             ? "bg-gray-100 text-gray-900"
@@ -454,7 +454,7 @@ export default function ManageTeam(): JSX.Element {
                                   <Menu.Item>
                                     {({ active }) => (
                                       <Link
-                                        href={`/account/my-vehicles?userId=${member.uid}`}
+                                        href={`/account/manage-team/member-vehicles/${member.uid}`}
                                         className={`${
                                           active
                                             ? "bg-gray-100 text-gray-900"
