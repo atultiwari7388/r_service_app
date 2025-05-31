@@ -659,7 +659,7 @@ export default function ManageTripPage() {
         <div className="w-60 bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
           <h3 className="text-lg font-bold">Total Expenses</h3>
           <p className="text-xl font-semibold">
-            ${totals.totalExpenses.toFixed(2)}
+            ${totals.totalExpenses.toFixed(0)}
           </p>
         </div>
 
@@ -667,7 +667,7 @@ export default function ManageTripPage() {
         <div className="w-60 bg-[#F96176] p-4 rounded-xl shadow-md text-white">
           <h3 className="text-lg font-bold">Total Loads</h3>
           <p className="text-xl font-semibold">
-            ${totals.totalEarnings.toFixed(2)}
+            ${totals.totalEarnings.toFixed(0)}
           </p>
         </div>
       </div>

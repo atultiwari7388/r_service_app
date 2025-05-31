@@ -1556,7 +1556,6 @@ export default function RecordsPage() {
           </h1>
         </div>
       ) : (
-        // <div ref={printRef} className="table-container">
         <div
           ref={printRef}
           className="w-full bg-white"
@@ -1599,17 +1598,6 @@ export default function RecordsPage() {
                     <TableCell className="table-cell">
                       {record.vehicleDetails.companyName}
                     </TableCell>
-
-                    {/* {record.miles > 0 && (
-                      <TableCell className="table-cell">
-                        {record.miles}
-                      </TableCell>
-                    )}
-                    {record.hours > 0 && (
-                      <TableCell className="table-cell">
-                        {record.hours}
-                      </TableCell>
-                    )} */}
 
                     <TableCell className="table-cell">
                       {record.vehicleDetails.vehicleType === "Trailer"

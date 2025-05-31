@@ -322,9 +322,12 @@ export default function MyVehiclesPage() {
                     >
                       View
                     </Link>
-                    <button className="text-gray-600 hover:text-gray-900">
+                    <Link
+                      href={`/account/my-vehicles/edit/${vehicle.id}`}
+                      className="text-gray-600 hover:text-gray-900"
+                    >
                       Edit
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ))}
