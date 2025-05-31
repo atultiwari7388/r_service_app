@@ -232,7 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             .doc(currentUId)
                                             .update({
                                           'fcmToken': '',
-                                          'active': false,
+                                          // 'active': false,
                                         });
                                       } else {
                                         await FirebaseFirestore.instance

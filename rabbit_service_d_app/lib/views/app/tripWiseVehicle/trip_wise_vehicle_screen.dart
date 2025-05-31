@@ -59,6 +59,65 @@ class AssignTripScreen extends StatelessWidget {
   const AssignTripScreen({super.key});
   // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
+  // Stream<List<Map<String, dynamic>>> fetchTrips(String ownerId) {
+  //   return FirebaseFirestore.instance
+  //       .collection("Users")
+  //       .where("createdBy", isEqualTo: ownerId)
+  //       .where("isTeamMember", isEqualTo: true)
+  //       .snapshots()
+  //       .asyncMap((usersSnapshot) async {
+  //     List<Map<String, dynamic>> allTrips = [];
+
+  //     // Include the current user's trips
+  //     QuerySnapshot currentUserTrips = await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(ownerId)
+  //         .collection("trips")
+  //         .where("currentUID", isEqualTo: ownerId)
+  //         .where("tripStatus", isEqualTo: 1)
+  //         .get();
+
+  //     for (var trip in currentUserTrips.docs) {
+  //       allTrips.add({
+  //         "companyName": trip["companyName"],
+  //         "vehicleNumber": trip["vehicleNumber"],
+  //         "tripName": trip["tripName"],
+  //         "tripStartDate": trip["tripStartDate"],
+  //         "driverName": "You",
+  //         "tripStatus": trip["tripStatus"],
+  //       });
+  //     }
+
+  //     // Fetch trips for team members
+  //     for (var userDoc in usersSnapshot.docs) {
+  //       QuerySnapshot tripSnapshot = await FirebaseFirestore.instance
+  //           .collection("Users")
+  //           .doc(userDoc.id)
+  //           .collection("trips")
+  //           .where("tripStatus", isEqualTo: 1)
+  //           .get();
+
+  //       for (var trip in tripSnapshot.docs) {
+  //         // Fetch Driver Name from Users collection
+  //         var driverDoc = await FirebaseFirestore.instance
+  //             .collection("Users")
+  //             .doc(userDoc.id)
+  //             .get();
+
+  //         allTrips.add({
+  //           "companyName": trip["companyName"],
+  //           "vehicleNumber": trip["vehicleNumber"],
+  //           "tripName": trip["tripName"],
+  //           "tripStartDate": trip["tripStartDate"],
+  //           "driverName": driverDoc["userName"],
+  //           "tripStatus": trip["tripStatus"],
+  //         });
+  //       }
+  //     }
+  //     return allTrips;
+  //   });
+  // }
+
   Stream<List<Map<String, dynamic>>> fetchTrips(String ownerId) {
     return FirebaseFirestore.instance
         .collection("Users")
@@ -66,54 +125,74 @@ class AssignTripScreen extends StatelessWidget {
         .where("isTeamMember", isEqualTo: true)
         .snapshots()
         .asyncMap((usersSnapshot) async {
-      List<Map<String, dynamic>> allTrips = [];
+      final Map<String, Map<String, dynamic>> vehicleTrips = {};
 
-      // Include the current user's trips
-      QuerySnapshot currentUserTrips = await FirebaseFirestore.instance
+      // 1. Fetch owner's trips first (highest priority)
+      final QuerySnapshot ownerTrips = await FirebaseFirestore.instance
           .collection("Users")
           .doc(ownerId)
           .collection("trips")
           .where("tripStatus", isEqualTo: 1)
           .get();
 
-      for (var trip in currentUserTrips.docs) {
-        allTrips.add({
+      for (final trip in ownerTrips.docs) {
+        final vehicleNumber = trip['vehicleNumber'] as String;
+        vehicleTrips[vehicleNumber] = {
           "companyName": trip["companyName"],
-          "vehicleNumber": trip["vehicleNumber"],
+          "vehicleNumber": vehicleNumber,
           "tripName": trip["tripName"],
           "tripStartDate": trip["tripStartDate"],
-          "driverName": "You",
+          "driverName": "You", // Owner's trip always shows "You"
           "tripStatus": trip["tripStatus"],
-        });
+          "isOwnerTrip": true,
+        };
       }
 
-      // Fetch trips for team members
-      for (var userDoc in usersSnapshot.docs) {
-        QuerySnapshot tripSnapshot = await FirebaseFirestore.instance
+      // 2. Fetch team members' trips (only for vehicles without owner trips)
+      for (final userDoc in usersSnapshot.docs) {
+        final QuerySnapshot driverTrips = await FirebaseFirestore.instance
             .collection("Users")
             .doc(userDoc.id)
             .collection("trips")
             .where("tripStatus", isEqualTo: 1)
             .get();
 
-        for (var trip in tripSnapshot.docs) {
-          // Fetch Driver Name from Users collection
-          var driverDoc = await FirebaseFirestore.instance
+        for (final trip in driverTrips.docs) {
+          final vehicleNumber = trip['vehicleNumber'] as String;
+
+          // Skip if owner already has a trip for this vehicle
+          if (vehicleTrips.containsKey(vehicleNumber)) continue;
+
+          final driverDoc = await FirebaseFirestore.instance
               .collection("Users")
               .doc(userDoc.id)
               .get();
+          final driverName = driverDoc["userName"] as String;
 
-          allTrips.add({
-            "companyName": trip["companyName"],
-            "vehicleNumber": trip["vehicleNumber"],
-            "tripName": trip["tripName"],
-            "tripStartDate": trip["tripStartDate"],
-            "driverName": driverDoc["userName"],
-            "tripStatus": trip["tripStatus"],
-          });
+          if (vehicleTrips.containsKey(vehicleNumber)) {
+            // If multiple drivers have trips for same vehicle, combine names
+            final existingDriverNames =
+                vehicleTrips[vehicleNumber]!["driverName"] as String;
+            if (!existingDriverNames.contains(driverName)) {
+              vehicleTrips[vehicleNumber]!["driverName"] =
+                  "$existingDriverNames/$driverName";
+            }
+          } else {
+            // First driver trip for this vehicle
+            vehicleTrips[vehicleNumber] = {
+              "companyName": trip["companyName"],
+              "vehicleNumber": vehicleNumber,
+              "tripName": trip["tripName"],
+              "tripStartDate": trip["tripStartDate"],
+              "driverName": driverName,
+              "tripStatus": trip["tripStatus"],
+              "isOwnerTrip": false,
+            };
+          }
         }
       }
-      return allTrips;
+
+      return vehicleTrips.values.toList();
     });
   }
 
@@ -137,7 +216,10 @@ class AssignTripScreen extends StatelessWidget {
           );
         }
 
+        // var trips = snapshot.data!;
+
         var trips = snapshot.data!;
+        trips.sort((a, b) => a['vehicleNumber'].compareTo(b['vehicleNumber']));
 
         return ListView.builder(
           itemCount: trips.length,
@@ -297,7 +379,10 @@ class NotAssignedTripScreen extends StatelessWidget {
           );
         }
 
+        // var vehicles = snapshot.data!;
         var vehicles = snapshot.data!;
+        vehicles
+            .sort((a, b) => a['vehicleNumber'].compareTo(b['vehicleNumber']));
 
         return ListView.builder(
           itemCount: vehicles.length,
@@ -316,7 +401,7 @@ class NotAssignedTripScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "${vehicle['companyName']} - ${vehicle['vehicleNumber']}",
+                      "${vehicle['vehicleNumber']} - ${vehicle['companyName']}",
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

@@ -653,8 +653,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Manage Trips",
-            style: appStyle(18, kWhite, FontWeight.normal)),
+        title: Text("My Trips", style: appStyle(18, kWhite, FontWeight.normal)),
         iconTheme: const IconThemeData(color: kWhite),
         elevation: 1,
         backgroundColor: kPrimary,
@@ -993,6 +992,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         .collection("Users")
                         .doc(currentUId)
                         .collection('trips')
+                        .where("currentUID", isEqualTo: currentUId)
                         .orderBy("createdAt", descending: true)
                         .snapshots(),
                     builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
