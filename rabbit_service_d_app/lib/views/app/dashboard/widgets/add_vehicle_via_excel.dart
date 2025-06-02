@@ -218,6 +218,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       // 7. Prepare base vehicle data
       final vehicleData = {
         'active': true,
+        'firstTimeVehicle': true,
         'tripAssign': false,
         'vehicleType': vehicleType,
         'companyName': company,

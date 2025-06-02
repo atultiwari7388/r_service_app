@@ -314,6 +314,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       Map<String, dynamic> vehicleData = {
         'active': true,
+        'firstTimeVehicle': true,
         'tripAssign': false,
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
@@ -379,7 +380,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             : _oilChangeDate != null
                 ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
                 : null;
-        vehicleData['hoursReading'] = _selectedCompany == "DRT VAN"
+        vehicleData['hoursReading'] = _selectedCompany == "DRY VAN"
             ? "1000"
             : _hoursReadingController.text.toString();
         vehicleData['prevHoursReadingValue'] =

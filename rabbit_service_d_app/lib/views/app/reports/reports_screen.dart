@@ -1864,7 +1864,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       selectedVehicleData?['vehicleType'] ==
                                           'Trailer') ...[
                                     TextField(
-                                      controller: todayMilesController,
+                                      controller: hoursController,
                                       decoration: InputDecoration(
                                         labelText: 'Enter Hours',
                                         labelStyle: appStyleUniverse(

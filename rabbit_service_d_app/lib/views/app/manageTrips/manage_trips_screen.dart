@@ -41,6 +41,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   late StreamSubscription vehiclesSubscription;
   final List<Map<String, dynamic>> vehicles = [];
   String? selectedVehicle;
+  String? selectedTrailer;
   String perMileCharge = '0';
   String role = "";
   String ownerId = "";
@@ -54,167 +55,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   File? _selectedImage;
   String _imageUrl = '';
   DateTime? selectedDate;
-
-  // void addTrip() async {
-  //   if (_tripNameController.text.isEmpty ||
-  //       _currentMilesController.text.isEmpty) {
-  //     showToastMessage("Error", "Please fill all required fields", kRed);
-  //     return;
-  //   }
-
-  //   if (selectedDate == null) {
-  //     showToastMessage("Error", "Please select a trip start date", kRed);
-  //     return;
-  //   }
-
-  //   if (selectedVehicle == null) {
-  //     showToastMessage("Error", "Please select a vehicle", kRed);
-  //     return;
-  //   }
-
-  //   setState(() {
-  //     isLoading = true;
-  //   });
-
-  //   try {
-  //     // Get selected vehicle details from Firestore
-  //     DocumentSnapshot vehicleSnapshot = await FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .doc(currentUId)
-  //         .collection("Vehicles")
-  //         .doc(selectedVehicle)
-  //         .get();
-
-  //     if (!vehicleSnapshot.exists) {
-  //       showToastMessage("Error", "Selected vehicle not found", kRed);
-  //       setState(() {
-  //         isLoading = false;
-  //       });
-  //       return;
-  //     }
-
-  //     Map<String, dynamic> selectedVehicleData =
-  //         vehicleSnapshot.data() as Map<String, dynamic>;
-
-  //     if (selectedVehicleData.containsKey('tripAssign') &&
-  //         selectedVehicleData['tripAssign'] == true) {
-  //       showToastMessage(
-  //           "Error",
-  //           "Your vehicle is already assigned. Please complete your ongoing ride.",
-  //           kRed);
-  //       setState(() {
-  //         isLoading = false;
-  //       });
-  //       return;
-  //     }
-
-  //     String vehicleName = selectedVehicleData['companyName'] ?? "Unknown";
-  //     String vehicleNumber = selectedVehicleData['vehicleNumber'] ?? "Unknown";
-
-  //     // Generate docId for consistency
-  //     String docId = FirebaseFirestore.instance.collection('trips').doc().id;
-
-  //     final tripData = {
-  //       'tripName': _tripNameController.text,
-  //       'vehicleId': selectedVehicle,
-  //       'currentUID': currentUId,
-  //       'role': role,
-  //       'companyName': vehicleName,
-  //       'vehicleNumber': vehicleNumber,
-  //       'totalMiles': 0,
-  //       'tripStartMiles': int.parse(_currentMilesController.text),
-  //       'tripEndMiles': 0,
-  //       'currentMiles': int.parse(_currentMilesController.text),
-  //       'previousMiles': int.parse(_currentMilesController.text),
-  //       'milesArray': [
-  //         {
-  //           'mile': int.parse(_currentMilesController.text),
-  //           'date': Timestamp.now(),
-  //         }
-  //       ],
-  //       'isPaid': false,
-  //       'tripStatus': 1,
-  //       'tripStartDate': selectedDate,
-  //       'tripEndDate': DateTime.now(),
-  //       'createdAt': Timestamp.now(),
-  //       'updatedAt': Timestamp.now(),
-  //       'oEarnings': (role == "Owner" && _oEarningController.text.isNotEmpty)
-  //           ? int.parse(_oEarningController.text)
-  //           : 0,
-  //     };
-
-  //     WriteBatch batch = FirebaseFirestore.instance.batch();
-
-  //     DocumentReference userTripRef = FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .doc(currentUId)
-  //         .collection('trips')
-  //         .doc(docId);
-
-  //     DocumentReference tripRef =
-  //         FirebaseFirestore.instance.collection('trips').doc(docId);
-
-  //     DocumentReference vehicleRef = FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .doc(currentUId)
-  //         .collection("Vehicles")
-  //         .doc(selectedVehicle);
-
-  //     // Update current user's vehicle
-  //     batch.set(userTripRef, tripData);
-  //     batch.set(tripRef, tripData);
-  //     batch.update(vehicleRef, {'tripAssign': true});
-
-  //     // **Find and update assigned drivers' vehicles**
-  //     QuerySnapshot driverDocs = await FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .where("createdBy", isEqualTo: ownerId)
-  //         .where("isDriver", isEqualTo: true)
-  //         .where("isTeamMember", isEqualTo: true)
-  //         .get();
-
-  //     for (var driverDoc in driverDocs.docs) {
-  //       String driverId = driverDoc.id;
-
-  //       DocumentReference driverVehicleRef = FirebaseFirestore.instance
-  //           .collection("Users")
-  //           .doc(driverId)
-  //           .collection("Vehicles")
-  //           .doc(selectedVehicle);
-
-  //       batch.update(driverVehicleRef, {'tripAssign': true});
-  //     }
-
-  //     // **If driver creates a trip, update owner's vehicle**
-  //     if (role == "Driver") {
-  //       DocumentReference ownerVehicleRef = FirebaseFirestore.instance
-  //           .collection("Users")
-  //           .doc(ownerId)
-  //           .collection("Vehicles")
-  //           .doc(selectedVehicle);
-
-  //       batch.update(ownerVehicleRef, {'tripAssign': true});
-  //     }
-
-  //     await batch.commit();
-
-  //     showToastMessage("Success", "Trip added successfully", kSecondary);
-
-  //     _tripNameController.clear();
-  //     _currentMilesController.clear();
-  //     _oEarningController.clear();
-
-  //     setState(() {
-  //       selectedDate = null;
-  //     });
-  //   } catch (e) {
-  //     showToastMessage("Error", e.toString(), kRed);
-  //   } finally {
-  //     setState(() {
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
 
   void addTrip() async {
     if (_tripNameController.text.isEmpty ||
@@ -275,13 +115,54 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       // Generate docId for consistency
       String docId = FirebaseFirestore.instance.collection('trips').doc().id;
 
+      // final tripData = {
+      //   'tripName': _tripNameController.text,
+      //   'vehicleId': selectedVehicle,
+      //   'currentUID': currentUId,
+      //   'role': role,
+      //   'companyName': vehicleName,
+      //   'vehicleNumber': vehicleNumber,
+      //   'totalMiles': 0,
+      //   'tripStartMiles': int.parse(_currentMilesController.text),
+      //   'tripEndMiles': 0,
+      //   'currentMiles': int.parse(_currentMilesController.text),
+      //   'previousMiles': int.parse(_currentMilesController.text),
+      //   'milesArray': [
+      //     {
+      //       'mile': int.parse(_currentMilesController.text),
+      //       'date': Timestamp.now(),
+      //     }
+      //   ],
+      //   'isPaid': false,
+      //   'tripStatus': 1,
+      //   'tripStartDate': selectedDate,
+      //   'tripEndDate': DateTime.now(),
+      //   'createdAt': Timestamp.now(),
+      //   'updatedAt': Timestamp.now(),
+      //   'oEarnings': (role == "Owner" && _oEarningController.text.isNotEmpty)
+      //       ? int.parse(_oEarningController.text)
+      //       : 0,
+      // };
+
       final tripData = {
         'tripName': _tripNameController.text,
         'vehicleId': selectedVehicle,
+        'trailerId': selectedTrailer, // Add trailer ID
         'currentUID': currentUId,
         'role': role,
         'companyName': vehicleName,
         'vehicleNumber': vehicleNumber,
+        // Add trailer details if selected
+        if (selectedTrailer != null) ...{
+          'trailerCompanyName': vehicles.firstWhere(
+            (v) => v['id'] == selectedTrailer,
+            orElse: () => {},
+          )['companyName'],
+          'trailerNumber': vehicles.firstWhere(
+            (v) => v['id'] == selectedTrailer,
+            orElse: () => {},
+          )['vehicleNumber'],
+        },
         'totalMiles': 0,
         'tripStartMiles': int.parse(_currentMilesController.text),
         'tripEndMiles': 0,
@@ -564,19 +445,20 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         .doc(currentUId)
         .collection("Vehicles")
         .where("active", isEqualTo: true)
+        .where("vehicleType", whereIn: ["Truck", "Trailer"])
         .snapshots()
         .listen((snapshot) {
-      if (snapshot.docs.isEmpty) {
-        debugPrint('No vehicles found for user');
-        return;
-      }
+          if (snapshot.docs.isEmpty) {
+            debugPrint('No vehicles found for user');
+            return;
+          }
 
-      setState(() {
-        vehicles.clear();
-        vehicles
-            .addAll(snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
-      });
-    });
+          setState(() {
+            vehicles.clear();
+            vehicles.addAll(
+                snapshot.docs.map((doc) => {...doc.data(), 'id': doc.id}));
+          });
+        });
   }
 
   Future<void> _pickDateRange() async {
@@ -800,10 +682,32 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             ),
                             SizedBox(height: 10.h),
                             // Vehicle Dropdown
+                            // DropdownButtonFormField<String>(
+                            //   value: selectedVehicle,
+                            //   hint: const Text('Select Vehicle'),
+                            //   items: vehicles.map((vehicle) {
+                            //     return DropdownMenuItem<String>(
+                            //       value: vehicle['id'],
+                            //       child: Text(
+                            //         '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                            //         style: appStyleUniverse(
+                            //             17, kDark, FontWeight.normal),
+                            //       ),
+                            //     );
+                            //   }).toList(),
+                            //   onChanged: (value) {
+                            //     setState(() {
+                            //       selectedVehicle = value;
+                            //     });
+                            //   },
+                            // ),
+
                             DropdownButtonFormField<String>(
                               value: selectedVehicle,
-                              hint: const Text('Select Vehicle'),
-                              items: vehicles.map((vehicle) {
+                              hint: const Text('Select Truck'),
+                              items: vehicles
+                                  .where((v) => v['vehicleType'] == "Truck")
+                                  .map((vehicle) {
                                 return DropdownMenuItem<String>(
                                   value: vehicle['id'],
                                   child: Text(
@@ -816,6 +720,28 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   selectedVehicle = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 10.h),
+                            DropdownButtonFormField<String>(
+                              value: selectedTrailer,
+                              hint: const Text('Select Trailer'),
+                              items: vehicles
+                                  .where((v) => v['vehicleType'] == "Trailer")
+                                  .map((vehicle) {
+                                return DropdownMenuItem<String>(
+                                  value: vehicle['id'],
+                                  child: Text(
+                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                    style: appStyleUniverse(
+                                        17, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedTrailer = value;
                                 });
                               },
                             ),

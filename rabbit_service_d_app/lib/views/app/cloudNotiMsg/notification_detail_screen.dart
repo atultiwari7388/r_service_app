@@ -55,10 +55,15 @@ class NotificationDetailsScreen extends StatelessWidget {
                       '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
                     ),
                     Divider(height: 24.h),
-                    buildInfoRow(
-                      Icons.gas_meter,
-                      "${notification['currentMiles']} (current miles)",
-                    ),
+                    notification['currentMiles'] == null
+                        ? buildInfoRow(
+                            Icons.gas_meter,
+                            "${notification['hoursReading']} (current Hours)",
+                          )
+                        : buildInfoRow(
+                            Icons.gas_meter,
+                            "${notification['currentMiles']} (current miles)",
+                          ),
                     Divider(height: 24.h),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
