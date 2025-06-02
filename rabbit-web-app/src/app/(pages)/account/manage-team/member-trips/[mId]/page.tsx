@@ -215,7 +215,7 @@ export default function MemberTripsPage() {
 
         {/* Total Loads */}
         <div className="w-60 bg-[#F96176] p-4 rounded-xl shadow-md text-white">
-          <h3 className="text-lg font-bold">Total Loads</h3>
+          <h3 className="text-lg font-bold">Total Earnings</h3>
           <p className="text-xl font-semibold">
             ${totals.totalEarnings.toFixed(2)}
           </p>

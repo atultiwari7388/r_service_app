@@ -140,7 +140,14 @@ export default function NavBar() {
                 href="/account/manage-trip"
                 className="hover:text-[#F96176]"
               >
-                Manage Trip
+                My Trip
+              </Link>
+
+              <Link
+                href="/account/trip-wise-vehicle"
+                className="hover:text-[#F96176]"
+              >
+                Tripwise vehicle
               </Link>
               <Link
                 href="/account/manage-check"
