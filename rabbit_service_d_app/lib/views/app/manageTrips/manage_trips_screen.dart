@@ -115,35 +115,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       // Generate docId for consistency
       String docId = FirebaseFirestore.instance.collection('trips').doc().id;
 
-      // final tripData = {
-      //   'tripName': _tripNameController.text,
-      //   'vehicleId': selectedVehicle,
-      //   'currentUID': currentUId,
-      //   'role': role,
-      //   'companyName': vehicleName,
-      //   'vehicleNumber': vehicleNumber,
-      //   'totalMiles': 0,
-      //   'tripStartMiles': int.parse(_currentMilesController.text),
-      //   'tripEndMiles': 0,
-      //   'currentMiles': int.parse(_currentMilesController.text),
-      //   'previousMiles': int.parse(_currentMilesController.text),
-      //   'milesArray': [
-      //     {
-      //       'mile': int.parse(_currentMilesController.text),
-      //       'date': Timestamp.now(),
-      //     }
-      //   ],
-      //   'isPaid': false,
-      //   'tripStatus': 1,
-      //   'tripStartDate': selectedDate,
-      //   'tripEndDate': DateTime.now(),
-      //   'createdAt': Timestamp.now(),
-      //   'updatedAt': Timestamp.now(),
-      //   'oEarnings': (role == "Owner" && _oEarningController.text.isNotEmpty)
-      //       ? int.parse(_oEarningController.text)
-      //       : 0,
-      // };
-
       final tripData = {
         'tripName': _tripNameController.text,
         'vehicleId': selectedVehicle,
@@ -281,6 +252,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       setState(() {
         selectedDate = null;
         selectedVehicle = null;
+        selectedTrailer = null;
       });
     } catch (e) {
       showToastMessage("Error", e.toString(), kRed);
@@ -750,7 +722,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
                             CustomButton(
                               text: "Add Trip",
-                              onPress: addTrip,
+                              onPress: () {
+                                selectedTrailer == null
+                                    ? showToastMessage("Error",
+                                        "Please select a trailer.", kRed)
+                                    : addTrip();
+                              },
                               color: kPrimary,
                             ),
                           ],
@@ -1309,6 +1286,110 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               );
                             },
                           );
+                          // if (currentMilesStr != null &&
+                          //     currentMilesStr.isNotEmpty) {
+                          //   int currentMiles =
+                          //       int.tryParse(currentMilesStr) ?? 0;
+
+                          //   WriteBatch batch =
+                          //       FirebaseFirestore.instance.batch();
+
+                          //   // **Update the current user's trip**
+                          //   DocumentReference userTripRef = FirebaseFirestore
+                          //       .instance
+                          //       .collection("Users")
+                          //       .doc(currentUId)
+                          //       .collection('trips')
+                          //       .doc(doc.id);
+
+                          //   batch.update(userTripRef, {
+                          //     'tripStatus': newStatus,
+                          //     'tripEndMiles': currentMiles,
+                          //     'tripEndDate': Timestamp.now(),
+                          //     'updatedAt': Timestamp.now(),
+                          //   });
+
+                          //   // **Update the global trips collection**
+                          //   DocumentReference globalTripRef = FirebaseFirestore
+                          //       .instance
+                          //       .collection('trips')
+                          //       .doc(doc.id);
+
+                          //   batch.update(globalTripRef, {
+                          //     'tripStatus': newStatus,
+                          //     'tripEndMiles': currentMiles,
+                          //     'tripEndDate': Timestamp.now(),
+                          //     'updatedAt': Timestamp.now(),
+                          //   });
+
+                          //   // **Find and update all assigned drivers' vehicles**
+                          //   QuerySnapshot driverDocs = await FirebaseFirestore
+                          //       .instance
+                          //       .collection("Users")
+                          //       .where("createdBy", isEqualTo: ownerId)
+                          //       .where("isDriver", isEqualTo: true)
+                          //       .where("isTeamMember", isEqualTo: true)
+                          //       .get();
+
+                          //   for (var driverDoc in driverDocs.docs) {
+                          //     String driverId = driverDoc.id;
+                          //     DocumentReference driverVehicleRef =
+                          //         FirebaseFirestore.instance
+                          //             .collection("Users")
+                          //             .doc(driverId)
+                          //             .collection("Vehicles")
+                          //             .doc(vehicleID);
+
+                          //     // Check if the document exists before updating
+                          //     DocumentSnapshot driverVehicleSnap =
+                          //         await driverVehicleRef.get();
+                          //     if (driverVehicleSnap.exists) {
+                          //       batch.update(
+                          //           driverVehicleRef, {'tripAssign': false});
+                          //     }
+                          //   }
+
+                          //   // **Update the current user's vehicle to remove trip assignment**
+                          //   DocumentReference currentUserVehicleRef =
+                          //       FirebaseFirestore.instance
+                          //           .collection("Users")
+                          //           .doc(currentUId)
+                          //           .collection("Vehicles")
+                          //           .doc(vehicleID);
+
+                          //   // Check if the document exists before updating
+                          //   DocumentSnapshot currentUserVehicleSnap =
+                          //       await currentUserVehicleRef.get();
+                          //   if (currentUserVehicleSnap.exists) {
+                          //     batch.update(
+                          //         currentUserVehicleRef, {'tripAssign': false});
+                          //   }
+
+                          //   // **If the current user is a driver, update the owner's vehicle**
+                          //   if (role == "Driver") {
+                          //     DocumentReference ownerVehicleRef =
+                          //         FirebaseFirestore.instance
+                          //             .collection("Users")
+                          //             .doc(ownerId)
+                          //             .collection("Vehicles")
+                          //             .doc(vehicleID);
+
+                          //     // Check if the document exists before updating
+                          //     DocumentSnapshot ownerVehicleSnap =
+                          //         await ownerVehicleRef.get();
+                          //     if (ownerVehicleSnap.exists) {
+                          //       batch.update(
+                          //           ownerVehicleRef, {'tripAssign': false});
+                          //     }
+                          //   }
+
+                          //   await batch.commit();
+                          // } else {
+                          //   showToastMessage(
+                          //       "Warning", "Please enter current miles.", kRed);
+                          //   return;
+                          // }
+
                           if (currentMilesStr != null &&
                               currentMilesStr.isNotEmpty) {
                             int currentMiles =
@@ -1345,17 +1426,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               'updatedAt': Timestamp.now(),
                             });
 
-                            // **Update the current user's vehicle to remove trip assignment**
-                            // DocumentReference currentUserVehicleRef =
-                            //     FirebaseFirestore.instance
-                            //         .collection("Users")
-                            //         .doc(currentUId)
-                            //         .collection("Vehicles")
-                            //         .doc(vehicleID);
-
-                            // batch.update(
-                            //     currentUserVehicleRef, {'tripAssign': false});
-
                             // **Find and update all assigned drivers' vehicles**
                             QuerySnapshot driverDocs = await FirebaseFirestore
                                 .instance
@@ -1380,6 +1450,28 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               if (driverVehicleSnap.exists) {
                                 batch.update(
                                     driverVehicleRef, {'tripAssign': false});
+                              }
+
+                              // **Update the driver's trip collection if the current user is not the driver**
+                              if (driverId != currentUId) {
+                                DocumentReference driverTripRef =
+                                    FirebaseFirestore.instance
+                                        .collection("Users")
+                                        .doc(driverId)
+                                        .collection('trips')
+                                        .doc(doc.id);
+
+                                // Check if the trip exists in the driver's collection before updating
+                                DocumentSnapshot driverTripSnap =
+                                    await driverTripRef.get();
+                                if (driverTripSnap.exists) {
+                                  batch.update(driverTripRef, {
+                                    'tripStatus': newStatus,
+                                    'tripEndMiles': currentMiles,
+                                    'tripEndDate': Timestamp.now(),
+                                    'updatedAt': Timestamp.now(),
+                                  });
+                                }
                               }
                             }
 
@@ -1415,41 +1507,27 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                 batch.update(
                                     ownerVehicleRef, {'tripAssign': false});
                               }
+
+                              // Also update the owner's trip collection if needed
+                              DocumentReference ownerTripRef = FirebaseFirestore
+                                  .instance
+                                  .collection("Users")
+                                  .doc(ownerId)
+                                  .collection('trips')
+                                  .doc(doc.id);
+
+                              // Check if the trip exists in the owner's collection before updating
+                              DocumentSnapshot ownerTripSnap =
+                                  await ownerTripRef.get();
+                              if (ownerTripSnap.exists) {
+                                batch.update(ownerTripRef, {
+                                  'tripStatus': newStatus,
+                                  'tripEndMiles': currentMiles,
+                                  'tripEndDate': Timestamp.now(),
+                                  'updatedAt': Timestamp.now(),
+                                });
+                              }
                             }
-                            // QuerySnapshot driverDocs = await FirebaseFirestore
-                            //     .instance
-                            //     .collection("Users")
-                            //     .where("createdBy", isEqualTo: ownerId)
-                            //     .where("isDriver", isEqualTo: true)
-                            //     .where("isTeamMember", isEqualTo: true)
-                            //     .get();
-
-                            // for (var driverDoc in driverDocs.docs) {
-                            //   String driverId = driverDoc.id;
-
-                            //   DocumentReference driverVehicleRef =
-                            //       FirebaseFirestore.instance
-                            //           .collection("Users")
-                            //           .doc(driverId)
-                            //           .collection("Vehicles")
-                            //           .doc(vehicleID);
-
-                            //   batch.update(
-                            //       driverVehicleRef, {'tripAssign': false});
-                            // }
-
-                            // // **If the current user is a driver, update the owner's vehicle**
-                            // if (role == "Driver") {
-                            //   DocumentReference ownerVehicleRef =
-                            //       FirebaseFirestore.instance
-                            //           .collection("Users")
-                            //           .doc(ownerId)
-                            //           .collection("Vehicles")
-                            //           .doc(vehicleID);
-
-                            //   batch.update(
-                            //       ownerVehicleRef, {'tripAssign': false});
-                            // }
 
                             await batch.commit();
                           } else {

@@ -145,6 +145,8 @@ class AssignTripScreen extends StatelessWidget {
           "driverName": "You", // Owner's trip always shows "You"
           "tripStatus": trip["tripStatus"],
           "isOwnerTrip": true,
+          "trailerNumber": trip["trailerNumber"] ?? "",
+          "trailerCompanyName": trip["trailerCompanyName"] ?? "",
         };
       }
 
@@ -187,6 +189,8 @@ class AssignTripScreen extends StatelessWidget {
               "driverName": driverName,
               "tripStatus": trip["tripStatus"],
               "isOwnerTrip": false,
+              "trailerNumber": trip["trailerNumber"] ?? "",
+              "trailerCompanyName": trip["trailerCompanyName"] ?? "",
             };
           }
         }
@@ -246,6 +250,15 @@ class AssignTripScreen extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.blueAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Trailer: ${trip['trailerNumber']} - ${trip['trailerCompanyName']}",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: kSecondary,
                       ),
                     ),
                     const SizedBox(height: 6),

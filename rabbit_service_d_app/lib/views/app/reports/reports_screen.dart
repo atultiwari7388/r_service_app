@@ -2610,30 +2610,11 @@ class _ReportsScreenState extends State<ReportsScreen>
                     labelStyle: appStyle(13, kDark, FontWeight.normal),
                     selected: isSubSelected,
                     onSelected: (bool selected) {
-                      // Check if this is the "steer tires" service
-                      // if (service['sName']
-                      //     .toString()
-                      //     .toLowerCase()
-                      //     .contains('steer tires')) {
-                      //   // Get current selected subservices for steer tires
-                      //   final currentSubs =
-                      //       selectedSubServices[service['sId']] ?? [];
-
-                      //   if (selected && currentSubs.isNotEmpty) {
-                      //     // Don't allow selecting another subservice if one is already selected
-                      //     ScaffoldMessenger.of(context).showSnackBar(
-                      //       const SnackBar(
-                      //           content: Text(
-                      //               'You can only select one sub-service for steer tires')),
-                      //     );
-                      //     return;
-                      //   }
-                      // }
                       final serviceName =
                           service['sName'].toString().toLowerCase();
                       final isSingleSubService =
                           serviceName.contains('steer tires') ||
-                              serviceName.contains('dpf clean');
+                              serviceName.contains('dpf percentage');
 
                       if (isSingleSubService) {
                         // Get current selected subservices
