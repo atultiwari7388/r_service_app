@@ -272,7 +272,7 @@ export default function CreateTeamMemberPage() {
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="Name"
+              placeholder="Name*"
               name="memberName"
               value={formData.memberName}
               onChange={handleInputChange}
@@ -282,7 +282,7 @@ export default function CreateTeamMemberPage() {
 
             <input
               type="email"
-              placeholder="Email"
+              placeholder="Email*"
               name="memberEmail"
               value={formData.memberEmail}
               onChange={handleInputChange}
@@ -301,7 +301,7 @@ export default function CreateTeamMemberPage() {
 
             <input
               type="tel"
-              placeholder="Phone Number"
+              placeholder="Phone Number*"
               name="memberPhoneNumber"
               value={formData.memberPhoneNumber}
               onChange={handleInputChange}
@@ -324,7 +324,7 @@ export default function CreateTeamMemberPage() {
                 <input
                   type="text"
                   placeholder="Company Name"
-                  name="companyName"
+                  name="companyName*"
                   value={formData.companyName}
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded"
@@ -342,7 +342,7 @@ export default function CreateTeamMemberPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="City"
+                    placeholder="City*"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
@@ -351,7 +351,7 @@ export default function CreateTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder="State"
+                    placeholder="State*"
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
@@ -362,7 +362,7 @@ export default function CreateTeamMemberPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="Country"
+                    placeholder="Country*"
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
@@ -382,7 +382,7 @@ export default function CreateTeamMemberPage() {
             )}
 
             {/* Fields for non-Vendor roles */}
-            {formData.role !== "Vendor" && formData.role !== "" && (
+            {formData.role !== "Vendor" && (
               <>
                 <input
                   type="text"
@@ -414,7 +414,7 @@ export default function CreateTeamMemberPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="City"
+                    placeholder="City*"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
@@ -423,7 +423,7 @@ export default function CreateTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder="State"
+                    placeholder="State*"
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
@@ -566,7 +566,39 @@ export default function CreateTeamMemberPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Assign Vehicles
                     </label>
-                    <div className="space-y-2 border rounded p-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-500">
+                        {formData.assignedVehicles.length} selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            formData.assignedVehicles.length === vehicles.length
+                          ) {
+                            // If all are selected, deselect all
+                            setFormData((prev) => ({
+                              ...prev,
+                              assignedVehicles: [],
+                            }));
+                          } else {
+                            // Select all vehicles
+                            setFormData((prev) => ({
+                              ...prev,
+                              assignedVehicles: vehicles.map(
+                                (vehicle) => vehicle.id
+                              ),
+                            }));
+                          }
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        {formData.assignedVehicles.length === vehicles.length
+                          ? "Deselect All"
+                          : "Select All"}
+                      </button>
+                    </div>
+                    <div className="space-y-2 border rounded p-2 max-h-60 overflow-y-auto">
                       {vehicles.map((vehicle) => (
                         <label
                           key={vehicle.id}

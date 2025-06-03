@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { HashLoader } from "react-spinners";
+import { IoMdNotificationsOutline } from "react-icons/io";
 
 interface UserData {
   profilePicture: string;
@@ -163,6 +164,10 @@ export default function NavBar() {
               </Link>
               <Link href="/history" className="hover:text-[#F96176]">
                 History
+              </Link>
+
+              <Link href="/account/notifications">
+                <IoMdNotificationsOutline className="font-semibold text-xl" />
               </Link>
             </>
           )}

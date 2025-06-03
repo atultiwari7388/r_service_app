@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
-import Link from "next/link";
+// import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   FaPhoneAlt,
@@ -15,7 +15,7 @@ import {
   FaTwitter,
   FaInstagram,
 } from "react-icons/fa";
-import { IoMdNotificationsOutline } from "react-icons/io";
+// import { IoMdNotificationsOutline } from "react-icons/io";
 
 export default function TopBar() {
   const { user } = useAuth() || { user: null };
@@ -93,9 +93,9 @@ export default function TopBar() {
 
         {/* Right Section: Social Links */}
         <div className="flex items-center space-x-4 mt-2 sm:mt-0">
-          <Link href="/account/notifications">
+          {/* <Link href="/account/notifications">
             <IoMdNotificationsOutline className="font-semibold text-xl" />
-          </Link>
+          </Link> */}
           <a
             href="https://facebook.com"
             target="_blank"

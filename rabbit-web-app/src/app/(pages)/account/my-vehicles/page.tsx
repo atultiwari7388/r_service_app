@@ -28,7 +28,7 @@ interface Vehicle {
   vehicleNumber: string;
   image: string;
   active?: boolean;
-  type: string;
+  vehicleType: string;
 }
 
 interface UserData {
@@ -275,7 +275,7 @@ export default function MyVehiclesPage() {
                 <tr key={vehicle.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex-shrink-0 h-10 w-10">
-                      {vehicle.type || "Truck"}
+                      {vehicle.vehicleType}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
