@@ -245,14 +245,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                                       await userService.signOut();
                                       log("User signed out successfully userid : $currentUId");
-
-                                      // if (context.mounted)
-                                      //   Navigator.pop(
-                                      //       dialogContext); // close dialog
-                                      // Get.offAll(() => const LoginScreen(),
-                                      //     transition: Transition.cupertino,
-                                      //     duration: const Duration(
-                                      //         milliseconds: 900));
                                     } catch (e) {
                                       log("Error signing out: $e");
                                       if (context.mounted) {
@@ -276,7 +268,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           },
                         );
                       },
-                    )
+                    ),
+                    role == "Owner"
+                        ? buildListTile(
+                            "assets/delete.png",
+                            "Delete Account",
+                            () {
+                              showDialog(
+                                context: context,
+                                builder: (_) {
+                                  return AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    title: const Text(
+                                      'Delete Your Account',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    content: const Text(
+                                      'Are you sure you want to delete your account?\n\n'
+                                      '⚠️ This action is permanent and cannot be recover.\n\n'
+                                      '• All your personal data will be permanently deleted from our database.\n'
+                                      '• Your linked team members and their data associated with your account will also be removed.\n'
+                                      '• You will lose access to any saved progress, records, jobs, history, or preferences.\n\n',
+                                      style: TextStyle(height: 1.4),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text("CANCEL",
+                                            style:
+                                                TextStyle(color: Colors.grey)),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          try {
+                                            // Show loading
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible: false,
+                                              builder: (context) => const Center(
+                                                  child:
+                                                      CircularProgressIndicator()),
+                                            );
+
+                                            // Archive data
+                                            await _archiveUserData(currentUId);
+
+                                            // Delete Firestore data
+                                            await _deleteUserData(currentUId);
+
+                                            // Delete Firebase Auth user (current user only)
+                                            await _firebaseAuth.currentUser
+                                                ?.delete();
+
+                                            if (mounted) {
+                                              Navigator.pop(
+                                                  context); // Close loading
+                                              Get.offAll(() =>
+                                                  const OnBoardingScreen());
+                                              showToastMessage(
+                                                  "Success",
+                                                  "Account deleted successfully",
+                                                  Colors.green);
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              Navigator.pop(
+                                                  context); // Close loading
+                                              showToastMessage(
+                                                  "Error",
+                                                  "Failed to delete account: $e",
+                                                  Colors.red);
+                                            }
+                                            log("Error deleting account: $e");
+                                          }
+                                        },
+                                        child: const Text("DELETE",
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        : SizedBox(),
                   ],
                 ),
               ),
@@ -404,88 +483,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // TextButton(
-  //                             child: const Text('Logout'),
-  //                             onPressed: () async {
-  //                               await ZegoUIKitPrebuiltCallInvitationService()
-  //                                   .uninit();
-  //                               await AuthRepository().signOut();
-  //                               Navigator.pushAndRemoveUntil(
-  //                                 context,
-  //                                 MaterialPageRoute(
-  //                                     builder: (BuildContext context) =>
-  //                                         const WelcomeScreen()),
-  //                                 (Route<dynamic> route) =>
-  //                                     false, // Remove all previous routes
-  //                               );
-  //                             }
+  Future<void> _archiveUserData(String userId) async {
+    final userDoc =
+        await FirebaseFirestore.instance.collection('Users').doc(userId).get();
 
-  //                             ),
+    if (userDoc.exists) {
+      // Archive the main user data
+      final userData = userDoc.data() as Map<String, dynamic>;
+      await FirebaseFirestore.instance
+          .collection('deletedMembers')
+          .doc(userId)
+          .set({
+        ...userData,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'originalId': userId,
+      });
 
-//================ Signout from the app ====================
+      // Archive team members if this user is an owner/manager
+      if (userData['isTeamMember'] == false) {
+        final teamMembers = await FirebaseFirestore.instance
+            .collection('Users')
+            .where('createdBy', isEqualTo: userId)
+            .where('isTeamMember', isEqualTo: true)
+            .get();
 
-  // void logOutUser(BuildContext context) async {
-  //   try {
-  //     log("Signing out user...");
-  //     final navigator = Navigator.of(context);
-  //     String? uid = auth.currentUser?.uid;
-
-  //     if (uid != null) {
-  //       await FirebaseFirestore.instance.collection('Users').doc(uid).update({
-  //         'fcmToken': FieldValue.delete(),
-  //       });
-  //     }
-
-  //     // Stop Firestore Listeners
-  //     FirebaseFirestore.instance.terminate();
-
-  //     // Clear Firestore Cache Before Sign-Out
-  //     await FirebaseFirestore.instance.clearPersistence();
-
-  //     // Sign out from Firebase
-  //     await auth.signOut();
-  //     clearControllers();
-  //     log("User should be signed out.");
-
-  //     // Wait & force FirebaseAuth to reload session
-  //     await Future.delayed(const Duration(milliseconds: 500));
-  //     await FirebaseAuth.instance.currentUser?.reload();
-
-  //     // Check if user is null
-  //     var currentUser = FirebaseAuth.instance.currentUser;
-  //     log("User after sign out: $currentUser"); // Should be null
-
-  //     // Ensure User is Fully Signed Out
-  //     FirebaseAuth.instance.authStateChanges().listen((user) {
-  //       log("AuthState after signOut: ${user?.uid}"); // Should print "null"
-  //     });
-
-  //     // Navigate to Login Screen
-  //     // Get.offAll(() => const LoginScreen());
-  //     // Clear GetX controllers and app state
-  //     Get.reset();
-
-  //     // Force close the app (works on Android)
-  //     SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-  //     log("User signed out successfully: $uid");
-  //   } catch (e) {
-  //     showToastMessage("Error", e.toString(), Colors.red);
-  //   }
-  // }
-
-  Future<void> signOut() async {
-    try {
-      await _firebaseAuth.signOut();
-    } catch (e) {
-      throw Exception(e);
+        for (var member in teamMembers.docs) {
+          await FirebaseFirestore.instance
+              .collection('deletedMembers')
+              .doc(member.id)
+              .set({
+            ...member.data(),
+            'deletedAt': FieldValue.serverTimestamp(),
+            'originalId': member.id,
+            'deletedBy': userId,
+          });
+        }
+      }
     }
   }
 
-  void clearControllers() {
-    Get.delete<DashboardController>(force: true);
-    Get.delete<AuthController>(force: true);
-    Get.delete<TabIndexController>(force: true);
-    // Remove Any Stored GetX Data
-    Get.deleteAll();
+  Future<void> _deleteUserData(String userId) async {
+    final firestore = FirebaseFirestore.instance;
+
+    // Fetch user doc
+    final userDoc = await firestore.collection('Users').doc(userId).get();
+
+    if (userDoc.exists) {
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      // If the user is not a team member (i.e. owner), delete team members too
+      if (userData['isTeamMember'] == false) {
+        final teamMembers = await firestore
+            .collection('Users')
+            .where('createdBy', isEqualTo: userId)
+            .where('isTeamMember', isEqualTo: true)
+            .get();
+
+        for (var member in teamMembers.docs) {
+          await firestore.collection('Users').doc(member.id).delete();
+
+          // Optionally delete team member from Firebase Auth (if stored)
+          if (member.data().containsKey('uid')) {
+            await _deleteUserFromAuth(member.data()['uid']);
+          }
+        }
+      }
+
+      // Delete owner last
+      await firestore.collection('Users').doc(userId).delete();
+    }
+  }
+
+  Future<void> _deleteUserFromAuth(String uid) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null && user.uid == uid) {
+        await user.delete();
+      }
+    } catch (e) {
+      log('Error deleting Firebase Auth user: $e');
+    }
   }
 }
