@@ -99,6 +99,7 @@ const BookingSection: React.FC = () => {
               id: doc.id,
               vehicleNumber: data.vehicleNumber,
               companyName: data.companyName,
+              engineName: data.engineName,
               createdAt: data.createdAt,
               isSet: data.isSet,
               licensePlate: data.licensePlate,
