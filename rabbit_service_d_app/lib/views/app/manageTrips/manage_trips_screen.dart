@@ -123,6 +123,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         'role': role,
         'companyName': vehicleName,
         'vehicleNumber': vehicleNumber,
+        'googleMiles': 0,
+        'googleTotalEarning': 0,
         // Add trailer details if selected
         if (selectedTrailer != null) ...{
           'trailerCompanyName': vehicles.firstWhere(

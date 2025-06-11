@@ -23,6 +23,7 @@ class DatabaseServices {
     String selectedVehicleRange,
   ) async {
     return fireStoreDatabase.doc(uid!).set({
+      "status": "active", //active and deleted
       "uid": uid,
       "userName": userName, //name
       "phoneNumber": phoneNumber, //phone number

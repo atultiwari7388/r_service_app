@@ -534,7 +534,9 @@ class _ReportsScreenState extends State<ReportsScreen>
           "subServices": selectedSubServices[serviceId] ?? [],
         });
       }
-
+      final formattedDate = selectedDate != null
+          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+          : null;
       final recordData = {
         "active": true,
         "userId": currentUId,
@@ -560,8 +562,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     selectedServiceData.any((s) => s['vType'] == "Trailer")
                 ? int.tryParse(hoursController.text) ?? 0
                 : 0,
-        "date":
-            selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        "date": formattedDate,
         "workshopName": workshopController.text,
         "createdAt": DateTime.now().toIso8601String(),
       };

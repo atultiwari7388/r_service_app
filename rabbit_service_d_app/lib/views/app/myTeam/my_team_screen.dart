@@ -889,6 +889,7 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                             memberId: memberId,
                             ownerId: ownerId,
                             perMileCharge: num.parse(perMileCharge),
+                            role: role,
                           ));
                     } else if (value == 'view_vehicles') {
                       Get.to(() => MemberVehiclesScreen(

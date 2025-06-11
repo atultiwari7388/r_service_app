@@ -67,11 +67,18 @@ class _SplashScreenState extends State<SplashScreen> {
 
         if (userDoc.exists && userDoc['uid'] == user!.uid) {
           // Check if the user is active
-          if (userDoc['active'] == true) {
+          if (userDoc['active'] == true && userDoc['status'] == "active") {
             log("User is active and exists in Users collection, navigating to EntryScreen");
             Get.offAll(() => EntryScreen(),
                 transition: Transition.cupertino,
                 duration: const Duration(milliseconds: 900));
+          } else if (userDoc['status'] == "deactivated") {
+            // User is not active, navigate to ContactWithAdmin screen
+            showToastMessage(
+                "Error",
+                "Your Account is deactivated, kindly contact with your office.",
+                Colors.red);
+            Get.offAll(() => const AdminContactScreen());
           } else {
             // User is not active, navigate to ContactWithAdmin screen
             log("User exists but is not active, navigating to ContactWithAdminScreen");

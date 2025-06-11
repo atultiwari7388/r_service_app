@@ -74,6 +74,7 @@ export interface ServiceType {
 export interface VehicleTypes {
   id: string;
   companyName: string;
+  engineName: string;
   createdAt: Timestamp;
   currentReading: string;
   dot: string;

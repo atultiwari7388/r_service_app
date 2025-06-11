@@ -269,6 +269,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                       },
                     ),
+                    // role == "Owner"
+                    //     ? buildListTile(
+                    //         "assets/delete.png",
+                    //         "Delete Account",
+                    //         () {
+                    //           showDialog(
+                    //             context: context,
+                    //             builder: (_) {
+                    //               return AlertDialog(
+                    //                 shape: RoundedRectangleBorder(
+                    //                     borderRadius:
+                    //                         BorderRadius.circular(12)),
+                    //                 title: const Text(
+                    //                   'Delete Your Account',
+                    //                   style: TextStyle(
+                    //                       fontWeight: FontWeight.bold),
+                    //                 ),
+                    //                 content: const Text(
+                    //                   'Are you sure you want to delete your account?\n\n'
+                    //                   '⚠️ This action is permanent and cannot be recover.\n\n'
+                    //                   '• All your personal data will be permanently deleted from our database.\n'
+                    //                   '• Your linked team members and their data associated with your account will also be removed.\n'
+                    //                   '• You will lose access to any saved progress, records, jobs, history, or preferences.\n\n',
+                    //                   style: TextStyle(height: 1.4),
+                    //                 ),
+                    //                 actions: [
+                    //                   TextButton(
+                    //                     onPressed: () => Navigator.pop(context),
+                    //                     child: const Text("CANCEL",
+                    //                         style:
+                    //                             TextStyle(color: Colors.grey)),
+                    //                   ),
+                    //                   TextButton(
+                    //                     onPressed: () async {
+                    //                       try {
+                    //                         // Show loading
+                    //                         showDialog(
+                    //                           context: context,
+                    //                           barrierDismissible: false,
+                    //                           builder: (context) => const Center(
+                    //                               child:
+                    //                                   CircularProgressIndicator()),
+                    //                         );
+
+                    //                         // Archive data
+                    //                         await _archiveUserData(currentUId);
+
+                    //                         // Delete Firestore data
+                    //                         await _deleteUserData(currentUId);
+
+                    //                         // Delete Firebase Auth user (current user only)
+                    //                         await _firebaseAuth.currentUser
+                    //                             ?.delete();
+
+                    //                         if (mounted) {
+                    //                           Navigator.pop(
+                    //                               context); // Close loading
+                    //                           Get.offAll(() =>
+                    //                               const OnBoardingScreen());
+                    //                           showToastMessage(
+                    //                               "Success",
+                    //                               "Account deleted successfully",
+                    //                               Colors.green);
+                    //                         }
+                    //                       } catch (e) {
+                    //                         if (mounted) {
+                    //                           Navigator.pop(
+                    //                               context); // Close loading
+                    //                           showToastMessage(
+                    //                               "Error",
+                    //                               "Failed to delete account: $e",
+                    //                               Colors.red);
+                    //                         }
+                    //                         log("Error deleting account: $e");
+                    //                       }
+                    //                     },
+                    //                     child: const Text("DELETE",
+                    //                         style:
+                    //                             TextStyle(color: Colors.red)),
+                    //                   ),
+                    //                 ],
+                    //               );
+                    //             },
+                    //           );
+                    //         },
+                    //       )
+                    //     : SizedBox(),
+
                     role == "Owner"
                         ? buildListTile(
                             "assets/delete.png",
@@ -287,11 +375,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           fontWeight: FontWeight.bold),
                                     ),
                                     content: const Text(
-                                      'Are you sure you want to delete your account?\n\n'
-                                      '⚠️ This action is permanent and cannot be recover.\n\n'
-                                      '• All your personal data will be permanently deleted from our database.\n'
-                                      '• Your linked team members and their data associated with your account will also be removed.\n'
-                                      '• You will lose access to any saved progress, records, jobs, history, or preferences.\n\n',
+                                      'Do you want to permanently delete your account or temporarily deactivate it?\n\n'
+                                      '• Permanent deletion will remove all your data forever.\n'
+                                      '• Temporary deactivation will hide your account but you can reactivate later.',
                                       style: TextStyle(height: 1.4),
                                     ),
                                     actions: [
@@ -302,50 +388,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 TextStyle(color: Colors.grey)),
                                       ),
                                       TextButton(
-                                        onPressed: () async {
-                                          try {
-                                            // Show loading
-                                            showDialog(
-                                              context: context,
-                                              barrierDismissible: false,
-                                              builder: (context) => const Center(
-                                                  child:
-                                                      CircularProgressIndicator()),
-                                            );
-
-                                            // Archive data
-                                            await _archiveUserData(currentUId);
-
-                                            // Delete Firestore data
-                                            await _deleteUserData(currentUId);
-
-                                            // Delete Firebase Auth user (current user only)
-                                            await _firebaseAuth.currentUser
-                                                ?.delete();
-
-                                            if (mounted) {
-                                              Navigator.pop(
-                                                  context); // Close loading
-                                              Get.offAll(() =>
-                                                  const OnBoardingScreen());
-                                              showToastMessage(
-                                                  "Success",
-                                                  "Account deleted successfully",
-                                                  Colors.green);
-                                            }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              Navigator.pop(
-                                                  context); // Close loading
-                                              showToastMessage(
-                                                  "Error",
-                                                  "Failed to delete account: $e",
-                                                  Colors.red);
-                                            }
-                                            log("Error deleting account: $e");
-                                          }
+                                        onPressed: () {
+                                          Navigator.pop(
+                                              context); // Close first dialog
+                                          _showTemporaryDeleteConfirmation();
                                         },
-                                        child: const Text("DELETE",
+                                        child: const Text("TEMPORARY",
+                                            style:
+                                                TextStyle(color: Colors.blue)),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(
+                                              context); // Close first dialog
+                                          _showPermanentDeleteConfirmation();
+                                        },
+                                        child: const Text("PERMANENT",
                                             style:
                                                 TextStyle(color: Colors.red)),
                                       ),
@@ -480,6 +538,160 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _showPermanentDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text(
+            'Permanent Account Deletion',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Are you sure you want to permanently delete your account?\n\n'
+            '⚠️ This action is permanent and cannot be recovered.\n\n'
+            '• All your personal data will be permanently deleted from our database.\n'
+            '• Your linked team members and their data associated with your account will also be removed.\n'
+            '• You will lose access to any saved progress, records, jobs, history, or preferences.\n\n',
+            style: TextStyle(height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  // Archive data
+                  await _archiveUserData(currentUId);
+
+                  // Delete Firestore data
+                  await _deleteUserData(currentUId);
+
+                  // Delete Firebase Auth user (current user only)
+                  await _firebaseAuth.currentUser?.delete();
+
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    Get.offAll(() => const OnBoardingScreen());
+                    showToastMessage(
+                        "Success", "Account deleted permanently", Colors.green);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    showToastMessage(
+                        "Error", "Failed to delete account: $e", Colors.red);
+                  }
+                  log("Error deleting account: $e");
+                }
+              },
+              child: const Text("DELETE", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showTemporaryDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text(
+            'Temporarily Deactivate Account',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Your account will be deactivated but not deleted.\n\n'
+            '• Your team members will also be deactivated.\n'
+            '• All your data will be preserved but hidden.\n\n'
+            'We hope to see you again soon!',
+            style: TextStyle(height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  // Deactivate owner
+                  await FirebaseFirestore.instance
+                      .collection('Users')
+                      .doc(currentUId)
+                      .update({
+                    'status': 'deactivated',
+                    'deactivatedAt': FieldValue.serverTimestamp(),
+                  });
+
+                  // Deactivate team members
+                  final teamMembers = await FirebaseFirestore.instance
+                      .collection('Users')
+                      .where('createdBy', isEqualTo: currentUId)
+                      .where('isTeamMember', isEqualTo: true)
+                      .get();
+
+                  for (var member in teamMembers.docs) {
+                    await FirebaseFirestore.instance
+                        .collection('Users')
+                        .doc(member.id)
+                        .update({
+                      'status': 'deactivated',
+                      'deactivatedAt': FieldValue.serverTimestamp(),
+                    });
+                  }
+
+                  // Sign out
+                  await userService.signOut();
+
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    Get.offAll(() => const OnBoardingScreen());
+                    showToastMessage("Success",
+                        "Account deactivated temporarily", Colors.green);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    showToastMessage("Error",
+                        "Failed to deactivate account: $e", Colors.red);
+                  }
+                  log("Error deactivating account: $e");
+                }
+              },
+              child: const Text("DEACTIVATE",
+                  style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -176,18 +176,25 @@ class AuthController extends GetxController {
         if (userDoc.exists && userDoc['uid'] == user.uid) {
           isUserSign = false;
           update();
-          if (userDoc['active'] == true) {
+          if (userDoc['active'] == true && userDoc['status'] == "active") {
             //navigate to mobile view
             Get.offAll(() => EntryScreen());
             showToastMessage("Success", "Login Successful", Colors.green);
             // Clear all controllers after successful login
             _emailController.clear();
             _passController.clear();
-          } else {
+          } else if (userDoc['status'] == "deactivated") {
             // User is not active, navigate to ContactWithAdmin screen
             showToastMessage(
                 "Error",
                 "Your Account is deactivated, kindly contact with your office.",
+                Colors.red);
+            Get.offAll(() => const AdminContactScreen());
+          } else {
+            // User is not active, navigate to ContactWithAdmin screen
+            showToastMessage(
+                "Error",
+                "Your Account is  deactivated, kindly contact with your office.",
                 Colors.red);
             Get.offAll(() => const AdminContactScreen());
           }
