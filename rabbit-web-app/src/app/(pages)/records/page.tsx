@@ -271,21 +271,9 @@ export default function RecordsPage() {
 
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
+    const isServiceSelected = newSelectedServices.has(serviceId);
 
-    if (newSelectedServices.has(serviceId)) {
-      // Deselect the service
-      newSelectedServices.delete(serviceId);
-
-      // Remove its subservices
-      const newSubServices = { ...selectedSubServices };
-      delete newSubServices[serviceId];
-      setSelectedSubServices(newSubServices);
-
-      // Collapse if this was the expanded service
-      if (expandedService === serviceId) {
-        setExpandedService(null);
-      }
-    } else {
+    if (!isServiceSelected) {
       // Select the service
       newSelectedServices.add(serviceId);
 
@@ -303,11 +291,10 @@ export default function RecordsPage() {
           }));
         }
       }
-
-      // Expand this service
-      setExpandedService(serviceId);
     }
 
+    // Toggle expansion only for the clicked service
+    setExpandedService(expandedService === serviceId ? null : serviceId);
     setSelectedServices(newSelectedServices);
     updateServiceDefaultValues();
   };
@@ -725,450 +712,6 @@ export default function RecordsPage() {
     }
   };
 
-  // const handleSaveRecords = async () => {
-  //   try {
-  //     if (!user || !selectedVehicle) {
-  //       toast.error("Please select vehicle and services");
-  //       return;
-  //     }
-
-  //     const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
-  //     if (!vehicleData) {
-  //       toast.error("Vehicle data not found");
-  //       return;
-  //     }
-
-  //     const currentMiles = Number(miles);
-  //     const currentHours = Number(hours) || 0;
-
-  //     // const recordRef = doc(db, "Users", user.uid, "DataServices", recordId); // Use recordId for editing
-
-  //     const servicesData = Array.from(selectedServices).map((serviceId) => {
-  //       const service = services.find((s) => s.sId === serviceId);
-  //       const defaultValue = serviceDefaultValues[serviceId] || 0;
-  //       const serviceObj = services.find((s) => s.sId === serviceId);
-  //       const type = (
-  //         serviceObj?.dValues?.[0]?.type || "reading"
-  //       ).toLowerCase();
-  //       let nextNotificationValue = 0;
-
-  //       if (type === "reading") {
-  //         nextNotificationValue = currentMiles + defaultValue;
-  //       } else if (type === "day") {
-  //         const date = new Date();
-  //         date.setDate(date.getDate() + defaultValue);
-  //         nextNotificationValue = date.getTime();
-  //       } else if (type === "hour") {
-  //         nextNotificationValue = currentHours + defaultValue;
-  //       }
-
-  //       return {
-  //         serviceId,
-  //         serviceName: service?.sName || "",
-  //         defaultNotificationValue: defaultValue,
-  //         nextNotificationValue: nextNotificationValue,
-  //         subServices:
-  //           selectedSubServices[serviceId]?.map((subService, index) => ({
-  //             name: subService,
-  //             id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`, // Add index to make unique
-  //           })) || [],
-  //       };
-  //     });
-
-  //     const notificationData = servicesData.map((service) => ({
-  //       serviceName: service.serviceName,
-  //       nextNotificationValue: service.nextNotificationValue,
-  //       subServices: selectedSubServices[service.serviceId] || [],
-  //     }));
-
-  //     const recordData = {
-  //       userId: user.uid,
-  //       vehicleId: selectedVehicle,
-  //       vehicleDetails: {
-  //         ...vehicleData,
-  //         currentMiles: currentMiles.toString(),
-  //         nextNotificationMiles: notificationData,
-  //       },
-  //       services: servicesData,
-  //       currentMilesArray: [
-  //         {
-  //           miles: currentMiles,
-  //           date: new Date().toISOString(),
-  //         },
-  //       ],
-  //       miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
-  //       hours: vehicleData.vehicleType === "Trailer" ? Number(hours) : 0,
-  //       totalMiles: currentMiles,
-  //       date: date || new Date().toISOString(),
-  //       workshopName,
-  //       invoice,
-  //       invoiceAmount,
-  //       description,
-  //       createdAt: new Date().toISOString(),
-  //       active: true,
-  //     };
-
-  //     if (isEditing && editingRecordId) {
-  //       // Update existing record
-  //       const recordRef = doc(
-  //         db,
-  //         "Users",
-  //         user.uid,
-  //         "DataServices",
-  //         editingRecordId
-  //       );
-  //       await updateDoc(recordRef, recordData);
-  //       toast.success("Record updated successfully!");
-  //     } else {
-  //       //create new record
-  //       const batch = {
-  //         newRecord: doc(collection(db, "Users", user.uid, "DataServices")),
-  //         globalRecord: doc(collection(db, "DataServicesRecords")),
-  //         vehicle: doc(db, "Users", user.uid, "Vehicles", selectedVehicle),
-  //       };
-
-  //       await Promise.all([
-  //         setDoc(batch.newRecord, recordData),
-  //         setDoc(batch.globalRecord, recordData),
-  //         setDoc(
-  //           batch.vehicle,
-  //           {
-  //             currentMiles: currentMiles.toString(),
-  //             currentMilesArray: [
-  //               {
-  //                 miles: currentMiles,
-  //                 date: new Date().toISOString(),
-  //               },
-  //             ],
-  //             nextNotificationMiles: notificationData,
-  //           },
-  //           { merge: true }
-  //         ),
-  //       ]);
-  //     }
-
-  //     toast.success("Record added successfully!");
-  //     resetForm();
-  //   } catch (error) {
-  //     console.error("Error saving record:", error);
-  //     toast.error("Failed to save record");
-  //   }
-  // };
-
-  // // Add this function to handle editing records
-  // const handleEditRecord = (record: ServiceRecord) => {
-  //   setIsEditing(true);
-  //   setEditingRecordId(record.id);
-
-  //   // Set form values from the selected record
-  //   setSelectedVehicle(record.vehicleId);
-  //   setSelectedVehicleData(
-  //     vehicles.find((v) => v.id === record.vehicleId) || null
-  //   );
-
-  //   // Set selected services and subservices
-  //   const servicesSet = new Set(
-  //     record.services.map((s: { serviceId: string }) => s.serviceId)
-  //   );
-  //   setSelectedServices(servicesSet);
-
-  //   // Set subservices
-  //   const subServices: { [key: string]: string[] } = {};
-  //   record.services.forEach((service) => {
-  //     subServices[service.serviceId] =
-  //       service.subServices?.map((ss) => ss.name) || [];
-  //   });
-  //   setSelectedSubServices(subServices);
-
-  //   // Set other form fields
-  //   setMiles(record.miles.toString());
-  //   setHours(record.hours.toString());
-  //   setDate(record.date);
-  //   setWorkshopName(record.workshopName);
-  //   setInvoice(record.invoice || "");
-  //   setInvoiceAmount(record.invoiceAmount || "");
-  //   setDescription(record.description || "");
-
-  //   setShowAddRecords(true);
-  // };
-
-  // const handleSaveRecords = async () => {
-  //   try {
-  //     if (!user || !selectedVehicle) {
-  //       toast.error("Please select vehicle and services");
-  //       return;
-  //     }
-
-  //     const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
-  //     if (!vehicleData) {
-  //       toast.error("Vehicle data not found");
-  //       return;
-  //     }
-
-  //     const currentMiles = Number(miles);
-  //     const currentHours = Number(hours) || 0;
-
-  //     // Prepare services data
-  //     const servicesData = [];
-  //     const notificationData = [];
-  //     const vehicleServicesUpdate = [];
-
-  //     for (const serviceId of selectedServices) {
-  //       const service = services.find((s) => s.sId === serviceId);
-  //       if (!service) continue;
-
-  //       // Find matching dValue for vehicle's engine
-  //       const engineName = vehicleData.engineName?.toString().toUpperCase();
-  //       const dValues = service.dValues || [];
-  //       const matchingDValue = dValues.find(
-  //         (dv) => dv.brand?.toString().toUpperCase() === engineName
-  //       );
-
-  //       // Determine type and defaultValue
-  //       const type = (matchingDValue?.type || "reading").toLowerCase();
-  //       let defaultValue =
-  //         serviceDefaultValues[serviceId] || matchingDValue?.value || 0;
-  //       if (typeof defaultValue === "string") {
-  //         // Handle string values (e.g., "1000,2000")
-  //         const values = defaultValue.split(",").map(Number);
-  //         defaultValue = values[0] || 0; // Use the first value or 0 if empty
-  //       }
-
-  //       let nextNotificationValue = 0;
-  //       let formattedDate = "";
-  //       let numericValue = 0;
-
-  //       if (defaultValue > 0) {
-  //         if (type === "reading") {
-  //           nextNotificationValue = currentMiles + defaultValue;
-  //           numericValue = nextNotificationValue;
-  //         } else if (type === "day") {
-  //           const baseDate = date ? new Date(date) : new Date();
-  //           const nextDate = new Date(baseDate);
-  //           nextDate.setDate(baseDate.getDate() + defaultValue);
-  //           formattedDate = nextDate.toISOString().split("T")[0];
-  //           numericValue = nextDate.getTime();
-  //           nextNotificationValue = numericValue;
-  //         } else if (type === "hour") {
-  //           nextNotificationValue = currentHours + defaultValue;
-  //           numericValue = nextNotificationValue;
-  //         }
-  //       }
-
-  //       // Prepare service data for record
-  //       const serviceData = {
-  //         serviceId,
-  //         serviceName: service.sName || "",
-  //         type,
-  //         defaultNotificationValue: defaultValue,
-  //         nextNotificationValue:
-  //           type === "day" ? formattedDate : numericValue.toString(),
-  //         subServices: (selectedSubServices[serviceId] || []).map(
-  //           (subService, index) => ({
-  //             name: subService,
-  //             id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`,
-  //           })
-  //         ),
-  //       };
-  //       servicesData.push(serviceData);
-
-  //       // Prepare notification data
-  //       notificationData.push({
-  //         serviceName: service.sName || "",
-  //         type,
-  //         nextNotificationValue:
-  //           type === "day" ? formattedDate : numericValue.toString(),
-  //         subServices: selectedSubServices[serviceId] || [],
-  //       });
-
-  //       // Prepare vehicle services update
-  //       vehicleServicesUpdate.push({
-  //         serviceId,
-  //         serviceName: service.sName || "",
-  //         type,
-  //         defaultNotificationValue: defaultValue,
-  //         nextNotificationValue:
-  //           type === "day" ? formattedDate : numericValue.toString(),
-  //         subServices: (selectedSubServices[serviceId] || []).map(
-  //           (subService, index) => ({
-  //             name: subService,
-  //             id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`,
-  //           })
-  //         ),
-  //       });
-  //     }
-
-  //     const baseDate = date ? new Date(date) : new Date();
-  //     const formattedDate = baseDate.toISOString().split("T")[0];
-
-  //     const recordData = {
-  //       userId: user.uid,
-  //       vehicleId: selectedVehicle,
-  //       vehicleDetails: {
-  //         ...vehicleData,
-  //         currentMiles: currentMiles.toString(),
-  //         nextNotificationMiles: notificationData,
-  //       },
-  //       services: servicesData,
-  //       currentMilesArray: [
-  //         {
-  //           miles: currentMiles,
-  //           date: formattedDate,
-  //         },
-  //       ],
-  //       miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
-  //       hours: vehicleData.vehicleType === "Trailer" ? currentHours : 0,
-  //       totalMiles: currentMiles,
-  //       date: formattedDate,
-  //       workshopName,
-  //       invoice,
-  //       invoiceAmount,
-  //       description,
-  //       createdAt: new Date().toISOString(),
-  //       active: true,
-  //     };
-
-  //     const batch = writeBatch(db);
-
-  //     if (isEditing && editingRecordId) {
-  //       // Update existing record
-  //       const recordRef = doc(
-  //         db,
-  //         "Users",
-  //         user.uid,
-  //         "DataServices",
-  //         editingRecordId
-  //       );
-  //       batch.update(recordRef, recordData);
-
-  //       // Update global record if needed
-  //       const globalRecordQuery = query(
-  //         collection(db, "DataServicesRecords"),
-  //         where("userId", "==", user.uid),
-  //         where("vehicleId", "==", selectedVehicle),
-  //         where("createdAt", "==", recordData.createdAt)
-  //       );
-  //       const globalSnapshot = await getDocs(globalRecordQuery);
-  //       if (!globalSnapshot.empty) {
-  //         batch.update(globalSnapshot.docs[0].ref, recordData);
-  //       }
-  //     } else {
-  //       // Create new records
-  //       const newRecordRef = doc(
-  //         collection(db, "Users", user.uid, "DataServices")
-  //       );
-  //       const globalRecordRef = doc(collection(db, "DataServicesRecords"));
-
-  //       batch.set(newRecordRef, recordData);
-  //       batch.set(globalRecordRef, {
-  //         ...recordData,
-  //         id: newRecordRef.id,
-  //       });
-  //     }
-
-  //     // Update vehicle document
-  //     const vehicleRef = doc(
-  //       db,
-  //       "Users",
-  //       user.uid,
-  //       "Vehicles",
-  //       selectedVehicle
-  //     );
-  //     batch.update(vehicleRef, {
-  //       services: vehicleServicesUpdate,
-  //       currentMiles: currentMiles.toString(),
-  //       currentMilesArray: arrayUnion({
-  //         miles: currentMiles,
-  //         date: formattedDate,
-  //       }),
-  //       nextNotificationMiles: notificationData,
-  //     });
-
-  //     // Handle team members (similar to app logic)
-  //     const teamMembersQuery = query(
-  //       collection(db, "Users"),
-  //       where("createdBy", "==", user.uid),
-  //       where("isTeamMember", "==", true)
-  //     );
-  //     const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-  //     for (const memberDoc of teamMembersSnapshot.docs) {
-  //       const memberVehicleRef = doc(
-  //         db,
-  //         "Users",
-  //         memberDoc.id,
-  //         "Vehicles",
-  //         selectedVehicle
-  //       );
-  //       const memberVehicleSnap = await getDoc(memberVehicleRef);
-
-  //       if (memberVehicleSnap.exists()) {
-  //         // Update team member's vehicle
-  //         batch.update(memberVehicleRef, {
-  //           services: vehicleServicesUpdate,
-  //           currentMiles: currentMiles.toString(),
-  //           currentMilesArray: arrayUnion({
-  //             miles: currentMiles,
-  //             date: formattedDate,
-  //           }),
-  //           nextNotificationMiles: notificationData,
-  //         });
-
-  //         // Add record to team member's DataServices
-  //         const memberRecordRef = doc(
-  //           collection(db, "Users", memberDoc.id, "DataServices")
-  //         );
-  //         batch.set(memberRecordRef, recordData);
-  //       }
-  //     }
-
-  //     // Handle if current user is team member (save to owner)
-  //     const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-  //     if (currentUserDoc.data()?.isTeamMember) {
-  //       const ownerId = currentUserDoc.data()?.createdBy;
-  //       if (ownerId) {
-  //         const ownerVehicleRef = doc(
-  //           db,
-  //           "Users",
-  //           ownerId,
-  //           "Vehicles",
-  //           selectedVehicle
-  //         );
-  //         const ownerVehicleSnap = await getDoc(ownerVehicleRef);
-
-  //         if (ownerVehicleSnap.exists()) {
-  //           batch.update(ownerVehicleRef, {
-  //             services: vehicleServicesUpdate,
-  //             currentMiles: currentMiles.toString(),
-  //             currentMilesArray: arrayUnion({
-  //               miles: currentMiles,
-  //               date: formattedDate,
-  //             }),
-  //             nextNotificationMiles: notificationData,
-  //           });
-
-  //           // Add record to owner's DataServices
-  //           const ownerRecordRef = doc(
-  //             collection(db, "Users", ownerId, "DataServices")
-  //           );
-  //           batch.set(ownerRecordRef, recordData);
-  //         }
-  //       }
-  //     }
-
-  //     await batch.commit();
-  //     toast.success(
-  //       isEditing
-  //         ? "Record updated successfully!"
-  //         : "Record added successfully!"
-  //     );
-  //     resetForm();
-  //   } catch (error) {
-  //     console.error("Error saving record:", error);
-  //     toast.error("Failed to save record");
-  //   }
-  // };
-
   const handleSaveRecords = async () => {
     try {
       if (!user || !selectedVehicle) {
@@ -1507,29 +1050,64 @@ export default function RecordsPage() {
     setShowAddRecords(true);
   };
 
+  // const handleSubserviceToggle = (serviceId: string, subName: string) => {
+  //   setSelectedSubServices((prev) => {
+  //     const currentSubs = prev[serviceId] || [];
+
+  //     // Check if this is a service that should only have one subservice selected
+  //     const service = services.find((s) => s.sId === serviceId);
+  //     const isSingleSubService =
+  //       service?.sName === "Steer Tires" || service?.sName === "DPF Clean";
+
+  //     if (isSingleSubService) {
+  //       // If already selected, deselect it, otherwise select only this one
+  //       return {
+  //         ...prev,
+  //         [serviceId]: currentSubs.includes(subName) ? [] : [subName],
+  //       };
+  //     } else {
+  //       // For normal services, allow multiple selections
+  //       const newSubs = currentSubs.includes(subName)
+  //         ? currentSubs.filter((name) => name !== subName)
+  //         : [...currentSubs, subName];
+  //       return { ...prev, [serviceId]: newSubs };
+  //     }
+  //   });
+  // };
+
+  // Update the handleSubserviceToggle function for better single-selection handling
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
     setSelectedSubServices((prev) => {
       const currentSubs = prev[serviceId] || [];
-
-      // Check if this is a service that should only have one subservice selected
       const service = services.find((s) => s.sId === serviceId);
-      const isSingleSubService =
-        service?.sName === "Steer Tires" || service?.sName === "DPF Clean";
 
-      if (isSingleSubService) {
+      // For "Steer Tires" and "DPF Clean", allow only one selection
+      if (service?.sName === "Steer Tires" || service?.sName === "DPF Clean") {
         // If already selected, deselect it, otherwise select only this one
         return {
           ...prev,
           [serviceId]: currentSubs.includes(subName) ? [] : [subName],
         };
       } else {
-        // For normal services, allow multiple selections
+        // For other services, allow multiple selections
         const newSubs = currentSubs.includes(subName)
           ? currentSubs.filter((name) => name !== subName)
           : [...currentSubs, subName];
         return { ...prev, [serviceId]: newSubs };
       }
     });
+
+    // Show toast notification for selection
+    const service = services.find((s) => s.sId === serviceId);
+    const isSelected =
+      selectedSubServices[serviceId]?.includes(subName) ?? false;
+
+    if (!isSelected) {
+      toast.success(`${subName} selected for ${service?.sName}`, {
+        position: "top-right",
+        duration: 2000,
+      });
+    }
   };
 
   if (!user) {
@@ -2020,41 +1598,43 @@ export default function RecordsPage() {
                           selectedServices.has(service.sId)
                         }
                         timeout="auto"
+                        unmountOnExit // Add this to properly unmount when collapsed
                       >
                         {service.subServices && (
                           <div className="ml-4 mt-2">
                             {service.subServices.map((subService) =>
-                              subService.sName.map((name, idx) => (
-                                <Chip
-                                  key={`${service.sId}-${name}-${idx}`}
-                                  label={name}
-                                  size="small"
-                                  className={`m-1 transition duration-300 ${
-                                    selectedSubServices[service.sId]?.includes(
-                                      name
-                                    )
-                                      ? "bg-green-500 text-white"
-                                      : "hover:bg-gray-200"
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // For "Steer Tires" and "DPF Clean", allow only one selection
-                                    if (
-                                      service.sName === "Steer Tires" ||
-                                      service.sName === "DPF Clean"
-                                    ) {
-                                      const newSubServices = {
-                                        ...selectedSubServices,
-                                        [service.sId]: [name],
-                                      };
-                                      setSelectedSubServices(newSubServices);
-                                    } else {
-                                      // For other services, allow multiple selections
-                                      handleSubserviceToggle(service.sId, name);
-                                    }
-                                  }}
-                                />
-                              ))
+                              subService.sName.map((name, idx) => {
+                                const isSelected =
+                                  selectedSubServices[service.sId]?.includes(
+                                    name
+                                  );
+                                return (
+                                  <div
+                                    key={`${service.sId}-${name}-${idx}`}
+                                    className="relative"
+                                  >
+                                    <Chip
+                                      label={name}
+                                      size="small"
+                                      className={`m-1 transition duration-300 ${
+                                        isSelected
+                                          ? "bg-green-500 text-white"
+                                          : "bg-gray-100 hover:bg-gray-200"
+                                      }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubserviceToggle(
+                                          service.sId,
+                                          name
+                                        );
+                                      }}
+                                    />
+                                    {isSelected && (
+                                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
+                                    )}
+                                  </div>
+                                );
+                              })
                             )}
                           </div>
                         )}
