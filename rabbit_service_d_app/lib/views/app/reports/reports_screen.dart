@@ -182,8 +182,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                 (a['sName'] as String).compareTo(b['sName'] as String));
 
             services.addAll(sortedServices);
-            // debugPrint('Fetched ${services.length} services');
-            // debugPrint("All Services Data: $services");
             updateServiceDefaultValues();
           });
         }
@@ -309,43 +307,119 @@ class _ReportsScreenState extends State<ReportsScreen>
       });
   }
 
+  // void updateServiceDefaultValues() {
+  //   if (selectedVehicle != null && selectedServices.isNotEmpty) {
+  //     for (var serviceId in selectedServices) {
+  //       final selectedService = services.firstWhere(
+  //         (service) => service['sId'] == serviceId,
+  //         orElse: () => <String, dynamic>{},
+  //       );
+
+  //       final dValues = selectedService['dValues'] as List<dynamic>?;
+
+  //       if (dValues != null) {
+  //         for (var dValue in dValues) {
+  //           // Compare the brand with the engine name
+  //           if (dValue['brand'].toString().toUpperCase() ==
+  //               selectedVehicleData?['engineName'].toString().toUpperCase()) {
+  //             String type = dValue['type'].toString().toLowerCase();
+  //             int value =
+  //                 int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
+  //             int notificationValue;
+
+  //             if (type == "reading") {
+  //               notificationValue = value * 1000;
+  //             } else if (type == "day") {
+  //               notificationValue = value;
+  //             } else if (type == "hour") {
+  //               notificationValue = value;
+  //             } else {
+  //               notificationValue = value;
+  //             }
+
+  //             serviceDefaultValues[serviceId] = notificationValue;
+  //             break;
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+
   void updateServiceDefaultValues() {
-    if (selectedVehicle != null && selectedServices.isNotEmpty) {
-      for (var serviceId in selectedServices) {
-        final selectedService = services.firstWhere(
-          (service) => service['sId'] == serviceId,
-          orElse: () => <String, dynamic>{},
-        );
+    if (selectedVehicle == null || selectedServices.isEmpty) return;
 
-        final dValues = selectedService['dValues'] as List<dynamic>?;
+    // Get vehicle document to check for service-specific defaults
+    FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUId)
+        .collection('Vehicles')
+        .doc(selectedVehicle)
+        .get()
+        .then((vehicleDoc) {
+      final vehicleServices =
+          List<Map<String, dynamic>>.from(vehicleDoc.data()?['services'] ?? []);
 
-        if (dValues != null) {
-          for (var dValue in dValues) {
-            // Compare the brand with the engine name
-            if (dValue['brand'].toString().toUpperCase() ==
-                selectedVehicleData?['engineName'].toString().toUpperCase()) {
-              String type = dValue['type'].toString().toLowerCase();
-              int value =
-                  int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
-              int notificationValue;
+      setState(() {
+        serviceDefaultValues.clear();
 
-              if (type == "reading") {
-                notificationValue = value * 1000; // Convert to miles if needed
-              } else if (type == "day") {
-                notificationValue = value; // Store days directly
-              } else if (type == "hour") {
-                notificationValue = value; // Store hours directly
-              } else {
-                notificationValue = value; // Default case
+        for (var serviceId in selectedServices) {
+          // Check if vehicle has a default for this service
+          final vehicleService = vehicleServices.firstWhere(
+            (vs) => vs['serviceId'] == serviceId,
+            orElse: () => {},
+          );
+
+          if (vehicleService.isNotEmpty &&
+              vehicleService['defaultNotificationValue'] != null) {
+            // Use vehicle-specific default value directly (don't multiply by 1000)
+            serviceDefaultValues[serviceId] =
+                vehicleService['defaultNotificationValue'] is int
+                    ? vehicleService['defaultNotificationValue']
+                    : int.tryParse(vehicleService['defaultNotificationValue']
+                            .toString()) ??
+                        0;
+            continue;
+          }
+
+          // Fall back to metadata default calculation
+          final selectedService = services.firstWhere(
+            (service) => service['sId'] == serviceId,
+            orElse: () => <String, dynamic>{},
+          );
+
+          if (selectedService.isEmpty) continue;
+
+          final dValues = selectedService['dValues'] as List<dynamic>?;
+          if (dValues != null) {
+            for (var dValue in dValues) {
+              if (dValue['brand'].toString().toUpperCase() ==
+                  selectedVehicleData?['engineName'].toString().toUpperCase()) {
+                String type = dValue['type'].toString().toLowerCase();
+                int value =
+                    int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
+                int notificationValue;
+
+                if (type == "reading") {
+                  notificationValue = value * 1000;
+                } else if (type == "day") {
+                  notificationValue = value;
+                } else if (type == "hour") {
+                  notificationValue = value;
+                } else {
+                  notificationValue = value;
+                }
+
+                serviceDefaultValues[serviceId] = notificationValue;
+                break;
               }
-
-              serviceDefaultValues[serviceId] = notificationValue;
-              break;
             }
           }
         }
-      }
-    }
+      });
+    }).catchError((error) {
+      debugPrint('Error fetching vehicle document: $error');
+    });
   }
 
   void updateSelectedVehicleAndService() {
@@ -394,6 +468,370 @@ class _ReportsScreenState extends State<ReportsScreen>
     setState(() {}); // Refresh the UI
   }
 
+//   Future<void> handleSaveRecords() async {
+//     try {
+//       if (selectedVehicle == null || selectedServices.isEmpty) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text('Please select a vehicle and at least one service'),
+//           ),
+//         );
+//         return;
+//       }
+
+//       // ** Subservice validation check **
+//       for (var serviceId in selectedServices) {
+//         final service = services.firstWhere(
+//           (s) => s['sId'] == serviceId,
+//           orElse: () => {},
+//         );
+
+//         if (service.isNotEmpty) {
+//           final hasSubServices = service.containsKey('subServices') &&
+//               (service['subServices'] as List).isNotEmpty;
+
+//           final selectedSubServiceList = selectedSubServices[serviceId] ?? [];
+
+//           if (hasSubServices && selectedSubServiceList.isEmpty) {
+//             ScaffoldMessenger.of(context).showSnackBar(
+//               SnackBar(
+//                 content: Text(
+//                     'Please select at least one subservice for ${service['sName']}'),
+//               ),
+//             );
+//             return; // Stop execution if validation fails
+//           }
+//         }
+//       }
+
+//       final dataServicesRef =
+//           FirebaseFirestore.instance.collection("DataServicesRecords");
+
+//       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
+
+//       final currentMiles = int.tryParse(milesController.text) ?? 0;
+//       final currentHours = int.tryParse(hoursController.text) ?? 0;
+
+//       List<Map<String, dynamic>> servicesData = [];
+//       List<Map<String, dynamic>> notificationData = [];
+//       // Store service details for vehicle update
+//       Map<String, dynamic> serviceDetailsMap = {};
+
+//       // Get selected services data
+//       final selectedServiceData = selectedServices
+//           .map((serviceId) => services.firstWhere((s) => s['sId'] == serviceId,
+//               orElse: () => {}))
+//           .where((s) => s.isNotEmpty)
+//           .toList();
+
+//       for (var serviceId in selectedServices) {
+//         final service = services.firstWhere(
+//           (s) => s['sId'] == serviceId,
+//           orElse: () => {},
+//         );
+
+//         if (service.isEmpty) continue;
+
+//         // Get matching dValue for vehicle's engine or use defaults
+//         final engineName =
+//             selectedVehicleData?['engineName'].toString().toUpperCase();
+//         final dValues = service['dValues'] as List<dynamic>;
+//         final matchingDValue = dValues.firstWhere(
+//           (dv) => dv['brand'].toString().toUpperCase() == engineName,
+//           orElse: () => null,
+//         );
+
+//         // Determine type and defaultValue
+//         String type = "reading";
+//         int defaultValue = 0;
+//         DateTime? nextNotificationDate;
+
+//         if (matchingDValue != null) {
+//           type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
+//           defaultValue = serviceDefaultValues[serviceId] ?? 0;
+//         }
+
+//         String formattedDate = '';
+//         int numericValue = 0;
+//         int nextNotificationValue = 0;
+
+// // Only calculate next notification if there's a default value
+//         if (defaultValue > 0) {
+//           if (type == 'reading') {
+//             nextNotificationValue = currentMiles + defaultValue;
+//           } else if (type == 'day') {
+//             final baseDate = selectedDate ?? DateTime.now();
+//             final nextDate = baseDate.add(Duration(days: defaultValue));
+//             formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
+//             numericValue = nextDate.millisecondsSinceEpoch;
+//           } else if (type == 'hour') {
+//             nextNotificationValue = currentHours + defaultValue;
+//           }
+//         } else {
+//           // No default value, keep notification at 0
+//           nextNotificationValue = 0;
+//           formattedDate = '';
+//         }
+
+//         // Store details for vehicle update
+//         serviceDetailsMap[serviceId] = {
+//           'type': type,
+//           'defaultValue': defaultValue,
+//           "nextNotificationValue":
+//               type == 'day' ? formattedDate : nextNotificationValue,
+//           'formattedDate': formattedDate,
+//           'serviceName': service['sName'],
+//           'subServices': selectedSubServices[serviceId],
+//         };
+
+//         servicesData.add({
+//           "serviceId": serviceId,
+//           "serviceName": service['sName'],
+//           "type": type,
+//           "defaultNotificationValue": defaultValue,
+//           "nextNotificationValue":
+//               type == 'day' ? formattedDate : nextNotificationValue,
+//           "subServices": selectedSubServices[serviceId]
+//                   ?.map((subService) => {
+//                         "name": subService,
+//                         "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+//                       })
+//                   .toList() ??
+//               [],
+//         });
+
+//         notificationData.add({
+//           "serviceName": service['sName'],
+//           "type": type,
+//           "nextNotificationValue":
+//               type == 'day' ? formattedDate : nextNotificationValue,
+//           "subServices": selectedSubServices[serviceId] ?? [],
+//         });
+//       }
+//       final formattedDate = selectedDate != null
+//           ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+//           : null;
+//       final recordData = {
+//         "active": true,
+//         "userId": currentUId,
+//         "vehicleId": selectedVehicle,
+//         "vehicleDetails": {
+//           ...selectedVehicleData!,
+//           "currentMiles": currentMiles.toString(),
+//           "nextNotificationMiles": notificationData,
+//         },
+//         "services": servicesData,
+//         "invoice": invoiceController.text,
+//         "invoiceAmount": invoiceAmountController.text,
+//         "description": descriptionController.text.toString(),
+//         "miles": isEditing
+//             ? currentMiles
+//             : selectedVehicleData?['vehicleType'] == "Truck" &&
+//                     selectedServiceData.any((s) => s['vType'] == "Truck")
+//                 ? int.parse(currentMiles.toString())
+//                 : 0,
+//         "hours": isEditing
+//             ? int.tryParse(hoursController.text) ?? 0
+//             : selectedVehicleData?['vehicleType'] == "Trailer" &&
+//                     selectedServiceData.any((s) => s['vType'] == "Trailer")
+//                 ? int.tryParse(hoursController.text) ?? 0
+//                 : 0,
+//         "date": formattedDate,
+//         "workshopName": workshopController.text,
+//         "createdAt": DateTime.now().toIso8601String(),
+//       };
+
+//       final batch = FirebaseFirestore.instance.batch();
+//       final ownerDataServicesRef = FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(currentUId)
+//           .collection('DataServices');
+//       batch.set(ownerDataServicesRef.doc(docId), recordData);
+
+//       // Query Team Members (Drivers/Managers)
+//       final teamMembersSnapshot = await FirebaseFirestore.instance
+//           .collection('Users')
+//           .where('createdBy', isEqualTo: currentUId)
+//           .where('isTeamMember', isEqualTo: true)
+//           .get();
+
+//       // Save to Team Members' DataServices
+//       for (final doc in teamMembersSnapshot.docs) {
+//         final teamMemberUid = doc.id;
+
+//         // Check if team member has a vehicle with the same ID
+//         final vehicleSnapshot = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(teamMemberUid)
+//             .collection('Vehicles')
+//             .doc(selectedVehicle)
+//             .get();
+
+//         if (vehicleSnapshot.exists) {
+//           final teamMemberDataServicesRef = FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(teamMemberUid)
+//               .collection('DataServices');
+//           batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+//         }
+//       }
+
+//       // Handle Team Member Creating Record (Save to Owner)
+//       final currentUserDoc = await FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(currentUId)
+//           .get();
+
+//       if (currentUserDoc.data()?['isTeamMember'] == true) {
+//         final ownerSnapshot = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+//             .get();
+
+//         if (ownerSnapshot.docs.isNotEmpty) {
+//           final ownerUid = ownerSnapshot.docs.first.id;
+//           final ownerDataServicesRef = FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(ownerUid)
+//               .collection('DataServices');
+//           batch.set(ownerDataServicesRef.doc(docId), recordData);
+//         }
+//       }
+
+//       // Update current user's vehicle (owner or team member)
+//       final currentUserVehicleref = FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(currentUId)
+//           .collection('Vehicles')
+//           .doc(selectedVehicle);
+
+//       final vehicleSnapshot = await currentUserVehicleref.get();
+//       Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
+//       List<dynamic> vehicleServices = List.from(vehicleData['services'] ?? []);
+
+//       for (var serviceId in selectedServices) {
+//         final serviceInfo = serviceDetailsMap[serviceId];
+//         if (serviceInfo == null) continue;
+
+//         final type = serviceInfo['type'];
+//         final defaultValue = serviceInfo['defaultValue'];
+//         final nextNotificationValue = serviceInfo['nextNotificationValue'];
+//         final formattedDate = serviceInfo['formattedDate'];
+//         final serviceName = serviceInfo['serviceName'];
+//         final subServices = serviceInfo['subServices'];
+
+//         int index =
+//             vehicleServices.indexWhere((s) => s['serviceId'] == serviceId);
+
+//         if (index != -1) {
+//           // Update existing service
+//           vehicleServices[index] = {
+//             ...vehicleServices[index],
+//             'nextNotificationValue':
+//                 type == 'day' ? formattedDate : nextNotificationValue,
+//             'type': type,
+//             'defaultNotificationValue': defaultValue,
+//             'subServices': (subServices as List<dynamic>?)
+//                     ?.map((subService) => {
+//                           "name": subService.toString(),
+//                           "id":
+//                               "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+//                         })
+//                     .toList() ??
+//                 [],
+//           };
+//         }
+//       }
+
+//       // Update current user's vehicle (owner or team member)
+//       final currentUserVehicleRef = FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(currentUId)
+//           .collection('Vehicles')
+//           .doc(selectedVehicle);
+//       batch.update(currentUserVehicleRef, {
+//         'services': vehicleServices,
+//         'currentMiles': currentMiles.toString(),
+//         'currentMilesArray': FieldValue.arrayUnion([
+//           {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+//         ]),
+//         'nextNotificationMiles': notificationData,
+//       });
+
+//       // If current user is team member, update owner's vehicle too
+//       if (currentUserDoc.data()?['isTeamMember'] == true) {
+//         final ownerSnapshot = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+//             .get();
+
+//         if (ownerSnapshot.docs.isNotEmpty) {
+//           final ownerUid = ownerSnapshot.docs.first.id;
+//           final ownerVehicleRef = FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(ownerUid)
+//               .collection('Vehicles')
+//               .doc(selectedVehicle);
+
+//           final ownerVehicle = await ownerVehicleRef.get();
+//           if (ownerVehicle.exists) {
+//             batch.update(ownerVehicleRef, {
+//               'services': vehicleServices,
+//               'currentMiles': currentMiles.toString(),
+//               'currentMilesArray': FieldValue.arrayUnion([
+//                 {
+//                   "miles": currentMiles,
+//                   "date": DateTime.now().toIso8601String()
+//                 }
+//               ]),
+//               'nextNotificationMiles': notificationData,
+//             });
+//           }
+//         }
+//       }
+//       // Update team members' vehicles who have this vehicle
+//       for (final doc in teamMembersSnapshot.docs) {
+//         final teamMemberUid = doc.id;
+//         final teamMemberVehicleRef = FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(teamMemberUid)
+//             .collection('Vehicles')
+//             .doc(selectedVehicle);
+
+//         final teamMemberVehicle = await teamMemberVehicleRef.get();
+//         if (teamMemberVehicle.exists) {
+//           batch.update(teamMemberVehicleRef, {
+//             'services': vehicleServices,
+//             'currentMiles': currentMiles.toString(),
+//             'currentMilesArray': FieldValue.arrayUnion([
+//               {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+//             ]),
+//             'nextNotificationMiles': notificationData,
+//           });
+//         }
+//       }
+
+//       await batch.commit();
+
+//       resetForm();
+
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text(isEditing
+//               ? 'Record updated successfully'
+//               : 'Record saved successfully'),
+//         ),
+//       );
+//     } catch (e, stackTrace) {
+//       debugPrint('Error Saving records: ${e.toString()}');
+//       debugPrint(stackTrace.toString());
+
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Error saving records: ${e.toString()}')),
+//       );
+//     }
+//   }
+
   Future<void> handleSaveRecords() async {
     try {
       if (selectedVehicle == null || selectedServices.isEmpty) {
@@ -405,7 +843,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         return;
       }
 
-      // ** Subservice validation check **
+      // Subservice validation check
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
           (s) => s['sId'] == serviceId,
@@ -425,30 +863,32 @@ class _ReportsScreenState extends State<ReportsScreen>
                     'Please select at least one subservice for ${service['sName']}'),
               ),
             );
-            return; // Stop execution if validation fails
+            return;
           }
         }
       }
 
       final dataServicesRef =
           FirebaseFirestore.instance.collection("DataServicesRecords");
-
       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
       final currentMiles = int.tryParse(milesController.text) ?? 0;
       final currentHours = int.tryParse(hoursController.text) ?? 0;
 
+      // Get vehicle document to check for service-specific defaults
+      final vehicleDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUId)
+          .collection('Vehicles')
+          .doc(selectedVehicle)
+          .get();
+
+      final vehicleServices =
+          List<Map<String, dynamic>>.from(vehicleDoc.data()?['services'] ?? []);
+
       List<Map<String, dynamic>> servicesData = [];
       List<Map<String, dynamic>> notificationData = [];
-      // Store service details for vehicle update
       Map<String, dynamic> serviceDetailsMap = {};
-
-      // Get selected services data
-      final selectedServiceData = selectedServices
-          .map((serviceId) => services.firstWhere((s) => s['sId'] == serviceId,
-              orElse: () => {}))
-          .where((s) => s.isNotEmpty)
-          .toList();
 
       for (var serviceId in selectedServices) {
         final service = services.firstWhere(
@@ -458,30 +898,46 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         if (service.isEmpty) continue;
 
-        // Get matching dValue for vehicle's engine or use defaults
-        final engineName =
-            selectedVehicleData?['engineName'].toString().toUpperCase();
-        final dValues = service['dValues'] as List<dynamic>;
-        final matchingDValue = dValues.firstWhere(
-          (dv) => dv['brand'].toString().toUpperCase() == engineName,
-          orElse: () => null,
+        // Check if vehicle has a default value for this service
+        final vehicleService = vehicleServices.firstWhere(
+          (vs) => vs['serviceId'] == serviceId,
+          orElse: () => {},
         );
 
-        // Determine type and defaultValue
         String type = "reading";
         int defaultValue = 0;
         DateTime? nextNotificationDate;
 
-        if (matchingDValue != null) {
-          type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
-          defaultValue = serviceDefaultValues[serviceId] ?? 0;
+        // Priority 1: Use vehicle-specific default if available
+        if (vehicleService.isNotEmpty &&
+            vehicleService['defaultNotificationValue'] != null) {
+          type = vehicleService['type']?.toString().toLowerCase() ?? "reading";
+          defaultValue = vehicleService['defaultNotificationValue'] is int
+              ? vehicleService['defaultNotificationValue']
+              : int.tryParse(
+                      vehicleService['defaultNotificationValue'].toString()) ??
+                  0;
+        }
+        // Priority 2: Fall back to metadata defaults
+        else {
+          final engineName =
+              selectedVehicleData?['engineName'].toString().toUpperCase();
+          final dValues = service['dValues'] as List<dynamic>;
+          final matchingDValue = dValues.firstWhere(
+            (dv) => dv['brand'].toString().toUpperCase() == engineName,
+            orElse: () => null,
+          );
+
+          if (matchingDValue != null) {
+            type =
+                (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
+            defaultValue = serviceDefaultValues[serviceId] ?? 0;
+          }
         }
 
         String formattedDate = '';
-        int numericValue = 0;
         int nextNotificationValue = 0;
 
-// Only calculate next notification if there's a default value
         if (defaultValue > 0) {
           if (type == 'reading') {
             nextNotificationValue = currentMiles + defaultValue;
@@ -489,14 +945,10 @@ class _ReportsScreenState extends State<ReportsScreen>
             final baseDate = selectedDate ?? DateTime.now();
             final nextDate = baseDate.add(Duration(days: defaultValue));
             formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
-            numericValue = nextDate.millisecondsSinceEpoch;
+            nextNotificationValue = nextDate.millisecondsSinceEpoch;
           } else if (type == 'hour') {
             nextNotificationValue = currentHours + defaultValue;
           }
-        } else {
-          // No default value, keep notification at 0
-          nextNotificationValue = 0;
-          formattedDate = '';
         }
 
         // Store details for vehicle update
@@ -534,6 +986,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           "subServices": selectedSubServices[serviceId] ?? [],
         });
       }
+
       final formattedDate = selectedDate != null
           ? DateFormat('yyyy-MM-dd').format(selectedDate!)
           : null;
@@ -584,8 +1037,6 @@ class _ReportsScreenState extends State<ReportsScreen>
       // Save to Team Members' DataServices
       for (final doc in teamMembersSnapshot.docs) {
         final teamMemberUid = doc.id;
-
-        // Check if team member has a vehicle with the same ID
         final vehicleSnapshot = await FirebaseFirestore.instance
             .collection('Users')
             .doc(teamMemberUid)
@@ -633,7 +1084,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
       final vehicleSnapshot = await currentUserVehicleref.get();
       Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
-      List<dynamic> vehicleServices = List.from(vehicleData['services'] ?? []);
+      List<dynamic> updatedVehicleServices =
+          List.from(vehicleData['services'] ?? []);
 
       for (var serviceId in selectedServices) {
         final serviceInfo = serviceDetailsMap[serviceId];
@@ -646,13 +1098,13 @@ class _ReportsScreenState extends State<ReportsScreen>
         final serviceName = serviceInfo['serviceName'];
         final subServices = serviceInfo['subServices'];
 
-        int index =
-            vehicleServices.indexWhere((s) => s['serviceId'] == serviceId);
+        int index = updatedVehicleServices
+            .indexWhere((s) => s['serviceId'] == serviceId);
 
         if (index != -1) {
           // Update existing service
-          vehicleServices[index] = {
-            ...vehicleServices[index],
+          updatedVehicleServices[index] = {
+            ...updatedVehicleServices[index],
             'nextNotificationValue':
                 type == 'day' ? formattedDate : nextNotificationValue,
             'type': type,
@@ -666,17 +1118,30 @@ class _ReportsScreenState extends State<ReportsScreen>
                     .toList() ??
                 [],
           };
+        } else {
+          // Add new service
+          updatedVehicleServices.add({
+            'serviceId': serviceId,
+            'serviceName': serviceName,
+            'nextNotificationValue':
+                type == 'day' ? formattedDate : nextNotificationValue,
+            'type': type,
+            'defaultNotificationValue': defaultValue,
+            'subServices': (subServices as List<dynamic>?)
+                    ?.map((subService) => {
+                          "name": subService.toString(),
+                          "id":
+                              "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+                        })
+                    .toList() ??
+                [],
+          });
         }
       }
 
-      // Update current user's vehicle (owner or team member)
-      final currentUserVehicleRef = FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .collection('Vehicles')
-          .doc(selectedVehicle);
-      batch.update(currentUserVehicleRef, {
-        'services': vehicleServices,
+      // Update current user's vehicle
+      batch.update(currentUserVehicleref, {
+        'services': updatedVehicleServices,
         'currentMiles': currentMiles.toString(),
         'currentMilesArray': FieldValue.arrayUnion([
           {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
@@ -702,7 +1167,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           final ownerVehicle = await ownerVehicleRef.get();
           if (ownerVehicle.exists) {
             batch.update(ownerVehicleRef, {
-              'services': vehicleServices,
+              'services': updatedVehicleServices,
               'currentMiles': currentMiles.toString(),
               'currentMilesArray': FieldValue.arrayUnion([
                 {
@@ -715,6 +1180,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           }
         }
       }
+
       // Update team members' vehicles who have this vehicle
       for (final doc in teamMembersSnapshot.docs) {
         final teamMemberUid = doc.id;
@@ -727,7 +1193,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         final teamMemberVehicle = await teamMemberVehicleRef.get();
         if (teamMemberVehicle.exists) {
           batch.update(teamMemberVehicleRef, {
-            'services': vehicleServices,
+            'services': updatedVehicleServices,
             'currentMiles': currentMiles.toString(),
             'currentMilesArray': FieldValue.arrayUnion([
               {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
@@ -738,7 +1204,6 @@ class _ReportsScreenState extends State<ReportsScreen>
       }
 
       await batch.commit();
-
       resetForm();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -758,6 +1223,45 @@ class _ReportsScreenState extends State<ReportsScreen>
     }
   }
 
+  // void _handleEditRecord(Map<String, dynamic> record) {
+  //   setState(() {
+  //     isEditing = true;
+  //     editingRecordId = record['id'];
+  //     _originalRecordDate = DateTime.parse(record['date']);
+  //     selectedVehicle = record['vehicleId'];
+  //     selectedVehicleData = record['vehicleDetails'];
+
+  //     // Initialize serviceDefaultValues from the record
+  //     serviceDefaultValues.clear();
+  //     for (var service in record['services']) {
+  //       String serviceId = service['serviceId'];
+  //       serviceDefaultValues[serviceId] =
+  //           service['defaultNotificationValue'] ?? 0;
+  //     }
+
+  //     selectedServices.clear();
+  //     selectedSubServices.clear();
+  //     for (var service in record['services']) {
+  //       String serviceId = service['serviceId'];
+  //       selectedServices.add(serviceId);
+  //       if (service['subServices'] != null) {
+  //         selectedSubServices[serviceId] = (service['subServices'] as List)
+  //             .map<String>((sub) => sub['name'].toString())
+  //             .toList();
+  //       }
+  //     }
+
+  //     milesController.text = record['miles'].toString();
+  //     hoursController.text = record['hours'].toString();
+  //     workshopController.text = record['workshopName'] ?? '';
+  //     invoiceController.text = record['invoice'] ?? '';
+  //     invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
+  //     descriptionController.text = record['description'] ?? '';
+  //     selectedDate = DateTime.parse(record['date']);
+  //     showAddRecords = true;
+  //   });
+  // }
+
   void _handleEditRecord(Map<String, dynamic> record) {
     setState(() {
       isEditing = true;
@@ -766,12 +1270,32 @@ class _ReportsScreenState extends State<ReportsScreen>
       selectedVehicle = record['vehicleId'];
       selectedVehicleData = record['vehicleDetails'];
 
-      // Initialize serviceDefaultValues from the record
-      serviceDefaultValues.clear();
-      for (var service in record['services']) {
-        String serviceId = service['serviceId'];
-        serviceDefaultValues[serviceId] =
-            service['defaultNotificationValue'] ?? 0;
+      // Initialize serviceDefaultValues from vehicle services first
+      if (record['vehicleDetails']['services'] != null) {
+        final vehicleServices = List<Map<String, dynamic>>.from(
+            record['vehicleDetails']['services']);
+
+        serviceDefaultValues.clear();
+        for (var service in record['services']) {
+          String serviceId = service['serviceId'];
+          final vehicleService = vehicleServices.firstWhere(
+            (vs) => vs['serviceId'] == serviceId,
+            orElse: () => {},
+          );
+
+          if (vehicleService.isNotEmpty &&
+              vehicleService['defaultNotificationValue'] != null) {
+            serviceDefaultValues[serviceId] =
+                vehicleService['defaultNotificationValue'] is int
+                    ? vehicleService['defaultNotificationValue']
+                    : int.tryParse(vehicleService['defaultNotificationValue']
+                            .toString()) ??
+                        0;
+          } else {
+            serviceDefaultValues[serviceId] =
+                service['defaultNotificationValue'] ?? 0;
+          }
+        }
       }
 
       selectedServices.clear();
@@ -2763,10 +3287,6 @@ class _ReportsScreenState extends State<ReportsScreen>
       showCombinedSearch = false;
     });
   }
-
-  // Future<void> _refreshPage() async {
-  //   await Future.delayed(Duration(seconds: 2));
-  // }
 
   Future<void> _refreshPage() async {
     try {

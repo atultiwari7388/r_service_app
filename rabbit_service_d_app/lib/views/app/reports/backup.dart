@@ -2,6 +2,7 @@
 // import 'dart:developer';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:cloud_functions/cloud_functions.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:flutter/foundation.dart';
 // import 'package:flutter/material.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,12 +10,13 @@
 // import 'package:get/get.dart';
 // import 'package:intl/intl.dart';
 // import 'package:printing/printing.dart';
-// import 'package:regal_service_d_app/services/collection_references.dart';
 // import 'package:regal_service_d_app/utils/app_styles.dart';
 // import 'package:regal_service_d_app/utils/constants.dart';
 // import 'package:regal_service_d_app/utils/generate_pdf.dart';
 // import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 // import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
+// import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
+// import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 // import 'package:regal_service_d_app/views/app/profile/profile_screen.dart';
 // import 'package:regal_service_d_app/views/app/reports/widgets/miles_details_screen.dart';
 // import 'package:regal_service_d_app/views/app/reports/widgets/records_details_screen.dart';
@@ -30,6 +32,8 @@
 
 // class _ReportsScreenState extends State<ReportsScreen>
 //     with SingleTickerProviderStateMixin {
+//   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
 //   // State variables
 //   String? selectedVehicle;
 //   Set<String> selectedPackages = {}; // Changed to Set for multiple selections
@@ -48,6 +52,7 @@
 //   final TextEditingController vehicleSearchController = TextEditingController();
 //   final TextEditingController dateSearchController = TextEditingController();
 //   DateTime? selectedDate;
+//   DateTime? _originalRecordDate;
 //   late TabController _tabController;
 
 //   bool showAddRecords = false;
@@ -67,6 +72,7 @@
 //   bool? isDelete;
 //   bool isEditing = false;
 //   String? editingRecordId;
+//   late String role = "";
 
 //   // Define a new variable to track the selected filter option
 //   String? selectedFilterOption;
@@ -123,6 +129,7 @@
 //             isEdit = userData['isEdit'];
 //             isAdd = userData['isAdd'];
 //             isDelete = userData['isDelete'];
+//             role = userData['role'];
 //           });
 //         }
 //       }
@@ -167,8 +174,7 @@
 //                       'vType': service['vType'],
 //                       'dValues': service['dValues'],
 //                       'subServices': service['subServices'] ?? [],
-//                       'pName': service['pName'] ??
-//                           [], // Handle empty or missing pName
+//                       'pName': service['pName'] ?? [],
 //                     })
 //                 .toList();
 
@@ -176,8 +182,6 @@
 //                 (a['sName'] as String).compareTo(b['sName'] as String));
 
 //             services.addAll(sortedServices);
-//             // debugPrint('Fetched ${services.length} services');
-//             // debugPrint("All Services Data: $services");
 //             updateServiceDefaultValues();
 //           });
 //         }
@@ -246,62 +250,6 @@
 //     });
 //   }
 
-//   void updateServiceDefaultValues() {
-//     if (selectedVehicle != null && selectedServices.isNotEmpty) {
-//       for (var serviceId in selectedServices) {
-//         final selectedService = services.firstWhere(
-//           (service) => service['sId'] == serviceId,
-//           orElse: () => <String, dynamic>{},
-//         );
-
-//         final dValues = selectedService['dValues'] as List<dynamic>?;
-//         if (dValues != null) {
-//           // for (var dValue in dValues) {
-
-//           for (var dValue in dValues) {
-//             //now here we comparing the value of the brand with the engine name
-//             if (dValue['brand'].toString().toUpperCase() ==
-//                 selectedVehicleData?['engineName'].toString().toUpperCase()) {
-//               serviceDefaultValues[serviceId] =
-//                   int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-//               break;
-//             }
-//           }
-//         }
-//       }
-//     }
-//   }
-
-//   void updateSelectedVehicleAndService() {
-//     if (selectedVehicle != null) {
-//       selectedVehicleData = vehicles.firstWhere(
-//         (vehicle) => vehicle['id'] == selectedVehicle,
-//         orElse: () => <String, dynamic>{},
-//       );
-//     }
-
-//     selectedServiceData = reorderServicesBasedOnPackages()
-//         .where((service) => selectedServices.contains(service['sId']))
-//         .toList();
-
-//     serviceDefaultValues.clear();
-//     for (var service in selectedServiceData) {
-//       final dValues = service['dValues'] as List<dynamic>?;
-//       if (dValues != null) {
-//         for (var dValue in dValues) {
-//           if (dValue['brand'].toString().toUpperCase() ==
-//               selectedVehicleData?['engineName'].toString().toUpperCase()) {
-//             serviceDefaultValues[service['sId']] =
-//                 int.parse(dValue['value'].toString().split(',')[0]) * 1000;
-//             break;
-//           }
-//         }
-//       }
-//     }
-
-//     setState(() {}); // Refresh the UI with updated data
-//   }
-
 //   List<Map<String, dynamic>> reorderServicesBasedOnPackages() {
 //     if (selectedPackages.isEmpty) {
 //       return services; // No packages selected, return original order
@@ -325,44 +273,123 @@
 //   }
 
 //   List<Map<String, dynamic>> getFilteredRecords() {
-//     final filteredRecords = records.where((record) {
-//       final matchesVehicle = filterVehicle.isEmpty ||
-//           record['vehicleDetails']['vehicleNumber']
-//               .toString()
-//               .toLowerCase()
-//               .contains(filterVehicle.toLowerCase());
+//     return records.where((record) {
+//       // Vehicle filter
+//       final vehicleMatch =
+//           selectedVehicle == null || record['vehicleId'] == selectedVehicle;
 
-//       final matchesService = filterService.isEmpty ||
+//       // Service filter
+//       final serviceMatch = filterService.isEmpty ||
 //           (record['services'] as List).any((service) => service['serviceName']
 //               .toString()
 //               .toLowerCase()
 //               .contains(filterService.toLowerCase()));
 
-//       final matchesDateRange = startDate == null ||
+//       // Date range filter
+//       final recordDate = DateTime.parse(record['date']);
+//       final dateMatch = startDate == null ||
 //           endDate == null ||
-//           (DateTime.parse(record['date']).isAfter(startDate!) &&
-//               DateTime.parse(record['date']).isBefore(endDate!));
+//           (recordDate.isAfter(startDate!) &&
+//               recordDate.isBefore(
+//                   endDate!.add(Duration(days: 1)))); // Include end date
 
-//       final matchesInvoice = filterInvoice == null ||
-//           record['invoice']
-//               .toString()
-//               .toLowerCase()
+//       // Invoice filter
+//       final invoiceMatch = filterInvoice.isEmpty ||
+//           (record['invoice']?.toString().toLowerCase() ?? '')
 //               .contains(filterInvoice.toLowerCase());
-//       ;
 
-//       return matchesVehicle &&
-//           matchesService &&
-//           matchesDateRange &&
-//           matchesInvoice;
-//     }).toList();
+//       return vehicleMatch && serviceMatch && dateMatch && invoiceMatch;
+//     }).toList()
+//       ..sort((a, b) {
+//         final dateA = DateTime.parse(a['date']);
+//         final dateB = DateTime.parse(b['date']);
+//         return dateB.compareTo(dateA); // Newest first
+//       });
+//   }
 
-//     filteredRecords.sort((a, b) {
-//       final dateA = DateTime.parse(a['createdAt']);
-//       final dateB = DateTime.parse(b['createdAt']);
-//       return dateB.compareTo(dateA);
-//     });
+//   void updateServiceDefaultValues() {
+//     if (selectedVehicle != null && selectedServices.isNotEmpty) {
+//       for (var serviceId in selectedServices) {
+//         final selectedService = services.firstWhere(
+//           (service) => service['sId'] == serviceId,
+//           orElse: () => <String, dynamic>{},
+//         );
 
-//     return filteredRecords;
+//         final dValues = selectedService['dValues'] as List<dynamic>?;
+
+//         if (dValues != null) {
+//           for (var dValue in dValues) {
+//             // Compare the brand with the engine name
+//             if (dValue['brand'].toString().toUpperCase() ==
+//                 selectedVehicleData?['engineName'].toString().toUpperCase()) {
+//               String type = dValue['type'].toString().toLowerCase();
+//               int value =
+//                   int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
+//               int notificationValue;
+
+//               if (type == "reading") {
+//                 notificationValue = value * 1000;
+//               } else if (type == "day") {
+//                 notificationValue = value;
+//               } else if (type == "hour") {
+//                 notificationValue = value;
+//               } else {
+//                 notificationValue = value;
+//               }
+
+//               serviceDefaultValues[serviceId] = notificationValue;
+//               break;
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
+
+//   void updateSelectedVehicleAndService() {
+//     if (selectedVehicle != null) {
+//       selectedVehicleData = vehicles.firstWhere(
+//         (vehicle) => vehicle['id'] == selectedVehicle,
+//         orElse: () => <String, dynamic>{},
+//       );
+//     }
+
+//     selectedServiceData = reorderServicesBasedOnPackages()
+//         .where((service) => selectedServices.contains(service['sId']))
+//         .toList();
+
+//     serviceDefaultValues.clear();
+
+//     for (var service in selectedServiceData) {
+//       final dValues = service['dValues'] as List<dynamic>?;
+
+//       if (dValues != null) {
+//         for (var dValue in dValues) {
+//           if (dValue['brand'].toString().toUpperCase() ==
+//               selectedVehicleData?['engineName'].toString().toUpperCase()) {
+//             String type = dValue['type'].toString().toLowerCase();
+//             int value =
+//                 int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
+//             int notificationValue;
+
+//             if (type == "reading") {
+//               notificationValue = value * 1000;
+//             } else if (type == "day") {
+//               notificationValue = value;
+//             } else if (type == "hour") {
+//               notificationValue = value;
+//             } else {
+//               notificationValue = value;
+//             }
+
+//             serviceDefaultValues[service['sId']] = notificationValue;
+//             break;
+//           }
+//         }
+//       }
+//     }
+
+//     setState(() {}); // Refresh the UI
 //   }
 
 //   Future<void> handleSaveRecords() async {
@@ -407,10 +434,19 @@
 //       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
 //       final currentMiles = int.tryParse(milesController.text) ?? 0;
+//       final currentHours = int.tryParse(hoursController.text) ?? 0;
 
 //       List<Map<String, dynamic>> servicesData = [];
 //       List<Map<String, dynamic>> notificationData = [];
-//       List<int> allNextNotificationValues = [];
+//       // Store service details for vehicle update
+//       Map<String, dynamic> serviceDetailsMap = {};
+
+//       // Get selected services data
+//       final selectedServiceData = selectedServices
+//           .map((serviceId) => services.firstWhere((s) => s['sId'] == serviceId,
+//               orElse: () => {}))
+//           .where((s) => s.isNotEmpty)
+//           .toList();
 
 //       for (var serviceId in selectedServices) {
 //         final service = services.firstWhere(
@@ -418,20 +454,67 @@
 //           orElse: () => {},
 //         );
 
-//         if (service == null) {
-//           debugPrint('Service with ID $serviceId not found.');
-//           continue; // Skip this iteration if service is not found
+//         if (service.isEmpty) continue;
+
+//         // Get matching dValue for vehicle's engine or use defaults
+//         final engineName =
+//             selectedVehicleData?['engineName'].toString().toUpperCase();
+//         final dValues = service['dValues'] as List<dynamic>;
+//         final matchingDValue = dValues.firstWhere(
+//           (dv) => dv['brand'].toString().toUpperCase() == engineName,
+//           orElse: () => null,
+//         );
+
+//         // Determine type and defaultValue
+//         String type = "reading";
+//         int defaultValue = 0;
+//         DateTime? nextNotificationDate;
+
+//         if (matchingDValue != null) {
+//           type = (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
+//           defaultValue = serviceDefaultValues[serviceId] ?? 0;
 //         }
 
-//         final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-//         final nextNotificationValue =
-//             defaultValue == 0 ? 0 : currentMiles + defaultValue;
+//         String formattedDate = '';
+//         int numericValue = 0;
+//         int nextNotificationValue = 0;
+
+// // Only calculate next notification if there's a default value
+//         if (defaultValue > 0) {
+//           if (type == 'reading') {
+//             nextNotificationValue = currentMiles + defaultValue;
+//           } else if (type == 'day') {
+//             final baseDate = selectedDate ?? DateTime.now();
+//             final nextDate = baseDate.add(Duration(days: defaultValue));
+//             formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
+//             numericValue = nextDate.millisecondsSinceEpoch;
+//           } else if (type == 'hour') {
+//             nextNotificationValue = currentHours + defaultValue;
+//           }
+//         } else {
+//           // No default value, keep notification at 0
+//           nextNotificationValue = 0;
+//           formattedDate = '';
+//         }
+
+//         // Store details for vehicle update
+//         serviceDetailsMap[serviceId] = {
+//           'type': type,
+//           'defaultValue': defaultValue,
+//           "nextNotificationValue":
+//               type == 'day' ? formattedDate : nextNotificationValue,
+//           'formattedDate': formattedDate,
+//           'serviceName': service['sName'],
+//           'subServices': selectedSubServices[serviceId],
+//         };
 
 //         servicesData.add({
 //           "serviceId": serviceId,
 //           "serviceName": service['sName'],
+//           "type": type,
 //           "defaultNotificationValue": defaultValue,
-//           "nextNotificationValue": nextNotificationValue,
+//           "nextNotificationValue":
+//               type == 'day' ? formattedDate : nextNotificationValue,
 //           "subServices": selectedSubServices[serviceId]
 //                   ?.map((subService) => {
 //                         "name": subService,
@@ -443,11 +526,15 @@
 
 //         notificationData.add({
 //           "serviceName": service['sName'],
-//           "nextNotificationValue": nextNotificationValue,
+//           "type": type,
+//           "nextNotificationValue":
+//               type == 'day' ? formattedDate : nextNotificationValue,
 //           "subServices": selectedSubServices[serviceId] ?? [],
 //         });
 //       }
-
+//       final formattedDate = selectedDate != null
+//           ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+//           : null;
 //       final recordData = {
 //         "active": true,
 //         "userId": currentUId,
@@ -461,21 +548,19 @@
 //         "invoice": invoiceController.text,
 //         "invoiceAmount": invoiceAmountController.text,
 //         "description": descriptionController.text.toString(),
-//         'currentMilesArray': FieldValue.arrayUnion([
-//           {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-//         ]),
-//         "allNextNotificationValues": allNextNotificationValues,
-//         "totalMiles": currentMiles,
-//         "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-//                 selectedServiceData.any((s) => s['vType'] == "Truck")
+//         "miles": isEditing
 //             ? currentMiles
-//             : 0,
-//         "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-//                 selectedServiceData.any((s) => s['vType'] == "Trailer")
+//             : selectedVehicleData?['vehicleType'] == "Truck" &&
+//                     selectedServiceData.any((s) => s['vType'] == "Truck")
+//                 ? int.parse(currentMiles.toString())
+//                 : 0,
+//         "hours": isEditing
 //             ? int.tryParse(hoursController.text) ?? 0
-//             : 0,
-//         "date":
-//             selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+//             : selectedVehicleData?['vehicleType'] == "Trailer" &&
+//                     selectedServiceData.any((s) => s['vType'] == "Trailer")
+//                 ? int.tryParse(hoursController.text) ?? 0
+//                 : 0,
+//         "date": formattedDate,
 //         "workshopName": workshopController.text,
 //         "createdAt": DateTime.now().toIso8601String(),
 //       };
@@ -497,11 +582,22 @@
 //       // Save to Team Members' DataServices
 //       for (final doc in teamMembersSnapshot.docs) {
 //         final teamMemberUid = doc.id;
-//         final teamMemberDataServicesRef = FirebaseFirestore.instance
+
+//         // Check if team member has a vehicle with the same ID
+//         final vehicleSnapshot = await FirebaseFirestore.instance
 //             .collection('Users')
 //             .doc(teamMemberUid)
-//             .collection('DataServices');
-//         batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+//             .collection('Vehicles')
+//             .doc(selectedVehicle)
+//             .get();
+
+//         if (vehicleSnapshot.exists) {
+//           final teamMemberDataServicesRef = FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(teamMemberUid)
+//               .collection('DataServices');
+//           batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+//         }
 //       }
 
 //       // Handle Team Member Creating Record (Save to Owner)
@@ -526,20 +622,118 @@
 //         }
 //       }
 
-//       // Update Vehicle
-//       final vehicleRef = FirebaseFirestore.instance
+//       // Update current user's vehicle (owner or team member)
+//       final currentUserVehicleref = FirebaseFirestore.instance
 //           .collection('Users')
 //           .doc(currentUId)
 //           .collection('Vehicles')
 //           .doc(selectedVehicle);
 
-//       batch.update(vehicleRef, {
+//       final vehicleSnapshot = await currentUserVehicleref.get();
+//       Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
+//       List<dynamic> vehicleServices = List.from(vehicleData['services'] ?? []);
+
+//       for (var serviceId in selectedServices) {
+//         final serviceInfo = serviceDetailsMap[serviceId];
+//         if (serviceInfo == null) continue;
+
+//         final type = serviceInfo['type'];
+//         final defaultValue = serviceInfo['defaultValue'];
+//         final nextNotificationValue = serviceInfo['nextNotificationValue'];
+//         final formattedDate = serviceInfo['formattedDate'];
+//         final serviceName = serviceInfo['serviceName'];
+//         final subServices = serviceInfo['subServices'];
+
+//         int index =
+//             vehicleServices.indexWhere((s) => s['serviceId'] == serviceId);
+
+//         if (index != -1) {
+//           // Update existing service
+//           vehicleServices[index] = {
+//             ...vehicleServices[index],
+//             'nextNotificationValue':
+//                 type == 'day' ? formattedDate : nextNotificationValue,
+//             'type': type,
+//             'defaultNotificationValue': defaultValue,
+//             'subServices': (subServices as List<dynamic>?)
+//                     ?.map((subService) => {
+//                           "name": subService.toString(),
+//                           "id":
+//                               "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+//                         })
+//                     .toList() ??
+//                 [],
+//           };
+//         }
+//       }
+
+//       // Update current user's vehicle (owner or team member)
+//       final currentUserVehicleRef = FirebaseFirestore.instance
+//           .collection('Users')
+//           .doc(currentUId)
+//           .collection('Vehicles')
+//           .doc(selectedVehicle);
+//       batch.update(currentUserVehicleRef, {
+//         'services': vehicleServices,
 //         'currentMiles': currentMiles.toString(),
 //         'currentMilesArray': FieldValue.arrayUnion([
 //           {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
 //         ]),
 //         'nextNotificationMiles': notificationData,
 //       });
+
+//       // If current user is team member, update owner's vehicle too
+//       if (currentUserDoc.data()?['isTeamMember'] == true) {
+//         final ownerSnapshot = await FirebaseFirestore.instance
+//             .collection('Users')
+//             .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
+//             .get();
+
+//         if (ownerSnapshot.docs.isNotEmpty) {
+//           final ownerUid = ownerSnapshot.docs.first.id;
+//           final ownerVehicleRef = FirebaseFirestore.instance
+//               .collection('Users')
+//               .doc(ownerUid)
+//               .collection('Vehicles')
+//               .doc(selectedVehicle);
+
+//           final ownerVehicle = await ownerVehicleRef.get();
+//           if (ownerVehicle.exists) {
+//             batch.update(ownerVehicleRef, {
+//               'services': vehicleServices,
+//               'currentMiles': currentMiles.toString(),
+//               'currentMilesArray': FieldValue.arrayUnion([
+//                 {
+//                   "miles": currentMiles,
+//                   "date": DateTime.now().toIso8601String()
+//                 }
+//               ]),
+//               'nextNotificationMiles': notificationData,
+//             });
+//           }
+//         }
+//       }
+//       // Update team members' vehicles who have this vehicle
+//       for (final doc in teamMembersSnapshot.docs) {
+//         final teamMemberUid = doc.id;
+//         final teamMemberVehicleRef = FirebaseFirestore.instance
+//             .collection('Users')
+//             .doc(teamMemberUid)
+//             .collection('Vehicles')
+//             .doc(selectedVehicle);
+
+//         final teamMemberVehicle = await teamMemberVehicleRef.get();
+//         if (teamMemberVehicle.exists) {
+//           batch.update(teamMemberVehicleRef, {
+//             'services': vehicleServices,
+//             'currentMiles': currentMiles.toString(),
+//             'currentMilesArray': FieldValue.arrayUnion([
+//               {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+//             ]),
+//             'nextNotificationMiles': notificationData,
+//           });
+//         }
+//       }
 
 //       await batch.commit();
 
@@ -566,18 +760,23 @@
 //     setState(() {
 //       isEditing = true;
 //       editingRecordId = record['id'];
+//       _originalRecordDate = DateTime.parse(record['date']);
 //       selectedVehicle = record['vehicleId'];
-//       selectedVehicleData = vehicles.firstWhere(
-//         (v) => v['id'] == selectedVehicle,
-//         orElse: () => {},
-//       );
+//       selectedVehicleData = record['vehicleDetails'];
+
+//       // Initialize serviceDefaultValues from the record
+//       serviceDefaultValues.clear();
+//       for (var service in record['services']) {
+//         String serviceId = service['serviceId'];
+//         serviceDefaultValues[serviceId] =
+//             service['defaultNotificationValue'] ?? 0;
+//       }
 
 //       selectedServices.clear();
 //       selectedSubServices.clear();
 //       for (var service in record['services']) {
 //         String serviceId = service['serviceId'];
 //         selectedServices.add(serviceId);
-//         // Handle sub-services
 //         if (service['subServices'] != null) {
 //           selectedSubServices[serviceId] = (service['subServices'] as List)
 //               .map<String>((sub) => sub['name'].toString())
@@ -585,8 +784,8 @@
 //         }
 //       }
 
-//       milesController.text = record['miles']?.toString() ?? '';
-//       hoursController.text = record['hours']?.toString() ?? '';
+//       milesController.text = record['miles'].toString();
+//       hoursController.text = record['hours'].toString();
 //       workshopController.text = record['workshopName'] ?? '';
 //       invoiceController.text = record['invoice'] ?? '';
 //       invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
@@ -607,12 +806,13 @@
 
 //     return Scaffold(
 //         appBar: AppBar(
-//           title: Text('Records',
-//                   style: appStyleUniverse(28, kDark, FontWeight.normal))
-//               .animate()
-//               .fadeIn(duration: 600.ms)
-//               .slideX(begin: -0.2, end: 0),
-//           elevation: 0,
+//           backgroundColor: kWhite,
+//           elevation: 1,
+//           centerTitle: true,
+//           title: Image.asset(
+//             'assets/h_n_logo-removebg.png',
+//             height: 50.h,
+//           ),
 //           actions: [
 //             StreamBuilder<QuerySnapshot>(
 //               stream: FirebaseFirestore.instance
@@ -707,7 +907,6 @@
 //             ),
 //             SizedBox(width: 20.w),
 //           ],
-//           backgroundColor: Colors.white,
 //         ),
 //         body: isView == true
 //             ? RefreshIndicator(
@@ -718,6 +917,7 @@
 //                     child: Column(
 //                       crossAxisAlignment: CrossAxisAlignment.stretch,
 //                       children: [
+//                         // Search Record Add Miles Button Section
 //                         Row(
 //                           mainAxisAlignment: MainAxisAlignment.spaceAround,
 //                           children: [
@@ -733,6 +933,9 @@
 //                             }),
 //                             buildCustomRowButton(
 //                                 Icons.add, "Records", kSecondary, () {
+//                               //firstly clear the filters if any are applied
+//                               resetFilters();
+
 //                               if (isAdd == true) {
 //                                 setState(() {
 //                                   showAddRecords = !showAddRecords;
@@ -932,38 +1135,31 @@
 //                                   SizedBox(height: 16.h),
 //                                   if (showVehicleSearch || showCombinedSearch)
 //                                     DropdownButtonFormField<String>(
-//                                       decoration: InputDecoration(
-//                                         labelText: 'Search by Vehicle',
-//                                         border: OutlineInputBorder(
-//                                           borderRadius:
-//                                               BorderRadius.circular(8),
-//                                         ),
-//                                         prefixIcon: Icon(Icons.directions_car,
-//                                             color: kPrimary),
-//                                       ),
-//                                       items: vehicles.map((vehicle) {
+//                                       hint: const Text('Select Vehicle'),
+//                                       items: (vehicles
+//                                             ..sort((a, b) => a['vehicleNumber']
+//                                                 .toString()
+//                                                 .toLowerCase()
+//                                                 .compareTo(b['vehicleNumber']
+//                                                     .toString()
+//                                                     .toLowerCase())))
+//                                           .map((vehicle) {
 //                                         return DropdownMenuItem<String>(
-//                                           value: vehicle['vehicleNumber'],
+//                                           value: vehicle['id'],
 //                                           child: Text(
-//                                             "${vehicle['vehicleNumber']} (${vehicle['companyName']}) ",
+//                                             '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
 //                                             style: appStyleUniverse(
-//                                                 14, kDark, FontWeight.normal),
+//                                                 13, kDark, FontWeight.normal),
 //                                           ),
 //                                         );
 //                                       }).toList(),
 //                                       onChanged: (value) {
 //                                         setState(() {
-//                                           filterVehicle = value ?? '';
+//                                           selectedVehicle = value;
+//                                           selectedServices.clear();
+//                                           updateSelectedVehicleAndService();
 //                                         });
 //                                       },
-//                                       value: filterVehicle.isEmpty
-//                                           ? null
-//                                           : filterVehicle,
-//                                       hint: Text(
-//                                         'Select Vehicle',
-//                                         style: appStyleUniverse(
-//                                             14, kDark, FontWeight.normal),
-//                                       ),
 //                                     ),
 //                                   SizedBox(height: 16.h),
 //                                   if (showInvoiceSearch || showCombinedSearch)
@@ -1067,7 +1263,7 @@
 //                                               ),
 //                                               child: Text(
 //                                                 startDate != null
-//                                                     ? DateFormat('dd-MM-yyyy')
+//                                                     ? DateFormat('MM-dd-yyyy')
 //                                                         .format(startDate!)
 //                                                     : 'Select Start Date',
 //                                               ),
@@ -1107,7 +1303,7 @@
 //                                               ),
 //                                               child: Text(
 //                                                 endDate != null
-//                                                     ? DateFormat('dd-MM-yyyy')
+//                                                     ? DateFormat('MM-dd-yyyy')
 //                                                         .format(endDate!)
 //                                                     : 'Select End Date',
 //                                               ),
@@ -1119,7 +1315,7 @@
 //                                   ],
 //                                   SizedBox(height: 16.h),
 //                                   CustomButton(
-//                                       text: "Hide",
+//                                       text: "Clear",
 //                                       onPress: resetFilters,
 //                                       color: kPrimary),
 //                                   SizedBox(height: 16.h),
@@ -1139,27 +1335,108 @@
 //                                 crossAxisAlignment: CrossAxisAlignment.stretch,
 //                                 children: [
 //                                   // Vehicle Dropdown
-//                                   DropdownButtonFormField<String>(
-//                                     value: selectedVehicle,
-//                                     hint: const Text('Select Vehicle'),
-//                                     items: vehicles.map((vehicle) {
-//                                       return DropdownMenuItem<String>(
-//                                         value: vehicle['id'],
-//                                         child: Text(
-//                                           '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-//                                           style: appStyleUniverse(
-//                                               17, kDark, FontWeight.normal),
+
+//                                   Row(
+//                                     children: [
+//                                       Expanded(
+//                                         child: DropdownButtonFormField<String>(
+//                                           value: selectedVehicle,
+//                                           hint: const Text('Select Vehicle'),
+//                                           items: (vehicles
+//                                                 ..sort((a, b) => a[
+//                                                         'vehicleNumber']
+//                                                     .toString()
+//                                                     .toLowerCase()
+//                                                     .compareTo(
+//                                                         b['vehicleNumber']
+//                                                             .toString()
+//                                                             .toLowerCase())))
+//                                               .map((vehicle) {
+//                                             return DropdownMenuItem<String>(
+//                                               value: vehicle['id'],
+//                                               child: Text(
+//                                                 '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+//                                                 style: appStyleUniverse(14,
+//                                                     kDark, FontWeight.normal),
+//                                                 overflow: TextOverflow.ellipsis,
+//                                               ),
+//                                             );
+//                                           }).toList(),
+//                                           onChanged: (value) {
+//                                             setState(() {
+//                                               selectedVehicle = value;
+//                                               selectedServices.clear();
+//                                               selectedPackages.clear();
+//                                               updateSelectedVehicleAndService();
+//                                             });
+//                                           },
 //                                         ),
-//                                       );
-//                                     }).toList(),
-//                                     onChanged: (value) {
-//                                       setState(() {
-//                                         selectedVehicle = value;
-//                                         selectedServices
-//                                             .clear(); // Clear selected services when vehicle changes
-//                                         updateSelectedVehicleAndService();
-//                                       });
-//                                     },
+//                                       ),
+//                                       if (role == "Owner")
+//                                         Padding(
+//                                           padding:
+//                                               const EdgeInsets.only(left: 8.0),
+//                                           child: InkWell(
+//                                             onTap: () {
+//                                               showDialog(
+//                                                 context: context,
+//                                                 builder:
+//                                                     (BuildContext context) {
+//                                                   return AlertDialog(
+//                                                     title: Text(
+//                                                         "Choose an option"),
+//                                                     content: Column(
+//                                                       mainAxisSize:
+//                                                           MainAxisSize.min,
+//                                                       children: [
+//                                                         ListTile(
+//                                                           leading: Icon(Icons
+//                                                               .directions_car),
+//                                                           title: Text(
+//                                                               "Add Vehicle"),
+//                                                           onTap: () {
+//                                                             Navigator.push(
+//                                                               context,
+//                                                               MaterialPageRoute(
+//                                                                 builder:
+//                                                                     (context) =>
+//                                                                         AddVehicleScreen(),
+//                                                               ),
+//                                                             );
+//                                                           },
+//                                                         ),
+//                                                         ListTile(
+//                                                           leading: Icon(Icons
+//                                                               .upload_file),
+//                                                           title: Text(
+//                                                               "Import Vehicle"),
+//                                                           onTap: () {
+//                                                             Navigator.pop(
+//                                                                 context);
+//                                                             Navigator.push(
+//                                                               context,
+//                                                               MaterialPageRoute(
+//                                                                 builder:
+//                                                                     (context) =>
+//                                                                         AddVehicleViaExcelScreen(),
+//                                                               ),
+//                                                             );
+//                                                           },
+//                                                         ),
+//                                                       ],
+//                                                     ),
+//                                                   );
+//                                                 },
+//                                               );
+//                                             },
+//                                             child: CircleAvatar(
+//                                               backgroundColor: kWhite,
+//                                               child: Icon(Icons.add,
+//                                                   color: kPrimary),
+//                                             ),
+//                                           ),
+//                                         )
+//                                     ],
 //                                   ),
 
 //                                   SizedBox(height: 10.h),
@@ -1178,8 +1455,7 @@
 //                                             selectedVehicleData?['vehicleType']
 //                                                 .toString()
 //                                                 .toLowerCase()
-//                                                 .split(
-//                                                     '/'); // Convert "Truck/Trailer" into ["truck", "trailer"]
+//                                                 .split('/');
 
 //                                         List<String> packageTypes = List<
 //                                                 String>.from(package['type'])
@@ -1311,42 +1587,6 @@
 //                                     ),
 //                                   ),
 //                                   SizedBox(height: 8.h),
-//                                   //Serial-wise and top
-//                                   // Wrap(
-//                                   //   spacing: 4.w,
-//                                   //   runSpacing: 4.h,
-//                                   //   children: [
-//                                   //     ...services.where((service) {
-//                                   //       // Show selected services first
-//                                   //       return selectedServices
-//                                   //           .contains(service['sId']);
-//                                   //     }).map((service) =>
-//                                   //         buildServiceChip(service, true)),
-//                                   //     ...services.where((service) {
-//                                   //       // Show non-selected services next
-//                                   //       final searchTerm = serviceSearchController
-//                                   //           .text
-//                                   //           .toLowerCase();
-//                                   //       final matchesSearch = searchTerm.isEmpty ||
-//                                   //           service['sName']
-//                                   //               .toString()
-//                                   //               .toLowerCase()
-//                                   //               .contains(searchTerm);
-//                                   //
-//                                   //       final matchesVehicleType =
-//                                   //           selectedVehicleData == null ||
-//                                   //               service['vType'] ==
-//                                   //                   selectedVehicleData?[
-//                                   //                       'vehicleType'];
-//                                   //
-//                                   //       return matchesSearch &&
-//                                   //           matchesVehicleType &&
-//                                   //           !selectedServices
-//                                   //               .contains(service['sId']);
-//                                   //     }).map((service) =>
-//                                   //         buildServiceChip(service, false)),
-//                                   //   ],
-//                                   // ),
 
 //                                   Wrap(
 //                                     spacing: 4.w,
@@ -1455,21 +1695,18 @@
 //                                         });
 //                                       }
 //                                     },
-//                                     child: SizedBox(
-//                                       height: 50.h,
-//                                       child: InputDecorator(
-//                                         decoration: const InputDecoration(
-//                                           labelText: 'Date',
-//                                           border: OutlineInputBorder(),
-//                                         ),
-//                                         child: Text(
-//                                           selectedDate != null
-//                                               ? selectedDate!
-//                                                   .toLocal()
-//                                                   .toString()
-//                                                   .split(' ')[0]
-//                                               : 'Select Date',
-//                                         ),
+//                                     child: InputDecorator(
+//                                       decoration: const InputDecoration(
+//                                         labelText: 'Date',
+//                                         border: OutlineInputBorder(),
+//                                       ),
+//                                       child: Text(
+//                                         selectedDate != null
+//                                             ? selectedDate!
+//                                                 .toLocal()
+//                                                 .toString()
+//                                                 .split(' ')[0]
+//                                             : 'Select Date',
 //                                       ),
 //                                     ),
 //                                   ),
@@ -1515,7 +1752,7 @@
 //                                             14, kDark, FontWeight.normal),
 //                                         border: OutlineInputBorder(),
 //                                       ),
-//                                       keyboardType: TextInputType.streetAddress,
+//                                       keyboardType: TextInputType.number,
 //                                     ),
 //                                   ),
 //                                   SizedBox(height: 10.h),
@@ -1574,50 +1811,44 @@
 //                                 crossAxisAlignment: CrossAxisAlignment.stretch,
 //                                 children: [
 //                                   // Vehicle Dropdown
+
 //                                   DropdownButtonFormField<String>(
 //                                     value: selectedVehicle,
 //                                     hint: const Text('Select Vehicle'),
-//                                     items: vehicles.map((vehicle) {
+//                                     items: (vehicles
+//                                           ..sort((a, b) => a['vehicleNumber']
+//                                               .toString()
+//                                               .toLowerCase()
+//                                               .compareTo(b['vehicleNumber']
+//                                                   .toString()
+//                                                   .toLowerCase())))
+//                                         .map((vehicle) {
 //                                       return DropdownMenuItem<String>(
 //                                         value: vehicle['id'],
 //                                         child: Text(
 //                                           '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
 //                                           style: appStyleUniverse(
-//                                               14, kDark, FontWeight.normal),
+//                                               13, kDark, FontWeight.normal),
 //                                         ),
 //                                       );
 //                                     }).toList(),
-//                                     onChanged: (value) async {
+//                                     onChanged: (value) {
 //                                       setState(() {
 //                                         selectedVehicle = value;
-//                                         todayMilesController.clear();
-//                                         log("Selected vehicle: $value");
+//                                         selectedServices.clear();
+//                                         updateSelectedVehicleAndService();
+//                                         selectedVehicleType =
+//                                             selectedVehicleData?['vehicleType'];
 //                                       });
-
-//                                       // Fetch the selected vehicle type from Firestore
-//                                       final vehicleDoc = await FirebaseFirestore
-//                                           .instance
-//                                           .collection('Users')
-//                                           .doc(currentUId)
-//                                           .collection('Vehicles')
-//                                           .doc(value)
-//                                           .get();
-
-//                                       if (vehicleDoc.exists) {
-//                                         setState(() {
-//                                           selectedVehicleType =
-//                                               vehicleDoc['vehicleType'];
-//                                           log("Selected vehicle type: $selectedVehicleType");
-//                                         });
-//                                       } else {
-//                                         log("Vehicle data not found.");
-//                                       }
 //                                     },
 //                                   ),
+
 //                                   SizedBox(height: 16.h),
 
 //                                   // Dynamically show input field based on vehicle type
-//                                   if (selectedVehicleType == 'Truck') ...[
+//                                   if (selectedVehicle != null &&
+//                                       selectedVehicleData?['vehicleType'] ==
+//                                           'Truck') ...[
 //                                     TextField(
 //                                       controller: todayMilesController,
 //                                       decoration: InputDecoration(
@@ -1628,10 +1859,11 @@
 //                                       ),
 //                                       keyboardType: TextInputType.number,
 //                                     ),
-//                                   ] else if (selectedVehicleType ==
-//                                       'Trailer') ...[
+//                                   ] else if (selectedVehicle != null &&
+//                                       selectedVehicleData?['vehicleType'] ==
+//                                           'Trailer') ...[
 //                                     TextField(
-//                                       controller: todayMilesController,
+//                                       controller: hoursController,
 //                                       decoration: InputDecoration(
 //                                         labelText: 'Enter Hours',
 //                                         labelStyle: appStyleUniverse(
@@ -1654,6 +1886,16 @@
 //                                               todayMilesController.text);
 //                                           final vehicleId = selectedVehicle;
 
+//                                           // Check if DataServices subcollection exists and is not empty
+//                                           final dataServicesSnapshot =
+//                                               await FirebaseFirestore.instance
+//                                                   .collection("Users")
+//                                                   .doc(currentUId)
+//                                                   .collection("DataServices")
+//                                                   .where("vehicleId",
+//                                                       isEqualTo: vehicleId)
+//                                                   .get();
+
 //                                           // Fetch current reading (Miles/Hours) for the selected vehicle
 //                                           final vehicleDoc =
 //                                               await FirebaseFirestore.instance
@@ -1673,37 +1915,17 @@
 //                                                   '0',
 //                                             );
 
-//                                             // Validate the entered value
-//                                             // if (enteredValue < currentReading) {
-//                                             //   showToastMessage(
-//                                             //       "Error",
-//                                             //       "${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.",
-//                                             //       kRed);
-//                                             //   ScaffoldMessenger.of(context)
-//                                             //       .showSnackBar(
-//                                             //     SnackBar(
-//                                             //       content: Text(
-//                                             //           '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} cannot be less than the current value.'),
-//                                             //       duration:
-//                                             //           Duration(seconds: 2),
-//                                             //     ),
-//                                             //   );
-//                                             //   return; // Exit early to prevent further execution
-//                                             // }
-
-//                                             // Proceed with saving the data
-//                                             await FirebaseFirestore.instance
-//                                                 .collection("Users")
-//                                                 .doc(currentUId)
-//                                                 .collection("Vehicles")
-//                                                 .doc(vehicleId)
-//                                                 .update({
+//                                             final data = {
 //                                               selectedVehicleType == 'Truck'
 //                                                       ? "prevMilesValue"
 //                                                       : "prevHoursReadingValue":
 //                                                   currentReading.toString(),
 //                                               selectedVehicleType == 'Truck'
 //                                                       ? "currentMiles"
+//                                                       : "hoursReading":
+//                                                   enteredValue.toString(),
+//                                               selectedVehicleType == 'Truck'
+//                                                       ? "miles"
 //                                                       : "hoursReading":
 //                                                   enteredValue.toString(),
 //                                               selectedVehicleType == 'Truck'
@@ -1718,7 +1940,84 @@
 //                                                       .toIso8601String(),
 //                                                 }
 //                                               ]),
-//                                             });
+//                                             };
+
+//                                             // Update owner's vehicle first
+//                                             await FirebaseFirestore.instance
+//                                                 .collection("Users")
+//                                                 .doc(currentUId)
+//                                                 .collection("Vehicles")
+//                                                 .doc(vehicleId)
+//                                                 .update(data);
+
+//                                             // Query Team Members (Drivers/Managers)
+//                                             final teamMembersSnapshot =
+//                                                 await FirebaseFirestore.instance
+//                                                     .collection('Users')
+//                                                     .where('createdBy',
+//                                                         isEqualTo: currentUId)
+//                                                     .where('isTeamMember',
+//                                                         isEqualTo: true)
+//                                                     .get();
+
+//                                             // Save to Team Members' miles ONLY if they have this vehicle
+//                                             for (final doc
+//                                                 in teamMembersSnapshot.docs) {
+//                                               final teamMemberUid = doc.id;
+
+//                                               // Check if this team member has this vehicle
+//                                               final teamMemberVehicleDoc =
+//                                                   await FirebaseFirestore
+//                                                       .instance
+//                                                       .collection('Users')
+//                                                       .doc(teamMemberUid)
+//                                                       .collection('Vehicles')
+//                                                       .doc(vehicleId)
+//                                                       .get();
+
+//                                               if (teamMemberVehicleDoc.exists) {
+//                                                 await FirebaseFirestore.instance
+//                                                     .collection('Users')
+//                                                     .doc(teamMemberUid)
+//                                                     .collection("Vehicles")
+//                                                     .doc(vehicleId)
+//                                                     .update(data);
+//                                               }
+//                                             }
+
+//                                             // Handle Team Member Creating Record (Save to Owner)
+//                                             final currentUserDoc =
+//                                                 await FirebaseFirestore.instance
+//                                                     .collection('Users')
+//                                                     .doc(currentUId)
+//                                                     .get();
+
+//                                             if (currentUserDoc
+//                                                     .data()?['isTeamMember'] ==
+//                                                 true) {
+//                                               final ownerSnapshot =
+//                                                   await FirebaseFirestore
+//                                                       .instance
+//                                                       .collection('Users')
+//                                                       .where('uid',
+//                                                           isEqualTo:
+//                                                               currentUserDoc
+//                                                                       .data()?[
+//                                                                   'createdBy'])
+//                                                       .get();
+
+//                                               if (ownerSnapshot
+//                                                   .docs.isNotEmpty) {
+//                                                 final ownerUid =
+//                                                     ownerSnapshot.docs.first.id;
+//                                                 await FirebaseFirestore.instance
+//                                                     .collection('Users')
+//                                                     .doc(ownerUid)
+//                                                     .collection("Vehicles")
+//                                                     .doc(vehicleId)
+//                                                     .update(data);
+//                                               }
+//                                             }
 
 //                                             debugPrint(
 //                                                 '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
@@ -1732,22 +2031,40 @@
 //                                                 .showSnackBar(
 //                                               SnackBar(
 //                                                 content:
-//                                                     Text('saved successfully!'),
+//                                                     Text('Saved successfully!'),
 //                                                 duration: Duration(seconds: 2),
 //                                               ),
 //                                             );
 
-//                                             // Call the cloud function to check for notifications
-//                                             final HttpsCallable callable =
-//                                                 FirebaseFunctions.instance
-//                                                     .httpsCallable(
-//                                                         'checkAndNotifyUserForVehicleService');
-//                                             final result = await callable.call({
-//                                               'userId': currentUId,
-//                                               'vehicleId': vehicleId,
-//                                             });
+//                                             if (dataServicesSnapshot
+//                                                 .docs.isEmpty) {
+//                                               // Call cloud function to notify about missing services
+//                                               final HttpsCallable callable =
+//                                                   FirebaseFunctions.instance
+//                                                       .httpsCallable(
+//                                                           'checkAndNotifyUserForVehicleService');
 
-//                                             log('Cloud function result: ${result.data} vehicle Id $vehicleId');
+//                                               await callable.call({
+//                                                 'userId': currentUId,
+//                                                 'vehicleId': vehicleId,
+//                                               });
+
+//                                               log('Called checkAndNotifyUserForVehicleService for $vehicleId');
+//                                             } else {
+//                                               // Call the cloud function to check for notifications
+//                                               final HttpsCallable callable =
+//                                                   FirebaseFunctions.instance
+//                                                       .httpsCallable(
+//                                                           'checkDataServicesAndNotify');
+
+//                                               final result = await callable
+//                                                   .call({
+//                                                 'userId': currentUId,
+//                                                 'vehicleId': vehicleId
+//                                               });
+
+//                                               log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+//                                             }
 //                                           } else {
 //                                             throw 'Vehicle data not found';
 //                                           }
@@ -1767,7 +2084,7 @@
 //                                     },
 //                                     color: kPrimary,
 //                                     text:
-//                                         'Save ${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'}',
+//                                         'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
 //                                   ),
 //                                 ],
 //                               ),
@@ -1790,11 +2107,12 @@
 //                             ),
 //                           ],
 //                         ),
-//                         SizedBox(height: 10.h),
+//                         // SizedBox(height: 10.h),
 
 //                         //my records section
-//                         SizedBox(
-//                           height: MediaQuery.of(context).size.height * 0.6,
+//                         Container(
+//                           // color: kPrimary,
+//                           height: MediaQuery.of(context).size.height * 0.7,
 //                           child: TabBarView(
 //                             controller: _tabController,
 //                             children: [
@@ -1859,9 +2177,9 @@
 //                                                   record['services']
 //                                                       as List<dynamic>;
 //                                               final date =
-//                                                   DateFormat('dd-MM-yy').format(
+//                                                   DateFormat('MM-dd-yy').format(
 //                                                       DateTime.parse(
-//                                                           record['createdAt']));
+//                                                           record['date']));
 
 //                                               return Container(
 //                                                 child: GestureDetector(
@@ -2237,7 +2555,6 @@
 //             children: [
 //               Text(service['sName']),
 //               if (isSelected) // Show tick only when selected
-
 //                 buildCustomTickBox()
 //             ],
 //           ),
@@ -2292,6 +2609,30 @@
 //                     labelStyle: appStyle(13, kDark, FontWeight.normal),
 //                     selected: isSubSelected,
 //                     onSelected: (bool selected) {
+//                       final serviceName =
+//                           service['sName'].toString().toLowerCase();
+//                       final isSingleSubService =
+//                           serviceName.contains('steer tires') ||
+//                               serviceName.contains('dpf percentage');
+
+//                       if (isSingleSubService) {
+//                         // Get current selected subservices
+//                         final currentSubs =
+//                             selectedSubServices[service['sId']] ?? [];
+
+//                         if (selected && currentSubs.isNotEmpty) {
+//                           // Don't allow selecting another subservice if one is already selected
+//                           ScaffoldMessenger.of(context).showSnackBar(
+//                             SnackBar(
+//                               content: Text(
+//                                 'You can only select one sub-service for ${service['sName']}',
+//                               ),
+//                             ),
+//                           );
+//                           return;
+//                         }
+//                       }
+
 //                       setState(() {
 //                         if (selected) {
 //                           selectedSubServices[service['sId']] ??= [];
@@ -2421,8 +2762,45 @@
 //     });
 //   }
 
+//   // Future<void> _refreshPage() async {
+//   //   await Future.delayed(Duration(seconds: 2));
+//   // }
+
 //   Future<void> _refreshPage() async {
-//     await Future.delayed(Duration(seconds: 2));
+//     try {
+//       resetForm();
+//       resetFilters();
+//       initializeStreams();
+
+//       setState(() {
+//         showAddRecords = false;
+//         showSearchFilter = false;
+//         showAddMiles = false;
+//         showVehicleSearch = false;
+//         showServiceSearch = false;
+//         showDateSearch = false;
+//         showCombinedSearch = false;
+//       });
+
+//       if (mounted) setState(() {});
+
+//       await Future.delayed(Duration(milliseconds: 500));
+
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Page refreshed'),
+//           duration: Duration(seconds: 1),
+//         ),
+//       );
+//     } catch (e) {
+//       debugPrint('Refresh error: $e');
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Refresh failed'),
+//           duration: Duration(seconds: 1),
+//         ),
+//       );
+//     }
 //   }
 
 //   @override
@@ -2444,175 +2822,3 @@
 //     super.dispose();
 //   }
 // }
-
-// // Future<void> handleSaveRecords() async {
-// //   try {
-// //     if (selectedVehicle == null || selectedServices.isEmpty) {
-// //       ScaffoldMessenger.of(context).showSnackBar(
-// //         const SnackBar(
-// //           content: Text('Please select a vehicle and at least one service'),
-// //         ),
-// //       );
-// //       return;
-// //     }
-// //
-// //     final dataServicesRef =
-// //         FirebaseFirestore.instance.collection("DataServicesRecords");
-// //
-// //     final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
-// //
-// //     final currentMiles = int.tryParse(milesController.text) ?? 0;
-// //
-// //     List<Map<String, dynamic>> servicesData = [];
-// //     List<Map<String, dynamic>> notificationData = [];
-// //     List<int> allNextNotificationValues = [];
-// //
-// //     for (var serviceId in selectedServices) {
-// //       final service = services.firstWhere(
-// //         (s) => s['sId'] == serviceId,
-// //         orElse: () => {},
-// //       );
-// //
-// //       if (service == null) {
-// //         debugPrint('Service with ID $serviceId not found.');
-// //         continue; // Skip this iteration if service is not found
-// //       }
-// //
-// //       final defaultValue = serviceDefaultValues[serviceId] ?? 0;
-// //       final nextNotificationValue =
-// //           defaultValue == 0 ? 0 : currentMiles + defaultValue;
-// //
-// //       servicesData.add({
-// //         "serviceId": serviceId,
-// //         "serviceName": service['sName'],
-// //         "defaultNotificationValue": defaultValue,
-// //         "nextNotificationValue": nextNotificationValue,
-// //         "subServices": selectedSubServices[serviceId]
-// //                 ?.map((subService) => {
-// //                       "name": subService,
-// //                       "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
-// //                     })
-// //                 .toList() ??
-// //             [],
-// //       });
-// //
-// //       notificationData.add({
-// //         "serviceName": service['sName'],
-// //         "nextNotificationValue": nextNotificationValue,
-// //         "subServices": selectedSubServices[serviceId] ?? [],
-// //       });
-// //     }
-// //
-// //     final recordData = {
-// //       "active":true,
-// //       "userId": currentUId,
-// //       "vehicleId": selectedVehicle,
-// //       "vehicleDetails": {
-// //         ...selectedVehicleData!,
-// //         "currentMiles": currentMiles.toString(),
-// //         "nextNotificationMiles": notificationData,
-// //       },
-// //       "services": servicesData,
-// //       "invoice": invoiceController.text,
-// //       "invoiceAmount": invoiceAmountController.text,
-// //       "description": descriptionController.text.toString(),
-// //       'currentMilesArray': FieldValue.arrayUnion([
-// //         {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-// //       ]),
-// //       "allNextNotificationValues": allNextNotificationValues,
-// //       "totalMiles": currentMiles,
-// //       "miles": selectedVehicleData?['vehicleType'] == "Truck" &&
-// //               selectedServiceData.any((s) => s['vType'] == "Truck")
-// //           ? currentMiles
-// //           : 0,
-// //       "hours": selectedVehicleData?['vehicleType'] == "Trailer" &&
-// //               selectedServiceData.any((s) => s['vType'] == "Trailer")
-// //           ? int.tryParse(hoursController.text) ?? 0
-// //           : 0,
-// //       "date":
-// //           selectedDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
-// //       "workshopName": workshopController.text,
-// //       "createdAt": DateTime.now().toIso8601String(),
-// //     };
-// //
-// //     final batch = FirebaseFirestore.instance.batch();
-// //     final ownerDataServicesRef = FirebaseFirestore.instance
-// //         .collection('Users')
-// //         .doc(currentUId)
-// //         .collection('DataServices');
-// //     batch.set(ownerDataServicesRef.doc(docId), recordData);
-// //
-// //     // Query Team Members (Drivers/Managers)
-// //     final teamMembersSnapshot = await FirebaseFirestore.instance
-// //         .collection('Users')
-// //         .where('createdBy', isEqualTo: currentUId)
-// //         .where('isTeamMember', isEqualTo: true)
-// //         .get();
-// //
-// //     // Save to Team Members' DataServices
-// //     for (final doc in teamMembersSnapshot.docs) {
-// //       final teamMemberUid = doc.id;
-// //       final teamMemberDataServicesRef = FirebaseFirestore.instance
-// //           .collection('Users')
-// //           .doc(teamMemberUid)
-// //           .collection('DataServices');
-// //       batch.set(teamMemberDataServicesRef.doc(docId), recordData);
-// //     }
-// //
-// //     // Handle Team Member Creating Record (Save to Owner)
-// //     final currentUserDoc = await FirebaseFirestore.instance
-// //         .collection('Users')
-// //         .doc(currentUId)
-// //         .get();
-// //
-// //     if (currentUserDoc.data()?['isTeamMember'] == true) {
-// //       final ownerSnapshot = await FirebaseFirestore.instance
-// //           .collection('Users')
-// //           .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
-// //           .get();
-// //
-// //       if (ownerSnapshot.docs.isNotEmpty) {
-// //         final ownerUid = ownerSnapshot.docs.first.id;
-// //         final ownerDataServicesRef = FirebaseFirestore.instance
-// //             .collection('Users')
-// //             .doc(ownerUid)
-// //             .collection('DataServices');
-// //         batch.set(ownerDataServicesRef.doc(docId), recordData);
-// //       }
-// //     }
-// //
-// //     // Update Vehicle
-// //     final vehicleRef = FirebaseFirestore.instance
-// //         .collection('Users')
-// //         .doc(currentUId)
-// //         .collection('Vehicles')
-// //         .doc(selectedVehicle);
-// //
-// //     batch.update(vehicleRef, {
-// //       'currentMiles': currentMiles.toString(),
-// //       'currentMilesArray': FieldValue.arrayUnion([
-// //         {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-// //       ]),
-// //       'nextNotificationMiles': notificationData,
-// //     });
-// //
-// //     await batch.commit();
-// //
-// //     resetForm();
-// //
-// //     ScaffoldMessenger.of(context).showSnackBar(
-// //       SnackBar(
-// //         content: Text(isEditing
-// //             ? 'Record updated successfully'
-// //             : 'Record saved successfully'),
-// //       ),
-// //     );
-// //   } catch (e, stackTrace) {
-// //     debugPrint('Error Saving records: ${e.toString()}');
-// //     debugPrint(stackTrace.toString());
-// //
-// //     ScaffoldMessenger.of(context).showSnackBar(
-// //       SnackBar(content: Text('Error saving records: ${e.toString()}')),
-// //     );
-// //   }
-// // }
