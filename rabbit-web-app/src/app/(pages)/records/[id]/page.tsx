@@ -164,35 +164,12 @@ export default function RecordsDetailsPage({
           <div className="pb-3 border-b">
             <p className="flex justify-between">
               <span className="font-medium text-xl">Miles/Hours:</span>
-              <span className="text-xl">{record.miles}</span>
+              <span className="text-xl">
+                {record.miles == 0 ? record.hours : record.miles}
+              </span>
             </p>
           </div>
         </div>
-
-        {/* <h3 className="text-2xl font-semibold text-gray-800 mt-8 m-8 border-b pb-2">
-          Services
-        </h3>
-        <div className="mt-3 border rounded-lg p-3 bg-gray-50 m-8">
-          {record.services
-            .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
-            .map((service) => (
-              <div
-                key={service.serviceId}
-                className="p-3 border-b last:border-none flex justify-between"
-              >
-                <span className="font-medium text-lg">
-                  {service.serviceName}
-                </span>
-                {service.nextNotificationValue !== 0 ? (
-                  <span className="text-gray-600">
-                    {service.nextNotificationValue}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">—</span>
-                )}
-              </div>
-            ))}
-        </div> */}
 
         <h3 className="text-2xl font-semibold text-gray-800 mt-8 m-8 border-b pb-2">
           Services

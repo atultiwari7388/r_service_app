@@ -242,38 +242,85 @@ export default function RecordsPage() {
     }
   };
 
-  const updateServiceDefaultValues = () => {
-    const newDefaults: { [key: string]: number } = {};
+ 
+  const updateServiceDefaultValues = async () => {
+    if (!selectedVehicle || !user?.uid) return;
 
-    selectedServices.forEach((serviceId) => {
-      const service = services.find((s) => s.sId === serviceId);
-      const vehicleEngine = selectedVehicleData?.engineNumber?.toUpperCase();
+    try {
+      const vehicleRef = doc(
+        db,
+        "Users",
+        user.uid,
+        "Vehicles",
+        selectedVehicle
+      );
+      const vehicleDoc = await getDoc(vehicleRef);
 
-      if (service?.dValues && vehicleEngine) {
-        const dValue = service.dValues.find(
-          (dv) => dv.brand?.toUpperCase() === vehicleEngine
+      if (!vehicleDoc.exists()) return;
+
+      const vehicleServices = vehicleDoc.data()?.services || [];
+      const newDefaults: { [key: string]: number } = {};
+
+      for (const serviceId of selectedServices) {
+        // First check if vehicle has a default for this service
+        const vehicleService = vehicleServices.find(
+          (s: any) => s.serviceId === serviceId
         );
 
-        if (dValue) {
-          const [baseValue] = dValue.value.toString().split(",").map(Number);
-          let value = baseValue * 1000; // Default for 'reading'
+        if (vehicleService?.defaultNotificationValue !== undefined) {
+          // Use vehicle-specific default value directly (don't multiply by 1000)
+          newDefaults[serviceId] = Number(
+            vehicleService.defaultNotificationValue
+          );
+          continue;
+        }
 
-          if (dValue.type?.toLowerCase() === "day") value = baseValue;
-          if (dValue.type?.toLowerCase() === "hour") value = baseValue;
+        // Fall back to metadata defaults if no vehicle-specific default
+        const service = services.find((s) => s.sId === serviceId);
+        const engineName = selectedVehicleData?.engineNumber?.toUpperCase();
+        const dValues = service?.dValues || [];
+
+        const matchingDValue = dValues.find(
+          (dv) => dv.brand?.toString().toUpperCase() === engineName
+        );
+
+        if (matchingDValue) {
+          const [baseValue] = matchingDValue.value
+            .toString()
+            .split(",")
+            .map(Number);
+          let value = baseValue;
+
+          if (matchingDValue.type?.toLowerCase() === "reading") {
+            value = baseValue * 1000;
+          }
 
           newDefaults[serviceId] = value;
         }
       }
-    });
 
-    setServiceDefaultValues(newDefaults);
+      setServiceDefaultValues(newDefaults);
+    } catch (error) {
+      console.error("Error updating service defaults:", error);
+    }
   };
 
+ 
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
     const isServiceSelected = newSelectedServices.has(serviceId);
 
-    if (!isServiceSelected) {
+    if (isServiceSelected) {
+      // Deselect the service
+      newSelectedServices.delete(serviceId);
+
+      // Remove any subservices for this service
+      setSelectedSubServices((prev) => {
+        const newSubServices = { ...prev };
+        delete newSubServices[serviceId];
+        return newSubServices;
+      });
+    } else {
       // Select the service
       newSelectedServices.add(serviceId);
 
@@ -293,10 +340,15 @@ export default function RecordsPage() {
       }
     }
 
-    // Toggle expansion only for the clicked service
-    setExpandedService(expandedService === serviceId ? null : serviceId);
     setSelectedServices(newSelectedServices);
     updateServiceDefaultValues();
+
+    // Toggle expansion only if selecting (not deselecting)
+    if (!isServiceSelected) {
+      setExpandedService(serviceId);
+    } else {
+      setExpandedService(null);
+    }
   };
 
   const handleAddMiles = async () => {
@@ -714,8 +766,8 @@ export default function RecordsPage() {
 
   const handleSaveRecords = async () => {
     try {
-      if (!user || !selectedVehicle) {
-        toast.error("Please select vehicle and services");
+      if (!user || !selectedVehicle || selectedServices.size === 0) {
+        toast.error("Please select vehicle and at least one service");
         return;
       }
 
@@ -728,62 +780,75 @@ export default function RecordsPage() {
       const currentMiles = Number(miles);
       const currentHours = Number(hours) || 0;
 
+      // Get current vehicle services to preserve existing ones
+      const vehicleRef = doc(
+        db,
+        "Users",
+        user.uid,
+        "Vehicles",
+        selectedVehicle
+      );
+      const vehicleDoc = await getDoc(vehicleRef);
+      const currentVehicleServices = vehicleDoc.exists()
+        ? vehicleDoc.data()?.services || []
+        : [];
+
       // Prepare services data
       const servicesData = [];
       const notificationData = [];
-      const vehicleServicesUpdate = [];
+      const updatedVehicleServices = [...currentVehicleServices];
 
       for (const serviceId of selectedServices) {
         const service = services.find((s) => s.sId === serviceId);
         if (!service) continue;
 
-        // Find matching dValue for vehicle's engine
-        const engineName = vehicleData.engineName?.toString().toUpperCase();
-        const dValues = service.dValues || [];
-        const matchingDValue = dValues.find(
-          (dv) => dv.brand?.toString().toUpperCase() === engineName
+        // Check if vehicle already has this service
+        const existingServiceIndex = updatedVehicleServices.findIndex(
+          (s: any) => s.serviceId === serviceId
         );
 
-        // Determine type and defaultValue
-        const type = (matchingDValue?.type || "reading").toLowerCase();
-        let defaultValue =
-          serviceDefaultValues[serviceId] || matchingDValue?.value || 0;
+        // Get default value - priority to vehicle-specific if exists
+        let defaultValue = serviceDefaultValues[serviceId] || 0;
+        let type = "reading";
 
-        // Convert string values to number (handle comma-separated values)
-        if (typeof defaultValue === "string") {
-          const values = defaultValue.split(",").map(Number);
-          defaultValue = values[0] || 0;
+        if (existingServiceIndex >= 0) {
+          // Keep existing service type if available
+          type = updatedVehicleServices[existingServiceIndex].type || "reading";
+          // Use existing default if available, otherwise use calculated
+          defaultValue =
+            updatedVehicleServices[existingServiceIndex]
+              .defaultNotificationValue ||
+            serviceDefaultValues[serviceId] ||
+            0;
+        } else {
+          // Determine type from metadata if new service
+          const engineName = vehicleData.engineNumber?.toString().toUpperCase();
+          const dValues = service.dValues || [];
+          const matchingDValue = dValues.find(
+            (dv) => dv.brand?.toString().toUpperCase() === engineName
+          );
+          type = (matchingDValue?.type || "reading").toLowerCase();
         }
 
-        // Multiply by 1000 for mileage readings
-        if (type === "reading") {
-          defaultValue = Number(defaultValue) * 1000;
-        }
-
+        // Calculate next notification
         let nextNotificationValue = 0;
         let formattedDate = "";
         let numericValue = 0;
-        let displayValue = "";
 
         if (defaultValue > 0) {
           if (type === "reading") {
             nextNotificationValue = currentMiles + defaultValue;
             numericValue = nextNotificationValue;
-            displayValue = numericValue.toString();
           } else if (type === "day") {
             const baseDate = date ? new Date(date) : new Date();
             const nextDate = new Date(baseDate);
             nextDate.setDate(baseDate.getDate() + Number(defaultValue));
-
             formattedDate = formatDateToDDMMYYYY(nextDate);
             numericValue = nextDate.getTime();
-
             nextNotificationValue = numericValue;
-            displayValue = formattedDate;
           } else if (type === "hour") {
             nextNotificationValue = currentHours + defaultValue;
             numericValue = nextNotificationValue;
-            displayValue = numericValue.toString();
           }
         }
 
@@ -793,7 +858,8 @@ export default function RecordsPage() {
           serviceName: service.sName || "",
           type,
           defaultNotificationValue: defaultValue,
-          nextNotificationValue: displayValue,
+          nextNotificationValue:
+            type === "day" ? formattedDate : nextNotificationValue.toString(),
           subServices: (selectedSubServices[serviceId] || []).map(
             (subService, index) => ({
               name: subService,
@@ -807,34 +873,28 @@ export default function RecordsPage() {
         notificationData.push({
           serviceName: service.sName || "",
           type,
-          nextNotificationValue: displayValue,
+          nextNotificationValue:
+            type === "day" ? formattedDate : nextNotificationValue.toString(),
           subServices: selectedSubServices[serviceId] || [],
         });
 
-        // Prepare vehicle services update
-        vehicleServicesUpdate.push({
-          serviceId,
-          serviceName: service.sName || "",
-          type,
-          defaultNotificationValue: defaultValue,
-          nextNotificationValue: displayValue,
-          subServices: (selectedSubServices[serviceId] || []).map(
-            (subService, index) => ({
-              name: subService,
-              id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`,
-            })
-          ),
-        });
+        // Update vehicle services array - update existing or add new
+        if (existingServiceIndex >= 0) {
+          updatedVehicleServices[existingServiceIndex] = {
+            ...updatedVehicleServices[existingServiceIndex],
+            nextNotificationValue:
+              type === "day" ? formattedDate : nextNotificationValue.toString(),
+          };
+        } else {
+          updatedVehicleServices.push({
+            ...serviceData,
+            nextNotificationValue:
+              type === "day" ? formattedDate : nextNotificationValue.toString(),
+          });
+        }
       }
 
-      function formatDateToDDMMYYYY(date: Date | string): string {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${day}/${month}/${year}`;
-      }
-
+      // Format date for storage
       const baseDate = date ? new Date(date) : new Date();
       const formattedDate = baseDate.toISOString().split("T")[0];
 
@@ -867,6 +927,7 @@ export default function RecordsPage() {
 
       const batch = writeBatch(db);
 
+      // Handle record creation/update
       if (isEditing && editingRecordId) {
         // Update existing record
         const recordRef = doc(
@@ -878,7 +939,7 @@ export default function RecordsPage() {
         );
         batch.update(recordRef, recordData);
 
-        // Update global record if needed
+        // Update global record if exists
         const globalRecordQuery = query(
           collection(db, "DataServicesRecords"),
           where("userId", "==", user.uid),
@@ -904,15 +965,8 @@ export default function RecordsPage() {
       }
 
       // Update vehicle document
-      const vehicleRef = doc(
-        db,
-        "Users",
-        user.uid,
-        "Vehicles",
-        selectedVehicle
-      );
       batch.update(vehicleRef, {
-        services: vehicleServicesUpdate,
+        services: updatedVehicleServices,
         currentMiles: currentMiles.toString(),
         currentMilesArray: arrayUnion({
           miles: currentMiles,
@@ -942,7 +996,7 @@ export default function RecordsPage() {
         if (memberVehicleSnap.exists()) {
           // Update team member's vehicle
           batch.update(memberVehicleRef, {
-            services: vehicleServicesUpdate,
+            services: updatedVehicleServices,
             currentMiles: currentMiles.toString(),
             currentMilesArray: arrayUnion({
               miles: currentMiles,
@@ -975,7 +1029,7 @@ export default function RecordsPage() {
 
           if (ownerVehicleSnap.exists()) {
             batch.update(ownerVehicleRef, {
-              services: vehicleServicesUpdate,
+              services: updatedVehicleServices,
               currentMiles: currentMiles.toString(),
               currentMilesArray: arrayUnion({
                 miles: currentMiles,
@@ -1002,9 +1056,25 @@ export default function RecordsPage() {
       resetForm();
     } catch (error) {
       console.error("Error saving record:", error);
-      toast.error("Failed to save record");
+      toast.error(
+        `Failed to save record: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
+
+  // Helper function for date formatting
+  const formatDateToDDMMYYYY = (date: Date | string): string => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${day}/${month}/${year}`;
+  };
+
+
+  // Update the handleSubserviceToggle function for better single-selection handling
 
   const handleEditRecord = (record: ServiceRecord) => {
     setIsEditing(true);
@@ -1023,18 +1093,18 @@ export default function RecordsPage() {
     });
     setServiceDefaultValues(newServiceDefaultValues);
 
-    // Set selected services and subservices
+    // Set selected services from the record (convert to Set)
     const servicesSet = new Set(record.services.map((s) => s.serviceId));
     setSelectedServices(servicesSet);
 
-    // Set subservices
+    // Set subservices from the record
     const subServices: { [key: string]: string[] } = {};
     record.services.forEach((service) => {
       subServices[service.serviceId] =
         service.subServices?.map((ss) => ss.name) || [];
     });
-    let recordDate = record.date;
 
+    let recordDate = record.date;
     setSelectedSubServices(subServices);
     setMiles(record.miles.toString());
     setHours(record.hours.toString());
@@ -1050,32 +1120,6 @@ export default function RecordsPage() {
     setShowAddRecords(true);
   };
 
-  // const handleSubserviceToggle = (serviceId: string, subName: string) => {
-  //   setSelectedSubServices((prev) => {
-  //     const currentSubs = prev[serviceId] || [];
-
-  //     // Check if this is a service that should only have one subservice selected
-  //     const service = services.find((s) => s.sId === serviceId);
-  //     const isSingleSubService =
-  //       service?.sName === "Steer Tires" || service?.sName === "DPF Clean";
-
-  //     if (isSingleSubService) {
-  //       // If already selected, deselect it, otherwise select only this one
-  //       return {
-  //         ...prev,
-  //         [serviceId]: currentSubs.includes(subName) ? [] : [subName],
-  //       };
-  //     } else {
-  //       // For normal services, allow multiple selections
-  //       const newSubs = currentSubs.includes(subName)
-  //         ? currentSubs.filter((name) => name !== subName)
-  //         : [...currentSubs, subName];
-  //       return { ...prev, [serviceId]: newSubs };
-  //     }
-  //   });
-  // };
-
-  // Update the handleSubserviceToggle function for better single-selection handling
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
     setSelectedSubServices((prev) => {
       const currentSubs = prev[serviceId] || [];
@@ -1498,39 +1542,44 @@ export default function RecordsPage() {
 
               {/** Select packages */}
 
-              <div className="mb-4">
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel id="select-packages-label">
-                    Select Packages
-                  </InputLabel>
-                  <Select
-                    labelId="select-packages-label"
-                    multiple
-                    value={Array.from(selectedPackages)}
-                    onChange={(e) =>
-                      handlePackageSelect(e.target.value as string[])
-                    }
-                    renderValue={(selected) => selected.join(", ")}
-                    label="Select Packages"
-                    sx={{ minHeight: "56px" }}
-                  >
-                    {servicePackages
-                      .filter((pkg) =>
-                        pkg.type.some(
-                          (t) =>
-                            t.toLowerCase() ===
-                            selectedVehicleData?.vehicleType?.toLowerCase()
+              {selectedVehicleData?.vehicleType == "Truck" && (
+                <div className="mb-4">
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="select-packages-label">
+                      Select Packages
+                    </InputLabel>
+                    <Select
+                      labelId="select-packages-label"
+                      multiple
+                      value={Array.from(selectedPackages)}
+                      onChange={(e) =>
+                        handlePackageSelect(e.target.value as string[])
+                      }
+                      renderValue={(selected) => selected.join(", ")}
+                      label="Select Packages"
+                      sx={{ minHeight: "56px" }}
+                    >
+                      {servicePackages
+                        .filter((pkg) =>
+                          pkg.type.some(
+                            (t) =>
+                              t.toLowerCase() ===
+                              selectedVehicleData?.vehicleType?.toLowerCase()
+                          )
                         )
-                      )
-                      .map((pkg) => (
-                        <MenuItem key={pkg.name} value={pkg.name}>
-                          <Checkbox checked={selectedPackages.has(pkg.name)} />
-                          {pkg.name}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
-              </div>
+                        .map((pkg) => (
+                          <MenuItem key={pkg.name} value={pkg.name}>
+                            <Checkbox
+                              checked={selectedPackages.has(pkg.name)}
+                            />
+                            {pkg.name}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </div>
+              )}
+
               <div className="mb-4">
                 <TextField
                   fullWidth
@@ -1675,7 +1724,7 @@ export default function RecordsPage() {
                       onChange={(e) => setHours(e.target.value)}
                       className="mb-4 rounded-lg"
                     />
-                    <TextField
+                    {/* <TextField
                       fullWidth
                       label="Date"
                       type="date"
@@ -1683,7 +1732,7 @@ export default function RecordsPage() {
                       onChange={(e) => setDate(e.target.value)}
                       InputLabelProps={{ shrink: true }}
                       className="mb-4 rounded-lg"
-                    />
+                    /> */}
                   </>
                 )}
 
