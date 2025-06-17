@@ -242,7 +242,6 @@ export default function RecordsPage() {
     }
   };
 
- 
   const updateServiceDefaultValues = async () => {
     if (!selectedVehicle || !user?.uid) return;
 
@@ -264,7 +263,7 @@ export default function RecordsPage() {
       for (const serviceId of selectedServices) {
         // First check if vehicle has a default for this service
         const vehicleService = vehicleServices.find(
-          (s: any) => s.serviceId === serviceId
+          (s: { serviceId: string }) => s.serviceId === serviceId
         );
 
         if (vehicleService?.defaultNotificationValue !== undefined) {
@@ -305,7 +304,6 @@ export default function RecordsPage() {
     }
   };
 
- 
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
     const isServiceSelected = newSelectedServices.has(serviceId);
@@ -804,7 +802,7 @@ export default function RecordsPage() {
 
         // Check if vehicle already has this service
         const existingServiceIndex = updatedVehicleServices.findIndex(
-          (s: any) => s.serviceId === serviceId
+          (s: { serviceId: string }) => s.serviceId === serviceId
         );
 
         // Get default value - priority to vehicle-specific if exists
@@ -1072,7 +1070,6 @@ export default function RecordsPage() {
     const day = String(d.getDate()).padStart(2, "0");
     return `${day}/${month}/${year}`;
   };
-
 
   // Update the handleSubserviceToggle function for better single-selection handling
 
