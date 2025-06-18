@@ -26,7 +26,7 @@ interface ServiceRecord {
     serviceId: string;
     serviceName: string;
     defaultNotificationValue: number;
-    nextNotificationValue: number;
+    nextNotificationValue: string;
     subServices: Array<{ name: string; id: string }>;
   }>;
   date: string;
@@ -165,7 +165,9 @@ export default function RecordsDetailsPage({
             <p className="flex justify-between">
               <span className="font-medium text-xl">Miles/Hours:</span>
               <span className="text-xl">
-                {record.miles == 0 ? record.hours : record.miles}
+                {record.vehicleDetails.vehicleType == "Truck"
+                  ? record.miles
+                  : record.hours}
               </span>
             </p>
           </div>
@@ -186,12 +188,12 @@ export default function RecordsDetailsPage({
                   <span className="font-medium text-lg">
                     {service.serviceName}
                   </span>
-                  {service.nextNotificationValue !== 0 ? (
-                    <span className="text-gray-600">
+                  {service.nextNotificationValue === "0" ? (
+                    <span className="text-gray-600">-</span>
+                  ) : (
+                    <span className="text-gray-400">
                       {service.nextNotificationValue}
                     </span>
-                  ) : (
-                    <span className="text-gray-400">—</span>
                   )}
                 </div>
 

@@ -50,6 +50,7 @@ interface ServicesDB {
 
 interface VehicleData {
   active: boolean;
+  firstTimeVehicle: boolean;
   tripAssign: boolean;
   vehicleType: string;
   companyName: string;
@@ -197,13 +198,13 @@ export default function AddVehiclePage() {
       return false;
     }
 
-    if (
-      selectedVehicleType === "Trailer" &&
-      (!oilChangeDate || !hoursReading)
-    ) {
-      toast.error("Please enter oil change date and hours reading for Trailer");
-      return false;
-    }
+    // if (
+    //   selectedVehicleType === "Trailer" &&
+    //   (!oilChangeDate || !hoursReading)
+    // ) {
+    //   toast.error("Please enter oil change date and hours reading for Trailer");
+    //   return false;
+    // }
 
     return true;
   };
@@ -214,9 +215,9 @@ export default function AddVehiclePage() {
 
     for (const service of servicesData) {
       if (service.vType === selectedVehicleType) {
-        // const serName = service.sName;
-        // const serId = service.sId || "";
-        const serviceId = service.sId || ""; // Renamed from serId
+        const serName = service.sName;
+        const serId = service.sId || "";
+        // const serviceId = service.sId || ""; // Renamed from serId
         const serviceName = service.sName; // Renamed from serName
         const subServices = service.subServices || [];
         const defaultValues = service.dValues || [];
@@ -240,8 +241,8 @@ export default function AddVehiclePage() {
             nextNotificationMiles.push({
               sId: "",
               sName: "",
-              serviceId: serviceId,
-              serviceName: serviceName,
+              serviceId: serId,
+              serviceName: serName,
               defaultNotificationValue: notificationValue,
               nextNotificationValue:
                 type == "reading"
@@ -307,6 +308,7 @@ export default function AddVehiclePage() {
 
       const vehicleData: VehicleData = {
         active: true,
+        firstTimeVehicle: true,
         tripAssign: false,
         vehicleType: selectedVehicleType,
         companyName: selectedCompany.toUpperCase(),
@@ -337,8 +339,8 @@ export default function AddVehiclePage() {
           nextNotificationMiles?.map((service) => ({
             defaultNotificationValue: service.defaultNotificationValue || 0,
             nextNotificationValue: service.nextNotificationValue || 0,
-            serviceId: service.sId || "",
-            serviceName: service.sName || "",
+            serviceId: service.serviceId,
+            serviceName: service.serviceName,
             subServices: service.subServices || [],
             // vType: service.vType || "",
             type: service.type || "",
@@ -363,8 +365,12 @@ export default function AddVehiclePage() {
         vehicleData.currentMiles = "";
         vehicleData.prevMilesValue = "";
         vehicleData.firstTimeMiles = "";
-        vehicleData.oilChangeDate = oilChangeDate || null;
-        vehicleData.hoursReading = hoursReading || "";
+        vehicleData.oilChangeDate =
+          selectedEngineName == "DRY VAN"
+            ? "2025-06-20"
+            : oilChangeDate || null;
+        vehicleData.hoursReading =
+          selectedEngineName == "DRY VAN" ? "1000" : hoursReading || "";
         vehicleData.prevHoursReadingValue = hoursReading || "";
       }
 
@@ -528,40 +534,46 @@ export default function AddVehiclePage() {
 
           {selectedVehicleType === "Trailer" && (
             <>
-              <div>
-                <label
-                  htmlFor="oilChangeDate"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Oil Change Date *
-                </label>
-                <input
-                  type="date"
-                  id="oilChangeDate"
-                  value={oilChangeDate}
-                  onChange={(e) => setOilChangeDate(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                />
-              </div>
+              {selectedCompany === "DRY VAN" ? (
+                ""
+              ) : (
+                <>
+                  <div>
+                    <label
+                      htmlFor="oilChangeDate"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Oil Change Date *
+                    </label>
+                    <input
+                      type="date"
+                      id="oilChangeDate"
+                      value={oilChangeDate}
+                      onChange={(e) => setOilChangeDate(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                    />
+                  </div>
 
-              <div>
-                <label
-                  htmlFor="hoursReading"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Hours Reading *
-                </label>
-                <input
-                  type="number"
-                  id="hoursReading"
-                  value={hoursReading}
-                  onChange={(e) =>
-                    setHoursReading(e.target.value.toUpperCase())
-                  }
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                  placeholder="Enter hours reading"
-                />
-              </div>
+                  <div>
+                    <label
+                      htmlFor="hoursReading"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Hours Reading *
+                    </label>
+                    <input
+                      type="number"
+                      id="hoursReading"
+                      value={hoursReading}
+                      onChange={(e) =>
+                        setHoursReading(e.target.value.toUpperCase())
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                      placeholder="Enter hours reading"
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
 

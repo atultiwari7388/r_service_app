@@ -558,6 +558,7 @@ export default function CreateTeamMemberPage() {
                   )}
 
                 {/* Vehicle Assignment */}
+                {/* Vehicle Assignment */}
                 {(formData.role === "Driver" ||
                   formData.role === "Manager" ||
                   formData.role === "Accountant" ||
@@ -576,13 +577,11 @@ export default function CreateTeamMemberPage() {
                           if (
                             formData.assignedVehicles.length === vehicles.length
                           ) {
-                            // If all are selected, deselect all
                             setFormData((prev) => ({
                               ...prev,
                               assignedVehicles: [],
                             }));
                           } else {
-                            // Select all vehicles
                             setFormData((prev) => ({
                               ...prev,
                               assignedVehicles: vehicles.map(
@@ -599,23 +598,30 @@ export default function CreateTeamMemberPage() {
                       </button>
                     </div>
                     <div className="space-y-2 border rounded p-2 max-h-60 overflow-y-auto">
-                      {vehicles.map((vehicle) => (
-                        <label
-                          key={vehicle.id}
-                          className="flex items-center space-x-2"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.assignedVehicles.includes(
-                              vehicle.id
-                            )}
-                            onChange={() => handleVehicleSelection(vehicle.id)}
-                          />
-                          <span>
-                            {vehicle.companyName} - {vehicle.vehicleNumber}
-                          </span>
-                        </label>
-                      ))}
+                      {/* Sort vehicles alphabetically by vehicleNumber before mapping */}
+                      {[...vehicles]
+                        .sort((a, b) =>
+                          a.vehicleNumber.localeCompare(b.vehicleNumber)
+                        )
+                        .map((vehicle) => (
+                          <label
+                            key={vehicle.id}
+                            className="flex items-center space-x-2"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.assignedVehicles.includes(
+                                vehicle.id
+                              )}
+                              onChange={() =>
+                                handleVehicleSelection(vehicle.id)
+                              }
+                            />
+                            <span>
+                              {vehicle.vehicleNumber} - {vehicle.companyName}
+                            </span>
+                          </label>
+                        ))}
                     </div>
                   </div>
                 )}

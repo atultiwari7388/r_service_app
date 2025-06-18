@@ -30,6 +30,7 @@ interface VehicleData {
   vehicleNumber: string;
   year: string;
   currentMiles: string;
+  hoursReading: string;
   licensePlate: string;
   vin: string;
   engineName: string;
@@ -268,16 +269,27 @@ export default function MyVehicleDetailsScreen() {
               {vehicleData?.vehicleType || "N/A"}
             </span>
           </p>
-          <p className="text-gray-600">
-            Year:{" "}
-            <span className="font-semibold">{vehicleData?.year || "N/A"}</span>
-          </p>
-          <p className="text-gray-600">
-            Current Miles:{" "}
-            <span className="font-semibold">
-              {vehicleData?.currentMiles || "N/A"}
-            </span>
-          </p>
+          {vehicleData?.companyName == "DRY VAN" ? (
+            ""
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-gray-600">
+                Year:{" "}
+                <span className="font-semibold">
+                  {vehicleData?.year || "N/A"}
+                </span>
+              </p>
+              <p className="text-gray-600">
+                Miles/Hours :{" "}
+                <span className="font-semibold">
+                  {/* {vehicleData?.currentMiles || "N/A"} */}
+                  {vehicleData?.vehicleType == "Truck"
+                    ? vehicleData?.currentMiles
+                    : vehicleData?.hoursReading}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
