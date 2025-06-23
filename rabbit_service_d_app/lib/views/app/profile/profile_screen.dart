@@ -135,12 +135,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/myvehicles.png", "My Vehicles", () {
                       Get.to(() => MyVehiclesScreen());
                     }),
-                    isCheque
-                        ? buildListTile("assets/cheque.png", "Manage Check",
-                            () {
-                            Get.to(() => ManageCheckScreen());
-                          })
-                        : Container(),
+                    buildListTile("assets/cheque.png", "Manage Check", () {
+                      if (isCheque == true) {
+                        Get.to(() => ManageCheckScreen());
+                      } else {
+                        showToastMessage(
+                            "Info",
+                            "You are not allowed to access this feature",
+                            Colors.red);
+                      }
+                    }),
                     if (role == "Owner" ||
                         role == "Manager" ||
                         role == "Accountant") ...[
@@ -269,94 +273,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                       },
                     ),
-                    // role == "Owner"
-                    //     ? buildListTile(
-                    //         "assets/delete.png",
-                    //         "Delete Account",
-                    //         () {
-                    //           showDialog(
-                    //             context: context,
-                    //             builder: (_) {
-                    //               return AlertDialog(
-                    //                 shape: RoundedRectangleBorder(
-                    //                     borderRadius:
-                    //                         BorderRadius.circular(12)),
-                    //                 title: const Text(
-                    //                   'Delete Your Account',
-                    //                   style: TextStyle(
-                    //                       fontWeight: FontWeight.bold),
-                    //                 ),
-                    //                 content: const Text(
-                    //                   'Are you sure you want to delete your account?\n\n'
-                    //                   '⚠️ This action is permanent and cannot be recover.\n\n'
-                    //                   '• All your personal data will be permanently deleted from our database.\n'
-                    //                   '• Your linked team members and their data associated with your account will also be removed.\n'
-                    //                   '• You will lose access to any saved progress, records, jobs, history, or preferences.\n\n',
-                    //                   style: TextStyle(height: 1.4),
-                    //                 ),
-                    //                 actions: [
-                    //                   TextButton(
-                    //                     onPressed: () => Navigator.pop(context),
-                    //                     child: const Text("CANCEL",
-                    //                         style:
-                    //                             TextStyle(color: Colors.grey)),
-                    //                   ),
-                    //                   TextButton(
-                    //                     onPressed: () async {
-                    //                       try {
-                    //                         // Show loading
-                    //                         showDialog(
-                    //                           context: context,
-                    //                           barrierDismissible: false,
-                    //                           builder: (context) => const Center(
-                    //                               child:
-                    //                                   CircularProgressIndicator()),
-                    //                         );
-
-                    //                         // Archive data
-                    //                         await _archiveUserData(currentUId);
-
-                    //                         // Delete Firestore data
-                    //                         await _deleteUserData(currentUId);
-
-                    //                         // Delete Firebase Auth user (current user only)
-                    //                         await _firebaseAuth.currentUser
-                    //                             ?.delete();
-
-                    //                         if (mounted) {
-                    //                           Navigator.pop(
-                    //                               context); // Close loading
-                    //                           Get.offAll(() =>
-                    //                               const OnBoardingScreen());
-                    //                           showToastMessage(
-                    //                               "Success",
-                    //                               "Account deleted successfully",
-                    //                               Colors.green);
-                    //                         }
-                    //                       } catch (e) {
-                    //                         if (mounted) {
-                    //                           Navigator.pop(
-                    //                               context); // Close loading
-                    //                           showToastMessage(
-                    //                               "Error",
-                    //                               "Failed to delete account: $e",
-                    //                               Colors.red);
-                    //                         }
-                    //                         log("Error deleting account: $e");
-                    //                       }
-                    //                     },
-                    //                     child: const Text("DELETE",
-                    //                         style:
-                    //                             TextStyle(color: Colors.red)),
-                    //                   ),
-                    //                 ],
-                    //               );
-                    //             },
-                    //           );
-                    //         },
-                    //       )
-                    //     : SizedBox(),
-
                     role == "Owner"
                         ? buildListTile(
                             "assets/delete.png",

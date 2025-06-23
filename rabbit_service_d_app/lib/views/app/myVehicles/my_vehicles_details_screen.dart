@@ -288,6 +288,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
                 final formattedDate =
                     DateFormat('MM-dd-yyyy').format(DateTime.parse(rawDate));
+                final vehicleType = vehicleData['vehicleType'];
+                final engineName = vehicleData['engineName'];
 
                 return SingleChildScrollView(
                   child: Padding(
@@ -308,8 +310,10 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 _buildInfoRow('Vehicle Number:',
                                     vehicleData['vehicleNumber']),
                                 _buildInfoRow('Year:', formattedDate),
-                                _buildInfoRow('Current Miles:',
-                                    vehicleData['currentMiles'].toString()),
+                                vehicleType == "Trailer"
+                                    ? SizedBox()
+                                    : _buildInfoRow('Current Miles:',
+                                        vehicleData['currentMiles'].toString()),
                                 _buildInfoRow('License Plate:',
                                     vehicleData['licensePlate']),
                                 _buildInfoRow('Company Name:',
@@ -327,13 +331,19 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 vehicleData['vehicleType'] == "Trailer"
                                     ? vehicleData['oilChangeDate'].isEmpty
                                         ? SizedBox()
-                                        : _buildInfoRow('Oil Change Date:',
-                                            formattedOilChangeDate.toString())
+                                        : engineName == "DRY VAN"
+                                            ? SizedBox()
+                                            : _buildInfoRow(
+                                                'Oil Change Date:',
+                                                formattedOilChangeDate
+                                                    .toString())
                                     : SizedBox(),
                                 vehicleData['hoursReading'].isEmpty
                                     ? SizedBox()
-                                    : _buildInfoRow('Hours Reading:',
-                                        vehicleData['hoursReading']),
+                                    : engineName == "DRY VAN"
+                                        ? SizedBox()
+                                        : _buildInfoRow('Hours Reading:',
+                                            vehicleData['hoursReading']),
                                 _buildInfoRow(
                                     "Engine Name:", vehicleData['engineName']),
                                 _buildInfoRow("Vehicle Type:",

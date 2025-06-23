@@ -1713,14 +1713,18 @@ export default function RecordsPage() {
 
                 {selectedVehicleData?.vehicleType === "Trailer" && (
                   <>
-                    <TextField
-                      fullWidth
-                      label="Hours"
-                      type="number"
-                      value={hours}
-                      onChange={(e) => setHours(e.target.value)}
-                      className="mb-4 rounded-lg"
-                    />
+                    {selectedVehicleData.engineName === "DRY VAN" ? (
+                      <div></div>
+                    ) : (
+                      <TextField
+                        fullWidth
+                        label="Hours"
+                        type="number"
+                        value={hours}
+                        onChange={(e) => setHours(e.target.value)}
+                        className="mb-4 rounded-lg"
+                      />
+                    )}
                     {/* <TextField
                       fullWidth
                       label="Date"
