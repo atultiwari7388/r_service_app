@@ -581,6 +581,141 @@ class AssignTripScreen extends StatelessWidget {
 //   }
 // }
 
+// class NotAssignedTripScreen extends StatelessWidget {
+//   const NotAssignedTripScreen({super.key});
+
+//   Stream<List<Map<String, dynamic>>> fetchNotAssignedVehicles(
+//       String ownerId) async* {
+//     // First get the owner's name
+//     final ownerDoc =
+//         await FirebaseFirestore.instance.collection("Users").doc(ownerId).get();
+//     final ownerName = ownerDoc["userName"] as String;
+
+//     yield* FirebaseFirestore.instance
+//         .collection("Users")
+//         .where("createdBy", isEqualTo: ownerId)
+//         .where("isTeamMember", isEqualTo: true)
+//         .snapshots()
+//         .asyncMap((usersSnapshot) async {
+//       List<Map<String, dynamic>> notAssignedVehicles = [];
+//       Map<String, Map<String, dynamic>> uniqueVehicles = {};
+
+//       // Fetch vehicles for the owner where tripAssign == false
+//       QuerySnapshot ownerVehicles = await FirebaseFirestore.instance
+//           .collection("Users")
+//           .doc(ownerId)
+//           .collection("Vehicles")
+//           .where("tripAssign", isEqualTo: false)
+//           .get();
+
+//       for (var vehicle in ownerVehicles.docs) {
+//         String vehicleId = vehicle.id;
+//         uniqueVehicles[vehicleId] = {
+//           "companyName": vehicle["companyName"],
+//           "vehicleNumber": vehicle["vehicleNumber"],
+//           "driverName": ownerName, // Use owner's name here instead of "You"
+//         };
+//       }
+
+//       // Fetch vehicles for each team member where tripAssign == false
+//       for (var userDoc in usersSnapshot.docs) {
+//         var teamMemberId = userDoc.id;
+//         String driverName = userDoc["userName"];
+
+//         QuerySnapshot teamVehicles = await FirebaseFirestore.instance
+//             .collection("Users")
+//             .doc(teamMemberId)
+//             .collection("Vehicles")
+//             .where("tripAssign", isEqualTo: false)
+//             .get();
+
+//         for (var vehicle in teamVehicles.docs) {
+//           String vehicleId = vehicle.id;
+
+//           if (uniqueVehicles.containsKey(vehicleId)) {
+//             // If vehicle exists, update driver name
+//             uniqueVehicles[vehicleId]!["driverName"] = "$ownerName/$driverName";
+//           } else {
+//             uniqueVehicles[vehicleId] = {
+//               "companyName": vehicle["companyName"],
+//               "vehicleNumber": vehicle["vehicleNumber"],
+//               "driverName": driverName,
+//             };
+//           }
+//         }
+//       }
+
+//       return uniqueVehicles.values.toList();
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+
+//     return StreamBuilder<List<Map<String, dynamic>>>(
+//       stream: fetchNotAssignedVehicles(currentUId),
+//       builder: (context, snapshot) {
+//         if (snapshot.connectionState == ConnectionState.waiting) {
+//           return const Center(child: CircularProgressIndicator());
+//         }
+
+//         if (!snapshot.hasData || snapshot.data!.isEmpty) {
+//           return const Center(
+//             child: Text(
+//               "No Unassigned Vehicles Found",
+//               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//             ),
+//           );
+//         }
+
+//         var vehicles = snapshot.data!;
+//         vehicles
+//             .sort((a, b) => a['vehicleNumber'].compareTo(b['vehicleNumber']));
+
+//         return ListView.builder(
+//           itemCount: vehicles.length,
+//           itemBuilder: (context, index) {
+//             var vehicle = vehicles[index];
+
+//             return Card(
+//               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+//               elevation: 4,
+//               shape: RoundedRectangleBorder(
+//                 borderRadius: BorderRadius.circular(12),
+//               ),
+//               child: Padding(
+//                 padding: const EdgeInsets.all(12),
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     Text(
+//                       "${vehicle['vehicleNumber']} - ${vehicle['companyName']}",
+//                       style: const TextStyle(
+//                         fontSize: 16,
+//                         fontWeight: FontWeight.bold,
+//                         color: Colors.blueAccent,
+//                       ),
+//                     ),
+//                     const SizedBox(height: 4),
+//                     Text(
+//                       "Driver: ${vehicle['driverName']}",
+//                       style: const TextStyle(
+//                         fontSize: 14,
+//                         color: Colors.black54,
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+// }
+
 class NotAssignedTripScreen extends StatelessWidget {
   const NotAssignedTripScreen({super.key});
 
@@ -597,55 +732,66 @@ class NotAssignedTripScreen extends StatelessWidget {
         .where("isTeamMember", isEqualTo: true)
         .snapshots()
         .asyncMap((usersSnapshot) async {
-      List<Map<String, dynamic>> notAssignedVehicles = [];
-      Map<String, Map<String, dynamic>> uniqueVehicles = {};
+      final Map<String, Map<String, dynamic>> uniqueVehicles = {};
 
       // Fetch vehicles for the owner where tripAssign == false
-      QuerySnapshot ownerVehicles = await FirebaseFirestore.instance
+      final QuerySnapshot ownerVehicles = await FirebaseFirestore.instance
           .collection("Users")
           .doc(ownerId)
           .collection("Vehicles")
           .where("tripAssign", isEqualTo: false)
           .get();
 
-      for (var vehicle in ownerVehicles.docs) {
-        String vehicleId = vehicle.id;
+      // Add owner's vehicles first
+      for (final vehicle in ownerVehicles.docs) {
+        final vehicleId = vehicle.id;
         uniqueVehicles[vehicleId] = {
           "companyName": vehicle["companyName"],
           "vehicleNumber": vehicle["vehicleNumber"],
-          "driverName": ownerName, // Use owner's name here instead of "You"
+          "driverNames": [ownerName], // Start with owner name in list
         };
       }
 
       // Fetch vehicles for each team member where tripAssign == false
-      for (var userDoc in usersSnapshot.docs) {
-        var teamMemberId = userDoc.id;
-        String driverName = userDoc["userName"];
+      for (final userDoc in usersSnapshot.docs) {
+        final teamMemberId = userDoc.id;
+        final driverName = userDoc["userName"];
 
-        QuerySnapshot teamVehicles = await FirebaseFirestore.instance
+        final QuerySnapshot teamVehicles = await FirebaseFirestore.instance
             .collection("Users")
             .doc(teamMemberId)
             .collection("Vehicles")
             .where("tripAssign", isEqualTo: false)
             .get();
 
-        for (var vehicle in teamVehicles.docs) {
-          String vehicleId = vehicle.id;
+        for (final vehicle in teamVehicles.docs) {
+          final vehicleId = vehicle.id;
 
           if (uniqueVehicles.containsKey(vehicleId)) {
-            // If vehicle exists, update driver name
-            uniqueVehicles[vehicleId]!["driverName"] = "$ownerName/$driverName";
+            // If vehicle exists, add driver name if not already present
+            if (!uniqueVehicles[vehicleId]!["driverNames"]
+                .contains(driverName)) {
+              uniqueVehicles[vehicleId]!["driverNames"].add(driverName);
+            }
           } else {
+            // New vehicle - add with this driver
             uniqueVehicles[vehicleId] = {
               "companyName": vehicle["companyName"],
               "vehicleNumber": vehicle["vehicleNumber"],
-              "driverName": driverName,
+              "driverNames": [driverName],
             };
           }
         }
       }
 
-      return uniqueVehicles.values.toList();
+      // Convert the map to list and format driver names
+      return uniqueVehicles.values.map((vehicle) {
+        return {
+          "companyName": vehicle["companyName"],
+          "vehicleNumber": vehicle["vehicleNumber"],
+          "driverName": vehicle["driverNames"].join(" / "), // Combine all names
+        };
+      }).toList();
     });
   }
 
@@ -669,14 +815,14 @@ class NotAssignedTripScreen extends StatelessWidget {
           );
         }
 
-        var vehicles = snapshot.data!;
+        final vehicles = snapshot.data!;
         vehicles
             .sort((a, b) => a['vehicleNumber'].compareTo(b['vehicleNumber']));
 
         return ListView.builder(
           itemCount: vehicles.length,
           itemBuilder: (context, index) {
-            var vehicle = vehicles[index];
+            final vehicle = vehicles[index];
 
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -699,7 +845,7 @@ class NotAssignedTripScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Driver: ${vehicle['driverName']}",
+                      "Drivers: ${vehicle['driverName']}",
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black54,
