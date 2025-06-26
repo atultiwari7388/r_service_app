@@ -28,6 +28,7 @@ interface ServiceRecord {
     defaultNotificationValue: number;
     nextNotificationValue: string;
     subServices: Array<{ name: string; id: string }>;
+    type: string;
   }>;
   date: string;
   hours: number;
@@ -42,6 +43,10 @@ interface ServiceRecord {
 interface RecordData extends ServiceRecord {
   id: string;
   vehicle: string;
+}
+
+interface FormatDateFn {
+  (value: string): string;
 }
 
 export default function RecordsDetailsPage({
@@ -109,6 +114,12 @@ export default function RecordsDetailsPage({
     return <div className="p-6 text-red-500">No record found.</div>;
   }
 
+  const formatDate: FormatDateFn = (value) => {
+    if (!value || !value.includes("/")) return value;
+    const [dd, mm, yyyy] = value.split("/");
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
   return (
     <div
       className="p-12 flex justify-center items-center min-h-screen"
@@ -161,16 +172,22 @@ export default function RecordsDetailsPage({
             </p>
           </div>
 
-          <div className="pb-3 border-b">
-            <p className="flex justify-between">
-              <span className="font-medium text-xl">Miles/Hours:</span>
-              <span className="text-xl">
-                {record.vehicleDetails.vehicleType == "Truck"
-                  ? record.miles
-                  : record.hours}
-              </span>
-            </p>
-          </div>
+          {record.vehicleDetails.companyName === "DRY VAN" ? (
+            <div></div>
+          ) : (
+            <>
+              <div className="pb-3 border-b">
+                <p className="flex justify-between">
+                  <span className="font-medium text-xl">Miles/Hours:</span>
+                  <span className="text-xl">
+                    {record.vehicleDetails.vehicleType == "Truck"
+                      ? record.miles
+                      : record.hours}
+                  </span>
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <h3 className="text-2xl font-semibold text-gray-800 mt-8 m-8 border-b pb-2">
@@ -192,7 +209,9 @@ export default function RecordsDetailsPage({
                     <span className="text-gray-600">-</span>
                   ) : (
                     <span className="text-gray-400">
-                      {service.nextNotificationValue}
+                      {service.type === "day"
+                        ? formatDate(service.nextNotificationValue)
+                        : service.nextNotificationValue}
                     </span>
                   )}
                 </div>

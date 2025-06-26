@@ -602,6 +602,7 @@ import { HashLoader } from "react-spinners";
 import { format } from "date-fns";
 
 export interface Vehicle {
+  firstTimeVehicle: boolean;
   id?: string;
   active: boolean;
   tripAssign: boolean;
@@ -929,6 +930,7 @@ export default function ImportVehicle() {
 
       // 6. Prepare vehicle data
       const vehicleData: Vehicle = {
+        firstTimeVehicle: true,
         active: true,
         tripAssign: false,
         vehicleType,

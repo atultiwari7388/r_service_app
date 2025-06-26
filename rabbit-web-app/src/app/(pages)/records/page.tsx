@@ -304,6 +304,51 @@ export default function RecordsPage() {
     }
   };
 
+  // const handleServiceSelect = (serviceId: string) => {
+  //   const newSelectedServices = new Set(selectedServices);
+  //   const isServiceSelected = newSelectedServices.has(serviceId);
+
+  //   if (isServiceSelected) {
+  //     // Deselect the service
+  //     newSelectedServices.delete(serviceId);
+
+  //     // Remove any subservices for this service
+  //     setSelectedSubServices((prev) => {
+  //       const newSubServices = { ...prev };
+  //       delete newSubServices[serviceId];
+  //       return newSubServices;
+  //     });
+  //   } else {
+  //     // Select the service
+  //     newSelectedServices.add(serviceId);
+
+  //     // Initialize subservices if they exist
+  //     const service = services.find((s) => s.sId === serviceId);
+  //     if (service?.subServices) {
+  //       const subServiceNames = service.subServices
+  //         .flatMap((sub) => sub.sName)
+  //         .filter((name) => name.trim().length > 0);
+
+  //       if (subServiceNames.length > 0) {
+  //         setSelectedSubServices((prev) => ({
+  //           ...prev,
+  //           [serviceId]: [],
+  //         }));
+  //       }
+  //     }
+  //   }
+
+  //   setSelectedServices(newSelectedServices);
+  //   updateServiceDefaultValues();
+
+  //   // Toggle expansion only if selecting (not deselecting)
+  //   if (!isServiceSelected) {
+  //     setExpandedService(serviceId);
+  //   } else {
+  //     setExpandedService(null);
+  //   }
+  // };
+
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
     const isServiceSelected = newSelectedServices.has(serviceId);
@@ -341,10 +386,16 @@ export default function RecordsPage() {
     setSelectedServices(newSelectedServices);
     updateServiceDefaultValues();
 
-    // Toggle expansion only if selecting (not deselecting)
-    if (!isServiceSelected) {
+    // Only expand if the service has subservices and we're selecting it
+    const service = services.find((s) => s.sId === serviceId);
+    if (
+      service?.subServices &&
+      service.subServices.length > 0 &&
+      !isServiceSelected
+    ) {
       setExpandedService(serviceId);
     } else {
+      // If deselecting or service has no subservices, collapse
       setExpandedService(null);
     }
   };
@@ -1161,6 +1212,15 @@ export default function RecordsPage() {
     );
   }
 
+  const DRY_VAN_EXCLUDED_SERVICES = [
+    "Alternator",
+    "Battery",
+    "EGR Cooler",
+    "Oil Change/Service",
+    "Starter",
+    "Water Pump",
+  ];
+
   return (
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
       {/* Button Container */}
@@ -1595,7 +1655,7 @@ export default function RecordsPage() {
               </div>
               {/** Select Services */}
 
-              <div className="grid grid-cols-4 gap-3 mb-4">
+              {/* <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter(
                     (service) =>
@@ -1613,9 +1673,136 @@ export default function RecordsPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           handleServiceSelect(service.sId);
-                          setExpandedService(
-                            expandedService === service.sId ? null : service.sId
-                          );
+                          // Only toggle if clicking the same service that's already selected and has subservices
+                          if (
+                            selectedServices.has(service.sId) &&
+                            service.subServices &&
+                            service.subServices.length > 0
+                          ) {
+                            setExpandedService(
+                              expandedService === service.sId
+                                ? null
+                                : service.sId
+                            );
+                          }
+                        }}
+                        sx={{
+                          backgroundColor: selectedServices.has(service.sId)
+                            ? "#F96176"
+                            : "default",
+                          color: selectedServices.has(service.sId)
+                            ? "white"
+                            : "inherit",
+                          "&:hover": {
+                            backgroundColor: selectedServices.has(service.sId)
+                              ? "#F96176"
+                              : "#FFCDD2",
+                          },
+                        }}
+                        variant={
+                          selectedServices.has(service.sId)
+                            ? "filled"
+                            : "outlined"
+                        }
+                        className="mb-2 transition duration-300 hover:shadow-lg"
+                      />
+                      <Collapse
+                        in={
+                          selectedServices.has(service.sId) &&
+                          expandedService === service.sId &&
+                          service.subServices &&
+                          service.subServices.length > 0
+                        }
+                        timeout="auto"
+                        unmountOnExit
+                      >
+                        {service.subServices && (
+                          <div className="ml-4 mt-2">
+                            {service.subServices.map((subService) =>
+                              subService.sName.map((name, idx) => {
+                                const isSelected =
+                                  selectedSubServices[service.sId]?.includes(
+                                    name
+                                  );
+                                return (
+                                  <div
+                                    key={`${service.sId}-${name}-${idx}`}
+                                    className="relative"
+                                  >
+                                    <Chip
+                                      label={name}
+                                      size="small"
+                                      className={`m-1 transition duration-300 ${
+                                        isSelected
+                                          ? "bg-green-500 text-white"
+                                          : "bg-gray-100 hover:bg-gray-200"
+                                      }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSubserviceToggle(
+                                          service.sId,
+                                          name
+                                        );
+                                      }}
+                                    />
+                                    {isSelected && (
+                                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </Collapse>
+                    </div>
+                  ))}
+              </div>
+
+              */}
+
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                {services
+                  .filter((service) => {
+                    const matchesSearch = service.sName
+                      .toLowerCase()
+                      .includes(serviceSearchText.toLowerCase());
+
+                    const matchesVehicleType =
+                      !selectedVehicleData ||
+                      service.vType === selectedVehicleData.vehicleType;
+
+                    // Exclude specific services for DRY VAN
+                    const isDryVan =
+                      selectedVehicleData?.engineName === "DRY VAN";
+                    const isExcludedService =
+                      DRY_VAN_EXCLUDED_SERVICES.includes(service.sName);
+
+                    return (
+                      matchesSearch &&
+                      matchesVehicleType &&
+                      !(isDryVan && isExcludedService)
+                    );
+                  })
+                  .sort((a, b) => a.sName.localeCompare(b.sName))
+                  .map((service) => (
+                    <div key={service.sId} className="w-full">
+                      <Chip
+                        label={service.sName}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleServiceSelect(service.sId);
+                          if (
+                            selectedServices.has(service.sId) &&
+                            service.subServices &&
+                            service.subServices.length > 0
+                          ) {
+                            setExpandedService(
+                              expandedService === service.sId
+                                ? null
+                                : service.sId
+                            );
+                          }
                         }}
                         sx={{
                           backgroundColor: selectedServices.has(service.sId)
@@ -1640,11 +1827,13 @@ export default function RecordsPage() {
 
                       <Collapse
                         in={
+                          selectedServices.has(service.sId) &&
                           expandedService === service.sId &&
-                          selectedServices.has(service.sId)
+                          service.subServices &&
+                          service.subServices.length > 0
                         }
                         timeout="auto"
-                        unmountOnExit // Add this to properly unmount when collapsed
+                        unmountOnExit
                       >
                         {service.subServices && (
                           <div className="ml-4 mt-2">
