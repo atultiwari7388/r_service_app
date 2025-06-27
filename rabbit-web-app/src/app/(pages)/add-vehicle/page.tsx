@@ -390,7 +390,7 @@ export default function AddVehiclePage() {
       });
 
       toast.success("Vehicle added successfully!");
-      router.push("/account/my-profile");
+      router.push("/account/my-vehicles");
       console.log(
         "My Current Miles is : ",
         currentReading,

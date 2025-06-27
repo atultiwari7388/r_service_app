@@ -1214,11 +1214,11 @@ export default function RecordsPage() {
 
   const DRY_VAN_EXCLUDED_SERVICES = [
     "Alternator",
-    "Battery",
-    "EGR Cooler",
+    "Battery Change",
+    "EGR Cooler Clean",
     "Oil Change/Service",
     "Starter",
-    "Water Pump",
+    "Water /Coolant Pump",
   ];
 
   return (

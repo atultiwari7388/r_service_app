@@ -9,8 +9,6 @@ import { db, storage } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { FaEdit, FaPrint } from "react-icons/fa";
-// import jsPDF from "jspdf";
-// import html2canvas from "html2canvas";
 
 interface VehicleDocument {
   imageUrl: string;
@@ -276,7 +274,9 @@ export default function MyVehicleDetailsScreen() {
               <p className="text-gray-600">
                 Year:{" "}
                 <span className="font-semibold">
-                  {vehicleData?.year || "N/A"}
+                  {new Date(
+                    vehicleData?.year.toString() ?? ""
+                  ).toLocaleDateString()}
                 </span>
               </p>
               <p className="text-gray-600">
