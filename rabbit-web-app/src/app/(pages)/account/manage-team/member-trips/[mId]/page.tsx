@@ -75,37 +75,64 @@ export default function MemberTripsPage() {
   const [role, setRole] = useState("");
 
   useEffect(() => {
-    if (memberId) return;
+    if (!memberId) {
+      console.log("No memberId available yet");
+      return;
+    }
+
+    console.log("Fetching data for member:", memberId); // Debug log
 
     const fetchUserData = async () => {
-      const userDoc = await getDoc(doc(db, "Users", memberId));
-      if (userDoc.exists()) {
-        const data = userDoc.data() as ProfileValues;
-        setUserData(data);
-        setRole(data.role);
+      try {
+        const userDoc = await getDoc(doc(db, "Users", memberId));
+        if (userDoc.exists()) {
+          console.log("Found user document");
+          const data = userDoc.data() as ProfileValues;
+          setUserData(data);
+          setRole(data.role);
+        } else {
+          console.error("User document not found");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
       }
     };
 
     const vehiclesRef = collection(db, "Users", memberId, "Vehicles");
     const q = query(vehiclesRef, where("active", "==", true));
 
-    const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
-      const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as VehicleTypes[];
-      setVehicles(vehiclesData);
-    });
+    const unsubscribeVehicles = onSnapshot(
+      q,
+      (snapshot) => {
+        console.log(`Found ${snapshot.docs.length} vehicles`);
+        const vehiclesData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as VehicleTypes[];
+        setVehicles(vehiclesData);
+      },
+      (error) => {
+        console.error("Vehicles listener error:", error);
+      }
+    );
 
     const unsubscribeTrips = onSnapshot(
       collection(db, "Users", memberId, "trips"),
       (snapshot) => {
-        const tripsData: TripDetails[] = snapshot.docs.map((doc) => ({
+        console.log(`Found ${snapshot.docs.length} trips`);
+        const tripsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as TripDetails[];
         setTrips(tripsData);
+        if (tripsData.length > 0) {
+          setFromDate(tripsData[0].tripStartDate.toDate());
+          setToDate(tripsData[tripsData.length - 1].tripEndDate.toDate());
+        }
         calculateTotals();
+      },
+      (error) => {
+        console.error("Trips listener error:", error);
       }
     );
 
@@ -114,7 +141,7 @@ export default function MemberTripsPage() {
       unsubscribeVehicles();
       unsubscribeTrips();
     };
-  }, [memberId, setFromDate, setToDate]);
+  }, [memberId]);
 
   const filteredTrips = trips.filter((trip) => {
     const startDate = trip.tripStartDate.toDate();
@@ -231,7 +258,7 @@ export default function MemberTripsPage() {
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
           {/* Table Header */}
-          <div className="grid grid-cols-12 bg-secondary p-4 font-bold text-white border-b">
+          <div className="grid grid-cols-12 bg-[#F96176] p-4 font-bold text-white border-b">
             <div className="col-span-3">Trip Name</div>
             <div className="col-span-2">Dates</div>
             <div className="col-span-1">Miles</div>
@@ -328,12 +355,12 @@ export default function MemberTripsPage() {
                 {trip.tripStatus === 2 && !trip.isPaid && (
                   <button
                     onClick={() => handlePayTrip(trip.id)}
-                    className="bg-primary text-white px-3 py-1 rounded text-sm"
+                    className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
                   >
                     Pay
                   </button>
                 )}
-                <button className="bg-secondary text-white px-3 py-1 rounded text-sm">
+                <button className="bg-[#F96176] text-white px-3 py-1 rounded text-sm">
                   View
                 </button>
               </div>

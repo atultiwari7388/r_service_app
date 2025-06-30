@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { db, functions } from "@/lib/firebase";
+import { db, functions, storage } from "@/lib/firebase";
 import {
   arrayUnion,
   collection,
@@ -33,6 +33,8 @@ import {
   IconButton,
   Collapse,
   Box,
+  LinearProgress,
+  Typography,
 } from "@mui/material";
 import {
   Table,
@@ -56,6 +58,8 @@ import { FaPrint } from "react-icons/fa";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { httpsCallable } from "firebase/functions";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import Image from "next/image";
 
 interface Vehicle {
   brand: string;
@@ -177,6 +181,11 @@ export default function RecordsPage() {
   const [todayMiles, setTodayMiles] = useState("");
   const [selectedVehicleType, setSelectedVehicleType] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
@@ -303,51 +312,6 @@ export default function RecordsPage() {
       console.error("Error updating service defaults:", error);
     }
   };
-
-  // const handleServiceSelect = (serviceId: string) => {
-  //   const newSelectedServices = new Set(selectedServices);
-  //   const isServiceSelected = newSelectedServices.has(serviceId);
-
-  //   if (isServiceSelected) {
-  //     // Deselect the service
-  //     newSelectedServices.delete(serviceId);
-
-  //     // Remove any subservices for this service
-  //     setSelectedSubServices((prev) => {
-  //       const newSubServices = { ...prev };
-  //       delete newSubServices[serviceId];
-  //       return newSubServices;
-  //     });
-  //   } else {
-  //     // Select the service
-  //     newSelectedServices.add(serviceId);
-
-  //     // Initialize subservices if they exist
-  //     const service = services.find((s) => s.sId === serviceId);
-  //     if (service?.subServices) {
-  //       const subServiceNames = service.subServices
-  //         .flatMap((sub) => sub.sName)
-  //         .filter((name) => name.trim().length > 0);
-
-  //       if (subServiceNames.length > 0) {
-  //         setSelectedSubServices((prev) => ({
-  //           ...prev,
-  //           [serviceId]: [],
-  //         }));
-  //       }
-  //     }
-  //   }
-
-  //   setSelectedServices(newSelectedServices);
-  //   updateServiceDefaultValues();
-
-  //   // Toggle expansion only if selecting (not deselecting)
-  //   if (!isServiceSelected) {
-  //     setExpandedService(serviceId);
-  //   } else {
-  //     setExpandedService(null);
-  //   }
-  // };
 
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
@@ -616,65 +580,161 @@ export default function RecordsPage() {
     setSelectedPackages(new Set(selectedPackages));
   };
 
-  const resetForm = () => {
-    setSelectedVehicle("");
-    setSelectedServices(new Set());
-    setSelectedPackages(new Set());
-    setSelectedSubServices({});
-    setServiceDefaultValues({});
-    setMiles("");
-    setHours("");
-    setDate("");
-    setWorkshopName("");
-    setInvoice("");
-    setDescription("");
-    setShowAddRecords(false);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setImagePreview(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const filteredRecords = records
-    .filter((record) => {
-      const recordDate = new Date(record.date);
-      const matchesVehicle =
-        !filterVehicle ||
-        record.vehicleDetails.vehicleNumber
-          .toLowerCase()
-          .includes(filterVehicle.toLowerCase());
-      const matchesService =
-        !filterService ||
-        record.services.some((s: { serviceName: string }) =>
-          s.serviceName.toLowerCase().includes(filterService.toLowerCase())
-        );
-      const matchesInvoice =
-        !filterInvoice ||
-        (record.invoice || "")
-          .toLowerCase()
-          .includes(filterInvoice.toLowerCase());
-      const matchesDate =
-        !startDate ||
-        !endDate ||
-        (recordDate >= startDate && recordDate <= endDate);
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile || !user?.uid) return null;
 
-      switch (searchType) {
-        case "vehicle":
-          return matchesVehicle;
-        case "service":
-          return matchesService;
-        case "date":
-          return matchesDate;
-        case "invoice":
-          return matchesInvoice;
-        case "all":
-          return (
-            matchesVehicle && matchesService && matchesDate && matchesInvoice
-          );
-        default:
-          return true;
-      }
-    })
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      const storageRef = ref(
+        storage,
+        `service-records/${user.uid}/${Date.now()}_${imageFile.name}`
+      );
+      const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress =
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("Upload error:", error);
+            setIsUploading(false);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              setIsUploading(false);
+              resolve(downloadURL);
+            } catch (error) {
+              console.error("Error getting download URL:", error);
+              setIsUploading(false);
+              reject(error);
+            }
+          }
+        );
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      setIsUploading(false);
+      return null;
+    }
+  };
+
+  // const filteredRecords = records
+  //   .filter((record) => {
+  //     const recordDate = new Date(record.date);
+  //     const matchesVehicle =
+  //       !filterVehicle ||
+  //       record.vehicleDetails.vehicleNumber
+  //         .toLowerCase()
+  //         .includes(filterVehicle.toLowerCase());
+  //     const matchesService =
+  //       !filterService ||
+  //       record.services.some((s: { serviceName: string }) =>
+  //         s.serviceName.toLowerCase().includes(filterService.toLowerCase())
+  //       );
+  //     const matchesInvoice =
+  //       !filterInvoice ||
+  //       (record.invoice || "")
+  //         .toLowerCase()
+  //         .includes(filterInvoice.toLowerCase());
+  //     const matchesDate =
+  //       !startDate ||
+  //       !endDate ||
+  //       (recordDate >= startDate && recordDate <= endDate);
+
+  //     switch (searchType) {
+  //       case "vehicle":
+  //         return matchesVehicle;
+  //       case "service":
+  //         return matchesService;
+  //       case "date":
+  //         return matchesDate;
+  //       case "invoice":
+  //         return matchesInvoice;
+  //       case "all":
+  //         return (
+  //           matchesVehicle && matchesService && matchesDate && matchesInvoice
+  //         );
+  //       default:
+  //         return true;
+  //     }
+  //   })
+  //   .sort(
+  //     (a, b) =>
+  //       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  //   );
+
+  const filteredRecords = records
+  .filter((record) => {
+    const recordDate = new Date(record.date);
+    const matchesVehicle =
+      !filterVehicle ||
+      record.vehicleDetails.vehicleNumber
+        .toLowerCase()
+        .includes(filterVehicle.toLowerCase());
+    const matchesService =
+      !filterService ||
+      record.services.some((s: { serviceName: string }) =>
+        s.serviceName.toLowerCase().includes(filterService.toLowerCase())
+      );
+    const matchesInvoice =
+      !filterInvoice ||
+      (record.invoice || "")
+        .toLowerCase()
+        .includes(filterInvoice.toLowerCase());
+    const matchesDate =
+      !startDate ||
+      !endDate ||
+      (recordDate >= startDate && recordDate <= endDate);
+
+    switch (searchType) {
+      case "vehicle":
+        return matchesVehicle;
+      case "service":
+        return matchesService;
+      case "date":
+        return matchesDate;
+      case "invoice":
+        return matchesInvoice;
+      case "all":
+        return (
+          matchesVehicle && matchesService && matchesDate && matchesInvoice
+        );
+      default:
+        return true;
+    }
+  })
+  .sort((a, b) => {
+    // Convert date strings to Date objects (format: "2025-06-28")
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    
+    // For descending order (newest first)
+    return dateB.getTime() - dateA.getTime();
+  });
 
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
   const handleSearchFilterClose = () => setShowSearchFilter(false);
@@ -826,6 +886,15 @@ export default function RecordsPage() {
         return;
       }
 
+      let imageUrl = null;
+      if (imageFile) {
+        imageUrl = await uploadImage();
+        if (!imageUrl) {
+          toast.error("Failed to upload image");
+          return;
+        }
+      }
+
       const currentMiles = Number(miles);
       const currentHours = Number(hours) || 0;
 
@@ -950,6 +1019,7 @@ export default function RecordsPage() {
       const recordData = {
         userId: user.uid,
         vehicleId: selectedVehicle,
+        imageUrl: imageUrl,
         vehicleDetails: {
           ...vehicleData,
           currentMiles: currentMiles.toString(),
@@ -1024,7 +1094,7 @@ export default function RecordsPage() {
         nextNotificationMiles: notificationData,
       });
 
-      // Handle team members (similar to app logic)
+      // Handle team members (MOVED THIS SECTION OUTSIDE OF THE isEditing CONDITION)
       const teamMembersQuery = query(
         collection(db, "Users"),
         where("createdBy", "==", user.uid),
@@ -1054,11 +1124,27 @@ export default function RecordsPage() {
             nextNotificationMiles: notificationData,
           });
 
-          // Add record to team member's DataServices
-          const memberRecordRef = doc(
-            collection(db, "Users", memberDoc.id, "DataServices")
-          );
-          batch.set(memberRecordRef, recordData);
+          // For editing, we need to find and update the existing record in team member's DataServices
+          if (isEditing && editingRecordId) {
+            // Find the corresponding record in team member's DataServices
+            const memberRecordQuery = query(
+              collection(db, "Users", memberDoc.id, "DataServices"),
+              where("userId", "==", user.uid),
+              where("vehicleId", "==", selectedVehicle),
+              where("createdAt", "==", recordData.createdAt)
+            );
+            const memberRecordSnapshot = await getDocs(memberRecordQuery);
+
+            if (!memberRecordSnapshot.empty) {
+              batch.update(memberRecordSnapshot.docs[0].ref, recordData);
+            }
+          } else {
+            // Add new record to team member's DataServices
+            const memberRecordRef = doc(
+              collection(db, "Users", memberDoc.id, "DataServices")
+            );
+            batch.set(memberRecordRef, recordData);
+          }
         }
       }
 
@@ -1087,11 +1173,26 @@ export default function RecordsPage() {
               nextNotificationMiles: notificationData,
             });
 
-            // Add record to owner's DataServices
-            const ownerRecordRef = doc(
-              collection(db, "Users", ownerId, "DataServices")
-            );
-            batch.set(ownerRecordRef, recordData);
+            // For editing, find and update the existing record in owner's DataServices
+            if (isEditing && editingRecordId) {
+              const ownerRecordQuery = query(
+                collection(db, "Users", ownerId, "DataServices"),
+                where("userId", "==", user.uid),
+                where("vehicleId", "==", selectedVehicle),
+                where("createdAt", "==", recordData.createdAt)
+              );
+              const ownerRecordSnapshot = await getDocs(ownerRecordQuery);
+
+              if (!ownerRecordSnapshot.empty) {
+                batch.update(ownerRecordSnapshot.docs[0].ref, recordData);
+              }
+            } else {
+              // Add new record to owner's DataServices
+              const ownerRecordRef = doc(
+                collection(db, "Users", ownerId, "DataServices")
+              );
+              batch.set(ownerRecordRef, recordData);
+            }
           }
         }
       }
@@ -1113,7 +1214,6 @@ export default function RecordsPage() {
     }
   };
 
-  // Helper function for date formatting
   const formatDateToDDMMYYYY = (date: Date | string): string => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -1174,7 +1274,10 @@ export default function RecordsPage() {
       const service = services.find((s) => s.sId === serviceId);
 
       // For "Steer Tires" and "DPF Clean", allow only one selection
-      if (service?.sName === "Steer Tires" || service?.sName === "DPF Clean") {
+      if (
+        service?.sName === "Steer Tires" ||
+        service?.sName === "DPF Percentage"
+      ) {
         // If already selected, deselect it, otherwise select only this one
         return {
           ...prev,
@@ -1200,6 +1303,21 @@ export default function RecordsPage() {
         duration: 2000,
       });
     }
+  };
+
+  const resetForm = () => {
+    setSelectedVehicle("");
+    setSelectedServices(new Set());
+    setSelectedPackages(new Set());
+    setSelectedSubServices({});
+    setServiceDefaultValues({});
+    setMiles("");
+    setHours("");
+    setDate("");
+    setWorkshopName("");
+    setInvoice("");
+    setDescription("");
+    setShowAddRecords(false);
   };
 
   if (!user) {
@@ -1497,11 +1615,16 @@ export default function RecordsPage() {
                       sx={{ minHeight: "56px", flex: 1, marginRight: "8px" }}
                       label="Select Vehicle"
                     >
-                      {vehicles.map((vehicle) => (
-                        <MenuItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.vehicleNumber} ({vehicle.companyName})
-                        </MenuItem>
-                      ))}
+                      {/* Sort vehicles alphabetically by vehicleNumber before mapping */}
+                      {vehicles
+                        .sort((a, b) =>
+                          a.vehicleNumber.localeCompare(b.vehicleNumber)
+                        )
+                        .map((vehicle) => (
+                          <MenuItem key={vehicle.id} value={vehicle.id}>
+                            {vehicle.vehicleNumber} ({vehicle.companyName})
+                          </MenuItem>
+                        ))}
                     </Select>
 
                     {/* Circular + Add Button */}
@@ -1655,112 +1778,6 @@ export default function RecordsPage() {
               </div>
               {/** Select Services */}
 
-              {/* <div className="grid grid-cols-4 gap-3 mb-4">
-                {services
-                  .filter(
-                    (service) =>
-                      service.sName
-                        .toLowerCase()
-                        .includes(serviceSearchText.toLowerCase()) &&
-                      (!selectedVehicleData ||
-                        service.vType === selectedVehicleData.vehicleType)
-                  )
-                  .sort((a, b) => a.sName.localeCompare(b.sName)) // ✅ Sort alphabetically
-                  .map((service) => (
-                    <div key={service.sId} className="w-full">
-                      <Chip
-                        label={service.sName}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleServiceSelect(service.sId);
-                          // Only toggle if clicking the same service that's already selected and has subservices
-                          if (
-                            selectedServices.has(service.sId) &&
-                            service.subServices &&
-                            service.subServices.length > 0
-                          ) {
-                            setExpandedService(
-                              expandedService === service.sId
-                                ? null
-                                : service.sId
-                            );
-                          }
-                        }}
-                        sx={{
-                          backgroundColor: selectedServices.has(service.sId)
-                            ? "#F96176"
-                            : "default",
-                          color: selectedServices.has(service.sId)
-                            ? "white"
-                            : "inherit",
-                          "&:hover": {
-                            backgroundColor: selectedServices.has(service.sId)
-                              ? "#F96176"
-                              : "#FFCDD2",
-                          },
-                        }}
-                        variant={
-                          selectedServices.has(service.sId)
-                            ? "filled"
-                            : "outlined"
-                        }
-                        className="mb-2 transition duration-300 hover:shadow-lg"
-                      />
-                      <Collapse
-                        in={
-                          selectedServices.has(service.sId) &&
-                          expandedService === service.sId &&
-                          service.subServices &&
-                          service.subServices.length > 0
-                        }
-                        timeout="auto"
-                        unmountOnExit
-                      >
-                        {service.subServices && (
-                          <div className="ml-4 mt-2">
-                            {service.subServices.map((subService) =>
-                              subService.sName.map((name, idx) => {
-                                const isSelected =
-                                  selectedSubServices[service.sId]?.includes(
-                                    name
-                                  );
-                                return (
-                                  <div
-                                    key={`${service.sId}-${name}-${idx}`}
-                                    className="relative"
-                                  >
-                                    <Chip
-                                      label={name}
-                                      size="small"
-                                      className={`m-1 transition duration-300 ${
-                                        isSelected
-                                          ? "bg-green-500 text-white"
-                                          : "bg-gray-100 hover:bg-gray-200"
-                                      }`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSubserviceToggle(
-                                          service.sId,
-                                          name
-                                        );
-                                      }}
-                                    />
-                                    {isSelected && (
-                                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
-                                    )}
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        )}
-                      </Collapse>
-                    </div>
-                  ))}
-              </div>
-
-              */}
-
               <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter((service) => {
@@ -1822,7 +1839,7 @@ export default function RecordsPage() {
                             ? "filled"
                             : "outlined"
                         }
-                        className="mb-2 transition duration-300 hover:shadow-lg"
+                        className="w-full transition duration-300 hover:shadow-lg"
                       />
 
                       <Collapse
@@ -1836,7 +1853,7 @@ export default function RecordsPage() {
                         unmountOnExit
                       >
                         {service.subServices && (
-                          <div className="ml-4 mt-2">
+                          <div className="ml-1 mt-2 w-3/4">
                             {service.subServices.map((subService) =>
                               subService.sName.map((name, idx) => {
                                 const isSelected =
@@ -1846,27 +1863,25 @@ export default function RecordsPage() {
                                 return (
                                   <div
                                     key={`${service.sId}-${name}-${idx}`}
-                                    className="relative"
+                                    className={`flex items-center rounded-full px-1 py-1 m-1 transition duration-300 
+                ${
+                  isSelected
+                    ? "bg-[#58BB87] text-gray-800"
+                    : "bg-gray-200 text-gray-800"
+                }`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSubserviceToggle(service.sId, name);
+                                    }}
                                   >
-                                    <Chip
-                                      label={name}
-                                      size="small"
-                                      className={`m-1 transition duration-300 ${
-                                        isSelected
-                                          ? "bg-green-500 text-white"
-                                          : "bg-gray-100 hover:bg-gray-200"
-                                      }`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSubserviceToggle(
-                                          service.sId,
-                                          name
-                                        );
-                                      }}
-                                    />
-                                    {isSelected && (
-                                      <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
-                                    )}
+                                    <span className="flex items-center text-sm ml-1 space-x-1">
+                                      <span>{name}</span>
+                                      {isSelected && (
+                                        <span className="text-[#F96176] bg-white rounded-full px-2">
+                                          ✓
+                                        </span>
+                                      )}
+                                    </span>
                                   </div>
                                 );
                               })
@@ -1956,6 +1971,62 @@ export default function RecordsPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   className="rounded-lg"
                 />
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload Service Image (Optional)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="block w-full text-sm text-gray-500
+      file:mr-4 file:py-2 file:px-4
+      file:rounded-md file:border-0
+      file:text-sm file:font-semibold
+      file:bg-blue-50 file:text-blue-700
+      hover:file:bg-blue-100"
+                  />
+
+                  {imagePreview && (
+                    <div className="mt-2">
+                      <Image
+                        src={imagePreview}
+                        alt="Preview"
+                        width={128}
+                        height={128}
+                        className="object-contain rounded border"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setImageFile(null);
+                        }}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Remove Image
+                      </button>
+                    </div>
+                  )}
+
+                  {isUploading && (
+                    <div className="mt-2">
+                      <LinearProgress
+                        variant="determinate"
+                        value={uploadProgress}
+                      />
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        gutterBottom
+                      >
+                        Uploading: {Math.round(uploadProgress)}%
+                      </Typography>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
