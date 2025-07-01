@@ -602,9 +602,9 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Earnings: $earnings",
+                Text("Earnings: \$${earnings.toStringAsFixed(0)}",
                     style: appStyle(14, kSecondary, FontWeight.w500)),
-                Text("Trip Miles: $totalMiles"),
+                Text("Trip Miles: ${totalMiles.toStringAsFixed(0)}"),
               ],
             ),
             if (hasGoogleMiles) ...[
@@ -622,7 +622,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Expenses: \$${totalExpenses}",
+                Text("Expenses: \$${totalExpenses.toStringAsFixed(0)}",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
               ],
             ),

@@ -297,29 +297,6 @@ class DashboardController extends GetxController {
     });
   }
 
-  // Future<void> fetchUserDetails() async {
-  //   try {
-  //     DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
-  //         .collection('Users')
-  //         .doc(currentUId)
-  //         .get();
-
-  //     if (userSnapshot.exists) {
-  //       // Cast the document data to a map
-  //       final userData = userSnapshot.data() as Map<String, dynamic>;
-  //       _role.value = userData["role"] ?? "";
-  //       ownerId = userData["createdBy"] ?? "";
-  //       update();
-  //       log("Role is set to " + role);
-  //     } else {
-  //       log("No user document found for ID: $currentUId");
-  //     }
-  //   } catch (e) {
-  //     log("Error fetching user details: $e");
-  //     update();
-  //   }
-  // }
-
   void filterselectedCompanyAndvehicle(String query) {
     final filteredList = allVehicleAndCompanyName
         .where((item) => item.toLowerCase().contains(query.toLowerCase()))
