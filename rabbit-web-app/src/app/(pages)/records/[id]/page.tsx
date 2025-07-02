@@ -6,7 +6,8 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContexts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { FaPrint } from "react-icons/fa";
+import { FaPrint, FaTimes, FaSearchPlus, FaSearchMinus } from "react-icons/fa";
+import Image from "next/image";
 
 interface ServiceRecord {
   id: string;
@@ -38,6 +39,7 @@ interface ServiceRecord {
   workshopName: string;
   invoice?: string;
   description?: string;
+  imageUrl?: string;
 }
 
 interface RecordData extends ServiceRecord {
@@ -60,6 +62,8 @@ export default function RecordsDetailsPage({
   const [record, setRecord] = useState<ServiceRecord | null>(null);
   const { user } = useAuth() || { user: null };
   const printRef = useRef<HTMLDivElement>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [imageScale, setImageScale] = useState(1);
 
   useEffect(() => {
     if (!user?.uid || !id) return;
@@ -108,6 +112,23 @@ export default function RecordsDetailsPage({
 
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`Record_details${record?.invoice}.pdf`);
+  };
+
+  const openImageModal = () => {
+    setIsImageModalOpen(true);
+    setImageScale(1);
+  };
+
+  const closeImageModal = () => {
+    setIsImageModalOpen(false);
+  };
+
+  const zoomIn = () => {
+    setImageScale((prev) => Math.min(prev + 0.25, 3)); // Limit zoom to 3x
+  };
+
+  const zoomOut = () => {
+    setImageScale((prev) => Math.max(prev - 0.25, 0.5)); // Limit zoom out to 0.5x
   };
 
   if (!record) {
@@ -190,6 +211,33 @@ export default function RecordsDetailsPage({
           )}
         </div>
 
+        {/* Image Display Section */}
+        {record.imageUrl && (
+          <div className="mt-8 m-8">
+            <h3 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
+              Service Image
+            </h3>
+            <div
+              className="relative w-full max-w-md mx-auto cursor-pointer hover:opacity-90 transition"
+              onClick={openImageModal}
+            >
+              <Image
+                src={record.imageUrl}
+                alt="Service record"
+                width={800}
+                height={600}
+                className="w-full h-auto rounded-lg border shadow-sm"
+                objectFit="contain"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
+                <div className="bg-black bg-opacity-50 text-white p-2 rounded-full">
+                  <FaSearchPlus size={24} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <h3 className="text-2xl font-semibold text-gray-800 mt-8 m-8 border-b pb-2">
           Services
         </h3>
@@ -238,22 +286,16 @@ export default function RecordsDetailsPage({
             ))}
         </div>
 
-        {/* Added Description Section */}
-        {record.description ? (
+        {/* Description Section */}
+        {record.description && (
           <div className="mt-8 m-8">
             <h3 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
               Description
             </h3>
             <div className="p-4 bg-gray-50 rounded-lg border">
-              {record.description ? (
-                <p className="text-gray-700 text-lg">{record.description}</p>
-              ) : (
-                <p className="text-gray-400 italic">No description provided</p>
-              )}
+              <p className="text-gray-700 text-lg">{record.description}</p>
             </div>
           </div>
-        ) : (
-          <div></div>
         )}
 
         <div className="flex justify-center">
@@ -265,6 +307,50 @@ export default function RecordsDetailsPage({
           </button>
         </div>
       </div>
+
+      {/* Image Modal */}
+      {isImageModalOpen && record.imageUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-full max-h-full">
+            <Image
+              src={record.imageUrl}
+              alt="Service record zoomed"
+              width={1200}
+              height={900}
+              className="max-w-full max-h-[90vh]"
+              style={{ transform: `scale(${imageScale})` }}
+            />
+
+            <div className="absolute top-4 right-4 flex space-x-2">
+              <button
+                onClick={zoomIn}
+                className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
+                title="Zoom In"
+              >
+                <FaSearchPlus size={20} />
+              </button>
+              <button
+                onClick={zoomOut}
+                className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
+                title="Zoom Out"
+              >
+                <FaSearchMinus size={20} />
+              </button>
+              <button
+                onClick={closeImageModal}
+                className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
+                title="Close"
+              >
+                <FaTimes size={20} />
+              </button>
+            </div>
+
+            <div className="absolute bottom-4 left-0 right-0 text-center text-white">
+              <p>Zoom: {(imageScale * 100).toFixed(0)}%</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
