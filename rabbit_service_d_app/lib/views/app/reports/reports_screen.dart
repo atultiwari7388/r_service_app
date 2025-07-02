@@ -77,7 +77,6 @@ class _ReportsScreenState extends State<ReportsScreen>
   String? editingRecordId;
   late String role = "";
   File? image;
-  List<File> images = [];
 
   // Define a new variable to track the selected filter option
   String? selectedFilterOption;
@@ -431,47 +430,18 @@ class _ReportsScreenState extends State<ReportsScreen>
       }
     }
 
-    setState(() {}); // Refresh the UI
+    setState(() {});
   }
 
   void getImage(ImageSource source, BuildContext context) async {
-    if (source == ImageSource.camera) {
-      // For camera, use pickImage
-      final pickedFile = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        imageQuality: 50,
-      );
+    final pickedFile = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 50,
+    );
 
-      if (pickedFile != null) {
-        setState(() {
-          images = [File(pickedFile.path)];
-        });
-      } else {
-        setState(() {
-          images = [];
-        });
-      }
-    } else if (source == ImageSource.gallery) {
-      // For gallery, use pickMultiImage
-      final pickedFiles = await ImagePicker().pickMultiImage(
-        imageQuality: 50,
-      );
-
-      // ignore: unnecessary_null_comparison
-      if (pickedFiles != null && pickedFiles.length <= 4) {
-        setState(() {
-          images = pickedFiles.map((file) => File(file.path)).toList();
-        });
-        // ignore: unnecessary_null_comparison
-      } else if (pickedFiles != null && pickedFiles.length > 4) {
-        // If more than 4 images selected, show a message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("You can only select up to 4 images")),
-        );
-      } else {
-        setState(() {});
-      }
-    }
+    setState(() {
+      image = pickedFile != null ? File(pickedFile.path) : null;
+    });
   }
 
   //=============================== Image Uploader =====================================
@@ -519,12 +489,11 @@ class _ReportsScreenState extends State<ReportsScreen>
         return;
       }
 
-      // List to store image URLs
-      List<String> imageUrls = [];
+      String? imageUrl;
 
       // Upload images to Firebase Storage
 
-      for (File image in images) {
+      if (image != null) {
         String fileName =
             DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
         Reference storageRef = FirebaseStorage.instance
@@ -532,12 +501,8 @@ class _ReportsScreenState extends State<ReportsScreen>
             .child('service_images')
             .child(fileName);
 
-        // Upload the image
-        UploadTask uploadTask = storageRef.putFile(image);
-
-        // Get the download URL
-        String imageUrl = await (await uploadTask).ref.getDownloadURL();
-        imageUrls.add(imageUrl);
+        UploadTask uploadTask = storageRef.putFile(image!);
+        imageUrl = await (await uploadTask).ref.getDownloadURL();
       }
 
       // Subservice validation check
@@ -691,7 +656,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         "active": true,
         "userId": currentUId,
         "vehicleId": selectedVehicle,
-        "imageUrl": imageUrls,
+        "imageUrl": imageUrl,
         "vehicleDetails": {
           ...selectedVehicleData!,
           "currentMiles": currentMiles.toString(),
@@ -1953,27 +1918,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   ),
                                   SizedBox(height: 10.h),
 
-                                  images.isNotEmpty
-                                      ? Wrap(
-                                          spacing: 10.w,
-                                          runSpacing: 10.h,
-                                          children: images.map((image) {
-                                            return Container(
-                                              width: 80.w,
-                                              height: 80.h,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(12.r),
-                                                image: DecorationImage(
-                                                  image: FileImage(image),
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        )
-                                      : Container(),
-
+                                  // image section
+                                  if (image != null)
+                                    Container(
+                                      width: 80.w,
+                                      height: 80.h,
+                                      decoration: BoxDecoration(
+                                        borderRadius:
+                                            BorderRadius.circular(12.r),
+                                        image: DecorationImage(
+                                          image: FileImage(image!),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
                                   // Save Button
                                   Row(
                                     mainAxisAlignment: isEditing
@@ -2077,8 +2035,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     ),
                                   ],
                                   SizedBox(height: 16.h),
-
-                                  // Save Button
 
                                   // Save Button
                                   CustomButton(
@@ -2307,216 +2263,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     text:
                                         'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
                                   ),
-                                  // CustomButton(
-                                  //   onPress: () async {
-                                  //     if (selectedVehicle != null &&
-                                  //         todayMilesController
-                                  //             .text.isNotEmpty) {
-                                  //       try {
-                                  //         final int enteredValue = int.parse(
-                                  //             todayMilesController.text);
-                                  //         final vehicleId = selectedVehicle;
-
-                                  //         // Check if DataServices subcollection exists and is not empty
-                                  //         final dataServicesSnapshot =
-                                  //             await FirebaseFirestore.instance
-                                  //                 .collection("Users")
-                                  //                 .doc(currentUId)
-                                  //                 .collection("DataServices")
-                                  //                 .where("vehicleId",
-                                  //                     isEqualTo: vehicleId)
-                                  //                 .get();
-
-                                  //         // Fetch current reading (Miles/Hours) for the selected vehicle
-                                  //         final vehicleDoc =
-                                  //             await FirebaseFirestore.instance
-                                  //                 .collection("Users")
-                                  //                 .doc(currentUId)
-                                  //                 .collection("Vehicles")
-                                  //                 .doc(vehicleId)
-                                  //                 .get();
-
-                                  //         if (vehicleDoc.exists) {
-                                  //           final int currentReading =
-                                  //               int.parse(
-                                  //             vehicleDoc[selectedVehicleType ==
-                                  //                         'Truck'
-                                  //                     ? 'currentMiles'
-                                  //                     : 'hoursReading'] ??
-                                  //                 '0',
-                                  //           );
-
-                                  //           final data = {
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? "prevMilesValue"
-                                  //                     : "prevHoursReadingValue":
-                                  //                 currentReading.toString(),
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? "currentMiles"
-                                  //                     : "hoursReading":
-                                  //                 enteredValue.toString(),
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? "miles"
-                                  //                     : "hoursReading":
-                                  //                 enteredValue.toString(),
-                                  //             selectedVehicleType == 'Truck'
-                                  //                     ? 'currentMilesArray'
-                                  //                     : 'hoursReadingArray':
-                                  //                 FieldValue.arrayUnion([
-                                  //               {
-                                  //                 selectedVehicleType == 'Truck'
-                                  //                     ? "miles"
-                                  //                     : "hours": enteredValue,
-                                  //                 "date": DateTime.now()
-                                  //                     .toIso8601String(),
-                                  //               }
-                                  //             ]),
-                                  //           };
-
-                                  //           // Update owner's vehicle first
-                                  //           await FirebaseFirestore.instance
-                                  //               .collection("Users")
-                                  //               .doc(currentUId)
-                                  //               .collection("Vehicles")
-                                  //               .doc(vehicleId)
-                                  //               .update(data);
-
-                                  //           // Query Team Members (Drivers/Managers)
-                                  //           final teamMembersSnapshot =
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .where('createdBy',
-                                  //                       isEqualTo: currentUId)
-                                  //                   .where('isTeamMember',
-                                  //                       isEqualTo: true)
-                                  //                   .get();
-
-                                  //           // Save to Team Members' miles ONLY if they have this vehicle
-                                  //           for (final doc
-                                  //               in teamMembersSnapshot.docs) {
-                                  //             final teamMemberUid = doc.id;
-
-                                  //             // Check if this team member has this vehicle
-                                  //             final teamMemberVehicleDoc =
-                                  //                 await FirebaseFirestore
-                                  //                     .instance
-                                  //                     .collection('Users')
-                                  //                     .doc(teamMemberUid)
-                                  //                     .collection('Vehicles')
-                                  //                     .doc(vehicleId)
-                                  //                     .get();
-
-                                  //             if (teamMemberVehicleDoc.exists) {
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .doc(teamMemberUid)
-                                  //                   .collection("Vehicles")
-                                  //                   .doc(vehicleId)
-                                  //                   .update(data);
-                                  //             }
-                                  //           }
-
-                                  //           // Handle Team Member Creating Record (Save to Owner)
-                                  //           final currentUserDoc =
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .doc(currentUId)
-                                  //                   .get();
-
-                                  //           if (currentUserDoc
-                                  //                   .data()?['isTeamMember'] ==
-                                  //               true) {
-                                  //             final ownerSnapshot =
-                                  //                 await FirebaseFirestore
-                                  //                     .instance
-                                  //                     .collection('Users')
-                                  //                     .where('uid',
-                                  //                         isEqualTo:
-                                  //                             currentUserDoc
-                                  //                                     .data()?[
-                                  //                                 'createdBy'])
-                                  //                     .get();
-
-                                  //             if (ownerSnapshot
-                                  //                 .docs.isNotEmpty) {
-                                  //               final ownerUid =
-                                  //                   ownerSnapshot.docs.first.id;
-                                  //               await FirebaseFirestore.instance
-                                  //                   .collection('Users')
-                                  //                   .doc(ownerUid)
-                                  //                   .collection("Vehicles")
-                                  //                   .doc(vehicleId)
-                                  //                   .update(data);
-                                  //             }
-                                  //           }
-
-                                  //           debugPrint(
-                                  //               '${selectedVehicleType == 'Truck' ? 'Miles' : 'Hours'} updated successfully!');
-                                  //           todayMilesController.clear();
-                                  //           setState(() {
-                                  //             selectedVehicle = null;
-                                  //             selectedVehicleType = '';
-                                  //           });
-
-                                  //           ScaffoldMessenger.of(context)
-                                  //               .showSnackBar(
-                                  //             SnackBar(
-                                  //               content:
-                                  //                   Text('Saved successfully!'),
-                                  //               duration: Duration(seconds: 2),
-                                  //             ),
-                                  //           );
-
-                                  //           if (dataServicesSnapshot
-                                  //               .docs.isEmpty) {
-                                  //             // Call cloud function to notify about missing services
-                                  //             final HttpsCallable callable =
-                                  //                 FirebaseFunctions.instance
-                                  //                     .httpsCallable(
-                                  //                         'checkAndNotifyUserForVehicleService');
-
-                                  //             await callable.call({
-                                  //               'userId': currentUId,
-                                  //               'vehicleId': vehicleId,
-                                  //             });
-
-                                  //             log('Called checkAndNotifyUserForVehicleService for $vehicleId');
-                                  //           } else {
-                                  //             // Call the cloud function to check for notifications
-                                  //             final HttpsCallable callable =
-                                  //                 FirebaseFunctions.instance
-                                  //                     .httpsCallable(
-                                  //                         'checkDataServicesAndNotify');
-
-                                  //             final result = await callable
-                                  //                 .call({
-                                  //               'userId': currentUId,
-                                  //               'vehicleId': vehicleId
-                                  //             });
-
-                                  //             log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
-                                  //           }
-                                  //         } else {
-                                  //           throw 'Vehicle data not found';
-                                  //         }
-                                  //       } catch (e) {
-                                  //         debugPrint(
-                                  //             'Error updating ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e');
-                                  //         ScaffoldMessenger.of(context)
-                                  //             .showSnackBar(
-                                  //           SnackBar(
-                                  //             content: Text(
-                                  //                 'Failed to save ${selectedVehicleType == 'Truck' ? 'miles' : 'hours'}: $e'),
-                                  //             duration: Duration(seconds: 2),
-                                  //           ),
-                                  //         );
-                                  //       }
-                                  //     }
-                                  //   },
-                                  //   color: kPrimary,
-                                  //   text:
-                                  //       'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
-                                  // ),
                                 ],
                               ),
                             ),

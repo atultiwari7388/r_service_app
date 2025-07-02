@@ -1,12 +1,12 @@
-import 'dart:convert'; // For JSON encoding
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart'; // For actual printing
+import 'package:printing/printing.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import '../../../../utils/app_styles.dart';
 import '../../../../utils/constants.dart';
+import 'package:photo_view/photo_view.dart';
 
 class RecordsDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> record;
@@ -19,6 +19,7 @@ class RecordsDetailsScreen extends StatelessWidget {
     final services = record['services'] as List<dynamic>? ?? [];
     final date = DateFormat('MM-dd-yy').format(DateTime.parse(record['date']));
     final vehicleType = record['vehicleDetails']['vehicleType'] ?? 'N/A';
+    final imageUrl = record['imageUrl'];
 
     return Scaffold(
       appBar: AppBar(
@@ -33,7 +34,6 @@ class RecordsDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Container(
@@ -52,6 +52,56 @@ class RecordsDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (imageUrl != null && imageUrl.toString().isNotEmpty) ...[
+                    GestureDetector(
+                      onTap: () {
+                        // Show zoomable image dialog
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            child: Container(
+                              width: MediaQuery.of(context).size.width * 0.9,
+                              height: MediaQuery.of(context).size.height * 0.7,
+                              child: PhotoView(
+                                imageProvider: NetworkImage(imageUrl),
+                                minScale: PhotoViewComputedScale.contained,
+                                maxScale: PhotoViewComputedScale.covered * 2,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        height: 200.h,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.r),
+                          image: DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        child: Align(
+                          alignment: Alignment.bottomRight,
+                          child: Container(
+                            margin: EdgeInsets.all(8.w),
+                            padding: EdgeInsets.all(6.w),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Icon(
+                              Icons.zoom_in,
+                              color: Colors.white,
+                              size: 20.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                  ],
+
                   buildInfoRow(
                     Icons.directions_car_outlined,
                     '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
@@ -191,134 +241,6 @@ class RecordsDetailsScreen extends StatelessWidget {
           ),
         ),
       ),
-
-      // body: SingleChildScrollView(
-      //   padding: const EdgeInsets.all(16.0),
-      //   child: Container(
-      //     margin: EdgeInsets.symmetric(vertical: 8.h),
-      //     child: Card(
-      //       elevation: 0,
-      //       shape: RoundedRectangleBorder(
-      //         borderRadius: BorderRadius.circular(15.r),
-      //         side: BorderSide(
-      //           color: kPrimary.withOpacity(0.2),
-      //           width: 1,
-      //         ),
-      //       ),
-      //       child: Padding(
-      //         padding: EdgeInsets.all(16.w),
-      //         child: Column(
-      //           crossAxisAlignment: CrossAxisAlignment.start,
-      //           children: [
-      //             buildInfoRow(Icons.directions_car_outlined,
-      //                 '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})'),
-      //             Divider(height: 24.h),
-      //             buildInfoRow(
-      //                 Icons.store_outlined, record['workshopName'] ?? 'N/A'),
-      //             Divider(height: 24.h),
-      //             vehicleType == "Truck"
-      //                 ? buildInfoRow(
-      //                     Icons.tire_repair, record['miles'].toString())
-      //                 : buildInfoRow(
-      //                     Icons.tire_repair, record['hours'].toString()),
-      //             SizedBox(height: 10.h),
-      //             Text("Services:",
-      //                 style: appStyleUniverse(18, kDark, FontWeight.bold)),
-      //             SizedBox(height: 8.h),
-      //             ListView.separated(
-      //               physics: const NeverScrollableScrollPhysics(),
-      //               shrinkWrap: true,
-      //               itemCount: services.length,
-      //               separatorBuilder: (context, index) => Divider(height: 24.h),
-      //               itemBuilder: (context, index) {
-      //                 final service = services[index];
-      //                 final serviceName = service['serviceName'];
-      //                 final serviceType = service['type'];
-      //                 // final nextNotificationValue =
-      //                 //     service['nextNotificationValue'] ?? "N/A";
-      //                 final rawNotificationValue =
-      //                     service['nextNotificationValue'];
-      //                 var nextNotificationValue;
-
-      //                 if (rawNotificationValue != null &&
-      //                     rawNotificationValue != 0 &&
-      //                     rawNotificationValue != "0") {
-      //                   if (serviceType == 'day') {
-      //                     try {
-      //                       final parsedDate = DateFormat('dd/MM/yyyy')
-      //                           .parse(rawNotificationValue);
-      //                       nextNotificationValue =
-      //                           DateFormat('MM-dd-yyyy').format(parsedDate);
-      //                     } catch (e) {
-      //                       nextNotificationValue = "Invalid Date";
-      //                     }
-      //                   } else {
-      //                     nextNotificationValue =
-      //                         rawNotificationValue.toString();
-      //                   }
-      //                 }
-      //                 final subServices = (service['subServices'] as List?)
-      //                         ?.map((s) => s['name'])
-      //                         .toList() ??
-      //                     [];
-
-      //                 return Column(
-      //                   crossAxisAlignment: CrossAxisAlignment.start,
-      //                   children: [
-      //                     Row(
-      //                       children: [
-      //                         Icon(Icons.build_outlined,
-      //                             size: 16, color: kSecondary),
-      //                         SizedBox(width: 8.w),
-      //                         Expanded(
-      //                           child: Text("$serviceName ",
-      //                               style: appStyleUniverse(
-      //                                   14, kDark, FontWeight.w500)),
-      //                         ),
-      //                         if (nextNotificationValue != null)
-      //                           Container(
-      //                             padding:
-      //                                 EdgeInsets.symmetric(horizontal: 6.w),
-      //                             decoration: BoxDecoration(
-      //                               color: kPrimary.withOpacity(0.1),
-      //                               borderRadius: BorderRadius.circular(12.r),
-      //                             ),
-      //                             child: Row(
-      //                               children: [
-      //                                 Icon(Icons.notifications_active_outlined,
-      //                                     size: 15, color: kPrimary),
-      //                                 SizedBox(width: 2.w),
-      //                                 Text("$nextNotificationValue",
-      //                                     style: appStyleUniverse(
-      //                                         14, kDark, FontWeight.w500)),
-      //                               ],
-      //                             ),
-      //                           ),
-      //                       ],
-      //                     ),
-      //                     if (subServices.isNotEmpty)
-      //                       Padding(
-      //                         padding: EdgeInsets.only(left: 28.w, top: 4.h),
-      //                         child: Text(
-      //                             "Subservices: ${subServices.join(', ')}",
-      //                             style: appStyleUniverse(
-      //                                 14, kDarkGray, FontWeight.w400)),
-      //                       ),
-      //                   ],
-      //                 );
-      //               },
-      //             ),
-      //             if (record["description"].isNotEmpty) ...[
-      //               Divider(height: 24.h),
-      //               buildInfoRow(
-      //                   Icons.description_outlined, record['description']),
-      //             ],
-      //           ],
-      //         ),
-      //       ),
-      //     ),
-      //   ),
-      // ),
     );
   }
 

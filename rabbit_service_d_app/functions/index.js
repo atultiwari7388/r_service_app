@@ -291,10 +291,264 @@ exports.updateUserEmail = functions.https.onCall(async (data, context) => {
   }
 });
 
+// exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
+//   async (data) => {
+//     const userId = data.userId;
+//     const vehicleId = data.vehicleId;
+
+//     try {
+//       // Fetch the user's data
+//       const userDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(userId)
+//         .get();
+//       if (!userDoc.exists) {
+//         console.error(`User with ID ${userId} not found.`);
+//         return { error: `User not found for ${userId}` };
+//       }
+
+//       const userData = userDoc.data();
+//       const isTeamMember = userData.isTeamMember || false;
+//       const createdBy = userData.createdBy;
+
+//       // Determine who should receive notifications
+//       const notificationRecipients = new Set();
+//       notificationRecipients.add(userId);
+
+//       if (isTeamMember && createdBy) {
+//         notificationRecipients.add(createdBy);
+//       } else if (!isTeamMember) {
+//         const teamMembersSnapshot = await admin
+//           .firestore()
+//           .collection("Users")
+//           .where("createdBy", "==", userId)
+//           .where("isTeamMember", "==", true)
+//           .get();
+
+//         teamMembersSnapshot.forEach((doc) => {
+//           notificationRecipients.add(doc.id);
+//         });
+//       }
+
+//       // Fetch the vehicle's data
+//       const ownerId = isTeamMember ? createdBy : userId;
+//       const vehicleDoc = await admin
+//         .firestore()
+//         .collection("Users")
+//         .doc(ownerId)
+//         .collection("Vehicles")
+//         .doc(vehicleId)
+//         .get();
+
+//       if (!vehicleDoc.exists) {
+//         console.error(`Vehicle with ID ${vehicleId} not found.`);
+//         return { error: `Vehicle not found for ${vehicleId}` };
+//       }
+
+//       const vehicleData = vehicleDoc.data();
+
+//       // 🔒 Check for firstTimeVehicle
+//       if (vehicleData.firstTimeVehicle === true) {
+//         await admin
+//           .firestore()
+//           .collection("Users")
+//           .doc(ownerId)
+//           .collection("Vehicles")
+//           .doc(vehicleId)
+//           .update({ firstTimeVehicle: false });
+
+//         console.log(
+//           `First time vehicle. Skipping notifications for ${vehicleId}`
+//         );
+//         return { message: "First time vehicle - no notifications sent." };
+//       }
+
+//       const vehicleType = vehicleData.vehicleType;
+//       let currentMiles = 0;
+//       let hoursReading = 0;
+//       let prevMilesValue = 0;
+//       let prevHoursReadingValue = 0;
+
+//       if (vehicleType === "Truck") {
+//         const currentMilesArray = vehicleData.currentMilesArray || [];
+//         if (currentMilesArray.length === 0) {
+//           console.error("No miles data found.");
+//           return { error: "No miles data found." };
+//         }
+//         const latestMilesEntry =
+//           currentMilesArray[currentMilesArray.length - 1];
+//         currentMiles = parseInt(latestMilesEntry.miles || "0", 10);
+//         prevMilesValue = parseInt(vehicleData.prevMilesValue || "0", 10);
+//       } else if (vehicleType === "Trailer") {
+//         hoursReading = parseInt(vehicleData.hoursReading || "0", 10);
+//         prevHoursReadingValue = parseInt(
+//           vehicleData.prevHoursReadingValue || "0",
+//           10
+//         );
+//       } else {
+//         console.error(`Unknown vehicle type: ${vehicleType}`);
+//         return { error: `Unknown vehicle type: ${vehicleType}` };
+//       }
+
+//       const nextNotificationMiles = vehicleData.nextNotificationMiles || [];
+//       const serviceNotifications = [];
+//       let hasNotifications = false;
+
+//       for (const service of nextNotificationMiles) {
+//         const defaultNotificationValue = service.defaultNotificationValue || 0;
+//         const serviceName = service.serviceName || "Unknown Service";
+//         const type = (service.type || "").toLowerCase();
+
+//         if (type !== "reading") {
+//           console.log(`Skipping ${serviceName} - not a reading-based service`);
+//           continue;
+//         }
+
+//         if (service.notificationSent) continue;
+
+//         if (
+//           vehicleType === "Truck" &&
+//           defaultNotificationValue > 0 &&
+//           currentMiles >= defaultNotificationValue &&
+//           !service.lastNotifiedMiles
+//         ) {
+//           hasNotifications = true;
+//           serviceNotifications.push({
+//             serviceName,
+//             defaultNotificationValue,
+//             nextNotificationValue: defaultNotificationValue,
+//             currentMiles,
+//             message: `Your ${serviceName} for vehicle ${
+//               vehicleData.vehicleType || "unknown"
+//             } needs attention. Your mileage has reached ${currentMiles}.`,
+//           });
+
+//           service.lastNotifiedMiles = currentMiles;
+//         } else if (
+//           vehicleType === "Trailer" &&
+//           defaultNotificationValue > 0 &&
+//           hoursReading >= defaultNotificationValue &&
+//           hoursReading > prevHoursReadingValue
+//         ) {
+//           hasNotifications = true;
+//           serviceNotifications.push({
+//             serviceName,
+//             defaultNotificationValue,
+//             nextNotificationValue: defaultNotificationValue,
+//             hoursReading,
+//             message: `Your ${serviceName} for vehicle ${
+//               vehicleData.vehicleType || "unknown"
+//             } needs attention. Your hours reading has reached ${hoursReading}.`,
+//           });
+//         }
+//       }
+
+//       if (hasNotifications) {
+//         for (const recipientId of notificationRecipients) {
+//           const recipientDoc = await admin
+//             .firestore()
+//             .collection("Users")
+//             .doc(recipientId)
+//             .get();
+
+//           const recipientData = recipientDoc.data();
+//           const isNotificationOn = recipientData.isNotificationOn !== false;
+
+//           if (!isNotificationOn) {
+//             console.log(
+//               `Skipping notifications for user ${recipientId} - notifications disabled`
+//             );
+//             continue;
+//           }
+
+//           const userName = recipientData.userName || "User";
+//           const fcmToken = recipientData.fcmToken;
+
+//           await admin
+//             .firestore()
+//             .collection("Users")
+//             .doc(recipientId)
+//             .collection("UserNotifications")
+//             .doc()
+//             .set({
+//               vehicleId,
+//               notifications: serviceNotifications,
+//               date: admin.firestore.FieldValue.serverTimestamp(),
+//               isRead: false,
+//               message: `Hey ${userName}, some of your vehicle services need attention. Check now!`,
+//               currentMiles: vehicleType === "Truck" ? currentMiles : null,
+//               hoursReading: vehicleType === "Trailer" ? hoursReading : null,
+//             });
+
+//           if (fcmToken) {
+//             await admin.messaging().send({
+//               token: fcmToken,
+//               notification: {
+//                 title: "Service Reminder 🚗",
+//                 body: `Hey ${userName}, some of your vehicle services need attention.`,
+//               },
+//               data: {
+//                 userId: recipientId,
+//                 vehicleId,
+//                 type: "service_reminder",
+//               },
+//             });
+//           }
+//         }
+
+//         await admin
+//           .firestore()
+//           .collection("ServiceNotifications")
+//           .doc()
+//           .set({
+//             vehicleId,
+//             notifications: admin.firestore.FieldValue.arrayUnion(
+//               ...serviceNotifications
+//             ),
+//             date: admin.firestore.FieldValue.serverTimestamp(),
+//             isRead: false,
+//             message: `Vehicle services need attention for vehicle ${vehicleId}`,
+//             currentMiles: vehicleType === "Truck" ? currentMiles : 0,
+//             hoursReading: vehicleType === "Trailer" ? hoursReading : 0,
+//             triggeredBy: userId,
+//             recipients: Array.from(notificationRecipients),
+//           });
+//       }
+
+//       console.log(
+//         "Notifications processed successfully. Vehicle ID:",
+//         vehicleId,
+//         "Current miles:",
+//         currentMiles,
+//         "Current hours:",
+//         hoursReading,
+//         "User ID:",
+//         userId,
+//         "Recipients:",
+//         Array.from(notificationRecipients),
+//         "Service notifications:",
+//         serviceNotifications
+//       );
+
+//       return { message: "Notifications sent successfully." };
+//     } catch (error) {
+//       console.error("Error in checkAndNotifyUserForVehicleService:", error);
+//       return { error: "Error in sending notifications" };
+//     }
+//   }
+// );
+
 exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
-  async (data) => {
+  async (data, context) => {
     const userId = data.userId;
     const vehicleId = data.vehicleId;
+
+    // Validate input
+    if (!userId || !vehicleId) {
+      console.error("Missing required parameters");
+      return { error: "Missing required parameters: userId and vehicleId" };
+    }
 
     try {
       // Fetch the user's data
@@ -303,6 +557,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         .collection("Users")
         .doc(userId)
         .get();
+
       if (!userDoc.exists) {
         console.error(`User with ID ${userId} not found.`);
         return { error: `User not found for ${userId}` };
@@ -317,8 +572,10 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       notificationRecipients.add(userId);
 
       if (isTeamMember && createdBy) {
+        // If current user is a team member, add the owner
         notificationRecipients.add(createdBy);
       } else if (!isTeamMember) {
+        // If current user is an owner, find team members who have this vehicle
         const teamMembersSnapshot = await admin
           .firestore()
           .collection("Users")
@@ -326,12 +583,26 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
           .where("isTeamMember", "==", true)
           .get();
 
-        teamMembersSnapshot.forEach((doc) => {
-          notificationRecipients.add(doc.id);
+        // Check each team member to see if they have this vehicle
+        const teamMemberChecks = teamMembersSnapshot.docs.map(async (doc) => {
+          const teamMemberId = doc.id;
+          const vehicleRef = admin
+            .firestore()
+            .collection("Users")
+            .doc(teamMemberId)
+            .collection("Vehicles")
+            .doc(vehicleId);
+
+          const vehicleDoc = await vehicleRef.get();
+          if (vehicleDoc.exists) {
+            notificationRecipients.add(teamMemberId);
+          }
         });
+
+        await Promise.all(teamMemberChecks);
       }
 
-      // Fetch the vehicle's data
+      // Fetch the vehicle's data from the owner
       const ownerId = isTeamMember ? createdBy : userId;
       const vehicleDoc = await admin
         .firestore()
@@ -342,13 +613,15 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         .get();
 
       if (!vehicleDoc.exists) {
-        console.error(`Vehicle with ID ${vehicleId} not found.`);
+        console.error(
+          `Vehicle with ID ${vehicleId} not found for owner ${ownerId}`
+        );
         return { error: `Vehicle not found for ${vehicleId}` };
       }
 
       const vehicleData = vehicleDoc.data();
 
-      // 🔒 Check for firstTimeVehicle
+      // Check for firstTimeVehicle
       if (vehicleData.firstTimeVehicle === true) {
         await admin
           .firestore()
@@ -445,6 +718,29 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       }
 
       if (hasNotifications) {
+        // Update the vehicle's notification status
+        const updateData = {
+          nextNotificationMiles: nextNotificationMiles.map((service) => {
+            const matchingNotification = serviceNotifications.find(
+              (n) => n.serviceName === service.serviceName
+            );
+            if (matchingNotification) {
+              return { ...service, notificationSent: true };
+            }
+            return service;
+          }),
+          lastNotified: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        await admin
+          .firestore()
+          .collection("Users")
+          .doc(ownerId)
+          .collection("Vehicles")
+          .doc(vehicleId)
+          .update(updateData);
+
+        // Send notifications to all recipients
         for (const recipientId of notificationRecipients) {
           const recipientDoc = await admin
             .firestore()
@@ -465,6 +761,7 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
           const userName = recipientData.userName || "User";
           const fcmToken = recipientData.fcmToken;
 
+          // Save notification to user's collection
           await admin
             .firestore()
             .collection("Users")
@@ -481,31 +778,35 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
               hoursReading: vehicleType === "Trailer" ? hoursReading : null,
             });
 
+          // Send push notification if token exists
           if (fcmToken) {
-            await admin.messaging().send({
-              token: fcmToken,
-              notification: {
-                title: "Service Reminder 🚗",
-                body: `Hey ${userName}, some of your vehicle services need attention.`,
-              },
-              data: {
-                userId: recipientId,
-                vehicleId,
-                type: "service_reminder",
-              },
-            });
+            try {
+              await admin.messaging().send({
+                token: fcmToken,
+                notification: {
+                  title: "Service Reminder 🚗",
+                  body: `Hey ${userName}, some of your vehicle services need attention.`,
+                },
+                data: {
+                  userId: recipientId,
+                  vehicleId,
+                  type: "service_reminder",
+                },
+              });
+            } catch (fcmError) {
+              console.error(`Failed to send FCM to ${recipientId}:`, fcmError);
+            }
           }
         }
 
+        // Log the notification in ServiceNotifications collection
         await admin
           .firestore()
           .collection("ServiceNotifications")
           .doc()
           .set({
             vehicleId,
-            notifications: admin.firestore.FieldValue.arrayUnion(
-              ...serviceNotifications
-            ),
+            notifications: serviceNotifications,
             date: admin.firestore.FieldValue.serverTimestamp(),
             isRead: false,
             message: `Vehicle services need attention for vehicle ${vehicleId}`,
@@ -531,10 +832,19 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
         serviceNotifications
       );
 
-      return { message: "Notifications sent successfully." };
+      return {
+        success: true,
+        message: "Notifications processed successfully",
+        hasNotifications,
+        serviceNotifications,
+        recipients: Array.from(notificationRecipients),
+      };
     } catch (error) {
       console.error("Error in checkAndNotifyUserForVehicleService:", error);
-      return { error: "Error in sending notifications" };
+      return {
+        error: "Error in sending notifications",
+        details: error.message,
+      };
     }
   }
 );
