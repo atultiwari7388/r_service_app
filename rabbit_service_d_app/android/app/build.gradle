@@ -50,7 +50,7 @@ android {
     defaultConfig {
         applicationId "com.rabbit_u_d_app.rabbit_services_app"
         minSdkVersion 23
-        targetSdkVersion 34
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
