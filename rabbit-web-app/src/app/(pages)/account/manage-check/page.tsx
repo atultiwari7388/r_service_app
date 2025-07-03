@@ -481,11 +481,11 @@ export default function ManageCheckScreen() {
       setNewSeriesEnd("");
       fetchCheckSeries();
     } catch (error) {
-      GlobalToastError(
-        `Error adding check series: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      // GlobalToastError(
+      //   `Error adding check series: ${
+      //     error instanceof Error ? error.message : String(error)
+      //   }`
+      // );
 
       console.error(error);
     }
@@ -575,7 +575,7 @@ export default function ManageCheckScreen() {
       {/* Header Section */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center bg-white p-4 rounded-full shadow-lg mb-4">
-          <FaFileAlt className="text-blue-600 mr-3" size={32} />
+          <FaFileAlt className="text-[#F96176] mr-3" size={32} />
           <h1 className="text-3xl font-serif font-bold text-gray-800">
             Check Management
           </h1>
@@ -593,7 +593,7 @@ export default function ManageCheckScreen() {
           </button>
           <button
             onClick={handleAddCheck}
-            className="flex items-center px-6 py-2.5 bg-blue-600 rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 text-white"
+            className="flex items-center px-6 py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white"
           >
             <FiPlus className="mr-2" />
             Write Check
@@ -605,7 +605,7 @@ export default function ManageCheckScreen() {
       <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
         <div className="flex items-center justify-center mb-6">
           <div className="bg-blue-100 p-2 rounded-full mr-3">
-            <FiFilter className="text-blue-600" size={20} />
+            <FiFilter className="text-[#F96176]" size={20} />
           </div>
           <h3 className="text-xl font-serif font-bold text-gray-800">
             Filter Checks
@@ -625,7 +625,7 @@ export default function ManageCheckScreen() {
                     key={type}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium shadow-sm transition-all ${
                       filterType === type
-                        ? "bg-blue-600 text-white border border-blue-700"
+                        ? "bg-[#F96176] text-white border border-[#F96176]"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                     }`}
                     onClick={() => {
@@ -651,7 +651,7 @@ export default function ManageCheckScreen() {
                 onClick={() => setShowDatePicker(!showDatePicker)}
                 className={`flex items-center px-4 py-1.5 rounded-full shadow-sm transition-all ${
                   startDate
-                    ? "bg-blue-600 text-white"
+                    ? "bg-[#F96176] text-white"
                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
@@ -691,7 +691,7 @@ export default function ManageCheckScreen() {
                 selectsStart
                 startDate={startDate}
                 endDate={endDate}
-                className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] "
                 dateFormat="MMMM d, yyyy"
               />
             </div>
@@ -706,7 +706,7 @@ export default function ManageCheckScreen() {
                 startDate={startDate}
                 endDate={endDate}
                 minDate={startDate || undefined}
-                className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                 dateFormat="MMMM d, yyyy"
               />
             </div>
@@ -717,7 +717,7 @@ export default function ManageCheckScreen() {
                 setShowDatePicker(false);
                 fetchChecks();
               }}
-              className="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 transition-all"
+              className="px-6 py-2 bg-[#F96176] text-white rounded-full shadow-md hover:bg-[#F96176] transition-all"
             >
               Apply Filters
             </button>
@@ -728,13 +728,13 @@ export default function ManageCheckScreen() {
       {/* Checks List */}
       {loadingChecks ? (
         <div className="text-center my-12 py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mb-4"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F96176] mb-4"></div>
           <p className="text-gray-600 italic">Loading your checks...</p>
         </div>
       ) : checks.length === 0 ? (
         <div className="bg-white rounded-xl shadow-md p-12 text-center border border-gray-100">
-          <div className="mx-auto w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-            <FiFileText size={40} className="text-blue-600" />
+          <div className="mx-auto w-24 h-24 bg-[#F96176] rounded-full flex items-center justify-center mb-6">
+            <FiFileText size={40} className="text-[#F96176]" />
           </div>
           <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">
             No Checks Found
@@ -745,7 +745,7 @@ export default function ManageCheckScreen() {
           </p>
           <button
             onClick={handleAddCheck}
-            className="px-8 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
+            className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
           >
             Write First Check
           </button>
@@ -788,7 +788,7 @@ export default function ManageCheckScreen() {
                 {/* Recipient */}
                 <div className="flex items-center mb-6">
                   <div className="bg-blue-100 p-2 rounded-full mr-3">
-                    <FiUser className="text-blue-600" />
+                    <FiUser className="text-[#F96176]" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Paid To</p>
@@ -825,7 +825,7 @@ export default function ManageCheckScreen() {
                       )}
                     </div>
                     <div className="flex items-center">
-                      <span className="text-2xl font-bold text-blue-600 mr-4">
+                      <span className="text-2xl font-bold text-[#F96176] mr-4">
                         ${check.totalAmount.toFixed(2)}
                       </span>
                       <button
@@ -859,7 +859,7 @@ export default function ManageCheckScreen() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center">
               <div className="bg-blue-100 p-3 rounded-full mr-4">
-                <FiEdit2 className="text-blue-600" size={24} />
+                <FiEdit2 className="text-[#F96176]" size={24} />
               </div>
               <div>
                 <h3 className="text-2xl font-serif font-bold text-gray-800">
@@ -882,7 +882,7 @@ export default function ManageCheckScreen() {
                     value={checkNumber}
                     onChange={(e) => setCheckNumber(e.target.value)}
                     placeholder="Enter check number"
-                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                   />
                   <p className="mt-2 text-sm text-gray-500">
                     Next check number:{" "}
@@ -899,7 +899,7 @@ export default function ManageCheckScreen() {
                     onChange={(date: Date | null) =>
                       setSelectedDate(date || new Date())
                     }
-                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                     dateFormat="MMMM d, yyyy"
                   />
                 </div>
@@ -915,7 +915,7 @@ export default function ManageCheckScreen() {
                       setSelectedUserId(null);
                       setSelectedUserName(null);
                     }}
-                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                   >
                     <option value="">Select Type</option>
                     <option value="Manager">Manager</option>
@@ -942,7 +942,7 @@ export default function ManageCheckScreen() {
                         setSelectedUserId(e.target.value || null);
                         setSelectedUserName(member?.name || null);
                       }}
-                      className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                     >
                       <option value="">Select Recipient</option>
                       {allMembers
@@ -964,7 +964,7 @@ export default function ManageCheckScreen() {
                       value={memoNumber}
                       onChange={(e) => setMemoNumber(e.target.value)}
                       placeholder="Enter memo"
-                      className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                     />
                   </div>
                 </div>
@@ -976,7 +976,7 @@ export default function ManageCheckScreen() {
                     <button
                       type="button"
                       onClick={handleAddDetail}
-                      className="flex items-center px-5 py-2.5 bg-white border border-blue-500 text-blue-600 rounded-full shadow-sm hover:bg-blue-50 transition-all"
+                      className="flex items-center px-5 py-2.5 bg-white border border-[#F96176] text-[#F96176] rounded-full shadow-sm hover:bg-[#F96176]/10 transition-all"
                     >
                       <FiPlus className="mr-2" />
                       Add Service Detail
@@ -986,8 +986,8 @@ export default function ManageCheckScreen() {
                   {serviceDetails.length > 0 && (
                     <div className="border-t border-gray-200 pt-6">
                       <div className="flex items-center mb-4">
-                        <div className="bg-blue-100 p-2 rounded-full mr-3">
-                          <FiList className="text-blue-600" />
+                        <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+                          <FiList className="text-[#F96176]" />
                         </div>
                         <h4 className="text-lg font-semibold text-gray-800">
                           Service Details
@@ -1022,7 +1022,7 @@ export default function ManageCheckScreen() {
                         <span className="text-lg font-semibold text-gray-800">
                           Total:
                         </span>
-                        <span className="text-2xl font-bold text-blue-600">
+                        <span className="text-2xl font-bold text-[#F96176]">
                           ${totalAmount.toFixed(2)}
                         </span>
                       </div>
@@ -1047,8 +1047,8 @@ export default function ManageCheckScreen() {
               }
               className={`px-8 py-2.5 rounded-full shadow-sm transition-all ${
                 serviceDetails.length === 0 || !selectedUserId || !checkNumber
-                  ? "bg-blue-300 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
+                  ? "bg-[#F96176]/10 cursor-not-allowed"
+                  : "bg-[#F96176] hover:bg-[#F96176]/80"
               } text-white`}
             >
               Save Check
@@ -1069,7 +1069,7 @@ export default function ManageCheckScreen() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center">
               <div className="bg-blue-100 p-3 rounded-full mr-4">
-                <FiPlusCircle className="text-blue-600" size={24} />
+                <FiPlusCircle className="text-[#F96176]" size={24} />
               </div>
               <h3 className="text-xl font-semibold text-gray-800">
                 Add Service Detail
@@ -1088,7 +1088,7 @@ export default function ManageCheckScreen() {
                   value={serviceName}
                   onChange={(e) => setServiceName(e.target.value)}
                   placeholder="Enter service description"
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                 />
               </div>
 
@@ -1134,7 +1134,7 @@ export default function ManageCheckScreen() {
                   onChange={(e) => setAmount(e.target.value)}
                   disabled={selectedType === "Driver"}
                   placeholder="Enter amount"
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                 />
               </div>
             </form>
@@ -1149,7 +1149,7 @@ export default function ManageCheckScreen() {
             </button>
             <button
               onClick={saveDetail}
-              className="px-8 py-2.5 bg-blue-600 rounded-full shadow-sm text-white hover:bg-blue-700 transition-all"
+              className="px-8 py-2.5 bg-[#F96176] rounded-full shadow-sm text-white hover:bg-[#F96176]/80 transition-all"
             >
               Add Detail
             </button>
@@ -1169,8 +1169,8 @@ export default function ManageCheckScreen() {
         <div className="bg-white rounded-xl overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center">
-              <div className="bg-blue-100 p-3 rounded-full mr-4">
-                <FiHash className="text-blue-600" size={24} />
+              <div className="bg-[#F96176]/10 p-3 rounded-full mr-4">
+                <FiHash className="text-[#F96176]" size={24} />
               </div>
               <div>
                 <h3 className="text-2xl font-serif font-bold text-gray-800">
@@ -1186,12 +1186,12 @@ export default function ManageCheckScreen() {
           <div className="p-6">
             <div className="bg-blue-50 p-4 rounded-lg mb-6">
               <div className="flex items-center">
-                <FiInfo className="text-blue-600 mr-3" />
+                <FiInfo className="text-[#F96176] mr-3" />
                 <div>
                   <p className="font-semibold text-gray-800">
                     Current Check Number
                   </p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-[#F96176]">
                     {currentCheckNumber || "Not set"}
                   </p>
                 </div>
@@ -1201,7 +1201,7 @@ export default function ManageCheckScreen() {
             <div className="mb-8">
               <div className="flex items-center mb-4">
                 <div className="bg-blue-100 p-2 rounded-full mr-3">
-                  <FiPlus className="text-blue-600" />
+                  <FiPlus className="text-[#F96176]" />
                 </div>
                 <h4 className="text-lg font-semibold text-gray-800">
                   Add New Check Series
@@ -1218,7 +1218,7 @@ export default function ManageCheckScreen() {
                     value={newSeriesStart}
                     onChange={(e) => setNewSeriesStart(e.target.value)}
                     placeholder="Enter start number"
-                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                   />
                 </div>
                 <div>
@@ -1230,7 +1230,7 @@ export default function ManageCheckScreen() {
                     value={newSeriesEnd}
                     onChange={(e) => setNewSeriesEnd(e.target.value)}
                     placeholder="Enter end number"
-                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                   />
                 </div>
               </div>
@@ -1241,7 +1241,7 @@ export default function ManageCheckScreen() {
                 className={`px-6 py-2.5 rounded-full shadow-sm transition-all ${
                   !newSeriesStart || !newSeriesEnd
                     ? "bg-blue-300 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    : "bg-[#F96176] hover:bg-[#F96176]"
                 } text-white`}
               >
                 Add Check Series
@@ -1250,8 +1250,8 @@ export default function ManageCheckScreen() {
 
             <div>
               <div className="flex items-center mb-4">
-                <div className="bg-blue-100 p-2 rounded-full mr-3">
-                  <FiArchive className="text-blue-600" />
+                <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+                  <FiArchive className="text-[#F96176]" />
                 </div>
                 <h4 className="text-lg font-semibold text-gray-800">
                   Check Series History
