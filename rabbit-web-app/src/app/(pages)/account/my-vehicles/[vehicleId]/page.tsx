@@ -312,6 +312,7 @@ export default function MyVehicleDetailsScreen() {
                     service.defaultNotificationValue !== 0 &&
                     service.defaultNotificationValue !== 0
                 )
+                .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
                 .map((service, index) => (
                   <tr key={service.serviceId} className="border-b">
                     <td className="px-4 py-2">{service.serviceName}</td>
@@ -319,7 +320,6 @@ export default function MyVehicleDetailsScreen() {
                       {service.defaultNotificationValue || "N/A"} (
                       {service.type === "reading" ? "Miles" : service.type})
                     </td>
-
                     <td className="px-4 py-2">
                       <button
                         onClick={() => handleEditService(index, service)}
