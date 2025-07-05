@@ -11,6 +11,7 @@ import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../../../widgets/text_field.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -299,15 +300,33 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         text: "By continuing, you agree to our ",
                         style: appStyle(12, kDark, FontWeight.w500),
                         children: <TextSpan>[
+                          // TextSpan(
+                          //   text: "Terms of Services",
+                          //   style: appStyle(12, kPrimary, FontWeight.w500),
+                          //   recognizer: TapGestureRecognizer()
+                          //     ..onTap = () {
+                          //       // Handle tap for Terms of Services
+                          //       print("Terms of Services tapped");
+                          //     },
+                          // ),
+
                           TextSpan(
                             text: "Terms of Services",
                             style: appStyle(12, kPrimary, FontWeight.w500),
                             recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                // Handle tap for Terms of Services
-                                print("Terms of Services tapped");
+                              ..onTap = () async {
+                                const url =
+                                    'https://www.rabbitmechanic.com/terms-condition';
+                                if (await canLaunchUrl(Uri.parse(url))) {
+                                  await launchUrl(Uri.parse(url),
+                                      mode: LaunchMode.externalApplication);
+                                } else {
+                                  // Handle error if the URL can't be launched
+                                  print("Could not launch $url");
+                                }
                               },
                           ),
+
                           TextSpan(
                             text: " and ",
                             style: appStyle(12, kDark, FontWeight.w500),
@@ -316,9 +335,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                             text: "Privacy Policy.",
                             style: appStyle(12, kPrimary, FontWeight.w500),
                             recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                // Handle tap for Privacy Policy
-                                print("Privacy Policy tapped");
+                              ..onTap = () async {
+                                const url =
+                                    'https://www.rabbitmechanic.com/privacy-policy';
+                                if (await canLaunchUrl(Uri.parse(url))) {
+                                  await launchUrl(Uri.parse(url),
+                                      mode: LaunchMode.externalApplication);
+                                } else {
+                                  // Handle error if the URL can't be launched
+                                  print("Could not launch $url");
+                                }
                               },
                           ),
                         ],
