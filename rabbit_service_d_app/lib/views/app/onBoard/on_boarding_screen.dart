@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/entry_screen.dart';
+import 'package:regal_service_d_app/views/app/dashboard/dashboard_screen.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../utils/constants.dart';
 import '../auth/login_screen.dart';
@@ -175,6 +177,10 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                         Get.offAll(() => const LoginScreen(),
                             transition: Transition.cupertino,
                             duration: const Duration(milliseconds: 900));
+
+                        // Get.offAll(() => const EntryScreen(),
+                        //     transition: Transition.cupertino,
+                        //     duration: const Duration(milliseconds: 900));
                       } else {
                         _pageController.nextPage(
                           duration: const Duration(milliseconds: 300),
@@ -202,8 +208,6 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
     super.dispose();
   }
 }
-
-
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';

@@ -80,7 +80,8 @@ export default function PrivacyPolicy(): JSX.Element {
                       form or any updates.
                     </h2>
                   </div>
-                )}
+               
+               )}
               </div>
             </div>
           </div>
