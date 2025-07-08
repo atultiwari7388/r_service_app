@@ -1,11 +1,13 @@
+import 'dart:developer';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
-import 'package:regal_service_d_app/views/app/dashboard/dashboard_screen.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../utils/constants.dart';
-import '../auth/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({super.key});
@@ -169,18 +171,31 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.r),
                         ),
-                        minimumSize: isDesktop
-                            ? Size(300.w, 60.h) // Larger button for desktop
-                            : Size(220.w, 42.h)),
-                    onPressed: () {
+                        minimumSize: Size(220.w, 42.h)),
+                    onPressed: () async {
                       if (_currentPage == _onBoardingData.length - 1) {
-                        Get.offAll(() => const LoginScreen(),
-                            transition: Transition.cupertino,
-                            duration: const Duration(milliseconds: 900));
+                        await FirebaseAuth.instance
+                            .signInAnonymously()
+                            .then((value) async {
+                          //save user data to firebase and also save the userId in shared preferences
 
-                        // Get.offAll(() => const EntryScreen(),
-                        //     transition: Transition.cupertino,
-                        //     duration: const Duration(milliseconds: 900));
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('an_user_id', value.user!.uid);
+                          log("User signed in anonymously: ${value.user!.uid}");
+
+                          _saveUserData(value.user!.uid).then((_) {
+                            log("User data saved successfully");
+                            Get.offAll(() => const EntryScreen(),
+                                transition: Transition.cupertino,
+                                duration: const Duration(milliseconds: 900));
+                          }).catchError((error) {
+                            log("Error saving user data: $error");
+                          });
+                        }).catchError((error) {
+                          log(error.toString());
+                          Get.snackbar('Error', error.toString(),
+                              snackPosition: SnackPosition.BOTTOM);
+                        });
                       } else {
                         _pageController.nextPage(
                           duration: const Duration(milliseconds: 300),
@@ -200,6 +215,61 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _saveUserData(String uId) async {
+    final fireStoreDatabase = FirebaseFirestore.instance.collection("Users");
+    try {
+      await fireStoreDatabase.doc(uId).set({
+        "status": "active",
+        "isAnonymous": true,
+        "isProfileComplete": false,
+        "uid": uId,
+        "userName": "", //name
+        "phoneNumber": "", //phone number
+        "telephoneNumber": "", //telephone number
+        "email": "", //email address
+        "email2": "",
+        "address": "", //address
+        "city": "", //city
+        "state": "", //state
+        "country": "", //country
+        "postalCode": "", //postal code
+        "licNumber": "", //license number
+        "licExpDate": DateTime.now().toString(), //license expiry date
+        "dob": DateTime.now().toString(), //Date of birth
+        "lastDrugTest": DateTime.now().toString(), //last drug test
+        "dateOfHire": DateTime.now().toString(), //date of hire
+        "dateOfTermination": DateTime.now().toString(), //date of termination
+        "socialSecurity": "", //social security number
+        "active": true,
+        'perMileCharge': "",
+        "companyName": "",
+        "vehicleRange": "",
+        "isTeamMember": false,
+        "lastAddress": "",
+        "profilePicture":
+            "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
+        "wallet": 0,
+        "isNotificationOn": true,
+        'createdBy': uId,
+        'role': 'Owner',
+        'isOwner': true,
+        'isManager': false,
+        'isDriver': false,
+        'isVendor': false,
+        "isView": true,
+        "isCheque": true,
+        'payMode': '',
+        "isEdit": true,
+        "isDelete": true,
+        "isAdd": true,
+        "created_at": DateTime.now(),
+        "updated_at": DateTime.now(),
+      });
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
   @override

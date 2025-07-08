@@ -870,6 +870,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   final TextEditingController _checkNumberController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   double _totalAmount = 0.0;
+  bool isAnonymous = true;
+  bool isProfileComplete = false;
 
   // For displaying checks
   List<Map<String, dynamic>> _checks = [];
@@ -1202,6 +1204,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         final userData = userSnapshot.data() as Map<String, dynamic>;
         setState(() {
           role = userData["role"] ?? "";
+          isAnonymous = userData["isAnonymous"] ?? true;
+          isProfileComplete = userData["isProfileComplete"] ?? false;
         });
       } else {
         setState(() {
@@ -1672,19 +1676,21 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         iconTheme: const IconThemeData(color: kWhite),
         title: Text('Manage Checks',
             style: appStyle(18, kWhite, FontWeight.normal)),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.numbers),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ManageCheckNumbersScreen(),
+        actions: (isAnonymous == true && isProfileComplete == false)
+            ? []
+            : [
+                IconButton(
+                  icon: Icon(Icons.numbers),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ManageCheckNumbersScreen(),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ],
+              ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -1692,11 +1698,19 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CustomButton(
-                text: "Write Check",
-                onPress: _showAddCheckDialog,
-                color: kPrimary,
-              ),
+              (isAnonymous == true && isProfileComplete == false)
+                  ? Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'Please create and account to write checks.',
+                        style: appStyle(14, Colors.red, FontWeight.bold),
+                      ),
+                    )
+                  : CustomButton(
+                      text: "Write Check",
+                      onPress: _showAddCheckDialog,
+                      color: kPrimary,
+                    ),
               const SizedBox(height: 16),
               _buildFilterRow(),
               if (_dateRange != null)

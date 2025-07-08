@@ -32,6 +32,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
   late TabController _tabController;
   late String role = "";
   bool isLoading = false;
+  bool isAnonymous = true;
+  bool isProfileComplete = false;
 
   @override
   void initState() {
@@ -56,6 +58,8 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
         final userData = userSnapshot.data() as Map<String, dynamic>;
         setState(() {
           role = userData["role"] ?? "";
+          isAnonymous = userData["isAnonymous"] ?? true;
+          isProfileComplete = userData["isProfileComplete"] ?? false;
         });
       }
     } catch (e) {
@@ -217,58 +221,61 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
             Text("My Vehicles", style: appStyle(20, kWhite, FontWeight.normal)),
         backgroundColor: kPrimary,
         iconTheme: IconThemeData(color: kWhite),
-        actions: [
-          role == "Owner"
-              ? InkWell(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text("Choose an option"),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: Icon(Icons.directions_car),
-                                title: Text("Add Vehicle"),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => AddVehicleScreen(),
+        actions: (isAnonymous == true && isProfileComplete == false)
+            ? []
+            : [
+                role == "Owner"
+                    ? InkWell(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text("Choose an option"),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: Icon(Icons.directions_car),
+                                      title: Text("Add Vehicle"),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AddVehicleScreen(),
+                                          ),
+                                        );
+                                      },
                                     ),
-                                  );
-                                },
-                              ),
-                              ListTile(
-                                leading: Icon(Icons.upload_file),
-                                title: Text("Import Vehicle"),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          AddVehicleViaExcelScreen(),
+                                    ListTile(
+                                      leading: Icon(Icons.upload_file),
+                                      title: Text("Import Vehicle"),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AddVehicleViaExcelScreen(),
+                                          ),
+                                        );
+                                      },
                                     ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  child: CircleAvatar(
-                    backgroundColor: kWhite,
-                    child: Icon(Icons.add, color: kPrimary),
-                  ),
-                )
-              : SizedBox(),
-          SizedBox(width: 10.w),
-        ],
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                        child: CircleAvatar(
+                          backgroundColor: kWhite,
+                          child: Icon(Icons.add, color: kPrimary),
+                        ),
+                      )
+                    : SizedBox(),
+                SizedBox(width: 10.w),
+              ],
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())

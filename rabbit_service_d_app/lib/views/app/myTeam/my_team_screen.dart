@@ -530,6 +530,8 @@ class _MyTeamScreenState extends State<MyTeamScreen>
   bool _isLoading = true;
   String _errorMessage = '';
   late String role = "";
+  bool isAnonymous = true;
+  bool isProfileComplete = false;
 
   List<String> _selectedRoles = ['All'];
   List<String> _availableRoles = [
@@ -569,6 +571,8 @@ class _MyTeamScreenState extends State<MyTeamScreen>
         final userData = userSnapshot.data() as Map<String, dynamic>;
         setState(() {
           role = userData["role"] ?? "";
+          isAnonymous = userData["isAnonymous"] ?? true;
+          isProfileComplete = userData["isProfileComplete"] ?? false;
         });
       } else {
         setState(() {
@@ -707,17 +711,19 @@ class _MyTeamScreenState extends State<MyTeamScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Team"),
-        actions: [
-          InkWell(
-            onTap: () => Get.to(() => const AddTeamMember()),
-            child: CircleAvatar(
-              radius: 20.r,
-              backgroundColor: kPrimary,
-              child: const Icon(Icons.add, color: kWhite),
-            ),
-          ),
-          SizedBox(width: 10.w),
-        ],
+        actions: (isAnonymous == true || isProfileComplete == false)
+            ? []
+            : [
+                InkWell(
+                  onTap: () => Get.to(() => const AddTeamMember()),
+                  child: CircleAvatar(
+                    radius: 20.r,
+                    backgroundColor: kPrimary,
+                    child: const Icon(Icons.add, color: kWhite),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+              ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

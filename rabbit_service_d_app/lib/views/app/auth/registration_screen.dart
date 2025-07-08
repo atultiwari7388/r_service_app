@@ -1,3 +1,6 @@
+import 'dart:developer';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,6 +15,7 @@ import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../../../widgets/text_field.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -22,6 +26,7 @@ class RegistrationScreen extends StatefulWidget {
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _firestore = FirebaseFirestore.instance;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -369,9 +374,24 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     //       },
                     onPress: controller.isUserAcCreated
                         ? null
-                        : () {
+                        : () async {
                             if (controller.formKey.currentState != null) {
                               if (controller.formKey.currentState!.validate()) {
+                                //firstly we delete the anonymous user from the firestore if exists
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                final userId = prefs.getString('an_user_id');
+
+                                if (userId != null) {
+                                  await _firestore
+                                      .collection('Users')
+                                      .doc(userId)
+                                      .delete();
+                                  await prefs.remove('an_user_id');
+
+                                  log("Anonymous user $userId deleted from Firestore");
+                                }
+
                                 controller.createUserWithEmailAndPassword();
                               } else {
                                 // Check which fields are empty and show specific message
@@ -399,6 +419,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               }
                             }
                           },
+
                     color: kPrimary,
                   ),
                   SizedBox(height: 24.h),

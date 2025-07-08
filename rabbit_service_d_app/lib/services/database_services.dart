@@ -24,6 +24,8 @@ class DatabaseServices {
   ) async {
     return fireStoreDatabase.doc(uid!).set({
       "status": "active", //active and deleted
+      "isAnonymous": false, //is anonymous
+      "isProfileComplete": true, //is profile complete
       "uid": uid,
       "userName": userName, //name
       "phoneNumber": phoneNumber, //phone number

@@ -1,3 +1,6 @@
+import 'dart:developer';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
@@ -11,6 +14,7 @@ import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../../../widgets/text_field.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +25,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -304,9 +309,20 @@ class _LoginScreenState extends State<LoginScreen> {
           text: "Login",
           onPress: controller.isUserAcCreated
               ? null
-              : () {
+              : () async {
                   if (_formKey.currentState != null &&
                       _formKey.currentState!.validate()) {
+                    //firstly we delete the anonymous user from the firestore if exists
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getString('an_user_id');
+
+                    if (userId != null) {
+                      await _firestore.collection('Users').doc(userId).delete();
+                      await prefs.remove('an_user_id');
+
+                      log("Anonymous user $userId deleted from Firestore");
+                    }
+
                     controller.signInWithEmailAndPassword();
                   } else {
                     showToastMessage(

@@ -9,7 +9,6 @@ import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/our_services.dart';
-import '../../../services/collection_references.dart';
 import '../profile/profile_screen.dart';
 import 'widgets/find_mechanic.dart';
 

@@ -46,6 +46,8 @@ class DashboardController extends GetxController {
   String get role => _role.value;
   String ownerEmail = "";
   String ownerId = "";
+  bool isAnonymous = true;
+  bool isProfileComplete = false;
 
   File? image;
   List<File> images = [];
@@ -120,6 +122,9 @@ class DashboardController extends GetxController {
       if (!doc.exists) throw Exception("User document not found");
 
       final role = doc.get('role')?.toString() ?? '';
+      isAnonymous = doc.get('isAnonymous') ?? true;
+      isProfileComplete = doc.get('isProfileComplete') ?? false;
+
       if (role.isEmpty) throw Exception("Role not set");
 
       _role.value = role;

@@ -5,12 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:regal_service_d_app/controllers/authentication_controller.dart';
-import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
-import 'package:regal_service_d_app/controllers/tab_index_controller.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
 import 'package:regal_service_d_app/views/app/manageCheck/manage_check_screen.dart';
@@ -24,7 +23,7 @@ import 'package:regal_service_d_app/views/app/profile/profile_details_screen.dar
 import 'package:regal_service_d_app/views/app/ratings/ratings_screen.dart';
 import 'package:regal_service_d_app/views/app/termsCondition/terms_conditions.dart';
 import 'package:regal_service_d_app/views/app/tripWiseVehicle/trip_wise_vehicle_screen.dart';
-import '../../../services/collection_references.dart';
+import 'package:regal_service_d_app/widgets/custom_button.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
 import '../../../widgets/dashed_divider.dart';
@@ -44,6 +43,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _firebaseAuth = FirebaseAuth.instance;
   final userService = UserService.to;
   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  bool isAnonymous = true;
+  bool isProfileComplete = false;
 
   Future<void> fetchUserDetails() async {
     try {
@@ -60,6 +61,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           role = userData["role"] ?? "";
           isCheque = userData["isCheque"] ?? false;
           isTeamMember = userData["isTeamMember"] ?? false;
+          isAnonymous = userData["isAnonymous"] ?? true;
+          isProfileComplete = userData["isProfileComplete"] ?? false;
         });
         log("Role set to ${role} and isCheque set to ${isCheque} for user ID: $currentUId and isTeamMember set to ${isTeamMember}");
       } else {
@@ -130,7 +133,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Get.to(() => HistoryScreen());
                     }),
                     buildListTile("assets/profile_bw.png", "My Profile", () {
-                      Get.to(() => ProfileDetailsScreen());
+                      if (isAnonymous == true || isProfileComplete == false) {
+                        Get.to(() => const RegistrationScreen());
+                      } else {
+                        Get.to(() => ProfileDetailsScreen());
+                      }
                     }),
                     buildListTile("assets/myvehicles.png", "My Vehicles", () {
                       Get.to(() => MyVehiclesScreen());
@@ -154,13 +161,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                     if (role == "Owner" || role == "Driver") ...[
                       buildListTile("assets/manage_trip.png", "My Trips", () {
-                        Get.to(() => ManageTripsScreen());
+                        if (isAnonymous == true || isProfileComplete == false) {
+                          Get.to(() => RegistrationScreen());
+                        } else {
+                          Get.to(() => ManageTripsScreen());
+                        }
                       }),
                     ],
                     if (role == "Owner" || role == "Manager") ...[
                       buildListTile(
                           "assets/manage_trip.png", "Trips Wise Vehicle", () {
-                        Get.to(() => TripWiseVehicleScreen());
+                        if (isAnonymous == true || isProfileComplete == false) {
+                          Get.to(() => RegistrationScreen());
+                        } else {
+                          Get.to(() => TripWiseVehicleScreen());
+                        }
                       }),
                     ],
                     buildListTile("assets/rating_bw.png", "Ratings", () {
@@ -358,8 +373,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 //================================ top Profile section =============================
   Container buildTopProfileSection() {
+    if (isAnonymous == true || isProfileComplete == false) {
+      return Container(
+        height: 120.h,
+        width: double.maxFinite,
+        padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.w),
+        decoration: BoxDecoration(
+          color: kLightWhite,
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Center(
+          child: CustomButton(
+              text: "Register",
+              onPress: () {
+                Get.to(() => const RegistrationScreen());
+              },
+              color: kPrimary),
+        ),
+      );
+    }
+
     return Container(
-      height: kIsWeb ? 180.h : 120.h,
+      height: 120.h,
       width: double.maxFinite,
       padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 12.w),
       decoration: BoxDecoration(

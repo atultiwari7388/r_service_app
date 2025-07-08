@@ -2,7 +2,8 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
+import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService extends GetxService {
   static UserService get to => Get.find();
@@ -51,9 +52,20 @@ class UserService extends GetxService {
 
   Future<void> signOut() async {
     try {
+      //first we delete the anonymous user from the firestore
+
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('an_user_id');
+
+      if (userId != null) {
+        await _firestore.collection('Users').doc(userId).delete();
+        await prefs.remove('an_user_id');
+        log("Anonymous user $userId deleted from Firestore");
+      }
+
       await _auth.signOut();
       role.value = '';
-      Get.offAll(() => const OnBoardingScreen());
+      Get.offAll(() => const LoginScreen());
     } catch (e) {
       log("Sign out error: $e");
     }

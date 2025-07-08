@@ -28,17 +28,111 @@ class _SplashScreenState extends State<SplashScreen> {
     Timer(const Duration(seconds: 2), _navigate);
   }
 
+  // void _navigate() async {
+  //   if (user != null) {
+  //     // Check if the user's email is verified
+  //     if (!user!.emailVerified) {
+  //       await user!.sendEmailVerification(); // Send verification email
+  //       await FirebaseAuth.instance.signOut(); // Sign the user out
+  //       log("User is not verified, signing out");
+  //       Get.offAll(() => const LoginScreen(),
+  //           transition: Transition.cupertino,
+  //           duration: const Duration(milliseconds: 900));
+  //     } else {
+  //       // Fetch both Mechanics and Users docs in parallel
+  //       var mechanicsDocFuture =
+  //           FirebaseFirestore.instance.doc("Mechanics/${user!.uid}").get();
+  //       var usersDocFuture =
+  //           FirebaseFirestore.instance.doc("Users/${user!.uid}").get();
+
+  //       var docs = await Future.wait([mechanicsDocFuture, usersDocFuture]);
+
+  //       var mechanicDoc = docs[0];
+  //       var userDoc = docs[1];
+
+  //       if (mechanicDoc.exists && mechanicDoc['uid'] == user!.uid) {
+  //         // User exists in Mechanics collection
+  //         showToastMessage(
+  //             "Error",
+  //             "Please try with another email... this email already exists with Mechanic app",
+  //             Colors.red);
+
+  //         await FirebaseAuth.instance.signOut();
+  //         log("User exists in Mechanics collection, signing out");
+  //         Get.offAll(() => const LoginScreen(),
+  //             transition: Transition.cupertino,
+  //             duration: const Duration(milliseconds: 900));
+  //         return;
+  //       }
+
+  //       if (userDoc.exists && userDoc['uid'] == user!.uid) {
+  //         // Check if the user is active
+  //         if (userDoc['active'] == true && userDoc['status'] == "active") {
+  //           log("User is active and exists in Users collection, navigating to EntryScreen");
+  //           Get.offAll(() => EntryScreen(),
+  //               transition: Transition.cupertino,
+  //               duration: const Duration(milliseconds: 900));
+  //         } else if (userDoc['status'] == "deactivated") {
+  //           // User is not active, navigate to ContactWithAdmin screen
+  //           showToastMessage(
+  //               "Error",
+  //               "Your Account is deactivated, kindly contact with your office.",
+  //               Colors.red);
+  //           Get.offAll(() => const AdminContactScreen());
+  //         } else {
+  //           // User is not active, navigate to ContactWithAdmin screen
+  //           log("User exists but is not active, navigating to ContactWithAdminScreen");
+  //           Get.offAll(() => const AdminContactScreen(),
+  //               transition: Transition.cupertino,
+  //               duration: const Duration(milliseconds: 900));
+  //         }
+  //       }
+  //     }
+  //   } else {
+  //     Get.offAll(() => const OnBoardingScreen(),
+  //         transition: Transition.cupertino,
+  //         duration: const Duration(milliseconds: 900));
+  //     log("User is null, navigating to OnBoardingScreen");
+  //   }
+  // }
+
   void _navigate() async {
     if (user != null) {
-      // Check if the user's email is verified
-      if (!user!.emailVerified) {
-        await user!.sendEmailVerification(); // Send verification email
-        await FirebaseAuth.instance.signOut(); // Sign the user out
-        log("User is not verified, signing out");
-        Get.offAll(() => const LoginScreen(),
-            transition: Transition.cupertino,
-            duration: const Duration(milliseconds: 900));
+      // Check if user is anonymous
+      if (user!.isAnonymous) {
+        log("Anonymous user detected, skipping email verification");
+
+        // Optionally check if user exists in Users collection
+        final userDoc = await FirebaseFirestore.instance
+            .collection("Users")
+            .doc(user!.uid)
+            .get();
+
+        if (userDoc.exists &&
+            userDoc['active'] == true &&
+            userDoc['status'] == "active") {
+          Get.offAll(() => EntryScreen(),
+              transition: Transition.cupertino,
+              duration: const Duration(milliseconds: 900));
+        } else {
+          log("Anonymous user not found or inactive, redirecting to OnBoardingScreen");
+          Get.offAll(() => const OnBoardingScreen(),
+              transition: Transition.cupertino,
+              duration: const Duration(milliseconds: 900));
+        }
       } else {
+        // Normal authenticated user (not anonymous)
+        if (!user!.emailVerified) {
+          await user!.sendEmailVerification(); // Send verification email
+          await FirebaseAuth.instance.signOut(); // Sign the user out
+          log("User is not verified, signing out");
+
+          Get.offAll(() => const LoginScreen(),
+              transition: Transition.cupertino,
+              duration: const Duration(milliseconds: 900));
+          return;
+        }
+
         // Fetch both Mechanics and Users docs in parallel
         var mechanicsDocFuture =
             FirebaseFirestore.instance.doc("Mechanics/${user!.uid}").get();
@@ -51,7 +145,6 @@ class _SplashScreenState extends State<SplashScreen> {
         var userDoc = docs[1];
 
         if (mechanicDoc.exists && mechanicDoc['uid'] == user!.uid) {
-          // User exists in Mechanics collection
           showToastMessage(
               "Error",
               "Please try with another email... this email already exists with Mechanic app",
@@ -59,6 +152,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
           await FirebaseAuth.instance.signOut();
           log("User exists in Mechanics collection, signing out");
+
           Get.offAll(() => const LoginScreen(),
               transition: Transition.cupertino,
               duration: const Duration(milliseconds: 900));
@@ -66,22 +160,22 @@ class _SplashScreenState extends State<SplashScreen> {
         }
 
         if (userDoc.exists && userDoc['uid'] == user!.uid) {
-          // Check if the user is active
           if (userDoc['active'] == true && userDoc['status'] == "active") {
             log("User is active and exists in Users collection, navigating to EntryScreen");
+
             Get.offAll(() => EntryScreen(),
                 transition: Transition.cupertino,
                 duration: const Duration(milliseconds: 900));
           } else if (userDoc['status'] == "deactivated") {
-            // User is not active, navigate to ContactWithAdmin screen
             showToastMessage(
                 "Error",
                 "Your Account is deactivated, kindly contact with your office.",
                 Colors.red);
+
             Get.offAll(() => const AdminContactScreen());
           } else {
-            // User is not active, navigate to ContactWithAdmin screen
             log("User exists but is not active, navigating to ContactWithAdminScreen");
+
             Get.offAll(() => const AdminContactScreen(),
                 transition: Transition.cupertino,
                 duration: const Duration(milliseconds: 900));
