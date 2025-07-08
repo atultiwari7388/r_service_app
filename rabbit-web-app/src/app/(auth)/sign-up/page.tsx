@@ -103,6 +103,8 @@ const Signup: React.FC = () => {
           email: formValues.email,
           email2: "",
           active: true,
+          isAnonymous: false,
+          isProfileComplete: true,
           userName: formValues.name,
           phoneNumber: formValues.phoneNumber,
           telephoneNumber: "",
