@@ -384,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Center(
           child: CustomButton(
-              text: "Register",
+              text: "Register/Login",
               onPress: () {
                 Get.to(() => const RegistrationScreen());
               },

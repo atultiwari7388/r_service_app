@@ -122,6 +122,9 @@ class _ReportsScreenState extends State<ReportsScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     initializeStreams();
+    if (isAnonymous == true || isProfileComplete == false) {
+      showAddRecords = true;
+    }
   }
 
   void initializeStreams() {
@@ -1417,123 +1420,116 @@ class _ReportsScreenState extends State<ReportsScreen>
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 // Vehicle Dropdown
-                                (isAnonymous == true ||
-                                        isProfileComplete == false)
-                                    ? AbsorbPointer(
-                                        child: DropdownButtonFormField<String>(
-                                          hint: Text(
-                                              'Create an account to select vehicle'),
-                                          items: [],
-                                          onChanged: null,
-                                        ),
-                                      )
-                                    : Row(
-                                        children: [
-                                          Expanded(
-                                            child:
-                                                DropdownButtonFormField<String>(
-                                              value: selectedVehicle,
-                                              hint:
-                                                  const Text('Select Vehicle'),
-                                              items: (vehicles
-                                                    ..sort((a, b) => a[
-                                                            'vehicleNumber']
-                                                        .toString()
-                                                        .toLowerCase()
-                                                        .compareTo(b[
-                                                                'vehicleNumber']
-                                                            .toString()
-                                                            .toLowerCase())))
-                                                  .map((vehicle) {
-                                                return DropdownMenuItem<String>(
-                                                  value: vehicle['id'],
-                                                  child: Text(
-                                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                                    style: appStyleUniverse(
-                                                        14,
-                                                        kDark,
-                                                        FontWeight.normal),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                );
-                                              }).toList(),
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  selectedVehicle = value;
-                                                  selectedServices.clear();
-                                                  selectedPackages.clear();
-                                                  updateSelectedVehicleAndService();
-                                                });
-                                              },
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<String>(
+                                        value: selectedVehicle,
+                                        hint: const Text('Select Vehicle'),
+                                        items: (vehicles
+                                              ..sort((a, b) =>
+                                                  a['vehicleNumber']
+                                                      .toString()
+                                                      .toLowerCase()
+                                                      .compareTo(
+                                                          b['vehicleNumber']
+                                                              .toString()
+                                                              .toLowerCase())))
+                                            .map((vehicle) {
+                                          return DropdownMenuItem<String>(
+                                            value: vehicle['id'],
+                                            child: Text(
+                                              '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                              style: appStyleUniverse(
+                                                  14, kDark, FontWeight.normal),
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                          if (role == "Owner")
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  left: 8.0),
-                                              child: InkWell(
-                                                onTap: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder:
-                                                        (BuildContext context) {
-                                                      return AlertDialog(
-                                                        title: Text(
-                                                            "Choose an option"),
-                                                        content: Column(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          children: [
-                                                            ListTile(
-                                                              leading: Icon(Icons
-                                                                  .directions_car),
-                                                              title: Text(
-                                                                  "Add Vehicle"),
-                                                              onTap: () {
-                                                                Navigator.push(
-                                                                  context,
-                                                                  MaterialPageRoute(
-                                                                    builder:
-                                                                        (context) =>
-                                                                            AddVehicleScreen(),
-                                                                  ),
-                                                                );
-                                                              },
-                                                            ),
-                                                            ListTile(
-                                                              leading: Icon(Icons
-                                                                  .upload_file),
-                                                              title: Text(
-                                                                  "Import Vehicle"),
-                                                              onTap: () {
-                                                                Navigator.pop(
-                                                                    context);
-                                                                Navigator.push(
-                                                                  context,
-                                                                  MaterialPageRoute(
-                                                                    builder:
-                                                                        (context) =>
-                                                                            AddVehicleViaExcelScreen(),
-                                                                  ),
-                                                                );
-                                                              },
-                                                            ),
-                                                          ],
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            selectedVehicle = value;
+                                            selectedServices.clear();
+                                            selectedPackages.clear();
+                                            updateSelectedVehicleAndService();
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    if (role == "Owner")
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 8.0),
+                                        child: InkWell(
+                                          onTap: () {
+                                            if (isAnonymous == true ||
+                                                isProfileComplete == false) {
+                                              showToastMessage(
+                                                  "Incomplete Profile",
+                                                  "Please Create an account or login with existing account",
+                                                  kRed);
+                                            } else {
+                                              showDialog(
+                                                context: context,
+                                                builder:
+                                                    (BuildContext context) {
+                                                  return AlertDialog(
+                                                    title: Text(
+                                                        "Choose an option"),
+                                                    content: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        ListTile(
+                                                          leading: Icon(Icons
+                                                              .directions_car),
+                                                          title: Text(
+                                                              "Add Vehicle"),
+                                                          onTap: () {
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        AddVehicleScreen(),
+                                                              ),
+                                                            );
+                                                          },
                                                         ),
-                                                      );
-                                                    },
+                                                        ListTile(
+                                                          leading: Icon(Icons
+                                                              .upload_file),
+                                                          title: Text(
+                                                              "Import Vehicle"),
+                                                          onTap: () {
+                                                            Navigator.pop(
+                                                                context);
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        AddVehicleViaExcelScreen(),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    ),
                                                   );
                                                 },
-                                                child: CircleAvatar(
-                                                  backgroundColor: kWhite,
-                                                  child: Icon(Icons.add,
-                                                      color: kPrimary),
-                                                ),
-                                              ),
-                                            )
-                                        ],
-                                      ),
+                                              );
+                                            }
+                                          },
+                                          child: CircleAvatar(
+                                            backgroundColor: kWhite,
+                                            child: Icon(Icons.add,
+                                                color: kPrimary),
+                                          ),
+                                        ),
+                                      )
+                                  ],
+                                ),
 
                                 SizedBox(height: 10.h),
                                 // Select Package (Multiple Selection)
@@ -2260,7 +2256,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                   color: Colors.grey)),
                                           SizedBox(height: 20),
                                           CustomButton(
-                                              text: "Register",
+                                              text: "Register/Login",
                                               onPress: () => showLoginPrompt(),
                                               color: kSecondary)
                                         ],
@@ -2617,7 +2613,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                 TextStyle(color: Colors.grey)),
                                         SizedBox(height: 20),
                                         CustomButton(
-                                            text: "Register",
+                                            text: "Register/Login",
                                             onPress: () => showLoginPrompt(),
                                             color: kPrimary)
                                       ],

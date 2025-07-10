@@ -287,7 +287,7 @@ class EntryScreen extends StatefulWidget {
 
 class _EntryScreenState extends State<EntryScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  int tab = 0;
+  int tab = 3;
   bool loading = true;
   bool isActive = true; // Track user active status
   late AnimationController _animationController;
