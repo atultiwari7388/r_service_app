@@ -17,7 +17,6 @@ import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/generate_pdf.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
-import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
@@ -1872,7 +1871,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   children: [
                                     CustomButton(
                                       height: isEditing ? 45 : 45,
-                                      width: isEditing ? 100 : 250.w,
+                                      width: isEditing ? 100 : 220.w,
                                       onPress: handleSaveRecords,
                                       color: kSecondary,
                                       text: isEditing
@@ -1882,7 +1881,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     isEditing
                                         ? CustomButton(
                                             width: 80,
-                                            text: "Clear",
+                                            text: "Cancel",
                                             onPress: () => resetForm(),
                                             color: kPrimary)
                                         : SizedBox(),
@@ -2438,8 +2437,35 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                       onTap:
                                                                           () {
                                                                         if (isEdit!) {
-                                                                          _handleEditRecord(
-                                                                              record);
+                                                                          showDialog(
+                                                                              context: context,
+                                                                              builder: (_) {
+                                                                                return AlertDialog(
+                                                                                  title: Text("Edit Record"),
+                                                                                  content: Text("Are you sure you want to edit this record?"),
+                                                                                  actions: [
+                                                                                    TextButton(
+                                                                                      onPressed: () {
+                                                                                        _handleEditRecord(record);
+                                                                                        Navigator.pop(context);
+                                                                                      },
+                                                                                      child: Text(
+                                                                                        "Yes",
+                                                                                        style: appStyle(15, kSecondary, FontWeight.bold),
+                                                                                      ),
+                                                                                    ),
+                                                                                    TextButton(
+                                                                                      onPressed: () {
+                                                                                        Navigator.pop(context);
+                                                                                      },
+                                                                                      child: Text(
+                                                                                        "No",
+                                                                                        style: appStyle(15, kPrimary, FontWeight.bold),
+                                                                                      ),
+                                                                                    ),
+                                                                                  ],
+                                                                                );
+                                                                              });
                                                                         } else {
                                                                           showToastMessage(
                                                                               "Sorry",

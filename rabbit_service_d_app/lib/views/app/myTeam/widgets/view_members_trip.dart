@@ -717,6 +717,10 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         docId: doc.id,
                         userId: widget.memberId,
                         tripName: doc['tripName'],
+                        truckDetails:
+                            doc['companyName'] + " (${doc['vehicleNumber']})",
+                        trailerDetails: doc['trailerCompanyName'] +
+                            " (${doc['trailerNumber']})",
                       )),
                   child: Text(
                     "View",

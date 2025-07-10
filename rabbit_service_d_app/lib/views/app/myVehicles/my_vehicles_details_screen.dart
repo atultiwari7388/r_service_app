@@ -911,6 +911,129 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
+  // void _showEditDialog(
+  //     BuildContext context, Map<String, dynamic> service, String vehicleId) {
+  //   final TextEditingController controller = TextEditingController(
+  //     text: service['defaultNotificationValue'].toString(),
+  //   );
+
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(15),
+  //         ),
+  //         title: const Text(
+  //           'Edit Default Notification Value',
+  //           style: TextStyle(color: kPrimary),
+  //         ),
+  //         content: TextField(
+  //           controller: controller,
+  //           keyboardType: TextInputType.number,
+  //           decoration: InputDecoration(
+  //             labelText: 'Enter New Value',
+  //             border: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(10),
+  //             ),
+  //             focusedBorder: OutlineInputBorder(
+  //               borderRadius: BorderRadius.circular(10),
+  //               borderSide: const BorderSide(color: kPrimary, width: 2),
+  //             ),
+  //           ),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.pop(context);
+  //             },
+  //             child: Text('Cancel',
+  //                 style: appStyle(17, kPrimary, FontWeight.normal)),
+  //           ),
+  //           ElevatedButton(
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: kSecondary,
+  //               foregroundColor: kWhite,
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(8),
+  //               ),
+  //             ),
+  //             onPressed: () async {
+  //               final newValue = int.tryParse(controller.text);
+  //               if (newValue == null) {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   const SnackBar(
+  //                       content: Text('Please enter a valid number')),
+  //                 );
+  //                 return;
+  //               }
+
+  //               try {
+  //                 final vehicleDocRef = FirebaseFirestore.instance
+  //                     .collection('Users')
+  //                     .doc(currentUId)
+  //                     .collection('Vehicles')
+  //                     .doc(vehicleId);
+
+  //                 await FirebaseFirestore.instance
+  //                     .runTransaction((transaction) async {
+  //                   final docSnapshot = await transaction.get(vehicleDocRef);
+  //                   if (!docSnapshot.exists)
+  //                     throw Exception('Document not found');
+
+  //                   List<dynamic> services = List.from(docSnapshot['services']);
+  //                   int index = services.indexWhere(
+  //                     (s) => s['serviceName'] == service['serviceName'],
+  //                   );
+
+  //                   if (index == -1) throw Exception('Service not found');
+
+  //                   // Get current values
+  //                   Map<String, dynamic> currentService =
+  //                       Map.from(services[index]);
+  //                   int currentDefault =
+  //                       currentService['defaultNotificationValue'];
+  //                   int currentNext = currentService['nextNotificationValue'];
+
+  //                   // Calculate the difference between current values
+  //                   int difference = currentNext - currentDefault;
+
+  //                   // Calculate new next value based on the difference
+  //                   int newNextValue = newValue + difference;
+
+  //                   // Ensure the new next value is not less than the new default
+  //                   if (newNextValue < newValue) {
+  //                     newNextValue = newValue;
+  //                   }
+
+  //                   // Update the service
+  //                   Map<String, dynamic> updatedService =
+  //                       Map.from(currentService);
+  //                   updatedService['defaultNotificationValue'] = newValue;
+  //                   updatedService['nextNotificationValue'] = newNextValue;
+  //                   updatedService['preValue'] =
+  //                       currentDefault; // Store previous value
+
+  //                   services[index] = updatedService;
+
+  //                   transaction.update(vehicleDocRef, {'services': services});
+  //                 });
+
+  //                 Navigator.pop(context); // Close dialog on success
+  //               } catch (e) {
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   SnackBar(content: Text('Error updating service: $e')),
+  //                 );
+  //               }
+  //             },
+  //             child: const Text('Update'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
   void _showEditDialog(
       BuildContext context, Map<String, dynamic> service, String vehicleId) {
     final TextEditingController controller = TextEditingController(
@@ -958,6 +1081,72 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              // onPressed: () async {
+              //   final newValue = int.tryParse(controller.text);
+              //   if (newValue == null) {
+              //     ScaffoldMessenger.of(context).showSnackBar(
+              //       const SnackBar(
+              //           content: Text('Please enter a valid number')),
+              //     );
+              //     return;
+              //   }
+
+              //   try {
+              //     // First update the owner's vehicle
+              //     await _updateServiceValue(
+              //         currentUId, vehicleId, service, newValue);
+
+              //     // Check if owner has any team members
+              //     final teamCheck = await FirebaseFirestore.instance
+              //         .collection('Users')
+              //         .where('createdBy', isEqualTo: currentUId)
+              //         .where('isTeamMember', isEqualTo: true)
+              //         .limit(1)
+              //         .get();
+
+              //     if (teamCheck.docs.isNotEmpty) {
+              //       // Owner has team members - get all members
+              //       final teamMembers = await FirebaseFirestore.instance
+              //           .collection('Users')
+              //           .where('createdBy', isEqualTo: currentUId)
+              //           .where('isTeamMember', isEqualTo: true)
+              //           .get();
+
+              //       for (var member in teamMembers.docs) {
+              //         final memberId = member.id;
+              //         try {
+              //           // Check if team member has this specific vehicle
+              //           final memberVehicleRef = FirebaseFirestore.instance
+              //               .collection("Users")
+              //               .doc(memberId)
+              //               .collection('Vehicles')
+              //               .doc(vehicleId);
+
+              //           final memberVehicleDoc = await memberVehicleRef.get();
+
+              //           if (memberVehicleDoc.exists) {
+              //             // Only update if vehicle exists for team member
+              //             await _updateServiceValue(
+              //                 memberId, vehicleId, service, newValue);
+              //           }
+              //         } catch (e) {
+              //           // Skip if team member has no Vehicles collection or other error
+              //           log("Team member $memberId has no Vehicles collection or error: $e");
+              //           continue;
+              //         }
+              //       }
+              //     }
+
+              //     Navigator.pop(context); // Close dialog on success
+              //     showToastMessage(
+              //         "Success", "Service value updated", kSecondary);
+              //   } catch (e) {
+              //     ScaffoldMessenger.of(context).showSnackBar(
+              //       SnackBar(content: Text('Error updating service: $e')),
+              //     );
+              //   }
+              // },
+
               onPressed: () async {
                 final newValue = int.tryParse(controller.text);
                 if (newValue == null) {
@@ -969,57 +1158,41 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 }
 
                 try {
-                  final vehicleDocRef = FirebaseFirestore.instance
-                      .collection('Users')
-                      .doc(currentUId)
-                      .collection('Vehicles')
-                      .doc(vehicleId);
+                  // First update the current user's vehicle (whether owner or team member)
+                  await _updateServiceValue(
+                      currentUId, vehicleId, service, newValue);
 
-                  await FirebaseFirestore.instance
-                      .runTransaction((transaction) async {
-                    final docSnapshot = await transaction.get(vehicleDocRef);
-                    if (!docSnapshot.exists)
-                      throw Exception('Document not found');
+                  if (widget.role == "Owner") {
+                    // If current user is owner, update all team members with this vehicle
+                    await _updateTeamMembers(
+                        currentUId, vehicleId, service, newValue);
+                  } else {
+                    // If current user is team member, update owner's vehicle
+                    final userDoc = await FirebaseFirestore.instance
+                        .collection('Users')
+                        .doc(currentUId)
+                        .get();
 
-                    List<dynamic> services = List.from(docSnapshot['services']);
-                    int index = services.indexWhere(
-                      (s) => s['serviceName'] == service['serviceName'],
-                    );
+                    final createdBy = userDoc['createdBy'];
+                    if (createdBy != null) {
+                      // Check if owner has this vehicle
+                      final ownerVehicleRef = FirebaseFirestore.instance
+                          .collection("Users")
+                          .doc(createdBy)
+                          .collection('Vehicles')
+                          .doc(vehicleId);
 
-                    if (index == -1) throw Exception('Service not found');
-
-                    // Get current values
-                    Map<String, dynamic> currentService =
-                        Map.from(services[index]);
-                    int currentDefault =
-                        currentService['defaultNotificationValue'];
-                    int currentNext = currentService['nextNotificationValue'];
-
-                    // Calculate the difference between current values
-                    int difference = currentNext - currentDefault;
-
-                    // Calculate new next value based on the difference
-                    int newNextValue = newValue + difference;
-
-                    // Ensure the new next value is not less than the new default
-                    if (newNextValue < newValue) {
-                      newNextValue = newValue;
+                      final ownerVehicleDoc = await ownerVehicleRef.get();
+                      if (ownerVehicleDoc.exists) {
+                        await _updateServiceValue(
+                            createdBy, vehicleId, service, newValue);
+                      }
                     }
-
-                    // Update the service
-                    Map<String, dynamic> updatedService =
-                        Map.from(currentService);
-                    updatedService['defaultNotificationValue'] = newValue;
-                    updatedService['nextNotificationValue'] = newNextValue;
-                    updatedService['preValue'] =
-                        currentDefault; // Store previous value
-
-                    services[index] = updatedService;
-
-                    transaction.update(vehicleDocRef, {'services': services});
-                  });
+                  }
 
                   Navigator.pop(context); // Close dialog on success
+                  showToastMessage(
+                      "Success", "Service value updated", kSecondary);
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error updating service: $e')),
@@ -1032,6 +1205,97 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         );
       },
     );
+  }
+
+  // Add this helper function
+  Future<void> _updateTeamMembers(String ownerId, String vehicleId,
+      Map<String, dynamic> service, int newValue) async {
+    // Check if owner has any team members
+    final teamCheck = await FirebaseFirestore.instance
+        .collection('Users')
+        .where('createdBy', isEqualTo: ownerId)
+        .where('isTeamMember', isEqualTo: true)
+        .limit(1)
+        .get();
+
+    if (teamCheck.docs.isNotEmpty) {
+      // Owner has team members - get all members
+      final teamMembers = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('createdBy', isEqualTo: ownerId)
+          .where('isTeamMember', isEqualTo: true)
+          .get();
+
+      for (var member in teamMembers.docs) {
+        final memberId = member.id;
+        try {
+          // Check if team member has this specific vehicle
+          final memberVehicleRef = FirebaseFirestore.instance
+              .collection("Users")
+              .doc(memberId)
+              .collection('Vehicles')
+              .doc(vehicleId);
+
+          final memberVehicleDoc = await memberVehicleRef.get();
+
+          if (memberVehicleDoc.exists) {
+            // Only update if vehicle exists for team member
+            await _updateServiceValue(memberId, vehicleId, service, newValue);
+          }
+        } catch (e) {
+          // Skip if team member has no Vehicles collection or other error
+          log("Team member $memberId has no Vehicles collection or error: $e");
+          continue;
+        }
+      }
+    }
+  }
+
+  Future<void> _updateServiceValue(String userId, String vehicleId,
+      Map<String, dynamic> service, int newValue) async {
+    final vehicleDocRef = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .collection('Vehicles')
+        .doc(vehicleId);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final docSnapshot = await transaction.get(vehicleDocRef);
+      if (!docSnapshot.exists) throw Exception('Document not found');
+
+      List<dynamic> services = List.from(docSnapshot['services']);
+      int index = services.indexWhere(
+        (s) => s['serviceName'] == service['serviceName'],
+      );
+
+      if (index == -1) throw Exception('Service not found');
+
+      // Get current values
+      Map<String, dynamic> currentService = Map.from(services[index]);
+      int currentDefault = currentService['defaultNotificationValue'];
+      int currentNext = currentService['nextNotificationValue'];
+
+      // Calculate the difference between current values
+      int difference = currentNext - currentDefault;
+
+      // Calculate new next value based on the difference
+      int newNextValue = newValue + difference;
+
+      // Ensure the new next value is not less than the new default
+      if (newNextValue < newValue) {
+        newNextValue = newValue;
+      }
+
+      // Update the service
+      Map<String, dynamic> updatedService = Map.from(currentService);
+      updatedService['defaultNotificationValue'] = newValue;
+      updatedService['nextNotificationValue'] = newNextValue;
+      updatedService['preValue'] = currentDefault; // Store previous value
+
+      services[index] = updatedService;
+
+      transaction.update(vehicleDocRef, {'services': services});
+    });
   }
 
   void _shareVehicleDetails(Map<String, dynamic> vehicleData) {

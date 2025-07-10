@@ -7,7 +7,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import '../../../utils/show_toast_msg.dart';
@@ -78,12 +77,11 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   Future<void> selectAddressFromMap() async {
     LatLng? selectedLocation = await Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (context) =>
-              // SelectLocationScreen(
-              //   userLat: widget.userLat,
-              //   userLng: widget.userLng,
-              // ),
-              Container()),
+        builder: (context) => SelectLocationScreen(
+          userLat: widget.userLat,
+          userLng: widget.userLng,
+        ),
+      ),
     );
 
     if (selectedLocation != null) {

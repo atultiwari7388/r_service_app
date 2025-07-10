@@ -1,11 +1,11 @@
 import 'dart:developer';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart' as location_data;
 import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
+import 'package:place_picker_google/place_picker_google.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 
 class SelectLocationScreen extends StatefulWidget {
@@ -26,7 +26,7 @@ class SelectLocationScreen extends StatefulWidget {
 }
 
 class _SelectLocationScreenState extends State<SelectLocationScreen> {
-  PickResult? selectedPlace;
+  LocationResult? selectedPlace;
   bool isLoading = true;
   bool _mapsInitialized = false;
   String _mapsRenderer = "latest";
@@ -115,28 +115,24 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
         : LatLng(widget.userLat, widget.userLng);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : PlacePicker(
-              apiKey: Platform.isAndroid ? googleApiKey : "",
-              initialPosition: initialCameraPosition,
-              useCurrentLocation: true,
-              selectInitialPosition: true,
-              usePlaceDetailSearch: true,
-              onPlacePicked: (PickResult result) {
+              apiKey: Platform.isAndroid ? googleApiKey : googleApiKey,
+              initialLocation: LatLng(
+                initialCameraPosition.latitude,
+                initialCameraPosition.longitude,
+              ),
+              // displayLocation: initialCameraPosition,
+              onPlacePicked: (result) {
                 setState(() {
                   selectedPlace = result;
-                  selectedLocation = LatLng(
-                      selectedPlace!.geometry!.location.lat,
-                      selectedPlace!.geometry!.location.lng);
+                  selectedLocation = result.latLng;
                 });
                 log("Place picked: ${result.formattedAddress}");
-                log("Selected Lat Long: ${selectedPlace!.geometry!.location.lat} ${selectedPlace!.geometry!.location.lng}");
-                // Navigator.of(context).pop();
+                log("Selected Lat Long: ${result.latLng?.latitude} ${result.latLng?.longitude}");
                 Navigator.of(context).pop(selectedLocation);
-              },
-              onMapCreated: (GoogleMapController controller) {
-                log("Place Picker Map created");
               },
             ),
     );

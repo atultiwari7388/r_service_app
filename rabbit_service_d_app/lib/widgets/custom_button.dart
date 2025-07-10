@@ -42,7 +42,7 @@ class CustomButton extends StatelessWidget {
           child: Text(text,
               style: kIsWeb
                   ? TextStyle(color: kWhite)
-                  : appStyle(16, kWhite, FontWeight.w500)),
+                  : appStyle(15, kWhite, FontWeight.w500)),
         ),
       ),
     );

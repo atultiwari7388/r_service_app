@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: "none"
 
-version: 1.0.20+21
+version: 1.0.21+22
 
 environment:
   sdk: ">=3.2.6 <4.0.0"
@@ -43,7 +43,8 @@ dependencies:
   rxdart:
   vibration:
   logger:
-  google_maps_place_picker_mb:
+  # google_maps_place_picker_mb:
+  place_picker_google:
   photo_view:
   flutter_animate:
   cloud_functions:

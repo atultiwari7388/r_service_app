@@ -2,7 +2,6 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,11 +23,15 @@ class TripDetailsScreen extends StatefulWidget {
     required this.docId,
     required this.tripName,
     required this.userId,
+    required this.truckDetails,
+    required this.trailerDetails,
   });
 
   final String docId;
   final String tripName;
   final String userId;
+  final String truckDetails;
+  final String trailerDetails;
 
   @override
   State<TripDetailsScreen> createState() => _TripDetailsScreenState();
@@ -318,6 +321,32 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                       children: [
                         Row(
                           children: [
+                            Text("Truck:",
+                                style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold)),
+                            Spacer(),
+                            Text("${widget.truckDetails}",
+                                style: TextStyle(
+                                    fontSize: 13.sp, color: Colors.grey)),
+                          ],
+                        ),
+                        SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Text("Trailer:",
+                                style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold)),
+                            Spacer(),
+                            Text("${widget.trailerDetails}",
+                                style: TextStyle(
+                                    fontSize: 13.sp, color: Colors.grey)),
+                          ],
+                        ),
+                        SizedBox(height: 3),
+                        Row(
+                          children: [
                             Text("Type: $type",
                                 style: TextStyle(
                                     fontSize: 16.sp,
@@ -332,7 +361,7 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text("Amount: \$${amount.toStringAsFixed(2)}",
+                            Text("Amount: \$${amount.toStringAsFixed(0)}",
                                 style: TextStyle(
                                     fontSize: 16.sp, color: Colors.green)),
                             if (!_isEditing)

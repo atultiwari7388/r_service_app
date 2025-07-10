@@ -9,7 +9,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
@@ -1591,6 +1590,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                           docId: doc.id,
                           userId: currentUId,
                           tripName: doc['tripName'],
+                          truckDetails: "${vehicleNumber} (${companyName})",
+                          trailerDetails: doc['trailerCompanyName'] +
+                              " (${doc['trailerNumber']})",
                         ));
                   },
                   child: Text("View"),
