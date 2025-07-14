@@ -1,12 +1,12 @@
 name: regal_shop_app
-description: 'A new Flutter project.'
+description: "A new Flutter project."
 
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.6 <4.0.0'
+  sdk: ">=3.2.6 <4.0.0"
 
 dependencies:
   flutter:
@@ -26,7 +26,7 @@ dependencies:
   firebase_messaging:
   flutter_local_notifications: ^17.2.3
   geocoding: ^3.0.0
-  geolocator:
+  geolocator: ^14.0.2
   location: ^5.0.3
   lottie: ^3.0.0
   otp_autofill: ^3.0.2
@@ -56,7 +56,7 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: 'assets/app_icon_new_logo.png'
+  image_path: "assets/app_icon_new_logo.png"
   min_sdk_android: 21
 
   flutter_lints: ^2.0.0
