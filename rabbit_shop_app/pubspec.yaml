@@ -46,7 +46,7 @@ dependencies:
   #zoom in and out image
   photo_view:
   dio:
-  image_gallery_saver:
+  # image_gallery_saver:
 
 dev_dependencies:
   flutter_test:
