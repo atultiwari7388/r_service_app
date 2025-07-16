@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:location/location.dart';
 import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
-import '../services/collection_references.dart';
 import '../services/find_mechanic.dart';
 import '../services/generate_order_id.dart';
 import '../services/latlng_converter.dart';
@@ -67,7 +66,7 @@ class DashboardController extends GetxController {
   }
 
   TextEditingController locationController =
-      new TextEditingController(text: "Finding Address....");
+      new TextEditingController(text: "Select your location...");
   TextEditingController serviceAndNetworkController =
       new TextEditingController();
   TextEditingController selectedCompanyAndVehcileNameController =
@@ -138,7 +137,7 @@ class DashboardController extends GetxController {
   Future<void> _loadAllData() async {
     // Load other data only after role is confirmed
     await Future.wait([
-      checkIfLocationIsSet(),
+      // checkIfLocationIsSet(),
       fetchServicesName(),
       fetchUserVehicles(),
       fetchByDefaultUserVehicle(),

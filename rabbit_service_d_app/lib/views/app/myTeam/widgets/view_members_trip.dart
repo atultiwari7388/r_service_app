@@ -344,14 +344,47 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Padding(
+            //   padding: EdgeInsets.only(left: 8.0, right: 16),
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       IconButton(
+            //         icon: Icon(Icons.filter_list, color: kPrimary),
+            //         onPressed: _pickDateRange,
+            //       ),
+            //       if (fromDate != null && toDate != null)
+            //         Text(
+            //           "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
+            //           style: appStyle(14, kDark, FontWeight.w500),
+            //         ),
+            //     ],
+            //   ),
+            // ),
+
+            // In your build method, replace the existing Row widget with this:
             Padding(
               padding: EdgeInsets.only(left: 8.0, right: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.filter_list, color: kPrimary),
-                    onPressed: _pickDateRange,
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.filter_list, color: kPrimary),
+                        onPressed: _pickDateRange,
+                      ),
+                      if (fromDate != null || toDate != null)
+                        IconButton(
+                          icon: Icon(Icons.clear, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              fromDate = null;
+                              toDate = null;
+                            });
+                          },
+                        ),
+                    ],
                   ),
                   if (fromDate != null && toDate != null)
                     Text(
@@ -361,6 +394,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 ],
               ),
             ),
+
             StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection("Users")
