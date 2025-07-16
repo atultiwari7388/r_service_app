@@ -254,6 +254,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
         "isNotificationOn": true,
         'createdBy': uId,
         'role': 'Owner',
+        'teamMembers': [],
         'isOwner': true,
         'isManager': false,
         'isDriver': false,

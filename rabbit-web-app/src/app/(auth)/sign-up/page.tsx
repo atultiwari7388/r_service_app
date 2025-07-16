@@ -133,6 +133,7 @@ const Signup: React.FC = () => {
           lastAddress: "",
           isNotificationOn: true,
           role: "Owner",
+          teamMembers: [],
           isOwner: true,
           isManager: false,
           isDriver: false,

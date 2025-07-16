@@ -56,6 +56,7 @@ class DatabaseServices {
       "isNotificationOn": true,
       'createdBy': uid,
       'role': 'Owner',
+      'teamMembers': [],
       'isOwner': true,
       'isManager': false,
       'isDriver': false,
