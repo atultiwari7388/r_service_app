@@ -184,6 +184,7 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       profilePicture:
         "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
       role: selectedRole,
+      teamMembers: [],
       payMode: selectedPayType || "",
       isManager: selectedRole === "Manager",
       isDriver: selectedRole === "Driver",
