@@ -7,7 +7,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/myTeam/my_team_screen.dart';
@@ -804,12 +803,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         Get.off(() => MyTeamScreen());
       }
     } catch (e) {
-      // log(e.toString());
-      // handleError(e as FirebaseFunctionsException);
       showToastMessage("Error",
           "Email Id Already exists or something went wrong", Colors.red);
-      // print("Error creating team member: $e");
-      // showToastMessage("Error", "Failed to create team member", Colors.red);
     } finally {
       setState(() {
         isUserAcCreated = false;

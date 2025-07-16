@@ -209,6 +209,12 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       .doc(userRecord.uid)
       .set(userData);
 
+    // Add the new member's ID to the owner's teamMembers array
+    const ownerRef = admin.firestore().collection("Users").doc(currentUId);
+    await ownerRef.update({
+      teamMembers: admin.firestore.FieldValue.arrayUnion(userRecord.uid),
+    });
+
     // Copy Vehicles from the Creator to the New User if any are selected
     if (selectedVehicles && selectedVehicles.length > 0) {
       for (let vehicleId of selectedVehicles) {
