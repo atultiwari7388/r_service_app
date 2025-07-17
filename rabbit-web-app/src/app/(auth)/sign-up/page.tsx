@@ -100,6 +100,7 @@ const Signup: React.FC = () => {
         const uid = user.uid;
         const userData = {
           uid: uid,
+          status: "active",
           email: formValues.email,
           email2: "",
           active: true,
