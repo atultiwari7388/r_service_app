@@ -252,7 +252,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 5,
+                    flex: 3,
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('Users')
@@ -281,7 +281,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     child: Text("Add Address",
                         style: appStyle(16, kDark, FontWeight.bold)),
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: 10.h),
                   Text("Address Type",
                       style: appStyle(16, kDark, FontWeight.w500)),
                   DropdownButton<String>(
@@ -328,7 +328,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         // Handle case where no address is selected, if needed
                       }
                     },
-                  )
+                  ),
+                  const Spacer(),
                 ],
               ),
             ),

@@ -780,8 +780,16 @@ class DashboardController extends GetxController {
     });
   }
 
+  // void checkIfAllSelected() {
+  //   if (isVehicleSelected && isServiceSelected && isAddressSelected) {
+  //     isFindMechanicEnabled = true;
+  //   } else {
+  //     isFindMechanicEnabled = false;
+  //   }
+  // }
+
   void checkIfAllSelected() {
-    if (isVehicleSelected && isServiceSelected && isAddressSelected) {
+    if (isVehicleSelected && isServiceSelected) {
       isFindMechanicEnabled = true;
     } else {
       isFindMechanicEnabled = false;

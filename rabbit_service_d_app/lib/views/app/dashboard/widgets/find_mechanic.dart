@@ -26,6 +26,7 @@ class FindMechanic extends StatefulWidget {
 
 class _FindMechanicState extends State<FindMechanic> {
   final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  bool isAddressSelected = false;
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +188,122 @@ class _FindMechanicState extends State<FindMechanic> {
           ),
 
           SizedBox(height: 10.h),
+//================================ Select Your Address ==========================================
+          // StreamBuilder<QuerySnapshot>(
+          //   stream: FirebaseFirestore.instance
+          //       .collection('Users')
+          //       .doc(currentUId)
+          //       .collection('Addresses')
+          //       .where("isAddressSelected", isEqualTo: true)
+          //       .snapshots(),
+          //   builder:
+          //       (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          //     if (snapshot.hasError) {
+          //       return Text('Error: ${snapshot.error}');
+          //     }
+
+          //     if (snapshot.connectionState == ConnectionState.waiting) {
+          //       return Center(child: CircularProgressIndicator());
+          //     }
+
+          //     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          //       return GestureDetector(
+          //         onTap: () async {
+          //           var selectedAddress = await Navigator.push(
+          //             context,
+          //             MaterialPageRoute(
+          //               builder: (context) => AddressManagementScreen(
+          //                 userLat: widget.controller.userLat,
+          //                 userLng: widget.controller.userLong,
+          //               ),
+          //             ),
+          //           );
+          //           if (selectedAddress != null) {
+          //             setState(() {
+          //               widget.controller.appbarTitle =
+          //                   selectedAddress["address"];
+          //               widget.controller.userLat = selectedAddress["Lat"];
+          //               widget.controller.userLong = selectedAddress["Lng"];
+          //               widget.controller.locationController.text = selectedAddress[
+          //                   "address"]; // Set the selected address to the text field
+          //               // widget.controller.isAddressSelected = true;
+          //               log("Selected location: " +
+          //                   selectedAddress["address"] +
+          //                   " Lat: " +
+          //                   selectedAddress["Lat"].toString() +
+          //                   " Lng: " +
+          //                   selectedAddress["Lng"].toString());
+          //             });
+          //           }
+          //         },
+          //         child: AbsorbPointer(
+          //           child: DashBoardSearchTextField(
+          //             label: "Select your Location",
+          //             controller: widget.controller.locationController,
+          //             enable: false,
+          //           ),
+          //         ),
+          //       );
+          //     }
+
+          //     // Get the selected address and location from the snapshot
+          //     var addressData =
+          //         snapshot.data!.docs.first.data() as Map<String, dynamic>;
+
+          //     // Extract the location data
+          //     var locationData =
+          //         addressData["location"] as Map<String, dynamic>?;
+
+          //     // Extract latitude and longitude from location map
+          //     double latitude = locationData?["latitude"] ?? 0.0;
+          //     double longitude = locationData?["longitude"] ?? 0.0;
+
+          //     // Assign values to the controller
+          //     widget.controller.locationController.text =
+          //         addressData["address"] ?? "Select your Location";
+          //     widget.controller.userLat = latitude;
+          //     widget.controller.userLong = longitude;
+          //     isAddressSelected = true;
+          //     return GestureDetector(
+          //       onTap: () async {
+          //         var selectedAddress = await Navigator.push(
+          //           context,
+          //           MaterialPageRoute(
+          //             builder: (context) => AddressManagementScreen(
+          //               userLat: widget.controller.userLat,
+          //               userLng: widget.controller.userLong,
+          //             ),
+          //           ),
+          //         );
+          //         if (selectedAddress != null) {
+          //           setState(() {
+          //             // widget.controller.isAddressSelected = true;
+          //             widget.controller.appbarTitle =
+          //                 selectedAddress["address"];
+          //             widget.controller.userLat = selectedAddress["Lat"];
+          //             widget.controller.userLong = selectedAddress["Lng"];
+          //             widget.controller.locationController.text = selectedAddress[
+          //                 "address"]; // Set the selected address to the text field
+          //             log("Selected location: " +
+          //                 selectedAddress["address"] +
+          //                 " Lat: " +
+          //                 selectedAddress["Lat"].toString() +
+          //                 " Lng: " +
+          //                 selectedAddress["Lng"].toString());
+          //           });
+          //         }
+          //       },
+          //       child: AbsorbPointer(
+          //         child: DashBoardSearchTextField(
+          //           label: "Select your Location",
+          //           controller: widget.controller.locationController,
+          //           enable: false,
+          //         ),
+          //       ),
+          //     );
+          //   },
+          // ),
+
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('Users')
@@ -205,6 +322,8 @@ class _FindMechanicState extends State<FindMechanic> {
               }
 
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                // No address selected case
+                isAddressSelected = false;
                 return GestureDetector(
                   onTap: () async {
                     var selectedAddress = await Navigator.push(
@@ -222,8 +341,9 @@ class _FindMechanicState extends State<FindMechanic> {
                             selectedAddress["address"];
                         widget.controller.userLat = selectedAddress["Lat"];
                         widget.controller.userLong = selectedAddress["Lng"];
-                        widget.controller.locationController.text = selectedAddress[
-                            "address"]; // Set the selected address to the text field
+                        widget.controller.locationController.text =
+                            selectedAddress["address"];
+                        isAddressSelected = true;
                         log("Selected location: " +
                             selectedAddress["address"] +
                             " Lat: " +
@@ -243,23 +363,28 @@ class _FindMechanicState extends State<FindMechanic> {
                 );
               }
 
-              // Get the selected address and location from the snapshot
+              // Address exists case
               var addressData =
                   snapshot.data!.docs.first.data() as Map<String, dynamic>;
-
-              // Extract the location data
               var locationData =
                   addressData["location"] as Map<String, dynamic>?;
 
-              // Extract latitude and longitude from location map
               double latitude = locationData?["latitude"] ?? 0.0;
               double longitude = locationData?["longitude"] ?? 0.0;
 
-              // Assign values to the controller
               widget.controller.locationController.text =
                   addressData["address"] ?? "Select your Location";
               widget.controller.userLat = latitude;
               widget.controller.userLong = longitude;
+
+              // Set address selected to true when we have an address
+              if (!isAddressSelected) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  setState(() {
+                    isAddressSelected = true;
+                  });
+                });
+              }
 
               return GestureDetector(
                 onTap: () async {
@@ -278,8 +403,9 @@ class _FindMechanicState extends State<FindMechanic> {
                           selectedAddress["address"];
                       widget.controller.userLat = selectedAddress["Lat"];
                       widget.controller.userLong = selectedAddress["Lng"];
-                      widget.controller.locationController.text = selectedAddress[
-                          "address"]; // Set the selected address to the text field
+                      widget.controller.locationController.text =
+                          selectedAddress["address"];
+                      isAddressSelected = true;
                       log("Selected location: " +
                           selectedAddress["address"] +
                           " Lat: " +
@@ -299,6 +425,7 @@ class _FindMechanicState extends State<FindMechanic> {
               );
             },
           ),
+
           SizedBox(height: 10.h),
           DashBoardSearchTextField(
               label: "Enter Description",
@@ -351,10 +478,52 @@ class _FindMechanicState extends State<FindMechanic> {
               : Container(),
 
           SizedBox(height: 20.h),
+          // widget.controller.isFindMechanicEnabled
+          //     ? CustomButton(
+          //         text: "Find Mechanic",
+          //         onPress: () async {
+          //           if (widget.controller.images.isEmpty &&
+          //               widget.controller.isImageMandatory == true) {
+          //             showToastMessage(
+          //                 "Image Upload", "Upload at least one Image", kRed);
+          //           } else {
+          //             widget.controller
+          //                 .findMechanic(
+          //               widget.controller.locationController.text,
+          //               widget.controller.userPhoto,
+          //               widget.controller.userName,
+          //               widget.controller.phoneNumber,
+          //               widget.controller.userLat,
+          //               widget.controller.userLong,
+          //               widget.controller.serviceAndNetworkController.text
+          //                   .toString(),
+          //               widget.controller.companyNameController.text.toString(),
+          //               widget.controller
+          //                   .selectedCompanyAndVehcileNameController.text
+          //                   .toString(),
+          //               widget.controller.isImageMandatory,
+          //               widget.controller.images,
+          //             )
+          //                 .then((value) {
+          //               widget.setTab?.call(1);
+          //             });
+          //             log("Job Created");
+          //           }
+          //         },
+          //         color: kPrimary,
+          //       )
+          //     : CustomButton(text: "Find Mechanic", onPress: null, color: kGray)
+
           widget.controller.isFindMechanicEnabled
               ? CustomButton(
                   text: "Find Mechanic",
                   onPress: () async {
+                    if (!isAddressSelected) {
+                      showToastMessage("Location Required",
+                          "Please select your address first", kRed);
+                      return;
+                    }
+
                     if (widget.controller.images.isEmpty &&
                         widget.controller.isImageMandatory == true) {
                       showToastMessage(
@@ -383,9 +552,10 @@ class _FindMechanicState extends State<FindMechanic> {
                       log("Job Created");
                     }
                   },
-                  color: kPrimary,
+                  color: isAddressSelected ? kPrimary : kGray,
                 )
-              : CustomButton(text: "Find Mechanic", onPress: null, color: kGray)
+              : CustomButton(
+                  text: "Find Mechanic", onPress: null, color: kGray),
         ],
       ),
     );
