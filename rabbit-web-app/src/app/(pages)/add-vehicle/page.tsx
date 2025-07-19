@@ -93,8 +93,8 @@ export default function AddVehiclePage() {
   const [licensePlate, setLicensePlate] = useState<string>("");
   const [year, setYear] = useState<string>("");
   const [currentReading, setCurrentReading] = useState<string>("");
-  const [hoursReading, setHoursReading] = useState<string>("");
-  const [oilChangeDate, setOilChangeDate] = useState<string>("");
+  // const [hoursReading, setHoursReading] = useState<string>("");
+  // const [oilChangeDate, setOilChangeDate] = useState<string>("");
   const [dot, setDot] = useState<string>("");
   const [iccms, setIccms] = useState<string>("");
   const [servicesData, setServicesData] = useState<Service[]>([]);
@@ -324,7 +324,7 @@ export default function AddVehiclePage() {
         createdAt: serverTimestamp(),
         hoursReadingArray: [
           {
-            hours: hoursReading ? parseInt(hoursReading) : 0,
+            hours: 1000,
             date: new Date().toISOString(),
           },
         ],
@@ -348,7 +348,7 @@ export default function AddVehiclePage() {
           })) || [],
 
         lastServiceMiles: currentReading ? parseInt(currentReading) : 0,
-        lastServiceHours: hoursReading ? parseInt(hoursReading) : 0,
+        lastServiceHours: 1000,
       };
 
       if (selectedVehicleType === "Truck") {
@@ -365,13 +365,9 @@ export default function AddVehiclePage() {
         vehicleData.currentMiles = "";
         vehicleData.prevMilesValue = "";
         vehicleData.firstTimeMiles = "";
-        vehicleData.oilChangeDate =
-          selectedEngineName == "DRY VAN"
-            ? "2025-06-20"
-            : oilChangeDate || null;
-        vehicleData.hoursReading =
-          selectedEngineName == "DRY VAN" ? "1000" : hoursReading || "";
-        vehicleData.prevHoursReadingValue = hoursReading || "";
+        vehicleData.oilChangeDate = "2025-07-19";
+        vehicleData.hoursReading = "1000";
+        vehicleData.prevHoursReadingValue = "1000";
       }
 
       const vehicleDocRef = await addDoc(vehiclesRef, vehicleData);
@@ -532,7 +528,7 @@ export default function AddVehiclePage() {
             </div>
           )}
 
-          {selectedVehicleType === "Trailer" && (
+          {/* {selectedVehicleType === "Trailer" && (
             <>
               {selectedCompany === "DRY VAN" ? (
                 ""
@@ -575,7 +571,7 @@ export default function AddVehiclePage() {
                 </>
               )}
             </>
-          )}
+          )} */}
 
           {/* Vehicle Number */}
           <div>

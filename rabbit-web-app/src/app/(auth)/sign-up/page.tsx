@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import {
@@ -8,8 +8,15 @@ import {
   sendEmailVerification,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
-import { useAuth } from "@/contexts/AuthContexts";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import { toast } from "react-toastify";
 
 const Signup: React.FC = () => {
   const [formValues, setFormValues] = useState({
@@ -42,17 +49,17 @@ const Signup: React.FC = () => {
   ];
 
   // Auth state check
-  const { user } = useAuth() || { user: null };
+  // const { user } = useAuth() || { user: null };
 
-  useEffect(() => {
-    if (user) {
-      if (user.emailVerified) {
-        router.push("/"); // Redirect if user is already verified
-      } else {
-        router.push("/login"); // Redirect if user is not verified
-      }
-    }
-  }, [router, user]);
+  // useEffect(() => {
+  //   if (user) {
+  //     if (user.emailVerified) {
+  //       router.push("/"); // Redirect if user is already verified
+  //     } else {
+  //       router.push("/login"); // Redirect if user is not verified
+  //     }
+  //   }
+  // }, [router, user]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -87,6 +94,32 @@ const Signup: React.FC = () => {
     setLoading(true);
 
     try {
+      const emailToCheck = formValues.email.trim().toLowerCase();
+
+      // 🔍 Check Users collection for existing email
+      const usersQuery = query(
+        collection(db, "Users"),
+        where("email", "==", emailToCheck)
+      );
+      const usersSnapshot = await getDocs(usersQuery);
+      if (!usersSnapshot.empty) {
+        toast.error("This email is already registered. Try to login.");
+        setLoading(false);
+        return;
+      }
+
+      // 🔍 Check Mechanics collection for existing email
+      const mechanicsQuery = query(
+        collection(db, "Mechanics"),
+        where("email", "==", emailToCheck)
+      );
+      const mechanicsSnapshot = await getDocs(mechanicsQuery);
+      if (!mechanicsSnapshot.empty) {
+        toast.error("This email is registered with a mechanic account.");
+        setLoading(false);
+        return;
+      }
+
       // Firebase Auth: Create a new user with email and password
       const userCredential = await createUserWithEmailAndPassword(
         auth,

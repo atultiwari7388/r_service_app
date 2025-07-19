@@ -31,6 +31,66 @@ const Login: React.FC = () => {
     }));
   };
 
+  // const handleLogin = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+
+  //   try {
+  //     const { email, password } = formValues;
+  //     const userCredential = await signInWithEmailAndPassword(
+  //       auth,
+  //       email,
+  //       password
+  //     );
+  //     const user = userCredential.user;
+
+  //     if (user) {
+  //       if (!user.emailVerified) {
+  //         alert("Email not verified. Please verify your email.");
+  //         await sendEmailVerification(user);
+  //         await signOut(auth);
+  //         setIsLoading(false);
+  //         return;
+  //       }
+
+  //       // Check both 'Mechanics' and 'Users' collections
+  //       const mechanicsDocRef = doc(db, "Mechanics", user.uid);
+  //       const usersDocRef = doc(db, "Users", user.uid);
+
+  //       const [mechanicDoc, userDoc] = await Promise.all([
+  //         getDoc(mechanicsDocRef),
+  //         getDoc(usersDocRef),
+  //       ]);
+
+  //       if (mechanicDoc.exists()) {
+  //         alert(
+  //           "This email already exists with the Mechanic app. Please try with another email."
+  //         );
+  //         toast.error(
+  //           "This email already exists with the Mechanic app. Please try with another email."
+  //         );
+  //         await signOut(auth);
+  //         setIsLoading(false);
+  //         return;
+  //       }
+
+  //       if (userDoc.exists()) {
+  //         router.push("/records");
+  //         toast.success("Login Successfull");
+  //       } else {
+  //         router.push("/sign-up");
+  //       }
+  //     }
+  //   } catch (error) {
+  //     // console.error("Login error:", error);
+  //     toast.error(
+  //       "Login failed. Please check your credentials. Error: " + error
+  //     );
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -53,7 +113,6 @@ const Login: React.FC = () => {
           return;
         }
 
-        // Check both 'Mechanics' and 'Users' collections
         const mechanicsDocRef = doc(db, "Mechanics", user.uid);
         const usersDocRef = doc(db, "Users", user.uid);
 
@@ -63,11 +122,8 @@ const Login: React.FC = () => {
         ]);
 
         if (mechanicDoc.exists()) {
-          alert(
-            "This email already exists with the Mechanic app. Please try with another email."
-          );
           toast.error(
-            "This email already exists with the Mechanic app. Please try with another email."
+            "This email is registered with the Mechanic app. Please try with another email."
           );
           await signOut(auth);
           setIsLoading(false);
@@ -75,25 +131,40 @@ const Login: React.FC = () => {
         }
 
         if (userDoc.exists()) {
-          router.push("/records");
-          toast.success("Login Successfull");
+          const userData = userDoc.data();
+          if (userData.uid === user.uid) {
+            if (userData.active === true && userData.status === "active") {
+              toast.success("Login Successful");
+              router.push("/records");
+            } else if (userData.status === "deactivated") {
+              toast.error(
+                "Your account is deactivated. Please contact your office."
+              );
+              router.push("/contact-us");
+            } else {
+              toast.error(
+                "Your account is not active. Please contact your office."
+              );
+              router.push("/contact-us");
+            }
+          } else {
+            toast.error("User mismatch. Please try again.");
+            await signOut(auth);
+          }
         } else {
+          toast.error("User not found in system. Please sign up.");
           router.push("/sign-up");
         }
       }
     } catch (error) {
-      // console.error("Login error:", error);
       toast.error(
-        "Login failed. Please check your credentials. Error: " + error
+        `Login failed. Please check your credentials. Error: ${error}`
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  {
-    /** Auth State check */
-  }
   const { user } = useAuth() || { user: null };
   useEffect(() => {
     if (user) {
