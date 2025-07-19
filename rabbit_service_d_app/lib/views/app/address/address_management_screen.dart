@@ -311,12 +311,12 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         ),
                   SizedBox(height: 16.h),
                   CustomButton(
-                      color: kSecondary.withOpacity(0.8),
+                      color: kPrimary.withOpacity(0.8),
                       text: "Select Address From Map",
                       onPress: selectAddressFromMap),
                   const Spacer(),
                   CustomButton(
-                    color: kPrimary,
+                    color: kSecondary.withOpacity(0.8),
                     text: "Save Address",
                     onPress: () async {
                       // Assuming you have already selected an address and stored it in a variable called `selectedAddress`

@@ -170,18 +170,30 @@ const Footer: React.FC = () => {
                 </a>
               </div>
               <div className="flex max-w-xs gap-2 mt-5 items-center">
-                <img
-                  src="/play-store.png"
-                  alt="play-store"
-                  height={70}
-                  width={120}
-                />
-                <img
-                  src="/app-store.png"
-                  alt="play-store"
-                  height={70}
-                  width={120}
-                />
+                <Link
+                  href="https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app"
+                  target="_blank"
+                >
+                  <img
+                    src="/play-store.png"
+                    alt="play-store"
+                    height={70}
+                    width={120}
+                  />
+                </Link>
+                <Link
+                  href={
+                    "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003"
+                  }
+                  target="_blank"
+                >
+                  <img
+                    src="/app-store.png"
+                    alt="app-store"
+                    height={70}
+                    width={120}
+                  />
+                </Link>
               </div>
             </div>
           </div>
