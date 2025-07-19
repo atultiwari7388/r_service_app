@@ -9,7 +9,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/download_excel_file.dart';
@@ -137,6 +136,187 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
     return nextNotificationMiles;
   }
 
+  // Future<void> saveVehicleFromData(Map<String, dynamic> data) async {
+  //   setState(() {
+  //     isSaving = true;
+  //   });
+  //   try {
+  //     // 1. Extract and validate basic fields
+  //     final vehicleType = data['vehicleType']?.toString().trim();
+  //     final company = data['companyName']?.toString().trim().toUpperCase();
+  //     final engine = data['engineName']?.toString().trim().toUpperCase();
+  //     final vehicleNumber = data['vehicleNumber']?.toString().trim() ?? '';
+
+  //     if (vehicleType == null || vehicleType.isEmpty) {
+  //       throw 'Missing vehicle type';
+  //     }
+  //     if (company == null || company.isEmpty) {
+  //       throw 'Missing company name';
+  //     }
+  //     if (engine == null || engine.isEmpty) {
+  //       throw 'Missing engine name';
+  //     }
+  //     if (vehicleNumber.isEmpty) {
+  //       throw 'Missing vehicle number';
+  //     }
+
+  //     // 2. Vehicle type specific validation
+  //     if (vehicleType == 'Truck') {
+  //       if (data['currentMiles']?.toString().isEmpty ?? true) {
+  //         throw 'Truck requires current miles';
+  //       }
+  //     } else if (vehicleType == 'Trailer') {
+  //       if (data['hoursReading']?.toString().isEmpty ?? true) {
+  //         throw 'Trailer requires hours reading';
+  //       }
+  //       if (data['oilChangeDate']?.toString().isEmpty ?? true) {
+  //         throw 'Trailer requires oil change date';
+  //       }
+  //     }
+
+  //     // 3. Check for existing vehicle
+  //     final duplicateQuery = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('Vehicles')
+  //         .where('vehicleNumber', isEqualTo: vehicleNumber)
+  //         .where('vehicleType', isEqualTo: vehicleType)
+  //         .where('companyName', isEqualTo: company)
+  //         .where('engineName', isEqualTo: engine)
+  //         .get();
+
+  //     if (duplicateQuery.docs.isNotEmpty) {
+  //       throw 'Vehicle already exists';
+  //     }
+
+  //     // 4. Parse dates
+  //     DateTime? year;
+  //     DateTime? oilChangeDate;
+  //     final dateFormat = DateFormat('yyyy-MM-dd');
+
+  //     try {
+  //       if (data['year'] != null) {
+  //         year = dateFormat.parse(data['year'].toString());
+  //       }
+  //       if (vehicleType == 'Trailer' && data['oilChangeDate'] != null) {
+  //         oilChangeDate = dateFormat.parse(data['oilChangeDate'].toString());
+  //       }
+  //     } catch (e) {
+  //       throw 'Invalid date format (use YYYY-MM-DD)';
+  //     }
+
+  //     // 5. Set class variables for service calculation
+  //     _selectedVehicleType = vehicleType;
+  //     _selectedEngineName = engine;
+  //     // _currentMilesController.text = data['currentMiles']?.toString() ?? '';
+
+  //     final nextNotificationMiles = vehicleType == "Truck"
+  //         ? calculateNextNotificationMiles(int.parse(data['currentMiles']))
+  //         : calculateNextNotificationMiles(int.parse(data['hoursReading']));
+
+  //     // 7. Prepare base vehicle data
+  //     final vehicleData = {
+  //       'active': true,
+  //       'firstTimeVehicle': true,
+  //       'tripAssign': false,
+  //       'vehicleType': vehicleType,
+  //       'companyName': company,
+  //       'engineName': engine,
+  //       'vehicleNumber': vehicleNumber,
+  //       'vin': data['vin']?.toString().trim() ?? '',
+  //       'dot': data['dot']?.toString().trim() ?? 'RB123',
+  //       'iccms': data['iccms']?.toString().trim() ?? 'RB123',
+  //       'licensePlate': data['licensePlate']?.toString().trim() ?? '',
+  //       'year': year != null ? dateFormat.format(year) : null,
+  //       'isSet': true,
+  //       "uploadedDocuments": [],
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //       'currentMilesArray': [
+  //         {
+  //           "miles": vehicleType == 'Truck'
+  //               ? int.parse(data['currentMiles'].toString())
+  //               : 0,
+  //           "date": DateTime.now().toIso8601String()
+  //         }
+  //       ],
+  //       'nextNotificationMiles': nextNotificationMiles,
+  //       'services': nextNotificationMiles
+  //           .map((service) => {
+  //                 'defaultNotificationValue':
+  //                     service['defaultNotificationValue'],
+  //                 'nextNotificationValue': service['nextNotificationValue'],
+  //                 'preValue': service['defaultNotificationValue'],
+  //                 'serviceId': service['serviceId'],
+  //                 'serviceName': service['serviceName'],
+  //                 'type': service['type'],
+  //                 'subServices': service['subServices'],
+  //               })
+  //           .toList(),
+  //     };
+
+  //     // 8. Add vehicle type specific data
+  //     if (vehicleType == 'Truck') {
+  //       vehicleData.addAll({
+  //         'currentMiles': data['currentMiles'].toString(),
+  //         'prevMilesValue': data['currentMiles'].toString(),
+  //         'firstTimeMiles': data['currentMiles'].toString(),
+  //         'oilChangeDate': '2025-04-12',
+  //         'hoursReading': '',
+  //         'prevHoursReadingValue': '',
+  //         'hoursReadingArray': [],
+  //       });
+  //     } else {
+  //       vehicleData.addAll({
+  //         'currentMiles': '',
+  //         'prevMilesValue': '',
+  //         'firstTimeMiles': '',
+  //         'oilChangeDate':
+  //             oilChangeDate != null ? dateFormat.format(oilChangeDate) : '',
+  //         'hoursReading': data['hoursReading'] != null
+  //             ? data['hoursReading'].toString()
+  //             : '',
+  //         'prevHoursReadingValue': data['hoursReading'] != null
+  //             ? data['hoursReading'].toString()
+  //             : '',
+  //       });
+  //     }
+
+  //     // 9. Save to Firestore
+  //     final docRef = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(currentUId)
+  //         .collection('Vehicles')
+  //         .add(vehicleData);
+
+  //     // 10. Update with vehicle ID
+  //     await docRef.update({'vehicleId': docRef.id});
+
+  //     // 11. Trigger cloud function
+  //     final callable = FirebaseFunctions.instance
+  //         .httpsCallable('checkAndNotifyUserForVehicleService');
+
+  //     await callable.call({
+  //       'userId': currentUId,
+  //       'vehicleId': docRef.id,
+  //     });
+
+  //     setState(() {
+  //       isSaving = false;
+  //       excelData = [];
+  //       _isBtnEnable = false;
+  //       _currentMilesController.clear();
+  //     });
+  //   } catch (e, stackTrace) {
+  //     print('❌ Error saving vehicle data: $e');
+  //     print('🔍 Stack Trace: $stackTrace');
+  //     throw 'Error saving vehicle data: ${e.toString()}';
+  //   } finally {
+  //     setState(() {
+  //       isSaving = false;
+  //     });
+  //   }
+  // }
+
   Future<void> saveVehicleFromData(Map<String, dynamic> data) async {
     setState(() {
       isSaving = true;
@@ -167,12 +347,15 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           throw 'Truck requires current miles';
         }
       } else if (vehicleType == 'Trailer') {
-        if (data['hoursReading']?.toString().isEmpty ?? true) {
-          throw 'Trailer requires hours reading';
-        }
-        if (data['oilChangeDate']?.toString().isEmpty ?? true) {
-          throw 'Trailer requires oil change date';
-        }
+        // Set default values for trailer if not provided
+        data['hoursReading'] = data['hoursReading']?.toString() ?? '1000';
+        data['dot'] = data['dot']?.toString() ?? 'RB123';
+        data['iccms'] = data['iccms']?.toString() ?? 'RB123';
+
+        // Set oil change date to current date if not provided
+        final currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        data['oilChangeDate'] =
+            data['oilChangeDate']?.toString() ?? currentDate;
       }
 
       // 3. Check for existing vehicle
@@ -209,7 +392,6 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       // 5. Set class variables for service calculation
       _selectedVehicleType = vehicleType;
       _selectedEngineName = engine;
-      // _currentMilesController.text = data['currentMiles']?.toString() ?? '';
 
       final nextNotificationMiles = vehicleType == "Truck"
           ? calculateNextNotificationMiles(int.parse(data['currentMiles']))
@@ -225,8 +407,9 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         'engineName': engine,
         'vehicleNumber': vehicleNumber,
         'vin': data['vin']?.toString().trim() ?? '',
-        'dot': data['dot']?.toString().trim() ?? '',
-        'iccms': data['iccms']?.toString().trim() ?? '',
+        'dot': data['dot']?.toString().trim() ?? 'RB123', // Default for trailer
+        'iccms':
+            data['iccms']?.toString().trim() ?? 'RB123', // Default for trailer
         'licensePlate': data['licensePlate']?.toString().trim() ?? '',
         'year': year != null ? dateFormat.format(year) : null,
         'isSet': true,
@@ -236,7 +419,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           {
             "miles": vehicleType == 'Truck'
                 ? int.parse(data['currentMiles'].toString())
-                : 0,
+                : int.parse(data['hoursReading']?.toString() ?? '1000'),
             "date": DateTime.now().toIso8601String()
           }
         ],
@@ -267,18 +450,24 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           'hoursReadingArray': [],
         });
       } else {
+        // For trailer
+        final oilChangeDateStr = oilChangeDate != null
+            ? dateFormat.format(oilChangeDate)
+            : DateFormat('yyyy-MM-dd').format(DateTime.now());
+
         vehicleData.addAll({
           'currentMiles': '',
           'prevMilesValue': '',
           'firstTimeMiles': '',
-          'oilChangeDate':
-              oilChangeDate != null ? dateFormat.format(oilChangeDate) : '',
-          'hoursReading': data['hoursReading'] != null
-              ? data['hoursReading'].toString()
-              : '',
-          'prevHoursReadingValue': data['hoursReading'] != null
-              ? data['hoursReading'].toString()
-              : '',
+          'oilChangeDate': oilChangeDateStr,
+          'hoursReading': data['hoursReading']?.toString() ?? '1000',
+          'prevHoursReadingValue': data['hoursReading']?.toString() ?? '1000',
+          'hoursReadingArray': [
+            {
+              "hours": int.parse(data['hoursReading']?.toString() ?? '1000'),
+              "date": DateTime.now().toIso8601String()
+            }
+          ],
         });
       }
 
@@ -301,8 +490,6 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
         'vehicleId': docRef.id,
       });
 
-      // showToastMessage(
-      //     "Success", "Vehicle Data Uploaded Successfully", kSecondary);
       setState(() {
         isSaving = false;
         excelData = [];
@@ -427,7 +614,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 onTap: () {
                   Navigator.of(context).pop();
                   downloadExcelFile(
-                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_vehicle_data_rabbit_vehicle_type_truck.xlsx?alt=media&token=c1851f45-3865-4052-89f8-0b5d0ab6e02e");
+                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_vehicle_data_rabbit_vehicle_type_truck.xlsx?alt=media&token=01e2f94e-6f57-45c4-a32c-64b9c8856a3f");
                 },
               ),
               ListTile(
@@ -435,7 +622,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                 onTap: () {
                   Navigator.of(context).pop();
                   downloadExcelFile(
-                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=fec03351-8645-4697-a914-35c4596062e8");
+                      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=e76d4dce-31fa-4051-9f3a-7bf851ce8d9c");
                 },
               ),
             ],
@@ -554,6 +741,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                         ),
 
                   SizedBox(height: 20.h),
+
                   Expanded(
                     child: isParsing
                         ? Center(child: CircularProgressIndicator())
@@ -567,65 +755,141 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                                     buildDataRow(
                                         "Vehicle Number",
                                         excelData
-                                            .map((e) => e['vehicleNumber'])
+                                            .map(
+                                                (e) => e['vehicleNumber'] ?? '')
                                             .toList()),
                                     buildDataRow(
                                         "Type",
                                         excelData
-                                            .map((e) => e['vehicleType'])
+                                            .map((e) => e['vehicleType'] ?? '')
                                             .toList()),
                                     buildDataRow(
                                         "Company",
                                         excelData
-                                            .map((e) => e['companyName'])
+                                            .map((e) => e['companyName'] ?? '')
                                             .toList()),
                                     buildDataRow(
                                         "Engine",
                                         excelData
-                                            .map((e) => e['engineName'])
+                                            .map((e) => e['engineName'] ?? '')
                                             .toList()),
-                                    buildDataRow(
-                                        "Miles/Hours",
-                                        excelData
-                                            .map((e) =>
-                                                e['vehicleType'] == 'Truck'
-                                                    ? e['currentMiles']
-                                                    : e['hoursReading'])
-                                            .toList()),
+                                    // Only show Miles/Hours for trucks
+                                    if (excelData.any(
+                                        (e) => e['vehicleType'] == 'Truck'))
+                                      buildDataRow(
+                                          "Miles",
+                                          excelData
+                                              .map((e) =>
+                                                  e['currentMiles'] ?? '')
+                                              .toList()),
                                     buildDataRow(
                                         "Vin",
                                         excelData
-                                            .map((e) => e['vin'])
+                                            .map((e) => e['vin'] ?? '')
                                             .toList()),
-                                    buildDataRow(
-                                        "Dot",
-                                        excelData
-                                            .map((e) => e['dot'])
-                                            .toList()),
-                                    buildDataRow(
-                                        "Iccms",
-                                        excelData
-                                            .map((e) => e['iccms'])
-                                            .toList()),
+                                    // Only show Dot for trucks
+                                    if (excelData.any(
+                                        (e) => e['vehicleType'] == 'Truck'))
+                                      buildDataRow(
+                                          "Dot",
+                                          excelData
+                                              .map((e) => e['dot'] ?? '')
+                                              .toList()),
+                                    // Only show Iccms for trucks
+                                    if (excelData.any(
+                                        (e) => e['vehicleType'] == 'Truck'))
+                                      buildDataRow(
+                                          "Iccms",
+                                          excelData
+                                              .map((e) => e['iccms'] ?? '')
+                                              .toList()),
                                     buildDataRow(
                                         "License Plate",
                                         excelData
-                                            .map((e) => e['licensePlate'])
+                                            .map((e) => e['licensePlate'] ?? '')
                                             .toList()),
                                     buildDataRow(
                                         "Year",
                                         excelData
-                                            .map((e) => e['year'])
-                                            .toList()),
-                                    buildDataRow(
-                                        "Oil Change Date",
-                                        excelData
-                                            .map((e) => e['oilChangeDate'])
+                                            .map((e) => e['year'] ?? '')
                                             .toList()),
                                   ],
                                 ),
                               ),
                   ),
+
+                  // Expanded(
+                  //   child: isParsing
+                  //       ? Center(child: CircularProgressIndicator())
+                  //       : excelData.isEmpty
+                  //           ? Center(child: Text(''))
+                  //           : SingleChildScrollView(
+                  //               scrollDirection: Axis.vertical,
+                  //               child: Column(
+                  //                 crossAxisAlignment: CrossAxisAlignment.start,
+                  //                 children: [
+                  //                   buildDataRow(
+                  //                       "Vehicle Number",
+                  //                       excelData
+                  //                           .map((e) => e['vehicleNumber'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Type",
+                  //                       excelData
+                  //                           .map((e) => e['vehicleType'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Company",
+                  //                       excelData
+                  //                           .map((e) => e['companyName'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Engine",
+                  //                       excelData
+                  //                           .map((e) => e['engineName'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Miles/Hours",
+                  //                       excelData
+                  //                           .map((e) =>
+                  //                               e['vehicleType'] == 'Truck'
+                  //                                   ? e['currentMiles']
+                  //                                   : e['hoursReading'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Vin",
+                  //                       excelData
+                  //                           .map((e) => e['vin'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Dot",
+                  //                       excelData
+                  //                           .map((e) => e['dot'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Iccms",
+                  //                       excelData
+                  //                           .map((e) => e['iccms'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "License Plate",
+                  //                       excelData
+                  //                           .map((e) => e['licensePlate'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Year",
+                  //                       excelData
+                  //                           .map((e) => e['year'])
+                  //                           .toList()),
+                  //                   buildDataRow(
+                  //                       "Oil Change Date",
+                  //                       excelData
+                  //                           .map((e) => e['oilChangeDate'])
+                  //                           .toList()),
+                  //                 ],
+                  //               ),
+                  //             ),
+                  // ),
                 ],
               ),
             ),

@@ -25,7 +25,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _vinController = TextEditingController();
   final _licensePlateController = TextEditingController();
   final _currentMilesController = TextEditingController();
-  final _hoursReadingController = TextEditingController();
+  // final _hoursReadingController = TextEditingController();
   final _dotController = TextEditingController();
   final _iccmsController = TextEditingController();
 
@@ -229,9 +229,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               _selectedEngineName?.toLowerCase()) {
             foundMatch = true;
 
-            String type = defaultValue['type']
-                .toString()
-                .toLowerCase(); // Get type (reading, day, hour)
+            String type = defaultValue['type'].toString().toLowerCase();
             int value = int.tryParse(defaultValue['value'].toString()) ?? 0;
             int notificationValue;
 
@@ -331,12 +329,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         "uploadedDocuments": [],
         'createdAt': FieldValue.serverTimestamp(),
         'hoursReadingArray': [
-          {
-            "hours": _hoursReadingController.text.isNotEmpty
-                ? int.parse(_hoursReadingController.text)
-                : 0,
-            "date": DateTime.now().toIso8601String()
-          }
+          {"hours": "1000", "date": DateTime.now().toIso8601String()}
         ],
         'currentMilesArray': [
           {
@@ -375,16 +368,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         vehicleData['currentMiles'] = '';
         vehicleData['prevMilesValue'] = '';
         vehicleData['firstTimeMiles'] = '';
-        vehicleData['oilChangeDate'] = _selectedCompany == "DRY VAN"
-            ? '2025-04-12'
-            : _oilChangeDate != null
-                ? DateFormat('yyyy-MM-dd').format(_oilChangeDate!)
-                : null;
-        vehicleData['hoursReading'] = _selectedCompany == "DRY VAN"
-            ? "1000"
-            : _hoursReadingController.text.toString();
-        vehicleData['prevHoursReadingValue'] =
-            _hoursReadingController.text.toString();
+        vehicleData['oilChangeDate'] = '2025-04-12';
+        vehicleData['hoursReading'] = '1000';
+        vehicleData['prevHoursReadingValue'] = "1000";
       }
 
       DocumentReference vehicleDocRef = await vehiclesRef.add(vehicleData);
@@ -712,141 +698,140 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             ],
                             if (_selectedVehicleType == 'Trailer') ...[
                               SizedBox(height: 16.h),
-                              _selectedCompany == "DRY VAN"
-                                  ? SizedBox()
-                                  : GestureDetector(
-                                      onTap: () =>
-                                          _selectOilChangeDate(context),
-                                      child: AbsorbPointer(
-                                        child: Container(
-                                          margin: kIsWeb
-                                              ? EdgeInsets.symmetric(
-                                                  vertical: 4.0.h)
-                                              : EdgeInsets.symmetric(
-                                                  vertical: 4.0.h),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: kIsWeb
-                                                ? BorderRadius.circular(12.r)
-                                                : BorderRadius.circular(12.0.r),
-                                          ),
-                                          child: TextField(
-                                            decoration: InputDecoration(
-                                              labelText: 'Oil Change Date *',
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12.0),
-                                                borderSide: BorderSide(
-                                                  color: Colors.grey.shade300,
-                                                  width: 1.0,
-                                                ),
-                                              ),
-                                              focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12.0),
-                                                borderSide: BorderSide(
-                                                  color: Colors.grey.shade300,
-                                                  width: 1.0,
-                                                ),
-                                              ),
-                                              enabledBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12.0),
-                                                borderSide: BorderSide(
-                                                  color: Colors.grey.shade300,
-                                                  width: 1.0,
-                                                ),
-                                              ),
-                                              filled: true,
-                                              fillColor: Colors.white,
-                                              contentPadding: kIsWeb
-                                                  ? EdgeInsets.all(2)
-                                                  : const EdgeInsets.all(8),
-                                              labelStyle: kIsWeb
-                                                  ? TextStyle()
-                                                  : appStyle(14, kPrimary,
-                                                      FontWeight.bold),
-                                            ),
-                                            controller: TextEditingController(
-                                              text: _oilChangeDate == null
-                                                  ? ''
-                                                  : DateFormat('yyyy-MM-dd')
-                                                      .format(_oilChangeDate!),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                              _selectedCompany == "DRY VAN"
-                                  ? SizedBox()
-                                  : SizedBox(height: 16.h),
-                              _selectedCompany == "DRY VAN"
-                                  ? SizedBox()
-                                  : Container(
-                                      margin: kIsWeb
-                                          ? EdgeInsets.symmetric(
-                                              vertical: 4.0.h)
-                                          : EdgeInsets.symmetric(
-                                              vertical: 4.0.h),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: kIsWeb
-                                            ? BorderRadius.circular(12.r)
-                                            : BorderRadius.circular(12.0.r),
-                                      ),
-                                      child: TextField(
-                                        controller: _hoursReadingController,
-                                        onChanged: (value) {
-                                          _hoursReadingController.value =
-                                              TextEditingValue(
-                                            text: value.toUpperCase(),
-                                            selection: _hoursReadingController
-                                                .selection,
-                                          );
-                                        },
-                                        decoration: InputDecoration(
-                                          labelText: 'Hours Reading (optional)',
-                                          border: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
-                                            borderSide: BorderSide(
-                                              color: Colors.grey.shade300,
-                                              width: 1.0,
-                                            ),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
-                                            borderSide: BorderSide(
-                                              color: Colors.grey.shade300,
-                                              width: 1.0,
-                                            ),
-                                          ),
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
-                                            borderSide: BorderSide(
-                                              color: Colors.grey.shade300,
-                                              width: 1.0,
-                                            ),
-                                          ),
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          contentPadding: kIsWeb
-                                              ? EdgeInsets.all(2)
-                                              : const EdgeInsets.all(8),
-                                          labelStyle: kIsWeb
-                                              ? TextStyle()
-                                              : appStyle(14, kPrimary,
-                                                  FontWeight.bold),
-                                        ),
-                                        keyboardType: TextInputType.number,
-                                      ),
-                                    ),
+                              // _selectedCompany == "DRY VAN"
+                              //     ? SizedBox()
+                              //     : GestureDetector(
+                              //         onTap: () =>
+                              //             _selectOilChangeDate(context),
+                              //         child: AbsorbPointer(
+                              //           child: Container(
+                              //             margin: kIsWeb
+                              //                 ? EdgeInsets.symmetric(
+                              //                     vertical: 4.0.h)
+                              //                 : EdgeInsets.symmetric(
+                              //                     vertical: 4.0.h),
+                              //             decoration: BoxDecoration(
+                              //               color: Colors.white,
+                              //               borderRadius: kIsWeb
+                              //                   ? BorderRadius.circular(12.r)
+                              //                   : BorderRadius.circular(12.0.r),
+                              //             ),
+                              //             child: TextField(
+                              //               decoration: InputDecoration(
+                              //                 labelText: 'Oil Change Date *',
+                              //                 border: OutlineInputBorder(
+                              //                   borderRadius:
+                              //                       BorderRadius.circular(12.0),
+                              //                   borderSide: BorderSide(
+                              //                     color: Colors.grey.shade300,
+                              //                     width: 1.0,
+                              //                   ),
+                              //                 ),
+                              //                 focusedBorder: OutlineInputBorder(
+                              //                   borderRadius:
+                              //                       BorderRadius.circular(12.0),
+                              //                   borderSide: BorderSide(
+                              //                     color: Colors.grey.shade300,
+                              //                     width: 1.0,
+                              //                   ),
+                              //                 ),
+                              //                 enabledBorder: OutlineInputBorder(
+                              //                   borderRadius:
+                              //                       BorderRadius.circular(12.0),
+                              //                   borderSide: BorderSide(
+                              //                     color: Colors.grey.shade300,
+                              //                     width: 1.0,
+                              //                   ),
+                              //                 ),
+                              //                 filled: true,
+                              //                 fillColor: Colors.white,
+                              //                 contentPadding: kIsWeb
+                              //                     ? EdgeInsets.all(2)
+                              //                     : const EdgeInsets.all(8),
+                              //                 labelStyle: kIsWeb
+                              //                     ? TextStyle()
+                              //                     : appStyle(14, kPrimary,
+                              //                         FontWeight.bold),
+                              //               ),
+                              //               controller: TextEditingController(
+                              //                 text: _oilChangeDate == null
+                              //                     ? ''
+                              //                     : DateFormat('yyyy-MM-dd')
+                              //                         .format(_oilChangeDate!),
+                              //               ),
+                              //             ),
+                              //           ),
+                              //         ),
+                              //       ),
+
+                              // _selectedCompany == "DRY VAN"
+                              //     ? SizedBox()
+                              //     : SizedBox(height: 16.h),
+                              // _selectedCompany == "DRY VAN"
+                              //     ? SizedBox()
+                              //     : Container(
+                              //         margin: kIsWeb
+                              //             ? EdgeInsets.symmetric(
+                              //                 vertical: 4.0.h)
+                              //             : EdgeInsets.symmetric(
+                              //                 vertical: 4.0.h),
+                              //         decoration: BoxDecoration(
+                              //           color: Colors.white,
+                              //           borderRadius: kIsWeb
+                              //               ? BorderRadius.circular(12.r)
+                              //               : BorderRadius.circular(12.0.r),
+                              //         ),
+                              //         child: TextField(
+                              //           controller: _hoursReadingController,
+                              //           onChanged: (value) {
+                              //             _hoursReadingController.value =
+                              //                 TextEditingValue(
+                              //               text: value.toUpperCase(),
+                              //               selection: _hoursReadingController
+                              //                   .selection,
+                              //             );
+                              //           },
+                              //           decoration: InputDecoration(
+                              //             labelText: 'Hours Reading (optional)',
+                              //             border: OutlineInputBorder(
+                              //               borderRadius:
+                              //                   BorderRadius.circular(12.0),
+                              //               borderSide: BorderSide(
+                              //                 color: Colors.grey.shade300,
+                              //                 width: 1.0,
+                              //               ),
+                              //             ),
+                              //             focusedBorder: OutlineInputBorder(
+                              //               borderRadius:
+                              //                   BorderRadius.circular(12.0),
+                              //               borderSide: BorderSide(
+                              //                 color: Colors.grey.shade300,
+                              //                 width: 1.0,
+                              //               ),
+                              //             ),
+                              //             enabledBorder: OutlineInputBorder(
+                              //               borderRadius:
+                              //                   BorderRadius.circular(12.0),
+                              //               borderSide: BorderSide(
+                              //                 color: Colors.grey.shade300,
+                              //                 width: 1.0,
+                              //               ),
+                              //             ),
+                              //             filled: true,
+                              //             fillColor: Colors.white,
+                              //             contentPadding: kIsWeb
+                              //                 ? EdgeInsets.all(2)
+                              //                 : const EdgeInsets.all(8),
+                              //             labelStyle: kIsWeb
+                              //                 ? TextStyle()
+                              //                 : appStyle(14, kPrimary,
+                              //                     FontWeight.bold),
+                              //           ),
+                              //           keyboardType: TextInputType.number,
+                              //         ),
+                              //       ),
                             ],
-                            _selectedCompany == "DRY VAN"
-                                ? SizedBox()
-                                : SizedBox(height: 16.h),
+
                             Container(
                               margin: kIsWeb
                                   ? EdgeInsets.symmetric(vertical: 4.0.h)
