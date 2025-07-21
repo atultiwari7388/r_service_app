@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/manageCheck/manage_check_screen.dart';
 import 'package:regal_service_d_app/views/app/manageTrips/trip_details.dart';
 
 class ViewMemberTrip extends StatefulWidget {
@@ -344,25 +345,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Padding(
-            //   padding: EdgeInsets.only(left: 8.0, right: 16),
-            //   child: Row(
-            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //     children: [
-            //       IconButton(
-            //         icon: Icon(Icons.filter_list, color: kPrimary),
-            //         onPressed: _pickDateRange,
-            //       ),
-            //       if (fromDate != null && toDate != null)
-            //         Text(
-            //           "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
-            //           style: appStyle(14, kDark, FontWeight.w500),
-            //         ),
-            //     ],
-            //   ),
-            // ),
-
-            // In your build method, replace the existing Row widget with this:
             Padding(
               padding: EdgeInsets.only(left: 8.0, right: 16),
               child: Row(
@@ -394,7 +376,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 ],
               ),
             ),
-
             StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection("Users")
@@ -452,52 +433,77 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         return Padding(
                           padding: EdgeInsets.symmetric(
                               vertical: 10.h, horizontal: 12.w),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w, vertical: 10.h),
-                                decoration: BoxDecoration(
-                                    color: kPrimary.withOpacity(0.8),
-                                    borderRadius: BorderRadius.circular(10)),
-                                child: Column(
+                          child: widget.role == "Manager"
+                              ? SizedBox()
+                              : Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
                                   children: [
-                                    Text(
-                                      'Total Expenses',
-                                      style:
-                                          appStyle(16, kWhite, FontWeight.w500),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w, vertical: 12.h),
+                                      decoration: BoxDecoration(
+                                          color: kSecondary.withOpacity(0.8),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Total Earnings',
+                                            style: appStyle(
+                                                13, kWhite, FontWeight.w500),
+                                          ),
+                                          Text(
+                                              "\$${totals['earnings']!.toStringAsFixed(0)}",
+                                              style: appStyle(13, kWhite,
+                                                  FontWeight.normal))
+                                        ],
+                                      ),
                                     ),
-                                    Text(
-                                      "\$${totals['expenses']!.toStringAsFixed(0)}",
-                                      style:
-                                          appStyle(15, kWhite, FontWeight.w500),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w, vertical: 12.h),
+                                      decoration: BoxDecoration(
+                                          color: kPrimary.withOpacity(0.8),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Total Expenses',
+                                            style: appStyle(
+                                                13, kWhite, FontWeight.w500),
+                                          ),
+                                          Text(
+                                            "\$${totals['expenses']!.toStringAsFixed(0)}",
+                                            style: appStyle(
+                                                13, kWhite, FontWeight.w500),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w, vertical: 12.h),
+                                      decoration: BoxDecoration(
+                                          color: kSecondary.withOpacity(0.8),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            'Total Paid',
+                                            style: appStyle(
+                                                13, kWhite, FontWeight.w500),
+                                          ),
+                                          Text("\$0",
+                                              style: appStyle(13, kWhite,
+                                                  FontWeight.normal))
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10.w, vertical: 10.h),
-                                decoration: BoxDecoration(
-                                    color: kSecondary.withOpacity(0.8),
-                                    borderRadius: BorderRadius.circular(10)),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      'Total Earnings',
-                                      style:
-                                          appStyle(16, kWhite, FontWeight.w500),
-                                    ),
-                                    Text(
-                                        "\$${totals['earnings']!.toStringAsFixed(0)}",
-                                        style: appStyle(
-                                            15, kWhite, FontWeight.normal))
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
                         );
                       },
                     ),
@@ -619,8 +625,10 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Start Date: $formattedStartDate"),
-              Text("Start Miles: $tripStartMiles"),
+              Text("Start Date: $formattedStartDate",
+                  style: appStyle(12, kDark, FontWeight.w300)),
+              Text("Start Miles: $tripStartMiles",
+                  style: appStyle(12, kDark, FontWeight.w300)),
             ],
           ),
           SizedBox(height: 5.h),
@@ -636,21 +644,24 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Earnings: \$${earnings.toStringAsFixed(0)}",
-                    style: appStyle(14, kSecondary, FontWeight.w500)),
+                // Text("Earnings: \$${earnings.toStringAsFixed(0)}",
+                //     style: appStyle(14, kSecondary, FontWeight.w500)),
                 Text("Trip Miles: ${totalMiles.toStringAsFixed(0)}"),
               ],
             ),
             if (hasGoogleMiles) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("G'Miles: ${googleMiles.toStringAsFixed(0)}",
-                      style: appStyle(14, Colors.blue, FontWeight.w500)),
-                  Text("G'Earnings: \$${googleTotalEarning.toStringAsFixed(0)}",
-                      style: appStyle(14, Colors.green, FontWeight.w500)),
-                ],
-              ),
+              widget.role == "Manager"
+                  ? SizedBox()
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("G'Miles: ${googleMiles.toStringAsFixed(0)}",
+                            style: appStyle(14, Colors.blue, FontWeight.w500)),
+                        Text(
+                            "G'Earnings: \$${googleTotalEarning.toStringAsFixed(0)}",
+                            style: appStyle(14, Colors.green, FontWeight.w500)),
+                      ],
+                    ),
             ],
             SizedBox(height: 5.h),
             Row(
@@ -674,52 +685,57 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         ),
                         onPressed: null,
                         child: Text("Paid"))
-                    : ElevatedButton(
-                        onPressed: () {
-                          showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  title: Text('Payment'),
-                                  content: Text("Are you sure to Pay ?",
-                                      style: appStyle(
-                                          17, kDark, FontWeight.normal)),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        FirebaseFirestore.instance
-                                            .collection("Users")
-                                            .doc(widget.memberId)
-                                            .collection('trips')
-                                            .doc(doc.id)
-                                            .update({
-                                          'isPaid': true,
-                                        }).then((value) {
-                                          Get.back();
-                                        }).catchError((error) {
-                                          print(error);
-                                        });
-                                      },
-                                      child: Text('Confirm'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                      child: Text('Cancel'),
-                                    ),
-                                  ],
-                                );
-                              });
-                        },
-                        child: Text(
-                          "Pay",
-                          style: appStyle(12, kWhite, FontWeight.normal),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                            minimumSize: Size(60, 40),
-                            backgroundColor: kPrimary,
-                            foregroundColor: kWhite)),
+                    : widget.role == "Manager"
+                        ? SizedBox()
+                        : ElevatedButton(
+                            onPressed: () {
+                              showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text('Payment'),
+                                      content: Text("Are you sure to Pay ?",
+                                          style: appStyle(
+                                              17, kDark, FontWeight.normal)),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () async {
+                                            // await FirebaseFirestore.instance
+                                            //     .collection("Users")
+                                            //     .doc(widget.memberId)
+                                            //     .collection('trips')
+                                            //     .doc(doc.id)
+                                            //     .update({
+                                            //   'isPaid': true,
+                                            // }).then((value) {
+                                            //   Get.back();
+                                            // }).catchError((error) {
+                                            //   print(error);
+                                            // });
+
+                                            Navigator.pop(context);
+                                            Get.to(() => ManageCheckScreen());
+                                          },
+                                          child: Text('Confirm'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text('Cancel'),
+                                        ),
+                                      ],
+                                    );
+                                  });
+                            },
+                            child: Text(
+                              "Pay",
+                              style: appStyle(12, kWhite, FontWeight.normal),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: Size(60, 40),
+                                backgroundColor: kPrimary,
+                                foregroundColor: kWhite)),
                 SizedBox(width: 10.w),
                 widget.role == "Manager"
                     ? SizedBox()
@@ -733,7 +749,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                             foregroundColor: kWhite),
                       ),
                 SizedBox(width: 10.w),
-                widget.role == "Accountant"
+                (widget.role == "Accountant" || widget.role == "Owner")
                     ? ElevatedButton(
                         onPressed: () => _showGoogleMilesDialog(doc),
                         child: Text(

@@ -988,7 +988,7 @@ export default function ManageTeam(): JSX.Element {
             <Link href="/account/manage-team/create-team-member">
               <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center">
                 <span className="mr-2">+</span>
-                Create Member
+                Add Member
               </button>
             </Link>
           )}

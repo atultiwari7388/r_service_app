@@ -3015,6 +3015,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       isEditing = false;
       editingRecordId = null;
       selectedVehicle = null;
+      image = null;
       selectedServices.clear();
       selectedSubServices.clear();
       serviceDefaultValues.clear();

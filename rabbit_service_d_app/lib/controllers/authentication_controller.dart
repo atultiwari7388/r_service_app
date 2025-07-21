@@ -96,7 +96,7 @@ class AuthController extends GetxController {
       // Inform the user to verify their email before logging in
       showToastMessage(
           "Verification Required",
-          "A verification email has been sent to your email address. Please verify it before logging in.",
+          "A verification email has been sent to your email address. Please verify it before logging in. If you don't see the email, check your spam folder.",
           Colors.orange);
 
       // Sign out the user immediately after account creation, to prevent unverified access
@@ -140,8 +140,10 @@ class AuthController extends GetxController {
       final User? user = signInUser.user;
       if (user != null) {
         if (!user.emailVerified) {
-          showToastMessage("Email Not Verified",
-              "Please verify your email before logging in.", Colors.orange);
+          showToastMessage(
+              "Email Not Verified",
+              "Please verify your email before logging in, If you have not receive mail also check in spam",
+              Colors.orange);
 
           await user.sendEmailVerification();
           await _auth.signOut();

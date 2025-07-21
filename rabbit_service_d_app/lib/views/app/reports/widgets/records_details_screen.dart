@@ -52,56 +52,6 @@ class RecordsDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (imageUrl != null && imageUrl.toString().isNotEmpty) ...[
-                    GestureDetector(
-                      onTap: () {
-                        // Show zoomable image dialog
-                        showDialog(
-                          context: context,
-                          builder: (context) => Dialog(
-                            child: Container(
-                              width: MediaQuery.of(context).size.width * 0.9,
-                              height: MediaQuery.of(context).size.height * 0.7,
-                              child: PhotoView(
-                                imageProvider: NetworkImage(imageUrl),
-                                minScale: PhotoViewComputedScale.contained,
-                                maxScale: PhotoViewComputedScale.covered * 2,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: 200.h,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12.r),
-                          image: DecorationImage(
-                            image: NetworkImage(imageUrl),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        child: Align(
-                          alignment: Alignment.bottomRight,
-                          child: Container(
-                            margin: EdgeInsets.all(8.w),
-                            padding: EdgeInsets.all(6.w),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            child: Icon(
-                              Icons.zoom_in,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16.h),
-                  ],
-
                   buildInfoRow(
                     Icons.directions_car_outlined,
                     '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
@@ -234,6 +184,56 @@ class RecordsDetailsScreen extends StatelessWidget {
                     Divider(height: 24.h),
                     buildInfoRow(
                         Icons.description_outlined, record['description']),
+                  ],
+
+                  if (imageUrl != null && imageUrl.toString().isNotEmpty) ...[
+                    GestureDetector(
+                      onTap: () {
+                        // Show zoomable image dialog
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            child: Container(
+                              width: MediaQuery.of(context).size.width * 0.9,
+                              height: MediaQuery.of(context).size.height * 0.7,
+                              child: PhotoView(
+                                imageProvider: NetworkImage(imageUrl),
+                                minScale: PhotoViewComputedScale.contained,
+                                maxScale: PhotoViewComputedScale.covered * 2,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        height: 200.h,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.r),
+                          image: DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        child: Align(
+                          alignment: Alignment.bottomRight,
+                          child: Container(
+                            margin: EdgeInsets.all(8.w),
+                            padding: EdgeInsets.all(6.w),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Icon(
+                              Icons.zoom_in,
+                              color: Colors.white,
+                              size: 20.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
                   ],
                 ],
               ),

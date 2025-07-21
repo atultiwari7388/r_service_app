@@ -211,33 +211,6 @@ export default function RecordsDetailsPage({
           )}
         </div>
 
-        {/* Image Display Section */}
-        {record.imageUrl && (
-          <div className="mt-8 m-8">
-            <h3 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
-              Service Image
-            </h3>
-            <div
-              className="relative w-full max-w-md mx-auto cursor-pointer hover:opacity-90 transition"
-              onClick={openImageModal}
-            >
-              <Image
-                src={record.imageUrl}
-                alt="Service record"
-                width={800}
-                height={600}
-                className="w-full h-auto rounded-lg border shadow-sm"
-                objectFit="contain"
-              />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                <div className="bg-black bg-opacity-50 text-white p-2 rounded-full">
-                  <FaSearchPlus size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <h3 className="text-2xl font-semibold text-gray-800 mt-8 m-8 border-b pb-2">
           Services
         </h3>
@@ -253,15 +226,13 @@ export default function RecordsDetailsPage({
                   <span className="font-medium text-lg">
                     {service.serviceName}
                   </span>
-                  {service.nextNotificationValue === "0" ? (
-                    <span className="text-gray-600">-</span>
-                  ) : (
-                    <span className="text-gray-400">
-                      {service.type === "day"
-                        ? formatDate(service.nextNotificationValue)
-                        : service.nextNotificationValue}
-                    </span>
-                  )}
+                  <span className="text-gray-400">
+                    {service.defaultNotificationValue === 0
+                      ? ""
+                      : service.type === "day"
+                      ? formatDate(service.nextNotificationValue)
+                      : `${service.nextNotificationValue}`}
+                  </span>
                 </div>
 
                 {/* Subservices section */}
@@ -294,6 +265,33 @@ export default function RecordsDetailsPage({
             </h3>
             <div className="p-4 bg-gray-50 rounded-lg border">
               <p className="text-gray-700 text-lg">{record.description}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Image Display Section */}
+        {record.imageUrl && (
+          <div className="mt-8 m-8">
+            <h3 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
+              Service Image
+            </h3>
+            <div
+              className="relative w-full max-w-md mx-auto cursor-pointer hover:opacity-90 transition"
+              onClick={openImageModal}
+            >
+              <Image
+                src={record.imageUrl}
+                alt="Service record"
+                width={800}
+                height={600}
+                className="w-full h-auto rounded-lg border shadow-sm"
+                objectFit="contain"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
+                <div className="bg-black bg-opacity-50 text-white p-2 rounded-full">
+                  <FaSearchPlus size={24} />
+                </div>
+              </div>
             </div>
           </div>
         )}

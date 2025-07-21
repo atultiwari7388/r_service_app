@@ -106,7 +106,7 @@ const Login: React.FC = () => {
 
       if (user) {
         if (!user.emailVerified) {
-          alert("Email not verified. Please verify your email.");
+          alert("Email not verified. Please verify your email, If you have not receive mail also check in spam");
           await sendEmailVerification(user);
           await signOut(auth);
           setIsLoading(false);

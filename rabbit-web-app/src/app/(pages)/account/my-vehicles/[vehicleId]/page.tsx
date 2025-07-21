@@ -3,7 +3,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
@@ -184,30 +192,177 @@ export default function MyVehicleDetailsScreen() {
     setUploadedFiles([]);
   };
 
-  const handleEditService = (index: number, service: ServiceData) => {
+  // const handleEditService = (index: number, service: ServiceData) => {
+  //   const newDefaultValue = prompt(
+  //     `Edit default notification value for ${service.serviceName}`,
+  //     service.defaultNotificationValue.toString()
+  //   );
+
+  //   if (newDefaultValue && vehicleData) {
+  //     const updatedServices = [...(vehicleData.services || [])];
+  //     updatedServices[index] = {
+  //       ...service,
+  //       defaultNotificationValue: parseInt(newDefaultValue, 10),
+  //     };
+
+  //     if (user?.uid && vehicleId) {
+  //       const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+  //       updateDoc(docRef, { services: updatedServices })
+  //         .then(() => {
+  //           setVehicleData((prevData) => ({
+  //             ...prevData!,
+  //             services: updatedServices,
+  //           }));
+  //         })
+  //         .catch((error) => console.error("Error updating services:", error));
+  //     }
+  //   }
+  // };
+
+  const handleEditService = async (index: number, service: ServiceData) => {
     const newDefaultValue = prompt(
       `Edit default notification value for ${service.serviceName}`,
       service.defaultNotificationValue.toString()
     );
 
-    if (newDefaultValue && vehicleData) {
-      const updatedServices = [...(vehicleData.services || [])];
-      updatedServices[index] = {
-        ...service,
-        defaultNotificationValue: parseInt(newDefaultValue, 10),
-      };
-
-      if (user?.uid && vehicleId) {
-        const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
-        updateDoc(docRef, { services: updatedServices })
-          .then(() => {
-            setVehicleData((prevData) => ({
-              ...prevData!,
-              services: updatedServices,
-            }));
-          })
-          .catch((error) => console.error("Error updating services:", error));
+    if (newDefaultValue && vehicleData && user?.uid && vehicleId) {
+      const newValue = parseInt(newDefaultValue, 10);
+      if (isNaN(newValue)) {
+        alert("Please enter a valid number");
+        return;
       }
+
+      try {
+        setLoading(true);
+
+        // Calculate the difference between current values
+        const currentDefault = service.defaultNotificationValue;
+        const currentNext = service.nextNotificationValue;
+        const difference = currentNext - currentDefault;
+
+        // Calculate new next value based on the difference
+        let newNextValue = newValue + difference;
+
+        // Ensure the new next value is not less than the new default
+        if (newNextValue < newValue) {
+          newNextValue = newValue;
+        }
+
+        // Create the updated service object
+        const updatedService = {
+          ...service,
+          defaultNotificationValue: newValue,
+          nextNotificationValue: newNextValue,
+          preValue: currentDefault,
+        };
+
+        // First update current user's vehicle
+        await updateCurrentUserVehicle(updatedService);
+
+        // Check if current user is owner and update team members
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        const userData = userDoc.data();
+
+        if (userData?.role === "Owner") {
+          await updateTeamMembersVehicles(updatedService);
+        } else {
+          // If current user is team member, update owner's vehicle
+          if (userData?.createdBy) {
+            await updateOwnerVehicle(userData.createdBy, updatedService);
+          }
+        }
+
+        alert("Service value updated successfully");
+      } catch (error) {
+        console.error("Error updating service:", error);
+        alert("Error updating service");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Helper function to update current user's vehicle
+  const updateCurrentUserVehicle = async (updatedService: ServiceData) => {
+    if (!vehicleData || !user?.uid) return;
+
+    // Find the index of the service to update using serviceId
+    const serviceIndex = vehicleData.services?.findIndex(
+      (s) => s.serviceId === updatedService.serviceId
+    );
+
+    if (serviceIndex === undefined || serviceIndex === -1) return;
+
+    const updatedServices = [...(vehicleData.services || [])];
+    updatedServices[serviceIndex] = updatedService;
+
+    const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+    await updateDoc(docRef, { services: updatedServices });
+
+    setVehicleData((prevData) => ({
+      ...prevData!,
+      services: updatedServices,
+    }));
+  };
+
+  // Helper function to update team members' vehicles
+  const updateTeamMembersVehicles = async (updatedService: ServiceData) => {
+    if (!user?.uid) return;
+
+    // Get all team members
+    const teamMembersQuery = query(
+      collection(db, "Users"),
+      where("createdBy", "==", user.uid),
+      where("isTeamMember", "==", true)
+    );
+
+    const teamMembersSnapshot = await getDocs(teamMembersQuery);
+
+    const updatePromises: Promise<void>[] = [];
+
+    teamMembersSnapshot.forEach((memberDoc) => {
+      const memberId = memberDoc.id;
+      const promise = updateVehicleService(memberId, updatedService);
+      updatePromises.push(promise);
+    });
+
+    await Promise.all(updatePromises);
+  };
+
+  // Helper function to update owner's vehicle
+  const updateOwnerVehicle = async (
+    ownerId: string,
+    updatedService: ServiceData
+  ) => {
+    return updateVehicleService(ownerId, updatedService);
+  };
+
+  // Generic function to update a vehicle's service
+  const updateVehicleService = async (
+    userId: string,
+    updatedService: ServiceData
+  ) => {
+    try {
+      const vehicleDocRef = doc(db, "Users", userId, "Vehicles", vehicleId);
+      const vehicleDoc = await getDoc(vehicleDocRef);
+
+      if (vehicleDoc.exists()) {
+        const vehicleData = vehicleDoc.data();
+        const services = [...(vehicleData.services || [])];
+
+        // Find the exact service to update using serviceId
+        const serviceIndex = services.findIndex(
+          (s) => s.serviceId === updatedService.serviceId
+        );
+
+        if (serviceIndex !== -1) {
+          services[serviceIndex] = updatedService;
+          await updateDoc(vehicleDocRef, { services });
+        }
+      }
+    } catch (error) {
+      console.error(`Error updating vehicle for user ${userId}:`, error);
+      throw error;
     }
   };
 
@@ -293,7 +448,7 @@ export default function MyVehicleDetailsScreen() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+      {/* <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-4">Services</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
@@ -315,6 +470,51 @@ export default function MyVehicleDetailsScreen() {
                 .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
                 .map((service, index) => (
                   <tr key={service.serviceId} className="border-b">
+                    <td className="px-4 py-2">{service.serviceName}</td>
+                    <td className="px-4 py-2">
+                      {service.defaultNotificationValue || "N/A"} (
+                      {service.type === "reading" ? "Miles" : service.type})
+                    </td>
+                    <td className="px-4 py-2">
+                      <button
+                        onClick={() => handleEditService(index, service)}
+                        className="text-[#F96176] hover:text-[#F96176]"
+                      >
+                        <FaEdit />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </div> */}
+
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Services</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-4 py-2 text-left">Sr. No.</th>{" "}
+                {/* Serial number header */}
+                <th className="px-4 py-2 text-left">Service Name</th>
+                <th className="px-4 py-2 text-left">Default Value</th>
+                <th className="px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vehicleData?.services
+                ?.filter(
+                  (service) =>
+                    service.defaultNotificationValue &&
+                    service.defaultNotificationValue !== 0
+                )
+                .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+                .map((service, index) => (
+                  <tr key={service.serviceId} className="border-b">
+                    <td className="px-4 py-2">{index + 1}</td>{" "}
+                    {/* Serial number */}
                     <td className="px-4 py-2">{service.serviceName}</td>
                     <td className="px-4 py-2">
                       {service.defaultNotificationValue || "N/A"} (

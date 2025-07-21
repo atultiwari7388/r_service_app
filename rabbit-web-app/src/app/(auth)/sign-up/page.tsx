@@ -187,7 +187,9 @@ const Signup: React.FC = () => {
         await sendEmailVerification(user);
 
         setLoading(false);
-        alert("Signup successful! Please check your email for verification.");
+        alert(
+          "Signup successful! Please check your email for verification. If you have not received the email, also check your spam folder."
+        );
         router.push("/login");
       }
     } catch (error) {

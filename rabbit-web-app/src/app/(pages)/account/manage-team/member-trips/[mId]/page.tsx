@@ -643,38 +643,6 @@ export default function MemberTripsPage() {
               </div>
 
               {/* Status */}
-              {/* <div className="col-span-2">
-                {trip.tripStatus === 1 ? (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={trip.tripStatus}
-                      onChange={(e) =>
-                        handleUpdateTripStatus(trip, parseInt(e.target.value))
-                      }
-                      className="border p-1 rounded text-sm"
-                    >
-                      <option value={1}>Started</option>
-                      <option value={2}>Completed</option>
-                    </select>
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        trip.isPaid
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {trip.isPaid ? "Paid" : "Unpaid"}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                    <span>Completed</span>
-                  </div>
-                )}
-              </div> */}
-
-              {/* Status */}
               <div className="col-span-2">
                 {trip.tripStatus === 1 ? (
                   <div className="flex items-center gap-2">

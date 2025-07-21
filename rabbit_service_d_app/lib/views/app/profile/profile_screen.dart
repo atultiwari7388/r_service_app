@@ -223,128 +223,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         () => Get.to(() => TermsAndConditions())),
                     buildListTile("assets/privacy_bw.png", "Privacy Policy",
                         () => Get.to(() => PrivacyPolicyScreen())),
-                    buildListTile(
-                      "assets/out_bw.png",
-                      "Logout",
-                      () {
-                        showDialog<void>(
-                          context: context,
-                          barrierDismissible: true,
-                          builder: (BuildContext dialogContext) {
-                            return AlertDialog(
-                              title: const Text('Logout'),
-                              content: const Text(
-                                'Are you sure you want to log out from this account',
-                              ),
-                              actions: <Widget>[
-                                TextButton(
-                                  child: Text(
-                                    'Yes',
-                                    style: appStyle(
-                                        15, kSecondary, FontWeight.normal),
-                                  ),
-                                  onPressed: () async {
-                                    try {
-                                      if (isTeamMember == true) {
-                                        await FirebaseFirestore.instance
-                                            .collection('Users')
-                                            .doc(currentUId)
-                                            .update({
-                                          'fcmToken': '',
-                                          // 'active': false,
-                                        });
-                                      } else {
-                                        await FirebaseFirestore.instance
-                                            .collection('Users')
-                                            .doc(currentUId)
-                                            .update({
-                                          'fcmToken': '',
-                                        });
-                                      }
-
-                                      await userService.signOut();
-                                      log("User signed out successfully userid : $currentUId");
-                                    } catch (e) {
-                                      log("Error signing out: $e");
-                                      if (context.mounted) {
-                                        Navigator.pop(dialogContext);
-                                        showToastMessage("Error",
-                                            "Failed to logout", Colors.red);
-                                      }
-                                    }
-                                  },
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext),
-                                  child: Text(
-                                    "No",
-                                    style: appStyle(
-                                        15, kPrimary, FontWeight.normal),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    role == "Owner"
-                        ? buildListTile(
-                            "assets/delete.png",
-                            "Delete Account",
+                    (isAnonymous == true || isProfileComplete == false)
+                        ? SizedBox()
+                        : buildListTile(
+                            "assets/out_bw.png",
+                            "Logout",
                             () {
-                              showDialog(
+                              showDialog<void>(
                                 context: context,
-                                builder: (_) {
+                                barrierDismissible: true,
+                                builder: (BuildContext dialogContext) {
                                   return AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                    title: const Text(
-                                      'Delete Your Account',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
+                                    title: const Text('Logout'),
                                     content: const Text(
-                                      'Do you want to permanently delete your account or temporarily deactivate it?\n\n'
-                                      '• Permanent deletion will remove all your data forever.\n'
-                                      '• Temporary deactivation will hide your account but you can reactivate later.',
-                                      style: TextStyle(height: 1.4),
+                                      'Are you sure you want to log out from this account',
                                     ),
-                                    actions: [
+                                    actions: <Widget>[
                                       TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text("CANCEL",
-                                            style:
-                                                TextStyle(color: Colors.grey)),
+                                        child: Text(
+                                          'Yes',
+                                          style: appStyle(15, kSecondary,
+                                              FontWeight.normal),
+                                        ),
+                                        onPressed: () async {
+                                          try {
+                                            if (isTeamMember == true) {
+                                              await FirebaseFirestore.instance
+                                                  .collection('Users')
+                                                  .doc(currentUId)
+                                                  .update({
+                                                'fcmToken': '',
+                                                // 'active': false,
+                                              });
+                                            } else {
+                                              await FirebaseFirestore.instance
+                                                  .collection('Users')
+                                                  .doc(currentUId)
+                                                  .update({
+                                                'fcmToken': '',
+                                              });
+                                            }
+
+                                            await userService.signOut();
+                                            log("User signed out successfully userid : $currentUId");
+                                          } catch (e) {
+                                            log("Error signing out: $e");
+                                            if (context.mounted) {
+                                              Navigator.pop(dialogContext);
+                                              showToastMessage(
+                                                  "Error",
+                                                  "Failed to logout",
+                                                  Colors.red);
+                                            }
+                                          }
+                                        },
                                       ),
                                       TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(
-                                              context); // Close first dialog
-                                          _showTemporaryDeleteConfirmation();
-                                        },
-                                        child: const Text("TEMPORARY",
-                                            style:
-                                                TextStyle(color: Colors.blue)),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(
-                                              context); // Close first dialog
-                                          _showPermanentDeleteConfirmation();
-                                        },
-                                        child: const Text("PERMANENT",
-                                            style:
-                                                TextStyle(color: Colors.red)),
+                                        onPressed: () =>
+                                            Navigator.pop(dialogContext),
+                                        child: Text(
+                                          "No",
+                                          style: appStyle(
+                                              15, kPrimary, FontWeight.normal),
+                                        ),
                                       ),
                                     ],
                                   );
                                 },
                               );
                             },
-                          )
-                        : SizedBox(),
+                          ),
+                    (isAnonymous == true || isProfileComplete == false)
+                        ? SizedBox()
+                        : role == "Owner"
+                            ? buildListTile(
+                                "assets/delete.png",
+                                "Delete Account",
+                                () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) {
+                                      return AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12)),
+                                        title: const Text(
+                                          'Delete Your Account',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        content: const Text(
+                                          'Do you want to permanently delete your account or temporarily deactivate it?\n\n'
+                                          '• Permanent deletion will remove all your data forever.\n'
+                                          '• Temporary deactivation will hide your account but you can reactivate later.',
+                                          style: TextStyle(height: 1.4),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text("CANCEL",
+                                                style: TextStyle(
+                                                    color: Colors.grey)),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                  context); // Close first dialog
+                                              _showTemporaryDeleteConfirmation();
+                                            },
+                                            child: const Text("TEMPORARY",
+                                                style: TextStyle(
+                                                    color: Colors.blue)),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                  context); // Close first dialog
+                                              _showPermanentDeleteConfirmation();
+                                            },
+                                            child: const Text("PERMANENT",
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              )
+                            : SizedBox(),
                   ],
                 ),
               ),

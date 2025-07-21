@@ -186,6 +186,8 @@ export default function RecordsPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRecordSaving, setIsRecordSaving] = useState(false);
+  const [isMilesSaving, setIsMilesSaving] = useState(false);
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
@@ -365,6 +367,7 @@ export default function RecordsPage() {
   };
 
   const handleAddMiles = async () => {
+    setIsMilesSaving(true);
     if (!selectedVehicle || !todayMiles || !user?.uid) {
       toast.error("Please select a vehicle and enter miles/hours.");
       return;
@@ -527,6 +530,8 @@ export default function RecordsPage() {
           selectedVehicleType === "Truck" ? "miles" : "hours"
         }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
       );
+    } finally {
+      setIsMilesSaving(false);
     }
   };
 
@@ -642,99 +647,54 @@ export default function RecordsPage() {
     }
   };
 
-  // const filteredRecords = records
-  //   .filter((record) => {
-  //     const recordDate = new Date(record.date);
-  //     const matchesVehicle =
-  //       !filterVehicle ||
-  //       record.vehicleDetails.vehicleNumber
-  //         .toLowerCase()
-  //         .includes(filterVehicle.toLowerCase());
-  //     const matchesService =
-  //       !filterService ||
-  //       record.services.some((s: { serviceName: string }) =>
-  //         s.serviceName.toLowerCase().includes(filterService.toLowerCase())
-  //       );
-  //     const matchesInvoice =
-  //       !filterInvoice ||
-  //       (record.invoice || "")
-  //         .toLowerCase()
-  //         .includes(filterInvoice.toLowerCase());
-  //     const matchesDate =
-  //       !startDate ||
-  //       !endDate ||
-  //       (recordDate >= startDate && recordDate <= endDate);
-
-  //     switch (searchType) {
-  //       case "vehicle":
-  //         return matchesVehicle;
-  //       case "service":
-  //         return matchesService;
-  //       case "date":
-  //         return matchesDate;
-  //       case "invoice":
-  //         return matchesInvoice;
-  //       case "all":
-  //         return (
-  //           matchesVehicle && matchesService && matchesDate && matchesInvoice
-  //         );
-  //       default:
-  //         return true;
-  //     }
-  //   })
-  //   .sort(
-  //     (a, b) =>
-  //       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  //   );
-
   const filteredRecords = records
-  .filter((record) => {
-    const recordDate = new Date(record.date);
-    const matchesVehicle =
-      !filterVehicle ||
-      record.vehicleDetails.vehicleNumber
-        .toLowerCase()
-        .includes(filterVehicle.toLowerCase());
-    const matchesService =
-      !filterService ||
-      record.services.some((s: { serviceName: string }) =>
-        s.serviceName.toLowerCase().includes(filterService.toLowerCase())
-      );
-    const matchesInvoice =
-      !filterInvoice ||
-      (record.invoice || "")
-        .toLowerCase()
-        .includes(filterInvoice.toLowerCase());
-    const matchesDate =
-      !startDate ||
-      !endDate ||
-      (recordDate >= startDate && recordDate <= endDate);
-
-    switch (searchType) {
-      case "vehicle":
-        return matchesVehicle;
-      case "service":
-        return matchesService;
-      case "date":
-        return matchesDate;
-      case "invoice":
-        return matchesInvoice;
-      case "all":
-        return (
-          matchesVehicle && matchesService && matchesDate && matchesInvoice
+    .filter((record) => {
+      const recordDate = new Date(record.date);
+      const matchesVehicle =
+        !filterVehicle ||
+        record.vehicleDetails.vehicleNumber
+          .toLowerCase()
+          .includes(filterVehicle.toLowerCase());
+      const matchesService =
+        !filterService ||
+        record.services.some((s: { serviceName: string }) =>
+          s.serviceName.toLowerCase().includes(filterService.toLowerCase())
         );
-      default:
-        return true;
-    }
-  })
-  .sort((a, b) => {
-    // Convert date strings to Date objects (format: "2025-06-28")
-    const dateA = new Date(a.date);
-    const dateB = new Date(b.date);
-    
-    // For descending order (newest first)
-    return dateB.getTime() - dateA.getTime();
-  });
+      const matchesInvoice =
+        !filterInvoice ||
+        (record.invoice || "")
+          .toLowerCase()
+          .includes(filterInvoice.toLowerCase());
+      const matchesDate =
+        !startDate ||
+        !endDate ||
+        (recordDate >= startDate && recordDate <= endDate);
+
+      switch (searchType) {
+        case "vehicle":
+          return matchesVehicle;
+        case "service":
+          return matchesService;
+        case "date":
+          return matchesDate;
+        case "invoice":
+          return matchesInvoice;
+        case "all":
+          return (
+            matchesVehicle && matchesService && matchesDate && matchesInvoice
+          );
+        default:
+          return true;
+      }
+    })
+    .sort((a, b) => {
+      // Convert date strings to Date objects (format: "2025-06-28")
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+
+      // For descending order (newest first)
+      return dateB.getTime() - dateA.getTime();
+    });
 
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
   const handleSearchFilterClose = () => setShowSearchFilter(false);
@@ -875,6 +835,7 @@ export default function RecordsPage() {
 
   const handleSaveRecords = async () => {
     try {
+      setIsRecordSaving(true);
       if (!user || !selectedVehicle || selectedServices.size === 0) {
         toast.error("Please select vehicle and at least one service");
         return;
@@ -1211,6 +1172,8 @@ export default function RecordsPage() {
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
+    } finally {
+      setIsRecordSaving(false);
     }
   };
 
@@ -1576,7 +1539,12 @@ export default function RecordsPage() {
             color="primary"
             className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
           >
-            Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"}
+            {isMilesSaving
+              ? "Saving..."
+              : selectedVehicleType === "Truck"
+              ? "Save Miles"
+              : "Save Hours"}
+            {/* Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"} */}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2045,7 +2013,14 @@ export default function RecordsPage() {
             className="bg-[#F96176] hover:bg-[#F96176] transition duration-300"
           >
             {/* Save Record */}
-            {isEditing ? "Update Record" : "Save Record"}
+
+            {isEditing
+              ? isRecordSaving
+                ? "Updating..."
+                : "Update Record"
+              : isRecordSaving
+              ? "Saving..."
+              : "Save Record"}
           </Button>
         </DialogActions>
       </Dialog>
