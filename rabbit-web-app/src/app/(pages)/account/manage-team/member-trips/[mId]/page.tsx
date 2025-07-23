@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Modal } from "@/components/Modal"; // You'll need a modal component
 
 export interface Trip {
   id: string;
@@ -40,6 +41,8 @@ export interface Trip {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   oEarnings?: number;
+  googleMiles?: number;
+  googleTotalEarning?: number;
 }
 
 interface TripDetails {
@@ -63,6 +66,8 @@ interface TripDetails {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   oEarnings?: number;
+  googleMiles?: number;
+  googleTotalEarning?: number;
 }
 
 export default function MemberTripsPage() {
@@ -72,10 +77,28 @@ export default function MemberTripsPage() {
   const [userData, setUserData] = useState<ProfileValues | null>(null);
   const [trips, setTrips] = useState<TripDetails[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
-  const [totals, setTotals] = useState({ totalExpenses: 0, totalEarnings: 0 });
+  const [totals, setTotals] = useState({
+    totalExpenses: 0,
+    totalEarnings: 0,
+    totalPaid: 0,
+    totalGoogleEarnings: 0,
+  });
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [role, setRole] = useState("");
+
+  // Modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showGoogleMilesModal, setShowGoogleMilesModal] = useState(false);
+  const [currentTrip, setCurrentTrip] = useState<TripDetails | null>(null);
+  const [editForm, setEditForm] = useState({
+    tripName: "",
+    tripStartMiles: "",
+    tripEndMiles: "",
+    tripStartDate: null as Date | null,
+    tripEndDate: null as Date | null,
+  });
+  const [googleMiles, setGoogleMiles] = useState("");
 
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [sortType, setSortType] = useState<
@@ -84,8 +107,6 @@ export default function MemberTripsPage() {
   const [selectedTruck, setSelectedTruck] = useState<string | null>(null);
   const [tempFromDate, setTempFromDate] = useState<Date | null>(null);
   const [tempToDate, setTempToDate] = useState<Date | null>(null);
-
-  // Add to your existing state declarations
   const [searchTerm, setSearchTerm] = useState("");
   const { user } = useAuth() || { user: null };
 
@@ -95,16 +116,34 @@ export default function MemberTripsPage() {
       return;
     }
 
-    console.log("Fetching data for member:", memberId); // Debug log
-
     const fetchUserData = async () => {
       try {
         const userDoc = await getDoc(doc(db, "Users", memberId));
         if (userDoc.exists()) {
-          console.log("Found user document");
+          const data = userDoc.data() as ProfileValues;
+          setUserData(data);
+          // setRole(data.role);
+        } else {
+          console.error("User document not found");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    const fetchCurrentUserData = async () => {
+      try {
+        if (!user) {
+          console.error("No user is currently authenticated");
+          return;
+        }
+        const userDoc = await getDoc(doc(db, "Users", user?.uid));
+        if (userDoc.exists()) {
           const data = userDoc.data() as ProfileValues;
           setUserData(data);
           setRole(data.role);
+          console.log("Current user data fetched:", data);
+          console.log("Current user role:", data.role);
         } else {
           console.error("User document not found");
         }
@@ -119,7 +158,6 @@ export default function MemberTripsPage() {
     const unsubscribeVehicles = onSnapshot(
       q,
       (snapshot) => {
-        console.log(`Found ${snapshot.docs.length} vehicles`);
         const vehiclesData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -134,7 +172,6 @@ export default function MemberTripsPage() {
     const unsubscribeTrips = onSnapshot(
       collection(db, "Users", memberId, "trips"),
       (snapshot) => {
-        console.log(`Found ${snapshot.docs.length} trips`);
         const tripsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -150,13 +187,14 @@ export default function MemberTripsPage() {
         console.error("Trips listener error:", error);
       }
     );
-
+    fetchCurrentUserData();
     fetchUserData();
     return () => {
       unsubscribeVehicles();
       unsubscribeTrips();
     };
-  }, [memberId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberId, user]);
 
   const applyFilters = () => {
     setFromDate(tempFromDate);
@@ -206,7 +244,6 @@ export default function MemberTripsPage() {
   });
 
   const calculateTotals = async () => {
-    // setIsCalculatingTotals(true);
     try {
       // Parallel expense calculations
       const expensesPromises = filteredTrips.map(async (trip) => {
@@ -234,6 +271,18 @@ export default function MemberTripsPage() {
         }
       });
 
+      // Paid trips calculation
+      const paidTrips = filteredTrips.filter((trip) => trip.isPaid);
+      const totalPaid = paidTrips.reduce((sum, trip) => {
+        if (role === "Driver") {
+          const miles = (trip.tripEndMiles || 0) - (trip.tripStartMiles || 0);
+          return (
+            sum + Math.max(miles, 0) * Number(userData?.perMileCharge || 0)
+          );
+        }
+        return sum + (trip.oEarnings || 0);
+      }, 0);
+
       // Earnings calculations
       const perMile = userData?.perMileCharge || 0;
       const earnings = filteredTrips.reduce((sum, trip) => {
@@ -244,6 +293,11 @@ export default function MemberTripsPage() {
         return sum + (trip.oEarnings || 0);
       }, 0);
 
+      // Google Miles earnings
+      const googleEarnings = filteredTrips.reduce((sum, trip) => {
+        return sum + (trip.googleTotalEarning || 0);
+      }, 0);
+
       const expenses = (await Promise.all(expensesPromises)).reduce(
         (a, b) => a + b,
         0
@@ -252,11 +306,83 @@ export default function MemberTripsPage() {
       setTotals({
         totalExpenses: Math.max(expenses, 0),
         totalEarnings: Math.max(earnings, 0),
+        totalPaid: Math.max(totalPaid, 0),
+        totalGoogleEarnings: Math.max(googleEarnings, 0),
       });
     } catch (error) {
       console.error("Calculation error:", error);
-    } finally {
-      // setIsCalculatingTotals(false);
+    }
+  };
+
+  const handleEditTrip = (trip: TripDetails) => {
+    setCurrentTrip(trip);
+    setEditForm({
+      tripName: trip.tripName,
+      tripStartMiles: trip.tripStartMiles.toString(),
+      tripEndMiles: trip.tripEndMiles.toString(),
+      tripStartDate: trip.tripStartDate.toDate(),
+      tripEndDate: trip.tripEndDate.toDate(),
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (
+      !currentTrip ||
+      !editForm.tripName ||
+      !editForm.tripStartMiles ||
+      !editForm.tripEndMiles ||
+      !editForm.tripStartDate ||
+      !editForm.tripEndDate
+    ) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
+        tripName: editForm.tripName,
+        tripStartMiles: parseInt(editForm.tripStartMiles),
+        tripEndMiles: parseInt(editForm.tripEndMiles),
+        tripStartDate: Timestamp.fromDate(editForm.tripStartDate!),
+        tripEndDate: Timestamp.fromDate(editForm.tripEndDate!),
+        updatedAt: Timestamp.now(),
+      });
+      setShowEditModal(false);
+      alert("Trip updated successfully");
+    } catch (error) {
+      console.error("Error updating trip:", error);
+      alert("Failed to update trip");
+    }
+  };
+
+  const handleGoogleMiles = (trip: TripDetails) => {
+    setCurrentTrip(trip);
+    setGoogleMiles(trip.googleMiles?.toString() || "");
+    setShowGoogleMilesModal(true);
+  };
+
+  const handleSaveGoogleMiles = async () => {
+    if (!currentTrip || !googleMiles || isNaN(parseFloat(googleMiles))) {
+      alert("Please enter valid Google Miles");
+      return;
+    }
+
+    try {
+      const miles = parseFloat(googleMiles);
+      const perMile = userData?.perMileCharge || "0";
+      const totalEarning = miles * parseFloat(perMile);
+
+      await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
+        googleMiles: miles,
+        googleTotalEarning: totalEarning,
+        updatedAt: Timestamp.now(),
+      });
+      setShowGoogleMilesModal(false);
+      alert("Google Miles saved successfully");
+    } catch (error) {
+      console.error("Error saving Google Miles:", error);
+      alert("Failed to save Google Miles");
     }
   };
 
@@ -367,8 +493,16 @@ export default function MemberTripsPage() {
   };
 
   const handlePayTrip = async (tripId: string) => {
-    // Implement your payment logic here
-    console.log(`Paying for trip ${tripId}`);
+    try {
+      await updateDoc(doc(db, "Users", memberId, "trips", tripId), {
+        isPaid: true,
+        updatedAt: Timestamp.now(),
+      });
+      alert("Trip marked as paid successfully");
+    } catch (error) {
+      console.error("Error paying trip:", error);
+      alert("Failed to mark trip as paid");
+    }
   };
 
   const resetFilters = () => {
@@ -554,25 +688,42 @@ export default function MemberTripsPage() {
         </div>
       </div>
 
-      {/** Total Expenses and Total Loads */}
-      <div className="flex justify-center gap-4 mb-6">
+      {/** Total Expenses and Earnings */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {/* Total Expenses */}
-        <div className="w-60 bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
+        <div className="bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
           <h3 className="text-lg font-bold">Total Expenses</h3>
           <p className="text-xl font-semibold">
             ${totals.totalExpenses.toFixed(2)}
           </p>
         </div>
 
-        {/* Total Loads */}
-        <div className="w-60 bg-[#F96176] p-4 rounded-xl shadow-md text-white">
+        {/* Total Earnings */}
+        <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
           <h3 className="text-lg font-bold">Total Earnings</h3>
           <p className="text-xl font-semibold">
             ${totals.totalEarnings.toFixed(2)}
           </p>
         </div>
+
+        {/* Google Miles Earnings */}
+        <div className="bg-blue-500 p-4 rounded-xl shadow-md text-white">
+          <h3 className="text-lg font-bold">Google Miles Earnings</h3>
+          <p className="text-xl font-semibold">
+            ${totals.totalGoogleEarnings.toFixed(2)}
+          </p>
+        </div>
+
+        {/* Total Paid */}
+        <div className="bg-purple-500 p-4 rounded-xl shadow-md text-white">
+          <h3 className="text-lg font-bold">Total Paid</h3>
+          <p className="text-xl font-semibold">
+            ${totals.totalPaid.toFixed(2)}
+          </p>
+        </div>
       </div>
 
+      {/* Trip List Table */}
       {sortedTrips.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-500">
@@ -583,10 +734,12 @@ export default function MemberTripsPage() {
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
           {/* Table Header */}
           <div className="grid grid-cols-12 bg-[#F96176] p-4 font-bold text-white border-b">
-            <div className="col-span-3">Trip Name</div>
+            <div className="col-span-2">Trip Name</div>
             <div className="col-span-2">Dates</div>
             <div className="col-span-1">Miles</div>
-            <div className="col-span-2">Earnings</div>
+            <div className="col-span-1">Earnings</div>
+            <div className="col-span-1">G.Miles</div>
+            <div className="col-span-1">G.Earnings</div>
             <div className="col-span-2">Status</div>
             <div className="col-span-2">Actions</div>
           </div>
@@ -595,18 +748,18 @@ export default function MemberTripsPage() {
           {sortedTrips.map((trip) => (
             <div
               key={trip.id}
-              className="grid grid-cols-12 p-4 border-b hover:bg-gray-50"
+              className="grid grid-cols-12 p-4 border-b hover:bg-gray-50 items-center"
             >
               {/* Trip Name */}
-              <div className="col-span-3 font-medium">{trip.tripName}</div>
+              <div className="col-span-2 font-medium">{trip.tripName}</div>
 
               {/* Dates */}
-              <div className="col-span-2">
-                <div className="text-sm">
+              <div className="col-span-2 text-sm">
+                <div>
                   Start: {trip.tripStartDate.toDate().toLocaleDateString()}
                 </div>
                 {trip.tripStatus === 2 && (
-                  <div className="text-sm">
+                  <div>
                     End: {trip.tripEndDate.toDate().toLocaleDateString()}
                   </div>
                 )}
@@ -614,32 +767,34 @@ export default function MemberTripsPage() {
 
               {/* Miles */}
               <div className="col-span-1">
-                <div className="text-sm">Start: {trip.tripStartMiles}</div>
                 {trip.tripStatus === 2 && (
-                  <>
-                    <div className="text-sm">End: {trip.tripEndMiles}</div>
-                    <div className="font-semibold text-secondary">
-                      Total: {trip.tripEndMiles - trip.tripStartMiles}
-                    </div>
-                  </>
+                  <div className="font-semibold">
+                    {trip.tripEndMiles - trip.tripStartMiles}
+                  </div>
                 )}
               </div>
 
               {/* Earnings */}
-              <div className="col-span-2">
-                {trip.tripStatus === 2 ? (
-                  userData?.perMileCharge ? (
-                    <span className="font-semibold">
-                      $
-                      {((trip.tripEndMiles || 0) - (trip.tripStartMiles || 0)) *
-                        parseFloat(userData.perMileCharge)}
-                    </span>
-                  ) : (
-                    <span className="text-gray-400 text-sm">N/A</span>
-                  )
-                ) : (
-                  <span className="text-gray-400 text-sm">Pending</span>
+              <div className="col-span-1">
+                {trip.tripStatus === 2 && userData?.perMileCharge && (
+                  <span className="font-semibold">
+                    $
+                    {((trip.tripEndMiles || 0) - (trip.tripStartMiles || 0)) *
+                      parseFloat(userData.perMileCharge)}
+                  </span>
                 )}
+              </div>
+
+              {/* Google Miles */}
+              <div className="col-span-1">
+                {trip.googleMiles ? trip.googleMiles : "-"}
+              </div>
+
+              {/* Google Earnings */}
+              <div className="col-span-1">
+                {trip.googleTotalEarning
+                  ? `$${trip.googleTotalEarning.toFixed(2)}`
+                  : "-"}
               </div>
 
               {/* Status */}
@@ -678,22 +833,183 @@ export default function MemberTripsPage() {
 
               {/* Actions */}
               <div className="col-span-2 flex gap-2">
-                {trip.tripStatus === 2 && !trip.isPaid && (
-                  <button
-                    onClick={() => handlePayTrip(trip.id)}
-                    className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
-                  >
-                    Pay
-                  </button>
+                {trip.tripStatus === 2 && (
+                  <>
+                    {!trip.isPaid && (
+                      <button
+                        onClick={() => handlePayTrip(trip.id)}
+                        className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
+                      >
+                        Pay
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleEditTrip(trip)}
+                      className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
+                    >
+                      Edit
+                    </button>
+                    {(role === "Accountant" || role === "Owner") && (
+                      <button
+                        onClick={() => handleGoogleMiles(trip)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                      >
+                        G.Miles
+                      </button>
+                    )}
+                  </>
                 )}
-                <button className="bg-[#F96176] text-white px-3 py-1 rounded text-sm">
-                  View
-                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Edit Trip Modal */}
+      <Modal show={showEditModal} onClose={() => setShowEditModal(false)}>
+        <h2 className="text-xl font-bold mb-4">Edit Trip Details</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Trip Name</label>
+            <input
+              type="text"
+              value={editForm.tripName}
+              onChange={(e) =>
+                setEditForm({ ...editForm, tripName: e.target.value })
+              }
+              className="w-full p-2 border rounded"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Start Miles
+              </label>
+              <input
+                type="number"
+                value={editForm.tripStartMiles}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, tripStartMiles: e.target.value })
+                }
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                End Miles
+              </label>
+              <input
+                type="number"
+                value={editForm.tripEndMiles}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, tripEndMiles: e.target.value })
+                }
+                className="w-full p-2 border rounded"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={
+                  editForm.tripStartDate?.toISOString().split("T")[0] || ""
+                }
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    tripStartDate: e.target.value
+                      ? new Date(e.target.value)
+                      : null,
+                  })
+                }
+                className="w-full p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">End Date</label>
+              <input
+                type="date"
+                value={editForm.tripEndDate?.toISOString().split("T")[0] || ""}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    tripEndDate: e.target.value
+                      ? new Date(e.target.value)
+                      : null,
+                  })
+                }
+                className="w-full p-2 border rounded"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 bg-gray-300 rounded"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              className="px-4 py-2 bg-[#F96176] text-white rounded"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Google Miles Modal */}
+      <Modal
+        show={showGoogleMilesModal}
+        onClose={() => setShowGoogleMilesModal(false)}
+      >
+        <h2 className="text-xl font-bold mb-4">Add Google Miles</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Google Miles
+            </label>
+            <input
+              type="number"
+              value={googleMiles}
+              onChange={(e) => setGoogleMiles(e.target.value)}
+              className="w-full p-2 border rounded"
+              placeholder="Enter miles from Google Maps"
+            />
+          </div>
+          {googleMiles && !isNaN(parseFloat(googleMiles)) && (
+            <div className="bg-gray-100 p-4 rounded">
+              <p className="font-medium">
+                Per Mile Charge: ${userData?.perMileCharge || 0}
+              </p>
+              <p className="font-bold text-green-600">
+                Total Earning: $
+                {parseFloat(googleMiles) *
+                  parseFloat(userData?.perMileCharge || "0")}
+              </p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-4">
+            <button
+              onClick={() => setShowGoogleMilesModal(false)}
+              className="px-4 py-2 bg-gray-300 rounded"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveGoogleMiles}
+              className="px-4 py-2 bg-blue-500 text-white rounded"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
