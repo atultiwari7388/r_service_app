@@ -81,365 +81,321 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
         ),
         SingleChildScrollView(
-          child: Form(
-            key: controller.formKey,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 20.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                  ReusableText(
-                    text: "Sign up",
-                    style: appStyle(34, kPrimary, FontWeight.normal),
-                  ),
-                  SizedBox(height: 24.h),
-                  buildTextFieldInputWidget(
-                    "Enter your name*",
-                    TextInputType.text,
-                    controller.nameController,
-                    MaterialCommunityIcons.account,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your name";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  buildTextFieldInputWidget(
-                    "Enter your email*",
-                    TextInputType.emailAddress,
-                    controller.emailController,
-                    MaterialCommunityIcons.email,
-                    validator: (value) {
-                      if (value == null || !GetUtils.isEmail(value)) {
-                        return "Please enter a valid email";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  // buildTextFieldInputWidget(
-                  //   "Enter your address*",
-                  //   TextInputType.streetAddress,
-                  //   controller.addressController,
-                  //   MaterialCommunityIcons.home,
-                  // ),
-                  // SizedBox(height: 15.h),
-                  // buildTextFieldInputWidget(
-                  //   "Enter your city*",
-                  //   TextInputType.streetAddress,
-                  //   controller.cityController,
-                  //   MaterialCommunityIcons.home,
-                  // ),
-                  // SizedBox(height: 15.h),
-                  // buildTextFieldInputWidget(
-                  //   "Enter your state*",
-                  //   TextInputType.streetAddress,
-                  //   controller.stateController,
-                  //   MaterialCommunityIcons.home,
-                  // ),
-                  // SizedBox(height: 15.h),
-                  // buildTextFieldInputWidget(
-                  //   "Enter your country*",
-                  //   TextInputType.streetAddress,
-                  //   controller.countryController,
-                  //   MaterialCommunityIcons.home,
-                  // ),
-                  // SizedBox(height: 15.h),
-
-                  buildTextFieldInputWidget(
-                    "Enter your address*",
-                    TextInputType.streetAddress,
-                    controller.addressController,
-                    MaterialCommunityIcons.home,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your address";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  buildTextFieldInputWidget(
-                    "Enter your city*",
-                    TextInputType.streetAddress,
-                    controller.cityController,
-                    MaterialCommunityIcons.city,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your city";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  buildTextFieldInputWidget(
-                    "Enter your state*",
-                    TextInputType.streetAddress,
-                    controller.stateController,
-                    MaterialCommunityIcons.home_account,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your state";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  buildTextFieldInputWidget(
-                    "Enter your country*",
-                    TextInputType.streetAddress,
-                    controller.countryController,
-                    MaterialCommunityIcons.earth,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your country";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-
-                  buildTextFieldInputWidget(
-                    "Enter Company name*",
-                    TextInputType.text,
-                    controller.companyNameController,
-                    MaterialCommunityIcons.account,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Please enter your company name";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  buildTextFieldInputWidget(
-                    "Enter your phone number",
-                    TextInputType.number,
-                    controller.phoneNumberController,
-                    MaterialCommunityIcons.phone,
-                    validator: (value) {
-                      if (value == null || value.length != 10) {
-                        return "Please enter a valid phone number";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  buildTextFieldInputWidget(
-                    "Enter your password",
-                    TextInputType.visiblePassword,
-                    controller.passController,
-                    MaterialCommunityIcons.security,
-                    isPass: true,
-                    validator: (value) {
-                      if (value == null || value.length < 6) {
-                        return "Password must be at least 6 characters";
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 15.h),
-                  Obx(
-                    () => DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: "Number of Vehicles",
-                        labelStyle: appStyle(15, kPrimary, FontWeight.normal),
-                        fillColor: Colors.white,
-                        filled: true,
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12.0), // Rounded corners
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300, // Border color
-                            width: 1.0,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12.0), // Rounded corners
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300, // Border color
-                            width: 1.0,
-                          ),
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12.0), // Rounded corners
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300, // Border color
-                            width: 1.0,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.all(8),
-                      ),
-                      value: controller.selectedVehicleRange.value,
-                      icon: const Icon(Icons.arrow_drop_down),
-                      items: controller.vehicleRanges.map((String range) {
-                        return DropdownMenuItem<String>(
-                          value: range,
-                          child: Text(range),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          controller.selectedVehicleRange.value = value;
-                        }
-                      },
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height,
+              minWidth: MediaQuery.of(context).size.width,
+            ),
+            child: Form(
+              key: _formKey,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 20.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                    ReusableText(
+                      text: "Sign up",
+                      style: appStyle(34, kPrimary, FontWeight.normal),
+                    ),
+                    SizedBox(height: 24.h),
+                    buildTextFieldInputWidget(
+                      "Enter your name*",
+                      TextInputType.text,
+                      controller.nameController,
+                      MaterialCommunityIcons.account,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return "Please select a vehicle range";
+                          return "Please enter your name";
                         }
                         return null;
                       },
                     ),
-                  ),
-                  SizedBox(height: 15.h),
-                  SizedBox(
-                    width: 260.w,
-                    child: RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        text: "By continuing, you agree to our ",
-                        style: appStyle(12, kDark, FontWeight.w500),
-                        children: <TextSpan>[
-                          // TextSpan(
-                          //   text: "Terms of Services",
-                          //   style: appStyle(12, kPrimary, FontWeight.w500),
-                          //   recognizer: TapGestureRecognizer()
-                          //     ..onTap = () {
-                          //       // Handle tap for Terms of Services
-                          //       print("Terms of Services tapped");
-                          //     },
-                          // ),
-
-                          TextSpan(
-                            text: "Terms of Services",
-                            style: appStyle(12, kPrimary, FontWeight.w500),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () async {
-                                const url =
-                                    'https://www.rabbitmechanic.com/terms-condition';
-                                if (await canLaunchUrl(Uri.parse(url))) {
-                                  await launchUrl(Uri.parse(url),
-                                      mode: LaunchMode.externalApplication);
-                                } else {
-                                  // Handle error if the URL can't be launched
-                                  print("Could not launch $url");
-                                }
-                              },
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your email*",
+                      TextInputType.emailAddress,
+                      controller.emailController,
+                      MaterialCommunityIcons.email,
+                      validator: (value) {
+                        if (value == null || !GetUtils.isEmail(value)) {
+                          return "Please enter a valid email";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your address*",
+                      TextInputType.streetAddress,
+                      controller.addressController,
+                      MaterialCommunityIcons.home,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your address";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your city*",
+                      TextInputType.streetAddress,
+                      controller.cityController,
+                      MaterialCommunityIcons.city,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your city";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your state*",
+                      TextInputType.streetAddress,
+                      controller.stateController,
+                      MaterialCommunityIcons.home_account,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your state";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your country*",
+                      TextInputType.streetAddress,
+                      controller.countryController,
+                      MaterialCommunityIcons.earth,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your country";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter Company name*",
+                      TextInputType.text,
+                      controller.companyNameController,
+                      MaterialCommunityIcons.account,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your company name";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your phone number",
+                      TextInputType.number,
+                      controller.phoneNumberController,
+                      MaterialCommunityIcons.phone,
+                      validator: (value) {
+                        if (value == null || value.length != 10) {
+                          return "Please enter a valid phone number";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    buildTextFieldInputWidget(
+                      "Enter your password",
+                      TextInputType.visiblePassword,
+                      controller.passController,
+                      MaterialCommunityIcons.security,
+                      isPass: true,
+                      validator: (value) {
+                        if (value == null || value.length < 6) {
+                          return "Password must be at least 6 characters";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 15.h),
+                    Obx(
+                      () => DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: "Number of Vehicles",
+                          labelStyle: appStyle(15, kPrimary, FontWeight.normal),
+                          fillColor: Colors.white,
+                          filled: true,
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Rounded corners
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300, // Border color
+                              width: 1.0,
+                            ),
                           ),
-
-                          TextSpan(
-                            text: " and ",
-                            style: appStyle(12, kDark, FontWeight.w500),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Rounded corners
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300, // Border color
+                              width: 1.0,
+                            ),
                           ),
-                          TextSpan(
-                            text: "Privacy Policy.",
-                            style: appStyle(12, kPrimary, FontWeight.w500),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () async {
-                                const url =
-                                    'https://www.rabbitmechanic.com/privacy-policy';
-                                if (await canLaunchUrl(Uri.parse(url))) {
-                                  await launchUrl(Uri.parse(url),
-                                      mode: LaunchMode.externalApplication);
-                                } else {
-                                  // Handle error if the URL can't be launched
-                                  print("Could not launch $url");
-                                }
-                              },
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Rounded corners
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300, // Border color
+                              width: 1.0,
+                            ),
                           ),
-                        ],
+                          contentPadding: const EdgeInsets.all(8),
+                        ),
+                        value: controller.selectedVehicleRange.value,
+                        icon: const Icon(Icons.arrow_drop_down),
+                        items: controller.vehicleRanges.map((String range) {
+                          return DropdownMenuItem<String>(
+                            value: range,
+                            child: Text(range),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            controller.selectedVehicleRange.value = value;
+                          }
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return "Please select a vehicle range";
+                          }
+                          return null;
+                        },
                       ),
                     ),
-                  ),
-                  SizedBox(height: 24.h),
-                  CustomButton(
-                    text: "Continue",
-                    // onPress: controller.isUserAcCreated
-                    //     ? null
-                    //     : () {
-                    //         // controller.createUserWithEmailAndPassword();
+                    SizedBox(height: 15.h),
+                    SizedBox(
+                      width: 260.w,
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          text: "By continuing, you agree to our ",
+                          style: appStyle(12, kDark, FontWeight.w500),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: "Terms of Services",
+                              style: appStyle(12, kPrimary, FontWeight.w500),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () async {
+                                  const url =
+                                      'https://www.rabbitmechanic.com/terms-condition';
+                                  if (await canLaunchUrl(Uri.parse(url))) {
+                                    await launchUrl(Uri.parse(url),
+                                        mode: LaunchMode.externalApplication);
+                                  } else {
+                                    // Handle error if the URL can't be launched
+                                    print("Could not launch $url");
+                                  }
+                                },
+                            ),
+                            TextSpan(
+                              text: " and ",
+                              style: appStyle(12, kDark, FontWeight.w500),
+                            ),
+                            TextSpan(
+                              text: "Privacy Policy.",
+                              style: appStyle(12, kPrimary, FontWeight.w500),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () async {
+                                  const url =
+                                      'https://www.rabbitmechanic.com/privacy-policy';
+                                  if (await canLaunchUrl(Uri.parse(url))) {
+                                    await launchUrl(Uri.parse(url),
+                                        mode: LaunchMode.externalApplication);
+                                  } else {
+                                    // Handle error if the URL can't be launched
+                                    print("Could not launch $url");
+                                  }
+                                },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24.h),
+                    CustomButton(
+                      text: "Continue",
+                      onPress: controller.isUserAcCreated
+                          ? null
+                          : () async {
+                              if (_formKey.currentState != null) {
+                                if (_formKey.currentState!.validate()) {
+                                  //firstly we delete the anonymous user from the firestore if exists
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
+                                  final userId = prefs.getString('an_user_id');
 
-                    //         if (controller.formKey.currentState != null &&
-                    //             controller.formKey.currentState!.validate()) {
-                    //           controller.createUserWithEmailAndPassword();
-                    //         } else {
-                    //           showToastMessage("Error",
-                    //               "Please enter valid inputs", Colors.red);
-                    //         }
-                    //       },
-                    onPress: controller.isUserAcCreated
-                        ? null
-                        : () async {
-                            if (controller.formKey.currentState != null) {
-                              if (controller.formKey.currentState!.validate()) {
-                                //firstly we delete the anonymous user from the firestore if exists
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                final userId = prefs.getString('an_user_id');
+                                  if (userId != null) {
+                                    await _firestore
+                                        .collection('Users')
+                                        .doc(userId)
+                                        .delete();
+                                    await prefs.remove('an_user_id');
 
-                                if (userId != null) {
-                                  await _firestore
-                                      .collection('Users')
-                                      .doc(userId)
-                                      .delete();
-                                  await prefs.remove('an_user_id');
+                                    log("Anonymous user $userId deleted from Firestore");
+                                  }
 
-                                  log("Anonymous user $userId deleted from Firestore");
-                                }
-
-                                controller.createUserWithEmailAndPassword();
-                              } else {
-                                // Check which fields are empty and show specific message
-                                if (controller.addressController.text.isEmpty) {
-                                  showToastMessage("Error",
-                                      "Please enter your address", Colors.red);
-                                } else if (controller
-                                    .cityController.text.isEmpty) {
-                                  showToastMessage("Error",
-                                      "Please enter your city", Colors.red);
-                                } else if (controller
-                                    .stateController.text.isEmpty) {
-                                  showToastMessage("Error",
-                                      "Please enter your state", Colors.red);
-                                } else if (controller
-                                    .countryController.text.isEmpty) {
-                                  showToastMessage("Error",
-                                      "Please enter your country", Colors.red);
+                                  controller.createUserWithEmailAndPassword();
                                 } else {
-                                  showToastMessage(
-                                      "Error",
-                                      "Please fill all required fields",
-                                      Colors.red);
+                                  // Check which fields are empty and show specific message
+                                  if (controller
+                                      .addressController.text.isEmpty) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter your address",
+                                        Colors.red);
+                                  } else if (controller
+                                      .cityController.text.isEmpty) {
+                                    showToastMessage("Error",
+                                        "Please enter your city", Colors.red);
+                                  } else if (controller
+                                      .stateController.text.isEmpty) {
+                                    showToastMessage("Error",
+                                        "Please enter your state", Colors.red);
+                                  } else if (controller
+                                      .countryController.text.isEmpty) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter your country",
+                                        Colors.red);
+                                  } else {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please fill all required fields",
+                                        Colors.red);
+                                  }
                                 }
                               }
-                            }
-                          },
-
-                    color: kPrimary,
-                  ),
-                  SizedBox(height: 24.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ReusableText(
-                          text: "Joined us before?",
-                          style: appStyle(14, kDark, FontWeight.w500)),
-                      SizedBox(width: 5.w),
-                      GestureDetector(
-                        onTap: () => Get.to(() => LoginScreen()),
-                        child: ReusableText(
-                            text: "Login",
-                            style: appStyle(14, kPrimary, FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                ],
+                            },
+                      color: kPrimary,
+                    ),
+                    SizedBox(height: 24.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ReusableText(
+                            text: "Joined us before?",
+                            style: appStyle(14, kDark, FontWeight.w500)),
+                        SizedBox(width: 5.w),
+                        GestureDetector(
+                          onTap: () => Get.to(() => LoginScreen()),
+                          child: ReusableText(
+                              text: "Login",
+                              style: appStyle(14, kPrimary, FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    // SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                  ],
+                ),
               ),
             ),
           ),
@@ -464,5 +420,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       isPass: isPass,
       validator: validator,
     );
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
   }
 }

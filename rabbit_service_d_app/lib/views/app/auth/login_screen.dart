@@ -26,6 +26,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firestore = FirebaseFirestore.instance;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -42,133 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
             builder: (controller) {
               if (!controller.isUserSign) {
                 if (isDesktop) {
-                  return SizedBox(
-                    height: double.maxFinite,
-                    width: double.maxFinite,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Text(
-                                "Welcome Driver",
-                                style: TextStyle(fontSize: 60),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text("Login to access your account details",
-                                  style: TextStyle()),
-                              const SizedBox(height: 30),
-                              //create a new account using email and password
-                              Form(
-                                key: _formKey,
-                                child: SizedBox(
-                                  width: 350,
-                                  child: Column(
-                                    children: [
-                                      TextFormField(
-                                        controller: controller.emailController,
-                                        keyboardType:
-                                            TextInputType.emailAddress,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Email",
-                                            prefixIcon:
-                                                Icon(Icons.alternate_email)),
-                                        validator: (value) {
-                                          return value!.isEmpty
-                                              ? "Enter your email"
-                                              : null;
-                                        },
-                                      ),
-                                      TextFormField(
-                                        controller: controller.passController,
-                                        keyboardType:
-                                            TextInputType.visiblePassword,
-                                        obscureText: true,
-                                        decoration: const InputDecoration(
-                                            hintText: "Your Password",
-                                            prefixIcon: Icon(Icons.visibility)),
-                                        validator: (value) {
-                                          if (value == null ||
-                                              value.length < 6) {
-                                            return "Password must be at least 6 characters";
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 30),
-                              //signup button
-                              InkWell(
-                                onTap: () {
-                                  if (_formKey.currentState != null &&
-                                      _formKey.currentState!.validate()) {
-                                    controller.signInWithEmailAndPassword();
-                                  } else {
-                                    showToastMessage(
-                                        "Error",
-                                        "Invalid Email or Password",
-                                        Colors.red);
-                                  }
-                                },
-                                child: controller.isUserAcCreated
-                                    ? const CircularProgressIndicator()
-                                    : Material(
-                                        elevation: 5,
-                                        borderRadius: BorderRadius.circular(10),
-                                        color: kPrimary,
-                                        child: const SizedBox(
-                                          height: 45,
-                                          width: 400,
-                                          child: Center(
-                                            child: Text(
-                                              "Login",
-                                              style: TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(height: 30),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ReusableText(
-                                    text: "New to Rabbit Mechanic Service?",
-                                    style: TextStyle(),
-                                  ),
-                                  SizedBox(width: 2.w),
-                                  GestureDetector(
-                                    onTap: () => Get.to(
-                                        () => const RegistrationScreen()),
-                                    child: ReusableText(
-                                      text: "Register",
-                                      style: TextStyle(color: kPrimary),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.only(
-                                bottom: 80, top: 80, left: 80, right: 80),
-                            child: Image.asset(
-                              "assets/no-background-logo.png",
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return Container();
                 } else {
                   // Mobile Layout
                   return buildMobileLayout(controller);
@@ -265,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
         buildTextFieldInputWidget(
           "Email ID",
           TextInputType.emailAddress,
-          controller.emailController,
+          _emailController,
           MaterialCommunityIcons.email,
           validator: (value) {
             if (value == null || !GetUtils.isEmail(value)) {
@@ -279,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
         buildTextFieldInputWidget(
           "Password",
           TextInputType.visiblePassword,
-          controller.passController,
+          _passController,
           MaterialCommunityIcons.security,
           isPass: true,
           validator: (value) {
@@ -323,7 +199,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       log("Anonymous user $userId deleted from Firestore");
                     }
 
-                    controller.signInWithEmailAndPassword();
+                    controller.signInWithEmailAndPassword(
+                        _emailController.text.toString(),
+                        _passController.text.toString());
                   } else {
                     showToastMessage(
                         "Error", "Invalid Email or Password", Colors.red);
@@ -371,5 +249,14 @@ class _LoginScreenState extends State<LoginScreen> {
       isPass: isPass,
       validator: validator,
     );
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    _emailController.dispose();
+    _passController.dispose();
+    _formKey.currentState?.dispose();
   }
 }

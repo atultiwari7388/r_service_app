@@ -12,7 +12,7 @@ import '../utils/show_toast_msg.dart';
 class AuthController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  final _formKey = GlobalKey<FormState>();
+  // final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -30,7 +30,7 @@ class AuthController extends GetxController {
 
   FirebaseAuth get auth => _auth;
 
-  GlobalKey<FormState> get formKey => _formKey;
+  // GlobalKey<FormState> get formKey => _formKey;
 
   TextEditingController get nameController => _nameController;
 
@@ -130,12 +130,12 @@ class AuthController extends GetxController {
 
 //========================== SignIn with email and Password ===============================
 
-  Future<void> signInWithEmailAndPassword() async {
+  Future<void> signInWithEmailAndPassword(String email, String password) async {
     isUserSign = true;
     update();
     try {
       var signInUser = await _auth.signInWithEmailAndPassword(
-          email: _emailController.text, password: _passController.text);
+          email: email.toString(), password: password.toString());
 
       final User? user = signInUser.user;
       if (user != null) {
@@ -183,8 +183,8 @@ class AuthController extends GetxController {
             Get.offAll(() => EntryScreen());
             showToastMessage("Success", "Login Successful", Colors.green);
             // Clear all controllers after successful login
-            _emailController.clear();
-            _passController.clear();
+            // _emailController.clear();
+            // _passController.clear();
           } else if (userDoc['status'] == "deactivated") {
             // User is not active, navigate to ContactWithAdmin screen
             showToastMessage(
