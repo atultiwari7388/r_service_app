@@ -93,8 +93,6 @@ export default function AddVehiclePage() {
   const [licensePlate, setLicensePlate] = useState<string>("");
   const [year, setYear] = useState<string>("");
   const [currentReading, setCurrentReading] = useState<string>("");
-  // const [hoursReading, setHoursReading] = useState<string>("");
-  // const [oilChangeDate, setOilChangeDate] = useState<string>("");
   const [dot, setDot] = useState<string>("");
   const [iccms, setIccms] = useState<string>("");
   const [servicesData, setServicesData] = useState<Service[]>([]);
@@ -353,10 +351,10 @@ export default function AddVehiclePage() {
 
       if (selectedVehicleType === "Truck") {
         vehicleData.hoursReadingArray = [];
-        vehicleData.currentMiles = currentReading || "";
-        vehicleData.prevMilesValue = currentReading || "";
-        vehicleData.firstTimeMiles = currentReading || "";
-        vehicleData.oilChangeDate = "";
+        vehicleData.currentMiles = currentReading.toString() || "";
+        vehicleData.prevMilesValue = currentReading.toString() || "";
+        vehicleData.firstTimeMiles = currentReading.toString() || "";
+        vehicleData.oilChangeDate = "2025-04-12";
         vehicleData.hoursReading = "";
         vehicleData.prevHoursReadingValue = "";
       }

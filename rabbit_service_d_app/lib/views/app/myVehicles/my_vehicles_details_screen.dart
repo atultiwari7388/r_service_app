@@ -847,7 +847,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(2.0),
                       child: (service['type'] == 'hours' ||
-                              service['type'] == 'reading')
+                              service['type'] == 'reading' ||
+                              service['type'] == 'day')
                           ? IconButton(
                               icon: const Icon(Icons.edit,
                                   color: kPrimary, size: 20),

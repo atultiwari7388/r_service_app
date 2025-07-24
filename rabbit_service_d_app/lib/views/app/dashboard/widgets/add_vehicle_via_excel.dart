@@ -419,7 +419,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           {
             "miles": vehicleType == 'Truck'
                 ? int.parse(data['currentMiles'].toString())
-                : int.parse(data['hoursReading']?.toString() ?? '1000'),
+                : 0,
             "date": DateTime.now().toIso8601String()
           }
         ],
@@ -464,7 +464,8 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           'prevHoursReadingValue': data['hoursReading']?.toString() ?? '1000',
           'hoursReadingArray': [
             {
-              "hours": int.parse(data['hoursReading']?.toString() ?? '1000'),
+              "hours": int.parse(
+                  data['hoursReading']?.toString() ?? 1000.toString()),
               "date": DateTime.now().toIso8601String()
             }
           ],

@@ -307,7 +307,7 @@ const BookingSection: React.FC = () => {
     <div
       className="py-24 bg-cover bg-center"
       style={{
-        background: "url('/testimonial_bg_1.jpg')",
+        background: "url('/find_mechanic.jpg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}

@@ -320,7 +320,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 14.h),
                     CustomButton(
                       text: "Continue",
                       onPress: controller.isUserAcCreated
@@ -393,7 +393,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         ),
                       ],
                     ),
-                    // SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                    // SizedBox(height: 14.h),
+
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                   ],
                 ),
               ),

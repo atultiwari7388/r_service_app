@@ -938,7 +938,7 @@ export default function RecordsPage() {
           type,
           defaultNotificationValue: defaultValue,
           nextNotificationValue:
-            type === "day" ? formattedDate : nextNotificationValue.toString(),
+            type === "day" ? formattedDate : nextNotificationValue,
           subServices: (selectedSubServices[serviceId] || []).map(
             (subService, index) => ({
               name: subService,
@@ -953,7 +953,7 @@ export default function RecordsPage() {
           serviceName: service.sName || "",
           type,
           nextNotificationValue:
-            type === "day" ? formattedDate : nextNotificationValue.toString(),
+            type === "day" ? formattedDate : nextNotificationValue,
           subServices: selectedSubServices[serviceId] || [],
         });
 
@@ -962,13 +962,13 @@ export default function RecordsPage() {
           updatedVehicleServices[existingServiceIndex] = {
             ...updatedVehicleServices[existingServiceIndex],
             nextNotificationValue:
-              type === "day" ? formattedDate : nextNotificationValue.toString(),
+              type === "day" ? formattedDate : nextNotificationValue,
           };
         } else {
           updatedVehicleServices.push({
             ...serviceData,
             nextNotificationValue:
-              type === "day" ? formattedDate : nextNotificationValue.toString(),
+              type === "day" ? formattedDate : nextNotificationValue,
           });
         }
       }
