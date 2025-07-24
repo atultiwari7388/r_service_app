@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
 // import Link from "next/link";
@@ -40,7 +40,8 @@ export default function TopBar() {
           setContactInfo({ contactMail, contactNumber, address });
         }
       } catch (error) {
-        GlobalToastError(error);
+        // GlobalToastError(error);
+        console.log(error);
       } finally {
         setIsLoading(false);
       }

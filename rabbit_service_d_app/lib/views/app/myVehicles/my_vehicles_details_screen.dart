@@ -595,8 +595,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 20),
-                                    _buildServicesTable(
-                                        context, services, vehicleId),
+                                    _buildServicesTable(context, services,
+                                        vehicleId, vehicleType),
                                   ],
                                 ),
                               )
@@ -758,8 +758,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  Widget _buildServicesTable(
-      BuildContext context, List services, String vehicleId) {
+  Widget _buildServicesTable(BuildContext context, List services,
+      String vehicleId, String vehicleType) {
     final filteredServices = services
         .where((service) => service['defaultNotificationValue'] != 0)
         .toList()

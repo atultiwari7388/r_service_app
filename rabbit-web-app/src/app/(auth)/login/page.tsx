@@ -31,66 +31,6 @@ const Login: React.FC = () => {
     }));
   };
 
-  // const handleLogin = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setIsLoading(true);
-
-  //   try {
-  //     const { email, password } = formValues;
-  //     const userCredential = await signInWithEmailAndPassword(
-  //       auth,
-  //       email,
-  //       password
-  //     );
-  //     const user = userCredential.user;
-
-  //     if (user) {
-  //       if (!user.emailVerified) {
-  //         alert("Email not verified. Please verify your email.");
-  //         await sendEmailVerification(user);
-  //         await signOut(auth);
-  //         setIsLoading(false);
-  //         return;
-  //       }
-
-  //       // Check both 'Mechanics' and 'Users' collections
-  //       const mechanicsDocRef = doc(db, "Mechanics", user.uid);
-  //       const usersDocRef = doc(db, "Users", user.uid);
-
-  //       const [mechanicDoc, userDoc] = await Promise.all([
-  //         getDoc(mechanicsDocRef),
-  //         getDoc(usersDocRef),
-  //       ]);
-
-  //       if (mechanicDoc.exists()) {
-  //         alert(
-  //           "This email already exists with the Mechanic app. Please try with another email."
-  //         );
-  //         toast.error(
-  //           "This email already exists with the Mechanic app. Please try with another email."
-  //         );
-  //         await signOut(auth);
-  //         setIsLoading(false);
-  //         return;
-  //       }
-
-  //       if (userDoc.exists()) {
-  //         router.push("/records");
-  //         toast.success("Login Successfull");
-  //       } else {
-  //         router.push("/sign-up");
-  //       }
-  //     }
-  //   } catch (error) {
-  //     // console.error("Login error:", error);
-  //     toast.error(
-  //       "Login failed. Please check your credentials. Error: " + error
-  //     );
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -106,7 +46,9 @@ const Login: React.FC = () => {
 
       if (user) {
         if (!user.emailVerified) {
-          alert("Email not verified. Please verify your email, If you have not receive mail also check in spam");
+          alert(
+            "Email not verified. Please verify your email, If you have not receive mail also check in spam"
+          );
           await sendEmailVerification(user);
           await signOut(auth);
           setIsLoading(false);

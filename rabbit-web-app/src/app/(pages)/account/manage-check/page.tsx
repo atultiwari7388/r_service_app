@@ -147,12 +147,13 @@ export default function ManageCheckScreen() {
             fetchCheckSeries();
           }
         } else {
-          GlobalToastError("User document not found");
+          // GlobalToastError("User document not found");
         }
         setIsLoading(false);
       },
       (error: Error) => {
-        GlobalToastError(error.message || "Error fetching user data");
+        // GlobalToastError(error.message || "Error fetching user data");
+        console.error("Error fetching user data:", error);
         setIsLoading(false);
       }
     );

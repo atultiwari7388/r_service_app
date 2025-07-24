@@ -888,7 +888,7 @@ export default function ManageTeam(): JSX.Element {
         setLoading(false);
       } catch (error) {
         console.error("Error loading data:", error);
-        setErrorMessage(`Error loading data: ${error}`);
+        // setErrorMessage(`Error loading data: ${error}`);
         setLoading(false);
       }
     };

@@ -1,7 +1,7 @@
 "use client";
 
 import { db } from "@/lib/firebase";
-import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
 /* eslint-disable @next/next/no-img-element */
@@ -40,7 +40,8 @@ const Footer: React.FC = () => {
         setContactInfo({ contactMail, contactNumber, address });
       }
     } catch (error) {
-      GlobalToastError(error);
+      // GlobalToastError(error);
+      console.log(error);
     } finally {
       setIsLoading(false);
     }

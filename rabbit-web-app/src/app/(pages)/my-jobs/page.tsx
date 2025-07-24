@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { HashLoader } from "react-spinners";
 import HistoryCard from "../history/components/HistoryCard";
-import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { GlobalToastError } from "@/utils/globalErrorToast";
 import Link from "next/link";
 
 export default function MyJobsPage() {
@@ -74,11 +74,12 @@ export default function MyJobsPage() {
         setLoading(false);
       },
       (error) => {
-        toast.error(
-          `Something went wrong. Error: ${
-            error instanceof Error ? error.message : String(error)
-          }`
-        );
+        // toast.error(
+        //   `Something went wrong. Error: ${
+        //     error instanceof Error ? error.message : String(error)
+        //   }`
+        // );
+        console.log(error);
         setLoading(false);
       }
     );
@@ -99,7 +100,8 @@ export default function MyJobsPage() {
         }
       },
       (error) => {
-        GlobalToastError(error);
+        // GlobalToastError(error);
+        console.log(error);
       }
     );
 

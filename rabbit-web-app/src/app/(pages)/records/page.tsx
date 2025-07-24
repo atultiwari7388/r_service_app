@@ -48,7 +48,7 @@ import {
 import toast from "react-hot-toast";
 import { VehicleTypes } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContexts";
-import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { CiSearch, CiTurnL1 } from "react-icons/ci";
 import { IoMdAdd } from "react-icons/io";
 import Link from "next/link";
@@ -210,7 +210,7 @@ export default function RecordsPage() {
       setVehicles(vehiclesList);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
-      GlobalToastError(error);
+      // GlobalToastError(error);
     }
   };
 

@@ -181,7 +181,7 @@ const BookingSection: React.FC = () => {
         setUserData(userProfileData);
       } catch (error) {
         console.error("Error loading data:", error);
-        toast.error("Failed to load data");
+        // toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -304,39 +304,49 @@ const BookingSection: React.FC = () => {
   }
 
   return (
-    <div
-      className="py-24 bg-cover bg-center"
-      style={{
-        background: "url('/find_mechanic.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="container mx-auto px-6 lg:px-24">
-        <div className="flex flex-col lg:flex-row gap-16 items-center">
-          {/* Left Section (Text Content) */}
-          <div className="lg:w-1/2 text-white space-y-6">
-            <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
-              Certified & Award-Winning Vehicle Repair Services
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-200">
-              Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd
-              ipsum. Dolor ea et dolore et at sea ea at dolor, justo ipsum duo
-              rebum sea invidunt voluptua. Eos vero eos vero ea et dolore eirmod
-              et. Dolores diam duo invidunt lorem. Elitr ut dolores magna sit.
-              Sea dolore sanctus sed et.
-            </p>
-          </div>
+    <div className="min-h-screen">
+      {/* <div
+        className="py-24 bg-cover bg-center"
+        style={{
+          background: "url('/find_mechanic.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      > */}
 
-          {/* Right Section (Booking Form) */}
-          <div className="lg:w-1/2 bg-white rounded-xl shadow-lg p-8 sm:p-12 flex flex-col justify-center space-y-6">
-            <h1 className="text-3xl font-semibold text-center text-gray-800">
-              Find Mechanic
-            </h1>
-            <form>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div
+        className="bg-cover bg-center w-full"
+        style={{
+          backgroundImage: "url('/find_mechanic.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        <div className="container mx-auto px-6 lg:px-24">
+          <div className="flex flex-col lg:flex-row gap-16 items-center">
+            {/* Left Section (Text Content) */}
+            <div className="lg:w-1/2 text-white space-y-6">
+              <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+                Certified & Award-Winning Vehicle Repair Services
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-200">
+                Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd
+                ipsum. Dolor ea et dolore et at sea ea at dolor, justo ipsum duo
+                rebum sea invidunt voluptua. Eos vero eos vero ea et dolore
+                eirmod et. Dolores diam duo invidunt lorem. Elitr ut dolores
+                magna sit. Sea dolore sanctus sed et.
+              </p>
+            </div>
+
+            {/* Right Section (Booking Form) */}
+            <div className="lg:w-1/1 bg-white rounded-xl shadow-lg p-4 sm:p-12 flex flex-col justify-center space-y-6 m-8">
+              <h1 className="text-3xl font-semibold text-center text-gray-800">
+                Find Mechanic
+              </h1>
+              <form className="space-y-6">
                 {/* Vehicle Select */}
-                <div className="col-span-1 flex gap-2">
+                <div className="flex gap-2">
                   <select
                     onChange={handleVehicleChange}
                     className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
@@ -350,11 +360,11 @@ const BookingSection: React.FC = () => {
                   </select>
 
                   <button
-                    className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                    className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
                     title="Add Vehicle"
                     onClick={(e) => {
-                      e.preventDefault(); // Prevent default behavior
-                      setShowPopup(true); // Open the popup
+                      e.preventDefault();
+                      setShowPopup(true);
                     }}
                   >
                     +
@@ -381,7 +391,7 @@ const BookingSection: React.FC = () => {
                 </div>
 
                 {/* Service Select */}
-                <div className="col-span-1">
+                <div>
                   <select
                     onChange={handleServiceChange}
                     className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
@@ -397,8 +407,9 @@ const BookingSection: React.FC = () => {
                       ))}
                   </select>
                 </div>
+
                 {/* Select Location */}
-                <div className="col-span-1 flex gap-2">
+                <div className="flex gap-2">
                   <select
                     onChange={handleLocationChange}
                     className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
@@ -412,67 +423,25 @@ const BookingSection: React.FC = () => {
                   </select>
                   <Link href="/add-location">
                     <button
-                      className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
+                      className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
                       title="Add Vehicle"
                     >
                       +
                     </button>
                   </Link>
                 </div>
-                {/* Select Image */}
-                {/* <div className="col-span-1">
-                  <input
-                    type="file"
-                    className="file-input file-input-gray w-full max-w-xs bg-gray-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedImage(e.target.files[0]);
-                      }
-                    }}
-                    required={selectedServiceData?.image_type === 1}
-                  />
-                  {selectedServiceData?.image_type === 1 && (
-                    <p className="text-red-500 text-sm mt-1">
-                      * Image upload is mandatory for this service
-                    </p>
-                  )}
-                </div> */}
-                {/* Select Image */}
-                {/* <div className="col-span-1">
-                  <input
-                    type="file"
-                    className="file-input w-full max-w-xs rounded-lg
-             bg-[#F96176] text-white
-             file:bg-[#F96176] file:text-white file:rounded-lg
-             hover:file:bg-[#F96176]/90 focus:outline-none focus:ring-2 focus:ring-[#F96176] 
-             transition-all"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedImage(e.target.files[0]);
-                      }
-                    }}
-                    required={selectedServiceData?.image_type === 1}
-                  />
-                  {selectedServiceData?.image_type === 1 && (
-                    <p className="text-red-500 text-sm mt-1">
-                      * Image upload is mandatory for this service
-                    </p>
-                  )}
-                </div> */}
 
                 {/* Select Image */}
-                <div className="col-span-1">
+                <div>
                   <input
                     type="file"
-                    className="file-input w-full max-w-xs rounded-lg
-             bg-[#F96176]/20 text-[#F96176] border border-[#F96176]
-             file:bg-[#F96176] file:text-white file:border-0
-             file:rounded-lg file:mr-2 file:font-medium
-             hover:file:bg-[#F96176]/90
-             focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]
-             transition-all"
+                    className="file-input w-full rounded-lg
+                 bg-[#F96176]/20 text-[#F96176] border border-[#F96176]
+                 file:bg-[#F96176] file:text-white file:border-0
+                 file:rounded-lg file:mr-2 file:font-medium
+                 hover:file:bg-[#F96176]/90
+                 focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]
+                 transition-all"
                     accept="image/*"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
@@ -489,25 +458,26 @@ const BookingSection: React.FC = () => {
                 </div>
 
                 {/* Special Request Textarea */}
-                <div className="col-span-1">
+                <div>
                   <textarea
-                    className="w-full p-4 h-22 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                    className="w-full p-4 h-32 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
                     placeholder="Description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   ></textarea>
                 </div>
+
                 {/* Book Now Button */}
-                <div className="col-span-1">
+                <div>
                   <button
-                    className="w-full bg-[#F96176] text-white py-3 px-6 rounded-lg hover:from-[#F96176] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105 mt-5"
+                    className="w-full bg-[#58BB87] text-white py-3 px-6 rounded-lg hover:from-[#58BB87] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105"
                     onClick={handleFindMechanicClick}
                   >
                     Find Mechanic
                   </button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       </div>

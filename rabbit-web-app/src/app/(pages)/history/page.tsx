@@ -140,7 +140,8 @@ export default function HistoryPage(): JSX.Element {
           console.log("No history items found for initial load.");
         }
       } catch (error) {
-        GlobalToastError(error);
+        // GlobalToastError(error);
+        console.log(error);
       } finally {
         setLoading(false);
       }

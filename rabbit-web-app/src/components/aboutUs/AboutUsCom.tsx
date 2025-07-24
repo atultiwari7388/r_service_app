@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -25,7 +25,8 @@ export default function AboutUsComponent() {
         return aboutUsData;
       }
     } catch (error) {
-      GlobalToastError(error);
+      // GlobalToastError(error);
+      console.log(error);
     } finally {
       setIsLoading(false);
     }
