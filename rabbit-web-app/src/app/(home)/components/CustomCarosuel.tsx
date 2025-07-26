@@ -12,7 +12,7 @@ const sliderData = [
     imageSrc: "/slider_1_n.png",
     title: "Coolant Leak",
     description:
-      "Fast, reliable, and quality truck servicing with a personal touch.",
+      "Find Roadside Assistance for Semi Trucks Anywhere in USA & Canada",
     buttonText: "Book Now",
     buttonLink: "#",
   },
@@ -20,7 +20,7 @@ const sliderData = [
     imageSrc: "/slider_2_n.png",
     title: "Battery Repair",
     description:
-      "We're always ready to assist you, day or night, wherever you are.",
+      "Keep Your Truck DOT Compliant with Automatic Service Reminders",
     buttonText: "Book Now",
     buttonLink: "#",
   },
@@ -28,7 +28,7 @@ const sliderData = [
     imageSrc: "/slider_3_n.png",
     title: "Computer Diagnostic",
     description:
-      "High-quality repairs that won't break the bank. Get back on the road quickly!",
+      "Paperwork is Over – Rabbit Mechanic App Saves You Hours Each Month. Keep a complete service history for each truck and trailer. No more paperwork or lost records.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
@@ -36,7 +36,7 @@ const sliderData = [
     imageSrc: "/slider_4_n.png",
     title: "Truck Tire Repairs",
     description:
-      "High-quality repairs that won't break the bank. Get back on the road quickly!",
+      "Join our nationwide network of trusted roadside mechanics and grow your business with on-demand service requests. register as truck mechanic, mechanic app for roadside service, truck technician lead generator.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
