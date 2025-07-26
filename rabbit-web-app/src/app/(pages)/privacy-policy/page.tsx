@@ -22,6 +22,7 @@ export default function PrivacyPolicy(): JSX.Element {
         const privacyPolicyData =
           privacyPolicySnapshot.data()?.description || "";
         setPrivacyPolicy(privacyPolicyData);
+        console.log(privacyPolicy);
         return privacyPolicyData;
       }
     } catch (error) {
@@ -101,7 +102,7 @@ export default function PrivacyPolicy(): JSX.Element {
           <div className="bg-white rounded-xl shadow-lg p-8 md:p-12">
             <div className="prose prose-lg max-w-none">
               <div className="text-gray-700 leading-relaxed space-y-6">
-                {user ? (
+                {/* {user ? (
                   privacyPolicy ? (
                     <div dangerouslySetInnerHTML={{ __html: privacyPolicy }} />
                   ) : (
@@ -111,7 +112,11 @@ export default function PrivacyPolicy(): JSX.Element {
                   <div
                     dangerouslySetInnerHTML={{ __html: staticPrivacyPolicy }}
                   />
-                )}
+                )} */}
+
+                <div
+                  dangerouslySetInnerHTML={{ __html: staticPrivacyPolicy }}
+                />
               </div>
             </div>
           </div>
