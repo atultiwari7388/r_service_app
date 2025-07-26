@@ -348,7 +348,7 @@ const BookingSection: React.FC = () => {
     {
       icon: <FaApple className="text-2xl" />,
       text: "iOS App",
-      color: "bg-gray-900 hover:bg-gray-800",
+      color: "bg-[#F96176] hover:bg-[#eb929e]",
       link: "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003",
     },
     {
@@ -360,7 +360,7 @@ const BookingSection: React.FC = () => {
     {
       icon: <FaChrome className="text-2xl" />,
       text: "Web App",
-      color: "bg-blue-600 hover:bg-blue-700",
+      color: "bg-[#F96176] hover:bg-[#eb929e]",
       link: "https://www.rabbitmechanic.com/",
     },
   ];
