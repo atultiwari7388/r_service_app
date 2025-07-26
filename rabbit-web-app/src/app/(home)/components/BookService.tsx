@@ -317,7 +317,7 @@ const BookingSection: React.FC = () => {
       <div
         className="bg-cover bg-center w-full"
         style={{
-          backgroundImage: "url('/find_mechanic.jpg')",
+          backgroundImage: "url('/n_f_m.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
