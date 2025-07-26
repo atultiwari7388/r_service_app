@@ -17,6 +17,15 @@ import Link from "next/link";
 import { generateOrderId } from "@/utils/generateOrderId";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import PopupModal from "@/components/PopupModal";
+import {
+  FaAndroid,
+  FaApple,
+  FaAward,
+  FaCheckCircle,
+  FaChrome,
+} from "react-icons/fa";
+import Image from "next/image";
+import { motion } from "framer-motion";
 
 interface RedirectProps {
   path: string;
@@ -299,188 +308,502 @@ const BookingSection: React.FC = () => {
     window.location.href = path;
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2,
+        delayChildren: 0.3,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  const buttonVariants = {
+    hover: {
+      scale: 1.05,
+      transition: {
+        duration: 0.3,
+        yoyo: Infinity,
+      },
+    },
+    tap: {
+      scale: 0.95,
+    },
+  };
+
+  const downloadButtons = [
+    {
+      icon: <FaApple className="text-2xl" />,
+      text: "iOS App",
+      color: "bg-gray-900 hover:bg-gray-800",
+      link: "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003",
+    },
+    {
+      icon: <FaAndroid className="text-2xl" />,
+      text: "Android",
+      color: "bg-green-600 hover:bg-green-700",
+      link: "https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app",
+    },
+    {
+      icon: <FaChrome className="text-2xl" />,
+      text: "Web App",
+      color: "bg-blue-600 hover:bg-blue-700",
+      link: "https://www.rabbitmechanic.com/",
+    },
+  ];
+
   if (loading) {
     return <LoadingIndicator />;
   }
 
+  // return (
+  //   <div className="min-h-screen">
+  //     <div
+  //       className="bg-cover bg-center w-full"
+  //       style={{
+  //         backgroundImage: "url('/n_f_m.jpg')",
+  //         backgroundSize: "cover",
+  //         backgroundPosition: "center",
+  //         backgroundRepeat: "no-repeat",
+  //       }}
+  //     >
+  //       <div className="container mx-auto px-6 lg:px-24">
+  //         <div className="flex flex-col lg:flex-row gap-16 items-center">
+  //           {/* Left Section (Text Content) */}
+  //           <div className="lg:w-1/2 text-white space-y-6">
+  //             <h5 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+  //               Drive Smart, Maintain Smarter – The Ultimate App for Semi Trucks
+  //               & Trailers.
+  //             </h5>
+  //             <h1>Driven by Innovation. Built for Truckers.</h1>
+  //             <p className="text-lg sm:text-xl text-gray-200">
+  //               Rabbit Mechanic is a smart service platform built specifically
+  //               for semi trucks and trailers across USA, Canada & Mexico.
+  //               Whether you’re a fleet owner, single truck driver, or roadside
+  //               mechanic, we help you manage, maintain, and move with
+  //               confidence. Founded by logistics professionals and developed
+  //               with real truckers in mind, our mission is to eliminate
+  //               guesswork from truck maintenance — so you can focus on the road.
+  //               DOT inspections are strict, but your preparation doesn’t have to
+  //               be stressful. Try Rabbit Mechanic App to keep your fleet
+  //               compliant and on the road.
+  //             </p>
+
+  //             <p>📲 Download now – Android, iOS, or Web</p>
+  //           </div>
+
+  //           {/* Right Section (Booking Form) */}
+  //           <div className="lg:w-1/1 bg-white rounded-xl shadow-lg p-4 sm:p-12 flex flex-col justify-center space-y-6 m-8">
+  //             <h1 className="text-3xl font-semibold text-center text-gray-800">
+  //               Find Mechanic
+  //             </h1>
+  //             <form className="space-y-6">
+  //               {/* Vehicle Select */}
+  //               <div className="flex gap-2">
+  //                 <select
+  //                   onChange={handleVehicleChange}
+  //                   className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+  //                 >
+  //                   <option value="">Select A Vehicle</option>
+  //                   {vehicles.map((vehicle, index) => (
+  //                     <option key={index} value={vehicle.vehicleNumber}>
+  //                       {vehicle.vehicleNumber}({vehicle.companyName})
+  //                     </option>
+  //                   ))}
+  //                 </select>
+
+  //                 <button
+  //                   className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
+  //                   title="Add Vehicle"
+  //                   onClick={(e) => {
+  //                     e.preventDefault();
+  //                     setShowPopup(true);
+  //                   }}
+  //                 >
+  //                   +
+  //                 </button>
+
+  //                 {/* Reusable Popup Component */}
+  //                 <PopupModal
+  //                   isOpen={showPopup}
+  //                   onClose={() => setShowPopup(false)}
+  //                   title="Select Option"
+  //                   options={[
+  //                     {
+  //                       label: "Add Vehicle",
+  //                       onClick: () => handleRedirect({ path: "/add-vehicle" }),
+  //                     },
+  //                     {
+  //                       label: "Import Vehicle",
+  //                       onClick: () =>
+  //                         handleRedirect({ path: "/import-vehicle" }),
+  //                       bgColor: "blue",
+  //                     },
+  //                   ]}
+  //                 />
+  //               </div>
+
+  //               {/* Service Select */}
+  //               <div>
+  //                 <select
+  //                   onChange={handleServiceChange}
+  //                   className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+  //                 >
+  //                   <option value="">Select A Service</option>
+  //                   {services
+  //                     .slice()
+  //                     .sort((a, b) => a.title.localeCompare(b.title))
+  //                     .map((service, index) => (
+  //                       <option key={index} value={service.title}>
+  //                         {service.title}
+  //                       </option>
+  //                     ))}
+  //                 </select>
+  //               </div>
+
+  //               {/* Select Location */}
+  //               <div className="flex gap-2">
+  //                 <select
+  //                   onChange={handleLocationChange}
+  //                   className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+  //                 >
+  //                   <option value="">Select Your Location</option>
+  //                   {location.map((location, index) => (
+  //                     <option key={index} value={location.address}>
+  //                       {location.address}
+  //                     </option>
+  //                   ))}
+  //                 </select>
+  //                 <Link href="/add-location">
+  //                   <button
+  //                     className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
+  //                     title="Add Vehicle"
+  //                   >
+  //                     +
+  //                   </button>
+  //                 </Link>
+  //               </div>
+
+  //               {/* Select Image */}
+  //               <div>
+  //                 <input
+  //                   type="file"
+  //                   className="file-input w-full rounded-lg
+  //                bg-[#F96176]/20 text-[#F96176] border border-[#F96176]
+  //                file:bg-[#F96176] file:text-white file:border-0
+  //                file:rounded-lg file:mr-2 file:font-medium
+  //                hover:file:bg-[#F96176]/90
+  //                focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]
+  //                transition-all"
+  //                   accept="image/*"
+  //                   onChange={(e) => {
+  //                     if (e.target.files && e.target.files[0]) {
+  //                       setSelectedImage(e.target.files[0]);
+  //                     }
+  //                   }}
+  //                   required={selectedServiceData?.image_type === 1}
+  //                 />
+  //                 {selectedServiceData?.image_type === 1 && (
+  //                   <p className="text-red-500 text-sm mt-1">
+  //                     * Image upload is mandatory for this service
+  //                   </p>
+  //                 )}
+  //               </div>
+
+  //               {/* Special Request Textarea */}
+  //               <div>
+  //                 <textarea
+  //                   className="w-full p-4 h-32 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+  //                   placeholder="Description"
+  //                   value={description}
+  //                   onChange={(e) => setDescription(e.target.value)}
+  //                 ></textarea>
+  //               </div>
+
+  //               {/* Book Now Button */}
+  //               <div>
+  //                 <button
+  //                   className="w-full bg-[#58BB87] text-white py-3 px-6 rounded-lg hover:from-[#58BB87] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105"
+  //                   onClick={handleFindMechanicClick}
+  //                 >
+  //                   Find Mechanic
+  //                 </button>
+  //               </div>
+  //             </form>
+  //           </div>
+
+  //         </div>
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
   return (
-    <div className="min-h-screen">
-      {/* <div
-        className="py-24 bg-cover bg-center"
-        style={{
-          background: "url('/find_mechanic.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      > */}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/n_f_m.jpg"
+          alt="Truck on highway"
+          layout="fill"
+          objectFit="cover"
+          quality={100}
+          priority
+        />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      </div>
 
-      <div
-        className="bg-cover bg-center w-full"
-        style={{
-          backgroundImage: "url('/n_f_m.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="container mx-auto px-6 lg:px-24">
-          <div className="flex flex-col lg:flex-row gap-16 items-center">
-            {/* Left Section (Text Content) */}
-            <div className="lg:w-1/2 text-white space-y-6">
-              <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
-                Certified & Award-Winning Vehicle Repair Services
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-200">
-                Eirmod sed tempor lorem ut dolores. Aliquyam sit sadipscing kasd
-                ipsum. Dolor ea et dolore et at sea ea at dolor, justo ipsum duo
-                rebum sea invidunt voluptua. Eos vero eos vero ea et dolore
-                eirmod et. Dolores diam duo invidunt lorem. Elitr ut dolores
-                magna sit. Sea dolore sanctus sed et.
-              </p>
-            </div>
+      <div className="container mx-auto px-6 lg:px-24 relative z-10">
+        <div className="flex flex-col lg:flex-row gap-16 items-center py-24">
+          {/* Left Section (Text Content) */}
+          <motion.div
+            className="lg:w-1/2 space-y-8"
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+          >
+            <motion.h5
+              className="text-4xl sm:text-5xl font-extrabold leading-tight text-white"
+              variants={itemVariants}
+            >
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F96176] to-[#58BB87]">
+                Drive Smart,
+              </span>{" "}
+              Maintain Smarter
+            </motion.h5>
 
-            {/* Right Section (Booking Form) */}
-            <div className="lg:w-1/1 bg-white rounded-xl shadow-lg p-4 sm:p-12 flex flex-col justify-center space-y-6 m-8">
-              <h1 className="text-3xl font-semibold text-center text-gray-800">
-                Find Mechanic
-              </h1>
-              <form className="space-y-6">
-                {/* Vehicle Select */}
-                <div className="flex gap-2">
-                  <select
-                    onChange={handleVehicleChange}
-                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                  >
-                    <option value="">Select A Vehicle</option>
-                    {vehicles.map((vehicle, index) => (
-                      <option key={index} value={vehicle.vehicleNumber}>
-                        {vehicle.vehicleNumber}({vehicle.companyName})
+            <motion.h1
+              className="text-2xl sm:text-3xl font-bold text-gray-200"
+              variants={itemVariants}
+            >
+              The Ultimate App for Semi Trucks & Trailers
+            </motion.h1>
+
+            <motion.p
+              className="text-lg sm:text-xl text-gray-200/90 leading-relaxed"
+              variants={itemVariants}
+            >
+              Rabbit Mechanic is a smart service platform built specifically for
+              semi trucks and trailers across USA, Canada & Mexico. Whether
+              you&apos;re a fleet owner, single truck driver, or roadside
+              mechanic, we help you manage, maintain, and move with confidence.
+            </motion.p>
+
+            <motion.div
+              className="flex flex-col sm:flex-row gap-4 pt-4"
+              variants={itemVariants}
+            >
+              {downloadButtons.map((button, index) => (
+                <motion.a
+                  key={index}
+                  href={button.link}
+                  className={`${button.color} text-white px-6 py-3 rounded-lg flex items-center gap-2 justify-center font-medium shadow-lg`}
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
+                >
+                  {button.icon}
+                  {button.text}
+                </motion.a>
+              ))}
+            </motion.div>
+
+            {/* Trust Badges */}
+            <motion.div
+              className="flex flex-wrap gap-4 items-center pt-6"
+              variants={itemVariants}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <FaCheckCircle className="text-green-500" />
+                </div>
+                <span className="text-gray-200">Trusted by 500+ fleets</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                  <FaAward className="text-yellow-500" />
+                </div>
+                <span className="text-gray-200">4.9/5 Rating</span>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Right Section (Booking Form) - Keep your existing form code */}
+
+          <div className="lg:w-[420px] bg-white rounded-xl shadow-lg p-4 sm:p-12 flex flex-col justify-center space-y-6 m-8">
+            <h1 className="text-3xl font-semibold text-center text-gray-800">
+              Find Mechanic
+            </h1>
+            <form className="space-y-6">
+              {/* Vehicle Select */}
+              <div className="flex gap-2">
+                <select
+                  onChange={handleVehicleChange}
+                  className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                >
+                  <option value="">Select A Vehicle</option>
+                  {vehicles.map((vehicle, index) => (
+                    <option key={index} value={vehicle.vehicleNumber}>
+                      {vehicle.vehicleNumber}({vehicle.companyName})
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
+                  title="Add Vehicle"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowPopup(true);
+                  }}
+                >
+                  +
+                </button>
+
+                {/* Reusable Popup Component */}
+                <PopupModal
+                  isOpen={showPopup}
+                  onClose={() => setShowPopup(false)}
+                  title="Select Option"
+                  options={[
+                    {
+                      label: "Add Vehicle",
+                      onClick: () => handleRedirect({ path: "/add-vehicle" }),
+                    },
+                    {
+                      label: "Import Vehicle",
+                      onClick: () =>
+                        handleRedirect({ path: "/import-vehicle" }),
+                      bgColor: "blue",
+                    },
+                  ]}
+                />
+              </div>
+
+              {/* Service Select */}
+              <div>
+                <select
+                  onChange={handleServiceChange}
+                  className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                >
+                  <option value="">Select A Service</option>
+                  {services
+                    .slice()
+                    .sort((a, b) => a.title.localeCompare(b.title))
+                    .map((service, index) => (
+                      <option key={index} value={service.title}>
+                        {service.title}
                       </option>
                     ))}
-                  </select>
+                </select>
+              </div>
 
+              {/* Select Location */}
+              <div className="flex gap-2">
+                <select
+                  onChange={handleLocationChange}
+                  className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                >
+                  <option value="">Select Your Location</option>
+                  {location.map((location, index) => (
+                    <option key={index} value={location.address}>
+                      {location.address}
+                    </option>
+                  ))}
+                </select>
+                <Link href="/add-location">
                   <button
                     className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
                     title="Add Vehicle"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowPopup(true);
-                    }}
                   >
                     +
                   </button>
+                </Link>
+              </div>
 
-                  {/* Reusable Popup Component */}
-                  <PopupModal
-                    isOpen={showPopup}
-                    onClose={() => setShowPopup(false)}
-                    title="Select Option"
-                    options={[
-                      {
-                        label: "Add Vehicle",
-                        onClick: () => handleRedirect({ path: "/add-vehicle" }),
-                      },
-                      {
-                        label: "Import Vehicle",
-                        onClick: () =>
-                          handleRedirect({ path: "/import-vehicle" }),
-                        bgColor: "blue",
-                      },
-                    ]}
-                  />
-                </div>
-
-                {/* Service Select */}
-                <div>
-                  <select
-                    onChange={handleServiceChange}
-                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                  >
-                    <option value="">Select A Service</option>
-                    {services
-                      .slice()
-                      .sort((a, b) => a.title.localeCompare(b.title))
-                      .map((service, index) => (
-                        <option key={index} value={service.title}>
-                          {service.title}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* Select Location */}
-                <div className="flex gap-2">
-                  <select
-                    onChange={handleLocationChange}
-                    className="w-full h-14 p-4 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                  >
-                    <option value="">Select Your Location</option>
-                    {location.map((location, index) => (
-                      <option key={index} value={location.address}>
-                        {location.address}
-                      </option>
-                    ))}
-                  </select>
-                  <Link href="/add-location">
-                    <button
-                      className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip"
-                      title="Add Vehicle"
-                    >
-                      +
-                    </button>
-                  </Link>
-                </div>
-
-                {/* Select Image */}
-                <div>
-                  <input
-                    type="file"
-                    className="file-input w-full rounded-lg
+              {/* Select Image */}
+              <div>
+                <input
+                  type="file"
+                  className="file-input w-full rounded-lg
                  bg-[#F96176]/20 text-[#F96176] border border-[#F96176]
                  file:bg-[#F96176] file:text-white file:border-0
                  file:rounded-lg file:mr-2 file:font-medium
                  hover:file:bg-[#F96176]/90
                  focus:outline-none focus:border-[#F96176] focus:ring-2 focus:ring-[#F96176]
                  transition-all"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedImage(e.target.files[0]);
-                      }
-                    }}
-                    required={selectedServiceData?.image_type === 1}
-                  />
-                  {selectedServiceData?.image_type === 1 && (
-                    <p className="text-red-500 text-sm mt-1">
-                      * Image upload is mandatory for this service
-                    </p>
-                  )}
-                </div>
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedImage(e.target.files[0]);
+                    }
+                  }}
+                  required={selectedServiceData?.image_type === 1}
+                />
+                {selectedServiceData?.image_type === 1 && (
+                  <p className="text-red-500 text-sm mt-1">
+                    * Image upload is mandatory for this service
+                  </p>
+                )}
+              </div>
 
-                {/* Special Request Textarea */}
-                <div>
-                  <textarea
-                    className="w-full p-4 h-32 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
-                    placeholder="Description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  ></textarea>
-                </div>
+              {/* Special Request Textarea */}
+              <div>
+                <textarea
+                  className="w-full p-4 h-32 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition"
+                  placeholder="Description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                ></textarea>
+              </div>
 
-                {/* Book Now Button */}
-                <div>
-                  <button
-                    className="w-full bg-[#58BB87] text-white py-3 px-6 rounded-lg hover:from-[#58BB87] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105"
-                    onClick={handleFindMechanicClick}
-                  >
-                    Find Mechanic
-                  </button>
-                </div>
-              </form>
-            </div>
+              {/* Book Now Button */}
+              <div>
+                <button
+                  className="w-full bg-[#58BB87] text-white py-3 px-6 rounded-lg hover:from-[#58BB87] hover:to-[#58BB87] transition duration-300 ease-in-out transform hover:scale-105"
+                  onClick={handleFindMechanicClick}
+                >
+                  Find Mechanic
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
+
+      {/* Floating Truck Animation */}
+      <motion.div
+        className="absolute bottom-10 left-10 hidden lg:block"
+        animate={{
+          x: [0, 20, 0],
+          y: [0, -10, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        {/* <Image
+          src="/truck-icon.png"
+          alt="Floating truck"
+          width={80}
+          height={80}
+        /> */}
+      </motion.div>
     </div>
   );
 };

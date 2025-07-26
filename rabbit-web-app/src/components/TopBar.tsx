@@ -2,10 +2,8 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
-// import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   FaPhoneAlt,
@@ -15,7 +13,6 @@ import {
   FaTwitter,
   FaInstagram,
 } from "react-icons/fa";
-// import { IoMdNotificationsOutline } from "react-icons/io";
 
 export default function TopBar() {
   const { user } = useAuth() || { user: null };
@@ -40,7 +37,6 @@ export default function TopBar() {
           setContactInfo({ contactMail, contactNumber, address });
         }
       } catch (error) {
-        // GlobalToastError(error);
         console.log(error);
       } finally {
         setIsLoading(false);
@@ -63,40 +59,30 @@ export default function TopBar() {
         {/* Left Section: Contact Info */}
         <div className="flex flex-col sm:flex-row items-center sm:space-x-6 space-y-2 sm:space-y-0">
           <div className="flex items-center space-x-2">
-            <FaPhoneAlt />
+            {contactInfo.contactNumber && <FaPhoneAlt />}
+
             <a href="">
-              {user === null ? (
-                <span>(+1)202 555 088</span>
-              ) : (
+              {contactInfo.contactNumber && (
                 <span>{contactInfo.contactNumber}</span>
               )}
             </a>
           </div>
           <div className="flex items-center space-x-2">
-            <FaEnvelope />
+            {contactInfo.contactMail && <FaEnvelope />}
             <a href="">
-              {user === null ? (
-                <span>info@rabbitmechanicservices.com</span>
-              ) : (
+              {contactInfo.contactMail && (
                 <span>{contactInfo.contactMail}</span>
               )}
             </a>
           </div>
           <div className="flex items-center space-x-2">
-            <FaMapMarkerAlt />
-            {user === null ? (
-              <span>New York, NY 10001, USA</span>
-            ) : (
-              <span>{contactInfo.address}</span>
-            )}
+            {contactInfo.address && <FaMapMarkerAlt />}
+            {contactInfo.address && <span>{contactInfo.address}</span>}
           </div>
         </div>
 
         {/* Right Section: Social Links */}
         <div className="flex items-center space-x-4 mt-2 sm:mt-0">
-          {/* <Link href="/account/notifications">
-            <IoMdNotificationsOutline className="font-semibold text-xl" />
-          </Link> */}
           <a
             href="https://facebook.com"
             target="_blank"

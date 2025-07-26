@@ -1,10 +1,8 @@
 "use client";
 
 import { db } from "@/lib/firebase";
-// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,7 +13,12 @@ import {
   FaFacebookF,
   FaYoutube,
   FaLinkedinIn,
+  // FaTruck,
+  // FaTools,
+  // FaShieldAlt,
 } from "react-icons/fa";
+// import { motion } from "framer-motion";
+// import Image from "next/image";
 
 const Footer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +57,45 @@ const Footer: React.FC = () => {
   if (isLoading) {
     return <LoadingIndicator />;
   }
+
+  // const fadeIn = {
+  //   hidden: { opacity: 0, y: 20 },
+  //   visible: {
+  //     opacity: 1,
+  //     y: 0,
+  //     transition: { duration: 0.6 },
+  //   },
+  // };
+
+  // const staggerContainer = {
+  //   hidden: { opacity: 0 },
+  //   visible: {
+  //     opacity: 1,
+  //     transition: {
+  //       staggerChildren: 0.2,
+  //     },
+  //   },
+  // };
+
+  // const socialLinks = [
+  //   { icon: <FaTwitter />, url: "#" },
+  //   { icon: <FaFacebookF />, url: "#" },
+  //   { icon: <FaYoutube />, url: "#" },
+  //   { icon: <FaLinkedinIn />, url: "#" },
+  // ];
+
+  // const quickLinks = [
+  //   { name: "Home", url: "/" },
+  //   { name: "About us", url: "/about-us" },
+  //   { name: "Contact us", url: "/contact-us" },
+  //   { name: "Services", url: "/services" },
+  // ];
+
+  // const legalLinks = [
+  //   { name: "Terms & Conditions", url: "/terms-condition" },
+  //   { name: "Privacy Policy", url: "/privacy-policy" },
+  //   { name: "Refund Policy", url: "/refund-policy" },
+  // ];
 
   return (
     <footer className="bg-[#F5F5F5] text-black pt-10">
@@ -213,21 +255,164 @@ const Footer: React.FC = () => {
               </a>
               , All Right Reserved.
             </p>
-            {/* <p className="text-black">
-              Designed by{" "}
-              <a
-                href="https://www.mylexinfotech.com/"
-                className="hover:underline text-[#F96176] font-mono font-semibold"
-              >
-                Mylex Infotech
-              </a>
-            </p>
-           */}
           </div>
         </div>
       </div>
     </footer>
   );
+
+  // return (
+  //   <motion.footer
+  //     initial="hidden"
+  //     whileInView="visible"
+  //     viewport={{ once: true }}
+  //     variants={staggerContainer}
+  //     className="bg-gray-900 text-white pt-16 pb-8"
+  //   >
+  //     <div className="container mx-auto px-6 md:px-12">
+  //       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12">
+  //         {/* Company Info */}
+  //         <motion.div variants={fadeIn}>
+  //           <div className="flex items-center mb-6">
+  //             <FaTruck className="text-3xl text-[#F96176] mr-3" />
+  //             <h3 className="text-2xl font-bold">Rabbit Mechanic</h3>
+  //           </div>
+  //           <p className="text-gray-300 mb-6">
+  //             Your trusted partner for semi truck and trailer maintenance across
+  //             North America.
+  //           </p>
+  //           <div className="space-y-3">
+  //             <p className="flex items-center text-gray-300">
+  //               <FaMapMarkerAlt className="mr-3 text-[#F96176]" />
+  //               New York, NY 10001, USA
+  //             </p>
+  //             <p className="flex items-center text-gray-300">
+  //               <FaPhoneAlt className="mr-3 text-[#F96176]" />
+  //               +1 (555) 123-4567
+  //             </p>
+  //             <p className="flex items-center text-gray-300">
+  //               <FaEnvelope className="mr-3 text-[#F96176]" />
+  //               info@rabbitmechanicservices.com
+  //             </p>
+  //           </div>
+  //         </motion.div>
+
+  //         {/* Quick Links */}
+  //         <motion.div variants={fadeIn}>
+  //           <h4 className="text-xl font-semibold mb-6 pb-2 border-b border-[#F96176] inline-block">
+  //             Quick Links
+  //           </h4>
+  //           <ul className="space-y-3">
+  //             {quickLinks.map((link, index) => (
+  //               <li key={index}>
+  //                 <Link
+  //                   href={link.url}
+  //                   className="text-gray-300 hover:text-[#F96176] transition-colors flex items-center"
+  //                 >
+  //                   <FaTools className="mr-2 text-sm" />
+  //                   {link.name}
+  //                 </Link>
+  //               </li>
+  //             ))}
+  //           </ul>
+  //         </motion.div>
+
+  //         {/* Legal Links */}
+  //         <motion.div variants={fadeIn}>
+  //           <h4 className="text-xl font-semibold mb-6 pb-2 border-b border-[#F96176] inline-block">
+  //             Legal
+  //           </h4>
+  //           <ul className="space-y-3">
+  //             {legalLinks.map((link, index) => (
+  //               <li key={index}>
+  //                 <Link
+  //                   href={link.url}
+  //                   className="text-gray-300 hover:text-[#F96176] transition-colors flex items-center"
+  //                 >
+  //                   <FaShieldAlt className="mr-2 text-sm" />
+  //                   {link.name}
+  //                 </Link>
+  //               </li>
+  //             ))}
+  //           </ul>
+  //         </motion.div>
+
+  //         {/* Social & App Downloads */}
+  //         <motion.div variants={fadeIn}>
+  //           <h4 className="text-xl font-semibold mb-6 pb-2 border-b border-[#F96176] inline-block">
+  //             Connect With Us
+  //           </h4>
+  //           <div className="mb-6">
+  //             <p className="text-gray-300 mb-4">Follow us on social media:</p>
+  //             <div className="flex space-x-4">
+  //               {socialLinks.map((social, index) => (
+  //                 <motion.a
+  //                   key={index}
+  //                   href={social.url}
+  //                   className="bg-gray-800 text-white p-3 rounded-full hover:bg-[#F96176] transition-colors"
+  //                   whileHover={{ y: -5 }}
+  //                   whileTap={{ scale: 0.9 }}
+  //                 >
+  //                   {social.icon}
+  //                 </motion.a>
+  //               ))}
+  //             </div>
+  //           </div>
+  //           <div>
+  //             <p className="text-gray-300 mb-3">Download our app:</p>
+  //             <div className="flex flex-col space-y-3">
+  //               <motion.a
+  //                 href="https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app"
+  //                 target="_blank"
+  //                 whileHover={{ scale: 1.05 }}
+  //                 className="inline-block"
+  //               >
+  //                 <Image
+  //                   src="/play-store.png"
+  //                   alt="Get on Google Play"
+  //                   width={150}
+  //                   height={50}
+  //                   className="rounded-lg"
+  //                 />
+  //               </motion.a>
+  //               <motion.a
+  //                 href="https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003"
+  //                 target="_blank"
+  //                 whileHover={{ scale: 1.05 }}
+  //                 className="inline-block"
+  //               >
+  //                 <Image
+  //                   src="/app-store.png"
+  //                   alt="Download on the App Store"
+  //                   width={150}
+  //                   height={50}
+  //                   className="rounded-lg"
+  //                 />
+  //               </motion.a>
+  //             </div>
+  //           </div>
+  //         </motion.div>
+  //       </div>
+
+  //       {/* Copyright Section */}
+  //       <motion.div
+  //         variants={fadeIn}
+  //         className="border-t border-gray-700 pt-8 text-center"
+  //       >
+  //         <p className="text-gray-400">
+  //           &copy; {new Date().getFullYear()}{" "}
+  //           <span className="text-[#F96176] font-semibold">
+  //             Regal Application LLC
+  //           </span>
+  //           . All Rights Reserved.
+  //         </p>
+  //         <p className="text-gray-500 text-sm mt-2">
+  //           Designed for truckers, by truckers.
+  //         </p>
+  //       </motion.div>
+  //     </div>
+  //   </motion.footer>
+  // );
 };
 
 export default Footer;
