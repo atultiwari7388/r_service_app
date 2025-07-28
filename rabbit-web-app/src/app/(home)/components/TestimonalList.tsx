@@ -202,7 +202,7 @@ const testimonialsData = [
     message:
       "Feels like a personal assistant for my truck. I used to forget oil changes or filter replacements. Now the app reminds me in time. No more guesswork. 10/10!",
     rating: 5,
-    avatar: "/carlos.png",
+    avatar: "/thomas.png",
   },
   {
     name: "Maria L.",

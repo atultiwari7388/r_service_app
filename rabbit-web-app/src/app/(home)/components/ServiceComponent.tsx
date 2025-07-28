@@ -105,7 +105,7 @@ const ServiceComponent = () => {
       icon: <FaTools className="text-4xl" />,
       title: "Comprehensive Maintenance",
       description:
-        "Track truck service, get maintenance alerts & find roadside help across USA, Canada & Mexico with Rabbit Mechanic – the smart app for truckers & owners.",
+        "Track truck service, get maintenance alerts & find roadside help across America & Canada with Rabbit Mechanic – the smart app for truckers & owners.",
       color: "bg-[#F96176]",
     },
     {
@@ -133,7 +133,7 @@ const ServiceComponent = () => {
       icon: <FaMapMarkerAlt className="text-4xl" />,
       title: "Roadside Assistance",
       description:
-        "Find trusted mechanics anywhere in North America with our on-demand service locator and real-time availability tracking.",
+        "Find trusted mechanics anywhere in America & Canada with our on-demand service locator and real-time availability tracking.",
       color: "bg-[#8B5CF6]",
     },
     {
@@ -159,15 +159,15 @@ const ServiceComponent = () => {
             variants={fadeIn}
             className="text-4xl font-bold text-gray-800 mb-4"
           >
-            <span className="text-[#F96176]">Revolutionizing</span> Truck
-            Maintenance
+            <span className="text-[#F96176]">A New Era </span>
+            of Smart Trucking.
           </motion.h2>
           <motion.p
             variants={fadeIn}
             className="text-xl text-gray-600 max-w-3xl mx-auto"
           >
             Everything you need to keep your fleet moving efficiently across
-            North America
+            America, Canada & Mexico
           </motion.p>
         </motion.div>
 

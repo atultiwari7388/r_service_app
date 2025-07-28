@@ -170,11 +170,11 @@ const AboutSection = () => {
           <motion.div
             variants={fadeIn}
             className="lg:w-1/2 relative rounded-xl overflow-hidden shadow-2xl"
-            style={{ minHeight: "500px" }}
+            style={{ minHeight: "800px" }}
           >
             <Image
               className="absolute inset-0 w-full h-full object-cover"
-              src="/about-img.jpg"
+              src="/about-new.png"
               alt="Mechanic working on truck"
               layout="fill"
               quality={100}
@@ -226,10 +226,18 @@ const AboutSection = () => {
               <span className="text-[#F96176] font-semibold text-lg tracking-wider">
                 ABOUT US
               </span>
-              <h2 className="text-4xl font-bold mt-2 mb-6 text-gray-800">
-                Revolutionizing{" "}
-                <span className="text-[#F96176]">Truck Maintenance</span> Across
-                North America
+              <h2 className="text-lg font-normal mt-2 mb-6 text-gray-600">
+                <span className="text-[#F96176] font-bold">
+                  {" "}
+                  Rabbit Mechanic{" "}
+                </span>
+                was founded by logistics professionals and built with real
+                truckers in mind. We understand the daily challenges of managing
+                semi-truck and trailer maintenance, whether you&apos;re an
+                independent owner-operator or managing a large fleet. Our
+                mission is simple — eliminate the guesswork from truck
+                maintenance so you can stay focused on the road, not the repair
+                shop.
               </h2>
             </motion.div>
 
@@ -238,23 +246,25 @@ const AboutSection = () => {
               variants={fadeIn}
               className="text-lg text-gray-600 mb-8 leading-relaxed"
             >
-              DOT (Department of Transportation) compliance is not just a legal
-              requirement — it&apos;s your shield against costly fines,
-              breakdowns, and delays. With Rabbit Mechanic&apos;s automatic
-              maintenance alerts, you can stay fully compliant, effortlessly.
+              DOT compliance isn’t just a requirement — it’s protection against
+              costly fines, unexpected breakdowns, and delivery delays. That’s
+              why Rabbit Mechanic is designed to help you stay ahead of every
+              service deadline with automatic maintenance alerts. From oil
+              changes to inspections, filter replacements to tire rotations —
+              we’ve got you covered. But we don’t stop there.
             </motion.p>
-
+            <motion.div variants={fadeIn}>
+              <h1 className="text-2xl font-semibold text-gray-800 mb-6">
+                Rabbit Mechanic helps you:
+              </h1>
+            </motion.div>
             <motion.div variants={fadeIn} className="mb-8">
-              <div className="flex items-start mb-4">
+              <div className="flex items-start mb-1">
                 <div className="bg-[#F96176] bg-opacity-10 p-2 rounded-full mr-4">
                   <FaCheckCircle className="text-[#F96176] text-xl" />
                 </div>
                 <p className="text-gray-600 flex-1">
-                  Whether you&apos;re an independent trucker or manage a fleet
-                  of 500, keeping your trucks road-ready is critical.
-                  Thankfully, there are smart apps that can help track
-                  maintenance, alert you about services, and even find roadside
-                  help.
+                  Track every dollar spent on parts and labor
                 </p>
               </div>
               <div className="flex items-start">
@@ -262,11 +272,38 @@ const AboutSection = () => {
                   <FaCheckCircle className="text-[#F96176] text-xl" />
                 </div>
                 <p className="text-gray-600 flex-1">
-                  If you&apos;re looking for simple, smart and affordable truck
-                  maintenance – especially with roadside mechanic finder, Rabbit
-                  Mechanic is your top choice in 2025.
+                  Generate downloadable maintenance reports for smarter
+                  budgeting
                 </p>
               </div>
+
+              <div className="flex items-start">
+                <div className="bg-[#F96176] bg-opacity-10 p-2 rounded-full mr-4">
+                  <FaCheckCircle className="text-[#F96176] text-xl" />
+                </div>
+                <p className="text-gray-600 flex-1">
+                  Easily assign trucks to drivers and monitor usage
+                </p>
+              </div>
+
+              <div className="flex items-start">
+                <div className="bg-[#F96176] bg-opacity-10 p-2 rounded-full mr-4">
+                  <FaCheckCircle className="text-[#F96176] text-xl" />
+                </div>
+                <p className="text-gray-600 flex-1">
+                  Instantly locate roadside mechanics across the USA & Canada —
+                  just like booking an Uber!
+                </p>
+              </div>
+
+              <motion.p
+                variants={fadeIn}
+                className="text-lg text-gray-600 mb-8 mt-8 leading-relaxed"
+              >
+                In 2025, truck maintenance doesn’t have to be complicated.
+                Rabbit Mechanic makes it simple, smart, and affordable. Join the
+                movement toward stress-free, road-ready trucking.
+              </motion.p>
             </motion.div>
 
             {/* Features Grid */}
@@ -283,7 +320,7 @@ const AboutSection = () => {
                   <FaCheckCircle />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-800">
-                  Professional & Expert
+                  Find with a click
                 </h3>
                 <p className="text-gray-600">
                   Find Roadside Assistance for Semi Trucks Anywhere in USA &
@@ -300,7 +337,7 @@ const AboutSection = () => {
                   <FaAward />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-800">
-                  Quality Assurance
+                  Save Time
                 </h3>
                 <p className="text-gray-600">
                   Paperwork is Over – Rabbit Mechanic App Saves You Hours Each
@@ -317,10 +354,11 @@ const AboutSection = () => {
                   <FaUsers />
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-800">
-                  Award-Winning
+                  Stay DOT Compliant
                 </h3>
                 <p className="text-gray-600">
-                  Join our nationwide network of trusted roadside mechanics.
+                  Keep your truck road-ready with automatic service reminders
+                  and hassle-free maintenance tracking.
                 </p>
               </motion.div>
             </motion.div>

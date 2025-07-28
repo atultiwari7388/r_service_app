@@ -9,34 +9,34 @@ import "slick-carousel/slick/slick-theme.css";
 // Slider data
 const sliderData = [
   {
-    imageSrc: "/slider_1_n.png",
-    title: "Coolant Leak",
+    imageSrc: "/boost_business.png",
+    title: "Boost Your Business",
     description:
-      "Find Roadside Assistance for Semi Trucks Anywhere in USA & Canada",
+      "Join Rabbit Mechanic as a roadside service provider and unlock new income streams. Get connected with truckers in need of urgent repairs across the USA & Canada. Whether you're a solo mechanic or run a mobile service team, our platform helps you grow your customer base, increase visibility, and earn more.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
   {
-    imageSrc: "/slider_2_n.png",
-    title: "Battery Repair",
+    imageSrc: "/effortless_manage.png",
+    title: "Effortless Management",
     description:
-      "Keep Your Truck DOT Compliant with Automatic Service Reminders",
+      "Easily assign trucks to drivers, track who drove which vehicle and when, and maintain accurate records — all in one place. Rabbit Mechanic simplifies driver tracking, saving time and improving accountability for fleet owners.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
   {
-    imageSrc: "/slider_3_n.png",
-    title: "Computer Diagnostic",
+    imageSrc: "/automatic_alert.png",
+    title: "Automatic Alerts",
     description:
-      "Paperwork is Over – Rabbit Mechanic App Saves You Hours Each Month. Keep a complete service history for each truck and trailer. No more paperwork or lost records.",
+      "Get Timely Notifications for  oil changes, inspections, filter replacements, tire rotations, transmission service, and more.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
   {
-    imageSrc: "/slider_4_n.png",
-    title: "Truck Tire Repairs",
+    imageSrc: "/more_truck.png",
+    title: "More trucks! More Easy",
     description:
-      "Join our nationwide network of trusted roadside mechanics and grow your business with on-demand service requests. register as truck mechanic, mechanic app for roadside service, truck technician lead generator.",
+      "From tracking maintenance schedules to assigning drivers and monitoring service history, Rabbit Mechanic puts every detail at your fingertips. The intuitive dashboard lets you view, manage, and update information for all your vehicles in just a few clicks — whether you have 1 truck or 500.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
@@ -90,15 +90,15 @@ const CustomCarousel = () => {
               style={{ height: "auto" }}
             >
               {/* Image */}
-              <div className="w-full flex justify-center items-center h-full p-4">
+              <div className="w-full flex justify-center items-center h-full p-4 ">
                 <Image
                   src={slide.imageSrc}
                   alt={slide.title}
                   layout="intrinsic"
-                  width={300} // Adjusted for mobile view
-                  height={300} // Adjusted for mobile view
+                  width={300}
+                  height={300}
                   objectFit="contain"
-                  className="max-w-full h-auto"
+                  className="max-w-full h-auto border-red-400 rounded-lg bg-red-400"
                 />
               </div>
 
@@ -110,12 +110,12 @@ const CustomCarousel = () => {
                 <p className="text-base sm:text-lg leading-relaxed mb-6">
                   {slide.description}
                 </p>
-                <a
+                {/* <a
                   href={slide.buttonLink}
                   className="bg-[#F96176] text-white px-6 py-3 rounded text-lg font-medium hover:bg-[#F96176] transition-transform transform hover:scale-105"
                 >
                   {slide.buttonText}
-                </a>
+                </a> */}
               </div>
             </div>
           </div>
