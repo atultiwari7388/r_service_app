@@ -120,7 +120,7 @@ const ServiceComponent = () => {
       title: "All-In-One Solution",
       description:
         "Your complete truck maintenance app – designed for semi trucks and trailers, helping fleet owners, truck drivers, and roadside mechanics stay ahead of every service.",
-      color: "bg-[#3B82F6]",
+      color: "bg-[#F96176]",
     },
     {
       icon: <FaBell className="text-4xl" />,
