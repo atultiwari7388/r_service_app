@@ -626,7 +626,7 @@ const BookingSection: React.FC = () => {
       {/* Background Image with Left Gradient Overlay */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/find_mec_new.png"
+          src="/find_mec_new.jpg"
           alt="Truck on highway"
           layout="fill"
           objectFit="cover"

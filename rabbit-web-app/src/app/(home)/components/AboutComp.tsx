@@ -174,7 +174,7 @@ const AboutSection = () => {
           >
             <Image
               className="absolute inset-0 w-full h-full object-cover"
-              src="/about-new.png"
+              src="/about-new.jpg"
               alt="Mechanic working on truck"
               layout="fill"
               quality={100}
