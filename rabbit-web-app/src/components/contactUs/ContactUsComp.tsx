@@ -1,17 +1,24 @@
 // "use client";
 
 // import { useAuth } from "@/contexts/AuthContexts";
-// import { db } from "@/lib/firebase";
-// import { GlobalToastError } from "@/utils/globalErrorToast";
+// import { db, storage } from "@/lib/firebase";
+// // import { GlobalToastError } from "@/utils/globalErrorToast";
 // import { LoadingIndicator } from "@/utils/LoadinIndicator";
 // import { doc, getDoc, addDoc, collection } from "firebase/firestore";
+// import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 // import { useEffect, useState } from "react";
 // import { toast } from "react-hot-toast";
-// import { FaEnvelope, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
+// import {
+//   FaEnvelope,
+//   FaPhone,
+//   FaMapMarkerAlt,
+//   FaPaperclip,
+// } from "react-icons/fa";
 // import { getFunctions, httpsCallable } from "firebase/functions";
 
 // export default function ContactUsComp() {
 //   const [isLoading, setIsLoading] = useState(false);
+//   const [isSubmitting, setIsSubmitting] = useState(false);
 //   const [contactInfo, setContactInfo] = useState<{
 //     contactMail?: string;
 //     contactNumber?: string;
@@ -23,46 +30,67 @@
 //     phone: "",
 //     message: "",
 //   });
+//   const [attachment, setAttachment] = useState<File | null>(null);
 //   const { user } = useAuth() || { user: null };
 
 //   const fetchContactUs = async () => {
-//     if (user) {
-//       setIsLoading(true);
-//       try {
-//         const contactUsRef = doc(db, "metadata", "helpCenter");
-//         const contactUsSnapshot = await getDoc(contactUsRef);
+//     setIsLoading(true);
+//     try {
+//       const contactUsRef = doc(db, "metadata", "helpCenter");
+//       const contactUsSnapshot = await getDoc(contactUsRef);
 
-//         if (contactUsSnapshot.exists()) {
-//           const contactMail = contactUsSnapshot.data()?.mail || "";
-//           const contactNumber = contactUsSnapshot.data()?.phone || "";
-//           const address = contactUsSnapshot.data()?.address || "";
-//           setContactInfo({ contactMail, contactNumber, address });
-//         }
-//       } catch (error) {
-//         GlobalToastError(error);
-//       } finally {
-//         setIsLoading(false);
+//       if (contactUsSnapshot.exists()) {
+//         const contactMail = contactUsSnapshot.data()?.mail || "";
+//         const contactNumber = contactUsSnapshot.data()?.phone || "";
+//         const address = contactUsSnapshot.data()?.address || "";
+//         setContactInfo({ contactMail, contactNumber, address });
 //       }
+//     } catch (error) {
+//       // GlobalToastError(error);
+//       console.log(error);
+//     } finally {
+//       setIsLoading(false);
 //     }
 //   };
 
 //   const handleSubmit = async (e: React.FormEvent) => {
 //     e.preventDefault();
-//     setIsLoading(true);
+
+//     if (!user) {
+//       toast.error("Please login to submit your query");
+//       return;
+//     }
+
+//     setIsSubmitting(true);
 
 //     try {
+//       let attachmentUrl = "";
+
+//       // Upload attachment if exists
+//       if (attachment) {
+//         const storageRef = ref(
+//           storage,
+//           `contact-attachments/${user.uid}/${Date.now()}_${attachment.name}`
+//         );
+//         await uploadBytes(storageRef, attachment);
+//         attachmentUrl = await getDownloadURL(storageRef);
+//       }
+
 //       // Store in database
-//       await addDoc(collection(db, "contactSubmissions"), {
+//       const submissionData = {
 //         ...formData,
 //         userId: user?.uid,
 //         timestamp: new Date(),
-//       });
+//         ...(attachmentUrl && { attachmentUrl }),
+//       };
+
+//       await addDoc(collection(db, "contactSubmissions"), submissionData);
 
 //       // Send email to admin
 //       const functions = getFunctions();
 //       const sendContactEmail = httpsCallable(functions, "sendContactEmail");
 //       await sendContactEmail({
-//         ...formData,
+//         ...submissionData,
 //         recipientEmail: contactInfo.contactMail,
 //       });
 
@@ -73,10 +101,12 @@
 //         phone: "",
 //         message: "",
 //       });
+//       setAttachment(null);
 //     } catch (error) {
-//       GlobalToastError(error);
+//       console.log(error);
+//       // GlobalToastError(error);
 //     } finally {
-//       setIsLoading(false);
+//       setIsSubmitting(false);
 //     }
 //   };
 
@@ -89,22 +119,18 @@
 //     });
 //   };
 
+//   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     if (e.target.files && e.target.files[0]) {
+//       setAttachment(e.target.files[0]);
+//     }
+//   };
+
 //   useEffect(() => {
 //     fetchContactUs();
-//   }, [user]);
+//   }, []);
 
 //   if (isLoading) {
 //     return <LoadingIndicator />;
-//   }
-
-//   if (!user) {
-//     return (
-//       <div className="flex justify-center items-center min-h-[60vh]">
-//         <h1 className="text-xl font-semibold text-gray-700">
-//           Please Login to access the page..
-//         </h1>
-//       </div>
-//     );
 //   }
 
 //   return (
@@ -123,15 +149,17 @@
 //               </h2>
 
 //               <div className="space-y-6">
-//                 {contactInfo.contactMail && (
-//                   <div className="flex items-center space-x-4 text-gray-600">
-//                     <FaEnvelope className="text-[#F96176] text-xl" />
-//                     <div>
-//                       <p className="font-semibold">Email</p>
-//                       <p>{contactInfo.contactMail}</p>
-//                     </div>
+//                 <div className="flex items-center space-x-4 text-gray-600">
+//                   <FaEnvelope className="text-[#F96176] text-xl" />
+//                   <div>
+//                     <p className="font-semibold">Email</p>
+//                     <p>
+//                       {user === null
+//                         ? "info@rabbitmechanicservices.com"
+//                         : contactInfo.contactMail}
+//                     </p>
 //                   </div>
-//                 )}
+//                 </div>
 
 //                 {contactInfo.contactNumber && (
 //                   <div className="flex items-center space-x-4 text-gray-600">
@@ -147,7 +175,11 @@
 //                   <FaMapMarkerAlt className="text-[#F96176] text-xl" />
 //                   <div>
 //                     <p className="font-semibold">Address</p>
-//                     <p>{contactInfo.address}</p>
+//                     <p>
+//                       {user === null
+//                         ? "New York, NY 10001, USA"
+//                         : contactInfo.address}
+//                     </p>
 //                   </div>
 //                 </div>
 //               </div>
@@ -158,6 +190,12 @@
 //               <h2 className="text-2xl font-bold text-gray-800 mb-6">
 //                 Send us a Message
 //               </h2>
+
+//               {!user && (
+//                 <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-lg">
+//                   Note: You need to login to submit your query
+//                 </div>
+//               )}
 
 //               <form onSubmit={handleSubmit} className="space-y-4">
 //                 <div>
@@ -207,11 +245,40 @@
 //                   ></textarea>
 //                 </div>
 
+//                 <div>
+//                   <label className="block text-gray-700 mb-2">
+//                     Attachment (Optional)
+//                   </label>
+//                   <div className="flex items-center">
+//                     <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg flex items-center">
+//                       <FaPaperclip className="mr-2" />
+//                       <span>
+//                         {attachment ? attachment.name : "Choose file"}
+//                       </span>
+//                       <input
+//                         type="file"
+//                         onChange={handleAttachmentChange}
+//                         className="hidden"
+//                       />
+//                     </label>
+//                     {attachment && (
+//                       <button
+//                         type="button"
+//                         onClick={() => setAttachment(null)}
+//                         className="ml-2 text-red-500 hover:text-red-700"
+//                       >
+//                         Remove
+//                       </button>
+//                     )}
+//                   </div>
+//                 </div>
+
 //                 <button
 //                   type="submit"
-//                   className="w-full bg-[#F96176] text-white py-3 rounded-lg hover:bg-[#e54d62] transition-colors font-semibold"
+//                   disabled={isSubmitting}
+//                   className="w-full bg-[#F96176] text-white py-3 rounded-lg hover:bg-[#e54d62] transition-colors font-semibold disabled:opacity-70"
 //                 >
-//                   Send Message
+//                   {isSubmitting ? "Sending..." : "Send Message"}
 //                 </button>
 //               </form>
 //             </div>
@@ -226,7 +293,6 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db, storage } from "@/lib/firebase";
-// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc, addDoc, collection } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -238,7 +304,6 @@ import {
   FaMapMarkerAlt,
   FaPaperclip,
 } from "react-icons/fa";
-import { getFunctions, httpsCallable } from "firebase/functions";
 
 export default function ContactUsComp() {
   const [isLoading, setIsLoading] = useState(false);
@@ -270,8 +335,8 @@ export default function ContactUsComp() {
         setContactInfo({ contactMail, contactNumber, address });
       }
     } catch (error) {
-      // GlobalToastError(error);
-      console.log(error);
+      console.error("Error fetching contact info:", error);
+      // toast.error("Failed to load contact information");
     } finally {
       setIsLoading(false);
     }
@@ -279,12 +344,6 @@ export default function ContactUsComp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!user) {
-      toast.error("Please login to submit your query");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -294,29 +353,37 @@ export default function ContactUsComp() {
       if (attachment) {
         const storageRef = ref(
           storage,
-          `contact-attachments/${user.uid}/${Date.now()}_${attachment.name}`
+          `contact-attachments/${Date.now()}_${attachment.name}`
         );
         await uploadBytes(storageRef, attachment);
         attachmentUrl = await getDownloadURL(storageRef);
       }
 
-      // Store in database
+      // Prepare submission data
       const submissionData = {
         ...formData,
-        userId: user?.uid,
         timestamp: new Date(),
         ...(attachmentUrl && { attachmentUrl }),
+        ...(user?.uid && { userId: user.uid }),
       };
 
+      // Store in database
       await addDoc(collection(db, "contactSubmissions"), submissionData);
 
-      // Send email to admin
-      const functions = getFunctions();
-      const sendContactEmail = httpsCallable(functions, "sendContactEmail");
-      await sendContactEmail({
-        ...submissionData,
-        recipientEmail: contactInfo.contactMail,
-      });
+      // Only call cloud function if user is logged in
+      // if (user) {
+      //   try {
+      //     const functions = getFunctions();
+      //     const sendContactEmail = httpsCallable(functions, "sendContactEmail");
+      //     await sendContactEmail({
+      //       ...submissionData,
+      //       recipientEmail: contactInfo.contactMail,
+      //     });
+      //   } catch (emailError) {
+      //     console.error("Email sending failed:", emailError);
+      //     // Don't fail the whole submission if email fails
+      //   }
+      // }
 
       toast.success("Message sent successfully!");
       setFormData({
@@ -327,8 +394,8 @@ export default function ContactUsComp() {
       });
       setAttachment(null);
     } catch (error) {
-      console.log(error);
-      // GlobalToastError(error);
+      console.error("Submission error:", error);
+      // toast.error("Failed to send message. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -345,7 +412,13 @@ export default function ContactUsComp() {
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setAttachment(e.target.files[0]);
+      const file = e.target.files[0];
+      // Basic validation for file size (e.g., 5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size should be less than 5MB");
+        return;
+      }
+      setAttachment(file);
     }
   };
 
@@ -378,9 +451,8 @@ export default function ContactUsComp() {
                   <div>
                     <p className="font-semibold">Email</p>
                     <p>
-                      {user === null
-                        ? "info@rabbitmechanicservices.com"
-                        : contactInfo.contactMail}
+                      {contactInfo.contactMail ||
+                        "info@rabbitmechanicservices.com"}
                     </p>
                   </div>
                 </div>
@@ -399,11 +471,7 @@ export default function ContactUsComp() {
                   <FaMapMarkerAlt className="text-[#F96176] text-xl" />
                   <div>
                     <p className="font-semibold">Address</p>
-                    <p>
-                      {user === null
-                        ? "New York, NY 10001, USA"
-                        : contactInfo.address}
-                    </p>
+                    <p>{contactInfo.address || "New York, NY 10001, USA"}</p>
                   </div>
                 </div>
               </div>
@@ -415,15 +483,9 @@ export default function ContactUsComp() {
                 Send us a Message
               </h2>
 
-              {!user && (
-                <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-lg">
-                  Note: You need to login to submit your query
-                </div>
-              )}
-
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-gray-700 mb-2">Name</label>
+                  <label className="block text-gray-700 mb-2">Name *</label>
                   <input
                     type="text"
                     name="name"
@@ -435,7 +497,7 @@ export default function ContactUsComp() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 mb-2">Email</label>
+                  <label className="block text-gray-700 mb-2">Email *</label>
                   <input
                     type="email"
                     name="email"
@@ -447,7 +509,7 @@ export default function ContactUsComp() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 mb-2">Phone</label>
+                  <label className="block text-gray-700 mb-2">Phone *</label>
                   <input
                     type="tel"
                     name="phone"
@@ -459,7 +521,7 @@ export default function ContactUsComp() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 mb-2">Message</label>
+                  <label className="block text-gray-700 mb-2">Message *</label>
                   <textarea
                     name="message"
                     value={formData.message}
@@ -471,7 +533,7 @@ export default function ContactUsComp() {
 
                 <div>
                   <label className="block text-gray-700 mb-2">
-                    Attachment (Optional)
+                    Attachment (Optional, max 5MB)
                   </label>
                   <div className="flex items-center">
                     <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg flex items-center">
@@ -483,6 +545,7 @@ export default function ContactUsComp() {
                         type="file"
                         onChange={handleAttachmentChange}
                         className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       />
                     </label>
                     {attachment && (
@@ -504,6 +567,12 @@ export default function ContactUsComp() {
                 >
                   {isSubmitting ? "Sending..." : "Send Message"}
                 </button>
+
+                {!user && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    By submitting this form, you agree to our privacy policy.
+                  </p>
+                )}
               </form>
             </div>
           </div>
