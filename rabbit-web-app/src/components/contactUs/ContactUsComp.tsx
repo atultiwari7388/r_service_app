@@ -373,15 +373,17 @@ export default function ContactUsComp() {
               </h2>
 
               <div className="space-y-6">
-                {contactInfo.contactMail && (
-                  <div className="flex items-center space-x-4 text-gray-600">
-                    <FaEnvelope className="text-[#F96176] text-xl" />
-                    <div>
-                      <p className="font-semibold">Email</p>
-                      <p>{contactInfo.contactMail}</p>
-                    </div>
+                <div className="flex items-center space-x-4 text-gray-600">
+                  <FaEnvelope className="text-[#F96176] text-xl" />
+                  <div>
+                    <p className="font-semibold">Email</p>
+                    <p>
+                      {user === null
+                        ? "info@rabbitmechanicservices.com"
+                        : contactInfo.contactMail}
+                    </p>
                   </div>
-                )}
+                </div>
 
                 {contactInfo.contactNumber && (
                   <div className="flex items-center space-x-4 text-gray-600">
@@ -393,15 +395,17 @@ export default function ContactUsComp() {
                   </div>
                 )}
 
-                {contactInfo.address && (
-                  <div className="flex items-center space-x-4 text-gray-600">
-                    <FaMapMarkerAlt className="text-[#F96176] text-xl" />
-                    <div>
-                      <p className="font-semibold">Address</p>
-                      <p>{contactInfo.address}</p>
-                    </div>
+                <div className="flex items-center space-x-4 text-gray-600">
+                  <FaMapMarkerAlt className="text-[#F96176] text-xl" />
+                  <div>
+                    <p className="font-semibold">Address</p>
+                    <p>
+                      {user === null
+                        ? "New York, NY 10001, USA"
+                        : contactInfo.address}
+                    </p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
