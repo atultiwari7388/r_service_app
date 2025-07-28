@@ -188,6 +188,8 @@ export default function RecordsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isRecordSaving, setIsRecordSaving] = useState(false);
   const [isMilesSaving, setIsMilesSaving] = useState(false);
+  const [summaryStartDate, setSummaryStartDate] = useState<Date | null>(null);
+  const [summaryEndDate, setSummaryEndDate] = useState<Date | null>(null);
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
@@ -1268,6 +1270,45 @@ export default function RecordsPage() {
     }
   };
 
+  const calculateTotals = () => {
+    let totalInvoiceAmount = 0;
+    let truckTotal = 0;
+    let trailerTotal = 0;
+    let otherTotal = 0;
+
+    filteredRecords.forEach((record) => {
+      const recordDate = new Date(record.date);
+      const amount = parseFloat(record.invoiceAmount) || 0;
+
+      // Check if record is within date range if filters are set
+      const isWithinDateRange =
+        (!summaryStartDate || recordDate >= summaryStartDate) &&
+        (!summaryEndDate || recordDate <= summaryEndDate);
+
+      if (isWithinDateRange) {
+        totalInvoiceAmount += amount;
+
+        if (record.vehicleDetails.vehicleType === "Truck") {
+          truckTotal += amount;
+        } else if (record.vehicleDetails.vehicleType === "Trailer") {
+          trailerTotal += amount;
+        } else {
+          otherTotal += amount;
+        }
+      }
+    });
+
+    return {
+      totalInvoiceAmount,
+      truckTotal,
+      trailerTotal,
+      otherTotal,
+    };
+  };
+
+  const { totalInvoiceAmount, truckTotal, trailerTotal, otherTotal } =
+    calculateTotals();
+
   const resetForm = () => {
     setSelectedVehicle("");
     setSelectedServices(new Set());
@@ -1340,6 +1381,75 @@ export default function RecordsPage() {
         >
           <FaPrint /> Print
         </button>
+      </div>
+
+      {/* Summary Box */}
+      <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Invoice Summary</h2>
+          <div className="flex gap-2">
+            <DatePicker
+              selected={summaryStartDate}
+              onChange={(date) => setSummaryStartDate(date)}
+              selectsStart
+              startDate={summaryStartDate}
+              endDate={summaryEndDate}
+              placeholderText="Start Date"
+              className="p-2 border rounded w-40"
+            />
+            <DatePicker
+              selected={summaryEndDate}
+              onChange={(date) => setSummaryEndDate(date)}
+              selectsEnd
+              startDate={summaryStartDate}
+              endDate={summaryEndDate}
+              minDate={summaryStartDate ?? undefined}
+              placeholderText="End Date"
+              className="p-2 border rounded w-40"
+            />
+            <button
+              onClick={() => {
+                setSummaryStartDate(null);
+                setSummaryEndDate(null);
+              }}
+              className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-500">
+              Total Invoice Amount
+            </h3>
+            <p className="text-2xl font-bold">
+              ${totalInvoiceAmount.toFixed(0)}
+            </p>
+          </div>
+
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-500">
+              Truck Services
+            </h3>
+            <p className="text-2xl font-bold">${truckTotal.toFixed(0)}</p>
+          </div>
+
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-500">
+              Trailer Services
+            </h3>
+            <p className="text-2xl font-bold">${trailerTotal.toFixed(0)}</p>
+          </div>
+
+          <div className="bg-red-50 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-500">
+              Other Services
+            </h3>
+            <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
+          </div>
+        </div>
       </div>
 
       {/* Search & Filter Dialog */}
@@ -2047,6 +2157,7 @@ export default function RecordsPage() {
                   <TableCell>Invoice</TableCell>
                   <TableCell>Vehicle</TableCell>
                   <TableCell>Company</TableCell>
+                  <TableCell>Inc. Amount</TableCell>
                   {records.some((record) => record.miles > 0) && (
                     <TableCell>Miles/Hours</TableCell>
                   )}
@@ -2075,6 +2186,12 @@ export default function RecordsPage() {
 
                     <TableCell className="table-cell">
                       {record.vehicleDetails.companyName}
+                    </TableCell>
+                    <TableCell className="table-cell">
+                      {record.invoiceAmount &&
+                      record.invoiceAmount.trim() !== ""
+                        ? `$${record.invoiceAmount}`
+                        : "N/A"}
                     </TableCell>
 
                     <TableCell className="table-cell">
