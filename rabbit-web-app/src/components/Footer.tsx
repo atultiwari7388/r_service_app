@@ -171,10 +171,10 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <Link
-                  href="/refund-policy"
+                  href="/rating-policy"
                   className="text-black hover:text-[#F96176]"
                 >
-                  Refund Policy
+                  Rating Policy
                 </Link>
               </li>
             </ul>
