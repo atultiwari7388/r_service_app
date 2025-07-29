@@ -2248,89 +2248,99 @@ class _ReportsScreenState extends State<ReportsScreen>
                       ],
 
                       // Invoice Summary Box
-                      Card(
-                        elevation: 4,
-                        margin: EdgeInsets.symmetric(vertical: 8),
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Invoice Summary',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: kDark,
-                                    ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.date_range,
-                                            color: kPrimary),
-                                        onPressed: () async {
-                                          final DateTimeRange? picked =
-                                              await showDateRangePicker(
-                                            context: context,
-                                            firstDate: DateTime(2000),
-                                            lastDate: DateTime(2100),
-                                            initialDateRange:
-                                                summaryStartDate != null &&
-                                                        summaryEndDate != null
-                                                    ? DateTimeRange(
-                                                        start:
-                                                            summaryStartDate!,
-                                                        end: summaryEndDate!)
-                                                    : null,
-                                          );
-                                          if (picked != null) {
-                                            setState(() {
-                                              summaryStartDate = picked.start;
-                                              summaryEndDate = picked.end;
-                                            });
-                                          }
-                                        },
-                                      ),
-                                      if (summaryStartDate != null ||
-                                          summaryEndDate != null)
-                                        IconButton(
-                                          icon: Icon(Icons.clear,
-                                              color: Colors.red),
-                                          onPressed: () {
-                                            setState(() {
-                                              summaryStartDate = null;
-                                              summaryEndDate = null;
-                                            });
-                                          },
+
+                      (role == "Owner" || role == "Admin")
+                          ? Card(
+                              elevation: 4,
+                              margin: EdgeInsets.symmetric(vertical: 8),
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Invoice Summary',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: kDark,
+                                          ),
                                         ),
-                                    ],
-                                  ),
-                                ],
+                                        Row(
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(Icons.date_range,
+                                                  color: kPrimary),
+                                              onPressed: () async {
+                                                final DateTimeRange? picked =
+                                                    await showDateRangePicker(
+                                                  context: context,
+                                                  firstDate: DateTime(2000),
+                                                  lastDate: DateTime(2100),
+                                                  initialDateRange:
+                                                      summaryStartDate !=
+                                                                  null &&
+                                                              summaryEndDate !=
+                                                                  null
+                                                          ? DateTimeRange(
+                                                              start:
+                                                                  summaryStartDate!,
+                                                              end:
+                                                                  summaryEndDate!)
+                                                          : null,
+                                                );
+                                                if (picked != null) {
+                                                  setState(() {
+                                                    summaryStartDate =
+                                                        picked.start;
+                                                    summaryEndDate = picked.end;
+                                                  });
+                                                }
+                                              },
+                                            ),
+                                            if (summaryStartDate != null ||
+                                                summaryEndDate != null)
+                                              IconButton(
+                                                icon: Icon(Icons.clear,
+                                                    color: Colors.red),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    summaryStartDate = null;
+                                                    summaryEndDate = null;
+                                                  });
+                                                },
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _buildSummaryItem('Total',
+                                            calculateInvoiceTotals()['total']!),
+                                        _buildSummaryItem('Trucks',
+                                            calculateInvoiceTotals()['truck']!),
+                                        _buildSummaryItem(
+                                            'Trailers',
+                                            calculateInvoiceTotals()[
+                                                'trailer']!),
+                                        _buildSummaryItem('Others',
+                                            calculateInvoiceTotals()['other']!),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _buildSummaryItem('Total',
-                                      calculateInvoiceTotals()['total']!),
-                                  _buildSummaryItem('Trucks',
-                                      calculateInvoiceTotals()['truck']!),
-                                  _buildSummaryItem('Trailers',
-                                      calculateInvoiceTotals()['trailer']!),
-                                  _buildSummaryItem('Others',
-                                      calculateInvoiceTotals()['other']!),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                            )
+                          : SizedBox(),
 
                       currentUser == null
                           ? AbsorbPointer(

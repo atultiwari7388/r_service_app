@@ -46,7 +46,7 @@ import {
   Paper,
 } from "@mui/material";
 import toast from "react-hot-toast";
-import { VehicleTypes } from "@/types/types";
+import { ProfileValues, VehicleTypes } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContexts";
 // import { GlobalToastError } from "@/utils/globalErrorToast";
 import { CiSearch, CiTurnL1 } from "react-icons/ci";
@@ -190,6 +190,8 @@ export default function RecordsPage() {
   const [isMilesSaving, setIsMilesSaving] = useState(false);
   const [summaryStartDate, setSummaryStartDate] = useState<Date | null>(null);
   const [summaryEndDate, setSummaryEndDate] = useState<Date | null>(null);
+  const [userData, setUserData] = useState<ProfileValues | null>(null);
+  const [role, setRole] = useState("");
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
@@ -707,6 +709,16 @@ export default function RecordsPage() {
     fetchServicePackages();
     if (!user?.uid) return;
 
+    const fetchUserData = async () => {
+      const userDoc = await getDoc(doc(db, "Users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data() as ProfileValues;
+        setUserData(data);
+        console.log("User data fetched:", userData);
+        setRole(data.role);
+      }
+    };
+
     const recordsQuery = query(
       collection(db, "Users", user.uid, "DataServices"),
       where("active", "==", true)
@@ -726,6 +738,7 @@ export default function RecordsPage() {
       console.log(`Fetched ${recordsData.length} records`);
     });
 
+    fetchUserData();
     return () => unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -1384,74 +1397,77 @@ export default function RecordsPage() {
       </div>
 
       {/* Summary Box */}
-      <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Invoice Summary</h2>
-          <div className="flex gap-2">
-            <DatePicker
-              selected={summaryStartDate}
-              onChange={(date) => setSummaryStartDate(date)}
-              selectsStart
-              startDate={summaryStartDate}
-              endDate={summaryEndDate}
-              placeholderText="Start Date"
-              className="p-2 border rounded w-40"
-            />
-            <DatePicker
-              selected={summaryEndDate}
-              onChange={(date) => setSummaryEndDate(date)}
-              selectsEnd
-              startDate={summaryStartDate}
-              endDate={summaryEndDate}
-              minDate={summaryStartDate ?? undefined}
-              placeholderText="End Date"
-              className="p-2 border rounded w-40"
-            />
-            <button
-              onClick={() => {
-                setSummaryStartDate(null);
-                setSummaryEndDate(null);
-              }}
-              className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
-            >
-              Clear
-            </button>
+      {role == "Owner" || role == "Accountant" ? (
+        <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Invoice Summary</h2>
+            <div className="flex gap-2">
+              <DatePicker
+                selected={summaryStartDate}
+                onChange={(date) => setSummaryStartDate(date)}
+                selectsStart
+                startDate={summaryStartDate}
+                endDate={summaryEndDate}
+                placeholderText="Start Date"
+                className="p-2 border rounded w-40"
+              />
+              <DatePicker
+                selected={summaryEndDate}
+                onChange={(date) => setSummaryEndDate(date)}
+                selectsEnd
+                startDate={summaryStartDate}
+                endDate={summaryEndDate}
+                minDate={summaryStartDate ?? undefined}
+                placeholderText="End Date"
+                className="p-2 border rounded w-40"
+              />
+              <button
+                onClick={() => {
+                  setSummaryStartDate(null);
+                  setSummaryEndDate(null);
+                }}
+                className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-500">
+                Total Invoice Amount
+              </h3>
+              <p className="text-2xl font-bold">
+                ${totalInvoiceAmount.toFixed(0)}
+              </p>
+            </div>
+
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-500">
+                Truck Services
+              </h3>
+              <p className="text-2xl font-bold">${truckTotal.toFixed(0)}</p>
+            </div>
+
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-500">
+                Trailer Services
+              </h3>
+              <p className="text-2xl font-bold">${trailerTotal.toFixed(0)}</p>
+            </div>
+
+            <div className="bg-red-50 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-500">
+                Other Services
+              </h3>
+              <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
+            </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-500">
-              Total Invoice Amount
-            </h3>
-            <p className="text-2xl font-bold">
-              ${totalInvoiceAmount.toFixed(0)}
-            </p>
-          </div>
-
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-500">
-              Truck Services
-            </h3>
-            <p className="text-2xl font-bold">${truckTotal.toFixed(0)}</p>
-          </div>
-
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-500">
-              Trailer Services
-            </h3>
-            <p className="text-2xl font-bold">${trailerTotal.toFixed(0)}</p>
-          </div>
-
-          <div className="bg-red-50 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-500">
-              Other Services
-            </h3>
-            <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
-          </div>
-        </div>
-      </div>
-
+      ) : (
+        <div></div>
+      )}
       {/* Search & Filter Dialog */}
       <Dialog
         fullWidth

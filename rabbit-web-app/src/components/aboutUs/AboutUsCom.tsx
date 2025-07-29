@@ -56,13 +56,15 @@ export default function AboutUsComponent() {
                   </div>
                 ) : (
                   <div className="text-gray-700 leading-relaxed space-y-6">
-                    Rabbit Mechanic is a smart, all-in-one service application
-                    and website built exclusively for Semi Trucks and Trailers,
-                    featuring an intelligent Automatic Service Alert System that
-                    keeps your fleet fully maintained and always road-ready.
-                    With Rabbit Mechanic, you can effortlessly track detailed
-                    service records for every vehicle, ensuring you stay updated
-                    on all past maintenance and upcoming tasks. The system sends
+                    Rabbit Mechanic was founded by logistics professionals and
+                    built with real truckers in mind. Rabbit Mechanic is a
+                    smart, all-in-one service application and website built
+                    exclusively for Semi Trucks and Trailers, featuring an
+                    intelligent Automatic Service Alert System that keeps your
+                    fleet fully maintained and always road-ready. With Rabbit
+                    Mechanic, you can effortlessly track detailed service
+                    records for every vehicle, ensuring you stay updated on all
+                    past maintenance and upcoming tasks. The system sends
                     real-time service reminders so you never miss critical
                     upkeep—including engine oil changes, wheel alignment (truck
                     and trailer), filter replacements (air, fuel, DEF, cabin),
