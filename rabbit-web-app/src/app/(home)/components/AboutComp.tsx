@@ -325,9 +325,9 @@ const AboutSection = () => {
               }}
             >
               <div className="flex flex-col items-center justify-center h-full">
-                <span className="text-3xl font-bold">15</span>
-                <span className="text-sm">Years</span>
-                <span className="text-xs mt-1">Experience</span>
+                <span className="text-3xl font-bold">Easy</span>
+                <span className="text-sm">To</span>
+                <span className="text-xs mt-1">Operate</span>
               </div>
             </motion.div>
 

@@ -116,6 +116,10 @@ class _ReportsScreenState extends State<ReportsScreen>
   DateTime? startDate;
   DateTime? endDate;
 
+  // For invoice summary
+  DateTime? summaryStartDate;
+  DateTime? summaryEndDate;
+
   @override
   void initState() {
     super.initState();
@@ -953,6 +957,46 @@ class _ReportsScreenState extends State<ReportsScreen>
       selectedDate = DateTime.parse(record['date']);
       showAddRecords = true;
     });
+  }
+
+  Map<String, double> calculateInvoiceTotals() {
+    double totalInvoiceAmount = 0;
+    double truckTotal = 0;
+    double trailerTotal = 0;
+    double otherTotal = 0;
+
+    final filteredRecords = getFilteredRecords();
+
+    for (final record in filteredRecords) {
+      final recordDate = DateTime.parse(record['date']);
+      final amount =
+          double.tryParse(record['invoiceAmount']?.toString() ?? '0') ?? 0;
+
+      // Check date range if filters are set
+      final isWithinDateRange =
+          (summaryStartDate == null || recordDate.isAfter(summaryStartDate!)) &&
+              (summaryEndDate == null ||
+                  recordDate.isBefore(summaryEndDate!.add(Duration(days: 1))));
+
+      if (isWithinDateRange && amount > 0) {
+        totalInvoiceAmount += amount;
+
+        if (record['vehicleDetails']['vehicleType'] == 'Truck') {
+          truckTotal += amount;
+        } else if (record['vehicleDetails']['vehicleType'] == 'Trailer') {
+          trailerTotal += amount;
+        } else {
+          otherTotal += amount;
+        }
+      }
+    }
+
+    return {
+      'total': totalInvoiceAmount,
+      'truck': truckTotal,
+      'trailer': trailerTotal,
+      'other': otherTotal,
+    };
   }
 
   String normalizeString(String value) {
@@ -2203,6 +2247,91 @@ class _ReportsScreenState extends State<ReportsScreen>
                         ),
                       ],
 
+                      // Invoice Summary Box
+                      Card(
+                        elevation: 4,
+                        margin: EdgeInsets.symmetric(vertical: 8),
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Invoice Summary',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: kDark,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.date_range,
+                                            color: kPrimary),
+                                        onPressed: () async {
+                                          final DateTimeRange? picked =
+                                              await showDateRangePicker(
+                                            context: context,
+                                            firstDate: DateTime(2000),
+                                            lastDate: DateTime(2100),
+                                            initialDateRange:
+                                                summaryStartDate != null &&
+                                                        summaryEndDate != null
+                                                    ? DateTimeRange(
+                                                        start:
+                                                            summaryStartDate!,
+                                                        end: summaryEndDate!)
+                                                    : null,
+                                          );
+                                          if (picked != null) {
+                                            setState(() {
+                                              summaryStartDate = picked.start;
+                                              summaryEndDate = picked.end;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                      if (summaryStartDate != null ||
+                                          summaryEndDate != null)
+                                        IconButton(
+                                          icon: Icon(Icons.clear,
+                                              color: Colors.red),
+                                          onPressed: () {
+                                            setState(() {
+                                              summaryStartDate = null;
+                                              summaryEndDate = null;
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildSummaryItem('Total',
+                                      calculateInvoiceTotals()['total']!),
+                                  _buildSummaryItem('Trucks',
+                                      calculateInvoiceTotals()['truck']!),
+                                  _buildSummaryItem('Trailers',
+                                      calculateInvoiceTotals()['trailer']!),
+                                  _buildSummaryItem('Others',
+                                      calculateInvoiceTotals()['other']!),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                       currentUser == null
                           ? AbsorbPointer(
                               child: TabBar(
@@ -2703,6 +2832,30 @@ class _ReportsScreenState extends State<ReportsScreen>
                 style: appStyleUniverse(18, kDark, FontWeight.w500),
               ),
             ),
+    );
+  }
+
+  Widget _buildSummaryItem(String label, double amount) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: kDarkGray,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          '\$${amount.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 16,
+            color: kPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
