@@ -2840,19 +2840,19 @@ class _ReportsScreenState extends State<ReportsScreen>
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 14,
-            color: kDarkGray,
-            fontWeight: FontWeight.w500,
+          style: appStyle(
+            14,
+            kDarkGray,
+            FontWeight.w500,
           ),
         ),
         SizedBox(height: 4),
         Text(
-          '\$${amount.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: 16,
-            color: kPrimary,
-            fontWeight: FontWeight.bold,
+          '\$${amount.toStringAsFixed(0)}',
+          style: appStyle(
+            13,
+            kPrimary,
+            FontWeight.w400,
           ),
         ),
       ],

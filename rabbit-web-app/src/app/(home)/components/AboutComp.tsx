@@ -326,8 +326,8 @@ const AboutSection = () => {
             >
               <div className="flex flex-col items-center justify-center h-full">
                 <span className="text-3xl font-bold">Easy</span>
-                <span className="text-sm">To</span>
-                <span className="text-xs mt-1">Operate</span>
+                <span className="text-sm">to</span>
+                <span className="text-3xl font-bold mt-1">Use</span>
               </div>
             </motion.div>
 
