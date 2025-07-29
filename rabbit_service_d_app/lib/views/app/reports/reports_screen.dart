@@ -2850,9 +2850,9 @@ class _ReportsScreenState extends State<ReportsScreen>
         Text(
           '\$${amount.toStringAsFixed(0)}',
           style: appStyle(
-            13,
+            12,
             kPrimary,
-            FontWeight.w400,
+            FontWeight.bold,
           ),
         ),
       ],
