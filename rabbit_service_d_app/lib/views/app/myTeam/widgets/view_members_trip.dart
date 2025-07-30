@@ -39,6 +39,12 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   DateTime? _selectedStartDate;
   DateTime? _selectedEndDate;
 
+  String? selectedTruck;
+  String searchTripName = "";
+  List<String> availableTrucks = [];
+  bool showFilterOptions = false;
+  String? sortType; // 'date', 'truck', or 'tripname'
+
   Future<void> _pickDateRange() async {
     DateTime now = DateTime.now();
     DateTime firstDate = DateTime(now.year - 5);
@@ -336,6 +342,26 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     );
   }
 
+  Future<void> _fetchAvailableTrucks() async {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection("Users")
+        .doc(widget.memberId)
+        .collection('Vehicles')
+        .where('active', isEqualTo: true)
+        .get();
+
+    setState(() {
+      availableTrucks = querySnapshot.docs
+          .map((doc) => "${doc['companyName']} (${doc['vehicleNumber']})")
+          .toList();
+    });
+  }
+
+  initState() {
+    super.initState();
+    _fetchAvailableTrucks();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -345,37 +371,87 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Padding(
+            //   padding: EdgeInsets.only(left: 8.0, right: 16),
+            //   child: Row(
+            //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //     children: [
+            //       Row(
+            //         children: [
+            //           IconButton(
+            //             icon: Icon(Icons.filter_list, color: kPrimary),
+            //             onPressed: _pickDateRange,
+            //           ),
+            //           if (fromDate != null || toDate != null)
+            //             IconButton(
+            //               icon: Icon(Icons.clear, color: Colors.red),
+            //               onPressed: () {
+            //                 setState(() {
+            //                   fromDate = null;
+            //                   toDate = null;
+            //                 });
+            //               },
+            //             ),
+            //         ],
+            //       ),
+            //       if (fromDate != null && toDate != null)
+            //         Text(
+            //           "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
+            //           style: appStyle(14, kDark, FontWeight.w500),
+            //         ),
+            //     ],
+            //   ),
+            // ),
+
             Padding(
               padding: EdgeInsets.only(left: 8.0, right: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.filter_list, color: kPrimary),
-                        onPressed: _pickDateRange,
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.filter_list, color: kPrimary),
+                            onPressed: () {
+                              setState(() {
+                                showFilterOptions = !showFilterOptions;
+                              });
+                            },
+                          ),
+                          if (fromDate != null ||
+                              toDate != null ||
+                              selectedTruck != null ||
+                              searchTripName.isNotEmpty)
+                            IconButton(
+                              icon: Icon(Icons.clear, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  fromDate = null;
+                                  toDate = null;
+                                  selectedTruck = null;
+                                  searchTripName = "";
+                                });
+                              },
+                            ),
+                        ],
                       ),
-                      if (fromDate != null || toDate != null)
-                        IconButton(
-                          icon: Icon(Icons.clear, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              fromDate = null;
-                              toDate = null;
-                            });
-                          },
+                      if (fromDate != null && toDate != null)
+                        Text(
+                          "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
+                          style: appStyle(14, kDark, FontWeight.w500),
                         ),
                     ],
                   ),
-                  if (fromDate != null && toDate != null)
-                    Text(
-                      "${DateFormat('dd MMM yyyy').format(fromDate!)} - ${DateFormat('dd MMM yyyy').format(toDate!)}",
-                      style: appStyle(14, kDark, FontWeight.w500),
-                    ),
+                  if (showFilterOptions) ...[
+                    _buildFilterOptions(),
+                    SizedBox(height: 10.h),
+                  ],
                 ],
               ),
             ),
+
             StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection("Users")
@@ -386,11 +462,11 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 if (!snapshot.hasData) return const CircularProgressIndicator();
 
                 var filteredTrips = snapshot.data!.docs.where((doc) {
+                  // Date filter
                   DateTime tripStartDate = doc['tripStartDate'].toDate();
                   DateTime tripEndDate = doc['tripEndDate'].toDate();
 
-                  // ✅ Show trips **only if** they overlap the selected range correctly
-                  return (fromDate == null ||
+                  bool dateFilter = (fromDate == null ||
                           tripEndDate.isAfter(
                               fromDate!.subtract(const Duration(days: 1)))) &&
                       (toDate == null ||
@@ -398,7 +474,41 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                   toDate!.add(const Duration(days: 1))) &&
                               tripEndDate.isAfter(
                                   toDate!.subtract(const Duration(days: 1))));
+
+                  // Truck filter
+                  bool truckFilter = true;
+                  if (selectedTruck != null) {
+                    final truckInfo =
+                        "${doc['companyName']} (${doc['vehicleNumber']})";
+                    truckFilter = truckInfo == selectedTruck;
+                  }
+
+                  // Trip name filter
+                  bool nameFilter = searchTripName.isEmpty ||
+                      doc['tripName']
+                          .toLowerCase()
+                          .contains(searchTripName.toLowerCase());
+
+                  return dateFilter && truckFilter && nameFilter;
                 }).toList();
+
+                // Apply sorting
+                if (sortType == 'date') {
+                  filteredTrips.sort((a, b) => a['tripStartDate']
+                      .toDate()
+                      .compareTo(b['tripStartDate'].toDate()));
+                } else if (sortType == 'truck') {
+                  filteredTrips.sort((a, b) {
+                    final truckA =
+                        "${a['companyName']} (${a['vehicleNumber']})";
+                    final truckB =
+                        "${b['companyName']} (${b['vehicleNumber']})";
+                    return truckA.compareTo(truckB);
+                  });
+                } else if (sortType == 'tripname') {
+                  filteredTrips
+                      .sort((a, b) => a['tripName'].compareTo(b['tripName']));
+                }
 
                 if (filteredTrips.isEmpty) {
                   return Center(
@@ -783,6 +893,148 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             )
           ]
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterOptions() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: EdgeInsets.all(12.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Filter & Sort", style: appStyle(16, kDark, FontWeight.bold)),
+            SizedBox(height: 10.h),
+
+            // Sort Type Selection
+            Text("Sort By", style: appStyle(14, kDark, FontWeight.w500)),
+            SizedBox(height: 5.h),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: Text("Date"),
+                  selected: sortType == 'date',
+                  onSelected: (selected) {
+                    setState(() {
+                      sortType = selected ? 'date' : null;
+                    });
+                  },
+                ),
+                SizedBox(width: 8.w),
+                ChoiceChip(
+                  label: Text("Truck"),
+                  selected: sortType == 'truck',
+                  onSelected: (selected) {
+                    setState(() {
+                      sortType = selected ? 'truck' : null;
+                    });
+                  },
+                ),
+                SizedBox(width: 8.w),
+                ChoiceChip(
+                  label: Text("Trip Name"),
+                  selected: sortType == 'tripname',
+                  onSelected: (selected) {
+                    setState(() {
+                      sortType = selected ? 'tripname' : null;
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 15.h),
+
+            // Date Range Picker
+            if (sortType == 'date') ...[
+              Text("Date Range", style: appStyle(14, kDark, FontWeight.w500)),
+              SizedBox(height: 5.h),
+              ElevatedButton(
+                onPressed: _pickDateRange,
+                child: Text("Select Date Range"),
+              ),
+              SizedBox(height: 15.h),
+            ],
+
+            // Truck Selection
+            if (sortType == 'truck') ...[
+              Text("Select Truck", style: appStyle(14, kDark, FontWeight.w500)),
+              SizedBox(height: 5.h),
+              DropdownButtonFormField<String>(
+                value: selectedTruck,
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text("All Trucks"),
+                  ),
+                  ...availableTrucks.map((truck) {
+                    return DropdownMenuItem(
+                      value: truck,
+                      child: Text(truck),
+                    );
+                  }).toList(),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    selectedTruck = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10.w),
+                ),
+              ),
+              SizedBox(height: 15.h),
+            ],
+
+            // Trip Name Search
+            if (sortType == 'tripname') ...[
+              Text("Search Trip Name",
+                  style: appStyle(14, kDark, FontWeight.w500)),
+              SizedBox(height: 5.h),
+              TextField(
+                onChanged: (value) {
+                  setState(() {
+                    searchTripName = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: "Enter trip name...",
+                  border: OutlineInputBorder(),
+                  suffixIcon: searchTripName.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear),
+                          onPressed: () {
+                            setState(() {
+                              searchTripName = "";
+                            });
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ],
+
+            // Add this at the bottom of _buildFilterOptions()
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  fromDate = null;
+                  toDate = null;
+                  selectedTruck = null;
+                  searchTripName = "";
+                  sortType = null;
+                });
+              },
+              child: Text("Reset All"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

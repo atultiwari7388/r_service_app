@@ -128,10 +128,6 @@ export default function NotificationDetailsComponent({
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-800">Services:</h2>
               <div className="space-y-4">
-                {/* {notification.notifications.map((service, index) => (
-                  <ServiceItem key={index} service={service} />
-                ))} */}
-
                 {[...notification.notifications]
                   .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
                   .map((service, index) => (
@@ -157,8 +153,21 @@ const ServiceItem = ({ service }: { service: Service }) => (
   <div className="space-y-2">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <FaTools className="text-gray-500" />
-        <span className="text-gray-700 font-medium">{service.serviceName}</span>
+        {service.nextNotificationValue === 0 ? (
+          <div />
+        ) : (
+          <FaTools className="text-gray-500" />
+        )}
+
+        {service.nextNotificationValue === 0 ? (
+          <span className="text-gray-700 font-medium">{""}</span>
+        ) : (
+          <span className="text-gray-700 font-medium">
+            {service.serviceName}
+          </span>
+        )}
+
+        {/* <span className="text-gray-700 font-medium">{service.serviceName}</span> */}
       </div>
 
       {service.nextNotificationValue > 0 && (

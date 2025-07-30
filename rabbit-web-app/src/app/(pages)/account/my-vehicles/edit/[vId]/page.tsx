@@ -191,6 +191,7 @@ export default function EditVehicleScreen() {
       selectedVehicleType,
       initialLoad,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCompany, companyList]);
 
   // Fetch vehicle types and services data
@@ -472,7 +473,7 @@ export default function EditVehicleScreen() {
             </div>
           )}
 
-          {selectedVehicleType === "Trailer" && (
+          {/* {selectedVehicleType === "Trailer" && (
             <>
               <div>
                 <label
@@ -509,7 +510,7 @@ export default function EditVehicleScreen() {
                 />
               </div>
             </>
-          )}
+          )} */}
 
           {/* Vehicle Number */}
           <div>

@@ -192,6 +192,13 @@ export default function RecordsPage() {
   const [summaryEndDate, setSummaryEndDate] = useState<Date | null>(null);
   const [userData, setUserData] = useState<ProfileValues | null>(null);
   const [role, setRole] = useState("");
+  const [selectedVehicleTypeFilter, setSelectedVehicleTypeFilter] = useState<
+    "all" | "truck" | "trailer"
+  >("all");
+  const [selectedVehiclesForFilter, setSelectedVehiclesForFilter] = useState<
+    Set<string>
+  >(new Set());
+  const [showVehicleFilter, setShowVehicleFilter] = useState(false);
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
@@ -1298,12 +1305,29 @@ export default function RecordsPage() {
         (!summaryStartDate || recordDate >= summaryStartDate) &&
         (!summaryEndDate || recordDate <= summaryEndDate);
 
-      if (isWithinDateRange) {
+      // Check vehicle filters
+      const vehicleType = record.vehicleDetails.vehicleType;
+      const vehicleId = record.vehicleId;
+
+      const passesVehicleFilter =
+        selectedVehicleTypeFilter === "all" ||
+        (selectedVehicleTypeFilter === "truck" && vehicleType === "Truck") ||
+        (selectedVehicleTypeFilter === "trailer" && vehicleType === "Trailer");
+
+      const passesSpecificVehicleFilter =
+        selectedVehiclesForFilter.size === 0 ||
+        selectedVehiclesForFilter.has(vehicleId);
+
+      if (
+        isWithinDateRange &&
+        passesVehicleFilter &&
+        passesSpecificVehicleFilter
+      ) {
         totalInvoiceAmount += amount;
 
-        if (record.vehicleDetails.vehicleType === "Truck") {
+        if (vehicleType === "Truck") {
           truckTotal += amount;
-        } else if (record.vehicleDetails.vehicleType === "Trailer") {
+        } else if (vehicleType === "Trailer") {
           trailerTotal += amount;
         } else {
           otherTotal += amount;
@@ -1397,11 +1421,22 @@ export default function RecordsPage() {
       </div>
 
       {/* Summary Box */}
-      {role == "Owner" || role == "Accountant" ? (
+      {(role === "Owner" || role === "Accountant") && (
         <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Invoice Summary</h2>
             <div className="flex gap-2">
+              <button
+                onClick={() => setShowVehicleFilter(!showVehicleFilter)}
+                className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+              >
+                {selectedVehicleTypeFilter === "all"
+                  ? "All Vehicles"
+                  : selectedVehicleTypeFilter === "truck"
+                  ? "Trucks"
+                  : "Trailers"}
+              </button>
+
               <DatePicker
                 selected={summaryStartDate}
                 onChange={(date) => setSummaryStartDate(date)}
@@ -1425,6 +1460,8 @@ export default function RecordsPage() {
                 onClick={() => {
                   setSummaryStartDate(null);
                   setSummaryEndDate(null);
+                  setSelectedVehicleTypeFilter("all");
+                  setSelectedVehiclesForFilter(new Set());
                 }}
                 className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
               >
@@ -1432,6 +1469,85 @@ export default function RecordsPage() {
               </button>
             </div>
           </div>
+
+          {/* Vehicle Filter Dropdown */}
+          {showVehicleFilter && (
+            <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+              <div className="flex gap-4 mb-4">
+                <button
+                  onClick={() => setSelectedVehicleTypeFilter("all")}
+                  className={`px-3 py-1 rounded ${
+                    selectedVehicleTypeFilter === "all"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setSelectedVehicleTypeFilter("truck")}
+                  className={`px-3 py-1 rounded ${
+                    selectedVehicleTypeFilter === "truck"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  Trucks
+                </button>
+                <button
+                  onClick={() => setSelectedVehicleTypeFilter("trailer")}
+                  className={`px-3 py-1 rounded ${
+                    selectedVehicleTypeFilter === "trailer"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  Trailers
+                </button>
+              </div>
+
+              {selectedVehicleTypeFilter !== "all" && (
+                <div className="max-h-60 overflow-y-auto">
+                  <p className="text-sm font-medium mb-2">
+                    Select specific vehicles:
+                  </p>
+                  {/* Fixed height scrollable container */}
+                  <div className="max-h-[300px] overflow-y-auto border rounded-lg p-2">
+                    {vehicles
+                      .filter((v) =>
+                        selectedVehicleTypeFilter === "truck"
+                          ? v.vehicleType === "Truck"
+                          : v.vehicleType === "Trailer"
+                      )
+                      .map((vehicle) => (
+                        <div
+                          key={vehicle.id}
+                          className="flex items-center mb-2"
+                        >
+                          <Checkbox
+                            checked={selectedVehiclesForFilter.has(vehicle.id)}
+                            onChange={() => {
+                              const newSelected = new Set(
+                                selectedVehiclesForFilter
+                              );
+                              if (newSelected.has(vehicle.id)) {
+                                newSelected.delete(vehicle.id);
+                              } else {
+                                newSelected.add(vehicle.id);
+                              }
+                              setSelectedVehiclesForFilter(newSelected);
+                            }}
+                          />
+                          <span>
+                            {vehicle.vehicleNumber} ({vehicle.companyName})
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-4 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -1465,9 +1581,8 @@ export default function RecordsPage() {
             </div>
           </div>
         </div>
-      ) : (
-        <div></div>
       )}
+
       {/* Search & Filter Dialog */}
       <Dialog
         fullWidth

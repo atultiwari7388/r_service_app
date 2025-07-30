@@ -434,15 +434,19 @@ export default function MyVehicleDetailsScreen() {
                   ).toLocaleDateString()}
                 </span>
               </p>
-              <p className="text-gray-600">
-                Miles/Hours :{" "}
-                <span className="font-semibold">
-                  {/* {vehicleData?.currentMiles || "N/A"} */}
-                  {vehicleData?.vehicleType == "Truck"
-                    ? vehicleData?.currentMiles
-                    : vehicleData?.hoursReading}
-                </span>
-              </p>
+              {vehicleData?.vehicleType === "Trailer" ? (
+                ""
+              ) : (
+                <p className="text-gray-600">
+                  Miles/Hours :{" "}
+                  <span className="font-semibold">
+                    {/* {vehicleData?.currentMiles || "N/A"} */}
+                    {vehicleData?.vehicleType == "Truck"
+                      ? vehicleData?.currentMiles
+                      : vehicleData?.hoursReading}
+                  </span>
+                </p>
+              )}
             </div>
           )}
         </div>
