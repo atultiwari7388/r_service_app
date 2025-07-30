@@ -75,6 +75,7 @@ export default function MemberTripsPage() {
   const memberId = params?.mId as string;
 
   const [userData, setUserData] = useState<ProfileValues | null>(null);
+  const [memberData, setMemberData] = useState<ProfileValues | null>(null);
   const [trips, setTrips] = useState<TripDetails[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [totals, setTotals] = useState({
@@ -121,7 +122,9 @@ export default function MemberTripsPage() {
         const userDoc = await getDoc(doc(db, "Users", memberId));
         if (userDoc.exists()) {
           const data = userDoc.data() as ProfileValues;
-          setUserData(data);
+          setMemberData(data);
+          console.log("Current Member Data", memberData);
+
           // setRole(data.role);
         } else {
           console.error("User document not found");
@@ -141,9 +144,11 @@ export default function MemberTripsPage() {
         if (userDoc.exists()) {
           const data = userDoc.data() as ProfileValues;
           setUserData(data);
+
           setRole(data.role);
           console.log("Current user data fetched:", data);
           console.log("Current user role:", data.role);
+          console.log("Current User Data", userData);
         } else {
           console.error("User document not found");
         }
@@ -181,7 +186,7 @@ export default function MemberTripsPage() {
           setFromDate(tripsData[0].tripStartDate.toDate());
           setToDate(tripsData[tripsData.length - 1].tripEndDate.toDate());
         }
-        calculateTotals();
+        // calculateTotals();
       },
       (error) => {
         console.error("Trips listener error:", error);
@@ -245,10 +250,20 @@ export default function MemberTripsPage() {
 
   const calculateTotals = async () => {
     try {
-      // Parallel expense calculations
-      const expensesPromises = filteredTrips.map(async (trip) => {
+      let totalExpenses = 0;
+      let totalEarnings = 0;
+      let totalPaid = 0;
+      let totalGoogleEarnings = 0;
+
+      // Ensure we have the perMileCharge value
+      const perMile = parseFloat(memberData?.perMileCharge || "0");
+      console.log("Per mile charge:", perMile); // Debug log
+
+      // Process each trip
+      for (const trip of filteredTrips) {
+        // Calculate expenses
         try {
-          const snapshot = await getDocs(
+          const expensesSnapshot = await getDocs(
             query(
               collection(
                 db,
@@ -261,58 +276,66 @@ export default function MemberTripsPage() {
               where("type", "==", "Expenses")
             )
           );
-          return snapshot.docs.reduce(
+
+          const tripExpenses = expensesSnapshot.docs.reduce(
             (sum, doc) => sum + (doc.data().amount || 0),
             0
           );
+          totalExpenses += tripExpenses;
+
+          // Calculate earnings for completed trips
+          if (trip.tripStatus === 2) {
+            const startMiles = trip.tripStartMiles || 0;
+            const endMiles = trip.tripEndMiles || 0;
+            const miles = endMiles - startMiles;
+
+            console.log(`Trip ${trip.id}:`, {
+              startMiles,
+              endMiles,
+              miles,
+              perMile,
+            }); // Debug log
+
+            const earnings = miles * perMile;
+            totalEarnings += earnings;
+          }
+
+          // Add Google earnings if they exist
+          if (trip.googleTotalEarning) {
+            totalGoogleEarnings += trip.googleTotalEarning;
+          }
+
+          // Count paid trips
+          if (trip.isPaid) {
+            totalPaid += 1;
+          }
         } catch (error) {
           console.error(`Error processing trip ${trip.id}:`, error);
-          return 0;
         }
-      });
+      }
 
-      // Paid trips calculation
-      const paidTrips = filteredTrips.filter((trip) => trip.isPaid);
-      const totalPaid = paidTrips.reduce((sum, trip) => {
-        if (role === "Driver") {
-          const miles = (trip.tripEndMiles || 0) - (trip.tripStartMiles || 0);
-          return (
-            sum + Math.max(miles, 0) * Number(userData?.perMileCharge || 0)
-          );
-        }
-        return sum + (trip.oEarnings || 0);
-      }, 0);
-
-      // Earnings calculations
-      const perMile = userData?.perMileCharge || 0;
-      const earnings = filteredTrips.reduce((sum, trip) => {
-        if (role === "Driver") {
-          const miles = (trip.tripEndMiles || 0) - (trip.tripStartMiles || 0);
-          return sum + Math.max(miles, 0) * Number(perMile);
-        }
-        return sum + (trip.oEarnings || 0);
-      }, 0);
-
-      // Google Miles earnings
-      const googleEarnings = filteredTrips.reduce((sum, trip) => {
-        return sum + (trip.googleTotalEarning || 0);
-      }, 0);
-
-      const expenses = (await Promise.all(expensesPromises)).reduce(
-        (a, b) => a + b,
-        0
-      );
+      console.log("Calculated totals:", {
+        totalExpenses: totalExpenses,
+        totalEarnings: totalEarnings,
+        totalPaid: totalPaid,
+        totalGoogleEarnings: totalGoogleEarnings,
+      }); // Debug log
 
       setTotals({
-        totalExpenses: Math.max(expenses, 0),
-        totalEarnings: Math.max(earnings, 0),
-        totalPaid: Math.max(totalPaid, 0),
-        totalGoogleEarnings: Math.max(googleEarnings, 0),
+        totalExpenses: Math.max(totalExpenses, 0),
+        totalEarnings: Math.max(totalEarnings, 0),
+        totalPaid: totalPaid,
+        totalGoogleEarnings: Math.max(totalGoogleEarnings, 0),
       });
     } catch (error) {
       console.error("Calculation error:", error);
     }
   };
+
+  useEffect(() => {
+    calculateTotals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTrips, memberData?.perMileCharge.toString()]);
 
   const handleEditTrip = (trip: TripDetails) => {
     setCurrentTrip(trip);
@@ -370,7 +393,7 @@ export default function MemberTripsPage() {
 
     try {
       const miles = parseFloat(googleMiles);
-      const perMile = userData?.perMileCharge || "0";
+      const perMile = memberData?.perMileCharge || "0";
       const totalEarning = miles * parseFloat(perMile);
 
       await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
@@ -519,7 +542,7 @@ export default function MemberTripsPage() {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold mb-4">
-          {userData?.userName || "Member"}&apos;s Trips
+          {memberData?.userName || "Member"}&apos;s Trips
         </h2>
         <div className="relative">
           <button
@@ -689,37 +712,31 @@ export default function MemberTripsPage() {
       </div>
 
       {/** Total Expenses and Earnings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Total Expenses */}
-        <div className="bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
-          <h3 className="text-lg font-bold">Total Expenses</h3>
-          <p className="text-xl font-semibold">
-            ${totals.totalExpenses.toFixed(2)}
-          </p>
-        </div>
+      <div className="w-full flex justify-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ml-10">
+          {/* Total Expenses */}
+          <div className="bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
+            <h3 className="text-lg font-bold">Total Expenses</h3>
+            <p className="text-xl font-semibold">
+              ${totals.totalExpenses.toFixed(0)}
+            </p>
+          </div>
 
-        {/* Total Earnings */}
-        <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
-          <h3 className="text-lg font-bold">Total Earnings</h3>
-          <p className="text-xl font-semibold">
-            ${totals.totalEarnings.toFixed(2)}
-          </p>
-        </div>
+          {/* Total Earnings */}
+          <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
+            <h3 className="text-lg font-bold">Total Earnings</h3>
+            <p className="text-xl font-semibold">
+              ${totals.totalEarnings.toFixed(0)}
+            </p>
+          </div>
 
-        {/* Google Miles Earnings */}
-        <div className="bg-blue-500 p-4 rounded-xl shadow-md text-white">
-          <h3 className="text-lg font-bold">Google Miles Earnings</h3>
-          <p className="text-xl font-semibold">
-            ${totals.totalGoogleEarnings.toFixed(2)}
-          </p>
-        </div>
-
-        {/* Total Paid */}
-        <div className="bg-purple-500 p-4 rounded-xl shadow-md text-white">
-          <h3 className="text-lg font-bold">Total Paid</h3>
-          <p className="text-xl font-semibold">
-            ${totals.totalPaid.toFixed(2)}
-          </p>
+          {/* Total Paid */}
+          <div className="bg-purple-500 p-4 rounded-xl shadow-md text-white">
+            <h3 className="text-lg font-bold">Total Paid</h3>
+            <p className="text-xl font-semibold">
+              ${totals.totalPaid.toFixed(0)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -737,10 +754,9 @@ export default function MemberTripsPage() {
             <div className="col-span-2">Trip Name</div>
             <div className="col-span-2">Dates</div>
             <div className="col-span-1">Miles</div>
-            <div className="col-span-1">Earnings</div>
             <div className="col-span-1">G.Miles</div>
             <div className="col-span-1">G.Earnings</div>
-            <div className="col-span-2">Status</div>
+            <div className="col-span-2">T&apos;Status</div>
             <div className="col-span-2">Actions</div>
           </div>
 
@@ -774,17 +790,6 @@ export default function MemberTripsPage() {
                 )}
               </div>
 
-              {/* Earnings */}
-              <div className="col-span-1">
-                {trip.tripStatus === 2 && userData?.perMileCharge && (
-                  <span className="font-semibold">
-                    $
-                    {((trip.tripEndMiles || 0) - (trip.tripStartMiles || 0)) *
-                      parseFloat(userData.perMileCharge)}
-                  </span>
-                )}
-              </div>
-
               {/* Google Miles */}
               <div className="col-span-1">
                 {trip.googleMiles ? trip.googleMiles : "-"}
@@ -793,7 +798,7 @@ export default function MemberTripsPage() {
               {/* Google Earnings */}
               <div className="col-span-1">
                 {trip.googleTotalEarning
-                  ? `$${trip.googleTotalEarning.toFixed(2)}`
+                  ? `$${trip.googleTotalEarning.toFixed(0)}`
                   : "-"}
               </div>
 
@@ -852,9 +857,9 @@ export default function MemberTripsPage() {
                     {(role === "Accountant" || role === "Owner") && (
                       <button
                         onClick={() => handleGoogleMiles(trip)}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+                        className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
                       >
-                        G.Miles
+                        Add G.Miles
                       </button>
                     )}
                   </>
@@ -985,12 +990,12 @@ export default function MemberTripsPage() {
           {googleMiles && !isNaN(parseFloat(googleMiles)) && (
             <div className="bg-gray-100 p-4 rounded">
               <p className="font-medium">
-                Per Mile Charge: ${userData?.perMileCharge || 0}
+                Per Mile Charge: ${memberData?.perMileCharge || 0}
               </p>
               <p className="font-bold text-green-600">
                 Total Earning: $
                 {parseFloat(googleMiles) *
-                  parseFloat(userData?.perMileCharge || "0")}
+                  parseFloat(memberData?.perMileCharge || "0")}
               </p>
             </div>
           )}

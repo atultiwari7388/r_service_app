@@ -328,22 +328,22 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 vehicleData['vin'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('VIN:', vehicleData['vin']),
-                                vehicleData['vehicleType'] == "Trailer"
-                                    ? vehicleData['oilChangeDate'].isEmpty
-                                        ? SizedBox()
-                                        : engineName == "DRY VAN"
-                                            ? SizedBox()
-                                            : _buildInfoRow(
-                                                'Oil Change Date:',
-                                                formattedOilChangeDate
-                                                    .toString())
-                                    : SizedBox(),
-                                vehicleData['hoursReading'].isEmpty
-                                    ? SizedBox()
-                                    : engineName == "DRY VAN"
-                                        ? SizedBox()
-                                        : _buildInfoRow('Hours Reading:',
-                                            vehicleData['hoursReading']),
+                                // vehicleData['vehicleType'] == "Trailer"
+                                //     ? vehicleData['oilChangeDate'].isEmpty
+                                //         ? SizedBox()
+                                //         : engineName == "DRY VAN"
+                                //             ? SizedBox()
+                                //             : _buildInfoRow(
+                                //                 'Oil Change Date:',
+                                //                 formattedOilChangeDate
+                                //                     .toString())
+                                //     : SizedBox(),
+                                // vehicleData['hoursReading'].isEmpty
+                                //     ? SizedBox()
+                                //     : engineName == "DRY VAN"
+                                //         ? SizedBox()
+                                //         : _buildInfoRow('Hours Reading:',
+                                //             vehicleData['hoursReading']),
                                 _buildInfoRow(
                                     "Engine Name:", vehicleData['engineName']),
                                 _buildInfoRow("Vehicle Type:",
