@@ -324,10 +324,10 @@ const AboutSection = () => {
                 height: "120px",
               }}
             >
-              <div className="flex flex-col items-center justify-center h-full">
-                <span className="text-2xl font-bold">Easy</span>
-                <span className="text-2xl font-bold">to</span>
-                <span className="text-2xl font-bold mt-1">Use</span>
+              <div className="flex flex-col items-center justify-center h-full leading-tight space-y-0">
+                <span className="text-2xl font-bold mt-2">Easy</span>
+                <span className="text-2xl font-bold">To</span>
+                <span className="text-2xl font-bold">Use</span>
               </div>
             </motion.div>
 

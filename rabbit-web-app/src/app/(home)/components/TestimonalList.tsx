@@ -420,7 +420,7 @@ const TestimonialsList = () => {
           <div className="inline-block bg-white rounded-full px-6 py-3 shadow-md">
             <p className="text-gray-600 font-medium">
               Trusted by <span className="text-[#F96176] font-bold">500+</span>{" "}
-              fleet owners across North America
+              fleet owners.
             </p>
           </div>
         </motion.div>
