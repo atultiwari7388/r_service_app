@@ -506,7 +506,6 @@ class _ReportsScreenState extends State<ReportsScreen>
       String? imageUrl;
 
       // Upload images to Firebase Storage
-
       if (image != null) {
         String fileName =
             DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
@@ -697,21 +696,35 @@ class _ReportsScreenState extends State<ReportsScreen>
         "createdAt": DateTime.now().toIso8601String(),
       };
 
-      final batch = FirebaseFirestore.instance.batch();
-      final ownerDataServicesRef = FirebaseFirestore.instance
+      // Get current user data to determine if we're a team member
+      final currentUserDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
+          .get();
+
+      final isTeamMember = currentUserDoc.data()?['isTeamMember'] == true;
+      final ownerUid =
+          (isTeamMember == true && currentUserDoc.data()?['createdBy'] != null)
+              ? currentUserDoc.data()!['createdBy']
+              : currentUId;
+
+      final batch = FirebaseFirestore.instance.batch();
+
+      // Save to owner's DataServices collection
+      final ownerDataServicesRef = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(ownerUid)
           .collection('DataServices');
       batch.set(ownerDataServicesRef.doc(docId), recordData);
 
-      // Query Team Members (Drivers/Managers)
+      // Query all team members under this owner
       final teamMembersSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .where('createdBy', isEqualTo: currentUId)
+          .where('createdBy', isEqualTo: ownerUid)
           .where('isTeamMember', isEqualTo: true)
           .get();
 
-      // Save to Team Members' DataServices
+      // Save to all team members who have this vehicle
       for (final doc in teamMembersSnapshot.docs) {
         final teamMemberUid = doc.id;
         final vehicleSnapshot = await FirebaseFirestore.instance
@@ -730,146 +743,107 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
 
-      // Handle Team Member Creating Record (Save to Owner)
-      final currentUserDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .get();
-
-      if (currentUserDoc.data()?['isTeamMember'] == true) {
-        final ownerSnapshot = await FirebaseFirestore.instance
+      // If current user is team member, also save to their own collection
+      if (isTeamMember && currentUId != ownerUid) {
+        final currentUserDataServicesRef = FirebaseFirestore.instance
             .collection('Users')
-            .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
-            .get();
-
-        if (ownerSnapshot.docs.isNotEmpty) {
-          final ownerUid = ownerSnapshot.docs.first.id;
-          final ownerDataServicesRef = FirebaseFirestore.instance
-              .collection('Users')
-              .doc(ownerUid)
-              .collection('DataServices');
-          batch.set(ownerDataServicesRef.doc(docId), recordData);
-        }
+            .doc(currentUId)
+            .collection('DataServices');
+        batch.set(currentUserDataServicesRef.doc(docId), recordData);
       }
 
-      // Update current user's vehicle (owner or team member)
-      final currentUserVehicleref = FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUId)
-          .collection('Vehicles')
-          .doc(selectedVehicle);
+      // Prepare list of user IDs whose vehicles need updating
+      List<String> userIdsToUpdate = [ownerUid];
 
-      final vehicleSnapshot = await currentUserVehicleref.get();
-      Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
-      List<dynamic> updatedVehicleServices =
-          List.from(vehicleData['services'] ?? []);
-
-      for (var serviceId in selectedServices) {
-        final serviceInfo = serviceDetailsMap[serviceId];
-        if (serviceInfo == null) continue;
-
-        final type = serviceInfo['type'];
-        final defaultValue = serviceInfo['defaultValue'];
-        final nextNotificationValue = serviceInfo['nextNotificationValue'];
-        final formattedDate = serviceInfo['formattedDate'];
-        final serviceName = serviceInfo['serviceName'];
-        final subServices = serviceInfo['subServices'];
-
-        int index = updatedVehicleServices
-            .indexWhere((s) => s['serviceId'] == serviceId);
-
-        if (index != -1) {
-          // Update existing service
-          updatedVehicleServices[index] = {
-            ...updatedVehicleServices[index],
-            'nextNotificationValue':
-                type == 'day' ? formattedDate : nextNotificationValue,
-            'type': type,
-            'defaultNotificationValue': defaultValue,
-            'subServices': (subServices as List<dynamic>?)
-                    ?.map((subService) => {
-                          "name": subService.toString(),
-                          "id":
-                              "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
-                        })
-                    .toList() ??
-                [],
-          };
-        } else {
-          // Add new service
-          updatedVehicleServices.add({
-            'serviceId': serviceId,
-            'serviceName': serviceName,
-            'nextNotificationValue':
-                type == 'day' ? formattedDate : nextNotificationValue,
-            'type': type,
-            'defaultNotificationValue': defaultValue,
-            'subServices': (subServices as List<dynamic>?)
-                    ?.map((subService) => {
-                          "name": subService.toString(),
-                          "id":
-                              "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
-                        })
-                    .toList() ??
-                [],
-          });
-        }
+      // Add current user if they're a team member
+      if (isTeamMember && currentUId != ownerUid) {
+        userIdsToUpdate.add(currentUId);
       }
 
-      // Update current user's vehicle
-      batch.update(currentUserVehicleref, {
-        'services': updatedVehicleServices,
-        'currentMiles': currentMiles.toString(),
-        'currentMilesArray': FieldValue.arrayUnion([
-          {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-        ]),
-        'nextNotificationMiles': notificationData,
-      });
-
-      // If current user is team member, update owner's vehicle too
-      if (currentUserDoc.data()?['isTeamMember'] == true) {
-        final ownerSnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .where('uid', isEqualTo: currentUserDoc.data()?['createdBy'])
-            .get();
-
-        if (ownerSnapshot.docs.isNotEmpty) {
-          final ownerUid = ownerSnapshot.docs.first.id;
-          final ownerVehicleRef = FirebaseFirestore.instance
+      // Add all team members who have this vehicle
+      for (final doc in teamMembersSnapshot.docs) {
+        final teamMemberUid = doc.id;
+        if (teamMemberUid != currentUId) {
+          // already added current user if needed
+          final vehicleSnapshot = await FirebaseFirestore.instance
               .collection('Users')
-              .doc(ownerUid)
+              .doc(teamMemberUid)
               .collection('Vehicles')
-              .doc(selectedVehicle);
-
-          final ownerVehicle = await ownerVehicleRef.get();
-          if (ownerVehicle.exists) {
-            batch.update(ownerVehicleRef, {
-              'services': updatedVehicleServices,
-              'currentMiles': currentMiles.toString(),
-              'currentMilesArray': FieldValue.arrayUnion([
-                {
-                  "miles": currentMiles,
-                  "date": DateTime.now().toIso8601String()
-                }
-              ]),
-              'nextNotificationMiles': notificationData,
-            });
+              .doc(selectedVehicle)
+              .get();
+          if (vehicleSnapshot.exists) {
+            userIdsToUpdate.add(teamMemberUid);
           }
         }
       }
 
-      // Update team members' vehicles who have this vehicle
-      for (final doc in teamMembersSnapshot.docs) {
-        final teamMemberUid = doc.id;
-        final teamMemberVehicleRef = FirebaseFirestore.instance
+      // Update vehicles for all relevant users
+      for (final userId in userIdsToUpdate) {
+        final userVehicleRef = FirebaseFirestore.instance
             .collection('Users')
-            .doc(teamMemberUid)
+            .doc(userId)
             .collection('Vehicles')
             .doc(selectedVehicle);
 
-        final teamMemberVehicle = await teamMemberVehicleRef.get();
-        if (teamMemberVehicle.exists) {
-          batch.update(teamMemberVehicleRef, {
+        final vehicleSnapshot = await userVehicleRef.get();
+        if (vehicleSnapshot.exists) {
+          Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
+          List<dynamic> updatedVehicleServices =
+              List.from(vehicleData['services'] ?? []);
+
+          for (var serviceId in selectedServices) {
+            final serviceInfo = serviceDetailsMap[serviceId];
+            if (serviceInfo == null) continue;
+
+            final type = serviceInfo['type'];
+            final defaultValue = serviceInfo['defaultValue'];
+            final nextNotificationValue = serviceInfo['nextNotificationValue'];
+            final formattedDate = serviceInfo['formattedDate'];
+            final serviceName = serviceInfo['serviceName'];
+            final subServices = serviceInfo['subServices'];
+
+            int index = updatedVehicleServices
+                .indexWhere((s) => s['serviceId'] == serviceId);
+
+            if (index != -1) {
+              // Update existing service
+              updatedVehicleServices[index] = {
+                ...updatedVehicleServices[index],
+                'nextNotificationValue':
+                    type == 'day' ? formattedDate : nextNotificationValue,
+                'type': type,
+                'defaultNotificationValue': defaultValue,
+                'subServices': (subServices as List<dynamic>?)
+                        ?.map((subService) => {
+                              "name": subService.toString(),
+                              "id":
+                                  "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+                            })
+                        .toList() ??
+                    [],
+              };
+            } else {
+              // Add new service
+              updatedVehicleServices.add({
+                'serviceId': serviceId,
+                'serviceName': serviceName,
+                'nextNotificationValue':
+                    type == 'day' ? formattedDate : nextNotificationValue,
+                'type': type,
+                'defaultNotificationValue': defaultValue,
+                'subServices': (subServices as List<dynamic>?)
+                        ?.map((subService) => {
+                              "name": subService.toString(),
+                              "id":
+                                  "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+                            })
+                        .toList() ??
+                    [],
+              });
+            }
+          }
+
+          batch.update(userVehicleRef, {
             'services': updatedVehicleServices,
             'currentMiles': currentMiles.toString(),
             'currentMilesArray': FieldValue.arrayUnion([
@@ -1086,7 +1060,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                               return;
                             }
 
-                            if (isAdd == true) {
+                            if (isAdd == true || isView == true) {
                               setState(() {
                                 showAddMiles = !showAddMiles;
                                 showSearchFilter = false;
@@ -1916,7 +1890,16 @@ class _ReportsScreenState extends State<ReportsScreen>
                                     CustomButton(
                                       height: isEditing ? 45 : 45,
                                       width: isEditing ? 100 : 220.w,
-                                      onPress: handleSaveRecords,
+                                      onPress: () {
+                                        if (isAdd == true) {
+                                          handleSaveRecords();
+                                        } else {
+                                          showToastMessage(
+                                              "Alert!",
+                                              "Sorry you don't have access",
+                                              kPrimary);
+                                        }
+                                      },
                                       color: kSecondary,
                                       text: isEditing
                                           ? 'Update Record'

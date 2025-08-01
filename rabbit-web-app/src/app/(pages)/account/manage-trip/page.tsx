@@ -26,6 +26,9 @@ import { useRouter } from "next/navigation";
 
 export interface Trip {
   id: string;
+  trailerId?: string;
+  trailerCompanyName?: string;
+  trailerNumber?: string;
   tripName: string;
   vehicleId: string;
   companyName: string;
@@ -94,6 +97,8 @@ export default function ManageTripPage() {
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDescription, setExpenseDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedTrailer, setSelectedTrailer] = useState("");
+  const [trailers, setTrailers] = useState<VehicleTypes[]>([]);
 
   // UI states
   const [showAddTrip, setShowAddTrip] = useState(false);
@@ -106,6 +111,49 @@ export default function ManageTripPage() {
 
   const router = useRouter();
 
+  // useEffect(() => {
+  //   if (!user?.uid) return;
+
+  //   const fetchUserData = async () => {
+  //     const userDoc = await getDoc(doc(db, "Users", user.uid));
+  //     if (userDoc.exists()) {
+  //       const data = userDoc.data() as ProfileValues;
+  //       setUserData(data);
+  //       setRole(data.role);
+  //       setOwnerId(data.createdBy || user.uid);
+  //     }
+  //   };
+
+  //   const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+  //   const q = query(vehiclesRef, where("active", "==", true));
+
+  //   const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
+  //     const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
+  //       id: doc.id,
+  //       ...doc.data(),
+  //     })) as VehicleTypes[];
+  //     setVehicles(vehiclesData);
+  //   });
+
+  //   const unsubscribeTrips = onSnapshot(
+  //     collection(db, "Users", user.uid, "trips"),
+  //     (snapshot) => {
+  //       const tripsData: TripDetails[] = snapshot.docs.map((doc) => ({
+  //         id: doc.id,
+  //         ...doc.data(),
+  //       })) as TripDetails[];
+  //       setTrips(tripsData);
+  //     }
+  //   );
+
+  //   fetchUserData();
+  //   return () => {
+  //     unsubscribeVehicles();
+  //     unsubscribeTrips();
+  //   };
+  // }, [user]);
+
+  // Replace your current vehicles useEffect with this:
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -119,32 +167,40 @@ export default function ManageTripPage() {
       }
     };
 
-    const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-    const q = query(vehiclesRef, where("active", "==", true));
+    // Fetch trucks (vehicles)
+    const trucksQuery = query(
+      collection(db, "Users", user.uid, "Vehicles"),
+      where("active", "==", true),
+      where("vehicleType", "==", "Truck")
+    );
 
-    const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
-      const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
+    // Fetch trailers
+    const trailersQuery = query(
+      collection(db, "Users", user.uid, "Vehicles"),
+      where("active", "==", true),
+      where("vehicleType", "==", "Trailer")
+    );
+
+    const unsubscribeTrucks = onSnapshot(trucksQuery, (snapshot) => {
+      const trucksData: VehicleTypes[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as VehicleTypes[];
-      setVehicles(vehiclesData);
+      setVehicles(trucksData);
     });
 
-    const unsubscribeTrips = onSnapshot(
-      collection(db, "Users", user.uid, "trips"),
-      (snapshot) => {
-        const tripsData: TripDetails[] = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as TripDetails[];
-        setTrips(tripsData);
-      }
-    );
+    const unsubscribeTrailers = onSnapshot(trailersQuery, (snapshot) => {
+      const trailersData: VehicleTypes[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as VehicleTypes[];
+      setTrailers(trailersData);
+    });
 
     fetchUserData();
     return () => {
-      unsubscribeVehicles();
-      unsubscribeTrips();
+      unsubscribeTrucks();
+      unsubscribeTrailers();
     };
   }, [user]);
 
@@ -163,15 +219,20 @@ export default function ManageTripPage() {
         tripRef.id
       );
 
+      // Find selected vehicle and trailer (if any)
+      const vehicle = vehicles.find((v) => v.id === selectedVehicle);
+      const trailer = trailers.find((t) => t.id === selectedTrailer);
+
       const tripData = {
         tripName,
         vehicleId: selectedVehicle,
         currentUID: user!.uid,
         role,
-        companyName: vehicles.find((v) => v.id === selectedVehicle)
-          ?.companyName,
-        vehicleNumber: vehicles.find((v) => v.id === selectedVehicle)
-          ?.vehicleNumber,
+        companyName: vehicle?.companyName,
+        vehicleNumber: vehicle?.vehicleNumber,
+        trailerId: selectedTrailer || "",
+        trailerCompanyName: trailer?.companyName || "",
+        trailerNumber: trailer?.vehicleNumber || "",
         totalMiles: 0,
         tripStartMiles: parseInt(currentMiles),
         tripEndMiles: 0,
@@ -246,6 +307,7 @@ export default function ManageTripPage() {
 
       await batch.commit();
       GlobalToastSuccess("Trip added successfully");
+      console.log("Set trips:", setTrips);
       resetTripForm();
     } catch (error) {
       GlobalToastError(error);
@@ -570,7 +632,7 @@ export default function ManageTripPage() {
               onChange={(date: Date | null) => date && setSelectedDate(date)}
               className="border p-2 rounded w-full"
             />
-            <select
+            {/* <select
               value={selectedVehicle}
               onChange={(e) => setSelectedVehicle(e.target.value)}
               className="border p-2 rounded"
@@ -579,6 +641,36 @@ export default function ManageTripPage() {
               {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
                   {vehicle.vehicleNumber} ({vehicle.companyName})
+                </option>
+              ))}
+            </select>
+          */}
+
+            {/* Vehicle (Truck) dropdown */}
+            <select
+              value={selectedVehicle}
+              onChange={(e) => setSelectedVehicle(e.target.value)}
+              className="border p-2 rounded"
+              required
+            >
+              <option value="">Select Truck</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.vehicleNumber} ({vehicle.companyName})
+                </option>
+              ))}
+            </select>
+
+            {/* Trailer dropdown (optional) */}
+            <select
+              value={selectedTrailer}
+              onChange={(e) => setSelectedTrailer(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="">Select Trailer (Optional)</option>
+              {trailers.map((trailer) => (
+                <option key={trailer.id} value={trailer.id}>
+                  {trailer.vehicleNumber} ({trailer.companyName})
                 </option>
               ))}
             </select>

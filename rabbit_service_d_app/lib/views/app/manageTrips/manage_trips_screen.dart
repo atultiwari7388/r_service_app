@@ -117,7 +117,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       final tripData = {
         'tripName': _tripNameController.text,
         'vehicleId': selectedVehicle,
-        'trailerId': selectedTrailer, // Add trailer ID
+        'trailerId': selectedTrailer ?? "",
         'currentUID': currentUId,
         'role': role,
         'companyName': vehicleName,
@@ -125,16 +125,25 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         'googleMiles': 0,
         'googleTotalEarning': 0,
         // Add trailer details if selected
-        if (selectedTrailer != null) ...{
-          'trailerCompanyName': vehicles.firstWhere(
-            (v) => v['id'] == selectedTrailer,
-            orElse: () => {},
-          )['companyName'],
-          'trailerNumber': vehicles.firstWhere(
-            (v) => v['id'] == selectedTrailer,
-            orElse: () => {},
-          )['vehicleNumber'],
-        },
+        // if (selectedTrailer != null) ...{
+        //   'trailerCompanyName': vehicles.firstWhere(
+        //     (v) => v['id'] == selectedTrailer,
+        //     orElse: () => {},
+        //   )['companyName'],
+        //   'trailerNumber': vehicles.firstWhere(
+        //     (v) => v['id'] == selectedTrailer,
+        //     orElse: () => {},
+        //   )['vehicleNumber'],
+        // },
+        'trailerCompanyName': selectedTrailer != null
+            ? vehicles
+                .firstWhere((v) => v['id'] == selectedTrailer)['companyName']
+            : "",
+        'trailerNumber': selectedTrailer != null
+            ? vehicles
+                .firstWhere((v) => v['id'] == selectedTrailer)['vehicleNumber']
+            : "",
+
         'totalMiles': 0,
         'tripStartMiles': int.parse(_currentMilesController.text),
         'tripEndMiles': 0,
@@ -655,25 +664,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             ),
                             SizedBox(height: 10.h),
                             // Vehicle Dropdown
-                            // DropdownButtonFormField<String>(
-                            //   value: selectedVehicle,
-                            //   hint: const Text('Select Vehicle'),
-                            //   items: vehicles.map((vehicle) {
-                            //     return DropdownMenuItem<String>(
-                            //       value: vehicle['id'],
-                            //       child: Text(
-                            //         '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                            //         style: appStyleUniverse(
-                            //             17, kDark, FontWeight.normal),
-                            //       ),
-                            //     );
-                            //   }).toList(),
-                            //   onChanged: (value) {
-                            //     setState(() {
-                            //       selectedVehicle = value;
-                            //     });
-                            //   },
-                            // ),
 
                             DropdownButtonFormField<String>(
                               value: selectedVehicle,
@@ -723,12 +713,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
                             CustomButton(
                               text: "Add Trip",
-                              onPress: () {
-                                selectedTrailer == null
-                                    ? showToastMessage("Error",
-                                        "Please select a trailer.", kRed)
-                                    : addTrip();
-                              },
+                              // onPress: () {
+                              //   selectedTrailer == null
+                              //       ? showToastMessage("Error",
+                              //           "Please select a trailer.", kRed)
+                              //       : addTrip();
+                              // },
+                              onPress: addTrip,
                               color: kPrimary,
                             ),
                           ],

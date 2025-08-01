@@ -56,6 +56,10 @@ export interface ProfileValues {
   city: string;
   state: string;
   country: string;
+  isAdd: boolean;
+  isEdit: boolean;
+  isView: boolean;
+  isOwner: boolean;
 }
 
 /** Services */

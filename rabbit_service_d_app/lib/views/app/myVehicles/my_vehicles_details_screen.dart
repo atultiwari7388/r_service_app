@@ -318,13 +318,18 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     vehicleData['licensePlate']),
                                 _buildInfoRow('Company Name:',
                                     vehicleData['companyName']),
-                                vehicleData['dot'].isEmpty
+                                vehicleType == "Trailer"
                                     ? SizedBox()
-                                    : _buildInfoRow('DOT:', vehicleData['dot']),
-                                vehicleData['iccms'].isEmpty
+                                    : vehicleData['dot'].isEmpty
+                                        ? SizedBox()
+                                        : _buildInfoRow(
+                                            'DOT:', vehicleData['dot']),
+                                vehicleType == "Trailer"
                                     ? SizedBox()
-                                    : _buildInfoRow(
-                                        'ICCMS:', vehicleData['iccms']),
+                                    : vehicleData['iccms'].isEmpty
+                                        ? SizedBox()
+                                        : _buildInfoRow(
+                                            'ICCMS:', vehicleData['iccms']),
                                 vehicleData['vin'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('VIN:', vehicleData['vin']),

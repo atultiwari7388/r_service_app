@@ -855,9 +855,399 @@ export default function RecordsPage() {
     }
   };
 
+  // const handleSaveRecords = async () => {
+  //   try {
+  //     setIsRecordSaving(true);
+  //     if (!user || !selectedVehicle || selectedServices.size === 0) {
+  //       toast.error("Please select vehicle and at least one service");
+  //       return;
+  //     }
+
+  //     const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
+  //     if (!vehicleData) {
+  //       toast.error("Vehicle data not found");
+  //       return;
+  //     }
+
+  //     let imageUrl = null;
+  //     if (imageFile) {
+  //       imageUrl = await uploadImage();
+  //       if (!imageUrl) {
+  //         toast.error("Failed to upload image");
+  //         return;
+  //       }
+  //     }
+
+  //     const currentMiles = Number(miles);
+  //     const currentHours = Number(hours) || 0;
+
+  //     // Get current vehicle services to preserve existing ones
+  //     const vehicleRef = doc(
+  //       db,
+  //       "Users",
+  //       user.uid,
+  //       "Vehicles",
+  //       selectedVehicle
+  //     );
+  //     const vehicleDoc = await getDoc(vehicleRef);
+  //     const currentVehicleServices = vehicleDoc.exists()
+  //       ? vehicleDoc.data()?.services || []
+  //       : [];
+
+  //     // Prepare services data
+  //     const servicesData = [];
+  //     const notificationData = [];
+  //     const updatedVehicleServices = [...currentVehicleServices];
+
+  //     for (const serviceId of selectedServices) {
+  //       const service = services.find((s) => s.sId === serviceId);
+  //       if (!service) continue;
+
+  //       // Check if vehicle already has this service
+  //       const existingServiceIndex = updatedVehicleServices.findIndex(
+  //         (s: { serviceId: string }) => s.serviceId === serviceId
+  //       );
+
+  //       // Get default value - priority to vehicle-specific if exists
+  //       let defaultValue = serviceDefaultValues[serviceId] || 0;
+  //       let type = "reading";
+
+  //       if (existingServiceIndex >= 0) {
+  //         // Keep existing service type if available
+  //         type = updatedVehicleServices[existingServiceIndex].type || "reading";
+  //         // Use existing default if available, otherwise use calculated
+  //         defaultValue =
+  //           updatedVehicleServices[existingServiceIndex]
+  //             .defaultNotificationValue ||
+  //           serviceDefaultValues[serviceId] ||
+  //           0;
+  //       } else {
+  //         // Determine type from metadata if new service
+  //         const engineName = vehicleData.engineNumber?.toString().toUpperCase();
+  //         const dValues = service.dValues || [];
+  //         const matchingDValue = dValues.find(
+  //           (dv) => dv.brand?.toString().toUpperCase() === engineName
+  //         );
+  //         type = (matchingDValue?.type || "reading").toLowerCase();
+  //       }
+
+  //       // Calculate next notification
+  //       let nextNotificationValue = 0;
+  //       let formattedDate = "";
+  //       let numericValue = 0;
+
+  //       if (defaultValue > 0) {
+  //         if (type === "reading") {
+  //           nextNotificationValue = currentMiles + defaultValue;
+  //           numericValue = nextNotificationValue;
+  //         } else if (type === "day") {
+  //           const baseDate = date ? new Date(date) : new Date();
+  //           const nextDate = new Date(baseDate);
+  //           nextDate.setDate(baseDate.getDate() + Number(defaultValue));
+  //           formattedDate = formatDateToDDMMYYYY(nextDate);
+  //           numericValue = nextDate.getTime();
+  //           nextNotificationValue = numericValue;
+  //         } else if (type === "hour") {
+  //           nextNotificationValue = currentHours + defaultValue;
+  //           numericValue = nextNotificationValue;
+  //         }
+  //       }
+
+  //       // Prepare service data for record
+  //       const serviceData = {
+  //         serviceId,
+  //         serviceName: service.sName || "",
+  //         type,
+  //         defaultNotificationValue: defaultValue,
+  //         nextNotificationValue:
+  //           type === "day" ? formattedDate : nextNotificationValue,
+  //         subServices: (selectedSubServices[serviceId] || []).map(
+  //           (subService, index) => ({
+  //             name: subService,
+  //             id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`,
+  //           })
+  //         ),
+  //       };
+  //       servicesData.push(serviceData);
+
+  //       // Prepare notification data
+  //       notificationData.push({
+  //         serviceName: service.sName || "",
+  //         type,
+  //         nextNotificationValue:
+  //           type === "day" ? formattedDate : nextNotificationValue,
+  //         subServices: selectedSubServices[serviceId] || [],
+  //       });
+
+  //       // Update vehicle services array - update existing or add new
+  //       if (existingServiceIndex >= 0) {
+  //         updatedVehicleServices[existingServiceIndex] = {
+  //           ...updatedVehicleServices[existingServiceIndex],
+  //           nextNotificationValue:
+  //             type === "day" ? formattedDate : nextNotificationValue,
+  //         };
+  //       } else {
+  //         updatedVehicleServices.push({
+  //           ...serviceData,
+  //           nextNotificationValue:
+  //             type === "day" ? formattedDate : nextNotificationValue,
+  //         });
+  //       }
+  //     }
+
+  //     // Format date for storage
+  //     const baseDate = date ? new Date(date) : new Date();
+  //     const formattedDate = baseDate.toISOString().split("T")[0];
+
+  //     const recordData = {
+  //       userId: user.uid,
+  //       vehicleId: selectedVehicle,
+  //       imageUrl: imageUrl,
+  //       vehicleDetails: {
+  //         ...vehicleData,
+  //         currentMiles: currentMiles.toString(),
+  //         nextNotificationMiles: notificationData,
+  //       },
+  //       services: servicesData,
+  //       currentMilesArray: [
+  //         {
+  //           miles: currentMiles,
+  //           date: formattedDate,
+  //         },
+  //       ],
+  //       miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
+  //       hours: vehicleData.vehicleType === "Trailer" ? currentHours : 0,
+  //       totalMiles: currentMiles,
+  //       date: formattedDate,
+  //       workshopName,
+  //       invoice,
+  //       invoiceAmount,
+  //       description,
+  //       createdAt: new Date().toISOString(),
+  //       active: true,
+  //     };
+
+  //     const batch = writeBatch(db);
+
+  //     // Handle record creation/update
+  //     if (isEditing && editingRecordId) {
+  //       // Update existing record
+  //       const recordRef = doc(
+  //         db,
+  //         "Users",
+  //         user.uid,
+  //         "DataServices",
+  //         editingRecordId
+  //       );
+  //       batch.update(recordRef, recordData);
+
+  //       // Update global record if exists
+  //       const globalRecordQuery = query(
+  //         collection(db, "DataServicesRecords"),
+  //         where("userId", "==", user.uid),
+  //         where("vehicleId", "==", selectedVehicle),
+  //         where("createdAt", "==", recordData.createdAt)
+  //       );
+  //       const globalSnapshot = await getDocs(globalRecordQuery);
+  //       if (!globalSnapshot.empty) {
+  //         batch.update(globalSnapshot.docs[0].ref, recordData);
+  //       }
+  //     } else {
+  //       // Create new records
+  //       const newRecordRef = doc(
+  //         collection(db, "Users", user.uid, "DataServices")
+  //       );
+  //       const globalRecordRef = doc(collection(db, "DataServicesRecords"));
+
+  //       batch.set(newRecordRef, recordData);
+  //       batch.set(globalRecordRef, {
+  //         ...recordData,
+  //         id: newRecordRef.id,
+  //       });
+  //     }
+
+  //     // Update vehicle document
+  //     batch.update(vehicleRef, {
+  //       services: updatedVehicleServices,
+  //       currentMiles: currentMiles.toString(),
+  //       currentMilesArray: arrayUnion({
+  //         miles: currentMiles,
+  //         date: formattedDate,
+  //       }),
+  //       nextNotificationMiles: notificationData,
+  //     });
+
+  //     // Handle team members (MOVED THIS SECTION OUTSIDE OF THE isEditing CONDITION)
+  //     const teamMembersQuery = query(
+  //       collection(db, "Users"),
+  //       where("createdBy", "==", user.uid),
+  //       where("isTeamMember", "==", true)
+  //     );
+  //     const teamMembersSnapshot = await getDocs(teamMembersQuery);
+
+  //     for (const memberDoc of teamMembersSnapshot.docs) {
+  //       const memberVehicleRef = doc(
+  //         db,
+  //         "Users",
+  //         memberDoc.id,
+  //         "Vehicles",
+  //         selectedVehicle
+  //       );
+  //       const memberVehicleSnap = await getDoc(memberVehicleRef);
+
+  //       if (memberVehicleSnap.exists()) {
+  //         // Update team member's vehicle
+  //         batch.update(memberVehicleRef, {
+  //           services: updatedVehicleServices,
+  //           currentMiles: currentMiles.toString(),
+  //           currentMilesArray: arrayUnion({
+  //             miles: currentMiles,
+  //             date: formattedDate,
+  //           }),
+  //           nextNotificationMiles: notificationData,
+  //         });
+
+  //         // For editing, we need to find and update the existing record in team member's DataServices
+  //         if (isEditing && editingRecordId) {
+  //           // Find the corresponding record in team member's DataServices
+  //           const memberRecordQuery = query(
+  //             collection(db, "Users", memberDoc.id, "DataServices"),
+  //             where("userId", "==", user.uid),
+  //             where("vehicleId", "==", selectedVehicle),
+  //             where("createdAt", "==", recordData.createdAt)
+  //           );
+  //           const memberRecordSnapshot = await getDocs(memberRecordQuery);
+
+  //           if (!memberRecordSnapshot.empty) {
+  //             batch.update(memberRecordSnapshot.docs[0].ref, recordData);
+  //           }
+  //         } else {
+  //           // Add new record to team member's DataServices
+  //           const memberRecordRef = doc(
+  //             collection(db, "Users", memberDoc.id, "DataServices")
+  //           );
+  //           batch.set(memberRecordRef, recordData);
+  //         }
+  //       }
+  //     }
+
+  //     // Handle if current user is team member (save to owner)
+  //     const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+  //     if (currentUserDoc.data()?.isTeamMember) {
+  //       const ownerId = currentUserDoc.data()?.createdBy;
+  //       if (ownerId) {
+  //         const ownerVehicleRef = doc(
+  //           db,
+  //           "Users",
+  //           ownerId,
+  //           "Vehicles",
+  //           selectedVehicle
+  //         );
+  //         const ownerVehicleSnap = await getDoc(ownerVehicleRef);
+
+  //         if (ownerVehicleSnap.exists()) {
+  //           batch.update(ownerVehicleRef, {
+  //             services: updatedVehicleServices,
+  //             currentMiles: currentMiles.toString(),
+  //             currentMilesArray: arrayUnion({
+  //               miles: currentMiles,
+  //               date: formattedDate,
+  //             }),
+  //             nextNotificationMiles: notificationData,
+  //           });
+
+  //           // For editing, find and update the existing record in owner's DataServices
+  //           if (isEditing && editingRecordId) {
+  //             const ownerRecordQuery = query(
+  //               collection(db, "Users", ownerId, "DataServices"),
+  //               where("userId", "==", user.uid),
+  //               where("vehicleId", "==", selectedVehicle),
+  //               where("createdAt", "==", recordData.createdAt)
+  //             );
+  //             const ownerRecordSnapshot = await getDocs(ownerRecordQuery);
+
+  //             if (!ownerRecordSnapshot.empty) {
+  //               batch.update(ownerRecordSnapshot.docs[0].ref, recordData);
+  //             }
+  //           } else {
+  //             // Add new record to owner's DataServices
+  //             const ownerRecordRef = doc(
+  //               collection(db, "Users", ownerId, "DataServices")
+  //             );
+  //             batch.set(ownerRecordRef, recordData);
+  //           }
+  //         }
+  //       }
+  //     }
+
+  //     await batch.commit();
+  //     toast.success(
+  //       isEditing
+  //         ? "Record updated successfully!"
+  //         : "Record added successfully!"
+  //     );
+  //     resetForm();
+  //   } catch (error) {
+  //     console.error("Error saving record:", error);
+  //     toast.error(
+  //       `Failed to save record: ${
+  //         error instanceof Error ? error.message : "Unknown error"
+  //       }`
+  //     );
+  //   } finally {
+  //     setIsRecordSaving(false);
+  //   }
+  // };
+
+  // const handleEditRecord = (record: ServiceRecord) => {
+  //   setIsEditing(true);
+  //   setEditingRecordId(record.id);
+
+  //   // Set form values from the selected record
+  //   setSelectedVehicle(record.vehicleId);
+  //   const vehicleData = vehicles.find((v) => v.id === record.vehicleId) || null;
+  //   setSelectedVehicleData(vehicleData);
+
+  //   // Initialize serviceDefaultValues from the record
+  //   const newServiceDefaultValues: { [key: string]: number } = {};
+  //   record.services.forEach((service) => {
+  //     newServiceDefaultValues[service.serviceId] =
+  //       service.defaultNotificationValue || 0;
+  //   });
+  //   setServiceDefaultValues(newServiceDefaultValues);
+
+  //   // Set selected services from the record (convert to Set)
+  //   const servicesSet = new Set(record.services.map((s) => s.serviceId));
+  //   setSelectedServices(servicesSet);
+
+  //   // Set subservices from the record
+  //   const subServices: { [key: string]: string[] } = {};
+  //   record.services.forEach((service) => {
+  //     subServices[service.serviceId] =
+  //       service.subServices?.map((ss) => ss.name) || [];
+  //   });
+
+  //   let recordDate = record.date;
+  //   setSelectedSubServices(subServices);
+  //   setMiles(record.miles.toString());
+  //   setHours(record.hours.toString());
+  //   if (recordDate && recordDate.includes("T")) {
+  //     recordDate = recordDate.split("T")[0];
+  //   }
+  //   setDate(record.date);
+  //   setWorkshopName(record.workshopName || "");
+  //   setInvoice(record.invoice || "");
+  //   setInvoiceAmount(record.invoiceAmount || "");
+  //   setDescription(record.description || "");
+
+  //   setShowAddRecords(true);
+  // };
+
   const handleSaveRecords = async () => {
     try {
       setIsRecordSaving(true);
+
+      // Validate inputs
       if (!user || !selectedVehicle || selectedServices.size === 0) {
         toast.error("Please select vehicle and at least one service");
         return;
@@ -869,6 +1259,7 @@ export default function RecordsPage() {
         return;
       }
 
+      // Upload image if exists
       let imageUrl = null;
       if (imageFile) {
         imageUrl = await uploadImage();
@@ -878,10 +1269,11 @@ export default function RecordsPage() {
         }
       }
 
+      // Get numeric values
       const currentMiles = Number(miles);
       const currentHours = Number(hours) || 0;
 
-      // Get current vehicle services to preserve existing ones
+      // Get current vehicle services
       const vehicleRef = doc(
         db,
         "Users",
@@ -899,33 +1291,28 @@ export default function RecordsPage() {
       const notificationData = [];
       const updatedVehicleServices = [...currentVehicleServices];
 
+      // Process each selected service
       for (const serviceId of selectedServices) {
         const service = services.find((s) => s.sId === serviceId);
         if (!service) continue;
 
-        // Check if vehicle already has this service
+        // Find existing service or initialize new one
         const existingServiceIndex = updatedVehicleServices.findIndex(
-          (s: { serviceId: string }) => s.serviceId === serviceId
+          (s) => s.serviceId === serviceId
         );
 
-        // Get default value - priority to vehicle-specific if exists
+        // Determine service type and default value
         let defaultValue = serviceDefaultValues[serviceId] || 0;
         let type = "reading";
 
         if (existingServiceIndex >= 0) {
-          // Keep existing service type if available
           type = updatedVehicleServices[existingServiceIndex].type || "reading";
-          // Use existing default if available, otherwise use calculated
           defaultValue =
             updatedVehicleServices[existingServiceIndex]
-              .defaultNotificationValue ||
-            serviceDefaultValues[serviceId] ||
-            0;
+              .defaultNotificationValue || defaultValue;
         } else {
-          // Determine type from metadata if new service
           const engineName = vehicleData.engineNumber?.toString().toUpperCase();
-          const dValues = service.dValues || [];
-          const matchingDValue = dValues.find(
+          const matchingDValue = service.dValues?.find(
             (dv) => dv.brand?.toString().toUpperCase() === engineName
           );
           type = (matchingDValue?.type || "reading").toLowerCase();
@@ -953,7 +1340,7 @@ export default function RecordsPage() {
           }
         }
 
-        // Prepare service data for record
+        // Prepare service data
         const serviceData = {
           serviceId,
           serviceName: service.sName || "",
@@ -979,7 +1366,7 @@ export default function RecordsPage() {
           subServices: selectedSubServices[serviceId] || [],
         });
 
-        // Update vehicle services array - update existing or add new
+        // Update vehicle services
         if (existingServiceIndex >= 0) {
           updatedVehicleServices[existingServiceIndex] = {
             ...updatedVehicleServices[existingServiceIndex],
@@ -995,26 +1382,21 @@ export default function RecordsPage() {
         }
       }
 
-      // Format date for storage
+      // Prepare record data
       const baseDate = date ? new Date(date) : new Date();
       const formattedDate = baseDate.toISOString().split("T")[0];
 
       const recordData = {
         userId: user.uid,
         vehicleId: selectedVehicle,
-        imageUrl: imageUrl,
+        imageUrl,
         vehicleDetails: {
           ...vehicleData,
           currentMiles: currentMiles.toString(),
           nextNotificationMiles: notificationData,
         },
         services: servicesData,
-        currentMilesArray: [
-          {
-            miles: currentMiles,
-            date: formattedDate,
-          },
-        ],
+        currentMilesArray: [{ miles: currentMiles, date: formattedDate }],
         miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
         hours: vehicleData.vehicleType === "Trailer" ? currentHours : 0,
         totalMiles: currentMiles,
@@ -1029,45 +1411,45 @@ export default function RecordsPage() {
 
       const batch = writeBatch(db);
 
-      // Handle record creation/update
+      // Determine owner and if current user is team member
+      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+      const isTeamMember = currentUserDoc.data()?.isTeamMember;
+      const ownerId = isTeamMember
+        ? currentUserDoc.data()?.createdBy
+        : user.uid;
+
+      // 1. Handle record in owner's collection
+      const recordId =
+        isEditing && editingRecordId
+          ? editingRecordId
+          : doc(collection(db, "temp")).id;
+      const ownerRecordRef = doc(
+        db,
+        "Users",
+        ownerId,
+        "DataServices",
+        recordId
+      );
+
       if (isEditing && editingRecordId) {
-        // Update existing record
-        const recordRef = doc(
-          db,
-          "Users",
-          user.uid,
-          "DataServices",
-          editingRecordId
-        );
-        batch.update(recordRef, recordData);
-
-        // Update global record if exists
-        const globalRecordQuery = query(
-          collection(db, "DataServicesRecords"),
-          where("userId", "==", user.uid),
-          where("vehicleId", "==", selectedVehicle),
-          where("createdAt", "==", recordData.createdAt)
-        );
-        const globalSnapshot = await getDocs(globalRecordQuery);
-        if (!globalSnapshot.empty) {
-          batch.update(globalSnapshot.docs[0].ref, recordData);
-        }
+        batch.update(ownerRecordRef, recordData);
       } else {
-        // Create new records
-        const newRecordRef = doc(
-          collection(db, "Users", user.uid, "DataServices")
-        );
-        const globalRecordRef = doc(collection(db, "DataServicesRecords"));
-
-        batch.set(newRecordRef, recordData);
-        batch.set(globalRecordRef, {
-          ...recordData,
-          id: newRecordRef.id,
-        });
+        batch.set(ownerRecordRef, recordData);
       }
 
-      // Update vehicle document
-      batch.update(vehicleRef, {
+      // 2. Handle global record
+      const globalRecordRef = doc(db, "DataServicesRecords", recordId);
+      batch.set(globalRecordRef, { ...recordData, id: recordId });
+
+      // 3. Update owner's vehicle
+      const ownerVehicleRef = doc(
+        db,
+        "Users",
+        ownerId,
+        "Vehicles",
+        selectedVehicle
+      );
+      batch.update(ownerVehicleRef, {
         services: updatedVehicleServices,
         currentMiles: currentMiles.toString(),
         currentMilesArray: arrayUnion({
@@ -1077,26 +1459,29 @@ export default function RecordsPage() {
         nextNotificationMiles: notificationData,
       });
 
-      // Handle team members (MOVED THIS SECTION OUTSIDE OF THE isEditing CONDITION)
+      // 4. Handle all team members
       const teamMembersQuery = query(
         collection(db, "Users"),
-        where("createdBy", "==", user.uid),
+        where("createdBy", "==", ownerId),
         where("isTeamMember", "==", true)
       );
       const teamMembersSnapshot = await getDocs(teamMembersQuery);
 
       for (const memberDoc of teamMembersSnapshot.docs) {
+        const memberId = memberDoc.id;
+        if (memberId === ownerId) continue;
+
         const memberVehicleRef = doc(
           db,
           "Users",
-          memberDoc.id,
+          memberId,
           "Vehicles",
           selectedVehicle
         );
         const memberVehicleSnap = await getDoc(memberVehicleRef);
 
         if (memberVehicleSnap.exists()) {
-          // Update team member's vehicle
+          // Update vehicle
           batch.update(memberVehicleRef, {
             services: updatedVehicleServices,
             currentMiles: currentMiles.toString(),
@@ -1107,77 +1492,28 @@ export default function RecordsPage() {
             nextNotificationMiles: notificationData,
           });
 
-          // For editing, we need to find and update the existing record in team member's DataServices
-          if (isEditing && editingRecordId) {
-            // Find the corresponding record in team member's DataServices
-            const memberRecordQuery = query(
-              collection(db, "Users", memberDoc.id, "DataServices"),
-              where("userId", "==", user.uid),
-              where("vehicleId", "==", selectedVehicle),
-              where("createdAt", "==", recordData.createdAt)
-            );
-            const memberRecordSnapshot = await getDocs(memberRecordQuery);
-
-            if (!memberRecordSnapshot.empty) {
-              batch.update(memberRecordSnapshot.docs[0].ref, recordData);
-            }
-          } else {
-            // Add new record to team member's DataServices
-            const memberRecordRef = doc(
-              collection(db, "Users", memberDoc.id, "DataServices")
-            );
-            batch.set(memberRecordRef, recordData);
-          }
+          // Update or create record
+          const memberRecordRef = doc(
+            db,
+            "Users",
+            memberId,
+            "DataServices",
+            recordId
+          );
+          batch.set(memberRecordRef, recordData);
         }
       }
 
-      // Handle if current user is team member (save to owner)
-      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-      if (currentUserDoc.data()?.isTeamMember) {
-        const ownerId = currentUserDoc.data()?.createdBy;
-        if (ownerId) {
-          const ownerVehicleRef = doc(
-            db,
-            "Users",
-            ownerId,
-            "Vehicles",
-            selectedVehicle
-          );
-          const ownerVehicleSnap = await getDoc(ownerVehicleRef);
-
-          if (ownerVehicleSnap.exists()) {
-            batch.update(ownerVehicleRef, {
-              services: updatedVehicleServices,
-              currentMiles: currentMiles.toString(),
-              currentMilesArray: arrayUnion({
-                miles: currentMiles,
-                date: formattedDate,
-              }),
-              nextNotificationMiles: notificationData,
-            });
-
-            // For editing, find and update the existing record in owner's DataServices
-            if (isEditing && editingRecordId) {
-              const ownerRecordQuery = query(
-                collection(db, "Users", ownerId, "DataServices"),
-                where("userId", "==", user.uid),
-                where("vehicleId", "==", selectedVehicle),
-                where("createdAt", "==", recordData.createdAt)
-              );
-              const ownerRecordSnapshot = await getDocs(ownerRecordQuery);
-
-              if (!ownerRecordSnapshot.empty) {
-                batch.update(ownerRecordSnapshot.docs[0].ref, recordData);
-              }
-            } else {
-              // Add new record to owner's DataServices
-              const ownerRecordRef = doc(
-                collection(db, "Users", ownerId, "DataServices")
-              );
-              batch.set(ownerRecordRef, recordData);
-            }
-          }
-        }
+      // 5. If current user is team member, ensure their record exists
+      if (isTeamMember && user.uid !== ownerId) {
+        const currentUserRecordRef = doc(
+          db,
+          "Users",
+          user.uid,
+          "DataServices",
+          recordId
+        );
+        batch.set(currentUserRecordRef, recordData);
       }
 
       await batch.commit();
@@ -1199,58 +1535,54 @@ export default function RecordsPage() {
     }
   };
 
-  const formatDateToDDMMYYYY = (date: Date | string): string => {
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${day}/${month}/${year}`;
-  };
-
-  // Update the handleSubserviceToggle function for better single-selection handling
-
   const handleEditRecord = (record: ServiceRecord) => {
     setIsEditing(true);
     setEditingRecordId(record.id);
 
-    // Set form values from the selected record
+    // Set form values from record
     setSelectedVehicle(record.vehicleId);
-    const vehicleData = vehicles.find((v) => v.id === record.vehicleId) || null;
-    setSelectedVehicleData(vehicleData);
+    setSelectedVehicleData(
+      vehicles.find((v) => v.id === record.vehicleId) || null
+    );
 
-    // Initialize serviceDefaultValues from the record
-    const newServiceDefaultValues: { [key: string]: number } = {};
+    // Initialize service defaults
+    const newServiceDefaultValues: Record<string, number> = {};
     record.services.forEach((service) => {
       newServiceDefaultValues[service.serviceId] =
         service.defaultNotificationValue || 0;
     });
     setServiceDefaultValues(newServiceDefaultValues);
 
-    // Set selected services from the record (convert to Set)
-    const servicesSet = new Set(record.services.map((s) => s.serviceId));
-    setSelectedServices(servicesSet);
+    // Set selected services and subservices
+    setSelectedServices(new Set(record.services.map((s) => s.serviceId)));
 
-    // Set subservices from the record
-    const subServices: { [key: string]: string[] } = {};
+    const subServices: Record<string, string[]> = {};
     record.services.forEach((service) => {
       subServices[service.serviceId] =
         service.subServices?.map((ss) => ss.name) || [];
     });
-
-    let recordDate = record.date;
     setSelectedSubServices(subServices);
+
+    // Set other fields
     setMiles(record.miles.toString());
     setHours(record.hours.toString());
-    if (recordDate && recordDate.includes("T")) {
-      recordDate = recordDate.split("T")[0];
-    }
-    setDate(record.date);
+    setDate(
+      record.date.includes("T") ? record.date.split("T")[0] : record.date
+    );
     setWorkshopName(record.workshopName || "");
     setInvoice(record.invoice || "");
     setInvoiceAmount(record.invoiceAmount || "");
     setDescription(record.description || "");
 
     setShowAddRecords(true);
+  };
+
+  const formatDateToDDMMYYYY = (date: Date | string): string => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${day}/${month}/${year}`;
   };
 
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
@@ -1380,14 +1712,18 @@ export default function RecordsPage() {
     "Water /Coolant Pump",
   ];
 
-  return (
+  return userData?.isView ? (
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
       {/* Button Container */}
       <div className="flex justify-center gap-4 mb-6">
         {/** Add Record */}
 
         <button
-          onClick={() => setShowAddRecords(true)}
+          onClick={() =>
+            userData?.isAdd
+              ? setShowAddRecords(true)
+              : toast.error("You don't have permission to add records.")
+          }
           className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
         >
           <IoMdAdd /> Add Record
@@ -1396,7 +1732,11 @@ export default function RecordsPage() {
         {/** Add mile */}
 
         <button
-          onClick={() => setShowAddMiles(true)}
+          onClick={() =>
+            userData?.isView || userData?.isAdd
+              ? setShowAddMiles(true)
+              : toast.error("You don't have permission to add miles/hours.")
+          }
           className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
         >
           <IoMdAdd /> Add Miles/Hours
@@ -2351,7 +2691,13 @@ export default function RecordsPage() {
                     <TableCell>
                       <div style={{ display: "flex", gap: "8px" }}>
                         <button
-                          onClick={() => handleEditRecord(record)}
+                          onClick={() =>
+                            userData?.isEdit
+                              ? handleEditRecord(record)
+                              : toast.error(
+                                  "You don't have permission to edit this record."
+                                )
+                          }
                           className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
                         >
                           Edit
@@ -2372,5 +2718,7 @@ export default function RecordsPage() {
         </div>
       )}
     </div>
+  ) : (
+    <div>You don&apos;t have permission to see this page.</div>
   );
 }

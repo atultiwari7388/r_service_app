@@ -636,6 +636,11 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         num earnings = totalMiles * perMileCharges;
                         String tripStatus =
                             getStringFromTripStatus(doc['tripStatus']);
+                        String truckNameandNumber =
+                            "${doc['companyName']} (${doc['vehicleNumber']})";
+                        String trailerNameandNumber = doc['trailerId'] != null
+                            ? "${doc['trailerCompanyName']} (${doc['trailerNumber']})"
+                            : "N/A";
 
                         return FutureBuilder<QuerySnapshot>(
                           future: FirebaseFirestore.instance
@@ -657,25 +662,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                 snapshot.data == null ||
                                 snapshot.data!.docs.isEmpty) {
                               return buildTripCard(
-                                  doc,
-                                  formattedStartDate,
-                                  tripStartMiles,
-                                  tripStatus,
-                                  formattedEndDate,
-                                  tripEndMiles,
-                                  totalMiles,
-                                  earnings,
-                                  isPaid,
-                                  0);
-                            }
-
-                            // ✅ Sum all "amount" values ONLY if tripId matches
-                            num totalExpenses = snapshot.data!.docs.fold(
-                              0,
-                              (sum, item) => sum + (item['amount'] ?? 0),
-                            );
-
-                            return buildTripCard(
                                 doc,
                                 formattedStartDate,
                                 tripStartMiles,
@@ -685,7 +671,32 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                 totalMiles,
                                 earnings,
                                 isPaid,
-                                totalExpenses);
+                                0,
+                                truckNameandNumber,
+                                trailerNameandNumber,
+                              );
+                            }
+
+                            // ✅ Sum all "amount" values ONLY if tripId matches
+                            num totalExpenses = snapshot.data!.docs.fold(
+                              0,
+                              (sum, item) => sum + (item['amount'] ?? 0),
+                            );
+
+                            return buildTripCard(
+                              doc,
+                              formattedStartDate,
+                              tripStartMiles,
+                              tripStatus,
+                              formattedEndDate,
+                              tripEndMiles,
+                              totalMiles,
+                              earnings,
+                              isPaid,
+                              totalExpenses,
+                              truckNameandNumber,
+                              trailerNameandNumber,
+                            );
                           },
                         );
                       }).toList(),
@@ -711,6 +722,8 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     num earnings,
     bool isPaid,
     num totalExpenses,
+    String truckNameandNumber,
+    String trailerNameandNumber,
   ) {
     // // Check if google miles data exists
     bool hasGoogleMiles = doc['googleMiles'] != null;
@@ -730,6 +743,16 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
           Center(
             child: Text(doc['tripName'],
                 style: appStyle(16, kDark, FontWeight.w500)),
+          ),
+          SizedBox(height: 10.h),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Truck: $truckNameandNumber",
+                  style: appStyle(12, kDark, FontWeight.w300)),
+              Text("Trailer: $trailerNameandNumber",
+                  style: appStyle(12, kDark, FontWeight.w300)),
+            ],
           ),
           SizedBox(height: 10.h),
           Row(
@@ -788,13 +811,16 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 isPaid
-                    ? ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kSecondary,
-                          foregroundColor: kWhite,
-                        ),
-                        onPressed: null,
-                        child: Text("Paid"))
+                    ?
+                    // ElevatedButton(
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: kSecondary,
+                    //       foregroundColor: kWhite,
+                    //     ),
+                    //     onPressed: null,
+                    //     child: Text("Paid"))
+
+                    SizedBox()
                     : widget.role == "Manager"
                         ? SizedBox()
                         : ElevatedButton(
