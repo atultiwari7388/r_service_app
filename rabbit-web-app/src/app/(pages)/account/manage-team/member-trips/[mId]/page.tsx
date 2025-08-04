@@ -21,6 +21,9 @@ import { Modal } from "@/components/Modal"; // You'll need a modal component
 
 export interface Trip {
   id: string;
+  trailerId?: string;
+  trailerCompanyName?: string;
+  trailerNumber?: string;
   tripName: string;
   vehicleId: string;
   companyName: string;
@@ -47,6 +50,9 @@ export interface Trip {
 
 interface TripDetails {
   id: string;
+  trailerId?: string;
+  trailerCompanyName?: string;
+  trailerNumber?: string;
   tripName: string;
   vehicleId: string;
   currentUID: string;
@@ -754,6 +760,7 @@ export default function MemberTripsPage() {
             <div className="col-span-2">Trip Name</div>
             <div className="col-span-2">Dates</div>
             <div className="col-span-1">Miles</div>
+            <div className="col-span-1">Vehicles</div>
             <div className="col-span-1">G.Miles</div>
             <div className="col-span-1">G.Earnings</div>
             <div className="col-span-2">T&apos;Status</div>
@@ -786,6 +793,17 @@ export default function MemberTripsPage() {
                 {trip.tripStatus === 2 && (
                   <div className="font-semibold">
                     {trip.tripEndMiles - trip.tripStartMiles}
+                  </div>
+                )}
+              </div>
+              {/* Trailer Details */}
+              <div className="col-span-1">
+                <div className="text-sm">
+                  Truck: {trip.vehicleNumber} ({trip.companyName})
+                </div>
+                {trip.trailerNumber && (
+                  <div className="text-sm">
+                    Trailer: {trip.trailerNumber} ({trip.trailerCompanyName})
                   </div>
                 )}
               </div>

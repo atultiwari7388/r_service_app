@@ -819,93 +819,34 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
                               ),
                   ),
 
-                  // Expanded(
-                  //   child: isParsing
-                  //       ? Center(child: CircularProgressIndicator())
-                  //       : excelData.isEmpty
-                  //           ? Center(child: Text(''))
-                  //           : SingleChildScrollView(
-                  //               scrollDirection: Axis.vertical,
-                  //               child: Column(
-                  //                 crossAxisAlignment: CrossAxisAlignment.start,
-                  //                 children: [
-                  //                   buildDataRow(
-                  //                       "Vehicle Number",
-                  //                       excelData
-                  //                           .map((e) => e['vehicleNumber'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Type",
-                  //                       excelData
-                  //                           .map((e) => e['vehicleType'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Company",
-                  //                       excelData
-                  //                           .map((e) => e['companyName'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Engine",
-                  //                       excelData
-                  //                           .map((e) => e['engineName'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Miles/Hours",
-                  //                       excelData
-                  //                           .map((e) =>
-                  //                               e['vehicleType'] == 'Truck'
-                  //                                   ? e['currentMiles']
-                  //                                   : e['hoursReading'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Vin",
-                  //                       excelData
-                  //                           .map((e) => e['vin'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Dot",
-                  //                       excelData
-                  //                           .map((e) => e['dot'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Iccms",
-                  //                       excelData
-                  //                           .map((e) => e['iccms'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "License Plate",
-                  //                       excelData
-                  //                           .map((e) => e['licensePlate'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Year",
-                  //                       excelData
-                  //                           .map((e) => e['year'])
-                  //                           .toList()),
-                  //                   buildDataRow(
-                  //                       "Oil Change Date",
-                  //                       excelData
-                  //                           .map((e) => e['oilChangeDate'])
-                  //                           .toList()),
-                  //                 ],
-                  //               ),
-                  //             ),
-                  // ),
+                  Container(
+                    child: _isBtnEnable
+                        ? CustomButton(
+                            text: "Upload",
+                            onPress: () async {
+                              if (excelData.isEmpty) return;
+                              await uploadMultipleVehicles(excelData);
+                            },
+                            color: kPrimary,
+                          )
+                        : SizedBox(),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.10),
                 ],
               ),
             ),
-      bottomNavigationBar: Container(
-        child: _isBtnEnable
-            ? CustomButton(
-                text: "Upload",
-                onPress: () async {
-                  if (excelData.isEmpty) return;
-                  await uploadMultipleVehicles(excelData);
-                },
-                color: kPrimary,
-              )
-            : SizedBox(),
-      ),
+      // bottomNavigationBar: Container(
+      //   child: _isBtnEnable
+      //       ? CustomButton(
+      //           text: "Upload",
+      //           onPress: () async {
+      //             if (excelData.isEmpty) return;
+      //             await uploadMultipleVehicles(excelData);
+      //           },
+      //           color: kPrimary,
+      //         )
+      //       : SizedBox(),
+      // ),
     );
   }
 

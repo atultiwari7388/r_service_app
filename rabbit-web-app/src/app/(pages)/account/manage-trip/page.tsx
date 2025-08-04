@@ -59,6 +59,9 @@ interface TripDetails {
   role: string;
   companyName: string;
   vehicleNumber: string;
+  trailerId?: string;
+  trailerCompanyName?: string;
+  trailerNumber?: string;
   totalMiles: number;
   tripStartMiles: number;
   tripEndMiles: number;
@@ -111,49 +114,6 @@ export default function ManageTripPage() {
 
   const router = useRouter();
 
-  // useEffect(() => {
-  //   if (!user?.uid) return;
-
-  //   const fetchUserData = async () => {
-  //     const userDoc = await getDoc(doc(db, "Users", user.uid));
-  //     if (userDoc.exists()) {
-  //       const data = userDoc.data() as ProfileValues;
-  //       setUserData(data);
-  //       setRole(data.role);
-  //       setOwnerId(data.createdBy || user.uid);
-  //     }
-  //   };
-
-  //   const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-  //   const q = query(vehiclesRef, where("active", "==", true));
-
-  //   const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
-  //     const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
-  //       id: doc.id,
-  //       ...doc.data(),
-  //     })) as VehicleTypes[];
-  //     setVehicles(vehiclesData);
-  //   });
-
-  //   const unsubscribeTrips = onSnapshot(
-  //     collection(db, "Users", user.uid, "trips"),
-  //     (snapshot) => {
-  //       const tripsData: TripDetails[] = snapshot.docs.map((doc) => ({
-  //         id: doc.id,
-  //         ...doc.data(),
-  //       })) as TripDetails[];
-  //       setTrips(tripsData);
-  //     }
-  //   );
-
-  //   fetchUserData();
-  //   return () => {
-  //     unsubscribeVehicles();
-  //     unsubscribeTrips();
-  //   };
-  // }, [user]);
-
-  // Replace your current vehicles useEffect with this:
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -166,6 +126,28 @@ export default function ManageTripPage() {
         setOwnerId(data.createdBy || user.uid);
       }
     };
+
+    // const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+    // const q = query(vehiclesRef, where("active", "==", true));
+
+    // const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
+    //   const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
+    //     id: doc.id,
+    //     ...doc.data(),
+    //   })) as VehicleTypes[];
+    //   setVehicles(vehiclesData);
+    // });
+
+    const unsubscribeTrips = onSnapshot(
+      collection(db, "Users", user.uid, "trips"),
+      (snapshot) => {
+        const tripsData: TripDetails[] = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as TripDetails[];
+        setTrips(tripsData);
+      }
+    );
 
     // Fetch trucks (vehicles)
     const trucksQuery = query(
@@ -199,6 +181,8 @@ export default function ManageTripPage() {
 
     fetchUserData();
     return () => {
+      // unsubscribeVehicles();
+      unsubscribeTrips();
       unsubscribeTrucks();
       unsubscribeTrailers();
     };
@@ -632,19 +616,6 @@ export default function ManageTripPage() {
               onChange={(date: Date | null) => date && setSelectedDate(date)}
               className="border p-2 rounded w-full"
             />
-            {/* <select
-              value={selectedVehicle}
-              onChange={(e) => setSelectedVehicle(e.target.value)}
-              className="border p-2 rounded"
-            >
-              <option value="">Select Vehicle</option>
-              {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.vehicleNumber} ({vehicle.companyName})
-                </option>
-              ))}
-            </select>
-          */}
 
             {/* Vehicle (Truck) dropdown */}
             <select
@@ -770,7 +741,7 @@ export default function ManageTripPage() {
           <div className="col-span-3">Trip Name</div>
           <div className="col-span-2">Dates</div>
           <div className="col-span-1">Miles</div>
-          <div className="col-span-2">Earnings</div>
+          <div className="col-span-2">Vehicle</div>
           <div className="col-span-2">Status</div>
           <div className="col-span-2">Actions</div>
         </div>
@@ -809,22 +780,15 @@ export default function ManageTripPage() {
               )}
             </div>
 
-            {/* Earnings */}
+            {/* truck and trailer details */}
             <div className="col-span-2">
-              {trip.tripStatus === 2 ? (
-                role === "Owner" ? (
-                  <span className="font-semibold">${trip.oEarnings}</span>
-                ) : userData?.perMileCharge ? (
-                  <span className="font-semibold">
-                    $
-                    {((trip.tripEndMiles || 0) - (trip.tripStartMiles || 0)) *
-                      Number(userData.perMileCharge)}
-                  </span>
-                ) : (
-                  <span className="text-gray-400 text-sm">N/A</span>
-                )
-              ) : (
-                <span className="text-gray-400 text-sm">Pending</span>
+              <div className="text-sm">
+                Truck: {trip.vehicleNumber} ({trip.companyName})
+              </div>
+              {trip.trailerNumber && (
+                <div className="text-sm">
+                  Trailer: {trip.trailerNumber} ({trip.trailerCompanyName})
+                </div>
               )}
             </div>
 
