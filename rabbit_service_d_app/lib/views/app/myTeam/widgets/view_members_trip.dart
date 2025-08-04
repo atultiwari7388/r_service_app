@@ -273,7 +273,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                       Text('Per Mile Charge: \$$perMileCharge'),
                       SizedBox(height: 10.h),
                       Text(
-                        'Total Earning: \$${totalEarning.toStringAsFixed(2)}',
+                        'Total Earning: \$${totalEarning.toStringAsFixed(0)}',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -637,9 +637,9 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         String tripStatus =
                             getStringFromTripStatus(doc['tripStatus']);
                         String truckNameandNumber =
-                            "${doc['companyName']} (${doc['vehicleNumber']})";
+                            "${doc['vehicleNumber']} (${doc['companyName']})";
                         String trailerNameandNumber = doc['trailerId'] != null
-                            ? "${doc['trailerCompanyName']} (${doc['trailerNumber']})"
+                            ? "${doc['trailerNumber']} (${doc['trailerCompanyName']})"
                             : "N/A";
 
                         return FutureBuilder<QuerySnapshot>(
@@ -900,14 +900,13 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 SizedBox(width: 10.w),
                 ElevatedButton(
                   onPressed: () => Get.to(() => TripDetailsScreen(
-                        docId: doc.id,
-                        userId: widget.memberId,
-                        tripName: doc['tripName'],
-                        truckDetails:
-                            doc['companyName'] + " (${doc['vehicleNumber']})",
-                        trailerDetails: doc['trailerCompanyName'] +
-                            " (${doc['trailerNumber']})",
-                      )),
+                      docId: doc.id,
+                      userId: widget.memberId,
+                      tripName: doc['tripName'],
+                      truckDetails:
+                          doc['vehicleNumber'] + "(${doc['companyName']})",
+                      trailerDetails: doc['trailerNumber'] +
+                          "(${doc['trailerCompanyName']})")),
                   child: Text(
                     "View",
                     style: appStyle(12, kWhite, FontWeight.normal),

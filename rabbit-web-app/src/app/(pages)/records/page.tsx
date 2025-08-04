@@ -35,6 +35,7 @@ import {
   Box,
   LinearProgress,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 import {
   Table,
@@ -2114,19 +2115,24 @@ export default function RecordsPage() {
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleAddMiles}
-            variant="contained"
-            color="primary"
-            className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
-          >
-            {isMilesSaving
-              ? "Saving..."
-              : selectedVehicleType === "Truck"
-              ? "Save Miles"
-              : "Save Hours"}
-            {/* Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"} */}
-          </Button>
+
+          {isMilesSaving ? (
+            <CircularProgress />
+          ) : (
+            <Button
+              onClick={handleAddMiles}
+              variant="contained"
+              color="primary"
+              className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
+            >
+              {isMilesSaving
+                ? "Saving..."
+                : selectedVehicleType === "Truck"
+                ? "Save Miles"
+                : "Save Hours"}
+              {/* Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"} */}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 

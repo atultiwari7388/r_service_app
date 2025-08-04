@@ -1226,7 +1226,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 Text("Expenses:",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
                 SizedBox(width: 5.w),
-                Text("\$${totalExpenses}",
+                Text("\$${totalExpenses.toStringAsFixed(0)}",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
               ],
             ),
@@ -1278,109 +1278,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               );
                             },
                           );
-                          // if (currentMilesStr != null &&
-                          //     currentMilesStr.isNotEmpty) {
-                          //   int currentMiles =
-                          //       int.tryParse(currentMilesStr) ?? 0;
-
-                          //   WriteBatch batch =
-                          //       FirebaseFirestore.instance.batch();
-
-                          //   // **Update the current user's trip**
-                          //   DocumentReference userTripRef = FirebaseFirestore
-                          //       .instance
-                          //       .collection("Users")
-                          //       .doc(currentUId)
-                          //       .collection('trips')
-                          //       .doc(doc.id);
-
-                          //   batch.update(userTripRef, {
-                          //     'tripStatus': newStatus,
-                          //     'tripEndMiles': currentMiles,
-                          //     'tripEndDate': Timestamp.now(),
-                          //     'updatedAt': Timestamp.now(),
-                          //   });
-
-                          //   // **Update the global trips collection**
-                          //   DocumentReference globalTripRef = FirebaseFirestore
-                          //       .instance
-                          //       .collection('trips')
-                          //       .doc(doc.id);
-
-                          //   batch.update(globalTripRef, {
-                          //     'tripStatus': newStatus,
-                          //     'tripEndMiles': currentMiles,
-                          //     'tripEndDate': Timestamp.now(),
-                          //     'updatedAt': Timestamp.now(),
-                          //   });
-
-                          //   // **Find and update all assigned drivers' vehicles**
-                          //   QuerySnapshot driverDocs = await FirebaseFirestore
-                          //       .instance
-                          //       .collection("Users")
-                          //       .where("createdBy", isEqualTo: ownerId)
-                          //       .where("isDriver", isEqualTo: true)
-                          //       .where("isTeamMember", isEqualTo: true)
-                          //       .get();
-
-                          //   for (var driverDoc in driverDocs.docs) {
-                          //     String driverId = driverDoc.id;
-                          //     DocumentReference driverVehicleRef =
-                          //         FirebaseFirestore.instance
-                          //             .collection("Users")
-                          //             .doc(driverId)
-                          //             .collection("Vehicles")
-                          //             .doc(vehicleID);
-
-                          //     // Check if the document exists before updating
-                          //     DocumentSnapshot driverVehicleSnap =
-                          //         await driverVehicleRef.get();
-                          //     if (driverVehicleSnap.exists) {
-                          //       batch.update(
-                          //           driverVehicleRef, {'tripAssign': false});
-                          //     }
-                          //   }
-
-                          //   // **Update the current user's vehicle to remove trip assignment**
-                          //   DocumentReference currentUserVehicleRef =
-                          //       FirebaseFirestore.instance
-                          //           .collection("Users")
-                          //           .doc(currentUId)
-                          //           .collection("Vehicles")
-                          //           .doc(vehicleID);
-
-                          //   // Check if the document exists before updating
-                          //   DocumentSnapshot currentUserVehicleSnap =
-                          //       await currentUserVehicleRef.get();
-                          //   if (currentUserVehicleSnap.exists) {
-                          //     batch.update(
-                          //         currentUserVehicleRef, {'tripAssign': false});
-                          //   }
-
-                          //   // **If the current user is a driver, update the owner's vehicle**
-                          //   if (role == "Driver") {
-                          //     DocumentReference ownerVehicleRef =
-                          //         FirebaseFirestore.instance
-                          //             .collection("Users")
-                          //             .doc(ownerId)
-                          //             .collection("Vehicles")
-                          //             .doc(vehicleID);
-
-                          //     // Check if the document exists before updating
-                          //     DocumentSnapshot ownerVehicleSnap =
-                          //         await ownerVehicleRef.get();
-                          //     if (ownerVehicleSnap.exists) {
-                          //       batch.update(
-                          //           ownerVehicleRef, {'tripAssign': false});
-                          //     }
-                          //   }
-
-                          //   await batch.commit();
-                          // } else {
-                          //   showToastMessage(
-                          //       "Warning", "Please enter current miles.", kRed);
-                          //   return;
-                          // }
 
                           if (currentMilesStr != null &&
                               currentMilesStr.isNotEmpty) {
@@ -1562,8 +1459,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                         elevation: 0,
                         minimumSize: Size(70.w, 35.h)),
                     onPressed: () {
-                      showEditTripDialog(context, doc.id,
-                          doc['tripStartDate'].toDate(), doc['tripStartMiles']);
+                      showEditTripDialog(
+                          context,
+                          doc.id,
+                          doc['tripStartDate'].toDate(),
+                          doc['tripStartMiles'],
+                          doc['tripName']);
                     },
                     child: Text("Edit Trip"),
                   ),
@@ -1596,10 +1497,101 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     );
   }
 
+  // void showEditTripDialog(BuildContext context, String tripId,
+  //     DateTime currentStartDate, num currentStartMiles) {
+  //   TextEditingController startMilesController =
+  //       TextEditingController(text: currentStartMiles.toString());
+  //   DateTime selectedDate = currentStartDate;
+
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: Text("Edit Trip Details"),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             // Date Picker for Start Date
+  //             GestureDetector(
+  //               onTap: () async {
+  //                 DateTime? pickedDate = await showDatePicker(
+  //                   context: context,
+  //                   initialDate: selectedDate,
+  //                   firstDate: DateTime(2000),
+  //                   lastDate: DateTime.now(),
+  //                 );
+
+  //                 if (pickedDate != null) {
+  //                   selectedDate = pickedDate;
+  //                 }
+  //               },
+  //               child: AbsorbPointer(
+  //                 child: TextField(
+  //                   decoration: InputDecoration(
+  //                     labelText: "Start Date",
+  //                     hintText: DateFormat('dd MMM yyyy').format(selectedDate),
+  //                     suffixIcon: Icon(Icons.calendar_today),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //             SizedBox(height: 10),
+  //             // Start Miles Input
+  //             TextField(
+  //               controller: startMilesController,
+  //               keyboardType: TextInputType.number,
+  //               decoration: InputDecoration(labelText: "Start Miles"),
+  //             ),
+  //           ],
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             child: Text("Cancel"),
+  //             onPressed: () => Navigator.pop(context),
+  //           ),
+  //           TextButton(
+  //             child: Text("Update"),
+  //             onPressed: () {
+  //               int updatedMiles = int.tryParse(startMilesController.text) ?? 0;
+
+  //               if (updatedMiles <= 0) {
+  //                 showToastMessage(
+  //                     "Warning", "Start miles must be greater than 0.", kRed);
+  //                 return;
+  //               }
+
+  //               // Update Firestore
+  //               FirebaseFirestore.instance
+  //                   .collection("Users")
+  //                   .doc(currentUId)
+  //                   .collection("trips")
+  //                   .doc(tripId)
+  //                   .update({
+  //                 "tripStartDate": Timestamp.fromDate(selectedDate),
+  //                 "tripStartMiles": updatedMiles,
+  //                 "updatedAt": Timestamp.now(),
+  //               }).then((_) {
+  //                 showToastMessage(
+  //                     "Success", "Trip details updated!", kPrimary);
+  //                 Navigator.pop(context);
+  //               }).catchError((error) {
+  //                 showToastMessage(
+  //                     "Error", "Failed to update trip: $error", kRed);
+  //               });
+  //             },
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
   void showEditTripDialog(BuildContext context, String tripId,
-      DateTime currentStartDate, num currentStartMiles) {
+      DateTime currentStartDate, num currentStartMiles, String tripName) {
     TextEditingController startMilesController =
         TextEditingController(text: currentStartMiles.toString());
+    TextEditingController tripNameController =
+        TextEditingController(text: tripName);
     DateTime selectedDate = currentStartDate;
 
     showDialog(
@@ -1610,6 +1602,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Trip Name Input
+              TextField(
+                controller: tripNameController,
+                decoration: InputDecoration(labelText: "Trip Name"),
+              ),
+              SizedBox(height: 10),
               // Date Picker for Start Date
               GestureDetector(
                 onTap: () async {
@@ -1652,6 +1650,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
               child: Text("Update"),
               onPressed: () {
                 int updatedMiles = int.tryParse(startMilesController.text) ?? 0;
+                String updatedTripName = tripNameController.text.trim();
+
+                if (updatedTripName.isEmpty) {
+                  showToastMessage(
+                      "Warning", "Trip name cannot be empty", kRed);
+                  return;
+                }
 
                 if (updatedMiles <= 0) {
                   showToastMessage(
@@ -1666,10 +1671,22 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                     .collection("trips")
                     .doc(tripId)
                     .update({
+                  "tripName": updatedTripName,
                   "tripStartDate": Timestamp.fromDate(selectedDate),
                   "tripStartMiles": updatedMiles,
                   "updatedAt": Timestamp.now(),
                 }).then((_) {
+                  // Also update the global trips collection
+                  FirebaseFirestore.instance
+                      .collection("trips")
+                      .doc(tripId)
+                      .update({
+                    "tripName": updatedTripName,
+                    "tripStartDate": Timestamp.fromDate(selectedDate),
+                    "tripStartMiles": updatedMiles,
+                    "updatedAt": Timestamp.now(),
+                  });
+
                   showToastMessage(
                       "Success", "Trip details updated!", kPrimary);
                   Navigator.pop(context);
