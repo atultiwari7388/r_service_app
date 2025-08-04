@@ -790,11 +790,14 @@ export default function MemberTripsPage() {
 
               {/* Miles */}
               <div className="col-span-1">
+                <div className="text-sm">Start: {trip.tripStartMiles}</div>
                 {trip.tripStatus === 2 && (
-                  <div className="font-semibold">
-                    {trip.tripStartMiles} - {trip.tripEndMiles} (
-                    {trip.tripEndMiles - trip.tripStartMiles} miles)
-                  </div>
+                  <>
+                    <div className="text-sm">End: {trip.tripEndMiles}</div>
+                    <div className="font-semibold text-[#F96176]">
+                      Total: {trip.tripEndMiles - trip.tripStartMiles}
+                    </div>
+                  </>
                 )}
               </div>
 
