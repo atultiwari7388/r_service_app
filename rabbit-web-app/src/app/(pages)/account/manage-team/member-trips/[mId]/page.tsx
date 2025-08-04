@@ -792,10 +792,12 @@ export default function MemberTripsPage() {
               <div className="col-span-1">
                 {trip.tripStatus === 2 && (
                   <div className="font-semibold">
-                    {trip.tripEndMiles - trip.tripStartMiles}
+                    {trip.tripStartMiles} - {trip.tripEndMiles} (
+                    {trip.tripEndMiles - trip.tripStartMiles} miles)
                   </div>
                 )}
               </div>
+
               {/* Trailer Details */}
               <div className="col-span-1">
                 <div className="text-sm">
