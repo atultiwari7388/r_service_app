@@ -49,6 +49,7 @@ export interface Trip {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   oEarnings?: number;
+  loadType?: string;
 }
 
 interface TripDetails {
@@ -75,6 +76,7 @@ interface TripDetails {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   oEarnings?: number;
+  loadType?: string;
 }
 
 export default function ManageTripPage() {
@@ -111,6 +113,8 @@ export default function ManageTripPage() {
     null
   );
   const [totals, setTotals] = useState({ totalExpenses: 0, totalEarnings: 0 });
+
+  const [selectLoadType, setSelectLoadType] = useState("Empty");
 
   const router = useRouter();
 
@@ -217,6 +221,7 @@ export default function ManageTripPage() {
         trailerId: selectedTrailer || "",
         trailerCompanyName: trailer?.companyName || "",
         trailerNumber: trailer?.vehicleNumber || "",
+        loadType: selectLoadType,
         totalMiles: 0,
         tripStartMiles: parseInt(currentMiles),
         tripEndMiles: 0,
@@ -487,6 +492,7 @@ export default function ManageTripPage() {
     setSelectedVehicle("");
     setSelectedDate(new Date());
     setShowAddTrip(false);
+    setSelectLoadType("Empty");
   };
 
   const resetExpenseForm = () => {
@@ -644,6 +650,17 @@ export default function ManageTripPage() {
                   {trailer.vehicleNumber} ({trailer.companyName})
                 </option>
               ))}
+            </select>
+
+            {/** Load Type Drop Down */}
+            {/* Load Type dropdown */}
+            <select
+              value={selectLoadType}
+              onChange={(e) => setSelectLoadType(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="Empty">Empty</option>
+              <option value="Loaded">Loaded</option>
             </select>
           </div>
           <button

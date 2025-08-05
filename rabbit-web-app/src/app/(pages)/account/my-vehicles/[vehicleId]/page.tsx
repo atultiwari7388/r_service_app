@@ -11,12 +11,19 @@ import {
   query,
   updateDoc,
   where,
+  arrayRemove,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
-import { FaEdit, FaPrint } from "react-icons/fa";
+import { FaEdit, FaPrint, FaTrash } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 interface VehicleDocument {
   imageUrl: string;
@@ -53,8 +60,9 @@ export default function MyVehicleDetailsScreen() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
-
-  // const printRef = useRef<HTMLDivElement>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<VehicleDocument | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const fetchVehicleData = async () => {
@@ -74,7 +82,6 @@ export default function MyVehicleDetailsScreen() {
     fetchVehicleData();
   }, [vehicleId, user?.uid]);
 
-  //print vehicle details
   const handlePrint = async () => {
     const printContent = `
       <div style="padding: 20px; font-family: Arial, sans-serif;">
@@ -176,48 +183,76 @@ export default function MyVehicleDetailsScreen() {
     setLoading(true);
     const uploads: VehicleDocument[] = [];
 
-    for (const file of uploadedFiles) {
-      const storageRef = ref(storage, `vehicle_images/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      uploads.push({ imageUrl: downloadURL, text: "" });
+    try {
+      for (const file of uploadedFiles) {
+        const storageRef = ref(
+          storage,
+          `vehicle_images/${user.uid}/${vehicleId}/${file.name}_${Date.now()}`
+        );
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+        uploads.push({ imageUrl: downloadURL, text: file.name });
+      }
+
+      const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+      await updateDoc(docRef, {
+        uploadedDocuments: [
+          ...(vehicleData?.uploadedDocuments || []),
+          ...uploads,
+        ],
+      });
+
+      toast.success("Documents uploaded successfully!");
+      setUploadedFiles([]);
+      // Refresh the page to show new images
+      window.location.reload();
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      toast.error("Error uploading documents");
+    } finally {
+      setLoading(false);
     }
-
-    const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
-    await updateDoc(docRef, {
-      uploadedDocuments: uploads,
-    });
-
-    setLoading(false);
-    setUploadedFiles([]);
   };
 
-  // const handleEditService = (index: number, service: ServiceData) => {
-  //   const newDefaultValue = prompt(
-  //     `Edit default notification value for ${service.serviceName}`,
-  //     service.defaultNotificationValue.toString()
-  //   );
+  const confirmDelete = (doc: VehicleDocument) => {
+    setDocToDelete(doc);
+    setShowDeleteDialog(true);
+  };
 
-  //   if (newDefaultValue && vehicleData) {
-  //     const updatedServices = [...(vehicleData.services || [])];
-  //     updatedServices[index] = {
-  //       ...service,
-  //       defaultNotificationValue: parseInt(newDefaultValue, 10),
-  //     };
+  const handleDeleteDocument = async () => {
+    if (!docToDelete || !user?.uid || !vehicleId) return;
 
-  //     if (user?.uid && vehicleId) {
-  //       const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
-  //       updateDoc(docRef, { services: updatedServices })
-  //         .then(() => {
-  //           setVehicleData((prevData) => ({
-  //             ...prevData!,
-  //             services: updatedServices,
-  //           }));
-  //         })
-  //         .catch((error) => console.error("Error updating services:", error));
-  //     }
-  //   }
-  // };
+    setDeleteLoading(true);
+    try {
+      // Delete from storage
+      const imageRef = ref(storage, docToDelete.imageUrl);
+      await deleteObject(imageRef);
+
+      // Delete from Firestore
+      const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+      await updateDoc(docRef, {
+        uploadedDocuments: arrayRemove(docToDelete),
+      });
+
+      // Update local state
+      setVehicleData((prev) => ({
+        ...prev!,
+        uploadedDocuments:
+          prev?.uploadedDocuments?.filter(
+            (doc) => doc.imageUrl !== docToDelete.imageUrl
+          ) || [],
+      }));
+
+      toast.success("Document deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      toast.error("Error deleting document");
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteDialog(false);
+      setDocToDelete(null);
+    }
+  };
 
   const handleEditService = async (index: number, service: ServiceData) => {
     const newDefaultValue = prompt(
@@ -376,6 +411,40 @@ export default function MyVehicleDetailsScreen() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-xl font-semibold mb-4">Confirm Delete</h3>
+            <p className="mb-6">
+              Are you sure you want to delete this document?
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-4 py-2 border rounded hover:bg-gray-100"
+                disabled={deleteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteDocument}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center gap-2"
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? (
+                  <LoadingIndicator />
+                ) : (
+                  <>
+                    <FaTrash /> Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold">Vehicle Details</h1>
         <button
@@ -452,48 +521,6 @@ export default function MyVehicleDetailsScreen() {
         </div>
       </div>
 
-      {/* <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Services</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="px-4 py-2 text-left">Service Name</th>
-                <th className="px-4 py-2 text-left">Default Value</th>
-                <th className="px-4 py-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicleData?.services
-                ?.filter(
-                  (service) =>
-                    service.defaultNotificationValue &&
-                    service.defaultNotificationValue !== 0 &&
-                    service.defaultNotificationValue !== 0
-                )
-                .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
-                .map((service, index) => (
-                  <tr key={service.serviceId} className="border-b">
-                    <td className="px-4 py-2">{service.serviceName}</td>
-                    <td className="px-4 py-2">
-                      {service.defaultNotificationValue || "N/A"} (
-                      {service.type === "reading" ? "Miles" : service.type})
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => handleEditService(index, service)}
-                        className="text-[#F96176] hover:text-[#F96176]"
-                      >
-                        <FaEdit />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </div> */}
-
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-4">Services</h2>
         <div className="overflow-x-auto">
@@ -547,32 +574,54 @@ export default function MyVehicleDetailsScreen() {
             multiple
             onChange={handleFileChange}
             className="border p-2 rounded"
+            accept="image/*"
           />
           <button
             onClick={handleUpload}
-            className="bg-[#F96176] text-white px-4 py-2 rounded hover:bg-[#F96176]"
+            disabled={uploadedFiles.length === 0}
+            className={`px-4 py-2 rounded flex items-center gap-2 ${
+              uploadedFiles.length === 0
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-[#F96176] text-white hover:bg-[#F96176]"
+            }`}
           >
-            Upload Documents
+            {loading ? <LoadingIndicator /> : "Upload Documents"}
           </button>
         </div>
+        {uploadedFiles.length > 0 && (
+          <p className="mt-2 text-sm text-gray-600">
+            {uploadedFiles.length} file(s) selected
+          </p>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-semibold mb-4">Uploaded Documents</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {vehicleData?.uploadedDocuments?.map((doc, index) => (
-            <div key={index} className="border rounded p-4">
-              <img
-                src={doc.imageUrl}
-                alt={`Document ${index + 1}`}
-                className="w-full h-40 object-cover mb-2"
-              />
-              <p className="text-gray-600">
-                {doc.text || `Document ${index + 1}`}
-              </p>
-            </div>
-          ))}
-        </div>
+        {vehicleData?.uploadedDocuments?.length ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {vehicleData.uploadedDocuments.map((doc, index) => (
+              <div key={index} className="border rounded p-4 relative group">
+                <img
+                  src={doc.imageUrl}
+                  alt={`Document ${index + 1}`}
+                  className="w-full h-40 object-cover mb-2"
+                />
+                <p className="text-gray-600 truncate">
+                  {doc.text || `Document ${index + 1}`}
+                </p>
+                <button
+                  onClick={() => confirmDelete(doc)}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  title="Delete document"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500">No documents uploaded yet</p>
+        )}
       </div>
     </div>
   );

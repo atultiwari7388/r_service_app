@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Modal } from "@/components/Modal"; // You'll need a modal component
+import { Modal } from "@/components/Modal";
 
 export interface Trip {
   id: string;
@@ -46,6 +46,7 @@ export interface Trip {
   oEarnings?: number;
   googleMiles?: number;
   googleTotalEarning?: number;
+  loadType?: string;
 }
 
 interface TripDetails {
@@ -74,6 +75,7 @@ interface TripDetails {
   oEarnings?: number;
   googleMiles?: number;
   googleTotalEarning?: number;
+  loadType?: string;
 }
 
 export default function MemberTripsPage() {
