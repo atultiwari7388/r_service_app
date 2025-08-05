@@ -41,9 +41,15 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   final List<Map<String, dynamic>> vehicles = [];
   String? selectedVehicle;
   String? selectedTrailer;
+  String selectLoadType = "Empty";
   String perMileCharge = '0';
   String role = "";
   String ownerId = "";
+
+  final List<String> loadTypes = [
+    'Empty',
+    'Loaded',
+  ];
 
   bool showAddTrip = false;
   bool showAddMileageOrExpense = false;
@@ -122,19 +128,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
         'role': role,
         'companyName': vehicleName,
         'vehicleNumber': vehicleNumber,
+        'loadType': selectLoadType,
         'googleMiles': 0,
         'googleTotalEarning': 0,
-        // Add trailer details if selected
-        // if (selectedTrailer != null) ...{
-        //   'trailerCompanyName': vehicles.firstWhere(
-        //     (v) => v['id'] == selectedTrailer,
-        //     orElse: () => {},
-        //   )['companyName'],
-        //   'trailerNumber': vehicles.firstWhere(
-        //     (v) => v['id'] == selectedTrailer,
-        //     orElse: () => {},
-        //   )['vehicleNumber'],
-        // },
         'trailerCompanyName': selectedTrailer != null
             ? vehicles
                 .firstWhere((v) => v['id'] == selectedTrailer)['companyName']
@@ -143,7 +139,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
             ? vehicles
                 .firstWhere((v) => v['id'] == selectedTrailer)['vehicleNumber']
             : "",
-
         'totalMiles': 0,
         'tripStartMiles': int.parse(_currentMilesController.text),
         'tripEndMiles': 0,
@@ -687,6 +682,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               },
                             ),
                             SizedBox(height: 10.h),
+
                             DropdownButtonFormField<String>(
                               value: selectedTrailer,
                               hint: const Text('Select Trailer'),
@@ -705,6 +701,28 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               onChanged: (value) {
                                 setState(() {
                                   selectedTrailer = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 10.h),
+
+                            // Load Type Dropdown
+                            DropdownButtonFormField<String>(
+                              value: selectLoadType,
+                              hint: const Text('Select Load Type'),
+                              items: loadTypes.map((type) {
+                                return DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(
+                                    type,
+                                    style: appStyleUniverse(
+                                        17, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectLoadType = value!;
                                 });
                               },
                             ),
@@ -983,7 +1001,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                                 16, kWhite, FontWeight.w500),
                                           ),
                                           Text(
-                                            "\$${totals['expenses']!.truncateToDouble() == totals['expenses'] ? totals['expenses']!.toInt() : totals['expenses']}",
+                                            "\$${totals['expenses']!.truncateToDouble() == totals['expenses'] ? totals['expenses']!.toInt().toStringAsFixed(0) : totals['expenses']!.toInt().toStringAsFixed(0)}",
                                             style: appStyle(
                                                 15, kWhite, FontWeight.w500),
                                           ),
@@ -1005,7 +1023,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                                 16, kWhite, FontWeight.w500),
                                           ),
                                           Text(
-                                              "\$${totals['earnings']!.truncateToDouble() == totals['earnings'] ? totals['earnings']!.toInt() : totals['earnings']}",
+                                              "\$${totals['earnings']!.truncateToDouble() == totals['earnings'] ? totals['earnings']!.toInt().toStringAsFixed(0) : totals['earnings']!.toStringAsFixed(0)}",
                                               style: appStyle(15, kWhite,
                                                   FontWeight.normal))
                                         ],
@@ -1196,9 +1214,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   role == "Owner"
-                      ? Text("Load Price: \$${oEarnings}",
+                      ? Text("Load Price: \$${oEarnings.toStringAsFixed(0)}",
                           style: appStyle(15, kSecondary, FontWeight.w500))
-                      : Text("Earnings: \$${earnings}",
+                      : Text("Earnings: \$${earnings.toStringAsFixed(0)}",
                           style: appStyle(15, kSecondary, FontWeight.w500)),
                   Text("Trip Miles: $totalMiles"),
                 ],

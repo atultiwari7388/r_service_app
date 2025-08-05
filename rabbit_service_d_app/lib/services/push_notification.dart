@@ -49,9 +49,17 @@ class PushNotification {
       provisional: false,
     );
 
-    // Get the device token and store it in Firestore
-    final fcmToken = await _firebaseMessaging.getToken();
-    log("Device Token: $fcmToken");
+    String? fcmToken;
+    try {
+      fcmToken = await _firebaseMessaging.getToken();
+      log("Device Token: $fcmToken");
+    } catch (e) {
+      log("Error getting FCM token: $e");
+      if (e.toString().contains('apns-token-not-set')) {
+        log("Running on simulator or APNS token not available yet");
+      }
+    }
+
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId != null && fcmToken != null) {
       await updateUserFCMToken(userId, fcmToken);
@@ -100,11 +108,7 @@ class PushNotification {
 
     // iOS Initialization Settings
     final DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
-            // onDidReceiveLocalNotification: (id, title, body, payload) async {
-            //   // Handle iOS local notification
-            // },
-            );
+        DarwinInitializationSettings();
 
     // Linux Initialization Settings
     final LinuxInitializationSettings initializationSettingsLinux =
