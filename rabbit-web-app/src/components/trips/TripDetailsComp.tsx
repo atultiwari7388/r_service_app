@@ -149,7 +149,7 @@ TripDetailsCompProps) => {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-semibold">
-                          ${detail.amount?.toFixed(2)}
+                          ${detail.amount?.toFixed(0)}
                         </p>
                         <p className="text-gray-600 text-sm">
                           {detail.description}

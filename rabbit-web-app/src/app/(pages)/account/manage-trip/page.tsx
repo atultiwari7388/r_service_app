@@ -131,17 +131,6 @@ export default function ManageTripPage() {
       }
     };
 
-    // const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-    // const q = query(vehiclesRef, where("active", "==", true));
-
-    // const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
-    //   const vehiclesData: VehicleTypes[] = snapshot.docs.map((doc) => ({
-    //     id: doc.id,
-    //     ...doc.data(),
-    //   })) as VehicleTypes[];
-    //   setVehicles(vehiclesData);
-    // });
-
     const unsubscribeTrips = onSnapshot(
       collection(db, "Users", user.uid, "trips"),
       (snapshot) => {
@@ -191,6 +180,39 @@ export default function ManageTripPage() {
       unsubscribeTrailers();
     };
   }, [user]);
+
+  const filteredTrips = trips.filter((trip) => {
+    const startDate = trip.tripStartDate.toDate();
+    const endDate = trip.tripEndDate.toDate();
+    const isVehicleActive = vehicles.some(
+      (v) => v.id === trip.vehicleId && v.active
+    );
+
+    return (
+      trip.currentUID === user?.uid &&
+      (!fromDate || endDate >= fromDate) &&
+      (!toDate || startDate <= toDate) &&
+      isVehicleActive
+    );
+  });
+
+  const resetTripForm = () => {
+    setTripName("");
+    setCurrentMiles("");
+    setOEarnings("");
+    setSelectedVehicle("");
+    setSelectedDate(new Date());
+    setShowAddTrip(false);
+    setSelectLoadType("Empty");
+  };
+
+  const resetExpenseForm = () => {
+    setSelectedTrip("");
+    setExpenseAmount("");
+    setExpenseDescription("");
+    setSelectedFile(null);
+    setShowAddExpense(false);
+  };
 
   const handleAddTrip = async () => {
     if (!tripName || !currentMiles || !selectedVehicle) {
@@ -469,38 +491,6 @@ export default function ManageTripPage() {
     } finally {
       // setIsCalculatingTotals(false);
     }
-  };
-
-  const filteredTrips = trips.filter((trip) => {
-    const startDate = trip.tripStartDate.toDate();
-    const endDate = trip.tripEndDate.toDate();
-    const isVehicleActive = vehicles.some(
-      (v) => v.id === trip.vehicleId && v.active
-    );
-
-    return (
-      (!fromDate || endDate >= fromDate) &&
-      (!toDate || startDate <= toDate) &&
-      isVehicleActive
-    );
-  });
-
-  const resetTripForm = () => {
-    setTripName("");
-    setCurrentMiles("");
-    setOEarnings("");
-    setSelectedVehicle("");
-    setSelectedDate(new Date());
-    setShowAddTrip(false);
-    setSelectLoadType("Empty");
-  };
-
-  const resetExpenseForm = () => {
-    setSelectedTrip("");
-    setExpenseAmount("");
-    setExpenseDescription("");
-    setSelectedFile(null);
-    setShowAddExpense(false);
   };
 
   useEffect(() => {

@@ -302,10 +302,7 @@ const AddLocation = () => {
   const router = useRouter();
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  const mapCenter = useMemo(
-    () => ({ lat: 28.55708594953468, lng: 77.10011534431322 }),
-    []
-  );
+  const mapCenter = useMemo(() => ({ lat: 36.778259, lng: -119.417931 }), []);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",

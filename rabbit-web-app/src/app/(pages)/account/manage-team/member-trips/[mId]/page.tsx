@@ -15,7 +15,7 @@ import {
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/Modal";
 
@@ -118,6 +118,8 @@ export default function MemberTripsPage() {
   const [tempToDate, setTempToDate] = useState<Date | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { user } = useAuth() || { user: null };
+
+  const router = useRouter();
 
   useEffect(() => {
     if (!memberId) {
@@ -238,7 +240,11 @@ export default function MemberTripsPage() {
     // Trip name filter
     const nameFilter = filterByTripName(trip, searchTerm);
 
-    return isVehicleActive && dateFilter && truckFilter && nameFilter;
+    const isMemberTrip = trip.currentUID === memberId;
+
+    return (
+      isMemberTrip && isVehicleActive && dateFilter && truckFilter && nameFilter
+    );
   });
 
   const sortedTrips = [...filteredTrips].sort((a, b) => {
@@ -734,7 +740,7 @@ export default function MemberTripsPage() {
           <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
             <h3 className="text-lg font-bold">Total Earnings</h3>
             <p className="text-xl font-semibold">
-              ${totals.totalEarnings.toFixed(0)}
+              ${totals.totalGoogleEarnings.toFixed(0)}
             </p>
           </div>
 
@@ -887,6 +893,17 @@ export default function MemberTripsPage() {
                         Add G.Miles
                       </button>
                     )}
+
+                    <button
+                      onClick={() =>
+                        router.push(
+                          `/account/manage-trip/${trip.id}?userId=${memberId}`
+                        )
+                      }
+                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200"
+                    >
+                      View
+                    </button>
                   </>
                 )}
               </div>
