@@ -2634,7 +2634,7 @@ export default function RecordsPage() {
                   <TableCell>Invoice</TableCell>
                   <TableCell>Vehicle</TableCell>
                   <TableCell>Company</TableCell>
-                  <TableCell>Inc. Amount</TableCell>
+                  <TableCell>Inv. Amount</TableCell>
                   {records.some((record) => record.miles > 0) && (
                     <TableCell>Miles/Hours</TableCell>
                   )}
