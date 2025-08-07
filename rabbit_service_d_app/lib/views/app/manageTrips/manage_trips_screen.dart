@@ -464,6 +464,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       String perMileCharge, String driverId, String role) async {
     double totalExpenses = 0;
     double totalEarnings = 0;
+    double googleMilesEarnings = 0;
     String userId = driverId;
     double perMile = double.tryParse(perMileCharge) ?? 0.0;
 
@@ -484,10 +485,15 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
       // Calculate earnings based on role
       if (role == "Driver") {
-        int startMiles = trip['tripStartMiles'];
-        int endMiles = trip['tripEndMiles'];
+        int startMiles = trip['tripStartMiles'] ?? 0;
+        int endMiles = trip['tripEndMiles'] ?? 0;
         int miles = endMiles - startMiles;
         totalEarnings += miles * perMile;
+
+        // Add Google earnings if they exist
+        if (trip['googleTotalEarning'] != null) {
+          googleMilesEarnings += (trip['googleTotalEarning'] as num).toDouble();
+        }
       } else if (role == "Owner") {
         // Sum all oEarnings values
         double ownerEarnings = (trip['oEarnings'] ?? 0.0).toDouble();
@@ -498,8 +504,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     // If any value is negative, set it to 0
     totalExpenses = totalExpenses < 0 ? 0 : totalExpenses;
     totalEarnings = totalEarnings < 0 ? 0 : totalEarnings;
+    googleMilesEarnings = googleMilesEarnings < 0 ? 0 : googleMilesEarnings;
 
-    return {'expenses': totalExpenses, 'earnings': totalEarnings};
+    return {
+      'expenses': totalExpenses,
+      'earnings': totalEarnings,
+      'googleTotalEarning': googleMilesEarnings
+    };
   }
 
   @override
@@ -978,7 +989,11 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                 return Text('Error calculating totals');
                               }
                               var totals = totalsSnapshot.data ??
-                                  {'expenses': 0.0, 'earnings': 0.0};
+                                  {
+                                    'expenses': 0.0,
+                                    'earnings': 0.0,
+                                    'googleTotalEarning': 0.0
+                                  };
                               return Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.h, horizontal: 12.w),
@@ -1022,10 +1037,16 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                             style: appStyle(
                                                 16, kWhite, FontWeight.w500),
                                           ),
-                                          Text(
-                                              "\$${totals['earnings']!.truncateToDouble() == totals['earnings'] ? totals['earnings']!.toInt().toStringAsFixed(0) : totals['earnings']!.toStringAsFixed(0)}",
-                                              style: appStyle(15, kWhite,
-                                                  FontWeight.normal))
+                                          (role == "Owner" ||
+                                                  role == "Accountant")
+                                              ? Text(
+                                                  "\$${totals['earnings']!.truncateToDouble() == totals['earnings'] ? totals['earnings']!.toInt().toStringAsFixed(0) : totals['earnings']!.toStringAsFixed(0)}",
+                                                  style: appStyle(15, kWhite,
+                                                      FontWeight.normal))
+                                              : Text(
+                                                  "\$${totals['googleTotalEarning']!.truncateToDouble() == totals['googleTotalEarning'] ? totals['googleTotalEarning']!.toInt().toStringAsFixed(0) : totals['googleTotalEarning']!.toStringAsFixed(0)}",
+                                                  style: appStyle(15, kWhite,
+                                                      FontWeight.normal))
                                         ],
                                       ),
                                     ),
@@ -1060,6 +1081,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               String vehicleID = doc['vehicleId'];
                               String vehicleNumber = doc['vehicleNumber'];
                               String companyName = doc['companyName'];
+                              String loadValue = doc['loadType'];
 
                               return FutureBuilder<QuerySnapshot>(
                                 future: FirebaseFirestore.instance
@@ -1098,6 +1120,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       vehicleID,
                                       vehicleNumber,
                                       companyName,
+                                      loadValue,
                                     );
                                   }
 
@@ -1118,12 +1141,13 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                     earnings,
                                     isPaid,
                                     totalExpenses,
-                                    // Show total expenses if exists
                                     context,
                                     role,
                                     oEarnings,
-                                    vehicleID, vehicleNumber,
+                                    vehicleID,
+                                    vehicleNumber,
                                     companyName,
+                                    loadValue,
                                   );
                                 },
                               );
@@ -1164,7 +1188,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     String vehicleID,
     String vehicleNumber,
     String companyName,
+    String loadValue,
   ) {
+    // // Check if google miles data exists
+    bool hasGoogleMiles = doc['googleMiles'] != null;
+    num googleMiles = hasGoogleMiles ? doc['googleMiles'] : 0;
+    num googleTotalEarning = hasGoogleMiles ? doc['googleTotalEarning'] : 0;
     return GestureDetector(
       child: Container(
         padding: EdgeInsets.all(5.w),
@@ -1216,27 +1245,40 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                   role == "Owner"
                       ? Text("Load Price: \$${oEarnings.toStringAsFixed(0)}",
                           style: appStyle(15, kSecondary, FontWeight.w500))
-                      : Text("Earnings: \$${earnings.toStringAsFixed(0)}",
-                          style: appStyle(15, kSecondary, FontWeight.w500)),
+                      : Text(""),
+
+                  //  Text("Earnings: \$${earnings.toStringAsFixed(0)}",
+                  //     style: appStyle(15, kSecondary, FontWeight.w500)),
+
                   Text("Trip Miles: $totalMiles"),
                 ],
               ),
-              SizedBox(height: 4.h),
-              role == "Owner"
-                  ? SizedBox()
-                  : Row(
-                      children: [
-                        Text("Payment Status: "),
-                        Spacer(),
-                        isPaid
-                            ? Text("Paid",
-                                style:
-                                    appStyle(16, kSecondary, FontWeight.w500))
-                            : Text("Unpaid",
-                                style: appStyle(16, kRed, FontWeight.w500))
-                      ],
-                    ),
+              // SizedBox(height: 4.h),
+              // role == "Owner"
+              //     ? SizedBox()
+              //     : Row(
+              //         children: [
+              //           Text("Payment Status: "),
+              //           Spacer(),
+              //           isPaid
+              //               ? Text("Paid",
+              //                   style:
+              //                       appStyle(16, kSecondary, FontWeight.w500))
+              //               : Text("Unpaid",
+              //                   style: appStyle(16, kRed, FontWeight.w500))
+              //         ],
+              //       ),
             ],
+            SizedBox(height: 4.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("G'Miles: ${googleMiles.toStringAsFixed(0)}",
+                    style: appStyle(14, kPrimary, FontWeight.w500)),
+                Text("G'Earnings: \$${googleTotalEarning.toStringAsFixed(0)}",
+                    style: appStyle(14, kSecondary, FontWeight.w500)),
+              ],
+            ),
             SizedBox(height: 4.h),
             Row(
               // mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1246,6 +1288,18 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 SizedBox(width: 5.w),
                 Text("\$${totalExpenses.toStringAsFixed(0)}",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
+              ],
+            ),
+            Row(
+              children: [
+                Text(
+                  "Load :",
+                  style: appStyle(13, kPrimary, FontWeight.w400),
+                ),
+                Text(
+                  "${loadValue}",
+                  style: appStyle(13, kPrimary, FontWeight.w400),
+                )
               ],
             ),
             SizedBox(height: 4.h),
@@ -1514,95 +1568,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
       ),
     );
   }
-
-  // void showEditTripDialog(BuildContext context, String tripId,
-  //     DateTime currentStartDate, num currentStartMiles) {
-  //   TextEditingController startMilesController =
-  //       TextEditingController(text: currentStartMiles.toString());
-  //   DateTime selectedDate = currentStartDate;
-
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: Text("Edit Trip Details"),
-  //         content: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             // Date Picker for Start Date
-  //             GestureDetector(
-  //               onTap: () async {
-  //                 DateTime? pickedDate = await showDatePicker(
-  //                   context: context,
-  //                   initialDate: selectedDate,
-  //                   firstDate: DateTime(2000),
-  //                   lastDate: DateTime.now(),
-  //                 );
-
-  //                 if (pickedDate != null) {
-  //                   selectedDate = pickedDate;
-  //                 }
-  //               },
-  //               child: AbsorbPointer(
-  //                 child: TextField(
-  //                   decoration: InputDecoration(
-  //                     labelText: "Start Date",
-  //                     hintText: DateFormat('dd MMM yyyy').format(selectedDate),
-  //                     suffixIcon: Icon(Icons.calendar_today),
-  //                   ),
-  //                 ),
-  //               ),
-  //             ),
-  //             SizedBox(height: 10),
-  //             // Start Miles Input
-  //             TextField(
-  //               controller: startMilesController,
-  //               keyboardType: TextInputType.number,
-  //               decoration: InputDecoration(labelText: "Start Miles"),
-  //             ),
-  //           ],
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             child: Text("Cancel"),
-  //             onPressed: () => Navigator.pop(context),
-  //           ),
-  //           TextButton(
-  //             child: Text("Update"),
-  //             onPressed: () {
-  //               int updatedMiles = int.tryParse(startMilesController.text) ?? 0;
-
-  //               if (updatedMiles <= 0) {
-  //                 showToastMessage(
-  //                     "Warning", "Start miles must be greater than 0.", kRed);
-  //                 return;
-  //               }
-
-  //               // Update Firestore
-  //               FirebaseFirestore.instance
-  //                   .collection("Users")
-  //                   .doc(currentUId)
-  //                   .collection("trips")
-  //                   .doc(tripId)
-  //                   .update({
-  //                 "tripStartDate": Timestamp.fromDate(selectedDate),
-  //                 "tripStartMiles": updatedMiles,
-  //                 "updatedAt": Timestamp.now(),
-  //               }).then((_) {
-  //                 showToastMessage(
-  //                     "Success", "Trip details updated!", kPrimary);
-  //                 Navigator.pop(context);
-  //               }).catchError((error) {
-  //                 showToastMessage(
-  //                     "Error", "Failed to update trip: $error", kRed);
-  //               });
-  //             },
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 
   void showEditTripDialog(BuildContext context, String tripId,
       DateTime currentStartDate, num currentStartMiles, String tripName) {

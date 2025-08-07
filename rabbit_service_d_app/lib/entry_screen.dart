@@ -228,22 +228,23 @@ class _EntryScreenState extends State<EntryScreen>
         index: tab,
         children: pages,
       ),
-      floatingActionButton: whatsAppNumber != null
-          ? FloatingActionButton(
-              backgroundColor: kPrimary,
-              onPressed: () async {
-                final uri = Uri.parse(
-                    "https://wa.me/${whatsAppNumber!.replaceAll('+', '')}");
+      // floatingActionButton: whatsAppNumber != null
+      //     ? FloatingActionButton(
+      //         backgroundColor: kPrimary,
+      //         onPressed: () async {
+      //           final uri = Uri.parse(
+      //               "https://wa.me/${whatsAppNumber!.replaceAll('+', '')}");
 
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } else {
-                  print("Could not launch WhatsApp");
-                }
-              },
-              child: const Icon(AntDesign.message1, color: kWhite),
-            )
-          : null,
+      //           if (await canLaunchUrl(uri)) {
+      //             await launchUrl(uri, mode: LaunchMode.externalApplication);
+      //           } else {
+      //             print("Could not launch WhatsApp");
+      //           }
+      //         },
+      //         child: const Icon(AntDesign.message1, color: kWhite),
+      //       )
+      //     : null,
+
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }

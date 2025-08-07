@@ -207,6 +207,25 @@ class _ReportsScreenState extends State<ReportsScreen>
     });
 
     // Setup records stream
+    // recordsSubscription = FirebaseFirestore.instance
+    //     .collection('Users')
+    //     .doc(currentUId)
+    //     .collection('DataServices')
+    //     .where('active', isEqualTo: true)
+    //     .snapshots()
+    //     .listen((snapshot) {
+    //   setState(() {
+    //     records.clear();
+    //     records.addAll(snapshot.docs.map((doc) => {
+    //           ...doc.data(),
+    //           'id': doc.id,
+    //           'vehicle': doc['vehicleDetails']['companyName']
+    //         }));
+    //   });
+    //   debugPrint('Fetched ${records.length} records');
+    // });
+
+    // Setup records stream
     recordsSubscription = FirebaseFirestore.instance
         .collection('Users')
         .doc(currentUId)
@@ -221,6 +240,9 @@ class _ReportsScreenState extends State<ReportsScreen>
               'id': doc.id,
               'vehicle': doc['vehicleDetails']['companyName']
             }));
+
+        // Update showAddRecords based on whether we have any records
+        showAddRecords = snapshot.docs.isEmpty;
       });
       debugPrint('Fetched ${records.length} records');
     });
