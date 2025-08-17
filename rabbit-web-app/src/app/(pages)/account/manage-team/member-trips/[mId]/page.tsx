@@ -135,7 +135,7 @@ export default function MemberTripsPage() {
           const data = userDoc.data() as ProfileValues;
           setMRole(data.role);
           setMemberData(data);
-          console.log("Current Member Data", memberData);
+          console.log("Current Member Data", memberData, mRole);
 
           // setRole(data.role);
         } else {
@@ -561,7 +561,7 @@ export default function MemberTripsPage() {
           {memberData?.userName || "Member"}&apos;s Trips
         </h2>
         <div className="flex items-center gap-4">
-          <button
+          {/* <button
             onClick={() => {
               router.push(
                 `/account/manage-trip/members-trips/add-trip?userId=${memberId}?role=${mRole}?memberName=${memberData?.userName}`
@@ -570,7 +570,7 @@ export default function MemberTripsPage() {
             className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
             <span>Add Trip</span>
-          </button>
+          </button> */}
 
           <button
             onClick={() => setShowSortOptions(!showSortOptions)}
