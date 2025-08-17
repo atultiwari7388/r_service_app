@@ -1190,7 +1190,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     String companyName,
     String loadValue,
   ) {
-    // // Check if google miles data exists
+    // Check if google miles data exists
     bool hasGoogleMiles = doc['googleMiles'] != null;
     num googleMiles = hasGoogleMiles ? doc['googleMiles'] : 0;
     num googleTotalEarning = hasGoogleMiles ? doc['googleTotalEarning'] : 0;
@@ -1304,7 +1304,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
             ),
             SizedBox(height: 4.h),
             Row(
-              // mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Trip Status: "),
                 SizedBox(width: 5.w),

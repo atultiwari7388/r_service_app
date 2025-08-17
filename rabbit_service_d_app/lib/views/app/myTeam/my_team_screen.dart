@@ -511,6 +511,7 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                             ownerId: ownerId,
                             perMileCharge: num.parse(perMileCharge),
                             role: role,
+                            teamRole: memberRole,
                           ));
                     } else if (value == 'view_vehicles') {
                       Get.to(() => MemberVehiclesScreen(

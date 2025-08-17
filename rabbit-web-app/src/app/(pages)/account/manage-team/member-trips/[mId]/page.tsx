@@ -95,6 +95,7 @@ export default function MemberTripsPage() {
   const [fromDate, setFromDate] = useState<Date | null>(null);
   const [toDate, setToDate] = useState<Date | null>(null);
   const [role, setRole] = useState("");
+  const [mRole, setMRole] = useState("");
 
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
@@ -132,6 +133,7 @@ export default function MemberTripsPage() {
         const userDoc = await getDoc(doc(db, "Users", memberId));
         if (userDoc.exists()) {
           const data = userDoc.data() as ProfileValues;
+          setMRole(data.role);
           setMemberData(data);
           console.log("Current Member Data", memberData);
 
@@ -558,7 +560,18 @@ export default function MemberTripsPage() {
         <h2 className="text-xl font-bold mb-4">
           {memberData?.userName || "Member"}&apos;s Trips
         </h2>
-        <div className="relative">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              router.push(
+                `/account/manage-trip/members-trips/add-trip?userId=${memberId}?role=${mRole}?memberName=${memberData?.userName}`
+              );
+            }}
+            className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <span>Add Trip</span>
+          </button>
+
           <button
             onClick={() => setShowSortOptions(!showSortOptions)}
             className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"

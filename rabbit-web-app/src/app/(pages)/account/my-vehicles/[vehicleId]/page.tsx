@@ -52,12 +52,19 @@ interface VehicleData {
   services?: ServiceData[];
 }
 
+interface FileWithId {
+  id: string;
+  file: File;
+  customText: string;
+}
+
 export default function MyVehicleDetailsScreen() {
   const params = useParams();
   const vehicleId = params?.vehicleId as string;
 
+  const [filesToUpload, setFilesToUpload] = useState<FileWithId[]>([]);
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  // const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -171,27 +178,75 @@ export default function MyVehicleDetailsScreen() {
     printWindow?.document.close();
   };
 
+  // const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (event.target.files) {
+  //     setUploadedFiles(Array.from(event.target.files));
+  //   }
+  // };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      setUploadedFiles(Array.from(event.target.files));
+      const newFiles = Array.from(event.target.files).map((file) => ({
+        id: Math.random().toString(36).substring(2, 9),
+        file,
+        customText: file.name,
+      }));
+      setFilesToUpload([...filesToUpload, ...newFiles]);
     }
   };
 
+  // const handleUpload = async () => {
+  //   if (!vehicleId || !user?.uid || uploadedFiles.length === 0) return;
+
+  //   setLoading(true);
+  //   const uploads: VehicleDocument[] = [];
+
+  //   try {
+  //     for (const file of uploadedFiles) {
+  //       const storageRef = ref(
+  //         storage,
+  //         `vehicle_images/${user.uid}/${vehicleId}/${file.name}_${Date.now()}`
+  //       );
+  //       await uploadBytes(storageRef, file);
+  //       const downloadURL = await getDownloadURL(storageRef);
+  //       uploads.push({ imageUrl: downloadURL, text: file.name });
+  //     }
+
+  //     const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+  //     await updateDoc(docRef, {
+  //       uploadedDocuments: [
+  //         ...(vehicleData?.uploadedDocuments || []),
+  //         ...uploads,
+  //       ],
+  //     });
+
+  //     toast.success("Documents uploaded successfully!");
+  //     setUploadedFiles([]);
+  //     // Refresh the page to show new images
+  //     window.location.reload();
+  //   } catch (error) {
+  //     console.error("Error uploading files:", error);
+  //     toast.error("Error uploading documents");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleUpload = async () => {
-    if (!vehicleId || !user?.uid || uploadedFiles.length === 0) return;
+    if (!vehicleId || !user?.uid || filesToUpload.length === 0) return;
 
     setLoading(true);
     const uploads: VehicleDocument[] = [];
 
     try {
-      for (const file of uploadedFiles) {
+      for (const { file, customText } of filesToUpload) {
         const storageRef = ref(
           storage,
           `vehicle_images/${user.uid}/${vehicleId}/${file.name}_${Date.now()}`
         );
         await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(storageRef);
-        uploads.push({ imageUrl: downloadURL, text: file.name });
+        uploads.push({ imageUrl: downloadURL, text: customText });
       }
 
       const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
@@ -203,7 +258,7 @@ export default function MyVehicleDetailsScreen() {
       });
 
       toast.success("Documents uploaded successfully!");
-      setUploadedFiles([]);
+      setFilesToUpload([]);
       // Refresh the page to show new images
       window.location.reload();
     } catch (error) {
@@ -212,6 +267,18 @@ export default function MyVehicleDetailsScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTextChange = (id: string, newText: string) => {
+    setFilesToUpload(
+      filesToUpload.map((item) =>
+        item.id === id ? { ...item, customText: newText } : item
+      )
+    );
+  };
+
+  const removeFile = (id: string) => {
+    setFilesToUpload(filesToUpload.filter((item) => item.id !== id));
   };
 
   const confirmDelete = (doc: VehicleDocument) => {
@@ -566,7 +633,9 @@ export default function MyVehicleDetailsScreen() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+      {/**
+   * 
+   *       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
         <div className="flex gap-4">
           <input
@@ -592,6 +661,62 @@ export default function MyVehicleDetailsScreen() {
           <p className="mt-2 text-sm text-gray-600">
             {uploadedFiles.length} file(s) selected
           </p>
+        )}
+      </div>
+
+   */}
+
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
+        <div className="flex gap-4 mb-4">
+          <input
+            type="file"
+            multiple
+            onChange={handleFileChange}
+            className="border p-2 rounded"
+            accept="image/*"
+          />
+          <button
+            onClick={handleUpload}
+            disabled={filesToUpload.length === 0}
+            className={`px-4 py-2 rounded flex items-center gap-2 ${
+              filesToUpload.length === 0
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-[#F96176] text-white hover:bg-[#F96176]"
+            }`}
+          >
+            {loading ? <LoadingIndicator /> : "Upload Documents"}
+          </button>
+        </div>
+
+        {filesToUpload.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="font-medium">Files to upload:</h3>
+            {filesToUpload.map(({ id, file, customText }) => (
+              <div
+                key={id}
+                className="flex items-center gap-4 p-3 border rounded"
+              >
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600 truncate">{file.name}</p>
+                  <input
+                    type="text"
+                    value={customText}
+                    onChange={(e) => handleTextChange(id, e.target.value)}
+                    className="w-full p-2 border rounded mt-1"
+                    placeholder="Enter description"
+                  />
+                </div>
+                <button
+                  onClick={() => removeFile(id)}
+                  className="text-red-500 hover:text-red-700"
+                  title="Remove file"
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

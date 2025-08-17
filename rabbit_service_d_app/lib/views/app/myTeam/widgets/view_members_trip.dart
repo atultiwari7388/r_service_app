@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/manageCheck/manage_check_screen.dart';
 import 'package:regal_service_d_app/views/app/manageTrips/trip_details.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_trip_o_a.dart';
 
 class ViewMemberTrip extends StatefulWidget {
   const ViewMemberTrip({
@@ -16,6 +18,7 @@ class ViewMemberTrip extends StatefulWidget {
     required this.ownerId,
     required this.perMileCharge,
     required this.role,
+    required this.teamRole,
   });
 
   final String memberId;
@@ -23,6 +26,7 @@ class ViewMemberTrip extends StatefulWidget {
   final String ownerId;
   final num perMileCharge;
   final String role;
+  final String teamRole;
 
   @override
   State<ViewMemberTrip> createState() => _ViewMemberTripState();
@@ -67,10 +71,51 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     }
   }
 
-  Future<Map<String, double>> calculateTotals(
-      List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
+  // Future<Map<String, double>> calculateTotals(
+  //     List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
+  //   double totalExpenses = 0;
+  //   double totalEarnings = 0;
+  //   String userId = driverId;
+  //   double perMile = double.tryParse(perMileCharge) ?? 0.0;
+
+  //   for (var trip in trips) {
+  //     // Calculate expenses from tripDetails
+  //     var expensesSnapshot = await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(userId)
+  //         .collection('trips')
+  //         .doc(trip.id)
+  //         .collection('tripDetails')
+  //         .where('type', isEqualTo: 'Expenses')
+  //         .get();
+
+  //     double tripExpenses = expensesSnapshot.docs
+  //         .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
+  //     totalExpenses += tripExpenses;
+
+  //     // Calculate earnings only for completed trips
+  //     int startMiles = trip['tripStartMiles'];
+  //     int endMiles = trip['tripEndMiles'];
+  //     int miles = endMiles - startMiles;
+
+  //     // Only calculate earnings if miles is positive
+  //     if (miles > 0) {
+  //       double earnings = miles * perMile;
+  //       totalEarnings += earnings;
+  //     }
+  //   }
+
+  //   return {
+  //     'expenses': totalExpenses,
+  //     'earnings': totalEarnings < 0 ? 0 : totalEarnings
+  //   };
+  // }
+
+  Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
+      String perMileCharge, String driverId, String role) async {
     double totalExpenses = 0;
     double totalEarnings = 0;
+    double googleMilesEarnings = 0;
     String userId = driverId;
     double perMile = double.tryParse(perMileCharge) ?? 0.0;
 
@@ -89,21 +134,33 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
           .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
       totalExpenses += tripExpenses;
 
-      // Calculate earnings only for completed trips
-      int startMiles = trip['tripStartMiles'];
-      int endMiles = trip['tripEndMiles'];
-      int miles = endMiles - startMiles;
+      // Calculate earnings based on role
+      if (role == "Driver") {
+        int startMiles = trip['tripStartMiles'] ?? 0;
+        int endMiles = trip['tripEndMiles'] ?? 0;
+        int miles = endMiles - startMiles;
+        totalEarnings += miles * perMile;
 
-      // Only calculate earnings if miles is positive
-      if (miles > 0) {
-        double earnings = miles * perMile;
-        totalEarnings += earnings;
+        // Add Google earnings if they exist
+        if (trip['googleTotalEarning'] != null) {
+          googleMilesEarnings += (trip['googleTotalEarning'] as num).toDouble();
+        }
+      } else if (role == "Owner") {
+        // Sum all oEarnings values
+        double ownerEarnings = (trip['oEarnings'] ?? 0.0).toDouble();
+        totalEarnings += ownerEarnings;
       }
     }
 
+    // If any value is negative, set it to 0
+    totalExpenses = totalExpenses < 0 ? 0 : totalExpenses;
+    totalEarnings = totalEarnings < 0 ? 0 : totalEarnings;
+    googleMilesEarnings = googleMilesEarnings < 0 ? 0 : googleMilesEarnings;
+
     return {
       'expenses': totalExpenses,
-      'earnings': totalEarnings < 0 ? 0 : totalEarnings
+      'earnings': totalEarnings,
+      'googleTotalEarning': googleMilesEarnings
     };
   }
 
@@ -367,6 +424,23 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     return Scaffold(
       appBar: AppBar(
         title: Text("${widget.memberName}'s Trip"),
+        actions: [
+          CircleAvatar(
+            radius: 20.r,
+            backgroundColor: kPrimary,
+            child: IconButton(
+              onPressed: () {
+                Get.to(() => AddTeamTripOwnerAndAccountant(
+                      driverName: widget.memberName,
+                      mId: widget.memberId,
+                      teamRole: widget.role,
+                    ));
+              },
+              icon: Icon(Icons.add, color: kWhite),
+            ),
+          ),
+          SizedBox(width: 10.w),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -493,8 +567,11 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 return Column(
                   children: [
                     FutureBuilder<Map<String, double>>(
-                      future: calculateTotals(filteredTrips,
-                          widget.perMileCharge.toString(), widget.memberId),
+                      future: calculateTotals(
+                          filteredTrips,
+                          widget.perMileCharge.toString(),
+                          widget.memberId,
+                          widget.teamRole),
                       builder: (context, totalsSnapshot) {
                         if (totalsSnapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -507,7 +584,11 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                           return Text('Error calculating totals');
                         }
                         var totals = totalsSnapshot.data ??
-                            {'expenses': 0.0, 'earnings': 0.0};
+                            {
+                              'expenses': 0.0,
+                              'earnings': 0.0,
+                              'googleTotalEarning': 0.0
+                            };
                         return Padding(
                           padding: EdgeInsets.symmetric(
                               vertical: 10.h, horizontal: 12.w),
@@ -532,7 +613,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                                 13, kWhite, FontWeight.w500),
                                           ),
                                           Text(
-                                              "\$${totals['earnings']!.toStringAsFixed(0)}",
+                                              "\$${totals['googleTotalEarning']!.toStringAsFixed(0)}",
                                               style: appStyle(13, kWhite,
                                                   FontWeight.normal))
                                         ],
@@ -609,6 +690,8 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         String trailerNameandNumber = doc['trailerId'] != null
                             ? "${doc['trailerNumber']} (${doc['trailerCompanyName']})"
                             : "N/A";
+                        String vehicleID = doc['vehicleId'];
+                        String loadValue = doc['loadType'];
 
                         return FutureBuilder<QuerySnapshot>(
                           future: FirebaseFirestore.instance
@@ -642,6 +725,8 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                 0,
                                 truckNameandNumber,
                                 trailerNameandNumber,
+                                vehicleID,
+                                loadValue,
                               );
                             }
 
@@ -664,6 +749,8 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                               totalExpenses,
                               truckNameandNumber,
                               trailerNameandNumber,
+                              vehicleID,
+                              loadValue,
                             );
                           },
                         );
@@ -692,6 +779,8 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     num totalExpenses,
     String truckNameandNumber,
     String trailerNameandNumber,
+    String vehicleID,
+    String loadType,
   ) {
     // // Check if google miles data exists
     bool hasGoogleMiles = doc['googleMiles'] != null;
@@ -733,6 +822,215 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             ],
           ),
           SizedBox(height: 5.h),
+          Row(
+            children: [
+              tripStatus != "Completed" ? Text("Trip Status: ") : Text(""),
+              SizedBox(width: 5.w),
+              if (tripStatus != 'Completed') ...[
+                DropdownButton<String>(
+                  value: tripStatus,
+                  items: ['Started', 'Completed']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (value) async {
+                    if (value != null) {
+                      int newStatus = getIntFromTripStatus(value);
+
+                      if (value == 'Completed') {
+                        String? currentMilesStr = await showDialog<String>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            TextEditingController milesController =
+                                TextEditingController();
+                            return AlertDialog(
+                              title: Text('Enter Trip End Miles'),
+                              content: TextField(
+                                controller: milesController,
+                                keyboardType: TextInputType.number,
+                                decoration:
+                                    InputDecoration(labelText: 'Current Miles'),
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  child: Text('Cancel'),
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                                TextButton(
+                                  child: Text('Submit'),
+                                  onPressed: () {
+                                    Navigator.of(context)
+                                        .pop(milesController.text);
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        if (currentMilesStr != null &&
+                            currentMilesStr.isNotEmpty) {
+                          int currentMiles = int.tryParse(currentMilesStr) ?? 0;
+
+                          WriteBatch batch = FirebaseFirestore.instance.batch();
+
+                          // **Update the current user's trip**
+                          DocumentReference userTripRef = FirebaseFirestore
+                              .instance
+                              .collection("Users")
+                              .doc(widget.memberId)
+                              .collection('trips')
+                              .doc(doc.id);
+
+                          batch.update(userTripRef, {
+                            'tripStatus': newStatus,
+                            'tripEndMiles': currentMiles,
+                            'tripEndDate': Timestamp.now(),
+                            'updatedAt': Timestamp.now(),
+                          });
+
+                          // **Update the global trips collection**
+                          DocumentReference globalTripRef = FirebaseFirestore
+                              .instance
+                              .collection('trips')
+                              .doc(doc.id);
+
+                          batch.update(globalTripRef, {
+                            'tripStatus': newStatus,
+                            'tripEndMiles': currentMiles,
+                            'tripEndDate': Timestamp.now(),
+                            'updatedAt': Timestamp.now(),
+                          });
+
+                          // **Find and update all assigned drivers' vehicles**
+                          QuerySnapshot driverDocs = await FirebaseFirestore
+                              .instance
+                              .collection("Users")
+                              .where("createdBy", isEqualTo: widget.ownerId)
+                              .where("isDriver", isEqualTo: true)
+                              .where("isTeamMember", isEqualTo: true)
+                              .get();
+
+                          for (var driverDoc in driverDocs.docs) {
+                            String driverId = driverDoc.id;
+                            DocumentReference driverVehicleRef =
+                                FirebaseFirestore.instance
+                                    .collection("Users")
+                                    .doc(driverId)
+                                    .collection("Vehicles")
+                                    .doc(vehicleID);
+
+                            // Check if the document exists before updating
+                            DocumentSnapshot driverVehicleSnap =
+                                await driverVehicleRef.get();
+                            if (driverVehicleSnap.exists) {
+                              batch.update(
+                                  driverVehicleRef, {'tripAssign': false});
+                            }
+
+                            // **Update the driver's trip collection if the current user is not the driver**
+                            if (driverId != widget.ownerId) {
+                              DocumentReference driverTripRef =
+                                  FirebaseFirestore.instance
+                                      .collection("Users")
+                                      .doc(driverId)
+                                      .collection('trips')
+                                      .doc(doc.id);
+
+                              // Check if the trip exists in the driver's collection before updating
+                              DocumentSnapshot driverTripSnap =
+                                  await driverTripRef.get();
+                              if (driverTripSnap.exists) {
+                                batch.update(driverTripRef, {
+                                  'tripStatus': newStatus,
+                                  'tripEndMiles': currentMiles,
+                                  'tripEndDate': Timestamp.now(),
+                                  'updatedAt': Timestamp.now(),
+                                });
+                              }
+                            }
+                          }
+
+                          // **Update the current user's vehicle to remove trip assignment**
+                          DocumentReference currentUserVehicleRef =
+                              FirebaseFirestore.instance
+                                  .collection("Users")
+                                  .doc(widget.memberId)
+                                  .collection("Vehicles")
+                                  .doc(vehicleID);
+
+                          // Check if the document exists before updating
+                          DocumentSnapshot currentUserVehicleSnap =
+                              await currentUserVehicleRef.get();
+                          if (currentUserVehicleSnap.exists) {
+                            batch.update(
+                                currentUserVehicleRef, {'tripAssign': false});
+                          }
+
+                          // **If the current user is a driver, update the owner's vehicle**
+                          if (widget.role == "Driver") {
+                            DocumentReference ownerVehicleRef =
+                                FirebaseFirestore.instance
+                                    .collection("Users")
+                                    .doc(widget.ownerId)
+                                    .collection("Vehicles")
+                                    .doc(vehicleID);
+
+                            // Check if the document exists before updating
+                            DocumentSnapshot ownerVehicleSnap =
+                                await ownerVehicleRef.get();
+                            if (ownerVehicleSnap.exists) {
+                              batch.update(
+                                  ownerVehicleRef, {'tripAssign': false});
+                            }
+
+                            // Also update the owner's trip collection if needed
+                            DocumentReference ownerTripRef = FirebaseFirestore
+                                .instance
+                                .collection("Users")
+                                .doc(widget.ownerId)
+                                .collection('trips')
+                                .doc(doc.id);
+
+                            // Check if the trip exists in the owner's collection before updating
+                            DocumentSnapshot ownerTripSnap =
+                                await ownerTripRef.get();
+                            if (ownerTripSnap.exists) {
+                              batch.update(ownerTripRef, {
+                                'tripStatus': newStatus,
+                                'tripEndMiles': currentMiles,
+                                'tripEndDate': Timestamp.now(),
+                                'updatedAt': Timestamp.now(),
+                              });
+                            }
+                          }
+
+                          await batch.commit();
+                        } else {
+                          showToastMessage(
+                              "Warning", "Please enter current miles.", kRed);
+                          return;
+                        }
+                      } else {
+                        FirebaseFirestore.instance
+                            .collection("Users")
+                            .doc(widget.memberId)
+                            .collection('trips')
+                            .doc(doc.id)
+                            .update({
+                          'tripStatus': newStatus,
+                          'updatedAt': Timestamp.now(),
+                        });
+                      }
+                    }
+                  },
+                ),
+              ] else
+                ...[],
+              Spacer(),
+            ],
+          ),
           if (tripStatus == "Completed") ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -757,7 +1055,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text("G'Miles: ${googleMiles.toStringAsFixed(0)}",
-                            style: appStyle(14, Colors.blue, FontWeight.w500)),
+                            style: appStyle(14, kPrimary, FontWeight.w500)),
                         Text(
                             "G'Earnings: \$${googleTotalEarning.toStringAsFixed(0)}",
                             style: appStyle(14, Colors.green, FontWeight.w500)),
@@ -770,6 +1068,19 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
               children: [
                 Text("Expenses: \$${totalExpenses.toStringAsFixed(0)}",
                     style: appStyle(15, kPrimary, FontWeight.w500)),
+              ],
+            ),
+            SizedBox(height: 2.h),
+            Row(
+              children: [
+                Text(
+                  "Load :",
+                  style: appStyle(13, kPrimary, FontWeight.w400),
+                ),
+                Text(
+                  "${loadType}",
+                  style: appStyle(13, kPrimary, FontWeight.w400),
+                )
               ],
             ),
             SizedBox(height: 5.h),

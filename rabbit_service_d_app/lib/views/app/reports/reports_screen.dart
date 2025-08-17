@@ -82,6 +82,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   bool isAnonymous = true;
   bool isProfileComplete = false;
   File? image;
+  String? _existingImageUrl;
 
   // Define a new variable to track the selected filter option
   String? selectedFilterOption;
@@ -205,25 +206,6 @@ class _ReportsScreenState extends State<ReportsScreen>
         }
       }
     });
-
-    // Setup records stream
-    // recordsSubscription = FirebaseFirestore.instance
-    //     .collection('Users')
-    //     .doc(currentUId)
-    //     .collection('DataServices')
-    //     .where('active', isEqualTo: true)
-    //     .snapshots()
-    //     .listen((snapshot) {
-    //   setState(() {
-    //     records.clear();
-    //     records.addAll(snapshot.docs.map((doc) => {
-    //           ...doc.data(),
-    //           'id': doc.id,
-    //           'vehicle': doc['vehicleDetails']['companyName']
-    //         }));
-    //   });
-    //   debugPrint('Fetched ${records.length} records');
-    // });
 
     // Setup records stream
     recordsSubscription = FirebaseFirestore.instance
@@ -942,6 +924,20 @@ class _ReportsScreenState extends State<ReportsScreen>
               .map<String>((sub) => sub['name'].toString())
               .toList();
         }
+      }
+
+      if (record['imageUrl'] != null) {
+        if (record['imageUrl'] is String) {
+          image = null; // Clear the File object
+          _existingImageUrl = record['imageUrl']; // Store the URL separately
+        } else if (record['imageUrl'] is File) {
+          // It's a new File that hasn't been uploaded yet
+          image = record['imageUrl'] as File;
+          _existingImageUrl = null;
+        }
+      } else {
+        image = null;
+        _existingImageUrl = null;
       }
 
       milesController.text = record['miles'].toString();
@@ -1891,6 +1887,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 SizedBox(height: 10.h),
 
                                 // image section
+                                // if (image != null)
+                                //   Container(
+                                //     width: 80.w,
+                                //     height: 80.h,
+                                //     decoration: BoxDecoration(
+                                //       borderRadius: BorderRadius.circular(12.r),
+                                //       image: DecorationImage(
+                                //         image: FileImage(image!),
+                                //         fit: BoxFit.cover,
+                                //       ),
+                                //     ),
+                                //   ),
+
+                                // image section
                                 if (image != null)
                                   Container(
                                     width: 80.w,
@@ -1902,7 +1912,20 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         fit: BoxFit.cover,
                                       ),
                                     ),
+                                  )
+                                else if (_existingImageUrl != null)
+                                  Container(
+                                    width: 80.w,
+                                    height: 80.h,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      image: DecorationImage(
+                                        image: NetworkImage(_existingImageUrl!),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
                                   ),
+
                                 // Save Button
                                 Row(
                                   mainAxisAlignment: isEditing
@@ -3184,6 +3207,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       editingRecordId = null;
       selectedVehicle = null;
       image = null;
+      _existingImageUrl = null;
       selectedServices.clear();
       selectedSubServices.clear();
       serviceDefaultValues.clear();
