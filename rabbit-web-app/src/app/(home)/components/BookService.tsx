@@ -120,6 +120,9 @@ const BookingSection: React.FC = () => {
               iccms: data.iccms,
               vehicleType: data.vehicleType,
               active: data.active,
+              currentMiles: data.currentMiles || "0",
+              hoursReading: data.hoursReading || "0",
+              currentMilesArray: data.currentMilesArray || [],
             };
           });
         }
