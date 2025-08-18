@@ -631,7 +631,7 @@ export default function MemberTripsPage() {
           <button
             onClick={() => {
               router.push(
-                `/account/manage-team/member-trips/add-trip?userId=${memberId}?role=${mRole}?memberName=${memberData?.userName}`
+                `/account/manage-team/member-trips/add-trip?userId=${memberId}&role=${mRole}&memberName=${memberData?.userName}`
               );
             }}
             className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"
