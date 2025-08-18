@@ -1,7 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-
 import { useAuth } from "@/contexts/AuthContexts";
 import { db, storage } from "@/lib/firebase";
 import { ProfileValues, VehicleTypes } from "@/types/types";
@@ -79,12 +77,14 @@ interface TripDetails {
   loadType?: string;
 }
 
-export default function CreateMemberAddTripPage() {
-  const searchParams = useSearchParams();
-
-  const memberId = searchParams.get("userId");
-  const memberRole = searchParams.get("role");
-  // const memberName = searchParams.get("memberName");
+export default function CreateMemberAddTripPage({
+  searchParams,
+}: {
+  searchParams: { userId?: string; role?: string; memberName?: string };
+}) {
+  const memberId = searchParams.userId;
+  const memberRole = searchParams.role;
+  // const memberName = searchParams.memberName;
 
   const { user } = useAuth() || { user: null };
   const [isLoading, setIsLoading] = useState(false);
@@ -462,6 +462,9 @@ export default function CreateMemberAddTripPage() {
             </button>
           </div>
         )}
+
+        {<div>UserId : {memberId}</div>}
+        {<div>Member Role : {memberRole}</div>}
 
         {showAddExpense && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
