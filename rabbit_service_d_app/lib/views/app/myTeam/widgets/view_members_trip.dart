@@ -71,46 +71,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     }
   }
 
-  // Future<Map<String, double>> calculateTotals(
-  //     List<QueryDocumentSnapshot> trips, String perMileCharge, driverId) async {
-  //   double totalExpenses = 0;
-  //   double totalEarnings = 0;
-  //   String userId = driverId;
-  //   double perMile = double.tryParse(perMileCharge) ?? 0.0;
-
-  //   for (var trip in trips) {
-  //     // Calculate expenses from tripDetails
-  //     var expensesSnapshot = await FirebaseFirestore.instance
-  //         .collection("Users")
-  //         .doc(userId)
-  //         .collection('trips')
-  //         .doc(trip.id)
-  //         .collection('tripDetails')
-  //         .where('type', isEqualTo: 'Expenses')
-  //         .get();
-
-  //     double tripExpenses = expensesSnapshot.docs
-  //         .fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
-  //     totalExpenses += tripExpenses;
-
-  //     // Calculate earnings only for completed trips
-  //     int startMiles = trip['tripStartMiles'];
-  //     int endMiles = trip['tripEndMiles'];
-  //     int miles = endMiles - startMiles;
-
-  //     // Only calculate earnings if miles is positive
-  //     if (miles > 0) {
-  //       double earnings = miles * perMile;
-  //       totalEarnings += earnings;
-  //     }
-  //   }
-
-  //   return {
-  //     'expenses': totalExpenses,
-  //     'earnings': totalEarnings < 0 ? 0 : totalEarnings
-  //   };
-  // }
-
   Future<Map<String, double>> calculateTotals(List<QueryDocumentSnapshot> trips,
       String perMileCharge, String driverId, String role) async {
     double totalExpenses = 0;
@@ -164,12 +124,463 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     };
   }
 
+  // Future<void> _showEditDialog(DocumentSnapshot tripDoc) async {
+  //   _tripNameController.text = tripDoc['tripName'];
+  //   _startMilesController.text = tripDoc['tripStartMiles'].toString();
+  //   _endMilesController.text = tripDoc['tripEndMiles'].toString();
+  //   _selectedStartDate = tripDoc['tripStartDate'].toDate();
+  //   _selectedEndDate = tripDoc['tripEndDate'].toDate();
+
+  //   await showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return StatefulBuilder(
+  //         builder: (context, setState) {
+  //           return AlertDialog(
+  //             title: Text('Edit Trip Details'),
+  //             content: SingleChildScrollView(
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   TextField(
+  //                     controller: _tripNameController,
+  //                     decoration: InputDecoration(labelText: 'Trip Name'),
+  //                   ),
+  //                   SizedBox(height: 10.h),
+  //                   TextField(
+  //                     controller: _startMilesController,
+  //                     decoration: InputDecoration(labelText: 'Start Miles'),
+  //                     keyboardType: TextInputType.number,
+  //                   ),
+  //                   SizedBox(height: 10.h),
+  //                   TextField(
+  //                     controller: _endMilesController,
+  //                     decoration: InputDecoration(labelText: 'End Miles'),
+  //                     keyboardType: TextInputType.number,
+  //                   ),
+  //                   SizedBox(height: 10.h),
+  //                   ListTile(
+  //                     title: Text(
+  //                         'Start Date: ${_selectedStartDate != null ? DateFormat('dd MMM yyyy').format(_selectedStartDate!) : 'Not selected'}'),
+  //                     trailing: Icon(Icons.calendar_today),
+  //                     onTap: () async {
+  //                       final picked = await showDatePicker(
+  //                         context: context,
+  //                         initialDate: _selectedStartDate ?? DateTime.now(),
+  //                         firstDate: DateTime(2000),
+  //                         lastDate: DateTime(2100),
+  //                       );
+  //                       if (picked != null) {
+  //                         setState(() {
+  //                           _selectedStartDate = picked;
+  //                         });
+  //                       }
+  //                     },
+  //                   ),
+  //                   ListTile(
+  //                     title: Text(
+  //                         'End Date: ${_selectedEndDate != null ? DateFormat('dd MMM yyyy').format(_selectedEndDate!) : 'Not selected'}'),
+  //                     trailing: Icon(Icons.calendar_today),
+  //                     onTap: () async {
+  //                       final picked = await showDatePicker(
+  //                         context: context,
+  //                         initialDate: _selectedEndDate ?? DateTime.now(),
+  //                         firstDate: DateTime(2000),
+  //                         lastDate: DateTime(2100),
+  //                       );
+  //                       if (picked != null) {
+  //                         setState(() {
+  //                           _selectedEndDate = picked;
+  //                         });
+  //                       }
+  //                     },
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             actions: [
+  //               TextButton(
+  //                 onPressed: () => Navigator.pop(context),
+  //                 child: Text('Cancel'),
+  //               ),
+  //               TextButton(
+  //                 onPressed: () async {
+  //                   if (_tripNameController.text.isEmpty ||
+  //                       _startMilesController.text.isEmpty ||
+  //                       _endMilesController.text.isEmpty ||
+  //                       _selectedStartDate == null ||
+  //                       _selectedEndDate == null) {
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(content: Text('Please fill all fields')),
+  //                     );
+  //                     return;
+  //                   }
+
+  //                   try {
+  //                     await FirebaseFirestore.instance
+  //                         .collection("Users")
+  //                         .doc(widget.memberId)
+  //                         .collection('trips')
+  //                         .doc(tripDoc.id)
+  //                         .update({
+  //                       'tripName': _tripNameController.text,
+  //                       'tripStartMiles': int.parse(_startMilesController.text),
+  //                       'tripEndMiles': int.parse(_endMilesController.text),
+  //                       'tripStartDate': _selectedStartDate,
+  //                       'tripEndDate': _selectedEndDate,
+  //                     });
+  //                     Navigator.pop(context);
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(content: Text('Trip updated successfully')),
+  //                     );
+  //                   } catch (e) {
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(content: Text('Error updating trip: $e')),
+  //                     );
+  //                   }
+  //                 },
+  //                 child: Text('Save'),
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+
+  // Future<void> _showEditDialog(DocumentSnapshot tripDoc) async {
+  //   // Initialize controllers with current values
+  //   _tripNameController.text = tripDoc['tripName'];
+  //   _startMilesController.text = tripDoc['tripStartMiles'].toString();
+  //   _endMilesController.text = tripDoc['tripEndMiles'].toString();
+  //   _selectedStartDate = tripDoc['tripStartDate'].toDate();
+  //   _selectedEndDate = tripDoc['tripEndDate'].toDate();
+
+  //   // Fetch available trucks and trailers
+  //   final trucksSnapshot = await FirebaseFirestore.instance
+  //       .collection("Users")
+  //       .doc(widget.memberId)
+  //       .collection('Vehicles')
+  //       .where('active', isEqualTo: true)
+  //       .where("vehicleType", isEqualTo: "Truck")
+  //       .get();
+
+  //   final trailersSnapshot = await FirebaseFirestore.instance
+  //       .collection("Users")
+  //       .doc(widget.memberId)
+  //       .collection('Vehicles')
+  //       .where('active', isEqualTo: true)
+  //       .where("vehicleType", isEqualTo: "Trailer")
+  //       .get();
+
+  //   List<String> trucks = trucksSnapshot.docs
+  //       .map((doc) => "${doc['companyName']} (${doc['vehicleNumber']})")
+  //       .toList();
+
+  //   List<String> trailers = trailersSnapshot.docs
+  //       .map((doc) => "${doc['companyName']} (${doc['vehicleNumber']})")
+  //       .toList();
+
+  //   // Current selected values
+  //   String currentTruck =
+  //       "${tripDoc['companyName']} (${tripDoc['vehicleNumber']})";
+  //   String currentTrailer = tripDoc['trailerId'] != null
+  //       ? "${tripDoc['trailerCompanyName']} (${tripDoc['trailerNumber']})"
+  //       : "";
+  //   String currentLoadType = tripDoc['loadType'] ?? "";
+
+  //   // Load types
+  //   List<String> loadTypes = ["Empty", "Loaded"];
+
+  //   String? selectedTruck = trucks.contains(currentTruck) ? currentTruck : null;
+  //   String? selectedTrailer =
+  //       trailers.contains(currentTrailer) ? currentTrailer : null;
+  //   String? selectedLoadType =
+  //       loadTypes.contains(currentLoadType) ? currentLoadType : null;
+
+  //   await showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return StatefulBuilder(
+  //         builder: (context, setState) {
+  //           return AlertDialog(
+  //             title: Text('Edit Trip Details'),
+  //             content: SingleChildScrollView(
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   TextField(
+  //                     controller: _tripNameController,
+  //                     decoration: InputDecoration(labelText: 'Trip Name'),
+  //                   ),
+  //                   SizedBox(height: 10.h),
+
+  //                   // Truck Dropdown
+  //                   DropdownButtonFormField<String>(
+  //                     value: selectedTruck,
+  //                     decoration: InputDecoration(labelText: 'Truck'),
+  //                     items: [
+  //                       DropdownMenuItem(
+  //                         value: null,
+  //                         child: Text('Select Truck'),
+  //                       ),
+  //                       ...trucks.map((truck) {
+  //                         return DropdownMenuItem(
+  //                           value: truck,
+  //                           child: Text(truck),
+  //                         );
+  //                       }).toList(),
+  //                     ],
+  //                     onChanged: (value) {
+  //                       setState(() {
+  //                         selectedTruck = value;
+  //                       });
+  //                     },
+  //                   ),
+  //                   SizedBox(height: 10.h),
+
+  //                   // Trailer Dropdown
+  //                   DropdownButtonFormField<String>(
+  //                     value: selectedTrailer,
+  //                     decoration:
+  //                         InputDecoration(labelText: 'Trailer (Optional)'),
+  //                     items: [
+  //                       DropdownMenuItem(
+  //                         value: null,
+  //                         child: Text('Select Trailer'),
+  //                       ),
+  //                       ...trailers.map((trailer) {
+  //                         return DropdownMenuItem(
+  //                           value: trailer,
+  //                           child: Text(trailer),
+  //                         );
+  //                       }).toList(),
+  //                     ],
+  //                     onChanged: (value) {
+  //                       setState(() {
+  //                         selectedTrailer = value;
+  //                       });
+  //                     },
+  //                   ),
+  //                   SizedBox(height: 10.h),
+
+  //                   // Load Type Dropdown
+  //                   DropdownButtonFormField<String>(
+  //                     value: selectedLoadType,
+  //                     decoration: InputDecoration(labelText: 'Load Type'),
+  //                     items: [
+  //                       DropdownMenuItem(
+  //                         value: null,
+  //                         child: Text('Select Load Type'),
+  //                       ),
+  //                       ...loadTypes.map((type) {
+  //                         return DropdownMenuItem(
+  //                           value: type,
+  //                           child: Text(type),
+  //                         );
+  //                       }).toList(),
+  //                     ],
+  //                     onChanged: (value) {
+  //                       setState(() {
+  //                         selectedLoadType = value;
+  //                       });
+  //                     },
+  //                   ),
+  //                   SizedBox(height: 10.h),
+
+  //                   TextField(
+  //                     controller: _startMilesController,
+  //                     decoration: InputDecoration(labelText: 'Start Miles'),
+  //                     keyboardType: TextInputType.number,
+  //                   ),
+  //                   SizedBox(height: 10.h),
+  //                   TextField(
+  //                     controller: _endMilesController,
+  //                     decoration: InputDecoration(labelText: 'End Miles'),
+  //                     keyboardType: TextInputType.number,
+  //                   ),
+  //                   SizedBox(height: 10.h),
+  //                   ListTile(
+  //                     title: Text(
+  //                         'Start Date: ${_selectedStartDate != null ? DateFormat('dd MMM yyyy').format(_selectedStartDate!) : 'Not selected'}'),
+  //                     trailing: Icon(Icons.calendar_today),
+  //                     onTap: () async {
+  //                       final picked = await showDatePicker(
+  //                         context: context,
+  //                         initialDate: _selectedStartDate ?? DateTime.now(),
+  //                         firstDate: DateTime(2000),
+  //                         lastDate: DateTime(2100),
+  //                       );
+  //                       if (picked != null) {
+  //                         setState(() {
+  //                           _selectedStartDate = picked;
+  //                         });
+  //                       }
+  //                     },
+  //                   ),
+  //                   ListTile(
+  //                     title: Text(
+  //                         'End Date: ${_selectedEndDate != null ? DateFormat('dd MMM yyyy').format(_selectedEndDate!) : 'Not selected'}'),
+  //                     trailing: Icon(Icons.calendar_today),
+  //                     onTap: () async {
+  //                       final picked = await showDatePicker(
+  //                         context: context,
+  //                         initialDate: _selectedEndDate ?? DateTime.now(),
+  //                         firstDate: DateTime(2000),
+  //                         lastDate: DateTime(2100),
+  //                       );
+  //                       if (picked != null) {
+  //                         setState(() {
+  //                           _selectedEndDate = picked;
+  //                         });
+  //                       }
+  //                     },
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             actions: [
+  //               TextButton(
+  //                 onPressed: () => Navigator.pop(context),
+  //                 child: Text('Cancel'),
+  //               ),
+  //               TextButton(
+  //                 onPressed: () async {
+  //                   if (_tripNameController.text.isEmpty ||
+  //                       _startMilesController.text.isEmpty ||
+  //                       _endMilesController.text.isEmpty ||
+  //                       _selectedStartDate == null ||
+  //                       _selectedEndDate == null ||
+  //                       selectedTruck == null ||
+  //                       selectedLoadType == null) {
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(
+  //                           content: Text('Please fill all required fields')),
+  //                     );
+  //                     return;
+  //                   }
+
+  //                   try {
+  //                     // Parse truck and trailer information
+  //                     String truckNumber =
+  //                         selectedTruck!.split('(').last.replaceAll(')', '');
+  //                     String truckCompany =
+  //                         selectedTruck!.split('(').first.trim();
+
+  //                     String? trailerNumber;
+  //                     String? trailerCompany;
+  //                     if (selectedTrailer != null) {
+  //                       trailerNumber = selectedTrailer!
+  //                           .split('(')
+  //                           .last
+  //                           .replaceAll(')', '');
+  //                       trailerCompany =
+  //                           selectedTrailer!.split('(').first.trim();
+  //                     }
+
+  //                     await FirebaseFirestore.instance
+  //                         .collection("Users")
+  //                         .doc(widget.memberId)
+  //                         .collection('trips')
+  //                         .doc(tripDoc.id)
+  //                         .update({
+  //                       'tripName': _tripNameController.text,
+  //                       'tripStartMiles': int.parse(_startMilesController.text),
+  //                       'tripEndMiles': int.parse(_endMilesController.text),
+  //                       'tripStartDate': _selectedStartDate,
+  //                       'tripEndDate': _selectedEndDate,
+  //                       'companyName': truckCompany,
+  //                       'vehicleNumber': truckNumber,
+  //                       'trailerCompanyName': trailerCompany,
+  //                       'trailerNumber': trailerNumber,
+  //                       'loadType': selectedLoadType,
+  //                     });
+
+  //                     Navigator.pop(context);
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(content: Text('Trip updated successfully')),
+  //                     );
+  //                   } catch (e) {
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(content: Text('Error updating trip: $e')),
+  //                     );
+  //                   }
+  //                 },
+  //                 child: Text('Save'),
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
+
   Future<void> _showEditDialog(DocumentSnapshot tripDoc) async {
+    // Initialize controllers with current values
     _tripNameController.text = tripDoc['tripName'];
     _startMilesController.text = tripDoc['tripStartMiles'].toString();
     _endMilesController.text = tripDoc['tripEndMiles'].toString();
     _selectedStartDate = tripDoc['tripStartDate'].toDate();
     _selectedEndDate = tripDoc['tripEndDate'].toDate();
+
+    // Store current vehicle IDs
+    String currentTruckId = tripDoc['vehicleId'];
+    String? currentTrailerId = tripDoc['trailerId'];
+
+    // Fetch available trucks and trailers
+    final trucksSnapshot = await FirebaseFirestore.instance
+        .collection("Users")
+        .doc(widget.memberId)
+        .collection('Vehicles')
+        .where('active', isEqualTo: true)
+        .where("vehicleType", isEqualTo: "Truck")
+        .get();
+
+    final trailersSnapshot = await FirebaseFirestore.instance
+        .collection("Users")
+        .doc(widget.memberId)
+        .collection('Vehicles')
+        .where('active', isEqualTo: true)
+        .where("vehicleType", isEqualTo: "Trailer")
+        .get();
+
+    // Create maps for display strings to document data
+    Map<String, QueryDocumentSnapshot> truckDisplayToDoc = {};
+    Map<String, QueryDocumentSnapshot> trailerDisplayToDoc = {};
+
+    List<String> trucks = trucksSnapshot.docs.map((doc) {
+      String display = "${doc['companyName']} (${doc['vehicleNumber']})";
+      truckDisplayToDoc[display] = doc;
+      return display;
+    }).toList();
+
+    List<String> trailers = trailersSnapshot.docs.map((doc) {
+      String display = "${doc['companyName']} (${doc['vehicleNumber']})";
+      trailerDisplayToDoc[display] = doc;
+      return display;
+    }).toList();
+
+    // Get current display values
+    String currentTruckDisplay =
+        "${tripDoc['companyName']} (${tripDoc['vehicleNumber']})";
+    String? currentTrailerDisplay = tripDoc['trailerId'] != null
+        ? "${tripDoc['trailerCompanyName']} (${tripDoc['trailerNumber']})"
+        : null;
+
+    // Load types
+    List<String> loadTypes = ["Empty", "Loaded"];
+    String currentLoadType = tripDoc['loadType'] ?? "";
+
+    // Initialize selected values
+    String? selectedTruck = currentTruckDisplay;
+    String? selectedTrailer = currentTrailerDisplay;
+    String? selectedLoadType = currentLoadType;
+
+    // These will hold the IDs (either existing or new)
+    String? newTruckId = currentTruckId;
+    String? newTrailerId = currentTrailerId;
 
     await showDialog(
       context: context,
@@ -187,6 +598,88 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                       decoration: InputDecoration(labelText: 'Trip Name'),
                     ),
                     SizedBox(height: 10.h),
+
+                    // Truck Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedTruck,
+                      decoration: InputDecoration(labelText: 'Truck'),
+                      items: [
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text('Select Truck'),
+                        ),
+                        ...trucks.map((truck) {
+                          return DropdownMenuItem(
+                            value: truck,
+                            child: Text(truck),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedTruck = value;
+                          // Update truck ID if selection changed
+                          newTruckId = value != null
+                              ? truckDisplayToDoc[value]!.id
+                              : currentTruckId;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    // Trailer Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedTrailer,
+                      decoration:
+                          InputDecoration(labelText: 'Trailer (Optional)'),
+                      items: [
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text('Select Trailer'),
+                        ),
+                        ...trailers.map((trailer) {
+                          return DropdownMenuItem(
+                            value: trailer,
+                            child: Text(trailer),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedTrailer = value;
+                          // Update trailer ID if selection changed
+                          newTrailerId = value != null
+                              ? trailerDisplayToDoc[value]!.id
+                              : currentTrailerId;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    // Load Type Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedLoadType,
+                      decoration: InputDecoration(labelText: 'Load Type'),
+                      items: [
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text('Select Load Type'),
+                        ),
+                        ...loadTypes.map((type) {
+                          return DropdownMenuItem(
+                            value: type,
+                            child: Text(type),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedLoadType = value;
+                        });
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
                     TextField(
                       controller: _startMilesController,
                       decoration: InputDecoration(labelText: 'Start Miles'),
@@ -249,14 +742,27 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         _startMilesController.text.isEmpty ||
                         _endMilesController.text.isEmpty ||
                         _selectedStartDate == null ||
-                        _selectedEndDate == null) {
+                        _selectedEndDate == null ||
+                        selectedTruck == null ||
+                        selectedLoadType == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Please fill all fields')),
+                        SnackBar(
+                            content: Text('Please fill all required fields')),
                       );
                       return;
                     }
 
                     try {
+                      // Get the selected truck and trailer documents
+                      QueryDocumentSnapshot? selectedTruckDoc =
+                          selectedTruck != null
+                              ? truckDisplayToDoc[selectedTruck!]
+                              : null;
+                      QueryDocumentSnapshot? selectedTrailerDoc =
+                          selectedTrailer != null
+                              ? trailerDisplayToDoc[selectedTrailer!]
+                              : null;
+
                       await FirebaseFirestore.instance
                           .collection("Users")
                           .doc(widget.memberId)
@@ -268,7 +774,21 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         'tripEndMiles': int.parse(_endMilesController.text),
                         'tripStartDate': _selectedStartDate,
                         'tripEndDate': _selectedEndDate,
+                        'vehicleId': newTruckId, // Updated or existing truck ID
+                        'companyName': selectedTruckDoc?['companyName'] ??
+                            tripDoc['companyName'],
+                        'vehicleNumber': selectedTruckDoc?['vehicleNumber'] ??
+                            tripDoc['vehicleNumber'],
+                        'trailerId':
+                            newTrailerId, // Updated or existing trailer ID
+                        'trailerCompanyName':
+                            selectedTrailerDoc?['companyName'] ??
+                                tripDoc['trailerCompanyName'],
+                        'trailerNumber': selectedTrailerDoc?['vehicleNumber'] ??
+                            tripDoc['trailerNumber'],
+                        'loadType': selectedLoadType,
                       });
+
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Trip updated successfully')),
@@ -433,7 +953,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 Get.to(() => AddTeamTripOwnerAndAccountant(
                       driverName: widget.memberName,
                       mId: widget.memberId,
-                      teamRole: widget.role,
+                      teamRole: widget.teamRole,
                     ));
               },
               icon: Icon(Icons.add, color: kWhite),

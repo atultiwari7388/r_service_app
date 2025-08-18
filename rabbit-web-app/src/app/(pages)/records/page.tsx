@@ -113,6 +113,7 @@ interface ServiceRecord {
   invoice?: string;
   description?: string;
   invoiceAmount: string;
+  imageUrl: string;
 }
 
 interface RecordData extends ServiceRecord {
@@ -168,12 +169,16 @@ export default function RecordsPage() {
   const [showSearchFilter, setShowSearchFilter] = useState(false);
   const [serviceSearchText, setServiceSearchText] = useState("");
 
+  const [activeTab, setActiveTab] = useState<"records" | "miles">("records");
+
   //for editing
   const [isEditing, setIsEditing] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
   const [selectedVehicleData, setSelectedVehicleData] =
     useState<VehicleTypes | null>(null);
+
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
   // Add Miles Form State
   const [showAddMiles, setShowAddMiles] = useState(false);
@@ -206,23 +211,49 @@ export default function RecordsPage() {
     window.location.href = path;
   };
 
+  // const fetchVehicles = async () => {
+  //   if (!user) return;
+  //   try {
+  //     const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+  //     const q = query(vehiclesRef, where("active", "==", true));
+  //     const vehiclesSnapshot = await getDocs(q);
+  //     const vehiclesList = vehiclesSnapshot.docs.map(
+  //       (doc) =>
+  //         ({
+  //           id: doc.id,
+  //           ...doc.data(),
+  //         } as VehicleTypes)
+  //     );
+  //     setVehicles(vehiclesList);
+  //   } catch (error) {
+  //     console.error("Error fetching vehicles:", error);
+  //     // GlobalToastError(error);
+  //   }
+  // };
+
   const fetchVehicles = async () => {
     if (!user) return;
+
     try {
       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
       const q = query(vehiclesRef, where("active", "==", true));
-      const vehiclesSnapshot = await getDocs(q);
-      const vehiclesList = vehiclesSnapshot.docs.map(
-        (doc) =>
-          ({
-            id: doc.id,
-            ...doc.data(),
-          } as VehicleTypes)
-      );
-      setVehicles(vehiclesList);
+
+      // Replace getDocs with onSnapshot for real-time updates
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const vehiclesList = snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as VehicleTypes)
+        );
+        setVehicles(vehiclesList);
+      });
+
+      // Return the unsubscribe function to clean up later
+      return unsubscribe;
     } catch (error) {
       console.error("Error fetching vehicles:", error);
-      // GlobalToastError(error);
     }
   };
 
@@ -715,6 +746,7 @@ export default function RecordsPage() {
     fetchVehicles();
     fetchServices();
     fetchServicePackages();
+
     if (!user?.uid) return;
 
     const fetchUserData = async () => {
@@ -856,394 +888,6 @@ export default function RecordsPage() {
     }
   };
 
-  // const handleSaveRecords = async () => {
-  //   try {
-  //     setIsRecordSaving(true);
-  //     if (!user || !selectedVehicle || selectedServices.size === 0) {
-  //       toast.error("Please select vehicle and at least one service");
-  //       return;
-  //     }
-
-  //     const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
-  //     if (!vehicleData) {
-  //       toast.error("Vehicle data not found");
-  //       return;
-  //     }
-
-  //     let imageUrl = null;
-  //     if (imageFile) {
-  //       imageUrl = await uploadImage();
-  //       if (!imageUrl) {
-  //         toast.error("Failed to upload image");
-  //         return;
-  //       }
-  //     }
-
-  //     const currentMiles = Number(miles);
-  //     const currentHours = Number(hours) || 0;
-
-  //     // Get current vehicle services to preserve existing ones
-  //     const vehicleRef = doc(
-  //       db,
-  //       "Users",
-  //       user.uid,
-  //       "Vehicles",
-  //       selectedVehicle
-  //     );
-  //     const vehicleDoc = await getDoc(vehicleRef);
-  //     const currentVehicleServices = vehicleDoc.exists()
-  //       ? vehicleDoc.data()?.services || []
-  //       : [];
-
-  //     // Prepare services data
-  //     const servicesData = [];
-  //     const notificationData = [];
-  //     const updatedVehicleServices = [...currentVehicleServices];
-
-  //     for (const serviceId of selectedServices) {
-  //       const service = services.find((s) => s.sId === serviceId);
-  //       if (!service) continue;
-
-  //       // Check if vehicle already has this service
-  //       const existingServiceIndex = updatedVehicleServices.findIndex(
-  //         (s: { serviceId: string }) => s.serviceId === serviceId
-  //       );
-
-  //       // Get default value - priority to vehicle-specific if exists
-  //       let defaultValue = serviceDefaultValues[serviceId] || 0;
-  //       let type = "reading";
-
-  //       if (existingServiceIndex >= 0) {
-  //         // Keep existing service type if available
-  //         type = updatedVehicleServices[existingServiceIndex].type || "reading";
-  //         // Use existing default if available, otherwise use calculated
-  //         defaultValue =
-  //           updatedVehicleServices[existingServiceIndex]
-  //             .defaultNotificationValue ||
-  //           serviceDefaultValues[serviceId] ||
-  //           0;
-  //       } else {
-  //         // Determine type from metadata if new service
-  //         const engineName = vehicleData.engineNumber?.toString().toUpperCase();
-  //         const dValues = service.dValues || [];
-  //         const matchingDValue = dValues.find(
-  //           (dv) => dv.brand?.toString().toUpperCase() === engineName
-  //         );
-  //         type = (matchingDValue?.type || "reading").toLowerCase();
-  //       }
-
-  //       // Calculate next notification
-  //       let nextNotificationValue = 0;
-  //       let formattedDate = "";
-  //       let numericValue = 0;
-
-  //       if (defaultValue > 0) {
-  //         if (type === "reading") {
-  //           nextNotificationValue = currentMiles + defaultValue;
-  //           numericValue = nextNotificationValue;
-  //         } else if (type === "day") {
-  //           const baseDate = date ? new Date(date) : new Date();
-  //           const nextDate = new Date(baseDate);
-  //           nextDate.setDate(baseDate.getDate() + Number(defaultValue));
-  //           formattedDate = formatDateToDDMMYYYY(nextDate);
-  //           numericValue = nextDate.getTime();
-  //           nextNotificationValue = numericValue;
-  //         } else if (type === "hour") {
-  //           nextNotificationValue = currentHours + defaultValue;
-  //           numericValue = nextNotificationValue;
-  //         }
-  //       }
-
-  //       // Prepare service data for record
-  //       const serviceData = {
-  //         serviceId,
-  //         serviceName: service.sName || "",
-  //         type,
-  //         defaultNotificationValue: defaultValue,
-  //         nextNotificationValue:
-  //           type === "day" ? formattedDate : nextNotificationValue,
-  //         subServices: (selectedSubServices[serviceId] || []).map(
-  //           (subService, index) => ({
-  //             name: subService,
-  //             id: `${serviceId}_${subService.replace(/\s+/g, "_")}_${index}`,
-  //           })
-  //         ),
-  //       };
-  //       servicesData.push(serviceData);
-
-  //       // Prepare notification data
-  //       notificationData.push({
-  //         serviceName: service.sName || "",
-  //         type,
-  //         nextNotificationValue:
-  //           type === "day" ? formattedDate : nextNotificationValue,
-  //         subServices: selectedSubServices[serviceId] || [],
-  //       });
-
-  //       // Update vehicle services array - update existing or add new
-  //       if (existingServiceIndex >= 0) {
-  //         updatedVehicleServices[existingServiceIndex] = {
-  //           ...updatedVehicleServices[existingServiceIndex],
-  //           nextNotificationValue:
-  //             type === "day" ? formattedDate : nextNotificationValue,
-  //         };
-  //       } else {
-  //         updatedVehicleServices.push({
-  //           ...serviceData,
-  //           nextNotificationValue:
-  //             type === "day" ? formattedDate : nextNotificationValue,
-  //         });
-  //       }
-  //     }
-
-  //     // Format date for storage
-  //     const baseDate = date ? new Date(date) : new Date();
-  //     const formattedDate = baseDate.toISOString().split("T")[0];
-
-  //     const recordData = {
-  //       userId: user.uid,
-  //       vehicleId: selectedVehicle,
-  //       imageUrl: imageUrl,
-  //       vehicleDetails: {
-  //         ...vehicleData,
-  //         currentMiles: currentMiles.toString(),
-  //         nextNotificationMiles: notificationData,
-  //       },
-  //       services: servicesData,
-  //       currentMilesArray: [
-  //         {
-  //           miles: currentMiles,
-  //           date: formattedDate,
-  //         },
-  //       ],
-  //       miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
-  //       hours: vehicleData.vehicleType === "Trailer" ? currentHours : 0,
-  //       totalMiles: currentMiles,
-  //       date: formattedDate,
-  //       workshopName,
-  //       invoice,
-  //       invoiceAmount,
-  //       description,
-  //       createdAt: new Date().toISOString(),
-  //       active: true,
-  //     };
-
-  //     const batch = writeBatch(db);
-
-  //     // Handle record creation/update
-  //     if (isEditing && editingRecordId) {
-  //       // Update existing record
-  //       const recordRef = doc(
-  //         db,
-  //         "Users",
-  //         user.uid,
-  //         "DataServices",
-  //         editingRecordId
-  //       );
-  //       batch.update(recordRef, recordData);
-
-  //       // Update global record if exists
-  //       const globalRecordQuery = query(
-  //         collection(db, "DataServicesRecords"),
-  //         where("userId", "==", user.uid),
-  //         where("vehicleId", "==", selectedVehicle),
-  //         where("createdAt", "==", recordData.createdAt)
-  //       );
-  //       const globalSnapshot = await getDocs(globalRecordQuery);
-  //       if (!globalSnapshot.empty) {
-  //         batch.update(globalSnapshot.docs[0].ref, recordData);
-  //       }
-  //     } else {
-  //       // Create new records
-  //       const newRecordRef = doc(
-  //         collection(db, "Users", user.uid, "DataServices")
-  //       );
-  //       const globalRecordRef = doc(collection(db, "DataServicesRecords"));
-
-  //       batch.set(newRecordRef, recordData);
-  //       batch.set(globalRecordRef, {
-  //         ...recordData,
-  //         id: newRecordRef.id,
-  //       });
-  //     }
-
-  //     // Update vehicle document
-  //     batch.update(vehicleRef, {
-  //       services: updatedVehicleServices,
-  //       currentMiles: currentMiles.toString(),
-  //       currentMilesArray: arrayUnion({
-  //         miles: currentMiles,
-  //         date: formattedDate,
-  //       }),
-  //       nextNotificationMiles: notificationData,
-  //     });
-
-  //     // Handle team members (MOVED THIS SECTION OUTSIDE OF THE isEditing CONDITION)
-  //     const teamMembersQuery = query(
-  //       collection(db, "Users"),
-  //       where("createdBy", "==", user.uid),
-  //       where("isTeamMember", "==", true)
-  //     );
-  //     const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-  //     for (const memberDoc of teamMembersSnapshot.docs) {
-  //       const memberVehicleRef = doc(
-  //         db,
-  //         "Users",
-  //         memberDoc.id,
-  //         "Vehicles",
-  //         selectedVehicle
-  //       );
-  //       const memberVehicleSnap = await getDoc(memberVehicleRef);
-
-  //       if (memberVehicleSnap.exists()) {
-  //         // Update team member's vehicle
-  //         batch.update(memberVehicleRef, {
-  //           services: updatedVehicleServices,
-  //           currentMiles: currentMiles.toString(),
-  //           currentMilesArray: arrayUnion({
-  //             miles: currentMiles,
-  //             date: formattedDate,
-  //           }),
-  //           nextNotificationMiles: notificationData,
-  //         });
-
-  //         // For editing, we need to find and update the existing record in team member's DataServices
-  //         if (isEditing && editingRecordId) {
-  //           // Find the corresponding record in team member's DataServices
-  //           const memberRecordQuery = query(
-  //             collection(db, "Users", memberDoc.id, "DataServices"),
-  //             where("userId", "==", user.uid),
-  //             where("vehicleId", "==", selectedVehicle),
-  //             where("createdAt", "==", recordData.createdAt)
-  //           );
-  //           const memberRecordSnapshot = await getDocs(memberRecordQuery);
-
-  //           if (!memberRecordSnapshot.empty) {
-  //             batch.update(memberRecordSnapshot.docs[0].ref, recordData);
-  //           }
-  //         } else {
-  //           // Add new record to team member's DataServices
-  //           const memberRecordRef = doc(
-  //             collection(db, "Users", memberDoc.id, "DataServices")
-  //           );
-  //           batch.set(memberRecordRef, recordData);
-  //         }
-  //       }
-  //     }
-
-  //     // Handle if current user is team member (save to owner)
-  //     const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-  //     if (currentUserDoc.data()?.isTeamMember) {
-  //       const ownerId = currentUserDoc.data()?.createdBy;
-  //       if (ownerId) {
-  //         const ownerVehicleRef = doc(
-  //           db,
-  //           "Users",
-  //           ownerId,
-  //           "Vehicles",
-  //           selectedVehicle
-  //         );
-  //         const ownerVehicleSnap = await getDoc(ownerVehicleRef);
-
-  //         if (ownerVehicleSnap.exists()) {
-  //           batch.update(ownerVehicleRef, {
-  //             services: updatedVehicleServices,
-  //             currentMiles: currentMiles.toString(),
-  //             currentMilesArray: arrayUnion({
-  //               miles: currentMiles,
-  //               date: formattedDate,
-  //             }),
-  //             nextNotificationMiles: notificationData,
-  //           });
-
-  //           // For editing, find and update the existing record in owner's DataServices
-  //           if (isEditing && editingRecordId) {
-  //             const ownerRecordQuery = query(
-  //               collection(db, "Users", ownerId, "DataServices"),
-  //               where("userId", "==", user.uid),
-  //               where("vehicleId", "==", selectedVehicle),
-  //               where("createdAt", "==", recordData.createdAt)
-  //             );
-  //             const ownerRecordSnapshot = await getDocs(ownerRecordQuery);
-
-  //             if (!ownerRecordSnapshot.empty) {
-  //               batch.update(ownerRecordSnapshot.docs[0].ref, recordData);
-  //             }
-  //           } else {
-  //             // Add new record to owner's DataServices
-  //             const ownerRecordRef = doc(
-  //               collection(db, "Users", ownerId, "DataServices")
-  //             );
-  //             batch.set(ownerRecordRef, recordData);
-  //           }
-  //         }
-  //       }
-  //     }
-
-  //     await batch.commit();
-  //     toast.success(
-  //       isEditing
-  //         ? "Record updated successfully!"
-  //         : "Record added successfully!"
-  //     );
-  //     resetForm();
-  //   } catch (error) {
-  //     console.error("Error saving record:", error);
-  //     toast.error(
-  //       `Failed to save record: ${
-  //         error instanceof Error ? error.message : "Unknown error"
-  //       }`
-  //     );
-  //   } finally {
-  //     setIsRecordSaving(false);
-  //   }
-  // };
-
-  // const handleEditRecord = (record: ServiceRecord) => {
-  //   setIsEditing(true);
-  //   setEditingRecordId(record.id);
-
-  //   // Set form values from the selected record
-  //   setSelectedVehicle(record.vehicleId);
-  //   const vehicleData = vehicles.find((v) => v.id === record.vehicleId) || null;
-  //   setSelectedVehicleData(vehicleData);
-
-  //   // Initialize serviceDefaultValues from the record
-  //   const newServiceDefaultValues: { [key: string]: number } = {};
-  //   record.services.forEach((service) => {
-  //     newServiceDefaultValues[service.serviceId] =
-  //       service.defaultNotificationValue || 0;
-  //   });
-  //   setServiceDefaultValues(newServiceDefaultValues);
-
-  //   // Set selected services from the record (convert to Set)
-  //   const servicesSet = new Set(record.services.map((s) => s.serviceId));
-  //   setSelectedServices(servicesSet);
-
-  //   // Set subservices from the record
-  //   const subServices: { [key: string]: string[] } = {};
-  //   record.services.forEach((service) => {
-  //     subServices[service.serviceId] =
-  //       service.subServices?.map((ss) => ss.name) || [];
-  //   });
-
-  //   let recordDate = record.date;
-  //   setSelectedSubServices(subServices);
-  //   setMiles(record.miles.toString());
-  //   setHours(record.hours.toString());
-  //   if (recordDate && recordDate.includes("T")) {
-  //     recordDate = recordDate.split("T")[0];
-  //   }
-  //   setDate(record.date);
-  //   setWorkshopName(record.workshopName || "");
-  //   setInvoice(record.invoice || "");
-  //   setInvoiceAmount(record.invoiceAmount || "");
-  //   setDescription(record.description || "");
-
-  //   setShowAddRecords(true);
-  // };
-
   const handleSaveRecords = async () => {
     try {
       setIsRecordSaving(true);
@@ -1261,7 +905,7 @@ export default function RecordsPage() {
       }
 
       // Upload image if exists
-      let imageUrl = null;
+      let imageUrl = existingImageUrl;
       if (imageFile) {
         imageUrl = await uploadImage();
         if (!imageUrl) {
@@ -1575,6 +1219,9 @@ export default function RecordsPage() {
     setInvoiceAmount(record.invoiceAmount || "");
     setDescription(record.description || "");
 
+    setExistingImageUrl(record.imageUrl || null);
+    setImagePreview(record.imageUrl || null);
+
     setShowAddRecords(true);
   };
 
@@ -1712,6 +1359,39 @@ export default function RecordsPage() {
     "Starter",
     "Water /Coolant Pump",
   ];
+
+  const MilesTab = () => {
+    return (
+      <div className="w-full bg-white p-4 rounded-lg shadow">
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Vehicle</TableCell>
+                <TableCell>Company</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Current Miles/Hours</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {vehicles.map((vehicle) => (
+                <TableRow key={vehicle.id}>
+                  <TableCell>{vehicle.vehicleNumber}</TableCell>
+                  <TableCell>{vehicle.companyName}</TableCell>
+                  <TableCell>{vehicle.vehicleType}</TableCell>
+                  <TableCell>
+                    {vehicle.vehicleType === "Truck"
+                      ? vehicle.currentMiles || "0"
+                      : vehicle.hoursReading || "0"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </div>
+    );
+  };
 
   return userData?.isView ? (
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
@@ -1923,6 +1603,25 @@ export default function RecordsPage() {
           </div>
         </div>
       )}
+
+      <div className="flex justify-center gap-4 mb-6">
+        <button
+          onClick={() => setActiveTab("records")}
+          className={`px-4 py-2 rounded ${
+            activeTab === "records" ? "bg-[#F96176] text-white" : "bg-gray-200"
+          }`}
+        >
+          Records
+        </button>
+        <button
+          onClick={() => setActiveTab("miles")}
+          className={`px-4 py-2 rounded ${
+            activeTab === "miles" ? "bg-[#F96176] text-white" : "bg-gray-200"
+          }`}
+        >
+          Miles/Hours
+        </button>
+      </div>
 
       {/* Search & Filter Dialog */}
       <Dialog
@@ -2484,15 +2183,6 @@ export default function RecordsPage() {
                         className="mb-4 rounded-lg"
                       />
                     )}
-                    {/* <TextField
-                      fullWidth
-                      label="Date"
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      InputLabelProps={{ shrink: true }}
-                      className="mb-4 rounded-lg"
-                    /> */}
                   </>
                 )}
 
@@ -2543,10 +2233,10 @@ export default function RecordsPage() {
       hover:file:bg-blue-100"
                   />
 
-                  {imagePreview && (
+                  {(imagePreview || existingImageUrl) && (
                     <div className="mt-2">
                       <Image
-                        src={imagePreview}
+                        src={imagePreview || existingImageUrl || ""}
                         alt="Preview"
                         width={128}
                         height={128}
@@ -2558,6 +2248,7 @@ export default function RecordsPage() {
                         onClick={() => {
                           setImagePreview(null);
                           setImageFile(null);
+                          setExistingImageUrl(null); // Also clear the existing image URL
                         }}
                         className="mt-2 text-sm text-red-600 hover:text-red-800"
                       >
@@ -2614,114 +2305,119 @@ export default function RecordsPage() {
 
       {/* Records Table */}
 
-      {records.length === 0 ? (
-        <div className="flex justify-center items-center min-h-[60vh]">
-          <h1 className="text-xl font-semibold text-gray-700">
-            No records found.
-          </h1>
-        </div>
-      ) : (
-        <div
-          ref={printRef}
-          className="w-full bg-white"
-          style={{ overflow: "visible", maxHeight: "none" }}
-        >
-          <TableContainer component={Paper}>
-            <Table className="table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Invoice</TableCell>
-                  <TableCell>Vehicle</TableCell>
-                  <TableCell>Company</TableCell>
-                  <TableCell>Inv. Amount</TableCell>
-                  {records.some((record) => record.miles > 0) && (
-                    <TableCell>Miles/Hours</TableCell>
-                  )}
-                  {records.some((record) => record.hours < 0) && (
-                    <TableCell>Hours</TableCell>
-                  )}
-                  <TableCell>Services</TableCell>
-                  <TableCell>Workshop Name</TableCell>
-                  <TableCell>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="table-cell">
-                      {new Date(record.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="table-cell">
-                      {record.invoice && record.invoice.trim() !== ""
-                        ? record.invoice
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell className="table-cell">
-                      {record.vehicleDetails.vehicleNumber}
-                    </TableCell>
-
-                    <TableCell className="table-cell">
-                      {record.vehicleDetails.companyName}
-                    </TableCell>
-                    <TableCell className="table-cell">
-                      {record.invoiceAmount &&
-                      record.invoiceAmount.trim() !== ""
-                        ? `$${record.invoiceAmount}`
-                        : "N/A"}
-                    </TableCell>
-
-                    <TableCell className="table-cell">
-                      {record.vehicleDetails.vehicleType === "Trailer"
-                        ? record.hours
-                          ? `${record.hours}`
-                          : "N/A"
-                        : record.miles
-                        ? `${record.miles}`
-                        : "N/A"}
-                    </TableCell>
-                    <TableCell className="table-cell">
-                      {record.services && record.services.length > 0
-                        ? record.services
-                            .map((service) => service.serviceName)
-                            .join(", ")
-                        : "N/A"}
-                    </TableCell>
-
-                    <TableCell className="table-cell">
-                      {record.workshopName && record.workshopName.trim() !== ""
-                        ? record.workshopName
-                        : "N/A"}
-                    </TableCell>
-
-                    <TableCell>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button
-                          onClick={() =>
-                            userData?.isEdit
-                              ? handleEditRecord(record)
-                              : toast.error(
-                                  "You don't have permission to edit this record."
-                                )
-                          }
-                          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
-                        >
-                          Edit
-                        </button>
-
-                        <Link href={`/records/${record.id}`} passHref>
-                          <button className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]">
-                            View
-                          </button>
-                        </Link>
-                      </div>
-                    </TableCell>
+      {activeTab === "records" ? (
+        records.length === 0 ? (
+          <div className="flex justify-center items-center min-h-[60vh]">
+            <h1 className="text-xl font-semibold text-gray-700">
+              No records found.
+            </h1>
+          </div>
+        ) : (
+          <div
+            ref={printRef}
+            className="w-full bg-white"
+            style={{ overflow: "visible", maxHeight: "none" }}
+          >
+            <TableContainer component={Paper}>
+              <Table className="table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Invoice</TableCell>
+                    <TableCell>Vehicle</TableCell>
+                    <TableCell>Company</TableCell>
+                    <TableCell>Inv. Amount</TableCell>
+                    {records.some((record) => record.miles > 0) && (
+                      <TableCell>Miles/Hours</TableCell>
+                    )}
+                    {records.some((record) => record.hours < 0) && (
+                      <TableCell>Hours</TableCell>
+                    )}
+                    <TableCell>Services</TableCell>
+                    <TableCell>Workshop Name</TableCell>
+                    <TableCell>Action</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </div>
+                </TableHead>
+                <TableBody>
+                  {filteredRecords.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="table-cell">
+                        {new Date(record.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="table-cell">
+                        {record.invoice && record.invoice.trim() !== ""
+                          ? record.invoice
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="table-cell">
+                        {record.vehicleDetails.vehicleNumber}
+                      </TableCell>
+
+                      <TableCell className="table-cell">
+                        {record.vehicleDetails.companyName}
+                      </TableCell>
+                      <TableCell className="table-cell">
+                        {record.invoiceAmount &&
+                        record.invoiceAmount.trim() !== ""
+                          ? `$${record.invoiceAmount}`
+                          : "N/A"}
+                      </TableCell>
+
+                      <TableCell className="table-cell">
+                        {record.vehicleDetails.vehicleType === "Trailer"
+                          ? record.hours
+                            ? `${record.hours}`
+                            : "N/A"
+                          : record.miles
+                          ? `${record.miles}`
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell className="table-cell">
+                        {record.services && record.services.length > 0
+                          ? record.services
+                              .map((service) => service.serviceName)
+                              .join(", ")
+                          : "N/A"}
+                      </TableCell>
+
+                      <TableCell className="table-cell">
+                        {record.workshopName &&
+                        record.workshopName.trim() !== ""
+                          ? record.workshopName
+                          : "N/A"}
+                      </TableCell>
+
+                      <TableCell>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button
+                            onClick={() =>
+                              userData?.isEdit
+                                ? handleEditRecord(record)
+                                : toast.error(
+                                    "You don't have permission to edit this record."
+                                  )
+                            }
+                            className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
+                          >
+                            Edit
+                          </button>
+
+                          <Link href={`/records/${record.id}`} passHref>
+                            <button className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]">
+                              View
+                            </button>
+                          </Link>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
+        )
+      ) : (
+        <MilesTab />
       )}
     </div>
   ) : (

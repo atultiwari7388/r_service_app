@@ -91,6 +91,9 @@ export interface VehicleTypes {
   vin: string | null;
   year: Timestamp;
   active: boolean;
+  currentMiles: string;
+  hoursReading: string;
+  currentMilesArray: { date: Timestamp; value: string }[];
 }
 
 /** Mechanics Offer and User History Interface */

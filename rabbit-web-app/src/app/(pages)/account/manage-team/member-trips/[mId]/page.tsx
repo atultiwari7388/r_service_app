@@ -120,6 +120,11 @@ export default function MemberTripsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { user } = useAuth() || { user: null };
 
+  const [selectedTruckId, setSelectedTruckId] = useState<string | null>(null);
+  const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(
+    null
+  );
+
   const router = useRouter();
 
   useEffect(() => {
@@ -353,6 +358,18 @@ export default function MemberTripsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredTrips, memberData?.perMileCharge.toString()]);
 
+  // const handleEditTrip = (trip: TripDetails) => {
+  //   setCurrentTrip(trip);
+  //   setEditForm({
+  //     tripName: trip.tripName,
+  //     tripStartMiles: trip.tripStartMiles.toString(),
+  //     tripEndMiles: trip.tripEndMiles.toString(),
+  //     tripStartDate: trip.tripStartDate.toDate(),
+  //     tripEndDate: trip.tripEndDate.toDate(),
+  //   });
+  //   setShowEditModal(true);
+  // };
+
   const handleEditTrip = (trip: TripDetails) => {
     setCurrentTrip(trip);
     setEditForm({
@@ -362,8 +379,43 @@ export default function MemberTripsPage() {
       tripStartDate: trip.tripStartDate.toDate(),
       tripEndDate: trip.tripEndDate.toDate(),
     });
+
+    // Set current vehicle selections
+    setSelectedTruckId(trip.vehicleId);
+    setSelectedTrailerId(trip.trailerId || null);
+
     setShowEditModal(true);
   };
+
+  // const handleSaveEdit = async () => {
+  //   if (
+  //     !currentTrip ||
+  //     !editForm.tripName ||
+  //     !editForm.tripStartMiles ||
+  //     !editForm.tripEndMiles ||
+  //     !editForm.tripStartDate ||
+  //     !editForm.tripEndDate
+  //   ) {
+  //     alert("Please fill all fields");
+  //     return;
+  //   }
+
+  //   try {
+  //     await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
+  //       tripName: editForm.tripName,
+  //       tripStartMiles: parseInt(editForm.tripStartMiles),
+  //       tripEndMiles: parseInt(editForm.tripEndMiles),
+  //       tripStartDate: Timestamp.fromDate(editForm.tripStartDate!),
+  //       tripEndDate: Timestamp.fromDate(editForm.tripEndDate!),
+  //       updatedAt: Timestamp.now(),
+  //     });
+  //     setShowEditModal(false);
+  //     alert("Trip updated successfully");
+  //   } catch (error) {
+  //     console.error("Error updating trip:", error);
+  //     alert("Failed to update trip");
+  //   }
+  // };
 
   const handleSaveEdit = async () => {
     if (
@@ -372,21 +424,36 @@ export default function MemberTripsPage() {
       !editForm.tripStartMiles ||
       !editForm.tripEndMiles ||
       !editForm.tripStartDate ||
-      !editForm.tripEndDate
+      !editForm.tripEndDate ||
+      !selectedTruckId
     ) {
-      alert("Please fill all fields");
+      alert("Please fill all required fields");
       return;
     }
 
     try {
+      // Find the selected truck and trailer documents
+      const selectedTruck = vehicles.find((v) => v.id === selectedTruckId);
+      const selectedTrailer = selectedTrailerId
+        ? vehicles.find((v) => v.id === selectedTrailerId)
+        : null;
+
       await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
         tripName: editForm.tripName,
         tripStartMiles: parseInt(editForm.tripStartMiles),
         tripEndMiles: parseInt(editForm.tripEndMiles),
         tripStartDate: Timestamp.fromDate(editForm.tripStartDate!),
         tripEndDate: Timestamp.fromDate(editForm.tripEndDate!),
+        vehicleId: selectedTruckId,
+        companyName: selectedTruck?.companyName || "",
+        vehicleNumber: selectedTruck?.vehicleNumber || "",
+        trailerId: selectedTrailerId,
+        trailerCompanyName: selectedTrailer?.companyName || "",
+        trailerNumber: selectedTrailer?.vehicleNumber || "",
+        loadType: currentTrip.loadType || "",
         updatedAt: Timestamp.now(),
       });
+
       setShowEditModal(false);
       alert("Trip updated successfully");
     } catch (error) {
@@ -561,16 +628,16 @@ export default function MemberTripsPage() {
           {memberData?.userName || "Member"}&apos;s Trips
         </h2>
         <div className="flex items-center gap-4">
-          {/* <button
+          <button
             onClick={() => {
               router.push(
-                `/account/manage-trip/members-trips/add-trip?userId=${memberId}?role=${mRole}?memberName=${memberData?.userName}`
+                `/account/manage-team/member-trips/add-trip?userId=${memberId}?role=${mRole}?memberName=${memberData?.userName}`
               );
             }}
             className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
             <span>Add Trip</span>
-          </button> */}
+          </button>
 
           <button
             onClick={() => setShowSortOptions(!showSortOptions)}
@@ -940,6 +1007,68 @@ export default function MemberTripsPage() {
               className="w-full p-2 border rounded"
             />
           </div>
+
+          {/* Truck Dropdown */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Truck</label>
+            <select
+              value={selectedTruckId || ""}
+              onChange={(e) => setSelectedTruckId(e.target.value || null)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Select Truck</option>
+              {vehicles
+                .filter((v) => v.vehicleType === "Truck")
+                .map((truck) => (
+                  <option key={truck.id} value={truck.id}>
+                    {truck.vehicleNumber} ({truck.companyName})
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Trailer Dropdown */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Trailer (Optional)
+            </label>
+            <select
+              value={selectedTrailerId || ""}
+              onChange={(e) => setSelectedTrailerId(e.target.value || null)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Select Trailer</option>
+              {vehicles
+                .filter((v) => v.vehicleType === "Trailer")
+                .map((trailer) => (
+                  <option key={trailer.id} value={trailer.id}>
+                    {trailer.vehicleNumber} ({trailer.companyName})
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Load Type Dropdown */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Load Type</label>
+            <select
+              value={currentTrip?.loadType || ""}
+              onChange={(e) => {
+                if (currentTrip) {
+                  setCurrentTrip({
+                    ...currentTrip,
+                    loadType: e.target.value,
+                  });
+                }
+              }}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Select Load Type</option>
+              <option value="Empty">Empty</option>
+              <option value="Loaded">Loaded</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -1022,7 +1151,6 @@ export default function MemberTripsPage() {
           </div>
         </div>
       </Modal>
-
       {/* Google Miles Modal */}
       <Modal
         show={showGoogleMilesModal}

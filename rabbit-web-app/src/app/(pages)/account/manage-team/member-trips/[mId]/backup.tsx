@@ -15,11 +15,15 @@
 //   updateDoc,
 //   writeBatch,
 // } from "firebase/firestore";
-// import { useParams } from "next/navigation";
+// import { useParams, useRouter } from "next/navigation";
 // import { useEffect, useState } from "react";
+// import { Modal } from "@/components/Modal";
 
 // export interface Trip {
 //   id: string;
+//   trailerId?: string;
+//   trailerCompanyName?: string;
+//   trailerNumber?: string;
 //   tripName: string;
 //   vehicleId: string;
 //   companyName: string;
@@ -40,10 +44,16 @@
 //   createdAt: Timestamp;
 //   updatedAt: Timestamp;
 //   oEarnings?: number;
+//   googleMiles?: number;
+//   googleTotalEarning?: number;
+//   loadType?: string;
 // }
 
 // interface TripDetails {
 //   id: string;
+//   trailerId?: string;
+//   trailerCompanyName?: string;
+//   trailerNumber?: string;
 //   tripName: string;
 //   vehicleId: string;
 //   currentUID: string;
@@ -63,6 +73,9 @@
 //   createdAt: Timestamp;
 //   updatedAt: Timestamp;
 //   oEarnings?: number;
+//   googleMiles?: number;
+//   googleTotalEarning?: number;
+//   loadType?: string;
 // }
 
 // export default function MemberTripsPage() {
@@ -70,12 +83,32 @@
 //   const memberId = params?.mId as string;
 
 //   const [userData, setUserData] = useState<ProfileValues | null>(null);
+//   const [memberData, setMemberData] = useState<ProfileValues | null>(null);
 //   const [trips, setTrips] = useState<TripDetails[]>([]);
 //   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
-//   const [totals, setTotals] = useState({ totalExpenses: 0, totalEarnings: 0 });
+//   const [totals, setTotals] = useState({
+//     totalExpenses: 0,
+//     totalEarnings: 0,
+//     totalPaid: 0,
+//     totalGoogleEarnings: 0,
+//   });
 //   const [fromDate, setFromDate] = useState<Date | null>(null);
 //   const [toDate, setToDate] = useState<Date | null>(null);
 //   const [role, setRole] = useState("");
+//   const [mRole, setMRole] = useState("");
+
+//   // Modal states
+//   const [showEditModal, setShowEditModal] = useState(false);
+//   const [showGoogleMilesModal, setShowGoogleMilesModal] = useState(false);
+//   const [currentTrip, setCurrentTrip] = useState<TripDetails | null>(null);
+//   const [editForm, setEditForm] = useState({
+//     tripName: "",
+//     tripStartMiles: "",
+//     tripEndMiles: "",
+//     tripStartDate: null as Date | null,
+//     tripEndDate: null as Date | null,
+//   });
+//   const [googleMiles, setGoogleMiles] = useState("");
 
 //   const [showSortOptions, setShowSortOptions] = useState(false);
 //   const [sortType, setSortType] = useState<
@@ -84,10 +117,10 @@
 //   const [selectedTruck, setSelectedTruck] = useState<string | null>(null);
 //   const [tempFromDate, setTempFromDate] = useState<Date | null>(null);
 //   const [tempToDate, setTempToDate] = useState<Date | null>(null);
-
-//   // Add to your existing state declarations
 //   const [searchTerm, setSearchTerm] = useState("");
 //   const { user } = useAuth() || { user: null };
+
+//   const router = useRouter();
 
 //   useEffect(() => {
 //     if (!memberId) {
@@ -95,16 +128,39 @@
 //       return;
 //     }
 
-//     console.log("Fetching data for member:", memberId); // Debug log
-
 //     const fetchUserData = async () => {
 //       try {
 //         const userDoc = await getDoc(doc(db, "Users", memberId));
 //         if (userDoc.exists()) {
-//           console.log("Found user document");
+//           const data = userDoc.data() as ProfileValues;
+//           setMRole(data.role);
+//           setMemberData(data);
+//           console.log("Current Member Data", memberData, mRole);
+
+//           // setRole(data.role);
+//         } else {
+//           console.error("User document not found");
+//         }
+//       } catch (error) {
+//         console.error("Error fetching user data:", error);
+//       }
+//     };
+
+//     const fetchCurrentUserData = async () => {
+//       try {
+//         if (!user) {
+//           console.error("No user is currently authenticated");
+//           return;
+//         }
+//         const userDoc = await getDoc(doc(db, "Users", user?.uid));
+//         if (userDoc.exists()) {
 //           const data = userDoc.data() as ProfileValues;
 //           setUserData(data);
+
 //           setRole(data.role);
+//           console.log("Current user data fetched:", data);
+//           console.log("Current user role:", data.role);
+//           console.log("Current User Data", userData);
 //         } else {
 //           console.error("User document not found");
 //         }
@@ -119,7 +175,6 @@
 //     const unsubscribeVehicles = onSnapshot(
 //       q,
 //       (snapshot) => {
-//         console.log(`Found ${snapshot.docs.length} vehicles`);
 //         const vehiclesData = snapshot.docs.map((doc) => ({
 //           id: doc.id,
 //           ...doc.data(),
@@ -134,7 +189,6 @@
 //     const unsubscribeTrips = onSnapshot(
 //       collection(db, "Users", memberId, "trips"),
 //       (snapshot) => {
-//         console.log(`Found ${snapshot.docs.length} trips`);
 //         const tripsData = snapshot.docs.map((doc) => ({
 //           id: doc.id,
 //           ...doc.data(),
@@ -144,19 +198,20 @@
 //           setFromDate(tripsData[0].tripStartDate.toDate());
 //           setToDate(tripsData[tripsData.length - 1].tripEndDate.toDate());
 //         }
-//         calculateTotals();
+//         // calculateTotals();
 //       },
 //       (error) => {
 //         console.error("Trips listener error:", error);
 //       }
 //     );
-
+//     fetchCurrentUserData();
 //     fetchUserData();
 //     return () => {
 //       unsubscribeVehicles();
 //       unsubscribeTrips();
 //     };
-//   }, [memberId]);
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [memberId, user]);
 
 //   const applyFilters = () => {
 //     setFromDate(tempFromDate);
@@ -187,7 +242,11 @@
 //     // Trip name filter
 //     const nameFilter = filterByTripName(trip, searchTerm);
 
-//     return isVehicleActive && dateFilter && truckFilter && nameFilter;
+//     const isMemberTrip = trip.currentUID === memberId;
+
+//     return (
+//       isMemberTrip && isVehicleActive && dateFilter && truckFilter && nameFilter
+//     );
 //   });
 
 //   const sortedTrips = [...filteredTrips].sort((a, b) => {
@@ -206,12 +265,21 @@
 //   });
 
 //   const calculateTotals = async () => {
-//     // setIsCalculatingTotals(true);
 //     try {
-//       // Parallel expense calculations
-//       const expensesPromises = filteredTrips.map(async (trip) => {
+//       let totalExpenses = 0;
+//       let totalEarnings = 0;
+//       let totalPaid = 0;
+//       let totalGoogleEarnings = 0;
+
+//       // Ensure we have the perMileCharge value
+//       const perMile = parseFloat(memberData?.perMileCharge || "0");
+//       console.log("Per mile charge:", perMile); // Debug log
+
+//       // Process each trip
+//       for (const trip of filteredTrips) {
+//         // Calculate expenses
 //         try {
-//           const snapshot = await getDocs(
+//           const expensesSnapshot = await getDocs(
 //             query(
 //               collection(
 //                 db,
@@ -224,39 +292,136 @@
 //               where("type", "==", "Expenses")
 //             )
 //           );
-//           return snapshot.docs.reduce(
+
+//           const tripExpenses = expensesSnapshot.docs.reduce(
 //             (sum, doc) => sum + (doc.data().amount || 0),
 //             0
 //           );
+//           totalExpenses += tripExpenses;
+
+//           // Calculate earnings for completed trips
+//           if (trip.tripStatus === 2) {
+//             const startMiles = trip.tripStartMiles || 0;
+//             const endMiles = trip.tripEndMiles || 0;
+//             const miles = endMiles - startMiles;
+
+//             console.log(`Trip ${trip.id}:`, {
+//               startMiles,
+//               endMiles,
+//               miles,
+//               perMile,
+//             }); // Debug log
+
+//             const earnings = miles * perMile;
+//             totalEarnings += earnings;
+//           }
+
+//           // Add Google earnings if they exist
+//           if (trip.googleTotalEarning) {
+//             totalGoogleEarnings += trip.googleTotalEarning;
+//           }
+
+//           // Count paid trips
+//           if (trip.isPaid) {
+//             totalPaid += 1;
+//           }
 //         } catch (error) {
 //           console.error(`Error processing trip ${trip.id}:`, error);
-//           return 0;
 //         }
-//       });
+//       }
 
-//       // Earnings calculations
-//       const perMile = userData?.perMileCharge || 0;
-//       const earnings = filteredTrips.reduce((sum, trip) => {
-//         if (role === "Driver") {
-//           const miles = (trip.tripEndMiles || 0) - (trip.tripStartMiles || 0);
-//           return sum + Math.max(miles, 0) * Number(perMile);
-//         }
-//         return sum + (trip.oEarnings || 0);
-//       }, 0);
-
-//       const expenses = (await Promise.all(expensesPromises)).reduce(
-//         (a, b) => a + b,
-//         0
-//       );
+//       console.log("Calculated totals:", {
+//         totalExpenses: totalExpenses,
+//         totalEarnings: totalEarnings,
+//         totalPaid: totalPaid,
+//         totalGoogleEarnings: totalGoogleEarnings,
+//       }); // Debug log
 
 //       setTotals({
-//         totalExpenses: Math.max(expenses, 0),
-//         totalEarnings: Math.max(earnings, 0),
+//         totalExpenses: Math.max(totalExpenses, 0),
+//         totalEarnings: Math.max(totalEarnings, 0),
+//         totalPaid: totalPaid,
+//         totalGoogleEarnings: Math.max(totalGoogleEarnings, 0),
 //       });
 //     } catch (error) {
 //       console.error("Calculation error:", error);
-//     } finally {
-//       // setIsCalculatingTotals(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     calculateTotals();
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [filteredTrips, memberData?.perMileCharge.toString()]);
+
+//   const handleEditTrip = (trip: TripDetails) => {
+//     setCurrentTrip(trip);
+//     setEditForm({
+//       tripName: trip.tripName,
+//       tripStartMiles: trip.tripStartMiles.toString(),
+//       tripEndMiles: trip.tripEndMiles.toString(),
+//       tripStartDate: trip.tripStartDate.toDate(),
+//       tripEndDate: trip.tripEndDate.toDate(),
+//     });
+//     setShowEditModal(true);
+//   };
+
+//   const handleSaveEdit = async () => {
+//     if (
+//       !currentTrip ||
+//       !editForm.tripName ||
+//       !editForm.tripStartMiles ||
+//       !editForm.tripEndMiles ||
+//       !editForm.tripStartDate ||
+//       !editForm.tripEndDate
+//     ) {
+//       alert("Please fill all fields");
+//       return;
+//     }
+
+//     try {
+//       await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
+//         tripName: editForm.tripName,
+//         tripStartMiles: parseInt(editForm.tripStartMiles),
+//         tripEndMiles: parseInt(editForm.tripEndMiles),
+//         tripStartDate: Timestamp.fromDate(editForm.tripStartDate!),
+//         tripEndDate: Timestamp.fromDate(editForm.tripEndDate!),
+//         updatedAt: Timestamp.now(),
+//       });
+//       setShowEditModal(false);
+//       alert("Trip updated successfully");
+//     } catch (error) {
+//       console.error("Error updating trip:", error);
+//       alert("Failed to update trip");
+//     }
+//   };
+
+//   const handleGoogleMiles = (trip: TripDetails) => {
+//     setCurrentTrip(trip);
+//     setGoogleMiles(trip.googleMiles?.toString() || "");
+//     setShowGoogleMilesModal(true);
+//   };
+
+//   const handleSaveGoogleMiles = async () => {
+//     if (!currentTrip || !googleMiles || isNaN(parseFloat(googleMiles))) {
+//       alert("Please enter valid Google Miles");
+//       return;
+//     }
+
+//     try {
+//       const miles = parseFloat(googleMiles);
+//       const perMile = memberData?.perMileCharge || "0";
+//       const totalEarning = miles * parseFloat(perMile);
+
+//       await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
+//         googleMiles: miles,
+//         googleTotalEarning: totalEarning,
+//         updatedAt: Timestamp.now(),
+//       });
+//       setShowGoogleMilesModal(false);
+//       alert("Google Miles saved successfully");
+//     } catch (error) {
+//       console.error("Error saving Google Miles:", error);
+//       alert("Failed to save Google Miles");
 //     }
 //   };
 
@@ -367,8 +532,16 @@
 //   };
 
 //   const handlePayTrip = async (tripId: string) => {
-//     // Implement your payment logic here
-//     console.log(`Paying for trip ${tripId}`);
+//     try {
+//       await updateDoc(doc(db, "Users", memberId, "trips", tripId), {
+//         isPaid: true,
+//         updatedAt: Timestamp.now(),
+//       });
+//       alert("Trip marked as paid successfully");
+//     } catch (error) {
+//       console.error("Error paying trip:", error);
+//       alert("Failed to mark trip as paid");
+//     }
 //   };
 
 //   const resetFilters = () => {
@@ -385,9 +558,20 @@
 //     <div className="container mx-auto p-4">
 //       <div className="flex justify-between items-center mb-4">
 //         <h2 className="text-xl font-bold mb-4">
-//           {userData?.userName || "Member"}&apos;s Trips
+//           {memberData?.userName || "Member"}&apos;s Trips
 //         </h2>
-//         <div className="relative">
+//         <div className="flex items-center gap-4">
+//           {/* <button
+//             onClick={() => {
+//               router.push(
+//                 `/account/manage-trip/members-trips/add-trip?userId=${memberId}?role=${mRole}?memberName=${memberData?.userName}`
+//               );
+//             }}
+//             className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"
+//           >
+//             <span>Add Trip</span>
+//           </button> */}
+
 //           <button
 //             onClick={() => setShowSortOptions(!showSortOptions)}
 //             className="bg-[#F96176] text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -554,25 +738,36 @@
 //         </div>
 //       </div>
 
-//       {/** Total Expenses and Total Loads */}
-//       <div className="flex justify-center gap-4 mb-6">
-//         {/* Total Expenses */}
-//         <div className="w-60 bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
-//           <h3 className="text-lg font-bold">Total Expenses</h3>
-//           <p className="text-xl font-semibold">
-//             ${totals.totalExpenses.toFixed(2)}
-//           </p>
-//         </div>
+//       {/** Total Expenses and Earnings */}
+//       <div className="w-full flex justify-center">
+//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ml-10">
+//           {/* Total Expenses */}
+//           <div className="bg-[#58BB87] p-4 rounded-xl shadow-md text-white">
+//             <h3 className="text-lg font-bold">Total Expenses</h3>
+//             <p className="text-xl font-semibold">
+//               ${totals.totalExpenses.toFixed(0)}
+//             </p>
+//           </div>
 
-//         {/* Total Loads */}
-//         <div className="w-60 bg-[#F96176] p-4 rounded-xl shadow-md text-white">
-//           <h3 className="text-lg font-bold">Total Earnings</h3>
-//           <p className="text-xl font-semibold">
-//             ${totals.totalEarnings.toFixed(2)}
-//           </p>
+//           {/* Total Earnings */}
+//           <div className="bg-[#F96176] p-4 rounded-xl shadow-md text-white">
+//             <h3 className="text-lg font-bold">Total Earnings</h3>
+//             <p className="text-xl font-semibold">
+//               ${totals.totalGoogleEarnings.toFixed(0)}
+//             </p>
+//           </div>
+
+//           {/* Total Paid */}
+//           <div className="bg-purple-500 p-4 rounded-xl shadow-md text-white">
+//             <h3 className="text-lg font-bold">Total Paid</h3>
+//             <p className="text-xl font-semibold">
+//               ${totals.totalPaid.toFixed(0)}
+//             </p>
+//           </div>
 //         </div>
 //       </div>
 
+//       {/* Trip List Table */}
 //       {sortedTrips.length === 0 ? (
 //         <div className="text-center py-10">
 //           <p className="text-gray-500">
@@ -583,11 +778,13 @@
 //         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-10">
 //           {/* Table Header */}
 //           <div className="grid grid-cols-12 bg-[#F96176] p-4 font-bold text-white border-b">
-//             <div className="col-span-3">Trip Name</div>
+//             <div className="col-span-2">Trip Name</div>
 //             <div className="col-span-2">Dates</div>
 //             <div className="col-span-1">Miles</div>
-//             <div className="col-span-2">Earnings</div>
-//             <div className="col-span-2">Status</div>
+//             <div className="col-span-1">Vehicles</div>
+//             <div className="col-span-1">G.Miles</div>
+//             <div className="col-span-1">G.Earnings</div>
+//             <div className="col-span-2">T&apos;Status</div>
 //             <div className="col-span-2">Actions</div>
 //           </div>
 
@@ -595,18 +792,18 @@
 //           {sortedTrips.map((trip) => (
 //             <div
 //               key={trip.id}
-//               className="grid grid-cols-12 p-4 border-b hover:bg-gray-50"
+//               className="grid grid-cols-12 p-4 border-b hover:bg-gray-50 items-center"
 //             >
 //               {/* Trip Name */}
-//               <div className="col-span-3 font-medium">{trip.tripName}</div>
+//               <div className="col-span-2 font-medium">{trip.tripName}</div>
 
 //               {/* Dates */}
-//               <div className="col-span-2">
-//                 <div className="text-sm">
+//               <div className="col-span-2 text-sm">
+//                 <div>
 //                   Start: {trip.tripStartDate.toDate().toLocaleDateString()}
 //                 </div>
 //                 {trip.tripStatus === 2 && (
-//                   <div className="text-sm">
+//                   <div>
 //                     End: {trip.tripEndDate.toDate().toLocaleDateString()}
 //                   </div>
 //                 )}
@@ -618,28 +815,35 @@
 //                 {trip.tripStatus === 2 && (
 //                   <>
 //                     <div className="text-sm">End: {trip.tripEndMiles}</div>
-//                     <div className="font-semibold text-secondary">
+//                     <div className="font-semibold text-[#F96176]">
 //                       Total: {trip.tripEndMiles - trip.tripStartMiles}
 //                     </div>
 //                   </>
 //                 )}
 //               </div>
 
-//               {/* Earnings */}
-//               <div className="col-span-2">
-//                 {trip.tripStatus === 2 ? (
-//                   userData?.perMileCharge ? (
-//                     <span className="font-semibold">
-//                       $
-//                       {((trip.tripEndMiles || 0) - (trip.tripStartMiles || 0)) *
-//                         parseFloat(userData.perMileCharge)}
-//                     </span>
-//                   ) : (
-//                     <span className="text-gray-400 text-sm">N/A</span>
-//                   )
-//                 ) : (
-//                   <span className="text-gray-400 text-sm">Pending</span>
+//               {/* Trailer Details */}
+//               <div className="col-span-1">
+//                 <div className="text-sm">
+//                   Truck: {trip.vehicleNumber} ({trip.companyName})
+//                 </div>
+//                 {trip.trailerNumber && (
+//                   <div className="text-sm">
+//                     Trailer: {trip.trailerNumber} ({trip.trailerCompanyName})
+//                   </div>
 //                 )}
+//               </div>
+
+//               {/* Google Miles */}
+//               <div className="col-span-1">
+//                 {trip.googleMiles ? trip.googleMiles : "-"}
+//               </div>
+
+//               {/* Google Earnings */}
+//               <div className="col-span-1">
+//                 {trip.googleTotalEarning
+//                   ? `$${trip.googleTotalEarning.toFixed(0)}`
+//                   : "-"}
 //               </div>
 
 //               {/* Status */}
@@ -678,22 +882,194 @@
 
 //               {/* Actions */}
 //               <div className="col-span-2 flex gap-2">
-//                 {trip.tripStatus === 2 && !trip.isPaid && (
-//                   <button
-//                     onClick={() => handlePayTrip(trip.id)}
-//                     className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
-//                   >
-//                     Pay
-//                   </button>
+//                 {trip.tripStatus === 2 && (
+//                   <>
+//                     {!trip.isPaid && (
+//                       <button
+//                         onClick={() => handlePayTrip(trip.id)}
+//                         className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
+//                       >
+//                         Pay
+//                       </button>
+//                     )}
+//                     <button
+//                       onClick={() => handleEditTrip(trip)}
+//                       className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
+//                     >
+//                       Edit
+//                     </button>
+//                     {(role === "Accountant" || role === "Owner") && (
+//                       <button
+//                         onClick={() => handleGoogleMiles(trip)}
+//                         className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
+//                       >
+//                         Add G.Miles
+//                       </button>
+//                     )}
+
+//                     <button
+//                       onClick={() =>
+//                         router.push(
+//                           `/account/manage-trip/${trip.id}?userId=${memberId}`
+//                         )
+//                       }
+//                       className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200"
+//                     >
+//                       View
+//                     </button>
+//                   </>
 //                 )}
-//                 <button className="bg-[#F96176] text-white px-3 py-1 rounded text-sm">
-//                   View
-//                 </button>
 //               </div>
 //             </div>
 //           ))}
 //         </div>
 //       )}
+
+//       {/* Edit Trip Modal */}
+//       <Modal show={showEditModal} onClose={() => setShowEditModal(false)}>
+//         <h2 className="text-xl font-bold mb-4">Edit Trip Details</h2>
+//         <div className="space-y-4">
+//           <div>
+//             <label className="block text-sm font-medium mb-1">Trip Name</label>
+//             <input
+//               type="text"
+//               value={editForm.tripName}
+//               onChange={(e) =>
+//                 setEditForm({ ...editForm, tripName: e.target.value })
+//               }
+//               className="w-full p-2 border rounded"
+//             />
+//           </div>
+//           <div className="grid grid-cols-2 gap-4">
+//             <div>
+//               <label className="block text-sm font-medium mb-1">
+//                 Start Miles
+//               </label>
+//               <input
+//                 type="number"
+//                 value={editForm.tripStartMiles}
+//                 onChange={(e) =>
+//                   setEditForm({ ...editForm, tripStartMiles: e.target.value })
+//                 }
+//                 className="w-full p-2 border rounded"
+//               />
+//             </div>
+//             <div>
+//               <label className="block text-sm font-medium mb-1">
+//                 End Miles
+//               </label>
+//               <input
+//                 type="number"
+//                 value={editForm.tripEndMiles}
+//                 onChange={(e) =>
+//                   setEditForm({ ...editForm, tripEndMiles: e.target.value })
+//                 }
+//                 className="w-full p-2 border rounded"
+//               />
+//             </div>
+//           </div>
+//           <div className="grid grid-cols-2 gap-4">
+//             <div>
+//               <label className="block text-sm font-medium mb-1">
+//                 Start Date
+//               </label>
+//               <input
+//                 type="date"
+//                 value={
+//                   editForm.tripStartDate?.toISOString().split("T")[0] || ""
+//                 }
+//                 onChange={(e) =>
+//                   setEditForm({
+//                     ...editForm,
+//                     tripStartDate: e.target.value
+//                       ? new Date(e.target.value)
+//                       : null,
+//                   })
+//                 }
+//                 className="w-full p-2 border rounded"
+//               />
+//             </div>
+//             <div>
+//               <label className="block text-sm font-medium mb-1">End Date</label>
+//               <input
+//                 type="date"
+//                 value={editForm.tripEndDate?.toISOString().split("T")[0] || ""}
+//                 onChange={(e) =>
+//                   setEditForm({
+//                     ...editForm,
+//                     tripEndDate: e.target.value
+//                       ? new Date(e.target.value)
+//                       : null,
+//                   })
+//                 }
+//                 className="w-full p-2 border rounded"
+//               />
+//             </div>
+//           </div>
+//           <div className="flex justify-end gap-2 pt-4">
+//             <button
+//               onClick={() => setShowEditModal(false)}
+//               className="px-4 py-2 bg-gray-300 rounded"
+//             >
+//               Cancel
+//             </button>
+//             <button
+//               onClick={handleSaveEdit}
+//               className="px-4 py-2 bg-[#F96176] text-white rounded"
+//             >
+//               Save Changes
+//             </button>
+//           </div>
+//         </div>
+//       </Modal>
+
+//       {/* Google Miles Modal */}
+//       <Modal
+//         show={showGoogleMilesModal}
+//         onClose={() => setShowGoogleMilesModal(false)}
+//       >
+//         <h2 className="text-xl font-bold mb-4">Add Google Miles</h2>
+//         <div className="space-y-4">
+//           <div>
+//             <label className="block text-sm font-medium mb-1">
+//               Google Miles
+//             </label>
+//             <input
+//               type="number"
+//               value={googleMiles}
+//               onChange={(e) => setGoogleMiles(e.target.value)}
+//               className="w-full p-2 border rounded"
+//               placeholder="Enter miles from Google Maps"
+//             />
+//           </div>
+//           {googleMiles && !isNaN(parseFloat(googleMiles)) && (
+//             <div className="bg-gray-100 p-4 rounded">
+//               <p className="font-medium">
+//                 Per Mile Charge: ${memberData?.perMileCharge || 0}
+//               </p>
+//               <p className="font-bold text-green-600">
+//                 Total Earning: $
+//                 {parseFloat(googleMiles) *
+//                   parseFloat(memberData?.perMileCharge || "0")}
+//               </p>
+//             </div>
+//           )}
+//           <div className="flex justify-end gap-2 pt-4">
+//             <button
+//               onClick={() => setShowGoogleMilesModal(false)}
+//               className="px-4 py-2 bg-gray-300 rounded"
+//             >
+//               Cancel
+//             </button>
+//             <button
+//               onClick={handleSaveGoogleMiles}
+//               className="px-4 py-2 bg-blue-500 text-white rounded"
+//             >
+//               Save
+//             </button>
+//           </div>
+//         </div>
+//       </Modal>
 //     </div>
 //   );
 // }
