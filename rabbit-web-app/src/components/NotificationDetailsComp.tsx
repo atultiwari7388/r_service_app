@@ -149,33 +149,24 @@ const InfoRow = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
   </div>
 );
 
-const ServiceItem = ({ service }: { service: Service }) => (
-  <div className="space-y-2">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        {service.nextNotificationValue === 0 ? (
-          <div />
-        ) : (
-          <FaTools className="text-gray-500" />
-        )}
+const ServiceItem = ({ service }: { service: Service }) => {
+  if (service.nextNotificationValue === 0) return null;
 
-        {service.nextNotificationValue === 0 ? (
-          <span className="text-gray-700 font-medium">{""}</span>
-        ) : (
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FaTools className="text-gray-500" />
           <span className="text-gray-700 font-medium">
             {service.serviceName}
           </span>
-        )}
+        </div>
 
-        {/* <span className="text-gray-700 font-medium">{service.serviceName}</span> */}
-      </div>
-
-      {service.nextNotificationValue > 0 && (
         <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
           <FaBell className="text-blue-500" />
           <span className="text-gray-700">{service.nextNotificationValue}</span>
         </div>
-      )}
+      </div>
     </div>
-  </div>
-);
+  );
+};

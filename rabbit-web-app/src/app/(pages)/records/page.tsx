@@ -54,6 +54,7 @@ import { CiSearch, CiTurnL1 } from "react-icons/ci";
 import { IoMdAdd } from "react-icons/io";
 import Link from "next/link";
 import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { BiFilter, BiSearch } from "react-icons/bi";
 import { FaPrint } from "react-icons/fa";
 import html2canvas from "html2canvas";
@@ -274,7 +275,7 @@ export default function RecordsPage() {
       }
     } catch (error) {
       console.error("Error fetching services:", error);
-      toast.error("Failed to fetch services");
+      // toast.error("Failed to fetch services");
     }
   };
 
@@ -292,7 +293,7 @@ export default function RecordsPage() {
       }
     } catch (error) {
       console.error("Error fetching service packages:", error);
-      toast.error("Failed to fetch service packages");
+      // toast.error("Failed to fetch service packages");
     }
   };
 
@@ -409,6 +410,175 @@ export default function RecordsPage() {
     }
   };
 
+  // const handleAddMiles = async () => {
+  //   setIsMilesSaving(true);
+  //   if (!selectedVehicle || !todayMiles || !user?.uid) {
+  //     toast.error("Please select a vehicle and enter miles/hours.");
+  //     return;
+  //   }
+
+  //   const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
+  //   if (!vehicleData) {
+  //     toast.error("Vehicle data not found.");
+  //     return;
+  //   }
+
+  //   try {
+  //     const vehicleRef = doc(
+  //       db,
+  //       "Users",
+  //       user.uid,
+  //       "Vehicles",
+  //       selectedVehicle
+  //     );
+  //     const vehicleDoc = await getDoc(vehicleRef);
+
+  //     if (!vehicleDoc.exists()) {
+  //       toast.error("Vehicle data not found.");
+  //       return;
+  //     }
+
+  //     const currentReadingField =
+  //       selectedVehicleType === "Truck" ? "currentMiles" : "hoursReading";
+  //     const prevReadingField =
+  //       selectedVehicleType === "Truck"
+  //         ? "prevMilesValue"
+  //         : "prevHoursReadingValue";
+  //     const readingArrayField =
+  //       selectedVehicleType === "Truck"
+  //         ? "currentMilesArray"
+  //         : "hoursReadingArray";
+  //     const readingValueField =
+  //       selectedVehicleType === "Truck" ? "miles" : "hours";
+
+  //     const currentReading = parseInt(
+  //       vehicleDoc.data()[currentReadingField] || "0"
+  //     );
+  //     const enteredValue = parseInt(todayMiles);
+
+  //     if (enteredValue < currentReading) {
+  //       toast.error(
+  //         `${
+  //           selectedVehicleType === "Truck" ? "Miles" : "Hours"
+  //         } cannot be less than the current value.`
+  //       );
+  //       return;
+  //     }
+
+  //     const data = {
+  //       [prevReadingField]: currentReading.toString(),
+  //       [currentReadingField]: enteredValue.toString(),
+  //       [readingValueField]: enteredValue.toString(),
+  //       [readingArrayField]: arrayUnion({
+  //         [readingValueField]: enteredValue,
+  //         date: new Date().toISOString(),
+  //       }),
+  //     };
+
+  //     // Update owner's vehicle first
+  //     await updateDoc(vehicleRef, data);
+
+  //     // Check if current user is team member
+  //     const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+  //     const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
+
+  //     if (isTeamMember) {
+  //       // If current user is team member, update owner's vehicle
+  //       const ownerId = currentUserDoc.data()?.createdBy;
+  //       if (ownerId) {
+  //         const ownerVehicleRef = doc(
+  //           db,
+  //           "Users",
+  //           ownerId,
+  //           "Vehicles",
+  //           selectedVehicle
+  //         );
+  //         await updateDoc(ownerVehicleRef, data);
+  //       }
+  //     } else {
+  //       // If current user is owner, update all team members who have this vehicle
+  //       const teamMembersQuery = query(
+  //         collection(db, "Users"),
+  //         where("createdBy", "==", user.uid),
+  //         where("isTeamMember", "==", true)
+  //       );
+
+  //       const teamMembersSnapshot = await getDocs(teamMembersQuery);
+
+  //       for (const memberDoc of teamMembersSnapshot.docs) {
+  //         const teamMemberUid = memberDoc.id;
+  //         const teamMemberVehicleRef = doc(
+  //           db,
+  //           "Users",
+  //           teamMemberUid,
+  //           "Vehicles",
+  //           selectedVehicle
+  //         );
+  //         const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
+
+  //         if (teamMemberVehicleDoc.exists()) {
+  //           await updateDoc(teamMemberVehicleRef, data);
+  //         }
+  //       }
+  //     }
+
+  //     // Check DataServices
+  //     const dataServicesQuery = query(
+  //       collection(db, "Users", user.uid, "DataServices"),
+  //       where("vehicleId", "==", selectedVehicle)
+  //     );
+  //     const dataServicesSnapshot = await getDocs(dataServicesQuery);
+
+  //     if (dataServicesSnapshot.empty) {
+  //       // Call cloud function to notify about missing services
+  //       const checkAndNotify = httpsCallable(
+  //         functions,
+  //         "checkAndNotifyUserForVehicleService"
+  //       );
+  //       await checkAndNotify({ userId: user.uid, vehicleId: selectedVehicle });
+  //       console.log(
+  //         "Called checkAndNotifyUserForVehicleService for",
+  //         selectedVehicle
+  //       );
+  //     } else {
+  //       // Call the cloud function to check for notifications
+  //       const checkDataServices = httpsCallable(
+  //         functions,
+  //         "checkDataServicesAndNotify"
+  //       );
+  //       const result = await checkDataServices({
+  //         userId: user.uid,
+  //         vehicleId: selectedVehicle,
+  //       });
+  //       console.log(
+  //         "Check Data Services Cloud function result:",
+  //         result.data,
+  //         "vehicle Id",
+  //         selectedVehicle
+  //       );
+  //     }
+
+  //     toast.success(
+  //       `${
+  //         selectedVehicleType === "Truck" ? "Miles" : "Hours"
+  //       } updated successfully!`
+  //     );
+  //     setTodayMiles("");
+  //     setShowAddMiles(false);
+  //     setSelectedVehicle("");
+  //     setSelectedVehicleType("");
+  //   } catch (error) {
+  //     console.error("Error updating miles/hours:", error);
+  //     toast.error(
+  //       `Failed to save ${
+  //         selectedVehicleType === "Truck" ? "miles" : "hours"
+  //       }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+  //     );
+  //   } finally {
+  //     setIsMilesSaving(false);
+  //   }
+  // };
+
   const handleAddMiles = async () => {
     setIsMilesSaving(true);
     if (!selectedVehicle || !todayMiles || !user?.uid) {
@@ -423,6 +593,13 @@ export default function RecordsPage() {
     }
 
     try {
+      // Check if current user is team member and get owner ID
+      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+      const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
+      const ownerId = isTeamMember
+        ? currentUserDoc.data()?.createdBy || user.uid
+        : user.uid;
+
       const vehicleRef = doc(
         db,
         "Users",
@@ -475,55 +652,64 @@ export default function RecordsPage() {
       };
 
       // Update owner's vehicle first
-      await updateDoc(vehicleRef, data);
+      const ownerVehicleRef = doc(
+        db,
+        "Users",
+        ownerId,
+        "Vehicles",
+        selectedVehicle
+      );
+      await updateDoc(ownerVehicleRef, data);
 
-      // Check if current user is team member
-      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-      const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
+      // Query all team members under this owner
+      const teamMembersQuery = query(
+        collection(db, "Users"),
+        where("createdBy", "==", ownerId),
+        where("isTeamMember", "==", true)
+      );
 
-      if (isTeamMember) {
-        // If current user is team member, update owner's vehicle
-        const ownerId = currentUserDoc.data()?.createdBy;
-        if (ownerId) {
-          const ownerVehicleRef = doc(
-            db,
-            "Users",
-            ownerId,
-            "Vehicles",
-            selectedVehicle
-          );
-          await updateDoc(ownerVehicleRef, data);
-        }
-      } else {
-        // If current user is owner, update all team members who have this vehicle
-        const teamMembersQuery = query(
-          collection(db, "Users"),
-          where("createdBy", "==", user.uid),
-          where("isTeamMember", "==", true)
+      const teamMembersSnapshot = await getDocs(teamMembersQuery);
+
+      // Save to all team members who have this vehicle
+      for (const memberDoc of teamMembersSnapshot.docs) {
+        const teamMemberUid = memberDoc.id;
+
+        // Skip current user if they're a team member (we'll update them separately)
+        if (isTeamMember && teamMemberUid === user.uid) continue;
+
+        const teamMemberVehicleRef = doc(
+          db,
+          "Users",
+          teamMemberUid,
+          "Vehicles",
+          selectedVehicle
         );
+        const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
 
-        const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-        for (const memberDoc of teamMembersSnapshot.docs) {
-          const teamMemberUid = memberDoc.id;
-          const teamMemberVehicleRef = doc(
-            db,
-            "Users",
-            teamMemberUid,
-            "Vehicles",
-            selectedVehicle
-          );
-          const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
-
-          if (teamMemberVehicleDoc.exists()) {
-            await updateDoc(teamMemberVehicleRef, data);
-          }
+        if (teamMemberVehicleDoc.exists()) {
+          await updateDoc(teamMemberVehicleRef, data);
         }
       }
 
-      // Check DataServices
+      // If current user is team member, also update their own vehicle
+      if (isTeamMember && user.uid !== ownerId) {
+        const currentUserVehicleRef = doc(
+          db,
+          "Users",
+          user.uid,
+          "Vehicles",
+          selectedVehicle
+        );
+        const currentUserVehicleDoc = await getDoc(currentUserVehicleRef);
+
+        if (currentUserVehicleDoc.exists()) {
+          await updateDoc(currentUserVehicleRef, data);
+        }
+      }
+
+      // Check DataServices for the owner
       const dataServicesQuery = query(
-        collection(db, "Users", user.uid, "DataServices"),
+        collection(db, "Users", ownerId, "DataServices"),
         where("vehicleId", "==", selectedVehicle)
       );
       const dataServicesSnapshot = await getDocs(dataServicesQuery);
@@ -534,7 +720,7 @@ export default function RecordsPage() {
           functions,
           "checkAndNotifyUserForVehicleService"
         );
-        await checkAndNotify({ userId: user.uid, vehicleId: selectedVehicle });
+        await checkAndNotify({ userId: ownerId, vehicleId: selectedVehicle });
         console.log(
           "Called checkAndNotifyUserForVehicleService for",
           selectedVehicle
@@ -546,7 +732,7 @@ export default function RecordsPage() {
           "checkDataServicesAndNotify"
         );
         const result = await checkDataServices({
-          userId: user.uid,
+          userId: ownerId,
           vehicleId: selectedVehicle,
         });
         console.log(
@@ -568,11 +754,11 @@ export default function RecordsPage() {
       setSelectedVehicleType("");
     } catch (error) {
       console.error("Error updating miles/hours:", error);
-      toast.error(
-        `Failed to save ${
-          selectedVehicleType === "Truck" ? "miles" : "hours"
-        }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
-      );
+      // toast.error(
+      //   `Failed to save ${
+      //     selectedVehicleType === "Truck" ? "miles" : "hours"
+      //   }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+      // );
     } finally {
       setIsMilesSaving(false);
     }
@@ -1270,6 +1456,59 @@ export default function RecordsPage() {
     }
   };
 
+  // const calculateTotals = () => {
+  //   let totalInvoiceAmount = 0;
+  //   let truckTotal = 0;
+  //   let trailerTotal = 0;
+  //   let otherTotal = 0;
+
+  //   filteredRecords.forEach((record) => {
+  //     const recordDate = new Date(record.createdAt);
+  //     const amount = parseFloat(record.invoiceAmount) || 0;
+
+  //     // Check if record is within date range if filters are set
+  //     const isWithinDateRange =
+  //       (!summaryStartDate || recordDate >= summaryStartDate) &&
+  //       (!summaryEndDate || recordDate <= summaryEndDate);
+
+  //     // Check vehicle filters
+  //     const vehicleType = record.vehicleDetails.vehicleType;
+  //     const vehicleId = record.vehicleId;
+
+  //     const passesVehicleFilter =
+  //       selectedVehicleTypeFilter === "all" ||
+  //       (selectedVehicleTypeFilter === "truck" && vehicleType === "Truck") ||
+  //       (selectedVehicleTypeFilter === "trailer" && vehicleType === "Trailer");
+
+  //     const passesSpecificVehicleFilter =
+  //       selectedVehiclesForFilter.size === 0 ||
+  //       selectedVehiclesForFilter.has(vehicleId);
+
+  //     if (
+  //       isWithinDateRange &&
+  //       passesVehicleFilter &&
+  //       passesSpecificVehicleFilter
+  //     ) {
+  //       totalInvoiceAmount += amount;
+
+  //       if (vehicleType === "Truck") {
+  //         truckTotal += amount;
+  //       } else if (vehicleType === "Trailer") {
+  //         trailerTotal += amount;
+  //       } else {
+  //         otherTotal += amount;
+  //       }
+  //     }
+  //   });
+
+  //   return {
+  //     totalInvoiceAmount,
+  //     truckTotal,
+  //     trailerTotal,
+  //     otherTotal,
+  //   };
+  // };
+
   const calculateTotals = () => {
     let totalInvoiceAmount = 0;
     let truckTotal = 0;
@@ -1277,13 +1516,22 @@ export default function RecordsPage() {
     let otherTotal = 0;
 
     filteredRecords.forEach((record) => {
-      const recordDate = new Date(record.date);
-      const amount = parseFloat(record.invoiceAmount) || 0;
+      // Get the record date (already in YYYY-MM-DD format)
+      const recordDateStr = record.date;
 
-      // Check if record is within date range if filters are set
+      // Convert filter dates to YYYY-MM-DD strings
+      const startDateStr = summaryStartDate
+        ? formatDateToYYYYMMDD(summaryStartDate)
+        : null;
+
+      const endDateStr = summaryEndDate
+        ? formatDateToYYYYMMDD(summaryEndDate)
+        : null;
+
+      // Check if record is within date range using string comparison
       const isWithinDateRange =
-        (!summaryStartDate || recordDate >= summaryStartDate) &&
-        (!summaryEndDate || recordDate <= summaryEndDate);
+        (!startDateStr || recordDateStr >= startDateStr) &&
+        (!endDateStr || recordDateStr <= endDateStr);
 
       // Check vehicle filters
       const vehicleType = record.vehicleDetails.vehicleType;
@@ -1303,6 +1551,7 @@ export default function RecordsPage() {
         passesVehicleFilter &&
         passesSpecificVehicleFilter
       ) {
+        const amount = parseFloat(record.invoiceAmount) || 0;
         totalInvoiceAmount += amount;
 
         if (vehicleType === "Truck") {
@@ -1321,6 +1570,13 @@ export default function RecordsPage() {
       trailerTotal,
       otherTotal,
     };
+  };
+
+  const formatDateToYYYYMMDD = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const { totalInvoiceAmount, truckTotal, trailerTotal, otherTotal } =
@@ -1467,6 +1723,33 @@ export default function RecordsPage() {
                 placeholderText="Start Date"
                 className="p-2 border rounded w-40"
               />
+
+              {/* <DatePicker
+                selected={summaryStartDate}
+                selectsRange
+                startDate={summaryStartDate}
+                endDate={summaryEndDate}
+                onChange={(update: [Date | null, Date | null]) => {
+                  setSummaryStartDate(update[0]);
+                  setSummaryEndDate(update[1]);
+                }}
+                className="border p-2 rounded"
+                placeholderText="Select date range"
+              /> */}
+
+              {/* <DatePicker
+                selected={summaryEndDate}
+                selectsRange
+                startDate={summaryStartDate}
+                endDate={summaryEndDate}
+                onChange={(update: [Date | null, Date | null]) => {
+                  setSummaryStartDate(update[0]);
+                  setSummaryEndDate(update[1]);
+                }}
+                className="border p-2 rounded"
+                placeholderText="Select date range"
+              /> */}
+
               <DatePicker
                 selected={summaryEndDate}
                 onChange={(date) => setSummaryEndDate(date)}
