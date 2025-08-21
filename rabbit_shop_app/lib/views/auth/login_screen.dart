@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             children: [
                               Image.asset(
-                                'assets/app_icon_new_logo.png',
+                                'assets/mechanic_app_new_logo.png',
                                 height: 270.h,
                                 width: double.maxFinite,
                                 // color: kWhite,
@@ -218,8 +218,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-
 
 // //With Image
 // import 'package:flutter/material.dart';

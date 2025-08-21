@@ -387,7 +387,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   notificationValue = value * 1000;
                 } else if (type == "day") {
                   notificationValue = value;
-                } else if (type == "hour") {
+                } else if (type == "hours") {
                   notificationValue = value;
                 } else {
                   notificationValue = value;
@@ -435,7 +435,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               notificationValue = value * 1000;
             } else if (type == "day") {
               notificationValue = value;
-            } else if (type == "hour") {
+            } else if (type == "hours") {
               notificationValue = value;
             } else {
               notificationValue = value;
@@ -625,7 +625,8 @@ class _ReportsScreenState extends State<ReportsScreen>
             final nextDate = baseDate.add(Duration(days: defaultValue));
             formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
             nextNotificationValue = nextDate.millisecondsSinceEpoch;
-          } else if (type == 'hour') {
+          } else if (type == 'hours') {
+            //hour to hours because in database we store hours
             nextNotificationValue = currentHours + defaultValue;
           }
         }
