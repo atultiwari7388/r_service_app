@@ -94,8 +94,6 @@ class _ReportsScreenState extends State<ReportsScreen>
   final List<Map<String, dynamic>> milesToAddInRecords = [];
   final List<Map<String, dynamic>> packages = [];
 
-  // final List<String> packages = [];
-
   // Stream subscriptions
   late StreamSubscription vehiclesSubscription;
   late StreamSubscription recordsSubscription;
@@ -120,6 +118,11 @@ class _ReportsScreenState extends State<ReportsScreen>
   // For invoice summary
   DateTime? summaryStartDate;
   DateTime? summaryEndDate;
+
+  // For Vehicle wise invoice summary
+  bool showVehicleFilter = false;
+  Set<String> selectedSummaryVehicles = {};
+  String summaryVehicleTypeFilter = 'All'; // 'All', 'Truck', or 'Trailer'
 
   @override
   void initState() {
@@ -952,6 +955,46 @@ class _ReportsScreenState extends State<ReportsScreen>
     });
   }
 
+  // Map<String, double> calculateInvoiceTotals() {
+  //   double totalInvoiceAmount = 0;
+  //   double truckTotal = 0;
+  //   double trailerTotal = 0;
+  //   double otherTotal = 0;
+
+  //   final filteredRecords = getFilteredRecords();
+
+  //   for (final record in filteredRecords) {
+  //     final recordDate = DateTime.parse(record['date']);
+  //     final amount =
+  //         double.tryParse(record['invoiceAmount']?.toString() ?? '0') ?? 0;
+
+  //     // Check date range if filters are set
+  //     final isWithinDateRange =
+  //         (summaryStartDate == null || recordDate.isAfter(summaryStartDate!)) &&
+  //             (summaryEndDate == null ||
+  //                 recordDate.isBefore(summaryEndDate!.add(Duration(days: 1))));
+
+  //     if (isWithinDateRange && amount > 0) {
+  //       totalInvoiceAmount += amount;
+
+  //       if (record['vehicleDetails']['vehicleType'] == 'Truck') {
+  //         truckTotal += amount;
+  //       } else if (record['vehicleDetails']['vehicleType'] == 'Trailer') {
+  //         trailerTotal += amount;
+  //       } else {
+  //         otherTotal += amount;
+  //       }
+  //     }
+  //   }
+
+  //   return {
+  //     'total': totalInvoiceAmount,
+  //     'truck': truckTotal,
+  //     'trailer': trailerTotal,
+  //     'other': otherTotal,
+  //   };
+  // }
+
   Map<String, double> calculateInvoiceTotals() {
     double totalInvoiceAmount = 0;
     double truckTotal = 0;
@@ -964,6 +1007,8 @@ class _ReportsScreenState extends State<ReportsScreen>
       final recordDate = DateTime.parse(record['date']);
       final amount =
           double.tryParse(record['invoiceAmount']?.toString() ?? '0') ?? 0;
+      final vehicleId = record['vehicleId'];
+      final vehicleType = record['vehicleDetails']['vehicleType'];
 
       // Check date range if filters are set
       final isWithinDateRange =
@@ -971,12 +1016,23 @@ class _ReportsScreenState extends State<ReportsScreen>
               (summaryEndDate == null ||
                   recordDate.isBefore(summaryEndDate!.add(Duration(days: 1))));
 
-      if (isWithinDateRange && amount > 0) {
+      // Check vehicle type filter
+      final matchesVehicleType = summaryVehicleTypeFilter == 'All' ||
+          vehicleType == summaryVehicleTypeFilter;
+
+      // Check specific vehicle selection
+      final matchesVehicleSelection = selectedSummaryVehicles.isEmpty ||
+          selectedSummaryVehicles.contains(vehicleId);
+
+      if (isWithinDateRange &&
+          amount > 0 &&
+          matchesVehicleType &&
+          matchesVehicleSelection) {
         totalInvoiceAmount += amount;
 
-        if (record['vehicleDetails']['vehicleType'] == 'Truck') {
+        if (vehicleType == 'Truck') {
           truckTotal += amount;
-        } else if (record['vehicleDetails']['vehicleType'] == 'Trailer') {
+        } else if (vehicleType == 'Trailer') {
           trailerTotal += amount;
         } else {
           otherTotal += amount;
@@ -2051,6 +2107,226 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 SizedBox(height: 16.h),
 
                                 // Save Button
+                                // CustomButton(
+                                //   onPress: () async {
+                                //     // Check which controller to use based on vehicle type
+                                //     final isTruck =
+                                //         selectedVehicleData?['vehicleType'] ==
+                                //             'Truck';
+                                //     final controller = isTruck
+                                //         ? todayMilesController
+                                //         : hoursController;
+                                //     final value = controller.text.trim();
+
+                                //     if (selectedVehicle != null &&
+                                //         value.isNotEmpty) {
+                                //       try {
+                                //         final int enteredValue =
+                                //             int.parse(value);
+                                //         final vehicleId = selectedVehicle;
+
+                                //         // Check if DataServices subcollection exists and is not empty
+                                //         final dataServicesSnapshot =
+                                //             await FirebaseFirestore.instance
+                                //                 .collection("Users")
+                                //                 .doc(currentUId)
+                                //                 .collection("DataServices")
+                                //                 .where("vehicleId",
+                                //                     isEqualTo: vehicleId)
+                                //                 .get();
+
+                                //         // Fetch current reading (Miles/Hours) for the selected vehicle
+                                //         final vehicleDoc =
+                                //             await FirebaseFirestore.instance
+                                //                 .collection("Users")
+                                //                 .doc(currentUId)
+                                //                 .collection("Vehicles")
+                                //                 .doc(vehicleId)
+                                //                 .get();
+
+                                //         if (vehicleDoc.exists) {
+                                //           final int currentReading = int.parse(
+                                //             vehicleDoc[isTruck
+                                //                     ? 'currentMiles'
+                                //                     : 'hoursReading'] ??
+                                //                 '0',
+                                //           );
+
+                                //           final data = {
+                                //             isTruck
+                                //                     ? "prevMilesValue"
+                                //                     : "prevHoursReadingValue":
+                                //                 currentReading.toString(),
+                                //             isTruck
+                                //                     ? "currentMiles"
+                                //                     : "hoursReading":
+                                //                 enteredValue.toString(),
+                                //             isTruck ? "miles" : "hoursReading":
+                                //                 enteredValue.toString(),
+                                //             isTruck
+                                //                     ? 'currentMilesArray'
+                                //                     : 'hoursReadingArray':
+                                //                 FieldValue.arrayUnion([
+                                //               {
+                                //                 isTruck ? "miles" : "hours":
+                                //                     enteredValue,
+                                //                 "date": DateTime.now()
+                                //                     .toIso8601String(),
+                                //               }
+                                //             ]),
+                                //           };
+
+                                //           // Update owner's vehicle first
+                                //           await FirebaseFirestore.instance
+                                //               .collection("Users")
+                                //               .doc(currentUId)
+                                //               .collection("Vehicles")
+                                //               .doc(vehicleId)
+                                //               .update(data);
+
+                                //           // Query Team Members (Drivers/Managers)
+                                //           final teamMembersSnapshot =
+                                //               await FirebaseFirestore.instance
+                                //                   .collection('Users')
+                                //                   .where('createdBy',
+                                //                       isEqualTo: currentUId)
+                                //                   .where('isTeamMember',
+                                //                       isEqualTo: true)
+                                //                   .get();
+
+                                //           // Save to Team Members' miles ONLY if they have this vehicle
+                                //           for (final doc
+                                //               in teamMembersSnapshot.docs) {
+                                //             final teamMemberUid = doc.id;
+
+                                //             // Check if this team member has this vehicle
+                                //             final teamMemberVehicleDoc =
+                                //                 await FirebaseFirestore.instance
+                                //                     .collection('Users')
+                                //                     .doc(teamMemberUid)
+                                //                     .collection('Vehicles')
+                                //                     .doc(vehicleId)
+                                //                     .get();
+
+                                //             if (teamMemberVehicleDoc.exists) {
+                                //               await FirebaseFirestore.instance
+                                //                   .collection('Users')
+                                //                   .doc(teamMemberUid)
+                                //                   .collection("Vehicles")
+                                //                   .doc(vehicleId)
+                                //                   .update(data);
+                                //             }
+                                //           }
+
+                                //           // Handle Team Member Creating Record (Save to Owner)
+                                //           final currentUserDoc =
+                                //               await FirebaseFirestore.instance
+                                //                   .collection('Users')
+                                //                   .doc(currentUId)
+                                //                   .get();
+
+                                //           if (currentUserDoc
+                                //                   .data()?['isTeamMember'] ==
+                                //               true) {
+                                //             final ownerSnapshot =
+                                //                 await FirebaseFirestore.instance
+                                //                     .collection('Users')
+                                //                     .where('uid',
+                                //                         isEqualTo:
+                                //                             currentUserDoc
+                                //                                     .data()?[
+                                //                                 'createdBy'])
+                                //                     .get();
+
+                                //             if (ownerSnapshot.docs.isNotEmpty) {
+                                //               final ownerUid =
+                                //                   ownerSnapshot.docs.first.id;
+                                //               await FirebaseFirestore.instance
+                                //                   .collection('Users')
+                                //                   .doc(ownerUid)
+                                //                   .collection("Vehicles")
+                                //                   .doc(vehicleId)
+                                //                   .update(data);
+                                //             }
+                                //           }
+
+                                //           debugPrint(
+                                //               '${isTruck ? 'Miles' : 'Hours'} updated successfully!');
+                                //           todayMilesController.clear();
+                                //           hoursController.clear();
+                                //           setState(() {
+                                //             selectedVehicle = null;
+                                //             selectedVehicleType = '';
+                                //           });
+
+                                //           ScaffoldMessenger.of(context)
+                                //               .showSnackBar(
+                                //             SnackBar(
+                                //               content:
+                                //                   Text('Saved successfully!'),
+                                //               duration: Duration(seconds: 2),
+                                //             ),
+                                //           );
+
+                                //           if (dataServicesSnapshot
+                                //               .docs.isEmpty) {
+                                //             // Call cloud function to notify about missing services
+                                //             final HttpsCallable callable =
+                                //                 FirebaseFunctions.instance
+                                //                     .httpsCallable(
+                                //                         'checkAndNotifyUserForVehicleService');
+
+                                //             await callable.call({
+                                //               'userId': currentUId,
+                                //               'vehicleId': vehicleId,
+                                //             });
+
+                                //             log('Called checkAndNotifyUserForVehicleService for $vehicleId');
+                                //           } else {
+                                //             // Call the cloud function to check for notifications
+                                //             final HttpsCallable callable =
+                                //                 FirebaseFunctions.instance
+                                //                     .httpsCallable(
+                                //                         'checkDataServicesAndNotify');
+
+                                //             final result = await callable.call({
+                                //               'userId': currentUId,
+                                //               'vehicleId': vehicleId
+                                //             });
+
+                                //             log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                //           }
+                                //         } else {
+                                //           throw 'Vehicle data not found';
+                                //         }
+                                //       } catch (e) {
+                                //         debugPrint(
+                                //             'Error updating ${isTruck ? 'miles' : 'hours'}: $e');
+                                //         // ScaffoldMessenger.of(context)
+                                //         //     .showSnackBar(
+                                //         //   SnackBar(
+                                //         //     content: Text(
+                                //         //         'Failed to save ${isTruck ? 'miles' : 'hours'}: $e'),
+                                //         //     duration: Duration(seconds: 2),
+                                //         //   ),
+                                //         // );
+                                //       }
+                                //     } else {
+                                //       // ScaffoldMessenger.of(context)
+                                //       //     .showSnackBar(
+                                //       //   SnackBar(
+                                //       //     content: Text(
+                                //       //         'Please select a vehicle and enter a value'),
+                                //       //     duration: Duration(seconds: 2),
+                                //       //   ),
+                                //       // );
+                                //     }
+                                //   },
+                                //   color: kPrimary,
+                                //   text:
+                                //       'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
+                                // ),
+
                                 CustomButton(
                                   onPress: () async {
                                     // Check which controller to use based on vehicle type
@@ -2120,25 +2396,41 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             ]),
                                           };
 
+                                          // Get current user data to determine if we're a team member
+                                          final currentUserDoc =
+                                              await FirebaseFirestore.instance
+                                                  .collection('Users')
+                                                  .doc(currentUId)
+                                                  .get();
+
+                                          final isTeamMember = currentUserDoc
+                                                  .data()?['isTeamMember'] ==
+                                              true;
+                                          final ownerUid = isTeamMember
+                                              ? (currentUserDoc
+                                                      .data()?['createdBy'] ??
+                                                  currentUId)
+                                              : currentUId;
+
                                           // Update owner's vehicle first
                                           await FirebaseFirestore.instance
                                               .collection("Users")
-                                              .doc(currentUId)
+                                              .doc(ownerUid)
                                               .collection("Vehicles")
                                               .doc(vehicleId)
                                               .update(data);
 
-                                          // Query Team Members (Drivers/Managers)
+                                          // Query all team members under this owner (including the current user if they're a team member)
                                           final teamMembersSnapshot =
                                               await FirebaseFirestore.instance
                                                   .collection('Users')
                                                   .where('createdBy',
-                                                      isEqualTo: currentUId)
+                                                      isEqualTo: ownerUid)
                                                   .where('isTeamMember',
                                                       isEqualTo: true)
                                                   .get();
 
-                                          // Save to Team Members' miles ONLY if they have this vehicle
+                                          // Save to all team members who have this vehicle
                                           for (final doc
                                               in teamMembersSnapshot.docs) {
                                             final teamMemberUid = doc.id;
@@ -2162,32 +2454,21 @@ class _ReportsScreenState extends State<ReportsScreen>
                                             }
                                           }
 
-                                          // Handle Team Member Creating Record (Save to Owner)
-                                          final currentUserDoc =
+                                          // If current user is team member, also update their own vehicle
+                                          if (isTeamMember &&
+                                              currentUId != ownerUid) {
+                                            final currentUserVehicleDoc =
+                                                await FirebaseFirestore.instance
+                                                    .collection('Users')
+                                                    .doc(currentUId)
+                                                    .collection('Vehicles')
+                                                    .doc(vehicleId)
+                                                    .get();
+
+                                            if (currentUserVehicleDoc.exists) {
                                               await FirebaseFirestore.instance
                                                   .collection('Users')
                                                   .doc(currentUId)
-                                                  .get();
-
-                                          if (currentUserDoc
-                                                  .data()?['isTeamMember'] ==
-                                              true) {
-                                            final ownerSnapshot =
-                                                await FirebaseFirestore.instance
-                                                    .collection('Users')
-                                                    .where('uid',
-                                                        isEqualTo:
-                                                            currentUserDoc
-                                                                    .data()?[
-                                                                'createdBy'])
-                                                    .get();
-
-                                            if (ownerSnapshot.docs.isNotEmpty) {
-                                              final ownerUid =
-                                                  ownerSnapshot.docs.first.id;
-                                              await FirebaseFirestore.instance
-                                                  .collection('Users')
-                                                  .doc(ownerUid)
                                                   .collection("Vehicles")
                                                   .doc(vehicleId)
                                                   .update(data);
@@ -2246,24 +2527,24 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       } catch (e) {
                                         debugPrint(
                                             'Error updating ${isTruck ? 'miles' : 'hours'}: $e');
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Failed to save ${isTruck ? 'miles' : 'hours'}: $e'),
-                                            duration: Duration(seconds: 2),
-                                          ),
-                                        );
+                                        // ScaffoldMessenger.of(context)
+                                        //     .showSnackBar(
+                                        //   SnackBar(
+                                        //     content: Text(
+                                        //         'Failed to save ${isTruck ? 'miles' : 'hours'}: $e'),
+                                        //     duration: Duration(seconds: 2),
+                                        //   ),
+                                        // );
                                       }
                                     } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              'Please select a vehicle and enter a value'),
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
+                                      // ScaffoldMessenger.of(context)
+                                      //     .showSnackBar(
+                                      //   SnackBar(
+                                      //     content: Text(
+                                      //         'Please select a vehicle and enter a value'),
+                                      //     duration: Duration(seconds: 2),
+                                      //   ),
+                                      // );
                                     }
                                   },
                                   color: kPrimary,
@@ -2278,6 +2559,100 @@ class _ReportsScreenState extends State<ReportsScreen>
 
                       // Invoice Summary Box
 
+                      // (role == "Owner" || role == "Admin")
+                      //     ? Card(
+                      //         elevation: 4,
+                      //         margin: EdgeInsets.symmetric(vertical: 8),
+                      //         child: Padding(
+                      //           padding: EdgeInsets.all(12),
+                      //           child: Column(
+                      //             crossAxisAlignment:
+                      //                 CrossAxisAlignment.stretch,
+                      //             children: [
+                      //               Row(
+                      //                 mainAxisAlignment:
+                      //                     MainAxisAlignment.spaceBetween,
+                      //                 children: [
+                      //                   Text(
+                      //                     'Invoice Summary',
+                      //                     style: TextStyle(
+                      //                       fontSize: 18,
+                      //                       fontWeight: FontWeight.bold,
+                      //                       color: kDark,
+                      //                     ),
+                      //                   ),
+                      //                   Row(
+                      //                     children: [
+                      //                       IconButton(
+                      //                         icon: Icon(Icons.date_range,
+                      //                             color: kPrimary),
+                      //                         onPressed: () async {
+                      //                           final DateTimeRange? picked =
+                      //                               await showDateRangePicker(
+                      //                             context: context,
+                      //                             firstDate: DateTime(2000),
+                      //                             lastDate: DateTime(2100),
+                      //                             initialDateRange:
+                      //                                 summaryStartDate !=
+                      //                                             null &&
+                      //                                         summaryEndDate !=
+                      //                                             null
+                      //                                     ? DateTimeRange(
+                      //                                         start:
+                      //                                             summaryStartDate!,
+                      //                                         end:
+                      //                                             summaryEndDate!)
+                      //                                     : null,
+                      //                           );
+                      //                           if (picked != null) {
+                      //                             setState(() {
+                      //                               summaryStartDate =
+                      //                                   picked.start;
+                      //                               summaryEndDate = picked.end;
+                      //                             });
+                      //                           }
+                      //                         },
+                      //                       ),
+                      //                       if (summaryStartDate != null ||
+                      //                           summaryEndDate != null)
+                      //                         IconButton(
+                      //                           icon: Icon(Icons.clear,
+                      //                               color: Colors.red),
+                      //                           onPressed: () {
+                      //                             setState(() {
+                      //                               summaryStartDate = null;
+                      //                               summaryEndDate = null;
+                      //                             });
+                      //                           },
+                      //                         ),
+                      //                     ],
+                      //                   ),
+                      //                 ],
+                      //               ),
+                      //               SizedBox(height: 8),
+                      //               Row(
+                      //                 mainAxisAlignment:
+                      //                     MainAxisAlignment.spaceBetween,
+                      //                 children: [
+                      //                   _buildSummaryItem('Total',
+                      //                       calculateInvoiceTotals()['total']!),
+                      //                   _buildSummaryItem('Trucks',
+                      //                       calculateInvoiceTotals()['truck']!),
+                      //                   _buildSummaryItem(
+                      //                       'Trailers',
+                      //                       calculateInvoiceTotals()[
+                      //                           'trailer']!),
+                      //                   _buildSummaryItem('Others',
+                      //                       calculateInvoiceTotals()['other']!),
+                      //                 ],
+                      //               ),
+                      //             ],
+                      //           ),
+                      //         ),
+                      //       )
+                      //     : SizedBox(),
+
+                      // Invoice Summary Box
                       (role == "Owner" || role == "Admin")
                           ? Card(
                               elevation: 4,
@@ -2302,6 +2677,16 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         ),
                                         Row(
                                           children: [
+                                            IconButton(
+                                              icon: Icon(Icons.filter_alt,
+                                                  color: kPrimary),
+                                              onPressed: () {
+                                                setState(() {
+                                                  showVehicleFilter =
+                                                      !showVehicleFilter;
+                                                });
+                                              },
+                                            ),
                                             IconButton(
                                               icon: Icon(Icons.date_range,
                                                   color: kPrimary),
@@ -2348,6 +2733,112 @@ class _ReportsScreenState extends State<ReportsScreen>
                                         ),
                                       ],
                                     ),
+
+                                    // Vehicle Type Filter
+                                    SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child:
+                                              DropdownButtonFormField<String>(
+                                            value: summaryVehicleTypeFilter,
+                                            items: ['All', 'Truck', 'Trailer']
+                                                .map((String value) {
+                                              return DropdownMenuItem<String>(
+                                                value: value,
+                                                child: Text(value),
+                                              );
+                                            }).toList(),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                summaryVehicleTypeFilter =
+                                                    value!;
+                                                selectedSummaryVehicles.clear();
+                                              });
+                                            },
+                                            decoration: InputDecoration(
+                                              labelText: 'Vehicle Type',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 10),
+                                        IconButton(
+                                          icon: Icon(Icons.refresh,
+                                              color: kPrimary),
+                                          onPressed: () {
+                                            setState(() {
+                                              selectedSummaryVehicles.clear();
+                                              summaryVehicleTypeFilter = 'All';
+                                            });
+                                          },
+                                          tooltip: 'Clear Filters',
+                                        ),
+                                      ],
+                                    ),
+
+                                    // Vehicle Selection (only show if not 'All' and showVehicleFilter is true)
+                                    if (showVehicleFilter &&
+                                        summaryVehicleTypeFilter != 'All')
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          SizedBox(height: 8),
+                                          Text('Select Vehicles:',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          SizedBox(height: 8),
+                                          Container(
+                                            height: 150,
+                                            child: ListView.builder(
+                                              shrinkWrap: true,
+                                              itemCount:
+                                                  vehicles.where((vehicle) {
+                                                return summaryVehicleTypeFilter ==
+                                                        'All' ||
+                                                    vehicle['vehicleType'] ==
+                                                        summaryVehicleTypeFilter;
+                                              }).length,
+                                              itemBuilder: (context, index) {
+                                                final filteredVehicles =
+                                                    vehicles.where((vehicle) {
+                                                  return summaryVehicleTypeFilter ==
+                                                          'All' ||
+                                                      vehicle['vehicleType'] ==
+                                                          summaryVehicleTypeFilter;
+                                                }).toList();
+
+                                                final vehicle =
+                                                    filteredVehicles[index];
+                                                final isSelected =
+                                                    selectedSummaryVehicles
+                                                        .contains(
+                                                            vehicle['id']);
+
+                                                return CheckboxListTile(
+                                                  title: Text(
+                                                      '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
+                                                  value: isSelected,
+                                                  onChanged: (bool? value) {
+                                                    setState(() {
+                                                      if (value == true) {
+                                                        selectedSummaryVehicles
+                                                            .add(vehicle['id']);
+                                                      } else {
+                                                        selectedSummaryVehicles
+                                                            .remove(
+                                                                vehicle['id']);
+                                                      }
+                                                    });
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
                                     SizedBox(height: 8),
                                     Row(
                                       mainAxisAlignment:
