@@ -18,6 +18,8 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/Modal";
+import { useCallback, useRef } from "react";
+import { debounce } from "@mui/material";
 
 export interface Trip {
   id: string;
@@ -269,106 +271,192 @@ export default function MemberTripsPage() {
     return 0;
   });
 
-  const calculateTotals = async () => {
-    try {
-      let totalExpenses = 0;
-      let totalEarnings = 0;
-      let totalPaid = 0;
-      let totalGoogleEarnings = 0;
+  // const calculateTotals = async () => {
+  //   try {
+  //     let totalExpenses = 0;
+  //     let totalEarnings = 0;
+  //     let totalPaid = 0;
+  //     let totalGoogleEarnings = 0;
 
-      // Ensure we have the perMileCharge value
-      const perMile = parseFloat(memberData?.perMileCharge || "0");
-      console.log("Per mile charge:", perMile); // Debug log
+  //     // Ensure we have the perMileCharge value
+  //     const perMile = parseFloat(memberData?.perMileCharge || "0");
+  //     console.log("Per mile charge:", perMile); // Debug log
 
-      // Process each trip
-      for (const trip of filteredTrips) {
-        // Calculate expenses
-        try {
-          const expensesSnapshot = await getDocs(
-            query(
-              collection(
-                db,
-                "Users",
-                memberId,
-                "trips",
-                trip.id,
-                "tripDetails"
-              ),
-              where("type", "==", "Expenses")
-            )
-          );
+  //     // Process each trip
+  //     for (const trip of filteredTrips) {
+  //       // Calculate expenses
+  //       try {
+  //         const expensesSnapshot = await getDocs(
+  //           query(
+  //             collection(
+  //               db,
+  //               "Users",
+  //               memberId,
+  //               "trips",
+  //               trip.id,
+  //               "tripDetails"
+  //             ),
+  //             where("type", "==", "Expenses")
+  //           )
+  //         );
 
-          const tripExpenses = expensesSnapshot.docs.reduce(
-            (sum, doc) => sum + (doc.data().amount || 0),
-            0
-          );
-          totalExpenses += tripExpenses;
+  //         const tripExpenses = expensesSnapshot.docs.reduce(
+  //           (sum, doc) => sum + (doc.data().amount || 0),
+  //           0
+  //         );
+  //         totalExpenses += tripExpenses;
 
-          // Calculate earnings for completed trips
-          if (trip.tripStatus === 2) {
-            const startMiles = trip.tripStartMiles || 0;
-            const endMiles = trip.tripEndMiles || 0;
-            const miles = endMiles - startMiles;
+  //         // Calculate earnings for completed trips
+  //         if (trip.tripStatus === 2) {
+  //           const startMiles = trip.tripStartMiles || 0;
+  //           const endMiles = trip.tripEndMiles || 0;
+  //           const miles = endMiles - startMiles;
 
-            console.log(`Trip ${trip.id}:`, {
-              startMiles,
-              endMiles,
-              miles,
-              perMile,
-            }); // Debug log
+  //           console.log(`Trip ${trip.id}:`, {
+  //             startMiles,
+  //             endMiles,
+  //             miles,
+  //             perMile,
+  //           }); // Debug log
 
-            const earnings = miles * perMile;
-            totalEarnings += earnings;
-          }
+  //           const earnings = miles * perMile;
+  //           totalEarnings += earnings;
+  //         }
 
-          // Add Google earnings if they exist
-          if (trip.googleTotalEarning) {
-            totalGoogleEarnings += trip.googleTotalEarning;
-          }
+  //         // Add Google earnings if they exist
+  //         if (trip.googleTotalEarning) {
+  //           totalGoogleEarnings += trip.googleTotalEarning;
+  //         }
 
-          // Count paid trips
-          if (trip.isPaid) {
-            totalPaid += 1;
-          }
-        } catch (error) {
-          console.error(`Error processing trip ${trip.id}:`, error);
-        }
-      }
+  //         // Count paid trips
+  //         if (trip.isPaid) {
+  //           totalPaid += 1;
+  //         }
+  //       } catch (error) {
+  //         console.error(`Error processing trip ${trip.id}:`, error);
+  //       }
+  //     }
 
-      console.log("Calculated totals:", {
-        totalExpenses: totalExpenses,
-        totalEarnings: totalEarnings,
-        totalPaid: totalPaid,
-        totalGoogleEarnings: totalGoogleEarnings,
-      }); // Debug log
+  //     console.log("Calculated totals:", {
+  //       totalExpenses: totalExpenses,
+  //       totalEarnings: totalEarnings,
+  //       totalPaid: totalPaid,
+  //       totalGoogleEarnings: totalGoogleEarnings,
+  //     }); // Debug log
 
-      setTotals({
-        totalExpenses: Math.max(totalExpenses, 0),
-        totalEarnings: Math.max(totalEarnings, 0),
-        totalPaid: totalPaid,
-        totalGoogleEarnings: Math.max(totalGoogleEarnings, 0),
-      });
-    } catch (error) {
-      console.error("Calculation error:", error);
-    }
-  };
-
-  useEffect(() => {
-    calculateTotals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredTrips, memberData?.perMileCharge.toString()]);
-
-  // const handleEditTrip = (trip: TripDetails) => {
-  //   setCurrentTrip(trip);
-  //   setEditForm({
-  //     tripName: trip.tripName,
-  //     tripStartMiles: trip.tripStartMiles.toString(),
-  //     tripEndMiles: trip.tripEndMiles.toString(),
-  //     tripStartDate: trip.tripStartDate.toDate(),
-  //     tripEndDate: trip.tripEndDate.toDate(),
-  //   });
-  //   setShowEditModal(true);
+  //     setTotals({
+  //       totalExpenses: Math.max(totalExpenses, 0),
+  //       totalEarnings: Math.max(totalEarnings, 0),
+  //       totalPaid: totalPaid,
+  //       totalGoogleEarnings: Math.max(totalGoogleEarnings, 0),
+  //     });
+  //   } catch (error) {
+  //     console.error("Calculation error:", error);
+  //   }
   // };
+
+  // useEffect(() => {
+  //   calculateTotals();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [filteredTrips, memberData?.perMileCharge.toString()]);
+
+  // Inside your component, replace the useMemo with useCallback
+  const calculateTotals = useCallback(
+    debounce(async () => {
+      try {
+        if (!memberId || filteredTrips.length === 0) return;
+
+        let totalExpenses = 0;
+        let totalEarnings = 0;
+        let totalPaid = 0;
+        let totalGoogleEarnings = 0;
+        const perMile = parseFloat(memberData?.perMileCharge || "0");
+
+        // Process trips in parallel
+        const tripPromises = filteredTrips.map(async (trip) => {
+          try {
+            const expensesSnapshot = await getDocs(
+              query(
+                collection(
+                  db,
+                  "Users",
+                  memberId,
+                  "trips",
+                  trip.id,
+                  "tripDetails"
+                ),
+                where("type", "==", "Expenses")
+              )
+            );
+
+            const tripExpenses = expensesSnapshot.docs.reduce(
+              (sum, doc) => sum + (doc.data().amount || 0),
+              0
+            );
+
+            let tripEarnings = 0;
+            if (trip.tripStatus === 2) {
+              const miles =
+                (trip.tripEndMiles || 0) - (trip.tripStartMiles || 0);
+              tripEarnings = miles * perMile;
+            }
+
+            return {
+              expenses: tripExpenses,
+              earnings: tripEarnings,
+              googleEarnings: trip.googleTotalEarning || 0,
+              isPaid: trip.isPaid ? 1 : 0,
+            };
+          } catch (error) {
+            console.error(`Error processing trip ${trip.id}:`, error);
+            return { expenses: 0, earnings: 0, googleEarnings: 0, isPaid: 0 };
+          }
+        });
+
+        const results = await Promise.all(tripPromises);
+
+        results.forEach((result) => {
+          totalExpenses += result.expenses;
+          totalEarnings += result.earnings;
+          totalGoogleEarnings += result.googleEarnings;
+          totalPaid += result.isPaid;
+        });
+
+        setTotals({
+          totalExpenses: Math.max(totalExpenses, 0),
+          totalEarnings: Math.max(totalEarnings, 0),
+          totalPaid: totalPaid,
+          totalGoogleEarnings: Math.max(totalGoogleEarnings, 0),
+        });
+      } catch (error) {
+        console.error("Calculation error:", error);
+      }
+    }, 500),
+    [filteredTrips, memberData?.perMileCharge, memberId]
+  );
+
+  // Add a ref to track the debounce timeout
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update your useEffect
+  useEffect(() => {
+    // Clear previous timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Set new timeout
+    debounceRef.current = setTimeout(() => {
+      calculateTotals();
+    }, 500);
+
+    // Cleanup
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [calculateTotals]);
 
   const handleEditTrip = (trip: TripDetails) => {
     setCurrentTrip(trip);
@@ -386,36 +474,6 @@ export default function MemberTripsPage() {
 
     setShowEditModal(true);
   };
-
-  // const handleSaveEdit = async () => {
-  //   if (
-  //     !currentTrip ||
-  //     !editForm.tripName ||
-  //     !editForm.tripStartMiles ||
-  //     !editForm.tripEndMiles ||
-  //     !editForm.tripStartDate ||
-  //     !editForm.tripEndDate
-  //   ) {
-  //     alert("Please fill all fields");
-  //     return;
-  //   }
-
-  //   try {
-  //     await updateDoc(doc(db, "Users", memberId, "trips", currentTrip.id), {
-  //       tripName: editForm.tripName,
-  //       tripStartMiles: parseInt(editForm.tripStartMiles),
-  //       tripEndMiles: parseInt(editForm.tripEndMiles),
-  //       tripStartDate: Timestamp.fromDate(editForm.tripStartDate!),
-  //       tripEndDate: Timestamp.fromDate(editForm.tripEndDate!),
-  //       updatedAt: Timestamp.now(),
-  //     });
-  //     setShowEditModal(false);
-  //     alert("Trip updated successfully");
-  //   } catch (error) {
-  //     console.error("Error updating trip:", error);
-  //     alert("Failed to update trip");
-  //   }
-  // };
 
   const handleSaveEdit = async () => {
     if (

@@ -261,11 +261,11 @@ export default function ManageCheckScreen() {
       setChecks(checksData);
       setLoadingChecks(false);
     } catch (error) {
-      setErrorMessage(
-        `Error loading checks: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      // setErrorMessage(
+      //   `Error loading checks: ${
+      //     error instanceof Error ? error.message : String(error)
+      //   }`
+      // );
       setLoadingChecks(false);
       console.error(error);
     }
@@ -295,11 +295,11 @@ export default function ManageCheckScreen() {
 
       setCheckSeries(seriesData);
     } catch (error) {
-      GlobalToastError(
-        `Error loading check series: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      // GlobalToastError(
+      //   `Error loading check series: ${
+      //     error instanceof Error ? error.message : String(error)
+      //   }`
+      // );
       console.error(error);
     }
   };
@@ -350,11 +350,11 @@ export default function ManageCheckScreen() {
       setDriverUnpaidTotal(total);
       setAmount(total.toFixed(2));
     } catch (error) {
-      GlobalToastError(
-        `Error fetching unpaid trips: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      // GlobalToastError(
+      //   `Error fetching unpaid trips: ${
+      //     error instanceof Error ? error.message : String(error)
+      //   }`
+      // );
       console.error(error);
     }
   };
@@ -432,11 +432,11 @@ export default function ManageCheckScreen() {
       setShowAddCheck(false);
       fetchChecks();
     } catch (error) {
-      GlobalToastError(
-        `Error saving check: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      // GlobalToastError(
+      //   `Error saving check: ${
+      //     error instanceof Error ? error.message : String(error)
+      //   }`
+      // );
       console.error(error);
       GlobalToastError(errorMessage);
     }
