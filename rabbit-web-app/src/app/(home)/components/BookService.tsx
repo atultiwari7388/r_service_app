@@ -102,29 +102,31 @@ const BookingSection: React.FC = () => {
           collection(db, "Users", user?.uid as string, "Vehicles")
         );
         if (!vehiclesSnapshot.empty) {
-          return vehiclesSnapshot.docs.map((doc) => {
-            const data = doc.data() as VehicleTypes;
-            return {
-              id: doc.id,
-              vehicleNumber: data.vehicleNumber,
-              companyName: data.companyName,
-              engineName: data.engineName,
-              createdAt: data.createdAt,
-              isSet: data.isSet,
-              licensePlate: data.licensePlate,
-              vin: data.vin,
-              year: data.year,
-              currentReading: data.currentReading,
-              dot: data.dot,
-              engineNumber: data.engineNumber,
-              iccms: data.iccms,
-              vehicleType: data.vehicleType,
-              active: data.active,
-              currentMiles: data.currentMiles || "0",
-              hoursReading: data.hoursReading || "0",
-              currentMilesArray: data.currentMilesArray || [],
-            };
-          });
+          return vehiclesSnapshot.docs
+            .map((doc) => {
+              const data = doc.data() as VehicleTypes;
+              return {
+                id: doc.id,
+                vehicleNumber: data.vehicleNumber,
+                companyName: data.companyName,
+                engineName: data.engineName,
+                createdAt: data.createdAt,
+                isSet: data.isSet,
+                licensePlate: data.licensePlate,
+                vin: data.vin,
+                year: data.year,
+                currentReading: data.currentReading,
+                dot: data.dot,
+                engineNumber: data.engineNumber,
+                iccms: data.iccms,
+                vehicleType: data.vehicleType,
+                active: data.active,
+                currentMiles: data.currentMiles || "0",
+                hoursReading: data.hoursReading || "0",
+                currentMilesArray: data.currentMilesArray || [],
+              };
+            })
+            .filter((vehicle) => vehicle.active === true);
         }
       } catch (error) {
         console.error("Error fetching vehicles:", error);
