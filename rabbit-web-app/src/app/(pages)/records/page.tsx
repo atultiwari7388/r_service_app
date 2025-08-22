@@ -212,26 +212,6 @@ export default function RecordsPage() {
     window.location.href = path;
   };
 
-  // const fetchVehicles = async () => {
-  //   if (!user) return;
-  //   try {
-  //     const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-  //     const q = query(vehiclesRef, where("active", "==", true));
-  //     const vehiclesSnapshot = await getDocs(q);
-  //     const vehiclesList = vehiclesSnapshot.docs.map(
-  //       (doc) =>
-  //         ({
-  //           id: doc.id,
-  //           ...doc.data(),
-  //         } as VehicleTypes)
-  //     );
-  //     setVehicles(vehiclesList);
-  //   } catch (error) {
-  //     console.error("Error fetching vehicles:", error);
-  //     // GlobalToastError(error);
-  //   }
-  // };
-
   const fetchVehicles = async () => {
     if (!user) return;
 
@@ -632,14 +612,14 @@ export default function RecordsPage() {
       );
       const enteredValue = parseInt(todayMiles);
 
-      if (enteredValue < currentReading) {
-        toast.error(
-          `${
-            selectedVehicleType === "Truck" ? "Miles" : "Hours"
-          } cannot be less than the current value.`
-        );
-        return;
-      }
+      // if (enteredValue < currentReading) {
+      //   toast.error(
+      //     `${
+      //       selectedVehicleType === "Truck" ? "Miles" : "Hours"
+      //     } cannot be less than the current value.`
+      //   );
+      //   return;
+      // }
 
       const data = {
         [prevReadingField]: currentReading.toString(),
@@ -1455,59 +1435,6 @@ export default function RecordsPage() {
       });
     }
   };
-
-  // const calculateTotals = () => {
-  //   let totalInvoiceAmount = 0;
-  //   let truckTotal = 0;
-  //   let trailerTotal = 0;
-  //   let otherTotal = 0;
-
-  //   filteredRecords.forEach((record) => {
-  //     const recordDate = new Date(record.createdAt);
-  //     const amount = parseFloat(record.invoiceAmount) || 0;
-
-  //     // Check if record is within date range if filters are set
-  //     const isWithinDateRange =
-  //       (!summaryStartDate || recordDate >= summaryStartDate) &&
-  //       (!summaryEndDate || recordDate <= summaryEndDate);
-
-  //     // Check vehicle filters
-  //     const vehicleType = record.vehicleDetails.vehicleType;
-  //     const vehicleId = record.vehicleId;
-
-  //     const passesVehicleFilter =
-  //       selectedVehicleTypeFilter === "all" ||
-  //       (selectedVehicleTypeFilter === "truck" && vehicleType === "Truck") ||
-  //       (selectedVehicleTypeFilter === "trailer" && vehicleType === "Trailer");
-
-  //     const passesSpecificVehicleFilter =
-  //       selectedVehiclesForFilter.size === 0 ||
-  //       selectedVehiclesForFilter.has(vehicleId);
-
-  //     if (
-  //       isWithinDateRange &&
-  //       passesVehicleFilter &&
-  //       passesSpecificVehicleFilter
-  //     ) {
-  //       totalInvoiceAmount += amount;
-
-  //       if (vehicleType === "Truck") {
-  //         truckTotal += amount;
-  //       } else if (vehicleType === "Trailer") {
-  //         trailerTotal += amount;
-  //       } else {
-  //         otherTotal += amount;
-  //       }
-  //     }
-  //   });
-
-  //   return {
-  //     totalInvoiceAmount,
-  //     truckTotal,
-  //     trailerTotal,
-  //     otherTotal,
-  //   };
-  // };
 
   const calculateTotals = () => {
     let totalInvoiceAmount = 0;
