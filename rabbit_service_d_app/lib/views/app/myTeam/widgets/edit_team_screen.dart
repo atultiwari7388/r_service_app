@@ -122,6 +122,7 @@ class _EditTeamMemberState extends State<EditTeamMember> {
             .collection('Users')
             .doc(widget.memberId)
             .collection('Vehicles')
+            .where("active", isEqualTo: true)
             .get();
 
         memberVehicles = vehiclesSnapshot.docs.map((doc) {
@@ -149,6 +150,7 @@ class _EditTeamMemberState extends State<EditTeamMember> {
           .collection('Users')
           .doc(currentUId)
           .collection('Vehicles')
+          .where("active", isEqualTo: true)
           .get();
 
       // Store fetched vehicle details into the list and sort alphabetically by vehicleNumber

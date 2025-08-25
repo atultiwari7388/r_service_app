@@ -93,6 +93,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
           .collection('Users')
           .doc(currentUId)
           .collection('Vehicles')
+          .where('active', isEqualTo: true)
           .get();
 
       // Store fetched vehicle details into the list and sort alphabetically by vehicleNumber

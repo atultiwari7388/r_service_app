@@ -3,7 +3,15 @@
 import { useAuth } from "@/contexts/AuthContexts";
 import { db, functions } from "@/lib/firebase";
 import { httpsCallable } from "firebase/functions";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -208,16 +216,42 @@ export default function CreateTeamMemberPage() {
     }
   };
 
+  // const fetchVehicles = async () => {
+  //   setIsLoading(true);
+  //   if (user) {
+  //     try {
+  //       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+  //       const snapshot = await getDocs(vehiclesRef);
+  //       const vehicleList = snapshot.docs.map((doc) => ({
+  //         id: doc.id,
+  //         ...doc.data(),
+  //       }));
+  //       setVehicles(vehicleList as Vehicle[]);
+  //     } catch (error) {
+  //       console.error(error);
+  //       toast.error("Failed to fetch vehicles");
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   }
+  // };
+
   const fetchVehicles = async () => {
     setIsLoading(true);
     if (user) {
       try {
         const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-        const snapshot = await getDocs(vehiclesRef);
+
+        // ✅ Fetch only active vehicles
+        const q = query(vehiclesRef, where("active", "==", true));
+
+        const snapshot = await getDocs(q);
+
         const vehicleList = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
+
         setVehicles(vehicleList as Vehicle[]);
       } catch (error) {
         console.error(error);

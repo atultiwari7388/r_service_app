@@ -151,15 +151,40 @@ export default function EditTeamMemberPage() {
       setIsLoading(false);
     }
   };
+  // const fetchMemberVehicles = async () => {
+  //   try {
+  //     setIsVehiclesLoading(true);
+  //     const vehiclesRef = collection(db, "Users", memberId, "Vehicles");
+  //     const snapshot = await getDocs(vehiclesRef);
+  //     const vehicleList = snapshot.docs.map((doc) => ({
+  //       vehicleId: doc.id,
+  //       ...doc.data(),
+  //     })) as Vehicle[];
+  //     setMemberVehicles(vehicleList);
+  //     setSelectedVehicles(vehicleList.map((v) => v.vehicleId));
+  //   } catch (error) {
+  //     console.error(error);
+  //     toast.error("Failed to fetch member vehicles");
+  //   } finally {
+  //     setIsVehiclesLoading(false);
+  //   }
+  // };
+
   const fetchMemberVehicles = async () => {
     try {
       setIsVehiclesLoading(true);
+
       const vehiclesRef = collection(db, "Users", memberId, "Vehicles");
-      const snapshot = await getDocs(vehiclesRef);
+
+      const q = query(vehiclesRef, where("active", "==", true));
+
+      const snapshot = await getDocs(q);
+
       const vehicleList = snapshot.docs.map((doc) => ({
         vehicleId: doc.id,
         ...doc.data(),
       })) as Vehicle[];
+
       setMemberVehicles(vehicleList);
       setSelectedVehicles(vehicleList.map((v) => v.vehicleId));
     } catch (error) {
@@ -170,17 +195,46 @@ export default function EditTeamMemberPage() {
     }
   };
 
+  // const fetchVehicles = async () => {
+  //   if (user) {
+  //     try {
+  //       setIsVehiclesLoading(true);
+  //       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+  //       const snapshot = await getDocs(vehiclesRef);
+  //       const vehicleList = snapshot.docs.map((doc) => ({
+  //         vehicleId: doc.id,
+  //         ...doc.data(),
+  //       }));
+  //       console.log("Fetched vehicles:", vehicleList);
+  //       setVehicles(vehicleList as Vehicle[]);
+  //     } catch (error) {
+  //       console.error(error);
+  //       toast.error("Failed to fetch vehicles");
+  //     } finally {
+  //       setIsVehiclesLoading(false);
+  //     }
+  //   }
+  // };
+
   const fetchVehicles = async () => {
     if (user) {
       try {
         setIsVehiclesLoading(true);
+
         const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-        const snapshot = await getDocs(vehiclesRef);
+
+        // ✅ Add query to only fetch active vehicles
+        const q = query(vehiclesRef, where("active", "==", true));
+
+        const snapshot = await getDocs(q);
+
         const vehicleList = snapshot.docs.map((doc) => ({
           vehicleId: doc.id,
           ...doc.data(),
         }));
-        console.log("Fetched vehicles:", vehicleList);
+
+        console.log("Fetched active vehicles:", vehicleList);
+
         setVehicles(vehicleList as Vehicle[]);
       } catch (error) {
         console.error(error);
