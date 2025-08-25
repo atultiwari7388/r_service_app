@@ -271,96 +271,6 @@ export default function MemberTripsPage() {
     return 0;
   });
 
-  // const calculateTotals = async () => {
-  //   try {
-  //     let totalExpenses = 0;
-  //     let totalEarnings = 0;
-  //     let totalPaid = 0;
-  //     let totalGoogleEarnings = 0;
-
-  //     // Ensure we have the perMileCharge value
-  //     const perMile = parseFloat(memberData?.perMileCharge || "0");
-  //     console.log("Per mile charge:", perMile); // Debug log
-
-  //     // Process each trip
-  //     for (const trip of filteredTrips) {
-  //       // Calculate expenses
-  //       try {
-  //         const expensesSnapshot = await getDocs(
-  //           query(
-  //             collection(
-  //               db,
-  //               "Users",
-  //               memberId,
-  //               "trips",
-  //               trip.id,
-  //               "tripDetails"
-  //             ),
-  //             where("type", "==", "Expenses")
-  //           )
-  //         );
-
-  //         const tripExpenses = expensesSnapshot.docs.reduce(
-  //           (sum, doc) => sum + (doc.data().amount || 0),
-  //           0
-  //         );
-  //         totalExpenses += tripExpenses;
-
-  //         // Calculate earnings for completed trips
-  //         if (trip.tripStatus === 2) {
-  //           const startMiles = trip.tripStartMiles || 0;
-  //           const endMiles = trip.tripEndMiles || 0;
-  //           const miles = endMiles - startMiles;
-
-  //           console.log(`Trip ${trip.id}:`, {
-  //             startMiles,
-  //             endMiles,
-  //             miles,
-  //             perMile,
-  //           }); // Debug log
-
-  //           const earnings = miles * perMile;
-  //           totalEarnings += earnings;
-  //         }
-
-  //         // Add Google earnings if they exist
-  //         if (trip.googleTotalEarning) {
-  //           totalGoogleEarnings += trip.googleTotalEarning;
-  //         }
-
-  //         // Count paid trips
-  //         if (trip.isPaid) {
-  //           totalPaid += 1;
-  //         }
-  //       } catch (error) {
-  //         console.error(`Error processing trip ${trip.id}:`, error);
-  //       }
-  //     }
-
-  //     console.log("Calculated totals:", {
-  //       totalExpenses: totalExpenses,
-  //       totalEarnings: totalEarnings,
-  //       totalPaid: totalPaid,
-  //       totalGoogleEarnings: totalGoogleEarnings,
-  //     }); // Debug log
-
-  //     setTotals({
-  //       totalExpenses: Math.max(totalExpenses, 0),
-  //       totalEarnings: Math.max(totalEarnings, 0),
-  //       totalPaid: totalPaid,
-  //       totalGoogleEarnings: Math.max(totalGoogleEarnings, 0),
-  //     });
-  //   } catch (error) {
-  //     console.error("Calculation error:", error);
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   calculateTotals();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [filteredTrips, memberData?.perMileCharge.toString()]);
-
-  // Inside your component, replace the useMemo with useCallback
   const calculateTotals = useCallback(
     debounce(async () => {
       try {
@@ -1007,6 +917,15 @@ export default function MemberTripsPage() {
 
               {/* Actions */}
               <div className="col-span-2 flex gap-2">
+                {/* Show Edit always */}
+                <button
+                  onClick={() => handleEditTrip(trip)}
+                  className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
+                >
+                  Edit
+                </button>
+
+                {/* Show other buttons only if status is 2 */}
                 {trip.tripStatus === 2 && (
                   <>
                     {!trip.isPaid && (
@@ -1017,12 +936,7 @@ export default function MemberTripsPage() {
                         Pay
                       </button>
                     )}
-                    <button
-                      onClick={() => handleEditTrip(trip)}
-                      className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
-                    >
-                      Edit
-                    </button>
+
                     {(role === "Accountant" || role === "Owner") && (
                       <button
                         onClick={() => handleGoogleMiles(trip)}
