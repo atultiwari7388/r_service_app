@@ -207,6 +207,10 @@ export default function RecordsPage() {
   >(new Set());
   const [showVehicleFilter, setShowVehicleFilter] = useState(false);
 
+  const [validationErrors, setValidationErrors] = useState<{
+    [key: string]: string;
+  }>({});
+
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
     window.location.href = path;
@@ -339,9 +343,61 @@ export default function RecordsPage() {
     }
   };
 
+  // const handleServiceSelect = (serviceId: string) => {
+  //   const newSelectedServices = new Set(selectedServices);
+  //   const isServiceSelected = newSelectedServices.has(serviceId);
+
+  //   if (isServiceSelected) {
+  //     // Deselect the service
+  //     newSelectedServices.delete(serviceId);
+
+  //     // Remove any subservices for this service
+  //     setSelectedSubServices((prev) => {
+  //       const newSubServices = { ...prev };
+  //       delete newSubServices[serviceId];
+  //       return newSubServices;
+  //     });
+  //   } else {
+  //     // Select the service
+  //     newSelectedServices.add(serviceId);
+
+  //     // Initialize subservices if they exist
+  //     const service = services.find((s) => s.sId === serviceId);
+  //     if (service?.subServices) {
+  //       const subServiceNames = service.subServices
+  //         .flatMap((sub) => sub.sName)
+  //         .filter((name) => name.trim().length > 0);
+
+  //       if (subServiceNames.length > 0) {
+  //         setSelectedSubServices((prev) => ({
+  //           ...prev,
+  //           [serviceId]: [],
+  //         }));
+  //       }
+  //     }
+  //   }
+
+  //   setSelectedServices(newSelectedServices);
+  //   updateServiceDefaultValues();
+
+  //   // Only expand if the service has subservices and we're selecting it
+  //   const service = services.find((s) => s.sId === serviceId);
+  //   if (
+  //     service?.subServices &&
+  //     service.subServices.length > 0 &&
+  //     !isServiceSelected
+  //   ) {
+  //     setExpandedService(serviceId);
+  //   } else {
+  //     // If deselecting or service has no subservices, collapse
+  //     setExpandedService(null);
+  //   }
+  // };
+
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
     const isServiceSelected = newSelectedServices.has(serviceId);
+    const service = services.find((s) => s.sId === serviceId);
 
     if (isServiceSelected) {
       // Deselect the service
@@ -353,12 +409,18 @@ export default function RecordsPage() {
         delete newSubServices[serviceId];
         return newSubServices;
       });
+
+      // Clear validation error for this service
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[serviceId];
+        return newErrors;
+      });
     } else {
       // Select the service
       newSelectedServices.add(serviceId);
 
       // Initialize subservices if they exist
-      const service = services.find((s) => s.sId === serviceId);
       if (service?.subServices) {
         const subServiceNames = service.subServices
           .flatMap((sub) => sub.sName)
@@ -369,6 +431,12 @@ export default function RecordsPage() {
             ...prev,
             [serviceId]: [],
           }));
+
+          // Set validation error if service requires subservices
+          setValidationErrors((prev) => ({
+            ...prev,
+            [serviceId]: "Please select at least one sub-service",
+          }));
         }
       }
     }
@@ -377,187 +445,15 @@ export default function RecordsPage() {
     updateServiceDefaultValues();
 
     // Only expand if the service has subservices and we're selecting it
-    const service = services.find((s) => s.sId === serviceId);
     if (
       service?.subServices &&
       service.subServices.length > 0 &&
       !isServiceSelected
     ) {
       setExpandedService(serviceId);
-    } else {
-      // If deselecting or service has no subservices, collapse
-      setExpandedService(null);
+      console.log("Expanded service:", expandedService);
     }
   };
-
-  // const handleAddMiles = async () => {
-  //   setIsMilesSaving(true);
-  //   if (!selectedVehicle || !todayMiles || !user?.uid) {
-  //     toast.error("Please select a vehicle and enter miles/hours.");
-  //     return;
-  //   }
-
-  //   const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
-  //   if (!vehicleData) {
-  //     toast.error("Vehicle data not found.");
-  //     return;
-  //   }
-
-  //   try {
-  //     const vehicleRef = doc(
-  //       db,
-  //       "Users",
-  //       user.uid,
-  //       "Vehicles",
-  //       selectedVehicle
-  //     );
-  //     const vehicleDoc = await getDoc(vehicleRef);
-
-  //     if (!vehicleDoc.exists()) {
-  //       toast.error("Vehicle data not found.");
-  //       return;
-  //     }
-
-  //     const currentReadingField =
-  //       selectedVehicleType === "Truck" ? "currentMiles" : "hoursReading";
-  //     const prevReadingField =
-  //       selectedVehicleType === "Truck"
-  //         ? "prevMilesValue"
-  //         : "prevHoursReadingValue";
-  //     const readingArrayField =
-  //       selectedVehicleType === "Truck"
-  //         ? "currentMilesArray"
-  //         : "hoursReadingArray";
-  //     const readingValueField =
-  //       selectedVehicleType === "Truck" ? "miles" : "hours";
-
-  //     const currentReading = parseInt(
-  //       vehicleDoc.data()[currentReadingField] || "0"
-  //     );
-  //     const enteredValue = parseInt(todayMiles);
-
-  //     if (enteredValue < currentReading) {
-  //       toast.error(
-  //         `${
-  //           selectedVehicleType === "Truck" ? "Miles" : "Hours"
-  //         } cannot be less than the current value.`
-  //       );
-  //       return;
-  //     }
-
-  //     const data = {
-  //       [prevReadingField]: currentReading.toString(),
-  //       [currentReadingField]: enteredValue.toString(),
-  //       [readingValueField]: enteredValue.toString(),
-  //       [readingArrayField]: arrayUnion({
-  //         [readingValueField]: enteredValue,
-  //         date: new Date().toISOString(),
-  //       }),
-  //     };
-
-  //     // Update owner's vehicle first
-  //     await updateDoc(vehicleRef, data);
-
-  //     // Check if current user is team member
-  //     const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-  //     const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
-
-  //     if (isTeamMember) {
-  //       // If current user is team member, update owner's vehicle
-  //       const ownerId = currentUserDoc.data()?.createdBy;
-  //       if (ownerId) {
-  //         const ownerVehicleRef = doc(
-  //           db,
-  //           "Users",
-  //           ownerId,
-  //           "Vehicles",
-  //           selectedVehicle
-  //         );
-  //         await updateDoc(ownerVehicleRef, data);
-  //       }
-  //     } else {
-  //       // If current user is owner, update all team members who have this vehicle
-  //       const teamMembersQuery = query(
-  //         collection(db, "Users"),
-  //         where("createdBy", "==", user.uid),
-  //         where("isTeamMember", "==", true)
-  //       );
-
-  //       const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-  //       for (const memberDoc of teamMembersSnapshot.docs) {
-  //         const teamMemberUid = memberDoc.id;
-  //         const teamMemberVehicleRef = doc(
-  //           db,
-  //           "Users",
-  //           teamMemberUid,
-  //           "Vehicles",
-  //           selectedVehicle
-  //         );
-  //         const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
-
-  //         if (teamMemberVehicleDoc.exists()) {
-  //           await updateDoc(teamMemberVehicleRef, data);
-  //         }
-  //       }
-  //     }
-
-  //     // Check DataServices
-  //     const dataServicesQuery = query(
-  //       collection(db, "Users", user.uid, "DataServices"),
-  //       where("vehicleId", "==", selectedVehicle)
-  //     );
-  //     const dataServicesSnapshot = await getDocs(dataServicesQuery);
-
-  //     if (dataServicesSnapshot.empty) {
-  //       // Call cloud function to notify about missing services
-  //       const checkAndNotify = httpsCallable(
-  //         functions,
-  //         "checkAndNotifyUserForVehicleService"
-  //       );
-  //       await checkAndNotify({ userId: user.uid, vehicleId: selectedVehicle });
-  //       console.log(
-  //         "Called checkAndNotifyUserForVehicleService for",
-  //         selectedVehicle
-  //       );
-  //     } else {
-  //       // Call the cloud function to check for notifications
-  //       const checkDataServices = httpsCallable(
-  //         functions,
-  //         "checkDataServicesAndNotify"
-  //       );
-  //       const result = await checkDataServices({
-  //         userId: user.uid,
-  //         vehicleId: selectedVehicle,
-  //       });
-  //       console.log(
-  //         "Check Data Services Cloud function result:",
-  //         result.data,
-  //         "vehicle Id",
-  //         selectedVehicle
-  //       );
-  //     }
-
-  //     toast.success(
-  //       `${
-  //         selectedVehicleType === "Truck" ? "Miles" : "Hours"
-  //       } updated successfully!`
-  //     );
-  //     setTodayMiles("");
-  //     setShowAddMiles(false);
-  //     setSelectedVehicle("");
-  //     setSelectedVehicleType("");
-  //   } catch (error) {
-  //     console.error("Error updating miles/hours:", error);
-  //     toast.error(
-  //       `Failed to save ${
-  //         selectedVehicleType === "Truck" ? "miles" : "hours"
-  //       }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
-  //     );
-  //   } finally {
-  //     setIsMilesSaving(false);
-  //   }
-  // };
 
   const handleAddMiles = async () => {
     setIsMilesSaving(true);
@@ -1054,8 +950,36 @@ export default function RecordsPage() {
     }
   };
 
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+
+    // Check if at least one service is selected
+    if (selectedServices.size === 0) {
+      errors.general = "Please select at least one service";
+    }
+
+    // Check if services with subservices have at least one subservice selected
+    selectedServices.forEach((serviceId) => {
+      const service = services.find((s) => s.sId === serviceId);
+      if (service?.subServices && service.subServices.length > 0) {
+        const subServices = selectedSubServices[serviceId] || [];
+        if (subServices.length === 0) {
+          errors[serviceId] = "Please select at least one sub-service";
+        }
+      }
+    });
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSaveRecords = async () => {
     try {
+      if (!validateForm()) {
+        toast.error("Please fix the validation errors before saving");
+        return;
+      }
+
       setIsRecordSaving(true);
 
       // Validate inputs
@@ -1399,6 +1323,43 @@ export default function RecordsPage() {
     return `${day}/${month}/${year}`;
   };
 
+  // const handleSubserviceToggle = (serviceId: string, subName: string) => {
+  //   setSelectedSubServices((prev) => {
+  //     const currentSubs = prev[serviceId] || [];
+  //     const service = services.find((s) => s.sId === serviceId);
+
+  //     // For "Steer Tires" and "DPF Clean", allow only one selection
+  //     if (
+  //       service?.sName === "Steer Tires" ||
+  //       service?.sName === "DPF Percentage"
+  //     ) {
+  //       // If already selected, deselect it, otherwise select only this one
+  //       return {
+  //         ...prev,
+  //         [serviceId]: currentSubs.includes(subName) ? [] : [subName],
+  //       };
+  //     } else {
+  //       // For other services, allow multiple selections
+  //       const newSubs = currentSubs.includes(subName)
+  //         ? currentSubs.filter((name) => name !== subName)
+  //         : [...currentSubs, subName];
+  //       return { ...prev, [serviceId]: newSubs };
+  //     }
+  //   });
+
+  //   // Show toast notification for selection
+  //   const service = services.find((s) => s.sId === serviceId);
+  //   const isSelected =
+  //     selectedSubServices[serviceId]?.includes(subName) ?? false;
+
+  //   if (!isSelected) {
+  //     toast.success(`${subName} selected for ${service?.sName}`, {
+  //       position: "top-right",
+  //       duration: 2000,
+  //     });
+  //   }
+  // };
+
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
     setSelectedSubServices((prev) => {
       const currentSubs = prev[serviceId] || [];
@@ -1410,15 +1371,46 @@ export default function RecordsPage() {
         service?.sName === "DPF Percentage"
       ) {
         // If already selected, deselect it, otherwise select only this one
+        const newSubs = currentSubs.includes(subName) ? [] : [subName];
+
+        // Clear validation error if subservice is selected
+        if (newSubs.length > 0) {
+          setValidationErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors[serviceId];
+            return newErrors;
+          });
+        } else {
+          setValidationErrors((prev) => ({
+            ...prev,
+            [serviceId]: "Please select at least one sub-service",
+          }));
+        }
+
         return {
           ...prev,
-          [serviceId]: currentSubs.includes(subName) ? [] : [subName],
+          [serviceId]: newSubs,
         };
       } else {
         // For other services, allow multiple selections
         const newSubs = currentSubs.includes(subName)
           ? currentSubs.filter((name) => name !== subName)
           : [...currentSubs, subName];
+
+        // Clear validation error if at least one subservice is selected
+        if (newSubs.length > 0) {
+          setValidationErrors((prev) => {
+            const newErrors = { ...prev };
+            delete newErrors[serviceId];
+            return newErrors;
+          });
+        } else {
+          setValidationErrors((prev) => ({
+            ...prev,
+            [serviceId]: "Please select at least one sub-service",
+          }));
+        }
+
         return { ...prev, [serviceId]: newSubs };
       }
     });
@@ -2240,6 +2232,7 @@ export default function RecordsPage() {
                   className="rounded-lg"
                 />
               </div>
+
               {/** Select Services */}
 
               <div className="grid grid-cols-4 gap-3 mb-4">
@@ -2273,17 +2266,6 @@ export default function RecordsPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           handleServiceSelect(service.sId);
-                          if (
-                            selectedServices.has(service.sId) &&
-                            service.subServices &&
-                            service.subServices.length > 0
-                          ) {
-                            setExpandedService(
-                              expandedService === service.sId
-                                ? null
-                                : service.sId
-                            );
-                          }
                         }}
                         sx={{
                           backgroundColor: selectedServices.has(service.sId)
@@ -2297,6 +2279,9 @@ export default function RecordsPage() {
                               ? "#F96176"
                               : "#FFCDD2",
                           },
+                          border: validationErrors[service.sId]
+                            ? "2px solid red"
+                            : "none",
                         }}
                         variant={
                           selectedServices.has(service.sId)
@@ -2306,10 +2291,16 @@ export default function RecordsPage() {
                         className="w-full transition duration-300 hover:shadow-lg"
                       />
 
+                      {/* Show validation error if exists */}
+                      {validationErrors[service.sId] && (
+                        <div className="text-red-500 text-xs mt-1 ml-2">
+                          {validationErrors[service.sId]}
+                        </div>
+                      )}
+
                       <Collapse
                         in={
                           selectedServices.has(service.sId) &&
-                          expandedService === service.sId &&
                           service.subServices &&
                           service.subServices.length > 0
                         }
