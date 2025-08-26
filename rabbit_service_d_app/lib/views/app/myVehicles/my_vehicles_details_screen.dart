@@ -280,16 +280,10 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     vehicleData['currentMilesArray'] ?? [];
 
                 final rawDate = vehicleData['year'] ?? '';
-                final oilChangeDate = vehicleData['oilChangeDate'] ?? '';
-                final formattedOilChangeDate = oilChangeDate.isNotEmpty
-                    ? DateFormat('MM-dd-yyyy')
-                        .format(DateTime.parse(oilChangeDate))
-                    : "";
 
                 final formattedDate =
                     DateFormat('MM-dd-yyyy').format(DateTime.parse(rawDate));
                 final vehicleType = vehicleData['vehicleType'];
-                final engineName = vehicleData['engineName'];
 
                 return SingleChildScrollView(
                   child: Padding(
@@ -333,22 +327,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 vehicleData['vin'].isEmpty
                                     ? SizedBox()
                                     : _buildInfoRow('VIN:', vehicleData['vin']),
-                                // vehicleData['vehicleType'] == "Trailer"
-                                //     ? vehicleData['oilChangeDate'].isEmpty
-                                //         ? SizedBox()
-                                //         : engineName == "DRY VAN"
-                                //             ? SizedBox()
-                                //             : _buildInfoRow(
-                                //                 'Oil Change Date:',
-                                //                 formattedOilChangeDate
-                                //                     .toString())
-                                //     : SizedBox(),
-                                // vehicleData['hoursReading'].isEmpty
-                                //     ? SizedBox()
-                                //     : engineName == "DRY VAN"
-                                //         ? SizedBox()
-                                //         : _buildInfoRow('Hours Reading:',
-                                //             vehicleData['hoursReading']),
                                 _buildInfoRow(
                                     "Engine Name:", vehicleData['engineName']),
                                 _buildInfoRow("Vehicle Type:",
@@ -1068,6 +1046,53 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     }
   }
 
+  // Future<void> _updateServiceValue(String userId, String vehicleId,
+  //     Map<String, dynamic> service, int newValue) async {
+  //   final vehicleDocRef = FirebaseFirestore.instance
+  //       .collection('Users')
+  //       .doc(userId)
+  //       .collection('Vehicles')
+  //       .doc(vehicleId);
+
+  //   await FirebaseFirestore.instance.runTransaction((transaction) async {
+  //     final docSnapshot = await transaction.get(vehicleDocRef);
+  //     if (!docSnapshot.exists) throw Exception('Document not found');
+
+  //     List<dynamic> services = List.from(docSnapshot['services']);
+  //     int index = services.indexWhere(
+  //       (s) => s['serviceName'] == service['serviceName'],
+  //     );
+
+  //     if (index == -1) throw Exception('Service not found');
+
+  //     // Get current values
+  //     Map<String, dynamic> currentService = Map.from(services[index]);
+  //     int currentDefault = currentService['defaultNotificationValue'];
+  //     int currentNext = currentService['nextNotificationValue'];
+
+  //     // Calculate the difference between current values
+  //     int difference = currentNext - currentDefault;
+
+  //     // Calculate new next value based on the difference
+  //     int newNextValue = newValue + difference;
+
+  //     // Ensure the new next value is not less than the new default
+  //     if (newNextValue < newValue) {
+  //       newNextValue = newValue;
+  //     }
+
+  //     // Update the service
+  //     Map<String, dynamic> updatedService = Map.from(currentService);
+  //     updatedService['defaultNotificationValue'] = newValue;
+  //     updatedService['nextNotificationValue'] = newNextValue;
+  //     updatedService['preValue'] = currentDefault; // Store previous value
+
+  //     services[index] = updatedService;
+
+  //     transaction.update(vehicleDocRef, {'services': services});
+  //   });
+  // }
+
   Future<void> _updateServiceValue(String userId, String vehicleId,
       Map<String, dynamic> service, int newValue) async {
     final vehicleDocRef = FirebaseFirestore.instance
@@ -1089,18 +1114,48 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
       // Get current values
       Map<String, dynamic> currentService = Map.from(services[index]);
-      int currentDefault = currentService['defaultNotificationValue'];
-      int currentNext = currentService['nextNotificationValue'];
+      dynamic currentDefault = currentService['defaultNotificationValue'];
+      dynamic currentNext = currentService['nextNotificationValue'];
+      dynamic currentPreValue = currentService['preValue'];
 
-      // Calculate the difference between current values
-      int difference = currentNext - currentDefault;
+      // Handle different types of values
+      dynamic newNextValue;
 
-      // Calculate new next value based on the difference
-      int newNextValue = newValue + difference;
+      if (service['type'] == 'day') {
+        // For day type, handle date calculations
+        if (currentNext is String && _isDateString(currentNext)) {
+          // Current next value is a date string
+          DateTime currentNextDate = _parseDateString(currentNext);
+          int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
+          int currentPreValueInt =
+              int.tryParse(currentPreValue.toString()) ?? 0;
 
-      // Ensure the new next value is not less than the new default
-      if (newNextValue < newValue) {
-        newNextValue = newValue;
+          // Calculate the date difference between current default and pre value
+          int dateDifference = currentDefaultInt - currentPreValueInt;
+
+          // Adjust the date based on the new default value
+          DateTime newNextDate = currentNextDate.add(
+              Duration(days: (newValue - currentDefaultInt) + dateDifference));
+
+          newNextValue = _formatDateToString(newNextDate);
+        } else {
+          // Fallback: if next value is not a date, calculate normally
+          int currentNextInt = int.tryParse(currentNext.toString()) ?? 0;
+          int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
+          int difference = currentNextInt - currentDefaultInt;
+          newNextValue = newValue + difference;
+        }
+      } else {
+        // For other types (reading, hours), handle numeric calculations
+        int currentNextInt = int.tryParse(currentNext.toString()) ?? 0;
+        int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
+        int difference = currentNextInt - currentDefaultInt;
+        newNextValue = newValue + difference;
+
+        // Ensure the new next value is not less than the new default
+        if (newNextValue < newValue) {
+          newNextValue = newValue;
+        }
       }
 
       // Update the service
@@ -1111,8 +1166,41 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
       services[index] = updatedService;
 
-      transaction.update(vehicleDocRef, {'services': services});
+      transaction.update(vehicleDocRef, {
+        "updatedAt": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        'services': services
+      });
     });
+  }
+
+// Helper function to check if a string is a date in the expected format
+  bool _isDateString(String value) {
+    try {
+      final parts = value.split('/');
+      if (parts.length == 3) {
+        final day = int.tryParse(parts[0]);
+        final month = int.tryParse(parts[1]);
+        final year = int.tryParse(parts[2]);
+        return day != null && month != null && year != null;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+// Helper function to parse date string (dd/MM/yyyy)
+  DateTime _parseDateString(String dateString) {
+    final parts = dateString.split('/');
+    final day = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final year = int.parse(parts[2]);
+    return DateTime(year, month, day);
+  }
+
+// Helper function to format DateTime to string (dd/MM/yyyy)
+  String _formatDateToString(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   void _shareVehicleDetails(Map<String, dynamic> vehicleData) {

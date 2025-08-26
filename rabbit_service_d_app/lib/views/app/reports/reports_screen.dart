@@ -702,6 +702,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         "date": formattedDate,
         "workshopName": workshopController.text,
         "createdAt": DateTime.now().toIso8601String(),
+        "updatedAt": DateFormat('yyyy-MM-dd').format(DateTime.now()),
       };
 
       // Get current user data to determine if we're a team member
@@ -852,6 +853,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           }
 
           batch.update(userVehicleRef, {
+            'updatedAt': FieldValue.serverTimestamp(),
             'services': updatedVehicleServices,
             'currentMiles': currentMiles.toString(),
             'currentMilesArray': FieldValue.arrayUnion([
@@ -954,46 +956,6 @@ class _ReportsScreenState extends State<ReportsScreen>
       showAddRecords = true;
     });
   }
-
-  // Map<String, double> calculateInvoiceTotals() {
-  //   double totalInvoiceAmount = 0;
-  //   double truckTotal = 0;
-  //   double trailerTotal = 0;
-  //   double otherTotal = 0;
-
-  //   final filteredRecords = getFilteredRecords();
-
-  //   for (final record in filteredRecords) {
-  //     final recordDate = DateTime.parse(record['date']);
-  //     final amount =
-  //         double.tryParse(record['invoiceAmount']?.toString() ?? '0') ?? 0;
-
-  //     // Check date range if filters are set
-  //     final isWithinDateRange =
-  //         (summaryStartDate == null || recordDate.isAfter(summaryStartDate!)) &&
-  //             (summaryEndDate == null ||
-  //                 recordDate.isBefore(summaryEndDate!.add(Duration(days: 1))));
-
-  //     if (isWithinDateRange && amount > 0) {
-  //       totalInvoiceAmount += amount;
-
-  //       if (record['vehicleDetails']['vehicleType'] == 'Truck') {
-  //         truckTotal += amount;
-  //       } else if (record['vehicleDetails']['vehicleType'] == 'Trailer') {
-  //         trailerTotal += amount;
-  //       } else {
-  //         otherTotal += amount;
-  //       }
-  //     }
-  //   }
-
-  //   return {
-  //     'total': totalInvoiceAmount,
-  //     'truck': truckTotal,
-  //     'trailer': trailerTotal,
-  //     'other': otherTotal,
-  //   };
-  // }
 
   Map<String, double> calculateInvoiceTotals() {
     double totalInvoiceAmount = 0;
@@ -2105,7 +2067,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   ),
                                 ],
                                 SizedBox(height: 16.h),
-//Save Miles Button
+                                //Save Miles Button
 
                                 CustomButton(
                                   onPress: () async {
@@ -2153,6 +2115,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                           );
 
                                           final data = {
+                                            "updatedAt":
+                                                DateFormat('yyyy-MM-dd')
+                                                    .format(DateTime.now()),
                                             isTruck
                                                     ? "prevMilesValue"
                                                     : "prevHoursReadingValue":
