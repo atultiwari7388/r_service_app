@@ -30,12 +30,21 @@ interface VehicleDocument {
   text: string;
 }
 
+// interface ServiceData {
+//   defaultNotificationValue: number;
+//   nextNotificationValue: number;
+//   serviceId: string;
+//   serviceName: string;
+//   type: string;
+// }
+
 interface ServiceData {
-  defaultNotificationValue: number;
-  nextNotificationValue: number;
+  defaultNotificationValue: number | string;
+  nextNotificationValue: number | string;
   serviceId: string;
   serviceName: string;
   type: string;
+  preValue?: number | string;
 }
 
 interface VehicleData {
@@ -178,12 +187,6 @@ export default function MyVehicleDetailsScreen() {
     printWindow?.document.close();
   };
 
-  // const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (event.target.files) {
-  //     setUploadedFiles(Array.from(event.target.files));
-  //   }
-  // };
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const newFiles = Array.from(event.target.files).map((file) => ({
@@ -194,43 +197,6 @@ export default function MyVehicleDetailsScreen() {
       setFilesToUpload([...filesToUpload, ...newFiles]);
     }
   };
-
-  // const handleUpload = async () => {
-  //   if (!vehicleId || !user?.uid || uploadedFiles.length === 0) return;
-
-  //   setLoading(true);
-  //   const uploads: VehicleDocument[] = [];
-
-  //   try {
-  //     for (const file of uploadedFiles) {
-  //       const storageRef = ref(
-  //         storage,
-  //         `vehicle_images/${user.uid}/${vehicleId}/${file.name}_${Date.now()}`
-  //       );
-  //       await uploadBytes(storageRef, file);
-  //       const downloadURL = await getDownloadURL(storageRef);
-  //       uploads.push({ imageUrl: downloadURL, text: file.name });
-  //     }
-
-  //     const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
-  //     await updateDoc(docRef, {
-  //       uploadedDocuments: [
-  //         ...(vehicleData?.uploadedDocuments || []),
-  //         ...uploads,
-  //       ],
-  //     });
-
-  //     toast.success("Documents uploaded successfully!");
-  //     setUploadedFiles([]);
-  //     // Refresh the page to show new images
-  //     window.location.reload();
-  //   } catch (error) {
-  //     console.error("Error uploading files:", error);
-  //     toast.error("Error uploading documents");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleUpload = async () => {
     if (!vehicleId || !user?.uid || filesToUpload.length === 0) return;
@@ -321,6 +287,71 @@ export default function MyVehicleDetailsScreen() {
     }
   };
 
+  // const handleEditService = async (index: number, service: ServiceData) => {
+  //   const newDefaultValue = prompt(
+  //     `Edit default notification value for ${service.serviceName}`,
+  //     service.defaultNotificationValue.toString()
+  //   );
+
+  //   if (newDefaultValue && vehicleData && user?.uid && vehicleId) {
+  //     const newValue = parseInt(newDefaultValue, 10);
+  //     if (isNaN(newValue)) {
+  //       alert("Please enter a valid number");
+  //       return;
+  //     }
+
+  //     try {
+  //       setLoading(true);
+
+  //       // Calculate the difference between current values
+  //       const currentDefault = service.defaultNotificationValue;
+  //       const currentNext = service.nextNotificationValue;
+  //       const difference = currentNext - currentDefault;
+
+  //       // Calculate new next value based on the difference
+  //       let newNextValue = newValue + difference;
+
+  //       // Ensure the new next value is not less than the new default
+  //       if (newNextValue < newValue) {
+  //         newNextValue = newValue;
+  //       }
+
+  //       // Create the updated service object
+  //       const updatedService = {
+  //         ...service,
+  //         defaultNotificationValue: newValue,
+  //         nextNotificationValue: newNextValue,
+  //         preValue: currentDefault,
+  //       };
+
+  //       // First update current user's vehicle
+  //       await updateCurrentUserVehicle(updatedService);
+
+  //       // Check if current user is owner and update team members
+  //       const userDoc = await getDoc(doc(db, "Users", user.uid));
+  //       const userData = userDoc.data();
+
+  //       if (userData?.role === "Owner") {
+  //         await updateTeamMembersVehicles(updatedService);
+  //       } else {
+  //         // If current user is team member, update owner's vehicle
+  //         if (userData?.createdBy) {
+  //           await updateOwnerVehicle(userData.createdBy, updatedService);
+  //         }
+  //       }
+
+  //       alert("Service value updated successfully");
+  //     } catch (error) {
+  //       console.error("Error updating service:", error);
+  //       alert("Error updating service");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   }
+  // };
+
+  // Helper function to update current user's vehicle
+
   const handleEditService = async (index: number, service: ServiceData) => {
     const newDefaultValue = prompt(
       `Edit default notification value for ${service.serviceName}`,
@@ -337,17 +368,68 @@ export default function MyVehicleDetailsScreen() {
       try {
         setLoading(true);
 
-        // Calculate the difference between current values
+        // Get current values
         const currentDefault = service.defaultNotificationValue;
         const currentNext = service.nextNotificationValue;
-        const difference = currentNext - currentDefault;
 
-        // Calculate new next value based on the difference
-        let newNextValue = newValue + difference;
+        let newNextValue;
 
-        // Ensure the new next value is not less than the new default
-        if (newNextValue < newValue) {
-          newNextValue = newValue;
+        if (service.type === "day") {
+          // For day type, handle date calculations
+          if (typeof currentNext === "string" && isDateString(currentNext)) {
+            // Current next value is a date string
+            const currentNextDate = parseDateString(currentNext);
+            const currentDefaultInt =
+              typeof currentDefault === "string"
+                ? parseInt(currentDefault, 10)
+                : currentDefault;
+
+            // Calculate the date difference between current default and next value
+            const today = new Date();
+            const daysUntilNext = Math.floor(
+              (currentNextDate.getTime() - today.getTime()) /
+                (1000 * 60 * 60 * 24)
+            );
+
+            // Calculate the new next date based on the new default value
+            const newNextDate = new Date();
+            newNextDate.setDate(
+              today.getDate() + daysUntilNext + (newValue - currentDefaultInt)
+            );
+
+            newNextValue = formatDateToString(newNextDate);
+          } else {
+            // Fallback: if next value is not a date string, calculate normally
+            const currentNextInt =
+              typeof currentNext === "string"
+                ? parseInt(currentNext, 10)
+                : currentNext;
+            const currentDefaultInt =
+              typeof currentDefault === "string"
+                ? parseInt(currentDefault, 10)
+                : currentDefault;
+
+            const difference = currentNextInt - currentDefaultInt;
+            newNextValue = newValue + difference;
+          }
+        } else {
+          // For other types (reading, hours), handle numeric calculations
+          const currentNextInt =
+            typeof currentNext === "string"
+              ? parseInt(currentNext, 10)
+              : currentNext;
+          const currentDefaultInt =
+            typeof currentDefault === "string"
+              ? parseInt(currentDefault, 10)
+              : currentDefault;
+
+          const difference = currentNextInt - currentDefaultInt;
+          newNextValue = newValue + difference;
+
+          // Ensure the new next value is not less than the new default
+          if (newNextValue < newValue) {
+            newNextValue = newValue;
+          }
         }
 
         // Create the updated service object
@@ -384,7 +466,51 @@ export default function MyVehicleDetailsScreen() {
     }
   };
 
-  // Helper function to update current user's vehicle
+  // Helper function to check if a string is a date in the expected format (dd/MM/yyyy)
+  const isDateString = (value: string): boolean => {
+    try {
+      const parts = value.split("/");
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+
+        return (
+          !isNaN(day) &&
+          !isNaN(month) &&
+          !isNaN(year) &&
+          day >= 1 &&
+          day <= 31 &&
+          month >= 1 &&
+          month <= 12 &&
+          year >= 2000 &&
+          year <= 2100
+        );
+      }
+      return false;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // Helper function to parse date string (dd/MM/yyyy)
+  const parseDateString = (dateString: string): Date => {
+    const parts = dateString.split("/");
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JavaScript
+    const year = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  };
+
+  // Helper function to format DateTime to string (dd/MM/yyyy)
+  const formatDateToString = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear().toString();
+    return `${day}/${month}/${year}`;
+  };
+
   const updateCurrentUserVehicle = async (updatedService: ServiceData) => {
     if (!vehicleData || !user?.uid) return;
 
