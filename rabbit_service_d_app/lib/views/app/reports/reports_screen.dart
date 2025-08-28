@@ -501,12 +501,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Future<void> handleSaveRecords() async {
     try {
-      if (selectedVehicle == null || selectedServices.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a vehicle and at least one service'),
-          ),
-        );
+      if (!_validateMandatoryFields()) {
         return;
       }
 
@@ -523,6 +518,8 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         UploadTask uploadTask = storageRef.putFile(image!);
         imageUrl = await (await uploadTask).ref.getDownloadURL();
+      } else if (isEditing && _existingImageUrl != null) {
+        imageUrl = _existingImageUrl;
       }
 
       // Subservice validation check
@@ -1010,6 +1007,37 @@ class _ReportsScreenState extends State<ReportsScreen>
     };
   }
 
+  bool _validateMandatoryFields() {
+    if (selectedVehicle == null) {
+      showToastMessage("Error", "Please select a vehicle", kRed);
+      return false;
+    }
+
+    if (selectedServices.isEmpty) {
+      showToastMessage("Error", "Please select at least one service", kRed);
+      return false;
+    }
+
+    if (milesController.text.isEmpty &&
+        selectedVehicleData?['vehicleType'] == "Truck") {
+      showToastMessage("Error", "Please enter miles", kRed);
+      return false;
+    }
+
+    if (hoursController.text.isEmpty &&
+        selectedVehicleData?['vehicleType'] == "Trailer") {
+      showToastMessage("Error", "Please enter hours", kRed);
+      return false;
+    }
+
+    if (selectedDate == null) {
+      showToastMessage("Error", "Please select a date", kRed);
+      return false;
+    }
+
+    return true;
+  }
+
   String normalizeString(String value) {
     // Convert to lowercase and remove spaces
     return value.toLowerCase().replaceAll(RegExp(r'\s+'), '');
@@ -1025,7 +1053,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         elevation: 1,
         centerTitle: true,
         title: Image.asset(
-          'assets/h_n_logo-removebg.png',
+          'assets/rabbit_n_logo_l.png',
           height: 50.h,
         ),
         actions: [
@@ -2303,6 +2331,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       ],
 
                       // Invoice Summary Box
+                      // Invoice Summary Box
                       (role == "Owner" || role == "Admin")
                           ? Card(
                               elevation: 4,
@@ -2384,112 +2413,117 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       ],
                                     ),
 
-                                    // Vehicle Type Filter
-                                    SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child:
-                                              DropdownButtonFormField<String>(
-                                            value: summaryVehicleTypeFilter,
-                                            items: ['All', 'Truck', 'Trailer']
-                                                .map((String value) {
-                                              return DropdownMenuItem<String>(
-                                                value: value,
-                                                child: Text(value),
-                                              );
-                                            }).toList(),
-                                            onChanged: (value) {
-                                              setState(() {
-                                                summaryVehicleTypeFilter =
-                                                    value!;
-                                                selectedSummaryVehicles.clear();
-                                              });
-                                            },
-                                            decoration: InputDecoration(
-                                              labelText: 'Vehicle Type',
-                                              border: OutlineInputBorder(),
+                                    // Show vehicle type filter only when showVehicleFilter is true
+                                    if (showVehicleFilter) ...[
+                                      SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child:
+                                                DropdownButtonFormField<String>(
+                                              value: summaryVehicleTypeFilter,
+                                              items: ['All', 'Truck', 'Trailer']
+                                                  .map((String value) {
+                                                return DropdownMenuItem<String>(
+                                                  value: value,
+                                                  child: Text(value),
+                                                );
+                                              }).toList(),
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  summaryVehicleTypeFilter =
+                                                      value!;
+                                                  selectedSummaryVehicles
+                                                      .clear();
+                                                });
+                                              },
+                                              decoration: InputDecoration(
+                                                labelText: 'Vehicle Type',
+                                                border: OutlineInputBorder(),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        SizedBox(width: 10),
-                                        IconButton(
-                                          icon: Icon(Icons.refresh,
-                                              color: kPrimary),
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedSummaryVehicles.clear();
-                                              summaryVehicleTypeFilter = 'All';
-                                            });
-                                          },
-                                          tooltip: 'Clear Filters',
-                                        ),
-                                      ],
-                                    ),
+                                          SizedBox(width: 10),
+                                          IconButton(
+                                            icon: Icon(Icons.refresh,
+                                                color: kPrimary),
+                                            onPressed: () {
+                                              setState(() {
+                                                selectedSummaryVehicles.clear();
+                                                summaryVehicleTypeFilter =
+                                                    'All';
+                                              });
+                                            },
+                                            tooltip: 'Clear Filters',
+                                          ),
+                                        ],
+                                      ),
 
-                                    // Vehicle Selection (only show if not 'All' and showVehicleFilter is true)
-                                    if (showVehicleFilter &&
-                                        summaryVehicleTypeFilter != 'All')
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          SizedBox(height: 8),
-                                          Text('Select Vehicles:',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold)),
-                                          SizedBox(height: 8),
-                                          Container(
-                                            height: 150,
-                                            child: ListView.builder(
-                                              shrinkWrap: true,
-                                              itemCount:
-                                                  vehicles.where((vehicle) {
-                                                return summaryVehicleTypeFilter ==
-                                                        'All' ||
-                                                    vehicle['vehicleType'] ==
-                                                        summaryVehicleTypeFilter;
-                                              }).length,
-                                              itemBuilder: (context, index) {
-                                                final filteredVehicles =
+                                      // Vehicle Selection (only show if not 'All')
+                                      if (summaryVehicleTypeFilter != 'All')
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            SizedBox(height: 8),
+                                            Text('Select Vehicles:',
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                            SizedBox(height: 8),
+                                            Container(
+                                              height: 150,
+                                              child: ListView.builder(
+                                                shrinkWrap: true,
+                                                itemCount:
                                                     vehicles.where((vehicle) {
                                                   return summaryVehicleTypeFilter ==
                                                           'All' ||
                                                       vehicle['vehicleType'] ==
                                                           summaryVehicleTypeFilter;
-                                                }).toList();
+                                                }).length,
+                                                itemBuilder: (context, index) {
+                                                  final filteredVehicles =
+                                                      vehicles.where((vehicle) {
+                                                    return summaryVehicleTypeFilter ==
+                                                            'All' ||
+                                                        vehicle['vehicleType'] ==
+                                                            summaryVehicleTypeFilter;
+                                                  }).toList();
 
-                                                final vehicle =
-                                                    filteredVehicles[index];
-                                                final isSelected =
-                                                    selectedSummaryVehicles
-                                                        .contains(
-                                                            vehicle['id']);
+                                                  final vehicle =
+                                                      filteredVehicles[index];
+                                                  final isSelected =
+                                                      selectedSummaryVehicles
+                                                          .contains(
+                                                              vehicle['id']);
 
-                                                return CheckboxListTile(
-                                                  title: Text(
-                                                      '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
-                                                  value: isSelected,
-                                                  onChanged: (bool? value) {
-                                                    setState(() {
-                                                      if (value == true) {
-                                                        selectedSummaryVehicles
-                                                            .add(vehicle['id']);
-                                                      } else {
-                                                        selectedSummaryVehicles
-                                                            .remove(
-                                                                vehicle['id']);
-                                                      }
-                                                    });
-                                                  },
-                                                );
-                                              },
+                                                  return CheckboxListTile(
+                                                    title: Text(
+                                                        '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
+                                                    value: isSelected,
+                                                    onChanged: (bool? value) {
+                                                      setState(() {
+                                                        if (value == true) {
+                                                          selectedSummaryVehicles
+                                                              .add(vehicle[
+                                                                  'id']);
+                                                        } else {
+                                                          selectedSummaryVehicles
+                                                              .remove(vehicle[
+                                                                  'id']);
+                                                        }
+                                                      });
+                                                    },
+                                                  );
+                                                },
+                                              ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                          ],
+                                        ),
+                                      SizedBox(height: 8),
+                                    ],
 
-                                    SizedBox(height: 8),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,

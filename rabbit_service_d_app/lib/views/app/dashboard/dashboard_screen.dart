@@ -38,7 +38,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               elevation: 1,
               centerTitle: true,
               title: Image.asset(
-                'assets/h_n_logo-removebg.png',
+                // 'assets/h_n_logo-removebg.png',
+                'assets/rabbit_n_logo_l.png',
                 height: 50.h,
               ),
               actions: [
