@@ -14,9 +14,11 @@ export default async function CreateMemberAddTripPage({
   const memberRole = params.role;
   const memberName = params.memberName;
 
-  return CreateMemberAddTripPageComponent({
-    memberId: memberId,
-    memberRole: memberRole,
-    memberName: memberName,
-  });
+  return (
+    <CreateMemberAddTripPageComponent
+      memberId={memberId}
+      memberRole={memberRole}
+      memberName={memberName}
+    />
+  );
 }

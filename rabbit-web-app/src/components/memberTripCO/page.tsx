@@ -424,11 +424,16 @@ export default function CreateMemberAddTripPageComponent({
                 required
               >
                 <option value="">Select Truck</option>
-                {vehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.vehicleNumber} ({vehicle.companyName})
-                  </option>
-                ))}
+                {vehicles
+                  .slice() // Create a copy to avoid mutating the original array
+                  .sort((a, b) =>
+                    a.vehicleNumber.localeCompare(b.vehicleNumber)
+                  ) // Sort alphabetically by vehicleNumber
+                  .map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicle.vehicleNumber} ({vehicle.companyName})
+                    </option>
+                  ))}
               </select>
 
               {/* Trailer dropdown (optional) */}
@@ -438,11 +443,16 @@ export default function CreateMemberAddTripPageComponent({
                 className="border p-2 rounded"
               >
                 <option value="">Select Trailer (Optional)</option>
-                {trailers.map((trailer) => (
-                  <option key={trailer.id} value={trailer.id}>
-                    {trailer.vehicleNumber} ({trailer.companyName})
-                  </option>
-                ))}
+                {trailers
+                  .slice()
+                  .sort((a, b) =>
+                    a.vehicleNumber.localeCompare(b.vehicleNumber)
+                  )
+                  .map((trailer) => (
+                    <option key={trailer.id} value={trailer.id}>
+                      {trailer.vehicleNumber} ({trailer.companyName})
+                    </option>
+                  ))}
               </select>
 
               {/* Load Type dropdown */}
@@ -463,9 +473,6 @@ export default function CreateMemberAddTripPageComponent({
             </button>
           </div>
         )}
-
-        {<div>UserId : {memberId}</div>}
-        {<div>Member Role : {memberRole}</div>}
 
         {showAddExpense && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">

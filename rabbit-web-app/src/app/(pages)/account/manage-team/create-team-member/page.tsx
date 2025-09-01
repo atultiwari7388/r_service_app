@@ -154,6 +154,27 @@ export default function CreateTeamMemberPage() {
     setIsLoading(true);
 
     try {
+      // Check if email exists in Users collection
+      const usersQuery = query(
+        collection(db, "Users"),
+        where("email", "==", formData.memberEmail)
+      );
+      const usersSnapshot = await getDocs(usersQuery);
+
+      // Check if email exists in Mechanics collection
+      const mechanicsQuery = query(
+        collection(db, "Mechanics"),
+        where("email", "==", formData.memberEmail)
+      );
+      const mechanicsSnapshot = await getDocs(mechanicsQuery);
+
+      // If email exists in either collection, show error
+      if (!usersSnapshot.empty || !mechanicsSnapshot.empty) {
+        toast.error("This email is already registered with another account");
+        setIsLoading(false);
+        return;
+      }
+
       const createTeamMember = httpsCallable(functions, "createTeamMember");
 
       await createTeamMember({
@@ -215,26 +236,6 @@ export default function CreateTeamMemberPage() {
       setIsLoading(false);
     }
   };
-
-  // const fetchVehicles = async () => {
-  //   setIsLoading(true);
-  //   if (user) {
-  //     try {
-  //       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-  //       const snapshot = await getDocs(vehiclesRef);
-  //       const vehicleList = snapshot.docs.map((doc) => ({
-  //         id: doc.id,
-  //         ...doc.data(),
-  //       }));
-  //       setVehicles(vehicleList as Vehicle[]);
-  //     } catch (error) {
-  //       console.error(error);
-  //       toast.error("Failed to fetch vehicles");
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   }
-  // };
 
   const fetchVehicles = async () => {
     setIsLoading(true);
