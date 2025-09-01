@@ -12,6 +12,7 @@ interface NotificationData {
   message: string;
   vehicleId: string;
   currentMiles: number;
+  hoursReading: number;
   notifications: Service[];
 }
 
@@ -25,6 +26,7 @@ interface Service {
 interface VehicleData {
   vehicleNumber: string;
   companyName: string;
+  vehicleType: string;
 }
 
 export default function NotificationDetailsComponent({
@@ -117,10 +119,17 @@ export default function NotificationDetailsComponent({
             <div className="border-t border-gray-200 my-4" />
 
             {/* Current Miles Row */}
-            <InfoRow
-              icon={<FaGasPump className="text-gray-600" />}
-              text={`${notification.currentMiles} (current miles)`}
-            />
+            {vehicleData.vehicleType === "Trailer" ? (
+              <InfoRow
+                icon={<FaGasPump className="text-gray-600" />}
+                text={`${notification.hoursReading} (current hours)`}
+              />
+            ) : (
+              <InfoRow
+                icon={<FaGasPump className="text-gray-600" />}
+                text={`${notification.currentMiles} (current miles)`}
+              />
+            )}
 
             <div className="border-t border-gray-200 my-4" />
 
