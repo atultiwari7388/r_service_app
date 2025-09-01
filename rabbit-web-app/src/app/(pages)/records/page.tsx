@@ -343,57 +343,6 @@ export default function RecordsPage() {
     }
   };
 
-  // const handleServiceSelect = (serviceId: string) => {
-  //   const newSelectedServices = new Set(selectedServices);
-  //   const isServiceSelected = newSelectedServices.has(serviceId);
-
-  //   if (isServiceSelected) {
-  //     // Deselect the service
-  //     newSelectedServices.delete(serviceId);
-
-  //     // Remove any subservices for this service
-  //     setSelectedSubServices((prev) => {
-  //       const newSubServices = { ...prev };
-  //       delete newSubServices[serviceId];
-  //       return newSubServices;
-  //     });
-  //   } else {
-  //     // Select the service
-  //     newSelectedServices.add(serviceId);
-
-  //     // Initialize subservices if they exist
-  //     const service = services.find((s) => s.sId === serviceId);
-  //     if (service?.subServices) {
-  //       const subServiceNames = service.subServices
-  //         .flatMap((sub) => sub.sName)
-  //         .filter((name) => name.trim().length > 0);
-
-  //       if (subServiceNames.length > 0) {
-  //         setSelectedSubServices((prev) => ({
-  //           ...prev,
-  //           [serviceId]: [],
-  //         }));
-  //       }
-  //     }
-  //   }
-
-  //   setSelectedServices(newSelectedServices);
-  //   updateServiceDefaultValues();
-
-  //   // Only expand if the service has subservices and we're selecting it
-  //   const service = services.find((s) => s.sId === serviceId);
-  //   if (
-  //     service?.subServices &&
-  //     service.subServices.length > 0 &&
-  //     !isServiceSelected
-  //   ) {
-  //     setExpandedService(serviceId);
-  //   } else {
-  //     // If deselecting or service has no subservices, collapse
-  //     setExpandedService(null);
-  //   }
-  // };
-
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
     const isServiceSelected = newSelectedServices.has(serviceId);
@@ -1069,7 +1018,7 @@ export default function RecordsPage() {
             formattedDate = formatDateToDDMMYYYY(nextDate);
             numericValue = nextDate.getTime();
             nextNotificationValue = numericValue;
-          } else if (type === "hour") {
+          } else if (type === "hours") {
             nextNotificationValue = currentHours + defaultValue;
             numericValue = nextNotificationValue;
           }
@@ -1323,43 +1272,7 @@ export default function RecordsPage() {
     return `${day}/${month}/${year}`;
   };
 
-  // const handleSubserviceToggle = (serviceId: string, subName: string) => {
-  //   setSelectedSubServices((prev) => {
-  //     const currentSubs = prev[serviceId] || [];
-  //     const service = services.find((s) => s.sId === serviceId);
-
-  //     // For "Steer Tires" and "DPF Clean", allow only one selection
-  //     if (
-  //       service?.sName === "Steer Tires" ||
-  //       service?.sName === "DPF Percentage"
-  //     ) {
-  //       // If already selected, deselect it, otherwise select only this one
-  //       return {
-  //         ...prev,
-  //         [serviceId]: currentSubs.includes(subName) ? [] : [subName],
-  //       };
-  //     } else {
-  //       // For other services, allow multiple selections
-  //       const newSubs = currentSubs.includes(subName)
-  //         ? currentSubs.filter((name) => name !== subName)
-  //         : [...currentSubs, subName];
-  //       return { ...prev, [serviceId]: newSubs };
-  //     }
-  //   });
-
-  //   // Show toast notification for selection
-  //   const service = services.find((s) => s.sId === serviceId);
-  //   const isSelected =
-  //     selectedSubServices[serviceId]?.includes(subName) ?? false;
-
-  //   if (!isSelected) {
-  //     toast.success(`${subName} selected for ${service?.sName}`, {
-  //       position: "top-right",
-  //       duration: 2000,
-  //     });
-  //   }
-  // };
-
+ 
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
     setSelectedSubServices((prev) => {
       const currentSubs = prev[serviceId] || [];

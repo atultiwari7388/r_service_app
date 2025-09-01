@@ -187,7 +187,7 @@ export default function ImportVehicle() {
               notificationValue = value * 1000;
             } else if (type === "day") {
               notificationValue = value;
-            } else if (type === "hour") {
+            } else if (type === "hours") {
               notificationValue = value;
             } else {
               notificationValue = value;
@@ -300,136 +300,6 @@ export default function ImportVehicle() {
 
     reader.readAsArrayBuffer(file);
   };
-
-  // const saveVehicle = async (data: Partial<Vehicle>) => {
-  //   if (!user?.uid) throw new Error("User not authenticated");
-
-  //   try {
-  //     // 1. Validate required fields
-  //     const vehicleType = data.vehicleType;
-  //     const companyName = data.companyName?.toString().trim().toUpperCase();
-  //     const engineName = data.engineName?.toString().trim().toUpperCase();
-  //     const vehicleNumber = data.vehicleNumber?.toString().trim() || "";
-
-  //     if (!vehicleType || !companyName || !engineName || !vehicleNumber) {
-  //       throw new Error("Missing required vehicle properties");
-  //     }
-
-  //     // 2. Vehicle type specific validation
-  //     if (vehicleType === "Truck") {
-  //       if (!data.currentMiles?.toString().trim()) {
-  //         throw new Error("Truck requires current miles");
-  //       }
-  //     } else if (vehicleType === "Trailer") {
-  //       if (!data.hoursReading?.toString().trim()) {
-  //         throw new Error("Trailer requires hours reading");
-  //       }
-  //       if (!data.oilChangeDate?.toString().trim()) {
-  //         throw new Error("Trailer requires oil change date");
-  //       }
-  //     }
-
-  //     // 3. Check for duplicate vehicle
-  //     const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-  //     const duplicateQuery = await getDocs(
-  //       query(
-  //         vehiclesRef,
-  //         where("vehicleNumber", "==", vehicleNumber),
-  //         where("vehicleType", "==", vehicleType),
-  //         where("companyName", "==", companyName),
-  //         where("engineName", "==", engineName)
-  //       )
-  //     );
-
-  //     if (!duplicateQuery.empty) {
-  //       throw new Error("Vehicle already exists");
-  //     }
-
-  //     // 4. Parse dates - they should already be in correct format from the upload processing
-  //     const yearDate: string | undefined = data.year;
-  //     const oilChangeDate: string | undefined = data.oilChangeDate;
-
-  //     // 5. Calculate next notification miles
-  //     const nextNotificationMiles = calculateNextNotificationMiles(
-  //       vehicleType === "Truck"
-  //         ? parseInt(data.currentMiles || "0")
-  //         : parseInt(data.hoursReading || "0"),
-  //       vehicleType,
-  //       engineName
-  //     );
-
-  //     // 6. Prepare vehicle data
-  //     const vehicleData: Vehicle = {
-  //       firstTimeVehicle: true,
-  //       active: true,
-  //       tripAssign: false,
-  //       vehicleType,
-  //       companyName,
-  //       engineName,
-  //       vehicleNumber,
-  //       vin: data.vin?.toString().trim() || "",
-  //       dot: data.dot?.toString().trim() || "",
-  //       iccms: data.iccms?.toString().trim() || "",
-  //       licensePlate: data.licensePlate?.toString().trim() || "",
-  //       year: yearDate,
-  //       isSet: true,
-  //       uploadedDocuments: [],
-  //       createdAt: serverTimestamp() as FieldValue,
-  //       currentMilesArray: [
-  //         {
-  //           miles:
-  //             vehicleType === "Truck" ? parseInt(data.currentMiles || "0") : 0,
-  //           date: new Date().toISOString(),
-  //         },
-  //       ],
-  //       nextNotificationMiles,
-  //       services: nextNotificationMiles.map((service) => ({
-  //         defaultNotificationValue: service.defaultNotificationValue,
-  //         nextNotificationValue: service.nextNotificationValue,
-  //         serviceId: service.serviceId,
-  //         serviceName: service.serviceName,
-  //         type: service.type,
-  //         subServices: service.subServices,
-  //       })),
-  //       ...(vehicleType === "Truck"
-  //         ? {
-  //             currentMiles: data.currentMiles?.toString(),
-  //             prevMilesValue: data.currentMiles?.toString(),
-  //             firstTimeMiles: data.currentMiles?.toString(),
-  //             oilChangeDate: "2025-04-12", // Default value as in Flutter
-  //             hoursReading: "",
-  //             prevHoursReadingValue: "",
-  //           }
-  //         : {
-  //             currentMiles: "",
-  //             prevMilesValue: "",
-  //             firstTimeMiles: "",
-  //             oilChangeDate: oilChangeDate,
-  //             hoursReading: data.hoursReading?.toString() || "",
-  //             prevHoursReadingValue: data.hoursReading?.toString() || "",
-  //           }),
-  //     };
-
-  //     // 7. Save to Firestore
-  //     const docRef = await addDoc(vehiclesRef, vehicleData);
-  //     await updateDoc(docRef, { vehicleId: docRef.id });
-
-  //     // 8. Trigger cloud function
-  //     const callable = httpsCallable(
-  //       functions,
-  //       "checkAndNotifyUserForVehicleService"
-  //     );
-  //     await callable({
-  //       userId: user.uid,
-  //       vehicleId: docRef.id,
-  //     });
-
-  //     return true;
-  //   } catch (error) {
-  //     console.error("Error saving vehicle data:", error);
-  //     throw error;
-  //   }
-  // };
 
   const saveVehicle = async (data: Partial<Vehicle>) => {
     if (!user?.uid) throw new Error("User not authenticated");

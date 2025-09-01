@@ -237,7 +237,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               notificationValue = value * 1000;
             } else if (type == "day") {
               notificationValue = value;
-            } else if (type == "hour") {
+            } else if (type == "hours") {
               notificationValue = value;
             } else {
               notificationValue = value;

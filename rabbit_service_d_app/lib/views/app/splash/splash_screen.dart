@@ -138,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen> {
             );
           },
           child: Image.asset(
-            "assets/rabbit_n_logo_l.png",
+            "assets/new_rabbit_logo.png",
             height: 200.h,
             fit: BoxFit.cover,
           ),

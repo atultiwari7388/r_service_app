@@ -53,11 +53,25 @@ const Signup: React.FC = () => {
   // Auth state check
   const { user } = useAuth() || { user: null };
 
+  // useEffect(() => {
+  //   if (!user?.emailVerified) {
+  //     router.push("/login");
+  //   } else {
+  //     router.push("/");
+  //   }
+  // }, [router, user]);
+
   useEffect(() => {
-    if (user) {
+    if (!user) return; // no user → stay on signup page
+
+    if (user.emailVerified) {
+      // already signed in & verified → send to home
+      router.push("/");
+    } else {
+      // signed in but not verified → ask them to login and verify
       router.push("/login");
     }
-  }, [router, user]);
+  }, [user, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -68,134 +82,6 @@ const Signup: React.FC = () => {
       [name]: value,
     }));
   };
-
-  // const handleSignup = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-
-  //   if (
-  //     !formValues.name ||
-  //     !formValues.email ||
-  //     !formValues.address ||
-  //     !formValues.city ||
-  //     !formValues.state ||
-  //     !formValues.country ||
-  //     !formValues.phoneNumber ||
-  //     !formValues.password ||
-  //     !formValues.companyName ||
-  //     !formValues.numberOfVehicles
-  //   ) {
-  //     setError("All fields are required.");
-  //     return;
-  //   }
-
-  //   setError(null);
-  //   setLoading(true);
-
-  //   try {
-  //     const emailToCheck = formValues.email.trim().toLowerCase();
-
-  //     // 🔍 Check Users collection for existing email
-  //     const usersQuery = query(
-  //       collection(db, "Users"),
-  //       where("email", "==", emailToCheck)
-  //     );
-  //     const usersSnapshot = await getDocs(usersQuery);
-  //     if (!usersSnapshot.empty) {
-  //       toast.error("This email is already registered. Try to login.");
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     // 🔍 Check Mechanics collection for existing email
-  //     const mechanicsQuery = query(
-  //       collection(db, "Mechanics"),
-  //       where("email", "==", emailToCheck)
-  //     );
-  //     const mechanicsSnapshot = await getDocs(mechanicsQuery);
-  //     if (!mechanicsSnapshot.empty) {
-  //       toast.error("This email is registered with a mechanic account.");
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     // Firebase Auth: Create a new user with email and password
-  //     const userCredential = await createUserWithEmailAndPassword(
-  //       auth,
-  //       formValues.email,
-  //       formValues.password
-  //     );
-  //     const user = userCredential.user;
-
-  //     if (user) {
-  //       // Store additional user details in Firestore
-  //       const uid = user.uid;
-  //       const userData = {
-  //         uid: uid,
-  //         status: "active",
-  //         email: formValues.email,
-  //         email2: "",
-  //         active: true,
-  //         isAnonymous: false,
-  //         isProfileComplete: true,
-  //         userName: formValues.name,
-  //         phoneNumber: formValues.phoneNumber,
-  //         telephoneNumber: "",
-  //         address: formValues.address,
-  //         city: formValues.city,
-  //         state: formValues.state,
-  //         country: formValues.country,
-  //         postalCode: "",
-  //         licNumber: "",
-  //         licExpDate: new Date(),
-  //         dob: new Date(),
-  //         lastDrugTest: new Date(),
-  //         dateOfHire: new Date(),
-  //         dateOfTermination: new Date(),
-  //         socialSecurity: "",
-  //         perMileCharge: "",
-  //         companyName: formValues.companyName,
-  //         vehicleRange: formValues.numberOfVehicles,
-  //         profilePicture:
-  //           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
-  //         wallet: 0,
-  //         created_at: new Date(),
-  //         updated_at: new Date(),
-  //         createdBy: uid,
-  //         isTeamMember: false,
-  //         lastAddress: "",
-  //         isNotificationOn: true,
-  //         role: "Owner",
-  //         teamMembers: [],
-  //         isOwner: true,
-  //         isManager: false,
-  //         isDriver: false,
-  //         isVendor: false,
-  //         isView: true,
-  //         isCheque: true,
-  //         payMode: "",
-  //         isEdit: true,
-  //         isDelete: true,
-  //         isAdd: true,
-  //       };
-
-  //       // Save user data in Firestore (replace with your Firestore collection name)
-  //       await setDoc(doc(db, "Users", uid), userData);
-
-  //       // Send email verification
-  //       await sendEmailVerification(user);
-
-  //       setLoading(false);
-  //       alert(
-  //         "Signup successful! Please check your email for verification. If you have not received the email, also check your spam folder."
-  //       );
-  //       router.push("/login");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error during signup:", error);
-  //     setError("An error occurred during signup. Please try again.");
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,15 +204,14 @@ const Signup: React.FC = () => {
 
       // Save user data in Firestore
       await setDoc(doc(db, "Users", uid), userData);
-
       // Send email verification
       await sendEmailVerification(user);
+      router.push("/login");
 
       setLoading(false);
       alert(
         "Signup successful! Please check your email for verification. If you have not received the email, also check your spam folder."
       );
-      router.push("/login");
     } catch (error: unknown | string) {
       console.error("Error during signup:", error);
 

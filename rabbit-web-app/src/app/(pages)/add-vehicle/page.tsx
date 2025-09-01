@@ -234,7 +234,13 @@ export default function AddVehiclePage() {
 
             if (type === "reading") {
               notificationValue = value * 1000;
-            } // day/hour remain as-is
+            } else if (type === "day") {
+              notificationValue = value;
+            } else if (type === "hours") {
+              notificationValue = value;
+            } else {
+              notificationValue = value;
+            }
 
             nextNotificationMiles.push({
               sId: "",
