@@ -1272,7 +1272,6 @@ export default function RecordsPage() {
     return `${day}/${month}/${year}`;
   };
 
- 
   const handleSubserviceToggle = (serviceId: string, subName: string) => {
     setSelectedSubServices((prev) => {
       const currentSubs = prev[serviceId] || [];
