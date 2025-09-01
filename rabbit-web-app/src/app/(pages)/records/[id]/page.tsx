@@ -8,6 +8,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { FaPrint, FaTimes, FaSearchPlus, FaSearchMinus } from "react-icons/fa";
 import Image from "next/image";
+import { parseISO, format } from "date-fns";
 
 interface ServiceRecord {
   id: string;
@@ -181,7 +182,8 @@ export default function RecordsDetailsPage({
             <p className="flex justify-between">
               <span className="font-medium text-xl">Date:</span>
               <span className="text-xl">
-                {new Date(record.date).toLocaleDateString()}
+                {/* {new Date(record.date).toLocaleDateString()} */}
+                {format(parseISO(record.date), "MM/dd/yyyy")}
               </span>
             </p>
           </div>
