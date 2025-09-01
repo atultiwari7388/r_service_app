@@ -125,137 +125,16 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   }
 
   // Future<void> _showEditDialog(DocumentSnapshot tripDoc) async {
-  //   _tripNameController.text = tripDoc['tripName'];
-  //   _startMilesController.text = tripDoc['tripStartMiles'].toString();
-  //   _endMilesController.text = tripDoc['tripEndMiles'].toString();
-  //   _selectedStartDate = tripDoc['tripStartDate'].toDate();
-  //   _selectedEndDate = tripDoc['tripEndDate'].toDate();
-
-  //   await showDialog(
-  //     context: context,
-  //     builder: (context) {
-  //       return StatefulBuilder(
-  //         builder: (context, setState) {
-  //           return AlertDialog(
-  //             title: Text('Edit Trip Details'),
-  //             content: SingleChildScrollView(
-  //               child: Column(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   TextField(
-  //                     controller: _tripNameController,
-  //                     decoration: InputDecoration(labelText: 'Trip Name'),
-  //                   ),
-  //                   SizedBox(height: 10.h),
-  //                   TextField(
-  //                     controller: _startMilesController,
-  //                     decoration: InputDecoration(labelText: 'Start Miles'),
-  //                     keyboardType: TextInputType.number,
-  //                   ),
-  //                   SizedBox(height: 10.h),
-  //                   TextField(
-  //                     controller: _endMilesController,
-  //                     decoration: InputDecoration(labelText: 'End Miles'),
-  //                     keyboardType: TextInputType.number,
-  //                   ),
-  //                   SizedBox(height: 10.h),
-  //                   ListTile(
-  //                     title: Text(
-  //                         'Start Date: ${_selectedStartDate != null ? DateFormat('dd MMM yyyy').format(_selectedStartDate!) : 'Not selected'}'),
-  //                     trailing: Icon(Icons.calendar_today),
-  //                     onTap: () async {
-  //                       final picked = await showDatePicker(
-  //                         context: context,
-  //                         initialDate: _selectedStartDate ?? DateTime.now(),
-  //                         firstDate: DateTime(2000),
-  //                         lastDate: DateTime(2100),
-  //                       );
-  //                       if (picked != null) {
-  //                         setState(() {
-  //                           _selectedStartDate = picked;
-  //                         });
-  //                       }
-  //                     },
-  //                   ),
-  //                   ListTile(
-  //                     title: Text(
-  //                         'End Date: ${_selectedEndDate != null ? DateFormat('dd MMM yyyy').format(_selectedEndDate!) : 'Not selected'}'),
-  //                     trailing: Icon(Icons.calendar_today),
-  //                     onTap: () async {
-  //                       final picked = await showDatePicker(
-  //                         context: context,
-  //                         initialDate: _selectedEndDate ?? DateTime.now(),
-  //                         firstDate: DateTime(2000),
-  //                         lastDate: DateTime(2100),
-  //                       );
-  //                       if (picked != null) {
-  //                         setState(() {
-  //                           _selectedEndDate = picked;
-  //                         });
-  //                       }
-  //                     },
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //             actions: [
-  //               TextButton(
-  //                 onPressed: () => Navigator.pop(context),
-  //                 child: Text('Cancel'),
-  //               ),
-  //               TextButton(
-  //                 onPressed: () async {
-  //                   if (_tripNameController.text.isEmpty ||
-  //                       _startMilesController.text.isEmpty ||
-  //                       _endMilesController.text.isEmpty ||
-  //                       _selectedStartDate == null ||
-  //                       _selectedEndDate == null) {
-  //                     ScaffoldMessenger.of(context).showSnackBar(
-  //                       SnackBar(content: Text('Please fill all fields')),
-  //                     );
-  //                     return;
-  //                   }
-
-  //                   try {
-  //                     await FirebaseFirestore.instance
-  //                         .collection("Users")
-  //                         .doc(widget.memberId)
-  //                         .collection('trips')
-  //                         .doc(tripDoc.id)
-  //                         .update({
-  //                       'tripName': _tripNameController.text,
-  //                       'tripStartMiles': int.parse(_startMilesController.text),
-  //                       'tripEndMiles': int.parse(_endMilesController.text),
-  //                       'tripStartDate': _selectedStartDate,
-  //                       'tripEndDate': _selectedEndDate,
-  //                     });
-  //                     Navigator.pop(context);
-  //                     ScaffoldMessenger.of(context).showSnackBar(
-  //                       SnackBar(content: Text('Trip updated successfully')),
-  //                     );
-  //                   } catch (e) {
-  //                     ScaffoldMessenger.of(context).showSnackBar(
-  //                       SnackBar(content: Text('Error updating trip: $e')),
-  //                     );
-  //                   }
-  //                 },
-  //                 child: Text('Save'),
-  //               ),
-  //             ],
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
-
-  // Future<void> _showEditDialog(DocumentSnapshot tripDoc) async {
   //   // Initialize controllers with current values
   //   _tripNameController.text = tripDoc['tripName'];
   //   _startMilesController.text = tripDoc['tripStartMiles'].toString();
   //   _endMilesController.text = tripDoc['tripEndMiles'].toString();
   //   _selectedStartDate = tripDoc['tripStartDate'].toDate();
   //   _selectedEndDate = tripDoc['tripEndDate'].toDate();
+
+  //   // Store current vehicle IDs
+  //   String currentTruckId = tripDoc['vehicleId'];
+  //   String? currentTrailerId = tripDoc['trailerId'];
 
   //   // Fetch available trucks and trailers
   //   final trucksSnapshot = await FirebaseFirestore.instance
@@ -274,30 +153,41 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   //       .where("vehicleType", isEqualTo: "Trailer")
   //       .get();
 
-  //   List<String> trucks = trucksSnapshot.docs
-  //       .map((doc) => "${doc['companyName']} (${doc['vehicleNumber']})")
-  //       .toList();
+  //   // Create maps for display strings to document data
+  //   Map<String, QueryDocumentSnapshot> truckDisplayToDoc = {};
+  //   Map<String, QueryDocumentSnapshot> trailerDisplayToDoc = {};
 
-  //   List<String> trailers = trailersSnapshot.docs
-  //       .map((doc) => "${doc['companyName']} (${doc['vehicleNumber']})")
-  //       .toList();
+  //   List<String> trucks = trucksSnapshot.docs.map((doc) {
+  //     String display = "${doc['companyName']} (${doc['vehicleNumber']})";
+  //     truckDisplayToDoc[display] = doc;
+  //     return display;
+  //   }).toList();
 
-  //   // Current selected values
-  //   String currentTruck =
+  //   List<String> trailers = trailersSnapshot.docs.map((doc) {
+  //     String display = "${doc['companyName']} (${doc['vehicleNumber']})";
+  //     trailerDisplayToDoc[display] = doc;
+  //     return display;
+  //   }).toList();
+
+  //   // Get current display values
+  //   String currentTruckDisplay =
   //       "${tripDoc['companyName']} (${tripDoc['vehicleNumber']})";
-  //   String currentTrailer = tripDoc['trailerId'] != null
+  //   String? currentTrailerDisplay = tripDoc['trailerId'] != null
   //       ? "${tripDoc['trailerCompanyName']} (${tripDoc['trailerNumber']})"
-  //       : "";
-  //   String currentLoadType = tripDoc['loadType'] ?? "";
+  //       : null;
 
   //   // Load types
   //   List<String> loadTypes = ["Empty", "Loaded"];
+  //   String currentLoadType = tripDoc['loadType'] ?? "";
 
-  //   String? selectedTruck = trucks.contains(currentTruck) ? currentTruck : null;
-  //   String? selectedTrailer =
-  //       trailers.contains(currentTrailer) ? currentTrailer : null;
-  //   String? selectedLoadType =
-  //       loadTypes.contains(currentLoadType) ? currentLoadType : null;
+  //   // Initialize selected values
+  //   String? selectedTruck = currentTruckDisplay;
+  //   String? selectedTrailer = currentTrailerDisplay;
+  //   String? selectedLoadType = currentLoadType;
+
+  //   // These will hold the IDs (either existing or new)
+  //   String? newTruckId = currentTruckId;
+  //   String? newTrailerId = currentTrailerId;
 
   //   await showDialog(
   //     context: context,
@@ -335,6 +225,10 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   //                     onChanged: (value) {
   //                       setState(() {
   //                         selectedTruck = value;
+  //                         // Update truck ID if selection changed
+  //                         newTruckId = value != null
+  //                             ? truckDisplayToDoc[value]!.id
+  //                             : currentTruckId;
   //                       });
   //                     },
   //                   ),
@@ -360,6 +254,10 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   //                     onChanged: (value) {
   //                       setState(() {
   //                         selectedTrailer = value;
+  //                         // Update trailer ID if selection changed
+  //                         newTrailerId = value != null
+  //                             ? trailerDisplayToDoc[value]!.id
+  //                             : currentTrailerId;
   //                       });
   //                     },
   //                   ),
@@ -462,22 +360,15 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   //                   }
 
   //                   try {
-  //                     // Parse truck and trailer information
-  //                     String truckNumber =
-  //                         selectedTruck!.split('(').last.replaceAll(')', '');
-  //                     String truckCompany =
-  //                         selectedTruck!.split('(').first.trim();
-
-  //                     String? trailerNumber;
-  //                     String? trailerCompany;
-  //                     if (selectedTrailer != null) {
-  //                       trailerNumber = selectedTrailer!
-  //                           .split('(')
-  //                           .last
-  //                           .replaceAll(')', '');
-  //                       trailerCompany =
-  //                           selectedTrailer!.split('(').first.trim();
-  //                     }
+  //                     // Get the selected truck and trailer documents
+  //                     QueryDocumentSnapshot? selectedTruckDoc =
+  //                         selectedTruck != null
+  //                             ? truckDisplayToDoc[selectedTruck!]
+  //                             : null;
+  //                     QueryDocumentSnapshot? selectedTrailerDoc =
+  //                         selectedTrailer != null
+  //                             ? trailerDisplayToDoc[selectedTrailer!]
+  //                             : null;
 
   //                     await FirebaseFirestore.instance
   //                         .collection("Users")
@@ -490,10 +381,18 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
   //                       'tripEndMiles': int.parse(_endMilesController.text),
   //                       'tripStartDate': _selectedStartDate,
   //                       'tripEndDate': _selectedEndDate,
-  //                       'companyName': truckCompany,
-  //                       'vehicleNumber': truckNumber,
-  //                       'trailerCompanyName': trailerCompany,
-  //                       'trailerNumber': trailerNumber,
+  //                       'vehicleId': newTruckId, // Updated or existing truck ID
+  //                       'companyName': selectedTruckDoc?['companyName'] ??
+  //                           tripDoc['companyName'],
+  //                       'vehicleNumber': selectedTruckDoc?['vehicleNumber'] ??
+  //                           tripDoc['vehicleNumber'],
+  //                       'trailerId':
+  //                           newTrailerId, // Updated or existing trailer ID
+  //                       'trailerCompanyName':
+  //                           selectedTrailerDoc?['companyName'] ??
+  //                               tripDoc['trailerCompanyName'],
+  //                       'trailerNumber': selectedTrailerDoc?['vehicleNumber'] ??
+  //                           tripDoc['trailerNumber'],
   //                       'loadType': selectedLoadType,
   //                     });
 
@@ -565,9 +464,14 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
     // Get current display values
     String currentTruckDisplay =
         "${tripDoc['companyName']} (${tripDoc['vehicleNumber']})";
-    String? currentTrailerDisplay = tripDoc['trailerId'] != null
-        ? "${tripDoc['trailerCompanyName']} (${tripDoc['trailerNumber']})"
-        : null;
+
+    String? currentTrailerDisplay;
+    if (currentTrailerId != null &&
+        tripDoc['trailerCompanyName'] != null &&
+        tripDoc['trailerNumber'] != null) {
+      currentTrailerDisplay =
+          "${tripDoc['trailerCompanyName']} (${tripDoc['trailerNumber']})";
+    }
 
     // Load types
     List<String> loadTypes = ["Empty", "Loaded"];
@@ -587,6 +491,11 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            // FIX: Check if trailers list is empty and handle accordingly
+            bool hasTrailers = trailers.isNotEmpty;
+            String? effectiveTrailerValue =
+                hasTrailers ? selectedTrailer : null;
+
             return AlertDialog(
               title: Text('Edit Trip Details'),
               content: SingleChildScrollView(
@@ -618,7 +527,6 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                       onChanged: (value) {
                         setState(() {
                           selectedTruck = value;
-                          // Update truck ID if selection changed
                           newTruckId = value != null
                               ? truckDisplayToDoc[value]!.id
                               : currentTruckId;
@@ -627,34 +535,43 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                     ),
                     SizedBox(height: 10.h),
 
-                    // Trailer Dropdown
-                    DropdownButtonFormField<String>(
-                      value: selectedTrailer,
-                      decoration:
-                          InputDecoration(labelText: 'Trailer (Optional)'),
-                      items: [
-                        DropdownMenuItem(
-                          value: null,
-                          child: Text('Select Trailer'),
-                        ),
-                        ...trailers.map((trailer) {
-                          return DropdownMenuItem(
-                            value: trailer,
-                            child: Text(trailer),
-                          );
-                        }).toList(),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          selectedTrailer = value;
-                          // Update trailer ID if selection changed
-                          newTrailerId = value != null
-                              ? trailerDisplayToDoc[value]!.id
-                              : currentTrailerId;
-                        });
-                      },
-                    ),
-                    SizedBox(height: 10.h),
+                    // Trailer Dropdown - FIXED: Handle case when no trailers exist
+                    if (hasTrailers) ...[
+                      DropdownButtonFormField<String>(
+                        value: effectiveTrailerValue,
+                        decoration:
+                            InputDecoration(labelText: 'Trailer (Optional)'),
+                        items: [
+                          DropdownMenuItem(
+                            value: null,
+                            child: Text('No Trailer'),
+                          ),
+                          ...trailers.map((trailer) {
+                            return DropdownMenuItem(
+                              value: trailer,
+                              child: Text(trailer),
+                            );
+                          }).toList(),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            selectedTrailer = value;
+                            effectiveTrailerValue = value;
+                            newTrailerId = value != null
+                                ? trailerDisplayToDoc[value]!.id
+                                : null;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 10.h),
+                    ] else ...[
+                      // Show message when no trailers available
+                      Text(
+                        'No trailers available',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      SizedBox(height: 10.h),
+                    ],
 
                     // Load Type Dropdown
                     DropdownButtonFormField<String>(
@@ -759,35 +676,45 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                               ? truckDisplayToDoc[selectedTruck!]
                               : null;
                       QueryDocumentSnapshot? selectedTrailerDoc =
-                          selectedTrailer != null
+                          selectedTrailer != null && hasTrailers
                               ? trailerDisplayToDoc[selectedTrailer!]
                               : null;
+
+                      // Prepare update data
+                      Map<String, dynamic> updateData = {
+                        'tripName': _tripNameController.text,
+                        'tripStartMiles': int.parse(_startMilesController.text),
+                        'tripEndMiles': int.parse(_endMilesController.text),
+                        'tripStartDate': _selectedStartDate,
+                        'tripEndDate': _selectedEndDate,
+                        'vehicleId': newTruckId,
+                        'companyName': selectedTruckDoc?['companyName'] ??
+                            tripDoc['companyName'],
+                        'vehicleNumber': selectedTruckDoc?['vehicleNumber'] ??
+                            tripDoc['vehicleNumber'],
+                        'trailerId': newTrailerId,
+                        'loadType': selectedLoadType,
+                      };
+
+                      // Only add trailer fields if a trailer is selected and trailers exist
+                      if (selectedTrailerDoc != null && hasTrailers) {
+                        updateData['trailerCompanyName'] =
+                            selectedTrailerDoc['companyName'];
+                        updateData['trailerNumber'] =
+                            selectedTrailerDoc['vehicleNumber'];
+                      } else {
+                        // Clear trailer fields if no trailer is selected or no trailers exist
+                        updateData['trailerCompanyName'] = null;
+                        updateData['trailerNumber'] = null;
+                        updateData['trailerId'] = null;
+                      }
 
                       await FirebaseFirestore.instance
                           .collection("Users")
                           .doc(widget.memberId)
                           .collection('trips')
                           .doc(tripDoc.id)
-                          .update({
-                        'tripName': _tripNameController.text,
-                        'tripStartMiles': int.parse(_startMilesController.text),
-                        'tripEndMiles': int.parse(_endMilesController.text),
-                        'tripStartDate': _selectedStartDate,
-                        'tripEndDate': _selectedEndDate,
-                        'vehicleId': newTruckId, // Updated or existing truck ID
-                        'companyName': selectedTruckDoc?['companyName'] ??
-                            tripDoc['companyName'],
-                        'vehicleNumber': selectedTruckDoc?['vehicleNumber'] ??
-                            tripDoc['vehicleNumber'],
-                        'trailerId':
-                            newTrailerId, // Updated or existing trailer ID
-                        'trailerCompanyName':
-                            selectedTrailerDoc?['companyName'] ??
-                                tripDoc['trailerCompanyName'],
-                        'trailerNumber': selectedTrailerDoc?['vehicleNumber'] ??
-                            tripDoc['trailerNumber'],
-                        'loadType': selectedLoadType,
-                      });
+                          .update(updateData);
 
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1671,18 +1598,18 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                                 minimumSize: Size(60, 40),
                                 backgroundColor: kPrimary,
                                 foregroundColor: kWhite)),
-                SizedBox(width: 10.w),
-                widget.role == "Manager"
-                    ? SizedBox()
-                    : ElevatedButton(
-                        onPressed: () => _showEditDialog(doc),
-                        child: Text("Edit",
-                            style: appStyle(12, kWhite, FontWeight.normal)),
-                        style: ElevatedButton.styleFrom(
-                            minimumSize: Size(60, 40),
-                            backgroundColor: Colors.orange,
-                            foregroundColor: kWhite),
-                      ),
+                // SizedBox(width: 10.w),
+                // widget.role == "Manager"
+                //     ? SizedBox()
+                //     : ElevatedButton(
+                //         onPressed: () => _showEditDialog(doc),
+                //         child: Text("Edit",
+                //             style: appStyle(12, kWhite, FontWeight.normal)),
+                //         style: ElevatedButton.styleFrom(
+                //             minimumSize: Size(60, 40),
+                //             backgroundColor: Colors.orange,
+                //             foregroundColor: kWhite),
+                //       ),
                 SizedBox(width: 10.w),
                 (widget.role == "Accountant" || widget.role == "Owner")
                     ? ElevatedButton(
@@ -1715,7 +1642,18 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                 ),
               ],
             )
-          ]
+          ],
+          widget.role == "Manager"
+              ? SizedBox()
+              : ElevatedButton(
+                  onPressed: () => _showEditDialog(doc),
+                  child: Text("Edit",
+                      style: appStyle(12, kWhite, FontWeight.normal)),
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: Size(60, 40),
+                      backgroundColor: Colors.orange,
+                      foregroundColor: kWhite),
+                ),
         ],
       ),
     );

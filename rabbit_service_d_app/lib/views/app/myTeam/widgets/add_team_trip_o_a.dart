@@ -459,168 +459,170 @@ class _AddTeamTripOwnerAndAccountantState
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: EdgeInsets.all(8.0.w),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 40.h,
-                          child: TextField(
-                            controller: _tripNameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Trip Name',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.text,
-                          ),
-                        ),
-                        SizedBox(height: 10.h),
-                        SizedBox(
-                          height: 40.h,
-                          child: TextField(
-                            controller: _currentMilesController,
-                            decoration: const InputDecoration(
-                              labelText: 'Current Miles',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                        ),
-                        SizedBox(height: 10.h),
-                        widget.teamRole == "Owner"
-                            ? SizedBox(
-                                height: 40.h,
-                                child: TextField(
-                                  controller: _oEarningController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Load Price',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              )
-                            : SizedBox(),
-                        widget.teamRole == "Owner"
-                            ? SizedBox(height: 10.h)
-                            : SizedBox(),
-                        InkWell(
-                          onTap: () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: selectedDate ?? DateTime.now(),
-                              firstDate: DateTime(2000),
-                              lastDate: DateTime(2100),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                selectedDate = picked;
-                              });
-                            }
-                          },
-                          child: SizedBox(
-                            height: 55.h,
-                            child: InputDecorator(
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0.w),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: 40.h,
+                            child: TextField(
+                              controller: _tripNameController,
                               decoration: const InputDecoration(
-                                labelText: 'Date',
+                                labelText: 'Trip Name',
                                 border: OutlineInputBorder(),
                               ),
-                              child: Text(
-                                selectedDate != null
-                                    ? selectedDate!
-                                        .toLocal()
-                                        .toString()
-                                        .split(' ')[0]
-                                    : 'Select Trip Start Date',
+                              keyboardType: TextInputType.text,
+                            ),
+                          ),
+                          SizedBox(height: 10.h),
+                          SizedBox(
+                            height: 40.h,
+                            child: TextField(
+                              controller: _currentMilesController,
+                              decoration: const InputDecoration(
+                                labelText: 'Current Miles',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          SizedBox(height: 10.h),
+                          widget.teamRole == "Owner"
+                              ? SizedBox(
+                                  height: 40.h,
+                                  child: TextField(
+                                    controller: _oEarningController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Load Price',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                )
+                              : SizedBox(),
+                          widget.teamRole == "Owner"
+                              ? SizedBox(height: 10.h)
+                              : SizedBox(),
+                          InkWell(
+                            onTap: () async {
+                              final DateTime? picked = await showDatePicker(
+                                context: context,
+                                initialDate: selectedDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100),
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  selectedDate = picked;
+                                });
+                              }
+                            },
+                            child: SizedBox(
+                              height: 55.h,
+                              child: InputDecorator(
+                                decoration: const InputDecoration(
+                                  labelText: 'Date',
+                                  border: OutlineInputBorder(),
+                                ),
+                                child: Text(
+                                  selectedDate != null
+                                      ? selectedDate!
+                                          .toLocal()
+                                          .toString()
+                                          .split(' ')[0]
+                                      : 'Select Trip Start Date',
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 10.h),
-                        // Vehicle Dropdown
+                          SizedBox(height: 10.h),
+                          // Vehicle Dropdown
 
-                        DropdownButtonFormField<String>(
-                          value: selectedVehicle,
-                          hint: const Text('Select Truck'),
-                          items: vehicles
-                              .where((v) => v['vehicleType'] == "Truck")
-                              .map((vehicle) {
-                            return DropdownMenuItem<String>(
-                              value: vehicle['id'],
-                              child: Text(
-                                '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                style: appStyleUniverse(
-                                    17, kDark, FontWeight.normal),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedVehicle = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 10.h),
+                          DropdownButtonFormField<String>(
+                            value: selectedVehicle,
+                            hint: const Text('Select Truck'),
+                            items: vehicles
+                                .where((v) => v['vehicleType'] == "Truck")
+                                .map((vehicle) {
+                              return DropdownMenuItem<String>(
+                                value: vehicle['id'],
+                                child: Text(
+                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                  style: appStyleUniverse(
+                                      17, kDark, FontWeight.normal),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedVehicle = value;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 10.h),
 
-                        DropdownButtonFormField<String>(
-                          value: selectedTrailer,
-                          hint: const Text('Select Trailer'),
-                          items: vehicles
-                              .where((v) => v['vehicleType'] == "Trailer")
-                              .map((vehicle) {
-                            return DropdownMenuItem<String>(
-                              value: vehicle['id'],
-                              child: Text(
-                                '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                style: appStyleUniverse(
-                                    17, kDark, FontWeight.normal),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedTrailer = value;
-                            });
-                          },
-                        ),
-                        SizedBox(height: 10.h),
+                          DropdownButtonFormField<String>(
+                            value: selectedTrailer,
+                            hint: const Text('Select Trailer'),
+                            items: vehicles
+                                .where((v) => v['vehicleType'] == "Trailer")
+                                .map((vehicle) {
+                              return DropdownMenuItem<String>(
+                                value: vehicle['id'],
+                                child: Text(
+                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                  style: appStyleUniverse(
+                                      17, kDark, FontWeight.normal),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectedTrailer = value;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 10.h),
 
-                        // Load Type Dropdown
-                        DropdownButtonFormField<String>(
-                          value: selectLoadType,
-                          hint: const Text('Select Load Type'),
-                          items: loadTypes.map((type) {
-                            return DropdownMenuItem<String>(
-                              value: type,
-                              child: Text(
-                                type,
-                                style: appStyleUniverse(
-                                    17, kDark, FontWeight.normal),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectLoadType = value!;
-                            });
-                          },
-                        ),
+                          // Load Type Dropdown
+                          DropdownButtonFormField<String>(
+                            value: selectLoadType,
+                            hint: const Text('Select Load Type'),
+                            items: loadTypes.map((type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(
+                                  type,
+                                  style: appStyleUniverse(
+                                      17, kDark, FontWeight.normal),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                selectLoadType = value!;
+                              });
+                            },
+                          ),
 
-                        SizedBox(height: 10.h),
+                          SizedBox(height: 10.h),
 
-                        CustomButton(
-                          text: "Add Trip",
-                          onPress: addTrip,
-                          color: kPrimary,
-                        ),
-                      ],
+                          CustomButton(
+                            text: "Add Trip",
+                            onPress: addTrip,
+                            color: kPrimary,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }
