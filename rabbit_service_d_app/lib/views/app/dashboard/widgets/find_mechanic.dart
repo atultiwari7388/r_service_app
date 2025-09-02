@@ -363,41 +363,6 @@ class _FindMechanicState extends State<FindMechanic> {
               : Container(),
 
           SizedBox(height: 20.h),
-          // widget.controller.isFindMechanicEnabled
-          //     ? CustomButton(
-          //         text: "Find Mechanic",
-          //         onPress: () async {
-          //           if (widget.controller.images.isEmpty &&
-          //               widget.controller.isImageMandatory == true) {
-          //             showToastMessage(
-          //                 "Image Upload", "Upload at least one Image", kRed);
-          //           } else {
-          //             widget.controller
-          //                 .findMechanic(
-          //               widget.controller.locationController.text,
-          //               widget.controller.userPhoto,
-          //               widget.controller.userName,
-          //               widget.controller.phoneNumber,
-          //               widget.controller.userLat,
-          //               widget.controller.userLong,
-          //               widget.controller.serviceAndNetworkController.text
-          //                   .toString(),
-          //               widget.controller.companyNameController.text.toString(),
-          //               widget.controller
-          //                   .selectedCompanyAndVehcileNameController.text
-          //                   .toString(),
-          //               widget.controller.isImageMandatory,
-          //               widget.controller.images,
-          //             )
-          //                 .then((value) {
-          //               widget.setTab?.call(1);
-          //             });
-          //             log("Job Created");
-          //           }
-          //         },
-          //         color: kPrimary,
-          //       )
-          //     : CustomButton(text: "Find Mechanic", onPress: null, color: kGray)
 
           widget.controller.isFindMechanicEnabled
               ? CustomButton(

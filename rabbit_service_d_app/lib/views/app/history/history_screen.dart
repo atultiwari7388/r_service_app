@@ -153,8 +153,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 .now(); // Fallback to current time or handle appropriately
                           }
                           return MyJobsCard(
-                            companyNameAndVehicleName:
-                                "${job["companyName"]} (${vehicleNumber})",
+                            companyNameAndVehicleName: "${vehicleNumber}",
                             address: job["userDeliveryAddress"].toString(),
                             serviceName: job["selectedService"].toString(),
                             cancelationReason: job["cancelReason"].toString(),

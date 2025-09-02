@@ -2083,247 +2083,272 @@ class _ReportsScreenState extends State<ReportsScreen>
                                 ] else if (selectedVehicle != null &&
                                     selectedVehicleData?['vehicleType'] ==
                                         'Trailer') ...[
-                                  TextField(
-                                    controller: hoursController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Enter Hours',
-                                      labelStyle: appStyleUniverse(
-                                          14, kDark, FontWeight.normal),
-                                      border: OutlineInputBorder(),
+                                  if (selectedVehicleData?['companyName'] !=
+                                      "DRY VAN")
+                                    TextField(
+                                      controller: hoursController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Enter Hours',
+                                        labelStyle: appStyleUniverse(
+                                            14, kDark, FontWeight.normal),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
                                     ),
-                                    keyboardType: TextInputType.number,
-                                  ),
                                 ],
+
                                 SizedBox(height: 16.h),
                                 //Save Miles Button
 
-                                CustomButton(
-                                  onPress: () async {
-                                    // Check which controller to use based on vehicle type
-                                    final isTruck =
-                                        selectedVehicleData?['vehicleType'] ==
+                                if (selectedVehicleData != null) ...[
+                                  if (selectedVehicleData?['vehicleType'] ==
+                                          'Truck' ||
+                                      (selectedVehicleData?['vehicleType'] ==
+                                              'Trailer' &&
+                                          selectedVehicleData?['companyName'] !=
+                                              'DRY VAN'))
+                                    CustomButton(
+                                      onPress: () async {
+                                        // Check which controller to use based on vehicle type
+                                        final isTruck = selectedVehicleData?[
+                                                'vehicleType'] ==
                                             'Truck';
-                                    final controller = isTruck
-                                        ? todayMilesController
-                                        : hoursController;
-                                    final value = controller.text.trim();
+                                        final controller = isTruck
+                                            ? todayMilesController
+                                            : hoursController;
+                                        final value = controller.text.trim();
 
-                                    if (selectedVehicle != null &&
-                                        value.isNotEmpty) {
-                                      try {
-                                        final int enteredValue =
-                                            int.parse(value);
-                                        final vehicleId = selectedVehicle;
+                                        if (selectedVehicle != null &&
+                                            value.isNotEmpty) {
+                                          try {
+                                            final int enteredValue =
+                                                int.parse(value);
+                                            final vehicleId = selectedVehicle;
 
-                                        // Check if DataServices subcollection exists and is not empty
-                                        final dataServicesSnapshot =
-                                            await FirebaseFirestore.instance
-                                                .collection("Users")
-                                                .doc(currentUId)
-                                                .collection("DataServices")
-                                                .where("vehicleId",
-                                                    isEqualTo: vehicleId)
-                                                .get();
-
-                                        // Fetch current reading (Miles/Hours) for the selected vehicle
-                                        final vehicleDoc =
-                                            await FirebaseFirestore.instance
-                                                .collection("Users")
-                                                .doc(currentUId)
-                                                .collection("Vehicles")
-                                                .doc(vehicleId)
-                                                .get();
-
-                                        if (vehicleDoc.exists) {
-                                          final int currentReading = int.parse(
-                                            vehicleDoc[isTruck
-                                                    ? 'currentMiles'
-                                                    : 'hoursReading'] ??
-                                                '0',
-                                          );
-
-                                          final data = {
-                                            "updatedAt":
-                                                DateFormat('yyyy-MM-dd')
-                                                    .format(DateTime.now()),
-                                            isTruck
-                                                    ? "prevMilesValue"
-                                                    : "prevHoursReadingValue":
-                                                currentReading.toString(),
-                                            isTruck
-                                                    ? "currentMiles"
-                                                    : "hoursReading":
-                                                enteredValue.toString(),
-                                            isTruck ? "miles" : "hoursReading":
-                                                enteredValue.toString(),
-                                            isTruck
-                                                    ? 'currentMilesArray'
-                                                    : 'hoursReadingArray':
-                                                FieldValue.arrayUnion([
-                                              {
-                                                isTruck ? "miles" : "hours":
-                                                    enteredValue,
-                                                "date": DateTime.now()
-                                                    .toIso8601String(),
-                                              }
-                                            ]),
-                                          };
-
-                                          // Get current user data to determine if we're a team member
-                                          final currentUserDoc =
-                                              await FirebaseFirestore.instance
-                                                  .collection('Users')
-                                                  .doc(currentUId)
-                                                  .get();
-
-                                          final isTeamMember = currentUserDoc
-                                                  .data()?['isTeamMember'] ==
-                                              true;
-                                          final ownerUid = isTeamMember
-                                              ? (currentUserDoc
-                                                      .data()?['createdBy'] ??
-                                                  currentUId)
-                                              : currentUId;
-
-                                          // Update owner's vehicle first
-                                          await FirebaseFirestore.instance
-                                              .collection("Users")
-                                              .doc(ownerUid)
-                                              .collection("Vehicles")
-                                              .doc(vehicleId)
-                                              .update(data);
-
-                                          // Query all team members under this owner (including the current user if they're a team member)
-                                          final teamMembersSnapshot =
-                                              await FirebaseFirestore.instance
-                                                  .collection('Users')
-                                                  .where('createdBy',
-                                                      isEqualTo: ownerUid)
-                                                  .where('isTeamMember',
-                                                      isEqualTo: true)
-                                                  .get();
-
-                                          // Save to all team members who have this vehicle
-                                          for (final doc
-                                              in teamMembersSnapshot.docs) {
-                                            final teamMemberUid = doc.id;
-
-                                            // Check if this team member has this vehicle
-                                            final teamMemberVehicleDoc =
+                                            // Check if DataServices subcollection exists and is not empty
+                                            final dataServicesSnapshot =
                                                 await FirebaseFirestore.instance
-                                                    .collection('Users')
-                                                    .doc(teamMemberUid)
-                                                    .collection('Vehicles')
-                                                    .doc(vehicleId)
-                                                    .get();
-
-                                            if (teamMemberVehicleDoc.exists) {
-                                              await FirebaseFirestore.instance
-                                                  .collection('Users')
-                                                  .doc(teamMemberUid)
-                                                  .collection("Vehicles")
-                                                  .doc(vehicleId)
-                                                  .update(data);
-                                            }
-                                          }
-
-                                          // If current user is team member, also update their own vehicle
-                                          if (isTeamMember &&
-                                              currentUId != ownerUid) {
-                                            final currentUserVehicleDoc =
-                                                await FirebaseFirestore.instance
-                                                    .collection('Users')
+                                                    .collection("Users")
                                                     .doc(currentUId)
-                                                    .collection('Vehicles')
+                                                    .collection("DataServices")
+                                                    .where("vehicleId",
+                                                        isEqualTo: vehicleId)
+                                                    .get();
+
+                                            // Fetch current reading (Miles/Hours) for the selected vehicle
+                                            final vehicleDoc =
+                                                await FirebaseFirestore.instance
+                                                    .collection("Users")
+                                                    .doc(currentUId)
+                                                    .collection("Vehicles")
                                                     .doc(vehicleId)
                                                     .get();
 
-                                            if (currentUserVehicleDoc.exists) {
+                                            if (vehicleDoc.exists) {
+                                              final int currentReading =
+                                                  int.parse(
+                                                vehicleDoc[isTruck
+                                                        ? 'currentMiles'
+                                                        : 'hoursReading'] ??
+                                                    '0',
+                                              );
+
+                                              final data = {
+                                                "updatedAt":
+                                                    DateFormat('yyyy-MM-dd')
+                                                        .format(DateTime.now()),
+                                                isTruck
+                                                        ? "prevMilesValue"
+                                                        : "prevHoursReadingValue":
+                                                    currentReading.toString(),
+                                                isTruck
+                                                        ? "currentMiles"
+                                                        : "hoursReading":
+                                                    enteredValue.toString(),
+                                                isTruck
+                                                        ? "miles"
+                                                        : "hoursReading":
+                                                    enteredValue.toString(),
+                                                isTruck
+                                                        ? 'currentMilesArray'
+                                                        : 'hoursReadingArray':
+                                                    FieldValue.arrayUnion([
+                                                  {
+                                                    isTruck ? "miles" : "hours":
+                                                        enteredValue,
+                                                    "date": DateTime.now()
+                                                        .toIso8601String(),
+                                                  }
+                                                ]),
+                                              };
+
+                                              // Get current user data to determine if we're a team member
+                                              final currentUserDoc =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('Users')
+                                                      .doc(currentUId)
+                                                      .get();
+
+                                              final isTeamMember =
+                                                  currentUserDoc.data()?[
+                                                          'isTeamMember'] ==
+                                                      true;
+                                              final ownerUid = isTeamMember
+                                                  ? (currentUserDoc.data()?[
+                                                          'createdBy'] ??
+                                                      currentUId)
+                                                  : currentUId;
+
+                                              // Update owner's vehicle first
                                               await FirebaseFirestore.instance
-                                                  .collection('Users')
-                                                  .doc(currentUId)
+                                                  .collection("Users")
+                                                  .doc(ownerUid)
                                                   .collection("Vehicles")
                                                   .doc(vehicleId)
                                                   .update(data);
+
+                                              // Query all team members under this owner (including the current user if they're a team member)
+                                              final teamMembersSnapshot =
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('Users')
+                                                      .where('createdBy',
+                                                          isEqualTo: ownerUid)
+                                                      .where('isTeamMember',
+                                                          isEqualTo: true)
+                                                      .get();
+
+                                              // Save to all team members who have this vehicle
+                                              for (final doc
+                                                  in teamMembersSnapshot.docs) {
+                                                final teamMemberUid = doc.id;
+
+                                                // Check if this team member has this vehicle
+                                                final teamMemberVehicleDoc =
+                                                    await FirebaseFirestore
+                                                        .instance
+                                                        .collection('Users')
+                                                        .doc(teamMemberUid)
+                                                        .collection('Vehicles')
+                                                        .doc(vehicleId)
+                                                        .get();
+
+                                                if (teamMemberVehicleDoc
+                                                    .exists) {
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('Users')
+                                                      .doc(teamMemberUid)
+                                                      .collection("Vehicles")
+                                                      .doc(vehicleId)
+                                                      .update(data);
+                                                }
+                                              }
+
+                                              // If current user is team member, also update their own vehicle
+                                              if (isTeamMember &&
+                                                  currentUId != ownerUid) {
+                                                final currentUserVehicleDoc =
+                                                    await FirebaseFirestore
+                                                        .instance
+                                                        .collection('Users')
+                                                        .doc(currentUId)
+                                                        .collection('Vehicles')
+                                                        .doc(vehicleId)
+                                                        .get();
+
+                                                if (currentUserVehicleDoc
+                                                    .exists) {
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('Users')
+                                                      .doc(currentUId)
+                                                      .collection("Vehicles")
+                                                      .doc(vehicleId)
+                                                      .update(data);
+                                                }
+                                              }
+
+                                              debugPrint(
+                                                  '${isTruck ? 'Miles' : 'Hours'} updated successfully!');
+                                              todayMilesController.clear();
+                                              hoursController.clear();
+                                              setState(() {
+                                                selectedVehicle = null;
+                                                selectedVehicleType = '';
+                                              });
+
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Saved successfully!'),
+                                                  duration:
+                                                      Duration(seconds: 2),
+                                                ),
+                                              );
+
+                                              if (dataServicesSnapshot
+                                                  .docs.isEmpty) {
+                                                // Call cloud function to notify about missing services
+                                                final HttpsCallable callable =
+                                                    FirebaseFunctions.instance
+                                                        .httpsCallable(
+                                                            'checkAndNotifyUserForVehicleService');
+
+                                                await callable.call({
+                                                  'userId': currentUId,
+                                                  'vehicleId': vehicleId,
+                                                });
+
+                                                log('Called checkAndNotifyUserForVehicleService for $vehicleId');
+                                              } else {
+                                                // Call the cloud function to check for notifications
+                                                final HttpsCallable callable =
+                                                    FirebaseFunctions.instance
+                                                        .httpsCallable(
+                                                            'checkDataServicesAndNotify');
+
+                                                final result = await callable
+                                                    .call({
+                                                  'userId': currentUId,
+                                                  'vehicleId': vehicleId
+                                                });
+
+                                                log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                              }
+                                            } else {
+                                              throw 'Vehicle data not found';
                                             }
-                                          }
-
-                                          debugPrint(
-                                              '${isTruck ? 'Miles' : 'Hours'} updated successfully!');
-                                          todayMilesController.clear();
-                                          hoursController.clear();
-                                          setState(() {
-                                            selectedVehicle = null;
-                                            selectedVehicleType = '';
-                                          });
-
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content:
-                                                  Text('Saved successfully!'),
-                                              duration: Duration(seconds: 2),
-                                            ),
-                                          );
-
-                                          if (dataServicesSnapshot
-                                              .docs.isEmpty) {
-                                            // Call cloud function to notify about missing services
-                                            final HttpsCallable callable =
-                                                FirebaseFunctions.instance
-                                                    .httpsCallable(
-                                                        'checkAndNotifyUserForVehicleService');
-
-                                            await callable.call({
-                                              'userId': currentUId,
-                                              'vehicleId': vehicleId,
-                                            });
-
-                                            log('Called checkAndNotifyUserForVehicleService for $vehicleId');
-                                          } else {
-                                            // Call the cloud function to check for notifications
-                                            final HttpsCallable callable =
-                                                FirebaseFunctions.instance
-                                                    .httpsCallable(
-                                                        'checkDataServicesAndNotify');
-
-                                            final result = await callable.call({
-                                              'userId': currentUId,
-                                              'vehicleId': vehicleId
-                                            });
-
-                                            log('Check Data Services Cloud function result: ${result.data} vehicle Id $vehicleId');
+                                          } catch (e) {
+                                            debugPrint(
+                                                'Error updating ${isTruck ? 'miles' : 'hours'}: $e');
+                                            // ScaffoldMessenger.of(context)
+                                            //     .showSnackBar(
+                                            //   SnackBar(
+                                            //     content: Text(
+                                            //         'Failed to save ${isTruck ? 'miles' : 'hours'}: $e'),
+                                            //     duration: Duration(seconds: 2),
+                                            //   ),
+                                            // );
                                           }
                                         } else {
-                                          throw 'Vehicle data not found';
+                                          // ScaffoldMessenger.of(context)
+                                          //     .showSnackBar(
+                                          //   SnackBar(
+                                          //     content: Text(
+                                          //         'Please select a vehicle and enter a value'),
+                                          //     duration: Duration(seconds: 2),
+                                          //   ),
+                                          // );
                                         }
-                                      } catch (e) {
-                                        debugPrint(
-                                            'Error updating ${isTruck ? 'miles' : 'hours'}: $e');
-                                        // ScaffoldMessenger.of(context)
-                                        //     .showSnackBar(
-                                        //   SnackBar(
-                                        //     content: Text(
-                                        //         'Failed to save ${isTruck ? 'miles' : 'hours'}: $e'),
-                                        //     duration: Duration(seconds: 2),
-                                        //   ),
-                                        // );
-                                      }
-                                    } else {
-                                      // ScaffoldMessenger.of(context)
-                                      //     .showSnackBar(
-                                      //   SnackBar(
-                                      //     content: Text(
-                                      //         'Please select a vehicle and enter a value'),
-                                      //     duration: Duration(seconds: 2),
-                                      //   ),
-                                      // );
-                                    }
-                                  },
-                                  color: kPrimary,
-                                  text:
-                                      'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
-                                ),
+                                      },
+                                      color: kPrimary,
+                                      text:
+                                          'Save ${selectedVehicleData?['vehicleType'] == 'Truck' ? 'Miles' : 'Hours'}',
+                                    ),
+                                ],
                               ],
                             ),
                           ),

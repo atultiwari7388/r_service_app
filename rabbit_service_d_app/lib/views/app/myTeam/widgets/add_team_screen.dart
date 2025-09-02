@@ -47,12 +47,13 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   DateTime? lastDrugTest;
   DateTime? dateOfHire;
   DateTime? dateOfTermination;
+  bool areAllVehiclesSelected = false;
 
   var isUserAcCreated = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  List<Map<String, dynamic>> vehicles = []; // To store vehicle details
-  List<String> selectedVehicles = []; // To store selected vehicles' IDs
+  List<Map<String, dynamic>> vehicles = [];
+  List<String> selectedVehicles = [];
   String? selectedRole;
   String? selectedPayType;
   List<String> selectedRecordAccess = [];
@@ -325,12 +326,67 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 Text("Firstly select a role"),
               SizedBox(height: 10.h),
               if (selectedRole != null && selectedRole != "Vendor") ...[
-                Text(
-                  "Assign Vehicles",
-                  style: appStyle(16, Colors.black, FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Assign Vehicles",
+                      style: appStyle(16, Colors.black, FontWeight.bold),
+                    ),
+
+                    // Add the Select All/Deselect All button
+                    if (vehicles.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (areAllVehiclesSelected) {
+                              // Deselect all vehicles
+                              selectedVehicles.clear();
+                              areAllVehiclesSelected = false;
+                            } else {
+                              // Select all vehicles
+                              selectedVehicles = vehicles
+                                  .map((vehicle) => vehicle['id'] as String)
+                                  .toList();
+                              areAllVehiclesSelected = true;
+                            }
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                            areAllVehiclesSelected
+                                ? "Deselect All"
+                                : "Select All",
+                            style: appStyle(14, kPrimary, FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 SizedBox(height: 15.h),
                 Divider(),
+                // vehicles.isEmpty
+                //     ? Text("No Vehicles")
+                //     : Column(
+                //         children: vehicles.map((vehicle) {
+                //           return CheckboxListTile(
+                //             title: Text(
+                //                 "${vehicle['vehicleNumber']} (${vehicle['companyName']})"),
+                //             value: selectedVehicles.contains(vehicle['id']),
+                //             onChanged: (bool? selected) {
+                //               setState(() {
+                //                 if (selected == true) {
+                //                   selectedVehicles.add(vehicle['id']);
+                //                 } else {
+                //                   selectedVehicles.remove(vehicle['id']);
+                //                 }
+                //               });
+                //             },
+                //           );
+                //         }).toList(),
+                //       ),
+
                 vehicles.isEmpty
                     ? Text("No Vehicles")
                     : Column(
@@ -346,11 +402,16 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                                 } else {
                                   selectedVehicles.remove(vehicle['id']);
                                 }
+
+                                // Update the "Select All" state
+                                areAllVehiclesSelected =
+                                    selectedVehicles.length == vehicles.length;
                               });
                             },
                           );
                         }).toList(),
                       ),
+
                 SizedBox(height: 10.h),
 
                 //record access

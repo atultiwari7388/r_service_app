@@ -214,8 +214,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                           final List<dynamic> images = job['images'] ?? [];
 
                           return MyJobsCard(
-                            companyNameAndVehicleName:
-                                "${job["companyName"]} (${vehicleNumber})",
+                            companyNameAndVehicleName: "${vehicleNumber}",
                             address: job["userDeliveryAddress"].toString(),
                             serviceName: job["selectedService"].toString(),
                             jobId: job["orderId"].toString(),
