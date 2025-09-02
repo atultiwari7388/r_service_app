@@ -385,7 +385,7 @@ export default function RecordsPage() {
           // Set validation error if service requires subservices
           setValidationErrors((prev) => ({
             ...prev,
-            [serviceId]: "Please select at least one sub-service",
+            [serviceId]: "Select at least one sub-service",
           }));
         }
       }

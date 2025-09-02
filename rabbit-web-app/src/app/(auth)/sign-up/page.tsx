@@ -50,28 +50,21 @@ const Signup: React.FC = () => {
     "above 500",
   ];
 
-  // Auth state check
-  const { user } = useAuth() || { user: null };
-
-  // useEffect(() => {
-  //   if (!user?.emailVerified) {
-  //     router.push("/login");
-  //   } else {
-  //     router.push("/");
-  //   }
-  // }, [router, user]);
+  const { user, isLoading } = useAuth() || { user: null, isLoading: true };
 
   useEffect(() => {
-    if (!user) return; // no user → stay on signup page
+    if (isLoading) return; // wait until auth state is resolved
 
-    if (user.emailVerified) {
-      // already signed in & verified → send to home
-      router.push("/");
-    } else {
-      // signed in but not verified → ask them to login and verify
-      router.push("/login");
+    if (!user) {
+      return;
     }
-  }, [user, router]);
+
+    if (!user.emailVerified) {
+      router.push("/login");
+    } else {
+      router.push("/");
+    }
+  }, [user, isLoading, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>

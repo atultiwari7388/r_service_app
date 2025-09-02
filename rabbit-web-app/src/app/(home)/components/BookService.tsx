@@ -269,7 +269,7 @@ const BookingSection: React.FC = () => {
         selectedService: selectedService,
         companyName: selectedVehicleData.companyName,
         description: description,
-        vehicleNumber: selectedVehicle,
+        vehicleNumber: `${selectedVehicle} (${selectedVehicleData.companyName})`,
         userPhoneNumber: userData.phoneNumber,
         userDeliveryAddress: selectedLocation,
         userLat: selectedLocationData.location.latitude,

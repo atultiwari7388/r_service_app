@@ -252,9 +252,7 @@ export default function MyJobsPage() {
                     {item.userDeliveryAddress}
                   </td>
                   <td className="px-4 py-2 border-b">{item.selectedService}</td>
-                  <td className="px-4 py-2 border-b">
-                    {item.vehicleNumber} ({item.companyName})
-                  </td>
+                  <td className="px-4 py-2 border-b">{item.vehicleNumber}</td>
                   <td className="px-4 py-2 border-b">
                     {item.mechanicsOffer.some((offer) => offer.status === 1)
                       ? item.fixPriceEnabled

@@ -21,6 +21,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
+import Link from "next/link";
 
 export interface Trip {
   id: string;
@@ -90,6 +91,7 @@ export default function CreateMemberAddTripPageComponent({
   const [isLoading, setIsLoading] = useState(false);
 
   const [ownerId, setOwnerId] = useState("");
+  const [perMileCharge, setPerMileCharge] = useState("");
 
   // Trip states
   const [trips, setTrips] = useState<TripDetails[]>([]);
@@ -123,6 +125,7 @@ export default function CreateMemberAddTripPageComponent({
         const data = userDoc.data() as ProfileValues;
         // setUserData(data);
         setOwnerId(data.createdBy || user.uid);
+        setPerMileCharge(data.perMileCharge || "0");
       }
     };
 
@@ -381,6 +384,13 @@ export default function CreateMemberAddTripPageComponent({
           >
             {showAddExpense ? "Cancel" : "Add Expense"}
           </button>
+
+          <Link
+            href={`/account/manage-team/member-trips/${memberId}?ownerId=${ownerId}&perMileCharge=${perMileCharge}`}
+            className="text-blue-500 hover:underline"
+          >
+            Back to Trips
+          </Link>
         </div>
 
         {showAddTrip && (

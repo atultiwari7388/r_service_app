@@ -14,7 +14,7 @@ import {
 interface AuthContextType {
   user: User | undefined | null;
   isLoading: boolean;
-  logout: () => Promise<void>; // Add logout function type
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
