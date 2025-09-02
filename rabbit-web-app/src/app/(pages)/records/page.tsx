@@ -62,7 +62,7 @@ import jsPDF from "jspdf";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import Image from "next/image";
-// import { parseISO, format } from "date-fns";
+import { parseISO, format } from "date-fns";
 
 interface Vehicle {
   brand: string;
@@ -2460,7 +2460,7 @@ export default function RecordsPage() {
                         {/* {new Date(record.date).toString()} */}
 
                         <TableCell className="table-cell">
-                          {record.date}
+                          {format(parseISO(record.date), "MM-dd-yyyy")}
                         </TableCell>
                       </TableCell>
                       <TableCell className="table-cell">
