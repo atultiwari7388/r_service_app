@@ -468,6 +468,7 @@ export default function RecordsPage() {
       // }
 
       const data = {
+        updatedAt: new Date().toISOString().split("T")[0],
         [prevReadingField]: currentReading.toString(),
         [currentReadingField]: enteredValue.toString(),
         [readingValueField]: enteredValue.toString(),
@@ -1090,7 +1091,8 @@ export default function RecordsPage() {
         invoice,
         invoiceAmount,
         description,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString().split("T")[0],
+        updatedAt: new Date().toISOString().split("T")[0],
         active: true,
       };
 
