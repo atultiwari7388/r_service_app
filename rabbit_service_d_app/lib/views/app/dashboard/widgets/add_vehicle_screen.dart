@@ -974,7 +974,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                   ),
                                   child: TextField(
                                     decoration: InputDecoration(
-                                      labelText: 'Year *',
+                                      labelText: 'Your Vehicle Year *',
                                       border: OutlineInputBorder(
                                         borderRadius:
                                             BorderRadius.circular(12.0),
@@ -1012,7 +1012,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     controller: TextEditingController(
                                       text: _selectedYear == null
                                           ? ''
-                                          : DateFormat('MM-dd-yyyy')
+                                          : DateFormat('yyyy')
                                               .format(_selectedYear!),
                                     ),
                                   ),

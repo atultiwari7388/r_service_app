@@ -462,168 +462,349 @@ class _AddTeamTripOwnerAndAccountantState
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0.w),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 40.h,
-                            child: TextField(
-                              controller: _tripNameController,
+                  SizedBox(height: 20.h),
+                  // Add Trip and add mileage or expense
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        buildCustomRowButton(Icons.add, "Add Trip", kSecondary,
+                            () {
+                          setState(() {
+                            showAddTrip = !showAddTrip;
+                            showAddMileageOrExpense = false;
+                            showViewTrips = false;
+                          });
+                        }),
+                        buildCustomRowButton(
+                            Icons.add, "Add Expenses", kPrimary, () {
+                          setState(() {
+                            showAddTrip = false;
+                            showAddMileageOrExpense = !showAddMileageOrExpense;
+                            showViewTrips = false;
+                          });
+                        }),
+                      ],
+                    ),
+                  ),
+
+                  if (showAddTrip) ...[
+                    SizedBox(height: 20.h),
+                    Card(
+                      elevation: 4,
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0.w),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 40.h,
+                              child: TextField(
+                                controller: _tripNameController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Trip Name',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.text,
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            SizedBox(
+                              height: 40.h,
+                              child: TextField(
+                                controller: _currentMilesController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Current Miles',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            widget.teamRole == "Owner"
+                                ? SizedBox(
+                                    height: 40.h,
+                                    child: TextField(
+                                      controller: _oEarningController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Load Price',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  )
+                                : SizedBox(),
+                            widget.teamRole == "Owner"
+                                ? SizedBox(height: 10.h)
+                                : SizedBox(),
+                            InkWell(
+                              onTap: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedDate ?? DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    selectedDate = picked;
+                                  });
+                                }
+                              },
+                              child: SizedBox(
+                                height: 55.h,
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Date',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  child: Text(
+                                    selectedDate != null
+                                        ? selectedDate!
+                                            .toLocal()
+                                            .toString()
+                                            .split(' ')[0]
+                                        : 'Select Trip Start Date',
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            // Vehicle Dropdown
+
+                            DropdownButtonFormField<String>(
+                              value: selectedVehicle,
+                              hint: const Text('Select Truck'),
+                              items: vehicles
+                                  .where((v) => v['vehicleType'] == "Truck")
+                                  .map((vehicle) {
+                                return DropdownMenuItem<String>(
+                                  value: vehicle['id'],
+                                  child: Text(
+                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                    style: appStyleUniverse(
+                                        17, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedVehicle = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 10.h),
+
+                            DropdownButtonFormField<String>(
+                              value: selectedTrailer,
+                              hint: const Text('Select Trailer'),
+                              items: vehicles
+                                  .where((v) => v['vehicleType'] == "Trailer")
+                                  .map((vehicle) {
+                                return DropdownMenuItem<String>(
+                                  value: vehicle['id'],
+                                  child: Text(
+                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                    style: appStyleUniverse(
+                                        17, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectedTrailer = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 10.h),
+
+                            // Load Type Dropdown
+                            DropdownButtonFormField<String>(
+                              value: selectLoadType,
+                              hint: const Text('Select Load Type'),
+                              items: loadTypes.map((type) {
+                                return DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(
+                                    type,
+                                    style: appStyleUniverse(
+                                        17, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  selectLoadType = value!;
+                                });
+                              },
+                            ),
+
+                            SizedBox(height: 10.h),
+
+                            CustomButton(
+                              text: "Add Trip",
+                              onPress: addTrip,
+                              color: kPrimary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  if (showAddMileageOrExpense) ...[
+                    SizedBox(height: 20.h),
+                    Card(
+                      elevation: 4,
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0.w),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                //trip drop-down
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection("Users")
+                                      .doc(currentUId)
+                                      .collection('trips')
+                                      .snapshots(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData ||
+                                        snapshot.data!.docs.isEmpty) {
+                                      return Center(
+                                          child: Text(
+                                              "Please add a trip first.",
+                                              style: TextStyle(color: kRed)));
+                                    }
+
+                                    List<DropdownMenuItem<String>> tripItems =
+                                        snapshot.data!.docs.map((doc) {
+                                      return DropdownMenuItem<String>(
+                                        value: doc.id,
+                                        child: Text(doc['tripName']),
+                                      );
+                                    }).toList();
+
+                                    return DropdownButton<String>(
+                                      value: selectedTrip.isNotEmpty
+                                          ? selectedTrip
+                                          : null,
+                                      hint: Text("Select Trip"),
+                                      items: tripItems,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          selectedTrip = value!;
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
+                                Spacer(),
+                                // expense type drop-down
+                                DropdownButton<String>(
+                                  value: selectedType,
+                                  items: ['Expenses']
+                                      .map((e) => DropdownMenuItem(
+                                          value: e, child: Text(e)))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    setState(() => selectedType = value!);
+                                  },
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 10.h),
+                            SizedBox(
+                              height: 40.h,
+                              child: TextField(
+                                controller: amountController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Enter Amount',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            SizedBox(height: 10.h),
+                            TextField(
+                              controller: descriptionController,
+                              maxLines: 2,
                               decoration: const InputDecoration(
-                                labelText: 'Trip Name',
+                                labelText: 'Description',
                                 border: OutlineInputBorder(),
                               ),
                               keyboardType: TextInputType.text,
                             ),
-                          ),
-                          SizedBox(height: 10.h),
-                          SizedBox(
-                            height: 40.h,
-                            child: TextField(
-                              controller: _currentMilesController,
-                              decoration: const InputDecoration(
-                                labelText: 'Current Miles',
-                                border: OutlineInputBorder(),
-                              ),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          SizedBox(height: 10.h),
-                          widget.teamRole == "Owner"
-                              ? SizedBox(
-                                  height: 40.h,
-                                  child: TextField(
-                                    controller: _oEarningController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Load Price',
-                                      border: OutlineInputBorder(),
+                            SizedBox(height: 10.h),
+                            _selectedImage != null
+                                ? Image.file(
+                                    _selectedImage!,
+                                    height: 100.h,
+                                    // width: 100.w,
+                                  )
+                                : const SizedBox(),
+                            SizedBox(height: 10.h),
+                            Row(
+                              children: [
+//select Image
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: pickImage,
+                                    icon: const Icon(Icons.add_photo_alternate,
+                                        color: Colors.white),
+                                    label: const Text(
+                                      'Upload Image',
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold),
                                     ),
-                                    keyboardType: TextInputType.number,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: kSecondary,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
                                   ),
-                                )
-                              : SizedBox(),
-                          widget.teamRole == "Owner"
-                              ? SizedBox(height: 10.h)
-                              : SizedBox(),
-                          InkWell(
-                            onTap: () async {
-                              final DateTime? picked = await showDatePicker(
-                                context: context,
-                                initialDate: selectedDate ?? DateTime.now(),
-                                firstDate: DateTime(2000),
-                                lastDate: DateTime(2100),
-                              );
-                              if (picked != null) {
-                                setState(() {
-                                  selectedDate = picked;
-                                });
-                              }
-                            },
-                            child: SizedBox(
-                              height: 55.h,
-                              child: InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Date',
-                                  border: OutlineInputBorder(),
                                 ),
-                                child: Text(
-                                  selectedDate != null
-                                      ? selectedDate!
-                                          .toLocal()
-                                          .toString()
-                                          .split(' ')[0]
-                                      : 'Select Trip Start Date',
-                                ),
-                              ),
+
+                                CustomButton(
+                                    height: 30.h,
+                                    width: 100.w,
+                                    text: "Add Entry ",
+                                    onPress: () => addMileageOrExpense(),
+                                    color: kPrimary),
+                              ],
                             ),
-                          ),
-                          SizedBox(height: 10.h),
-                          // Vehicle Dropdown
-
-                          DropdownButtonFormField<String>(
-                            value: selectedVehicle,
-                            hint: const Text('Select Truck'),
-                            items: vehicles
-                                .where((v) => v['vehicleType'] == "Truck")
-                                .map((vehicle) {
-                              return DropdownMenuItem<String>(
-                                value: vehicle['id'],
-                                child: Text(
-                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                  style: appStyleUniverse(
-                                      17, kDark, FontWeight.normal),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedVehicle = value;
-                              });
-                            },
-                          ),
-                          SizedBox(height: 10.h),
-
-                          DropdownButtonFormField<String>(
-                            value: selectedTrailer,
-                            hint: const Text('Select Trailer'),
-                            items: vehicles
-                                .where((v) => v['vehicleType'] == "Trailer")
-                                .map((vehicle) {
-                              return DropdownMenuItem<String>(
-                                value: vehicle['id'],
-                                child: Text(
-                                  '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                  style: appStyleUniverse(
-                                      17, kDark, FontWeight.normal),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedTrailer = value;
-                              });
-                            },
-                          ),
-                          SizedBox(height: 10.h),
-
-                          // Load Type Dropdown
-                          DropdownButtonFormField<String>(
-                            value: selectLoadType,
-                            hint: const Text('Select Load Type'),
-                            items: loadTypes.map((type) {
-                              return DropdownMenuItem<String>(
-                                value: type,
-                                child: Text(
-                                  type,
-                                  style: appStyleUniverse(
-                                      17, kDark, FontWeight.normal),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectLoadType = value!;
-                              });
-                            },
-                          ),
-
-                          SizedBox(height: 10.h),
-
-                          CustomButton(
-                            text: "Add Trip",
-                            onPress: addTrip,
-                            color: kPrimary,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
+    );
+  }
+
+  Widget buildCustomRowButton(
+      IconData iconName, String text, Color boxColor, void Function()? onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 38.h,
+        width: MediaQuery.of(context).size.width * 0.45,
+        decoration: BoxDecoration(
+            color: boxColor, borderRadius: BorderRadius.circular(10.r)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(iconName, color: kWhite),
+            Text(text, style: appStyleUniverse(14, kWhite, FontWeight.w500)),
+          ],
+        ),
+      ),
     );
   }
 }

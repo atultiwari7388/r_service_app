@@ -142,7 +142,7 @@ class AuthController extends GetxController {
         if (!user.emailVerified) {
           showToastMessage(
               "Email Not Verified",
-              "Please verify your email before logging in, If you have not receive mail also check in spam",
+              "Please verify your email to continue. If you didn’t receive it, check your Spam folder.",
               Colors.orange);
 
           await user.sendEmailVerification();
