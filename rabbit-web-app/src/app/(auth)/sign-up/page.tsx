@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import {
@@ -18,7 +18,6 @@ import {
   where,
 } from "firebase/firestore";
 import { toast } from "react-toastify";
-import { useAuth } from "@/contexts/AuthContexts";
 
 const Signup: React.FC = () => {
   const [formValues, setFormValues] = useState({
@@ -49,22 +48,6 @@ const Signup: React.FC = () => {
     "1 to 500",
     "above 500",
   ];
-
-  const { user, isLoading } = useAuth() || { user: null, isLoading: true };
-
-  useEffect(() => {
-    if (isLoading) return; // wait until auth state is resolved
-
-    if (!user) {
-      return;
-    }
-
-    if (!user.emailVerified) {
-      router.push("/login");
-    } else {
-      router.push("/");
-    }
-  }, [user, isLoading, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -199,12 +182,15 @@ const Signup: React.FC = () => {
       await setDoc(doc(db, "Users", uid), userData);
       // Send email verification
       await sendEmailVerification(user);
-      router.push("/login");
+
+      // Sign out the user after creation
+      await auth.signOut();
 
       setLoading(false);
       alert(
         "Signup successful! Please check your email for verification. If you have not received the email, also check your spam folder."
       );
+      router.push("/login");
     } catch (error: unknown | string) {
       console.error("Error during signup:", error);
 
