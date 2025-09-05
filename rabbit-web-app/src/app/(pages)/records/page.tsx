@@ -621,10 +621,32 @@ export default function RecordsPage() {
     return name.toLowerCase().replace(/\s+/g, "");
   };
 
-  const handlePackageSelect = (selectedPackages: string[]) => {
-    const newSelectedServices = new Set(selectedServices);
+  // const handlePackageSelect = (selectedPackages: string[]) => {
+  //   const newSelectedServices = new Set(selectedServices);
 
-    selectedPackages.forEach((pkg) => {
+  //   selectedPackages.forEach((pkg) => {
+  //     services.forEach((service) => {
+  //       if (
+  //         service.pName &&
+  //         service.pName.some(
+  //           (p) => normalizePackageName(p) === normalizePackageName(pkg)
+  //         )
+  //       ) {
+  //         newSelectedServices.add(service.sId);
+  //       }
+  //     });
+  //   });
+
+  //   setSelectedServices(newSelectedServices);
+  //   setSelectedPackages(new Set(selectedPackages));
+  // };
+
+  const handlePackageSelect = (selectedPackageNames: string[]) => {
+    const newSelectedServices = new Set<string>();
+    const newSelectedPackages = new Set(selectedPackageNames);
+
+    // First, add services from selected packages
+    selectedPackageNames.forEach((pkg) => {
       services.forEach((service) => {
         if (
           service.pName &&
@@ -637,8 +659,31 @@ export default function RecordsPage() {
       });
     });
 
+    // Then, add any manually selected services that aren't in packages
+    selectedServices.forEach((serviceId) => {
+      const service = services.find((s) => s.sId === serviceId);
+      if (service && service.pName) {
+        // Check if this service is part of any selected package
+        const isInSelectedPackage = service.pName.some((pkgName) =>
+          Array.from(newSelectedPackages).some(
+            (selectedPkg) =>
+              normalizePackageName(selectedPkg) ===
+              normalizePackageName(pkgName)
+          )
+        );
+
+        // If not in any selected package, keep it selected
+        if (!isInSelectedPackage) {
+          newSelectedServices.add(serviceId);
+        }
+      } else {
+        // Services without packages should remain selected
+        newSelectedServices.add(serviceId);
+      }
+    });
+
     setSelectedServices(newSelectedServices);
-    setSelectedPackages(new Set(selectedPackages));
+    setSelectedPackages(newSelectedPackages);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -927,7 +972,7 @@ export default function RecordsPage() {
   const handleSaveRecords = async () => {
     try {
       if (!validateForm()) {
-        toast.error("Please fix the validation errors before saving");
+        toast.error(`Select at least one service and required sub-services`);
         return;
       }
 
@@ -1418,6 +1463,7 @@ export default function RecordsPage() {
 
   const resetForm = () => {
     setSelectedVehicle("");
+    setSelectedVehicleData(null);
     setSelectedServices(new Set());
     setSelectedPackages(new Set());
     setSelectedSubServices({});
@@ -1427,7 +1473,15 @@ export default function RecordsPage() {
     setDate("");
     setWorkshopName("");
     setInvoice("");
+    setInvoiceAmount("");
     setDescription("");
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImageUrl(null);
+    setValidationErrors({});
+    setServiceSearchText("");
+    setIsEditing(false);
+    setEditingRecordId(null);
     setShowAddRecords(false);
   };
 
@@ -1955,7 +2009,10 @@ export default function RecordsPage() {
       {/* Add Record Dialog */}
       <Dialog
         open={showAddRecords}
-        onClose={() => setShowAddRecords(false)}
+        // onClose={() => setShowAddRecords(false)}
+        onClose={() => {
+          resetForm();
+        }}
         maxWidth="md"
         fullWidth
       >

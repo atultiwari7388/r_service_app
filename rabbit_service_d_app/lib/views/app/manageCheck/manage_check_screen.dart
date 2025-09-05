@@ -42,8 +42,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   DateTimeRange? _dateRange;
 
   // Check number management
-  int? _currentCheckNumber;
-  int? _nextCheckNumber;
+  String? _currentCheckNumber;
+  String? _nextCheckNumber;
 
   @override
   void initState() {
@@ -77,22 +77,102 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
   }
 
-  Future<void> _incrementCheckNumber() async {
-    if (_nextCheckNumber == null) return;
+  Future<String?> _getNextAvailableCheckNumber() async {
+    if (_currentCheckNumber == null) return null;
 
     try {
+      // Get all check series for this user
+      QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
+          .collection('CheckSeries')
+          .where('userId', isEqualTo: currentUId)
+          .get();
+
+      // Get all checks from all series
+      List<String> allCheckNumbers = [];
+      for (var seriesDoc in seriesSnapshot.docs) {
+        QuerySnapshot checksSnapshot = await FirebaseFirestore.instance
+            .collection('CheckSeries')
+            .doc(seriesDoc.id)
+            .collection('Checks')
+            .get();
+
+        allCheckNumbers.addAll(checksSnapshot.docs.map((doc) {
+          return doc['checkNumber'] as String;
+        }));
+      }
+
+      // Sort the check numbers
+      allCheckNumbers.sort((a, b) {
+        // Extract prefix and numeric parts for comparison
+        String prefixA = a.replaceAll(RegExp(r'[0-9]'), '');
+        String prefixB = b.replaceAll(RegExp(r'[0-9]'), '');
+
+        if (prefixA != prefixB) return prefixA.compareTo(prefixB);
+
+        int numA = int.parse(a.replaceAll(prefixA, ''));
+        int numB = int.parse(b.replaceAll(prefixB, ''));
+        return numA.compareTo(numB);
+      });
+
+      // Find the first unused check number
+      for (var checkNumber in allCheckNumbers) {
+        // Check if this check number is used in the Checks collection
+        QuerySnapshot usedCheck = await FirebaseFirestore.instance
+            .collection('Checks')
+            .where('checkNumber', isEqualTo: checkNumber)
+            .where('createdBy', isEqualTo: currentUId)
+            .get();
+
+        if (usedCheck.docs.isEmpty) {
+          return checkNumber;
+        }
+      }
+
+      return null; // No available check numbers
+    } catch (e) {
+      print('Error getting next check number: $e');
+      return null;
+    }
+  }
+
+  Future<void> _updateCheckNumberUsage(String checkNumber) async {
+    try {
+      // Find the check number in the CheckSeries subcollection and mark it as used
+      QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
+          .collection('CheckSeries')
+          .where('userId', isEqualTo: currentUId)
+          .get();
+
+      for (var seriesDoc in seriesSnapshot.docs) {
+        QuerySnapshot checksSnapshot = await FirebaseFirestore.instance
+            .collection('CheckSeries')
+            .doc(seriesDoc.id)
+            .collection('Checks')
+            .where('checkNumber', isEqualTo: checkNumber)
+            .get();
+
+        if (checksSnapshot.docs.isNotEmpty) {
+          await FirebaseFirestore.instance
+              .collection('CheckSeries')
+              .doc(seriesDoc.id)
+              .collection('Checks')
+              .doc(checksSnapshot.docs.first.id)
+              .update({
+            'isUsed': true,
+            'usedAt': FieldValue.serverTimestamp(),
+            'usedBy': currentUId,
+          });
+          break;
+        }
+      }
+
+      // Update the current check number in user document
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(currentUId)
-          .update({'currentCheckNumber': _nextCheckNumber! + 1});
-
-      setState(() {
-        _currentCheckNumber = _nextCheckNumber! + 1;
-      });
+          .update({'currentCheckNumber': checkNumber});
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating check number: $e')),
-      );
+      print('Error updating check number usage: $e');
     }
   }
 
@@ -448,6 +528,19 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     _selectedDate = DateTime.now();
     _totalAmount = 0.0;
 
+    // Get the next available check number
+    String? nextCheckNumber = await _getNextAvailableCheckNumber();
+    if (nextCheckNumber != null) {
+      _checkNumberController.text = nextCheckNumber;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'No available check numbers. Please add a check series first.')),
+      );
+      return;
+    }
+
     await showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -468,8 +561,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         labelStyle: appStyle(14, kDark, FontWeight.normal),
                         border: OutlineInputBorder(),
                       ),
-                      keyboardType: TextInputType.number,
-                      readOnly: _nextCheckNumber != null,
+                      readOnly: true,
                     ),
                     SizedBox(height: 16),
 
@@ -723,15 +815,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ],
                   ),
                 TextField(
-                  controller: amountController,
-                  decoration: InputDecoration(
-                    labelText: 'Enter Amount',
-                    labelStyle: appStyle(14, kDark, FontWeight.normal),
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  enabled: !isDriver,
-                ),
+                    controller: amountController,
+                    decoration: InputDecoration(
+                      labelText: 'Enter Amount',
+                      labelStyle: appStyle(14, kDark, FontWeight.normal),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    enabled: true),
               ],
             ),
           ),
@@ -785,8 +876,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
 
     try {
+      String checkNumber = _checkNumberController.text;
+
       await FirebaseFirestore.instance.collection('Checks').add({
-        'checkNumber': int.parse(_checkNumberController.text),
+        'checkNumber': checkNumber,
         'type': _selectedType,
         'userId': _selectedUserId,
         'userName': _selectedUserName,
@@ -800,7 +893,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _incrementCheckNumber();
+      // Mark this check number as used
+      await _updateCheckNumberUsage(checkNumber);
 
       if (_selectedType == 'Driver') {
         final querySnapshot = await FirebaseFirestore.instance
@@ -920,7 +1014,7 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
   List<Map<String, dynamic>> _checkSeries = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  int? _currentCheckNumber;
+  String? _currentCheckNumber;
 
   @override
   void initState() {
@@ -975,6 +1069,61 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
     }
   }
 
+  // Function to generate check numbers between start and end
+  List<Map<String, dynamic>> _generateCheckNumbers(String start, String end) {
+    List<Map<String, dynamic>> checkNumbers = [];
+
+    try {
+      // Extract prefix and numeric parts
+      String prefix = start.replaceAll(RegExp(r'[0-9]'), '');
+      String endPrefix = end.replaceAll(RegExp(r'[0-9]'), '');
+
+      // Verify prefixes match
+      if (prefix != endPrefix) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Number prefixes must match')),
+        );
+        return [];
+      }
+
+      // Extract numeric parts
+      String startNumStr = start.replaceAll(prefix, '');
+      String endNumStr = end.replaceAll(prefix, '');
+
+      int startNum = int.parse(startNumStr);
+      int endNum = int.parse(endNumStr);
+
+      if (startNum >= endNum) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('End number must be greater than start number')),
+        );
+        return [];
+      }
+
+      // Generate all numbers in the range
+      for (int i = startNum; i <= endNum; i++) {
+        // Format number with leading zeros to match the original format
+        String numStr = i.toString();
+        if (startNumStr.length > numStr.length) {
+          numStr = numStr.padLeft(startNumStr.length, '0');
+        }
+
+        checkNumbers.add({
+          'checkNumber': '$prefix$numStr',
+          'isUsed': false,
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating check numbers: $e')),
+      );
+      return [];
+    }
+
+    return checkNumbers;
+  }
+
   Future<void> _saveCheckSeries() async {
     if (_startNumberController.text.isEmpty ||
         _endNumberController.text.isEmpty) {
@@ -985,32 +1134,48 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
       return;
     }
 
-    final start = int.tryParse(_startNumberController.text);
-    final end = int.tryParse(_endNumberController.text);
+    final start = _startNumberController.text.trim();
+    final end = _endNumberController.text.trim();
 
-    if (start == null || end == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid numbers')),
-      );
-      return;
-    }
+    // Generate the check numbers
+    List<Map<String, dynamic>> checkNumbers = _generateCheckNumbers(start, end);
 
-    if (start >= end) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('End number must be greater than start number')),
-      );
-      return;
+    if (checkNumbers.isEmpty) {
+      return; // Error already shown in _generateCheckNumbers
     }
 
     try {
-      await FirebaseFirestore.instance.collection('CheckSeries').add({
+      // Save the series to Firestore
+      DocumentReference seriesRef =
+          await FirebaseFirestore.instance.collection('CheckSeries').add({
         'userId': currentUId,
         'startNumber': start,
         'endNumber': end,
         'createdAt': FieldValue.serverTimestamp(),
+        'totalChecks': checkNumbers.length,
       });
 
+      // Save individual check numbers to a subcollection
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      for (var check in checkNumbers) {
+        var docRef = FirebaseFirestore.instance
+            .collection('CheckSeries')
+            .doc(seriesRef.id)
+            .collection('Checks')
+            .doc();
+
+        batch.set(docRef, {
+          ...check,
+          'seriesId': seriesRef.id,
+          'userId': currentUId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      // Update current check number if not set
       if (_currentCheckNumber == null) {
         await FirebaseFirestore.instance
             .collection('Users')
@@ -1059,10 +1224,9 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                   child: TextField(
                     controller: _startNumberController,
                     decoration: const InputDecoration(
-                      labelText: 'Start Number',
+                      labelText: 'Start Number (e.g., RMS001)',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.number,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1070,19 +1234,23 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                   child: TextField(
                     controller: _endNumberController,
                     decoration: const InputDecoration(
-                      labelText: 'End Number',
+                      labelText: 'End Number (e.g., RMS0050)',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.number,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _saveCheckSeries,
-              child: const Text('Save Check Series'),
-            ),
+            // ElevatedButton(
+
+            //   onPressed: _saveCheckSeries,
+            //   child: const Text('Save Check Series'),
+            // ),
+            CustomButton(
+                text: "Save Check Series",
+                onPress: _saveCheckSeries,
+                color: kPrimary),
             const SizedBox(height: 20),
             const Text('Check Series History',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1100,8 +1268,25 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                               child: ListTile(
                                 title: Text(
                                     '${series['startNumber']} - ${series['endNumber']}'),
-                                subtitle: Text(DateFormat('MMM dd, yyyy')
-                                    .format(series['createdAt'])),
+                                subtitle: Text(
+                                    '${series['totalChecks']} checks • ${DateFormat('MMM dd, yyyy').format(series['createdAt'])}'),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.visibility),
+                                  onPressed: () {
+                                    // Navigate to detail view of this series
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            CheckSeriesDetailScreen(
+                                          seriesId: series['id'],
+                                          seriesName:
+                                              '${series['startNumber']} - ${series['endNumber']}',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             );
                           },
@@ -1109,6 +1294,69 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
                       ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// New screen to show the details of a check series
+class CheckSeriesDetailScreen extends StatelessWidget {
+  final String seriesId;
+  final String seriesName;
+
+  const CheckSeriesDetailScreen({
+    super.key,
+    required this.seriesId,
+    required this.seriesName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Check Series: $seriesName'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('CheckSeries')
+            .doc(seriesId)
+            .collection('Checks')
+            .orderBy('checkNumber')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No checks found'));
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              var check =
+                  snapshot.data!.docs[index].data() as Map<String, dynamic>;
+              return ListTile(
+                title: Text(check['checkNumber']),
+                trailing: Icon(
+                  check['isUsed']
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
+                  color: check['isUsed'] ? Colors.green : Colors.grey,
+                ),
+                subtitle: check['isUsed']
+                    ? Text(
+                        'Used on ${DateFormat('MMM dd, yyyy').format((check['usedAt'] as Timestamp).toDate())}')
+                    : const Text('Available'),
+              );
+            },
+          );
+        },
       ),
     );
   }
