@@ -402,6 +402,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                             tripDoc['vehicleNumber'],
                         'trailerId': newTrailerId,
                         'loadType': selectedLoadType,
+                        'updatedAt': Timestamp.now(),
                       };
 
                       // Only add trailer fields if a trailer is selected and trailers exist

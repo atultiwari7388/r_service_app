@@ -23,6 +23,14 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const { user } = useAuth() || { user: null };
+
+  useEffect(() => {
+    if (user && user.emailVerified) {
+      router.push("/records");
+    }
+  }, [router, user]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormValues((prevValues) => ({
@@ -106,13 +114,6 @@ const Login: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  const { user } = useAuth() || { user: null };
-  useEffect(() => {
-    if (user) {
-      router.push("/records");
-    }
-  }, [router, user]);
 
   return (
     <div className="flex items-center justify-center mt-10 mb-5">
