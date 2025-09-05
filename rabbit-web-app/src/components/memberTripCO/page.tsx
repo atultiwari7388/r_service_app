@@ -76,6 +76,8 @@ interface TripDetails {
   updatedAt: Timestamp;
   oEarnings?: number;
   loadType?: string;
+  googleMiles: number;
+  googleTotalEarning: number;
 }
 
 export default function CreateMemberAddTripPageComponent({
@@ -221,7 +223,7 @@ export default function CreateMemberAddTripPageComponent({
         tripName,
         vehicleId: selectedVehicle,
         currentUID: memberId,
-        memberRole: "Driver",
+        memberRole,
         companyName: vehicle?.companyName,
         vehicleNumber: vehicle?.vehicleNumber,
         trailerId: selectedTrailer || "",
