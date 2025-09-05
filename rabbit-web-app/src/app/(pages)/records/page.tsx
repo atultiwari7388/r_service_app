@@ -642,10 +642,10 @@ export default function RecordsPage() {
   // };
 
   const handlePackageSelect = (selectedPackageNames: string[]) => {
-    const newSelectedServices = new Set<string>();
     const newSelectedPackages = new Set(selectedPackageNames);
 
-    // First, add services from selected packages
+    // First, create a set of all services that should be selected based on packages
+    const packageServices = new Set<string>();
     selectedPackageNames.forEach((pkg) => {
       services.forEach((service) => {
         if (
@@ -654,36 +654,43 @@ export default function RecordsPage() {
             (p) => normalizePackageName(p) === normalizePackageName(pkg)
           )
         ) {
-          newSelectedServices.add(service.sId);
+          packageServices.add(service.sId);
         }
       });
     });
 
-    // Then, add any manually selected services that aren't in packages
+    // Now determine which services to keep selected:
+    // 1. All services from selected packages
+    // 2. Any manually selected services that aren't part of any package
+    const newSelectedServices = new Set<string>();
+
+    // Add all services from selected packages
+    packageServices.forEach((serviceId) => {
+      newSelectedServices.add(serviceId);
+    });
+
+    // Add manually selected services that aren't in any package
     selectedServices.forEach((serviceId) => {
       const service = services.find((s) => s.sId === serviceId);
-      if (service && service.pName) {
-        // Check if this service is part of any selected package
-        const isInSelectedPackage = service.pName.some((pkgName) =>
-          Array.from(newSelectedPackages).some(
-            (selectedPkg) =>
-              normalizePackageName(selectedPkg) ===
-              normalizePackageName(pkgName)
-          )
-        );
-
-        // If not in any selected package, keep it selected
-        if (!isInSelectedPackage) {
-          newSelectedServices.add(serviceId);
-        }
-      } else {
-        // Services without packages should remain selected
+      // Only keep if service has no packages or isn't in any selected package
+      if (!service?.pName || service.pName.length === 0) {
         newSelectedServices.add(serviceId);
       }
     });
 
     setSelectedServices(newSelectedServices);
     setSelectedPackages(newSelectedPackages);
+
+    // Also clear subservices for any deselected services
+    setSelectedSubServices((prev) => {
+      const newSubServices = { ...prev };
+      Object.keys(newSubServices).forEach((serviceId) => {
+        if (!newSelectedServices.has(serviceId)) {
+          delete newSubServices[serviceId];
+        }
+      });
+      return newSubServices;
+    });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2147,10 +2154,8 @@ export default function RecordsPage() {
                   </Box>
                 </FormControl>
               </div>
-
               {/** Select packages */}
-
-              {selectedVehicleData?.vehicleType == "Truck" && (
+              {/* {selectedVehicleData?.vehicleType == "Truck" && (
                 <div className="mb-4">
                   <FormControl fullWidth variant="outlined">
                     <InputLabel id="select-packages-label">
@@ -2186,8 +2191,45 @@ export default function RecordsPage() {
                     </Select>
                   </FormControl>
                 </div>
+              )} */}
+              {selectedVehicleData?.vehicleType == "Truck" && (
+                <div className="mb-4">
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel id="select-packages-label">
+                      Select Packages
+                    </InputLabel>
+                    <Select
+                      labelId="select-packages-label"
+                      multiple
+                      value={Array.from(selectedPackages)}
+                      onChange={(e) => {
+                        const newPackages = e.target.value as string[];
+                        handlePackageSelect(newPackages);
+                      }}
+                      renderValue={(selected) => selected.join(", ")}
+                      label="Select Packages"
+                      sx={{ minHeight: "56px" }}
+                    >
+                      {servicePackages
+                        .filter((pkg) =>
+                          pkg.type.some(
+                            (t) =>
+                              t.toLowerCase() ===
+                              selectedVehicleData?.vehicleType?.toLowerCase()
+                          )
+                        )
+                        .map((pkg) => (
+                          <MenuItem key={pkg.name} value={pkg.name}>
+                            <Checkbox
+                              checked={selectedPackages.has(pkg.name)}
+                            />
+                            {pkg.name}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
+                </div>
               )}
-
               <div className="mb-4">
                 <TextField
                   fullWidth
@@ -2204,9 +2246,7 @@ export default function RecordsPage() {
                   className="rounded-lg"
                 />
               </div>
-
               {/** Select Services */}
-
               <div className="grid grid-cols-4 gap-3 mb-4">
                 {services
                   .filter((service) => {
@@ -2319,7 +2359,6 @@ export default function RecordsPage() {
                     </div>
                   ))}
               </div>
-
               <div className="mb-4 flex flex-col gap-4">
                 {selectedVehicleData?.vehicleType === "Truck" && (
                   <TextField
