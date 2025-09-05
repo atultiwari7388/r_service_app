@@ -257,6 +257,8 @@ export default function ManageTripPage() {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         oEarnings: role === "Owner" ? parseInt(oEarnings) : 0,
+        googleMiles: 0,
+        googleTotalEarning: 0,
       };
 
       batch.set(tripRef, tripData);

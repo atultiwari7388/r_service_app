@@ -366,26 +366,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 ),
                 SizedBox(height: 15.h),
                 Divider(),
-                // vehicles.isEmpty
-                //     ? Text("No Vehicles")
-                //     : Column(
-                //         children: vehicles.map((vehicle) {
-                //           return CheckboxListTile(
-                //             title: Text(
-                //                 "${vehicle['vehicleNumber']} (${vehicle['companyName']})"),
-                //             value: selectedVehicles.contains(vehicle['id']),
-                //             onChanged: (bool? selected) {
-                //               setState(() {
-                //                 if (selected == true) {
-                //                   selectedVehicles.add(vehicle['id']);
-                //                 } else {
-                //                   selectedVehicles.remove(vehicle['id']);
-                //                 }
-                //               });
-                //             },
-                //           );
-                //         }).toList(),
-                //       ),
 
                 vehicles.isEmpty
                     ? Text("No Vehicles")
@@ -513,7 +493,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
               selectedRole == "Driver"
                   ? buildTextFieldInputWidget(
                       "Enter per mile charge",
-                      TextInputType.number,
+                      TextInputType.streetAddress,
                       perMileChargeController,
                       Icons.money,
                     )

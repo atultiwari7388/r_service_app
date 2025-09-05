@@ -845,7 +845,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                         String truckNameandNumber =
                             "${doc['vehicleNumber']} (${doc['companyName']})";
                         String trailerNameandNumber = doc['trailerId'] != null
-                            ? "${doc['trailerNumber']} (${doc['trailerCompanyName']})"
+                            ? "${doc['trailerNumber']} ${doc['trailerCompanyName']}"
                             : "";
                         String vehicleID = doc['vehicleId'];
                         String loadValue = doc['loadType'];
@@ -1124,7 +1124,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                     ? ElevatedButton(
                         onPressed: () => _showGoogleMilesDialog(doc),
                         child: Text(
-                          "Add G'Miles",
+                          "+ G'Miles",
                           style: appStyle(12, kWhite, FontWeight.normal),
                         ),
                         style: ElevatedButton.styleFrom(
