@@ -519,6 +519,19 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     initializeStreams();
   }
 
+  List<Map<String, dynamic>> getSortedTrucks() {
+    final trucks = vehicles.where((v) => v['vehicleType'] == "Truck").toList();
+    trucks.sort((a, b) => a['vehicleNumber'].compareTo(b['vehicleNumber']));
+    return trucks;
+  }
+
+  List<Map<String, dynamic>> getSortedTrailers() {
+    final trailers =
+        vehicles.where((v) => v['vehicleType'] == "Trailer").toList();
+    trailers.sort((a, b) => a['vehicleNumber'].compareTo(b['vehicleNumber']));
+    return trailers;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -670,13 +683,10 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                             ),
                             SizedBox(height: 10.h),
                             // Vehicle Dropdown
-
                             DropdownButtonFormField<String>(
                               value: selectedVehicle,
                               hint: const Text('Select Truck'),
-                              items: vehicles
-                                  .where((v) => v['vehicleType'] == "Truck")
-                                  .map((vehicle) {
+                              items: getSortedTrucks().map((vehicle) {
                                 return DropdownMenuItem<String>(
                                   value: vehicle['id'],
                                   child: Text(
@@ -692,14 +702,12 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                 });
                               },
                             ),
-                            SizedBox(height: 10.h),
 
+                            SizedBox(height: 10.h),
                             DropdownButtonFormField<String>(
                               value: selectedTrailer,
                               hint: const Text('Select Trailer'),
-                              items: vehicles
-                                  .where((v) => v['vehicleType'] == "Trailer")
-                                  .map((vehicle) {
+                              items: getSortedTrailers().map((vehicle) {
                                 return DropdownMenuItem<String>(
                                   value: vehicle['id'],
                                   child: Text(

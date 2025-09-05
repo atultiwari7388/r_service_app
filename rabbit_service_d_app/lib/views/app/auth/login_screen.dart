@@ -210,6 +210,16 @@ class _LoginScreenState extends State<LoginScreen> {
           color: kPrimary,
         ),
         SizedBox(height: 20.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10.w),
+          child: Text(
+            "*If you are not able to login, please verify your email first. If you didn't receive the verification email, check your spam folder.*",
+            textAlign: TextAlign.center,
+            style: appStyle(12, kPrimary, FontWeight.bold),
+          ),
+        ),
+        SizedBox(height: 20.h),
+
         // Registration Link
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
