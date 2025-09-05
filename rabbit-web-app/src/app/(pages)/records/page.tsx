@@ -2452,7 +2452,7 @@ export default function RecordsPage() {
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => setShowAddRecords(false)}
+            onClick={() => resetForm()}
             className="text-gray-600 hover:text-gray-800"
           >
             Cancel
