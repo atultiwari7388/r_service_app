@@ -221,7 +221,7 @@ export default function CreateMemberAddTripPageComponent({
         tripName,
         vehicleId: selectedVehicle,
         currentUID: memberId,
-        memberRole,
+        memberRole: "Driver",
         companyName: vehicle?.companyName,
         vehicleNumber: vehicle?.vehicleNumber,
         trailerId: selectedTrailer || "",
