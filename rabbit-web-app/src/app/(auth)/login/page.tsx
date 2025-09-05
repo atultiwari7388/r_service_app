@@ -107,9 +107,8 @@ const Login: React.FC = () => {
         }
       }
     } catch (error) {
-      toast.error(
-        `Login failed. Please check your credentials. Error: ${error}`
-      );
+      toast.error(`Email unverified or invalid credentials`);
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }

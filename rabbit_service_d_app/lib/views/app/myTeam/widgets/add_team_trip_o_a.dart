@@ -266,6 +266,8 @@ class _AddTeamTripOwnerAndAccountantState
         selectedTrailer = null;
         selectLoadType = "Empty";
       });
+      //back to previous screen
+      Navigator.of(context).pop();
     } catch (e) {
       showToastMessage("Error", e.toString(), kRed);
     } finally {

@@ -655,6 +655,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                   .doc(widget.memberId)
                   .collection('trips')
                   .where("currentUID", isEqualTo: widget.memberId)
+                  .orderBy("updatedAt", descending: true)
                   .snapshots(),
               builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (!snapshot.hasData) return const CircularProgressIndicator();
@@ -845,7 +846,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                             "${doc['vehicleNumber']} (${doc['companyName']})";
                         String trailerNameandNumber = doc['trailerId'] != null
                             ? "${doc['trailerNumber']} (${doc['trailerCompanyName']})"
-                            : "N/A";
+                            : "";
                         String vehicleID = doc['vehicleId'];
                         String loadValue = doc['loadType'];
 
@@ -961,10 +962,12 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Truck: $truckNameandNumber",
-                  style: appStyle(12, kDark, FontWeight.w300)),
-              Text("Trailer: $trailerNameandNumber",
-                  style: appStyle(12, kDark, FontWeight.w300)),
+              Text("$truckNameandNumber",
+                  style: appStyle(12, kPrimary, FontWeight.w500)),
+              trailerNameandNumber.isEmpty
+                  ? SizedBox()
+                  : Text("$trailerNameandNumber",
+                      style: appStyle(12, kDark, FontWeight.w300)),
             ],
           ),
           SizedBox(height: 10.h),
@@ -972,12 +975,182 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text("Start Date: $formattedStartDate",
-                  style: appStyle(12, kDark, FontWeight.w300)),
+                  style: appStyle(12, kDark, FontWeight.w500)),
               Text("Start Miles: $tripStartMiles",
-                  style: appStyle(12, kDark, FontWeight.w300)),
+                  style: appStyle(12, kDark, FontWeight.w500)),
             ],
           ),
-          SizedBox(height: 5.h),
+          SizedBox(height: 3.h),
+          tripStatus == "Completed"
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("End Date: $formattedEndDate",
+                        style: appStyle(12, kDark, FontWeight.w500)),
+                    Text("End Miles: $tripEndMiles",
+                        style: appStyle(12, kDark, FontWeight.w500)),
+                  ],
+                )
+              : SizedBox(),
+          SizedBox(height: 3.h),
+          if (tripStatus == "Completed") ...[
+            if (hasGoogleMiles) ...[
+              widget.role == "Manager"
+                  ? SizedBox()
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("G'Miles: ${googleMiles.toStringAsFixed(0)}",
+                            style: appStyle(14, kPrimary, FontWeight.w500)),
+                        Text(
+                            "G'Earnings: \$${googleTotalEarning.toStringAsFixed(0)}",
+                            style: appStyle(14, Colors.green, FontWeight.w500)),
+                      ],
+                    ),
+            ],
+            SizedBox(height: 1.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Expenses: \$${totalExpenses.toStringAsFixed(0)}",
+                    style: appStyle(15, kPrimary, FontWeight.w500)),
+              ],
+            ),
+            SizedBox(height: 2.h),
+            Row(
+              children: [
+                Text(
+                  "Load :",
+                  style: appStyle(13, kPrimary, FontWeight.w400),
+                ),
+                Text(
+                  "${loadType}",
+                  style: appStyle(13, kPrimary, FontWeight.w400),
+                )
+              ],
+            ),
+            SizedBox(height: 4.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Text("Earnings: \$${earnings.toStringAsFixed(0)}",
+                //     style: appStyle(14, kSecondary, FontWeight.w500)),
+                Text("Trip Miles: ${totalMiles.toStringAsFixed(0)}",
+                    style: appStyle(14, kSecondary, FontWeight.w500)),
+              ],
+            ),
+            SizedBox(height: 1.h),
+            Wrap(
+              direction: Axis.horizontal,
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                isPaid
+                    ?
+                    // ElevatedButton(
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: kSecondary,
+                    //       foregroundColor: kWhite,
+                    //     ),
+                    //     onPressed: null,
+                    //     child: Text("Paid"))
+
+                    SizedBox()
+                    : widget.role == "Manager"
+                        ? SizedBox()
+                        : ElevatedButton(
+                            onPressed: () {
+                              showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text('Payment'),
+                                      content: Text("Are you sure to Pay ?",
+                                          style: appStyle(
+                                              17, kDark, FontWeight.normal)),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () async {
+                                            // await FirebaseFirestore.instance
+                                            //     .collection("Users")
+                                            //     .doc(widget.memberId)
+                                            //     .collection('trips')
+                                            //     .doc(doc.id)
+                                            //     .update({
+                                            //   'isPaid': true,
+                                            // }).then((value) {
+                                            //   Get.back();
+                                            // }).catchError((error) {
+                                            //   print(error);
+                                            // });
+
+                                            Navigator.pop(context);
+                                            Get.to(() => ManageCheckScreen());
+                                          },
+                                          child: Text('Confirm'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text('Cancel'),
+                                        ),
+                                      ],
+                                    );
+                                  });
+                            },
+                            child: Text(
+                              "Pay",
+                              style: appStyle(12, kWhite, FontWeight.normal),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                                minimumSize: Size(60, 40),
+                                backgroundColor: kPrimary,
+                                foregroundColor: kWhite)),
+                SizedBox(width: 10.w),
+                widget.role == "Manager"
+                    ? SizedBox()
+                    : ElevatedButton(
+                        onPressed: () => _showEditDialog(doc),
+                        child: Text("Edit",
+                            style: appStyle(12, kWhite, FontWeight.normal)),
+                        style: ElevatedButton.styleFrom(
+                            minimumSize: Size(60, 40),
+                            backgroundColor: Colors.orange,
+                            foregroundColor: kWhite),
+                      ),
+                SizedBox(width: 10.w),
+                (widget.role == "Accountant" || widget.role == "Owner")
+                    ? ElevatedButton(
+                        onPressed: () => _showGoogleMilesDialog(doc),
+                        child: Text(
+                          "Add G'Miles",
+                          style: appStyle(12, kWhite, FontWeight.normal),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimary, foregroundColor: kWhite),
+                      )
+                    : Container(),
+                SizedBox(width: 10.w),
+                ElevatedButton(
+                  onPressed: () => Get.to(() => TripDetailsScreen(
+                      docId: doc.id,
+                      userId: widget.memberId,
+                      tripName: doc['tripName'],
+                      truckDetails:
+                          doc['vehicleNumber'] + "(${doc['companyName']})",
+                      trailerDetails: doc['trailerNumber'] +
+                          "(${doc['trailerCompanyName']})")),
+                  child: Text(
+                    "View",
+                    style: appStyle(12, kWhite, FontWeight.normal),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: kSecondary, foregroundColor: kWhite),
+                ),
+              ],
+            )
+          ],
           Row(
             children: [
               tripStatus != "Completed" ? Text("Trip Status: ") : Text(""),
@@ -1187,182 +1360,19 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
               Spacer(),
             ],
           ),
-          if (tripStatus == "Completed") ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("End Date: $formattedEndDate"),
-                Text("End Miles: $tripEndMiles"),
-              ],
-            ),
-            SizedBox(height: 5.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Text("Earnings: \$${earnings.toStringAsFixed(0)}",
-                //     style: appStyle(14, kSecondary, FontWeight.w500)),
-                Text("Trip Miles: ${totalMiles.toStringAsFixed(0)}"),
-              ],
-            ),
-            if (hasGoogleMiles) ...[
-              widget.role == "Manager"
-                  ? SizedBox()
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text("G'Miles: ${googleMiles.toStringAsFixed(0)}",
-                            style: appStyle(14, kPrimary, FontWeight.w500)),
-                        Text(
-                            "G'Earnings: \$${googleTotalEarning.toStringAsFixed(0)}",
-                            style: appStyle(14, Colors.green, FontWeight.w500)),
-                      ],
-                    ),
-            ],
-            SizedBox(height: 5.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Expenses: \$${totalExpenses.toStringAsFixed(0)}",
-                    style: appStyle(15, kPrimary, FontWeight.w500)),
-              ],
-            ),
-            SizedBox(height: 2.h),
-            Row(
-              children: [
-                Text(
-                  "Load :",
-                  style: appStyle(13, kPrimary, FontWeight.w400),
-                ),
-                Text(
-                  "${loadType}",
-                  style: appStyle(13, kPrimary, FontWeight.w400),
-                )
-              ],
-            ),
-            SizedBox(height: 5.h),
-            Wrap(
-              direction: Axis.horizontal,
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                isPaid
-                    ?
-                    // ElevatedButton(
-                    //     style: ElevatedButton.styleFrom(
-                    //       backgroundColor: kSecondary,
-                    //       foregroundColor: kWhite,
-                    //     ),
-                    //     onPressed: null,
-                    //     child: Text("Paid"))
-
-                    SizedBox()
-                    : widget.role == "Manager"
-                        ? SizedBox()
-                        : ElevatedButton(
-                            onPressed: () {
-                              showDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      title: Text('Payment'),
-                                      content: Text("Are you sure to Pay ?",
-                                          style: appStyle(
-                                              17, kDark, FontWeight.normal)),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () async {
-                                            // await FirebaseFirestore.instance
-                                            //     .collection("Users")
-                                            //     .doc(widget.memberId)
-                                            //     .collection('trips')
-                                            //     .doc(doc.id)
-                                            //     .update({
-                                            //   'isPaid': true,
-                                            // }).then((value) {
-                                            //   Get.back();
-                                            // }).catchError((error) {
-                                            //   print(error);
-                                            // });
-
-                                            Navigator.pop(context);
-                                            Get.to(() => ManageCheckScreen());
-                                          },
-                                          child: Text('Confirm'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text('Cancel'),
-                                        ),
-                                      ],
-                                    );
-                                  });
-                            },
-                            child: Text(
-                              "Pay",
-                              style: appStyle(12, kWhite, FontWeight.normal),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                                minimumSize: Size(60, 40),
-                                backgroundColor: kPrimary,
-                                foregroundColor: kWhite)),
-                // SizedBox(width: 10.w),
-                // widget.role == "Manager"
-                //     ? SizedBox()
-                //     : ElevatedButton(
-                //         onPressed: () => _showEditDialog(doc),
-                //         child: Text("Edit",
-                //             style: appStyle(12, kWhite, FontWeight.normal)),
-                //         style: ElevatedButton.styleFrom(
-                //             minimumSize: Size(60, 40),
-                //             backgroundColor: Colors.orange,
-                //             foregroundColor: kWhite),
-                //       ),
-                SizedBox(width: 10.w),
-                (widget.role == "Accountant" || widget.role == "Owner")
-                    ? ElevatedButton(
-                        onPressed: () => _showGoogleMilesDialog(doc),
-                        child: Text(
-                          "Add Google Miles",
-                          style: appStyle(12, kWhite, FontWeight.normal),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimary.withOpacity(0.8),
-                            foregroundColor: kWhite),
-                      )
-                    : Container(),
-                SizedBox(width: 10.w),
-                ElevatedButton(
-                  onPressed: () => Get.to(() => TripDetailsScreen(
-                      docId: doc.id,
-                      userId: widget.memberId,
-                      tripName: doc['tripName'],
-                      truckDetails:
-                          doc['vehicleNumber'] + "(${doc['companyName']})",
-                      trailerDetails: doc['trailerNumber'] +
-                          "(${doc['trailerCompanyName']})")),
-                  child: Text(
-                    "View",
-                    style: appStyle(12, kWhite, FontWeight.normal),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: kSecondary, foregroundColor: kWhite),
-                ),
-              ],
-            )
-          ],
-          widget.role == "Manager"
+          tripStatus == "Completed"
               ? SizedBox()
-              : ElevatedButton(
-                  onPressed: () => _showEditDialog(doc),
-                  child: Text("Edit",
-                      style: appStyle(12, kWhite, FontWeight.normal)),
-                  style: ElevatedButton.styleFrom(
-                      minimumSize: Size(60, 40),
-                      backgroundColor: Colors.orange,
-                      foregroundColor: kWhite),
-                ),
+              : widget.role == "Manager"
+                  ? SizedBox()
+                  : ElevatedButton(
+                      onPressed: () => _showEditDialog(doc),
+                      child: Text("Edit",
+                          style: appStyle(12, kWhite, FontWeight.normal)),
+                      style: ElevatedButton.styleFrom(
+                          minimumSize: Size(60, 40),
+                          backgroundColor: Colors.orange,
+                          foregroundColor: kWhite),
+                    ),
         ],
       ),
     );
