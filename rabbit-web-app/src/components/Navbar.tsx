@@ -691,9 +691,9 @@ export default function NavBar() {
                   </>
                 ) : (
                   <>
-                    <div className="px-3 py-2 text-sm text-orange-600">
+                    {/* <div className="px-3 py-2 text-sm text-orange-600">
                       Please verify your email
-                    </div>
+                    </div> */}
 
                     <div className="flex items-center space-x-6">
                       <NavLink href="/about-us">About Us</NavLink>
