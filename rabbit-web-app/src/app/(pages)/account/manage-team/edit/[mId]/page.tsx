@@ -49,6 +49,7 @@ interface TeamMember {
   perMileCharge: string;
   role: string;
   payType: string;
+  payMode: string;
   isView: boolean;
   isEdit: boolean;
   isAdd: boolean;
@@ -93,6 +94,7 @@ export default function EditTeamMemberPage() {
     perMileCharge: "",
     role: "",
     payType: "",
+    payMode: "",
     isView: false,
     isEdit: false,
     isAdd: false,
@@ -151,24 +153,6 @@ export default function EditTeamMemberPage() {
       setIsLoading(false);
     }
   };
-  // const fetchMemberVehicles = async () => {
-  //   try {
-  //     setIsVehiclesLoading(true);
-  //     const vehiclesRef = collection(db, "Users", memberId, "Vehicles");
-  //     const snapshot = await getDocs(vehiclesRef);
-  //     const vehicleList = snapshot.docs.map((doc) => ({
-  //       vehicleId: doc.id,
-  //       ...doc.data(),
-  //     })) as Vehicle[];
-  //     setMemberVehicles(vehicleList);
-  //     setSelectedVehicles(vehicleList.map((v) => v.vehicleId));
-  //   } catch (error) {
-  //     console.error(error);
-  //     toast.error("Failed to fetch member vehicles");
-  //   } finally {
-  //     setIsVehiclesLoading(false);
-  //   }
-  // };
 
   const fetchMemberVehicles = async () => {
     try {
@@ -194,27 +178,6 @@ export default function EditTeamMemberPage() {
       setIsVehiclesLoading(false);
     }
   };
-
-  // const fetchVehicles = async () => {
-  //   if (user) {
-  //     try {
-  //       setIsVehiclesLoading(true);
-  //       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-  //       const snapshot = await getDocs(vehiclesRef);
-  //       const vehicleList = snapshot.docs.map((doc) => ({
-  //         vehicleId: doc.id,
-  //         ...doc.data(),
-  //       }));
-  //       console.log("Fetched vehicles:", vehicleList);
-  //       setVehicles(vehicleList as Vehicle[]);
-  //     } catch (error) {
-  //       console.error(error);
-  //       toast.error("Failed to fetch vehicles");
-  //     } finally {
-  //       setIsVehiclesLoading(false);
-  //     }
-  //   }
-  // };
 
   const fetchVehicles = async () => {
     if (user) {
@@ -344,6 +307,7 @@ export default function EditTeamMemberPage() {
         perMileCharge: formData.perMileCharge || "0",
         role: formData.role,
         payType: formData.payType || "",
+        payMode: formData.payMode || "",
         // assignedVehicles: selectedVehicles,
         isView: selectedRecordAccess.includes("View"),
         isEdit: selectedRecordAccess.includes("Edit"),
