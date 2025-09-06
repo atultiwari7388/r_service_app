@@ -694,15 +694,16 @@ export default function NavBar() {
                     <div className="px-3 py-2 text-sm text-orange-600">
                       Please verify your email
                     </div>
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        toggleMenu();
-                      }}
-                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-[#F96176] hover:bg-gray-50"
-                    >
-                      Logout
-                    </button>
+
+                    <div className="flex items-center space-x-6">
+                      <NavLink href="/about-us">About Us</NavLink>
+                      <NavLink href="/contact-us">Contact Us</NavLink>
+                      <Link href="/login">
+                        <Button className="bg-[#F96176] text-white px-6 py-2 rounded-md hover:bg-[#e05065] transition-colors">
+                          Login
+                        </Button>
+                      </Link>
+                    </div>
                   </>
                 )}
               </>
