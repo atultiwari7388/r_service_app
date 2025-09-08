@@ -604,7 +604,7 @@ const Signup: React.FC = () => {
       await auth.signOut();
 
       setLoading(false);
-      setShowEmailPopup(true); // Show the email confirmation popup
+      setShowEmailPopup(true);
     } catch (error: unknown | string) {
       console.error("Error during signup:", error);
 
@@ -835,15 +835,8 @@ const Signup: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-800 mb-4">
               Verify Your Email
             </h3>
-            <p className="text-gray-700 mb-4">
-              We&apos;ve sent a verification email to{" "}
-              <span className="font-semibold">{formValues.email}</span>. Please
-              check your inbox and click the verification link to activate your
-              account.
-            </p>
-            <p className="text-gray-700 mb-4">
-              If you don&apos;t see the email, please check your spam folder.
-            </p>
+            <p className="text-gray-700 mb-4"></p>Signup Complete ! Check your
+            inbox (or spam) to verify.
             <div className="flex justify-end">
               <button
                 onClick={handlePopupClose}
