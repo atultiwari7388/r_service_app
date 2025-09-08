@@ -14,6 +14,7 @@ import {
   where,
   updateDoc,
   writeBatch,
+  orderBy,
 } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -193,19 +194,42 @@ export default function MemberTripsPage() {
       }
     );
 
+    // const unsubscribeTrips = onSnapshot(
+    //   collection(db, "Users", memberId, "trips"),
+    //   (snapshot) => {
+    //     const tripsData = snapshot.docs.map((doc) => ({
+    //       id: doc.id,
+    //       ...doc.data(),
+    //     })) as TripDetails[];
+    //     setTrips(tripsData);
+    //     if (tripsData.length > 0) {
+    //       setFromDate(tripsData[0].tripStartDate.toDate());
+    //       setToDate(tripsData[tripsData.length - 1].tripEndDate.toDate());
+    //     }
+    //     // calculateTotals();
+    //   },
+    //   (error) => {
+    //     console.error("Trips listener error:", error);
+    //   }
+    // );
+
+    const tripsRef = collection(db, "Users", memberId, "trips");
+    const tripsQuery = query(tripsRef, orderBy("updatedAt", "desc"));
+
     const unsubscribeTrips = onSnapshot(
-      collection(db, "Users", memberId, "trips"),
+      tripsQuery,
       (snapshot) => {
         const tripsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as TripDetails[];
+
         setTrips(tripsData);
+
         if (tripsData.length > 0) {
-          setFromDate(tripsData[0].tripStartDate.toDate());
-          setToDate(tripsData[tripsData.length - 1].tripEndDate.toDate());
+          setFromDate(tripsData[tripsData.length - 1].tripStartDate.toDate());
+          setToDate(tripsData[0].tripEndDate.toDate());
         }
-        // calculateTotals();
       },
       (error) => {
         console.error("Trips listener error:", error);
@@ -927,24 +951,27 @@ export default function MemberTripsPage() {
               {/* Actions */}
               <div className="col-span-2 flex gap-2">
                 {/* Show Edit always */}
-                <button
-                  onClick={() => handleEditTrip(trip)}
-                  className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
-                >
-                  Edit
-                </button>
+                {(role === "Driver" || role === "Owner") && (
+                  <button
+                    onClick={() => handleEditTrip(trip)}
+                    className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Edit
+                  </button>
+                )}
 
                 {/* Show other buttons only if status is 2 */}
                 {trip.tripStatus === 2 && (
                   <>
-                    {!trip.isPaid && (
-                      <button
-                        onClick={() => handlePayTrip(trip.id)}
-                        className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
-                      >
-                        Pay
-                      </button>
-                    )}
+                    {!trip.isPaid &&
+                      (role === "Accountant" || role === "Owner") && (
+                        <button
+                          onClick={() => handlePayTrip(trip.id)}
+                          className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
+                        >
+                          Pay
+                        </button>
+                      )}
 
                     {(role === "Accountant" || role === "Owner") && (
                       <button
