@@ -45,6 +45,7 @@ export default function MyVehiclesPage() {
   const { user } = useAuth() || { user: null };
   const [showPopup, setShowPopup] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [role, setRole] = useState("");
 
   // Sort vehicles alphabetically by vehicleNumber
   const sortedVehicles = useMemo(() => {
@@ -65,6 +66,7 @@ export default function MyVehiclesPage() {
     const userUnsubscribe = onSnapshot(doc(db, "Users", user.uid), (doc) => {
       if (doc.exists()) {
         setUserData(doc.data() as UserData);
+        setRole((doc.data() as UserData).role || "");
       }
     });
 
@@ -322,12 +324,14 @@ export default function MyVehiclesPage() {
                     >
                       View
                     </Link>
-                    <Link
-                      href={`/account/my-vehicles/edit/${vehicle.id}`}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      Edit
-                    </Link>
+                    {role === "Owner" && (
+                      <Link
+                        href={`/account/my-vehicles/edit/${vehicle.id}`}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        Edit
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}
