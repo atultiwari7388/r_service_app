@@ -24,19 +24,12 @@ import { useAuth } from "@/contexts/AuthContexts";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { FaEdit, FaPrint, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { ProfileValues } from "@/types/types";
 
 interface VehicleDocument {
   imageUrl: string;
   text: string;
 }
-
-// interface ServiceData {
-//   defaultNotificationValue: number;
-//   nextNotificationValue: number;
-//   serviceId: string;
-//   serviceName: string;
-//   type: string;
-// }
 
 interface ServiceData {
   defaultNotificationValue: number | string;
@@ -79,8 +72,19 @@ export default function MyVehicleDetailsScreen() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [docToDelete, setDocToDelete] = useState<VehicleDocument | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [role, setRole] = useState("");
 
   useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchUserData = async () => {
+      const userDoc = await getDoc(doc(db, "Users", user?.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data() as ProfileValues;
+        setRole(data.role);
+      }
+    };
+
     const fetchVehicleData = async () => {
       if (!vehicleId || !user?.uid) return;
 
@@ -96,6 +100,7 @@ export default function MyVehicleDetailsScreen() {
     };
 
     fetchVehicleData();
+    fetchUserData();
   }, [vehicleId, user?.uid]);
 
   const handlePrint = async () => {
@@ -286,71 +291,6 @@ export default function MyVehicleDetailsScreen() {
       setDocToDelete(null);
     }
   };
-
-  // const handleEditService = async (index: number, service: ServiceData) => {
-  //   const newDefaultValue = prompt(
-  //     `Edit default notification value for ${service.serviceName}`,
-  //     service.defaultNotificationValue.toString()
-  //   );
-
-  //   if (newDefaultValue && vehicleData && user?.uid && vehicleId) {
-  //     const newValue = parseInt(newDefaultValue, 10);
-  //     if (isNaN(newValue)) {
-  //       alert("Please enter a valid number");
-  //       return;
-  //     }
-
-  //     try {
-  //       setLoading(true);
-
-  //       // Calculate the difference between current values
-  //       const currentDefault = service.defaultNotificationValue;
-  //       const currentNext = service.nextNotificationValue;
-  //       const difference = currentNext - currentDefault;
-
-  //       // Calculate new next value based on the difference
-  //       let newNextValue = newValue + difference;
-
-  //       // Ensure the new next value is not less than the new default
-  //       if (newNextValue < newValue) {
-  //         newNextValue = newValue;
-  //       }
-
-  //       // Create the updated service object
-  //       const updatedService = {
-  //         ...service,
-  //         defaultNotificationValue: newValue,
-  //         nextNotificationValue: newNextValue,
-  //         preValue: currentDefault,
-  //       };
-
-  //       // First update current user's vehicle
-  //       await updateCurrentUserVehicle(updatedService);
-
-  //       // Check if current user is owner and update team members
-  //       const userDoc = await getDoc(doc(db, "Users", user.uid));
-  //       const userData = userDoc.data();
-
-  //       if (userData?.role === "Owner") {
-  //         await updateTeamMembersVehicles(updatedService);
-  //       } else {
-  //         // If current user is team member, update owner's vehicle
-  //         if (userData?.createdBy) {
-  //           await updateOwnerVehicle(userData.createdBy, updatedService);
-  //         }
-  //       }
-
-  //       alert("Service value updated successfully");
-  //     } catch (error) {
-  //       console.error("Error updating service:", error);
-  //       alert("Error updating service");
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   }
-  // };
-
-  // Helper function to update current user's vehicle
 
   const handleEditService = async (index: number, service: ServiceData) => {
     const newDefaultValue = prompt(
@@ -714,166 +654,141 @@ export default function MyVehicleDetailsScreen() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Services</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full table-auto">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="px-4 py-2 text-left">Sr. No.</th>{" "}
-                {/* Serial number header */}
-                <th className="px-4 py-2 text-left">Service Name</th>
-                <th className="px-4 py-2 text-left">Default Value</th>
-                <th className="px-4 py-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicleData?.services
-                ?.filter(
-                  (service) =>
-                    service.defaultNotificationValue &&
-                    service.defaultNotificationValue !== 0
-                )
-                .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
-                .map((service, index) => (
-                  <tr key={service.serviceId} className="border-b">
-                    <td className="px-4 py-2">{index + 1}</td>{" "}
-                    {/* Serial number */}
-                    <td className="px-4 py-2">{service.serviceName}</td>
-                    <td className="px-4 py-2">
-                      {service.defaultNotificationValue || "N/A"} (
-                      {service.type === "reading" ? "Miles" : service.type})
-                    </td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => handleEditService(index, service)}
-                        className="text-[#F96176] hover:text-[#F96176]"
-                      >
-                        <FaEdit />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+      {/** Show Services only Owner */}
+      {role === "Owner" ? (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Services</h2>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-4 py-2 text-left">Sr. No.</th>{" "}
+                  {/* Serial number header */}
+                  <th className="px-4 py-2 text-left">Service Name</th>
+                  <th className="px-4 py-2 text-left">Default Value</th>
+                  <th className="px-4 py-2 text-left">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vehicleData?.services
+                  ?.filter(
+                    (service) =>
+                      service.defaultNotificationValue &&
+                      service.defaultNotificationValue !== 0
+                  )
+                  .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+                  .map((service, index) => (
+                    <tr key={service.serviceId} className="border-b">
+                      <td className="px-4 py-2">{index + 1}</td>{" "}
+                      {/* Serial number */}
+                      <td className="px-4 py-2">{service.serviceName}</td>
+                      <td className="px-4 py-2">
+                        {service.defaultNotificationValue || "N/A"} (
+                        {service.type === "reading" ? "Miles" : service.type})
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => handleEditService(index, service)}
+                          className="text-[#F96176] hover:text-[#F96176]"
+                        >
+                          <FaEdit />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : null}
+      {role === "Owner" ? (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
+          <div className="flex gap-4 mb-4">
+            <input
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              className="border p-2 rounded"
+              accept="image/*"
+            />
+            <button
+              onClick={handleUpload}
+              disabled={filesToUpload.length === 0}
+              className={`px-4 py-2 rounded flex items-center gap-2 ${
+                filesToUpload.length === 0
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-[#F96176] text-white hover:bg-[#F96176]"
+              }`}
+            >
+              {loading ? <LoadingIndicator /> : "Upload Documents"}
+            </button>
+          </div>
 
-      {/**
-   * 
-   *       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
-        <div className="flex gap-4">
-          <input
-            type="file"
-            multiple
-            onChange={handleFileChange}
-            className="border p-2 rounded"
-            accept="image/*"
-          />
-          <button
-            onClick={handleUpload}
-            disabled={uploadedFiles.length === 0}
-            className={`px-4 py-2 rounded flex items-center gap-2 ${
-              uploadedFiles.length === 0
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-[#F96176] text-white hover:bg-[#F96176]"
-            }`}
-          >
-            {loading ? <LoadingIndicator /> : "Upload Documents"}
-          </button>
-        </div>
-        {uploadedFiles.length > 0 && (
-          <p className="mt-2 text-sm text-gray-600">
-            {uploadedFiles.length} file(s) selected
-          </p>
-        )}
-      </div>
-
-   */}
-
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
-        <div className="flex gap-4 mb-4">
-          <input
-            type="file"
-            multiple
-            onChange={handleFileChange}
-            className="border p-2 rounded"
-            accept="image/*"
-          />
-          <button
-            onClick={handleUpload}
-            disabled={filesToUpload.length === 0}
-            className={`px-4 py-2 rounded flex items-center gap-2 ${
-              filesToUpload.length === 0
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-[#F96176] text-white hover:bg-[#F96176]"
-            }`}
-          >
-            {loading ? <LoadingIndicator /> : "Upload Documents"}
-          </button>
-        </div>
-
-        {filesToUpload.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="font-medium">Files to upload:</h3>
-            {filesToUpload.map(({ id, file, customText }) => (
-              <div
-                key={id}
-                className="flex items-center gap-4 p-3 border rounded"
-              >
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600 truncate">{file.name}</p>
-                  <input
-                    type="text"
-                    value={customText}
-                    onChange={(e) => handleTextChange(id, e.target.value)}
-                    className="w-full p-2 border rounded mt-1"
-                    placeholder="Enter description"
-                  />
+          {filesToUpload.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="font-medium">Files to upload:</h3>
+              {filesToUpload.map(({ id, file, customText }) => (
+                <div
+                  key={id}
+                  className="flex items-center gap-4 p-3 border rounded"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 truncate">
+                      {file.name}
+                    </p>
+                    <input
+                      type="text"
+                      value={customText}
+                      onChange={(e) => handleTextChange(id, e.target.value)}
+                      className="w-full p-2 border rounded mt-1"
+                      placeholder="Enter description"
+                    />
+                  </div>
+                  <button
+                    onClick={() => removeFile(id)}
+                    className="text-red-500 hover:text-red-700"
+                    title="Remove file"
+                  >
+                    <FaTrash />
+                  </button>
                 </div>
-                <button
-                  onClick={() => removeFile(id)}
-                  className="text-red-500 hover:text-red-700"
-                  title="Remove file"
-                >
-                  <FaTrash />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-semibold mb-4">Uploaded Documents</h2>
-        {vehicleData?.uploadedDocuments?.length ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {vehicleData.uploadedDocuments.map((doc, index) => (
-              <div key={index} className="border rounded p-4 relative group">
-                <img
-                  src={doc.imageUrl}
-                  alt={`Document ${index + 1}`}
-                  className="w-full h-40 object-cover mb-2"
-                />
-                <p className="text-gray-600 truncate">
-                  {doc.text || `Document ${index + 1}`}
-                </p>
-                <button
-                  onClick={() => confirmDelete(doc)}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                  title="Delete document"
-                >
-                  <FaTrash size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No documents uploaded yet</p>
-        )}
-      </div>
+      {role === "Owner" ? (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-semibold mb-4">Uploaded Documents</h2>
+          {vehicleData?.uploadedDocuments?.length ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {vehicleData.uploadedDocuments.map((doc, index) => (
+                <div key={index} className="border rounded p-4 relative group">
+                  <img
+                    src={doc.imageUrl}
+                    alt={`Document ${index + 1}`}
+                    className="w-full h-40 object-cover mb-2"
+                  />
+                  <p className="text-gray-600 truncate">
+                    {doc.text || `Document ${index + 1}`}
+                  </p>
+                  <button
+                    onClick={() => confirmDelete(doc)}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    title="Delete document"
+                  >
+                    <FaTrash size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No documents uploaded yet</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
