@@ -817,8 +817,12 @@ export default function MemberTripsPage() {
             <div className="col-span-2">Dates</div>
             <div className="col-span-1">Miles</div>
             <div className="col-span-1">Vehicles</div>
-            <div className="col-span-1">G.Miles</div>
-            <div className="col-span-1">G.Earnings</div>
+            {(role === "Accountant" || role === "Owner") && (
+              <>
+                <div className="col-span-1">G.Miles</div>
+                <div className="col-span-1">G.Earnings</div>
+              </>
+            )}
             <div className="col-span-2">T&apos;Status</div>
             <div className="col-span-2">Actions</div>
           </div>
@@ -870,16 +874,21 @@ export default function MemberTripsPage() {
               </div>
 
               {/* Google Miles */}
-              <div className="col-span-1">
-                {trip.googleMiles ? trip.googleMiles : "-"}
-              </div>
 
-              {/* Google Earnings */}
-              <div className="col-span-1">
-                {trip.googleTotalEarning
-                  ? `$${trip.googleTotalEarning.toFixed(0)}`
-                  : "-"}
-              </div>
+              {(role === "Accountant" || role === "Owner") && (
+                <>
+                  <div className="col-span-1">
+                    {trip.googleMiles ? trip.googleMiles : "-"}
+                  </div>
+
+                  {/* Google Earnings */}
+                  <div className="col-span-1">
+                    {trip.googleTotalEarning
+                      ? `$${trip.googleTotalEarning.toFixed(0)}`
+                      : "-"}
+                  </div>
+                </>
+              )}
 
               {/* Status */}
               <div className="col-span-2">
@@ -942,7 +951,7 @@ export default function MemberTripsPage() {
                         onClick={() => handleGoogleMiles(trip)}
                         className="bg-[#F96176] text-white px-3 py-1 rounded text-sm"
                       >
-                        Add G.Miles
+                        + G.Miles
                       </button>
                     )}
 
@@ -952,7 +961,7 @@ export default function MemberTripsPage() {
                           `/account/manage-trip/${trip.id}?userId=${memberId}`
                         )
                       }
-                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200"
+                      className="px-3 py-1 bg-[#58BB87] text-gray-600 rounded text-sm hover:bg-[#58BB87] hover:text-white"
                     >
                       View
                     </button>
