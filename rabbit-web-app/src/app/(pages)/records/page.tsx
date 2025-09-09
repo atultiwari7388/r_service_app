@@ -2156,43 +2156,7 @@ export default function RecordsPage() {
                 </FormControl>
               </div>
               {/** Select packages */}
-              {/* {selectedVehicleData?.vehicleType == "Truck" && (
-                <div className="mb-4">
-                  <FormControl fullWidth variant="outlined">
-                    <InputLabel id="select-packages-label">
-                      Select Packages
-                    </InputLabel>
-                    <Select
-                      labelId="select-packages-label"
-                      multiple
-                      value={Array.from(selectedPackages)}
-                      onChange={(e) =>
-                        handlePackageSelect(e.target.value as string[])
-                      }
-                      renderValue={(selected) => selected.join(", ")}
-                      label="Select Packages"
-                      sx={{ minHeight: "56px" }}
-                    >
-                      {servicePackages
-                        .filter((pkg) =>
-                          pkg.type.some(
-                            (t) =>
-                              t.toLowerCase() ===
-                              selectedVehicleData?.vehicleType?.toLowerCase()
-                          )
-                        )
-                        .map((pkg) => (
-                          <MenuItem key={pkg.name} value={pkg.name}>
-                            <Checkbox
-                              checked={selectedPackages.has(pkg.name)}
-                            />
-                            {pkg.name}
-                          </MenuItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-                </div>
-              )} */}
+
               {selectedVehicleData?.vehicleType == "Truck" && (
                 <div className="mb-4">
                   <FormControl fullWidth variant="outlined">
@@ -2406,11 +2370,27 @@ export default function RecordsPage() {
                   onChange={(e) => setWorkshopName(e.target.value)}
                   className="mb-4 rounded-lg"
                 />
-                <TextField
+                {/* <TextField
                   fullWidth
                   label="Invoice Number (Optional)"
                   value={invoice}
                   onChange={(e) => setInvoice(e.target.value)}
+                  className="mb-4 rounded-lg"
+                /> */}
+
+                <TextField
+                  fullWidth
+                  label="Invoice Number (Optional)"
+                  value={invoice}
+                  onChange={(e) => {
+                    // Limit to 10 characters
+                    if (e.target.value.length <= 10) {
+                      setInvoice(e.target.value);
+                    }
+                  }}
+                  inputProps={{
+                    maxLength: 10,
+                  }}
                   className="mb-4 rounded-lg"
                 />
                 <TextField
