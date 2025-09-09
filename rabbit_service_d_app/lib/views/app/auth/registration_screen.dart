@@ -323,12 +323,64 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     SizedBox(height: 14.h),
                     CustomButton(
                       text: "Continue",
+                      // onPress: controller.isUserAcCreated
+                      //     ? null
+                      //     : () async {
+                      //         if (_formKey.currentState != null) {
+                      //           if (_formKey.currentState!.validate()) {
+                      //             //firstly we delete the anonymous user from the firestore if exists
+                      //             final prefs =
+                      //                 await SharedPreferences.getInstance();
+                      //             final userId = prefs.getString('an_user_id');
+
+                      //             if (userId != null) {
+                      //               await _firestore
+                      //                   .collection('Users')
+                      //                   .doc(userId)
+                      //                   .delete();
+                      //               await prefs.remove('an_user_id');
+
+                      //               log("Anonymous user $userId deleted from Firestore");
+                      //             }
+
+                      //             controller.createUserWithEmailAndPassword();
+                      //           } else {
+                      //             // Check which fields are empty and show specific message
+                      //             if (controller
+                      //                 .addressController.text.isEmpty) {
+                      //               showToastMessage(
+                      //                   "Error",
+                      //                   "Please enter your address",
+                      //                   Colors.red);
+                      //             } else if (controller
+                      //                 .cityController.text.isEmpty) {
+                      //               showToastMessage("Error",
+                      //                   "Please enter your city", Colors.red);
+                      //             } else if (controller
+                      //                 .stateController.text.isEmpty) {
+                      //               showToastMessage("Error",
+                      //                   "Please enter your state", Colors.red);
+                      //             } else if (controller
+                      //                 .countryController.text.isEmpty) {
+                      //               showToastMessage(
+                      //                   "Error",
+                      //                   "Please enter your country",
+                      //                   Colors.red);
+                      //             } else {
+                      //               showToastMessage(
+                      //                   "Error",
+                      //                   "Please fill all required fields",
+                      //                   Colors.red);
+                      //             }
+                      //           }
+                      //         }
+                      //       },
                       onPress: controller.isUserAcCreated
                           ? null
                           : () async {
                               if (_formKey.currentState != null) {
                                 if (_formKey.currentState!.validate()) {
-                                  //firstly we delete the anonymous user from the firestore if exists
+                                  // Delete anonymous user if exists
                                   final prefs =
                                       await SharedPreferences.getInstance();
                                   final userId = prefs.getString('an_user_id');
@@ -339,13 +391,38 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                         .doc(userId)
                                         .delete();
                                     await prefs.remove('an_user_id');
-
                                     log("Anonymous user $userId deleted from Firestore");
                                   }
 
-                                  controller.createUserWithEmailAndPassword();
+                                  // Create user account
+                                  await controller
+                                      .createUserWithEmailAndPassword();
+
+                                  // Show verification dialog
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible:
+                                        false, // User must tap button to close
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: Text("Verify Your Email"),
+                                        content: Text(
+                                            "Signup Complete! Check your inbox (or spam) to verify."),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              // Get.offAll(() =>
+                                              //     LoginScreen()); // Redirect to login
+                                            },
+                                            child: Text("OK"),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
                                 } else {
-                                  // Check which fields are empty and show specific message
+                                  // Your existing validation error handling code
                                   if (controller
                                       .addressController.text.isEmpty) {
                                     showToastMessage(
@@ -375,6 +452,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 }
                               }
                             },
+
                       color: kPrimary,
                     ),
                     SizedBox(height: 24.h),

@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     children: [
                       Image.asset(
-                        'assets/new_rabbit_logo.png',
+                        'assets/logo_new.png',
                         height: 270.h,
                         width: double.maxFinite,
                         fit: BoxFit.contain,
@@ -213,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 10.w),
           child: Text(
-            "*If you are not able to login, please verify your email first. If you didn't receive the verification email, check your spam folder.*",
+            "If you didn't receive the verification email, check your spam folder.",
             textAlign: TextAlign.center,
             style: appStyle(12, kPrimary, FontWeight.bold),
           ),

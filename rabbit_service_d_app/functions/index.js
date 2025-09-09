@@ -1363,18 +1363,53 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
 
           // Send a push notification if FCM token exists
           if (fcmToken) {
-            await admin.messaging().send({
-              token: fcmToken,
-              notification: {
-                title: "Service Reminder 🚗",
-                body: `Hey ${userName}, some of your vehicle services need attention.`,
-              },
-              data: {
-                userId: recipientId,
-                vehicleId,
-                type: "service_reminder",
-              },
-            });
+            // await admin.messaging().send({
+            //   token: fcmToken,
+            //   notification: {
+            //     title: "Service Reminder 🚗",
+            //     body: `Hey ${userName}, some of your vehicle services need attention.`,
+            //   },
+            //   data: {
+            //     userId: recipientId,
+            //     vehicleId,
+            //     type: "service_reminder",
+            //   },
+            // });
+
+            try {
+              await admin.messaging().send({
+                token: fcmToken,
+                notification: {
+                  title: "Service Reminder 🚗",
+                  body: `Hey ${userName}, some of your vehicle services need attention.`,
+                },
+                data: {
+                  userId: recipientId,
+                  vehicleId,
+                  type: "service_reminder",
+                },
+              });
+            } catch (err) {
+              console.error(
+                "FCM send error:",
+                recipientId,
+                err.code,
+                err.message
+              );
+              if (
+                err.code === "messaging/invalid-argument" ||
+                err.code === "messaging/registration-token-not-registered"
+              ) {
+                // Clean up token in Firestore
+                await admin
+                  .firestore()
+                  .collection("Users")
+                  .doc(recipientId)
+                  .update({
+                    fcmToken: admin.firestore.FieldValue.delete(),
+                  });
+              }
+            }
           }
         }
 

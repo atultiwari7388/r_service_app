@@ -1146,6 +1146,7 @@ export default function RecordsPage() {
         createdAt: new Date().toISOString().split("T")[0],
         updatedAt: new Date().toISOString().split("T")[0],
         active: true,
+        addedFrom: "Web",
       };
 
       const batch = writeBatch(db);

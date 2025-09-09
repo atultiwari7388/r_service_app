@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
@@ -700,6 +701,11 @@ class _ReportsScreenState extends State<ReportsScreen>
         "workshopName": workshopController.text,
         "createdAt": DateTime.now().toIso8601String(),
         "updatedAt": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        "addedFrom": Platform.isAndroid
+            ? "Android"
+            : Platform.isIOS
+                ? "iOS"
+                : "N/A",
       };
 
       // Get current user data to determine if we're a team member
@@ -1865,8 +1871,22 @@ class _ReportsScreenState extends State<ReportsScreen>
                                   ),
                                 ),
                                 SizedBox(height: 10.h),
+                                // SizedBox(
+                                //   height: 40.h,
+                                //   child: TextField(
+                                //     controller: invoiceController,
+                                //     decoration: InputDecoration(
+                                //       labelText: 'Invoice Number (Optional)',
+                                //       labelStyle: appStyleUniverse(
+                                //           14, kDark, FontWeight.normal),
+                                //       border: OutlineInputBorder(),
+                                //     ),
+                                //     keyboardType: TextInputType.streetAddress,
+                                //   ),
+                                // ),
+
                                 SizedBox(
-                                  height: 40.h,
+                                  height: 60.h,
                                   child: TextField(
                                     controller: invoiceController,
                                     decoration: InputDecoration(
@@ -1874,10 +1894,26 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       labelStyle: appStyleUniverse(
                                           14, kDark, FontWeight.normal),
                                       border: OutlineInputBorder(),
+                                      // counterText:
+                                      //     '${invoiceController.text.length}/10',
                                     ),
-                                    keyboardType: TextInputType.streetAddress,
+                                    maxLength: 10,
+                                    keyboardType: TextInputType.text,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                          RegExp(r'[a-zA-Z0-9]')),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(
+                                          () {}); // Refresh to update counter
+                                    },
                                   ),
                                 ),
+                                // Text(
+                                //   'Max 10 characters (letters and numbers only)',
+                                //   style: appStyleUniverse(
+                                //       12, kDarkGray, FontWeight.normal),
+                                // ),
                                 SizedBox(height: 10.h),
 
                                 SizedBox(
@@ -2763,8 +2799,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                 size: 20,
                                                                                 color: kPrimary),
                                                                             SizedBox(width: 8.w),
-                                                                            Text("#${record['invoice']}",
-                                                                                style: appStyleUniverse(13, kDark, FontWeight.w500)),
+                                                                            SizedBox(
+                                                                              width: 80.w,
+                                                                              child: Text("#${record['invoice']}", overflow: TextOverflow.ellipsis, style: appStyleUniverse(13, kDark, FontWeight.w500)),
+                                                                            ),
                                                                           ],
                                                                         ),
                                                                       ),
