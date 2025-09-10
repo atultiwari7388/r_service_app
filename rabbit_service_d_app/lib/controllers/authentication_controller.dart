@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/database_services.dart';
@@ -23,6 +26,9 @@ class AuthController extends GetxController {
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _vehicleRangeController = TextEditingController();
+
+  final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+  String? deviceId;
 
   var isUserSign = false;
   var isUserAcCreated = false;
@@ -66,6 +72,21 @@ class AuthController extends GetxController {
     'above 500'
   ];
 
+  onInit() {
+    super.onInit();
+    _getDeviceInfo();
+  }
+
+  Future<void> _getDeviceInfo() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+      deviceId = androidInfo.id;
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+      deviceId = iosInfo.identifierForVendor;
+    }
+  }
+
 //========================== Create account with email and password =================
 
   Future<void> createUserWithEmailAndPassword() async {
@@ -85,6 +106,7 @@ class AuthController extends GetxController {
         _stateController.text,
         _countryController.text,
         selectedVehicleRange.value,
+        deviceId ?? null,
       );
 
       // Send email verification
@@ -130,9 +152,110 @@ class AuthController extends GetxController {
 
 //========================== SignIn with email and Password ===============================
 
-  Future<void> signInWithEmailAndPassword(String email, String password) async {
+  // Future<User?> signInWithEmailAndPassword(
+  //     String email, String password) async {
+  //   isUserSign = true;
+  //   update();
+  //   try {
+  //     var signInUser = await _auth.signInWithEmailAndPassword(
+  //         email: email.toString(), password: password.toString());
+
+  //     final User? user = signInUser.user;
+  //     if (user != null) {
+  //       if (!user.emailVerified) {
+  //         showToastMessage(
+  //             "Email Not Verified",
+  //             "Please verify your email to continue. If you didn’t receive it, check your Spam folder.",
+  //             Colors.orange);
+
+  //         await user.sendEmailVerification();
+  //         await _auth.signOut();
+  //         isUserSign = false;
+  //         update();
+  //         return user;
+  //       }
+
+  //       // Fetch both Mechanics and Users docs in parallel
+  //       var mechanicsDocFuture =
+  //           FirebaseFirestore.instance.doc("Mechanics/${user.uid}").get();
+  //       var usersDocFuture =
+  //           FirebaseFirestore.instance.doc("Users/${user.uid}").get();
+
+  //       var docs = await Future.wait([mechanicsDocFuture, usersDocFuture]);
+
+  //       var mechanicDoc = docs[0];
+  //       var userDoc = docs[1];
+
+  //       if (mechanicDoc.exists && mechanicDoc['uid'] == user.uid) {
+  //         showToastMessage(
+  //             "Error",
+  //             "Please try with another email... this email already exists with Mechanic app",
+  //             Colors.red);
+
+  //         await _auth.signOut();
+  //         isUserSign = false;
+  //         update();
+  //         return user;
+  //       }
+
+  //       if (userDoc.exists && userDoc['uid'] == user.uid) {
+  //         isUserSign = false;
+  //         update();
+  //         if (userDoc['active'] == true && userDoc['status'] == "active") {
+  //           //navigate to mobile view
+  //           Get.offAll(() => EntryScreen());
+  //           showToastMessage("Success", "Login Successful", Colors.green);
+  //           // Clear all controllers after successful login
+  //           // _emailController.clear();
+  //           // _passController.clear();
+  //         } else if (userDoc['status'] == "deactivated") {
+  //           // User is not active, navigate to ContactWithAdmin screen
+  //           showToastMessage(
+  //               "Error",
+  //               "Your Account is deactivated, kindly contact with your office.",
+  //               Colors.red);
+  //           Get.offAll(() => const AdminContactScreen());
+  //         } else {
+  //           // User is not active, navigate to ContactWithAdmin screen
+  //           showToastMessage(
+  //               "Error",
+  //               "Your Account is  deactivated, kindly contact with your office.",
+  //               Colors.red);
+  //           Get.offAll(() => const AdminContactScreen());
+  //         }
+  //       } else {
+  //         Get.to(() => RegistrationScreen());
+  //       }
+  //     }
+  //   } on FirebaseAuthException catch (e) {
+  //     handleAuthError(e);
+  //   } finally {
+  //     isUserSign = false;
+  //     update();
+  //   }
+  //   return null;
+  // }
+
+  Future<User?> signInWithEmailAndPassword(
+      String email, String password) async {
     isUserSign = true;
     update();
+
+    // Get device info and FCM token at the beginning
+    final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+    String? deviceId;
+    String? fcmToken;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+      deviceId = androidInfo.id;
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+      deviceId = iosInfo.identifierForVendor;
+    }
+
+    fcmToken = await FirebaseMessaging.instance.getToken();
+
     try {
       var signInUser = await _auth.signInWithEmailAndPassword(
           email: email.toString(), password: password.toString());
@@ -142,14 +265,14 @@ class AuthController extends GetxController {
         if (!user.emailVerified) {
           showToastMessage(
               "Email Not Verified",
-              "Please verify your email to continue. If you didn’t receive it, check your Spam folder.",
+              "Please verify your email to continue. If you didn't receive it, check your Spam folder.",
               Colors.orange);
 
           await user.sendEmailVerification();
           await _auth.signOut();
           isUserSign = false;
           update();
-          return;
+          return user;
         }
 
         // Fetch both Mechanics and Users docs in parallel
@@ -172,10 +295,36 @@ class AuthController extends GetxController {
           await _auth.signOut();
           isUserSign = false;
           update();
-          return;
+          return user;
         }
 
         if (userDoc.exists && userDoc['uid'] == user.uid) {
+          // Check device authorization before proceeding
+          final authorizedDeviceId = userDoc['currentDeviceId'];
+
+          // If user is already logged in on another device
+          if (authorizedDeviceId != null && authorizedDeviceId != deviceId) {
+            showToastMessage(
+                "Device Not Authorized",
+                "You are already logged in on another device. Please logout from the other device first or contact support.",
+                Colors.red);
+
+            await _auth.signOut();
+            isUserSign = false;
+            update();
+            return user;
+          }
+
+          // Update device info for authorized login
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(user.uid)
+              .update({
+            'fcmToken': fcmToken,
+            'currentDeviceId': deviceId,
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
+
           isUserSign = false;
           update();
           if (userDoc['active'] == true && userDoc['status'] == "active") {
@@ -210,6 +359,7 @@ class AuthController extends GetxController {
       isUserSign = false;
       update();
     }
+    return null;
   }
 
 //========================== Forgot Password with email =============================

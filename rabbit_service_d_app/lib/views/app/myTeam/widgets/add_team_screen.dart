@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -813,6 +814,9 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'lastDrugTest': lastDrugTest?.toIso8601String(),
         'dateOfHire': dateOfHire?.toIso8601String(),
         'dateOfTermination': dateOfTermination?.toIso8601String(),
+        'currentDeviceId': null,
+        'lastLogin': FieldValue.serverTimestamp(),
+        'createdFrom': Platform.isAndroid ? 'android' : 'ios',
       });
 
       if (result.data['success']) {

@@ -750,12 +750,6 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
 
                             CustomButton(
                               text: "Add Trip",
-                              // onPress: () {
-                              //   selectedTrailer == null
-                              //       ? showToastMessage("Error",
-                              //           "Please select a trailer.", kRed)
-                              //       : addTrip();
-                              // },
                               onPress: addTrip,
                               color: kPrimary,
                             ),

@@ -120,6 +120,9 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     lastDrugTest,
     dateOfHire,
     dateOfTermination,
+    currentDeviceId,
+    lastLogin,
+    createdFrom,
   } = data;
 
   if (
@@ -199,6 +202,9 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       isOwner: false,
       isTeamMember: true,
       status: "active",
+      currentDeviceId: currentDeviceId || null,
+      lastLogin: lastLogin,
+      createdFrom: createdFrom,
       created_at: admin.firestore.Timestamp.now(),
       updated_at: admin.firestore.Timestamp.now(),
     };

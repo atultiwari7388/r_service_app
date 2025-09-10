@@ -1,6 +1,8 @@
 import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
@@ -15,6 +17,8 @@ import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../../../widgets/text_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,6 +32,80 @@ class _LoginScreenState extends State<LoginScreen> {
   final _firestore = FirebaseFirestore.instance;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
+  final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+  String? deviceId;
+  String? fcmToken;
+
+  @override
+  void initState() {
+    super.initState();
+    _getDeviceInfo();
+    _getFcmToken();
+  }
+
+  Future<void> _getDeviceInfo() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+      deviceId = androidInfo.id;
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+      deviceId = iosInfo.identifierForVendor;
+    }
+  }
+
+  Future<void> _getFcmToken() async {
+    fcmToken = await FirebaseMessaging.instance.getToken();
+  }
+
+  Future<bool> _checkDeviceAuthorization(String userId) async {
+    if (deviceId == null) return false;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        final authorizedDeviceId = data?['currentDeviceId'];
+
+        // If no device is registered yet, update with current device and allow login
+        if (authorizedDeviceId == null) {
+          // Update the user document with current device info
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(userId)
+              .update({
+            'currentDeviceId': deviceId,
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
+          return true;
+        }
+
+        // Check if this device is the authorized one
+        return authorizedDeviceId == deviceId;
+      }
+      return false;
+    } catch (e) {
+      log("Error checking device authorization: $e");
+      return false;
+    }
+  }
+
+  // Add this method to update device info
+  Future<void> _updateDeviceInfo(String userId) async {
+    try {
+      await _firestore.collection('Users').doc(userId).update({
+        'fcmToken': fcmToken,
+        'currentDeviceId': deviceId,
+        'lastLogin': FieldValue.serverTimestamp(),
+      });
+      log('Device info updated in Users collection');
+    } catch (error) {
+      log('Error updating device info in Users collection: $error');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,25 +261,72 @@ class _LoginScreenState extends State<LoginScreen> {
         // Login Button
         CustomButton(
           text: "Login",
+          //   onPress: controller.isUserAcCreated
+          //       ? null
+          //       : () async {
+          //           if (_formKey.currentState != null &&
+          //               _formKey.currentState!.validate()) {
+          //             //firstly we delete the anonymous user from the firestore if exists
+          //             final prefs = await SharedPreferences.getInstance();
+          //             final userId = prefs.getString('an_user_id');
+
+          //             if (userId != null) {
+          //               await _firestore.collection('Users').doc(userId).delete();
+          //               await prefs.remove('an_user_id');
+
+          //               log("Anonymous user $userId deleted from Firestore");
+          //             }
+
+          //             controller.signInWithEmailAndPassword(
+          //                 _emailController.text.toString(),
+          //                 _passController.text.toString());
+          //           } else {
+          //             showToastMessage(
+          //                 "Error", "Invalid Email or Password", Colors.red);
+          //           }
+          //         },
+          //   color: kPrimary,
+          // ),
+
           onPress: controller.isUserAcCreated
               ? null
               : () async {
                   if (_formKey.currentState != null &&
                       _formKey.currentState!.validate()) {
-                    //firstly we delete the anonymous user from the firestore if exists
+                    // First, delete the anonymous user from firestore if exists
                     final prefs = await SharedPreferences.getInstance();
                     final userId = prefs.getString('an_user_id');
 
                     if (userId != null) {
                       await _firestore.collection('Users').doc(userId).delete();
                       await prefs.remove('an_user_id');
-
                       log("Anonymous user $userId deleted from Firestore");
                     }
 
-                    controller.signInWithEmailAndPassword(
-                        _emailController.text.toString(),
-                        _passController.text.toString());
+                    // Sign in with email and password
+                    final user = await controller.signInWithEmailAndPassword(
+                      _emailController.text.toString(),
+                      _passController.text.toString(),
+                    );
+
+                    if (user != null) {
+                      // Check if this device is authorized
+                      final isAuthorized =
+                          await _checkDeviceAuthorization(user.uid);
+
+                      if (!isAuthorized) {
+                        // Not authorized - sign out and show message
+                        await FirebaseAuth.instance.signOut();
+                        showToastMessage(
+                            "Device Not Authorized",
+                            "You are already logged in on another device. Please logout from the other device first or contact support.",
+                            Colors.red);
+                        return;
+                      }
+
+                      // Update device info for authorized login
+                      await _updateDeviceInfo(user.uid);
+                    }
                   } else {
                     showToastMessage(
                         "Error", "Invalid Email or Password", Colors.red);

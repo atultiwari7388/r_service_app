@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DatabaseServices {
@@ -21,6 +23,7 @@ class DatabaseServices {
     String state,
     String country,
     String selectedVehicleRange,
+    String? deviceId,
   ) async {
     return fireStoreDatabase.doc(uid!).set({
       "status": "active", //active and deleted
@@ -69,6 +72,9 @@ class DatabaseServices {
       "isAdd": true,
       "created_at": DateTime.now(),
       "updated_at": DateTime.now(),
+      'currentDeviceId': deviceId,
+      'lastLogin': FieldValue.serverTimestamp(),
+      'createdFrom': Platform.isAndroid ? 'android' : 'ios',
     });
   }
 }

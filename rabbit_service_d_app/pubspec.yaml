@@ -58,6 +58,7 @@ dependencies:
   csv:
   path_provider:
   shared_preferences:
+  device_info_plus:
 
 dev_dependencies:
   flutter_test:

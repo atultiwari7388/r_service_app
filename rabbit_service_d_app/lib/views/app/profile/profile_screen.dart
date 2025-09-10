@@ -8,7 +8,6 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/aboutUs/about_us_screen.dart';
-import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/views/app/helpContact/help_center.dart';
 import 'package:regal_service_d_app/views/app/history/history_screen.dart';
@@ -142,16 +141,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/myvehicles.png", "My Vehicles", () {
                       Get.to(() => MyVehiclesScreen());
                     }),
-                    buildListTile("assets/cheque.png", "Manage Check", () {
-                      if (isCheque == true) {
-                        Get.to(() => ManageCheckScreen());
-                      } else {
-                        showToastMessage(
-                            "Info",
-                            "You are not allowed to access this feature",
-                            Colors.red);
-                      }
-                    }),
+                    role == 'Driver'
+                        ? SizedBox()
+                        : buildListTile("assets/cheque.png", "Manage Check",
+                            () {
+                            if (isCheque == true) {
+                              Get.to(() => ManageCheckScreen());
+                            } else {
+                              showToastMessage(
+                                  "Info",
+                                  "You are not allowed to access this feature",
+                                  Colors.red);
+                            }
+                          }),
                     if (role == "Owner" ||
                         role == "Manager" ||
                         role == "Accountant") ...[
