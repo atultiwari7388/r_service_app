@@ -54,6 +54,9 @@ interface CreateTeamMemberForm {
   lastDrugTest: Date | null;
   dateOfHire: Date | null;
   dateOfTermination: Date | null;
+  currentDeviceId: null;
+  lastLogin: Date | null;
+  createdFrom: string;
 }
 
 const roles = ["Manager", "Driver", "Vendor", "Accountant", "Other Staff"];
@@ -96,6 +99,9 @@ export default function CreateTeamMemberPage() {
     lastDrugTest: null,
     dateOfHire: null,
     dateOfTermination: null,
+    currentDeviceId: null,
+    lastLogin: null,
+    createdFrom: "Web",
   });
 
   const handleInputChange = (
@@ -212,6 +218,9 @@ export default function CreateTeamMemberPage() {
           "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658",
         created_at: new Date(),
         updated_at: new Date(),
+        currentDeviceId: formData.currentDeviceId,
+        lastLogin: formData.lastLogin,
+        createdFrom: formData.createdFrom,
       });
 
       for (const vehicleId of formData.assignedVehicles) {
