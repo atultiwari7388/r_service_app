@@ -918,7 +918,7 @@ export default function MemberTripsPage() {
               <div className="col-span-2">
                 {trip.tripStatus === 1 ? (
                   <div className="flex items-center gap-2">
-                    {(role === "Driver" || role === "Owner") && (
+                    {(role === "Accountant" || role === "Owner") && (
                       <select
                         value={trip.tripStatus}
                         onChange={(e) =>
@@ -951,7 +951,7 @@ export default function MemberTripsPage() {
               {/* Actions */}
               <div className="col-span-2 flex gap-2">
                 {/* Show Edit always */}
-                {(role === "Driver" || role === "Owner") && (
+                {(role === "Accountant" || role === "Owner") && (
                   <button
                     onClick={() => handleEditTrip(trip)}
                     className="bg-orange-500 text-white px-3 py-1 rounded text-sm"
