@@ -55,7 +55,6 @@ interface CreateTeamMemberForm {
   dateOfHire: Date | null;
   dateOfTermination: Date | null;
   currentDeviceId: null;
-  lastLogin: Date | null;
   createdFrom: string;
 }
 
@@ -100,7 +99,6 @@ export default function CreateTeamMemberPage() {
     dateOfHire: null,
     dateOfTermination: null,
     currentDeviceId: null,
-    lastLogin: null,
     createdFrom: "Web",
   });
 
@@ -219,7 +217,7 @@ export default function CreateTeamMemberPage() {
         created_at: new Date(),
         updated_at: new Date(),
         currentDeviceId: formData.currentDeviceId,
-        lastLogin: formData.lastLogin,
+        lastLogin: new Date(),
         createdFrom: formData.createdFrom,
       });
 

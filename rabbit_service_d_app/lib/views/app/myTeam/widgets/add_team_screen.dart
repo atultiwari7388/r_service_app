@@ -815,7 +815,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'dateOfHire': dateOfHire?.toIso8601String(),
         'dateOfTermination': dateOfTermination?.toIso8601String(),
         'currentDeviceId': null,
-        'lastLogin': FieldValue.serverTimestamp(),
+        // 'lastLogin': FieldValue.serverTimestamp(),
         'createdFrom': Platform.isAndroid ? 'android' : 'ios',
       });
 

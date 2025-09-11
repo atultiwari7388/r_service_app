@@ -203,8 +203,8 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       isTeamMember: true,
       status: "active",
       currentDeviceId: currentDeviceId || null,
-      lastLogin: lastLogin,
       createdFrom: createdFrom,
+      lastLogin: admin.firestore.Timestamp.now(),
       created_at: admin.firestore.Timestamp.now(),
       updated_at: admin.firestore.Timestamp.now(),
     };

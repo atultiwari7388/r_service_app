@@ -255,6 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                   .doc(currentUId)
                                                   .update({
                                                 'fcmToken': '',
+                                                'currentDeviceId': null,
                                                 // 'active': false,
                                               });
                                             } else {
@@ -263,6 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                   .doc(currentUId)
                                                   .update({
                                                 'fcmToken': '',
+                                                'currentDeviceId': null,
                                               });
                                             }
 
