@@ -1,5 +1,5 @@
 import 'dart:developer';
-
+import 'package:android_id/android_id.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -43,13 +43,26 @@ class _LoginScreenState extends State<LoginScreen> {
     _getFcmToken();
   }
 
+  // Future<void> _getDeviceInfo() async {
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+  //     deviceId = androidInfo.id;
+  //     log("DeviceId: $deviceId");
+  //   } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+  //     IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+  //     deviceId = iosInfo.identifierForVendor;
+  //   }
+  // }
+
   Future<void> _getDeviceInfo() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
-      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
-      deviceId = androidInfo.id;
+      final androidIdPlugin = AndroidId();
+      deviceId = await androidIdPlugin.getId(); // ✅ true ANDROID_ID
+      print("DeviceId: $deviceId");
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+      final iosInfo = await deviceInfoPlugin.iosInfo;
       deviceId = iosInfo.identifierForVendor;
+      print("DeviceId: $deviceId");
     }
   }
 

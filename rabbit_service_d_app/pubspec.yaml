@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: "none"
 
-version: 1.0.57+58
+version: 1.0.59+60
 
 environment:
   sdk: ">=3.2.6 <4.0.0"
@@ -59,6 +59,7 @@ dependencies:
   path_provider:
   shared_preferences:
   device_info_plus:
+  android_id:
 
 dev_dependencies:
   flutter_test:

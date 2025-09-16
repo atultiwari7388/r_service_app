@@ -1,3 +1,4 @@
+import 'package:android_id/android_id.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -77,16 +78,27 @@ class AuthController extends GetxController {
     _getDeviceInfo();
   }
 
+  // Future<void> _getDeviceInfo() async {
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+  //     deviceId = androidInfo.model;
+  //   } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+  //     IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+  //     deviceId = iosInfo.identifierForVendor;
+  //   }
+  // }
+
   Future<void> _getDeviceInfo() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
-      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
-      deviceId = androidInfo.id;
+      final androidIdPlugin = AndroidId();
+      deviceId = await androidIdPlugin.getId(); // ✅ true ANDROID_ID
+      print("DeviceId: $deviceId");
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+      final iosInfo = await deviceInfoPlugin.iosInfo;
       deviceId = iosInfo.identifierForVendor;
+      print("DeviceId: $deviceId");
     }
   }
-
 //========================== Create account with email and password =================
 
   Future<void> createUserWithEmailAndPassword() async {
@@ -246,14 +258,23 @@ class AuthController extends GetxController {
     String? deviceId;
     String? fcmToken;
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
-      deviceId = androidInfo.id;
-    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
-      deviceId = iosInfo.identifierForVendor;
-    }
+    // if (defaultTargetPlatform == TargetPlatform.android) {
+    //   AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+    //   deviceId = androidInfo.model;
+    // } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+    //   IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
+    //   deviceId = iosInfo.identifierForVendor;
+    // }
 
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final androidIdPlugin = AndroidId();
+      deviceId = await androidIdPlugin.getId(); // ✅ true ANDROID_ID
+      print("DeviceId: $deviceId");
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final iosInfo = await deviceInfoPlugin.iosInfo;
+      deviceId = iosInfo.identifierForVendor;
+      print("DeviceId: $deviceId");
+    }
     fcmToken = await FirebaseMessaging.instance.getToken();
 
     try {
