@@ -7,7 +7,6 @@ import 'package:printing/printing.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
-import 'package:regal_service_d_app/views/app/manageCheck/widgets/check_series_details_screen.dart';
 import 'package:regal_service_d_app/views/app/manageCheck/widgets/manage_check_numder_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
@@ -241,54 +240,117 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
     pdf.addPage(
       pw.Page(
-        pageFormat:
-            PdfPageFormat(8.5 * PdfPageFormat.inch, 3.5 * PdfPageFormat.inch),
+        pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Check header
-              pw.Text('Western Truck & Trailer Maintenance',
-                  style: pw.TextStyle(fontSize: 12)),
-              pw.Text('5250 N. Barcus Ave', style: pw.TextStyle(fontSize: 10)),
-              pw.Text('Fresno, CA 93722', style: pw.TextStyle(fontSize: 10)),
-              pw.Text('559-271-7275', style: pw.TextStyle(fontSize: 10)),
-              pw.Divider(),
+          return pw.Container(
+            padding: pw.EdgeInsets.all(40),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // pw.Divider(thickness: 1),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(""),
+                    pw.Spacer(),
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 15),
 
-              // Bank information
-              pw.Text('JPMORGAN CHASE BANK, NA',
-                  style: pw.TextStyle(fontSize: 10)),
-              pw.Text('376 W SHAW AVE', style: pw.TextStyle(fontSize: 10)),
-              pw.Text('FRESNO, CA 92711', style: pw.TextStyle(fontSize: 10)),
-              pw.Text('90-7162/3222', style: pw.TextStyle(fontSize: 10)),
-              pw.Divider(),
+                // Pay to the order of section with dotted line
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      '',
+                      style: pw.TextStyle(fontSize: 11),
+                    ),
+                    pw.SizedBox(width: 50),
+                    pw.Text(
+                      check['userName'],
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold),
+                    ),
+                    pw.Spacer(),
+                    //money
+                    pw.Text(
+                      '\$${check['totalAmount'].toStringAsFixed(2)}',
+                      style: pw.TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
 
-              // Payee information
-              pw.Text('PAY TO THE ORDER OF ${check['userName']}',
-                  style: pw.TextStyle(
-                      fontSize: 12, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
+                pw.SizedBox(height: 15),
+                // Amount in words
+                pw.Row(children: [
+                  pw.SizedBox(width: 10),
+                  pw.Text(
+                    _amountToWords(check['totalAmount']),
+                    style: pw.TextStyle(fontSize: 13),
+                  ),
+                ]),
+                pw.SizedBox(height: 30),
+                // Memo number if exists
+                if (check['memoNumber'] != null)
+                  pw.Row(
+                    children: [
+                      pw.Text(""),
+                      pw.SizedBox(width: 50),
+                      pw.Text(
+                        '${check['memoNumber']}',
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                pw.SizedBox(height: 50),
+                pw.Divider(thickness: 1),
+                pw.SizedBox(height: 30),
 
-              // Amount
-              pw.Text('\$${check['totalAmount'].toStringAsFixed(2)}',
-                  style: pw.TextStyle(fontSize: 12)),
-              pw.Divider(),
-
-              // Check number and date
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Check #${check['checkNumber']}',
-                      style: pw.TextStyle(fontSize: 10)),
-                  pw.Text(DateFormat('MM/dd/yyyy').format(check['date'])),
-                ],
-              ),
-
-              // Memo if exists
-              if (check['memoNumber'] != null)
-                pw.Text('Memo: ${check['memoNumber']}',
-                    style: pw.TextStyle(fontSize: 10)),
-            ],
+                // Check number and date
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Check. No. #${check['checkNumber']}',
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                //Services details
+                ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  return pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        detail['serviceName'],
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                      pw.Text(
+                        '\$${detail['amount'].toStringAsFixed(2)}',
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  );
+                }).toList(),
+                pw.SizedBox(height: 20),
+                pw.Row(children: [
+                  pw.Spacer(),
+                  pw.Text(
+                    '\$${check['totalAmount'].toStringAsFixed(2)}',
+                    style: pw.TextStyle(
+                        fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  ),
+                ]),
+              ],
+            ),
           );
         },
       ),
@@ -297,6 +359,91 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );
+  }
+
+  String _amountToWords(double amount) {
+    final wholePart = amount.floor();
+    final decimalPart = ((amount - wholePart) * 100).round();
+
+    String wholeWords = _numberToWords(wholePart);
+    String decimalWords = _numberToWords(decimalPart);
+
+    // String result = wholeWords + ' Dollars';
+    String result = wholeWords + '';
+
+    if (decimalPart > 0) {
+      result += ' and ' + decimalWords + ' Cents';
+    }
+
+    return result + ' Only';
+  }
+
+  String _numberToWords(int number) {
+    if (number == 0) return 'Zero';
+
+    final units = [
+      '',
+      'One',
+      'Two',
+      'Three',
+      'Four',
+      'Five',
+      'Six',
+      'Seven',
+      'Eight',
+      'Nine'
+    ];
+    final teens = [
+      'Ten',
+      'Eleven',
+      'Twelve',
+      'Thirteen',
+      'Fourteen',
+      'Fifteen',
+      'Sixteen',
+      'Seventeen',
+      'Eighteen',
+      'Nineteen'
+    ];
+    final tens = [
+      '',
+      'Ten',
+      'Twenty',
+      'Thirty',
+      'Forty',
+      'Fifty',
+      'Sixty',
+      'Seventy',
+      'Eighty',
+      'Ninety'
+    ];
+
+    String words = '';
+
+    if ((number / 1000).floor() > 0) {
+      words += _numberToWords((number / 1000).floor()) + ' Thousand ';
+      number %= 1000;
+    }
+
+    if ((number / 100).floor() > 0) {
+      words += _numberToWords((number / 100).floor()) + ' Hundred ';
+      number %= 100;
+    }
+
+    if (number > 0) {
+      if (number < 10) {
+        words += units[number];
+      } else if (number < 20) {
+        words += teens[number - 10];
+      } else {
+        words += tens[(number / 10).floor()];
+        if ((number % 10) > 0) {
+          words += ' ' + units[number % 10];
+        }
+      }
+    }
+
+    return words.trim();
   }
 
   Widget _buildCheckCard(Map<String, dynamic> check) {
