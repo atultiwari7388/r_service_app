@@ -39,6 +39,81 @@ const Login: React.FC = () => {
     }));
   };
 
+  // const handleLogin = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+
+  //   try {
+  //     const { email, password } = formValues;
+  //     const userCredential = await signInWithEmailAndPassword(
+  //       auth,
+  //       email,
+  //       password
+  //     );
+  //     const user = userCredential.user;
+
+  //     if (user) {
+  //       if (!user.emailVerified) {
+  //         alert(
+  //           "Email not verified. Please verify your email, If you have not receive mail also check in spam"
+  //         );
+  //         await sendEmailVerification(user);
+  //         await signOut(auth);
+  //         setIsLoading(false);
+  //         return;
+  //       }
+
+  //       const mechanicsDocRef = doc(db, "Mechanics", user.uid);
+  //       const usersDocRef = doc(db, "Users", user.uid);
+
+  //       const [mechanicDoc, userDoc] = await Promise.all([
+  //         getDoc(mechanicsDocRef),
+  //         getDoc(usersDocRef),
+  //       ]);
+
+  //       if (mechanicDoc.exists()) {
+  //         toast.error(
+  //           "This email is registered with the Mechanic app. Please try with another email."
+  //         );
+  //         await signOut(auth);
+  //         setIsLoading(false);
+  //         return;
+  //       }
+
+  //       if (userDoc.exists()) {
+  //         const userData = userDoc.data();
+  //         if (userData.uid === user.uid) {
+  //           if (userData.active === true && userData.status === "active") {
+  //             toast.success("Login Successful");
+  //             router.push("/records");
+  //           } else if (userData.status === "deactivated") {
+  //             toast.error(
+  //               "Your account is deactivated. Please contact your office."
+  //             );
+  //             router.push("/contact-us");
+  //           } else {
+  //             toast.error(
+  //               "Your account is not active. Please contact your office."
+  //             );
+  //             router.push("/contact-us");
+  //           }
+  //         } else {
+  //           toast.error("User mismatch. Please try again.");
+  //           await signOut(auth);
+  //         }
+  //       } else {
+  //         toast.error("User not found in system. Please sign up.");
+  //         router.push("/sign-up");
+  //       }
+  //     }
+  //   } catch (error) {
+  //     toast.error(`Email unverified or invalid credentials`);
+  //     console.error("Login error:", error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -55,7 +130,7 @@ const Login: React.FC = () => {
       if (user) {
         if (!user.emailVerified) {
           alert(
-            "Email not verified. Please verify your email, If you have not receive mail also check in spam"
+            "Email not verified. Please verify your email. If you haven’t received the mail, please also check your Spam folder."
           );
           await sendEmailVerification(user);
           await signOut(auth);
@@ -71,6 +146,7 @@ const Login: React.FC = () => {
           getDoc(usersDocRef),
         ]);
 
+        // 🚫 Restrict Mechanic logins
         if (mechanicDoc.exists()) {
           toast.error(
             "This email is registered with the Mechanic app. Please try with another email."
@@ -80,9 +156,22 @@ const Login: React.FC = () => {
           return;
         }
 
+        // ✅ Check Users collection
         if (userDoc.exists()) {
           const userData = userDoc.data();
+
           if (userData.uid === user.uid) {
+            // 🚫 Restrict Driver role
+            if (userData.role === "Driver") {
+              toast.error(
+                "Access restricted! Drivers can only log in using the mobile app."
+              );
+              await signOut(auth);
+              setIsLoading(false);
+              return;
+            }
+
+            // ✅ Active user logic
             if (userData.active === true && userData.status === "active") {
               toast.success("Login Successful");
               router.push("/records");
@@ -107,7 +196,7 @@ const Login: React.FC = () => {
         }
       }
     } catch (error) {
-      toast.error(`Email unverified or invalid credentials`);
+      toast.error("Email unverified or invalid credentials");
       console.error("Login error:", error);
     } finally {
       setIsLoading(false);
