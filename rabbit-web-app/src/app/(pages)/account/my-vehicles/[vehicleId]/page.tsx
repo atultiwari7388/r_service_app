@@ -22,7 +22,7 @@ import {
 import { db, storage } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
-import { FaEdit, FaPrint, FaTrash } from "react-icons/fa";
+import { FaDownload, FaEdit, FaEye, FaPrint, FaTrash } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { ProfileValues } from "@/types/types";
 
@@ -73,6 +73,8 @@ export default function MyVehicleDetailsScreen() {
   const [docToDelete, setDocToDelete] = useState<VehicleDocument | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [role, setRole] = useState("");
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [currentImage, setCurrentImage] = useState<string>("");
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -534,6 +536,31 @@ export default function MyVehicleDetailsScreen() {
     }
   };
 
+  const handleViewImage = (imageUrl: string) => {
+    setCurrentImage(imageUrl);
+    setShowImageViewer(true);
+  };
+
+  const handleDownloadImage = async (imageUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = fileName || "document";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Document downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast.error("Error downloading document");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -574,6 +601,28 @@ export default function MyVehicleDetailsScreen() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Viewer Modal */}
+      {showImageViewer && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+          onClick={() => setShowImageViewer(false)}
+        >
+          <div className="relative max-w-4xl max-h-full">
+            <button
+              className="absolute top-4 right-4 text-white text-2xl bg-black bg-opacity-50 rounded-full p-2"
+              onClick={() => setShowImageViewer(false)}
+            >
+              ✕
+            </button>
+            <img
+              src={currentImage}
+              alt="Full size document"
+              className="max-w-full max-h-screen object-contain"
+            />
           </div>
         </div>
       )}
@@ -759,7 +808,7 @@ export default function MyVehicleDetailsScreen() {
         </div>
       ) : null}
 
-      {role === "Owner" ? (
+      {role === "Owner" || role === "Accountant" ? (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold mb-4">Uploaded Documents</h2>
           {vehicleData?.uploadedDocuments?.length ? (
@@ -774,6 +823,25 @@ export default function MyVehicleDetailsScreen() {
                   <p className="text-gray-600 truncate">
                     {doc.text || `Document ${index + 1}`}
                   </p>
+                  <button
+                    onClick={() => handleViewImage(doc.imageUrl)}
+                    className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600"
+                    title="View document"
+                  >
+                    <FaEye size={14} />
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleDownloadImage(
+                        doc.imageUrl,
+                        doc.text || `document-${index + 1}`
+                      )
+                    }
+                    className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600"
+                    title="Download document"
+                  >
+                    <FaDownload size={14} />
+                  </button>
                   <button
                     onClick={() => confirmDelete(doc)}
                     className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
