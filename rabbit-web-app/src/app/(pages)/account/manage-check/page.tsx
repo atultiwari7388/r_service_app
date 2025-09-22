@@ -115,9 +115,9 @@ export default function ManageCheckScreen() {
   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
 
   const { user } = useAuth() || { user: null };
-  const [currentPrintCheck, setCurrentPrintCheck] = useState<Check | null>(
-    null
-  );
+  // const [currentPrintCheck, setCurrentPrintCheck] = useState<Check | null>(
+  //   null
+  // );
 
   useEffect(() => {
     if (!user) return;
@@ -613,95 +613,315 @@ export default function ManageCheckScreen() {
     return result + " Only";
   };
 
+  // const handlePrint = (check: Check) => {
+  //   setCurrentPrintCheck(check);
+  //   console.log("Printing check:", currentPrintCheck);
+  //   setTimeout(() => {
+  //     const printContent = document.getElementById("print-check-content");
+  //     if (printContent) {
+  //       const printWindow = window.open("", "_blank");
+  //       if (printWindow) {
+  //         printWindow.document.write(`
+  //           <html>
+  //             <head>
+  //               <title>Check #${check.checkNumber}</title>
+  //               <style>
+  //                 body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+  //                 .check-container { max-width: 800px; margin: 0 auto; border: 1px solid #000; padding: 20px; }
+  //                 .check-header { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+  //                 .pay-to { margin: 20px 0; }
+  //                 .amount-words { margin: 10px 0; font-style: italic; }
+  //                 .service-details { margin: 20px 0; }
+  //                 .service-item { display: flex; justify-content: space-between; margin: 5px 0; }
+  //                 .total { border-top: 1px solid #000; padding-top: 10px; margin-top: 20px; font-weight: bold; }
+  //                 @media print { body { margin: 0; } .check-container { border: none; padding: 0; } }
+  //               </style>
+  //             </head>
+  //             <body>
+  //               <div class="check-container">
+  //                 <div class="check-header">
+  //                   <div>
+  //                     <h3>Western Truck & Trailer Maintenance</h3>
+  //                     <p>5250 N. Barcus Ave, Fresno, CA 93722</p>
+  //                     <p>559-271-7275</p>
+  //                   </div>
+  //                   <div>
+  //                     <p>Date: ${format(check.date, "MM/dd/yyyy")}</p>
+  //                   </div>
+  //                 </div>
+
+  //                 <div class="pay-to">
+  //                   <p><strong>PAY TO THE ORDER OF:</strong> ${
+  //                     check.userName
+  //                   }</p>
+  //                   <p><strong>AMOUNT:</strong> $${check.totalAmount.toFixed(
+  //                     2
+  //                   )}</p>
+  //                 </div>
+
+  //                 <div class="amount-words">
+  //                   <p>${amountToWords(check.totalAmount)}</p>
+  //                 </div>
+
+  //                 ${
+  //                   check.memoNumber
+  //                     ? `<p><strong>Memo:</strong> ${check.memoNumber}</p>`
+  //                     : ""
+  //                 }
+
+  //                 <div class="service-details">
+  //                   <h4>Service Details:</h4>
+  //                   ${check.serviceDetails
+  //                     .map(
+  //                       (detail) => `
+  //                     <div class="service-item">
+  //                       <span>${detail.serviceName}</span>
+  //                       <span>$${detail.amount.toFixed(2)}</span>
+  //                     </div>
+  //                   `
+  //                     )
+  //                     .join("")}
+  //                 </div>
+
+  //                 <div class="total">
+  //                   <div class="service-item">
+  //                     <span>TOTAL</span>
+  //                     <span>$${check.totalAmount.toFixed(2)}</span>
+  //                   </div>
+  //                 </div>
+
+  //                 <div style="margin-top: 40px; border-top: 1px solid #000; padding-top: 20px;">
+  //                   <p>Check #${check.checkNumber}</p>
+  //                 </div>
+  //               </div>
+  //             </body>
+  //           </html>
+  //         `);
+  //         printWindow.document.close();
+  //         printWindow.print();
+  //       }
+  //     }
+  //   }, 100);
+  // };
+
   const handlePrint = (check: Check) => {
-    setCurrentPrintCheck(check);
-    console.log("Printing check:", currentPrintCheck);
-    setTimeout(() => {
-      const printContent = document.getElementById("print-check-content");
-      if (printContent) {
-        const printWindow = window.open("", "_blank");
-        if (printWindow) {
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>Check #${check.checkNumber}</title>
-                <style>
-                  body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-                  .check-container { max-width: 800px; margin: 0 auto; border: 1px solid #000; padding: 20px; }
-                  .check-header { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-                  .pay-to { margin: 20px 0; }
-                  .amount-words { margin: 10px 0; font-style: italic; }
-                  .service-details { margin: 20px 0; }
-                  .service-item { display: flex; justify-content: space-between; margin: 5px 0; }
-                  .total { border-top: 1px solid #000; padding-top: 10px; margin-top: 20px; font-weight: bold; }
-                  @media print { body { margin: 0; } .check-container { border: none; padding: 0; } }
-                </style>
-              </head>
-              <body>
-                <div class="check-container">
-                  <div class="check-header">
-                    <div>
-                      <h3>Western Truck & Trailer Maintenance</h3>
-                      <p>5250 N. Barcus Ave, Fresno, CA 93722</p>
-                      <p>559-271-7275</p>
-                    </div>
-                    <div>
-                      <p>Date: ${format(check.date, "MM/dd/yyyy")}</p>
-                    </div>
-                  </div>
-                  
-                  <div class="pay-to">
-                    <p><strong>PAY TO THE ORDER OF:</strong> ${
-                      check.userName
-                    }</p>
-                    <p><strong>AMOUNT:</strong> $${check.totalAmount.toFixed(
-                      2
-                    )}</p>
-                  </div>
-                  
-                  <div class="amount-words">
-                    <p>${amountToWords(check.totalAmount)}</p>
-                  </div>
-                  
-                  ${
-                    check.memoNumber
-                      ? `<p><strong>Memo:</strong> ${check.memoNumber}</p>`
-                      : ""
-                  }
-                  
-                  <div class="service-details">
-                    <h4>Service Details:</h4>
-                    ${check.serviceDetails
-                      .map(
-                        (detail) => `
-                      <div class="service-item">
-                        <span>${detail.serviceName}</span>
-                        <span>$${detail.amount.toFixed(2)}</span>
-                      </div>
-                    `
-                      )
-                      .join("")}
-                  </div>
-                  
-                  <div class="total">
-                    <div class="service-item">
-                      <span>TOTAL</span>
-                      <span>$${check.totalAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                  
-                  <div style="margin-top: 40px; border-top: 1px solid #000; padding-top: 20px;">
-                    <p>Check #${check.checkNumber}</p>
-                  </div>
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const printContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Check #${check.checkNumber}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 40px;
+            background: white;
+            line-height: 1.2;
+          }
+          .check-page {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+          }
+          .date-section {
+            text-align: right;
+            margin-bottom: 60px;
+            padding-right: 200px;
+          }
+          .payee-section {
+            display: flex;
+            margin-bottom: 60px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+          }
+          .payee-spacing {
+            width: 200px;
+          }
+          .payee-name {
+            flex: 1;
+            font-weight: bold;
+            font-size: 16px;
+          }
+          .payee-amount {
+            font-weight: bold;
+            font-size: 16px;
+            margin-left: 20px;
+          }
+          .amount-words {
+            margin-left: 50px;
+            margin-bottom: 100px;
+            font-size: 14px;
+            font-style: italic;
+          }
+          .memo-section {
+            margin-left: 200px;
+            margin-bottom: 200px;
+            font-size: 14px;
+          }
+          .divider {
+            border-top: 2px solid #000;
+            margin: 40px 0;
+          }
+          .details-section {
+            margin-top: 60px;
+          }
+          .check-number {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 15px;
+          }
+          .service-line {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+          }
+          .total-line {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+          }
+          .duplicate {
+            margin-top: 100px;
+            border-top: 2px solid #000;
+            padding-top: 60px;
+          }
+          @media print {
+            body {
+              padding: 20px;
+              margin: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="check-page">
+          <!-- Original Check -->
+          <div class="date-section">
+            ${format(check.date, "MM/dd/yyyy")}
+          </div>
+          
+          <div class="payee-section">
+            <div class="payee-spacing"></div>
+            <div class="payee-name">${check.userName}</div>
+            <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
+          </div>
+          
+          <div class="amount-words">
+            ${amountToWords(check.totalAmount)}
+          </div>
+          
+          ${
+            check.memoNumber
+              ? `
+            <div class="memo-section">
+              ${check.memoNumber}
+            </div>
+          `
+              : '<div class="memo-section"></div>'
+          }
+          
+          <div class="divider"></div>
+          
+          <div class="details-section">
+            <div class="check-number">
+              <div>Check No. #${check.checkNumber}</div>
+              <div>${format(check.date, "MM/dd/yyyy")}</div>
+            </div>
+            
+            ${check.serviceDetails
+              .map(
+                (detail) => `
+              <div class="service-line">
+                <div>${detail.serviceName}</div>
+                <div>$${detail.amount.toFixed(2)}</div>
+              </div>
+            `
+              )
+              .join("")}
+            
+            <div class="total-line">
+              <div>$${check.totalAmount.toFixed(2)}</div>
+            </div>
+          </div>
+          
+          <!-- Duplicate Copy -->
+          <div class="duplicate">
+            <div class="date-section">
+              ${format(check.date, "MM/dd/yyyy")}
+            </div>
+            
+            <div class="payee-section">
+              <div class="payee-spacing"></div>
+              <div class="payee-name">${check.userName}</div>
+              <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
+            </div>
+            
+            <div class="amount-words">
+              ${amountToWords(check.totalAmount)}
+            </div>
+            
+            ${
+              check.memoNumber
+                ? `
+              <div class="memo-section">
+                ${check.memoNumber}
+              </div>
+            `
+                : '<div class="memo-section"></div>'
+            }
+            
+            <div class="divider"></div>
+            
+            <div class="details-section">
+              <div class="check-number">
+                <div>Check No. #${check.checkNumber}</div>
+                <div>${format(check.date, "MM/dd/yyyy")}</div>
+              </div>
+              
+              ${check.serviceDetails
+                .map(
+                  (detail) => `
+                <div class="service-line">
+                  <div>${detail.serviceName}</div>
+                  <div>$${detail.amount.toFixed(2)}</div>
                 </div>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-          printWindow.print();
-        }
-      }
-    }, 100);
+              `
+                )
+                .join("")}
+              
+              <div class="total-line">
+                <div>$${check.totalAmount.toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+    </html>
+  `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
   };
 
   if (!user) {
