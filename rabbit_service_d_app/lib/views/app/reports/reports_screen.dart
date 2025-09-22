@@ -938,7 +938,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       if (record['imageUrl'] != null) {
         if (record['imageUrl'] is String) {
           image = null; // Clear the File object
-          _existingImageUrl = record['imageUrl']; // Store the URL separately
+          _existingImageUrl = record['imageUrl'];
         } else if (record['imageUrl'] is File) {
           // It's a new File that hasn't been uploaded yet
           image = record['imageUrl'] as File;
@@ -1897,7 +1897,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                                       // counterText:
                                       //     '${invoiceController.text.length}/10',
                                     ),
-                                    maxLength: 10,
+                                    maxLength: 15,
                                     keyboardType: TextInputType.text,
                                     inputFormatters: [
                                       FilteringTextInputFormatter.allow(

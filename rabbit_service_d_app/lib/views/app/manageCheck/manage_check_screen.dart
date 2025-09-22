@@ -243,15 +243,16 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            padding: pw.EdgeInsets.all(40),
+            padding: pw.EdgeInsets.all(0),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 // pw.Divider(thickness: 1),
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
                   children: [
                     pw.Text(""),
+                    pw.SizedBox(width: 50),
                     pw.Spacer(),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
@@ -305,7 +306,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       ),
                     ],
                   ),
-                pw.SizedBox(height: 50),
+                pw.SizedBox(height: 150),
+                pw.Spacer(),
                 pw.Divider(thickness: 1),
                 pw.SizedBox(height: 30),
 
@@ -349,6 +351,53 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         fontSize: 16, fontWeight: pw.FontWeight.bold),
                   ),
                 ]),
+
+                pw.Divider(thickness: 1),
+                pw.SizedBox(height: 30),
+
+                // Check number and date
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Check. No. #${check['checkNumber']}',
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                //Services details
+                ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  return pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        detail['serviceName'],
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                      pw.Text(
+                        '\$${detail['amount'].toStringAsFixed(2)}',
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  );
+                }).toList(),
+                pw.SizedBox(height: 20),
+                pw.Row(children: [
+                  pw.Spacer(),
+                  pw.Text(
+                    '\$${check['totalAmount'].toStringAsFixed(2)}',
+                    style: pw.TextStyle(
+                        fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  ),
+                ]),
+
+                pw.Spacer(),
+                pw.Spacer(),
               ],
             ),
           );
