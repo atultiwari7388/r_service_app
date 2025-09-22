@@ -541,19 +541,50 @@ export default function MyVehicleDetailsScreen() {
     setShowImageViewer(true);
   };
 
+  // const handleDownloadImage = async (imageUrl: string, fileName: string) => {
+  //   try {
+  //     const response = await fetch(imageUrl);
+  //     const blob = await response.blob();
+  //     const url = window.URL.createObjectURL(blob);
+  //     const a = document.createElement("a");
+  //     a.style.display = "none";
+  //     a.href = url;
+  //     a.download = fileName || "document";
+  //     document.body.appendChild(a);
+  //     a.click();
+  //     window.URL.revokeObjectURL(url);
+  //     document.body.removeChild(a);
+  //     toast.success("Document downloaded successfully!");
+  //   } catch (error) {
+  //     console.error("Error downloading document:", error);
+  //     toast.error("Error downloading document");
+  //   }
+  // };
+
   const handleDownloadImage = async (imageUrl: string, fileName: string) => {
     try {
-      const response = await fetch(imageUrl);
+      // Fetch with CORS support
+      const response = await fetch(imageUrl, { mode: "cors" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch image");
+      }
+
+      // Convert to blob
       const blob = await response.blob();
+
+      // Create a temporary link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.style.display = "none";
       a.href = url;
-      a.download = fileName || "document";
+      a.download = `${fileName}.jpg`; // ✅ Ensure extension (jpg/png)
       document.body.appendChild(a);
-      a.click();
+
+      a.click(); // Trigger download
+
+      // Cleanup
+      a.remove();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+
       toast.success("Document downloaded successfully!");
     } catch (error) {
       console.error("Error downloading document:", error);
