@@ -70,6 +70,7 @@ export default function CreateTeamMemberPage() {
   const currentUserId = user?.uid;
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [formData, setFormData] = useState<CreateTeamMemberForm>({
     memberName: "",
@@ -157,7 +158,13 @@ export default function CreateTeamMemberPage() {
       return;
     }
 
+    // setIsLoading(true);
+    setShowConfirmation(true);
+  };
+
+  const confirmCreateMember = async () => {
     setIsLoading(true);
+    setShowConfirmation(false);
 
     try {
       // Check if email exists in Users collection
@@ -286,6 +293,36 @@ export default function CreateTeamMemberPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Confirm Email Address
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Please verify that <strong>{formData.memberEmail}</strong> is
+              correct. After creating this team member, you won&apos;t be able
+              to change their email address. An invitation will be sent to this
+              email for account activation.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={confirmCreateMember}
+                className="px-4 py-2 bg-[#F96176] text-white rounded-md text-sm font-medium hover:bg-[#e54d62]"
+              >
+                Confirm & Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">
           Create Team Member
