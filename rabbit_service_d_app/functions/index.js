@@ -190,15 +190,28 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       teamMembers: [],
       payMode: selectedPayType || "",
       isManager: selectedRole === "Manager",
+      isSubOwner: selectedRole === "SubOwner",
       isDriver: selectedRole === "Driver",
       isVendor: selectedRole === "Vendor",
       isAccountant: selectedRole === "Accountant",
       isOtherStaff: selectedRole === "Other Staff",
       perMileCharge: selectedRole === "Driver" ? perMileCharge || "0" : "0",
-      isView: selectedRecordAccess.includes("View"),
-      isEdit: selectedRecordAccess.includes("Edit"),
-      isAdd: selectedRecordAccess.includes("Add"),
-      isCheque: selectedChequeAccess.includes("Cheque"),
+      isView:
+        selectedRole == "SubOwner"
+          ? true
+          : selectedRecordAccess.includes("View"),
+      isEdit:
+        selectedRole == "SubOwner"
+          ? true
+          : selectedRecordAccess.includes("Edit"),
+      isAdd:
+        selectedRole == "SubOwner"
+          ? true
+          : selectedRecordAccess.includes("Add"),
+      isCheque:
+        selectedRole == "SubOwner"
+          ? true
+          : selectedChequeAccess.includes("Cheque"),
       isOwner: false,
       isTeamMember: true,
       status: "active",

@@ -58,45 +58,6 @@ const Footer: React.FC = () => {
     return <LoadingIndicator />;
   }
 
-  // const fadeIn = {
-  //   hidden: { opacity: 0, y: 20 },
-  //   visible: {
-  //     opacity: 1,
-  //     y: 0,
-  //     transition: { duration: 0.6 },
-  //   },
-  // };
-
-  // const staggerContainer = {
-  //   hidden: { opacity: 0 },
-  //   visible: {
-  //     opacity: 1,
-  //     transition: {
-  //       staggerChildren: 0.2,
-  //     },
-  //   },
-  // };
-
-  // const socialLinks = [
-  //   { icon: <FaTwitter />, url: "#" },
-  //   { icon: <FaFacebookF />, url: "#" },
-  //   { icon: <FaYoutube />, url: "#" },
-  //   { icon: <FaLinkedinIn />, url: "#" },
-  // ];
-
-  // const quickLinks = [
-  //   { name: "Home", url: "/" },
-  //   { name: "About us", url: "/about-us" },
-  //   { name: "Contact us", url: "/contact-us" },
-  //   { name: "Services", url: "/services" },
-  // ];
-
-  // const legalLinks = [
-  //   { name: "Terms & Conditions", url: "/terms-condition" },
-  //   { name: "Privacy Policy", url: "/privacy-policy" },
-  //   { name: "Refund Policy", url: "/refund-policy" },
-  // ];
-
   return (
     <footer className="bg-[#F5F5F5] text-black pt-10">
       <div className="container mx-auto px-6 md:px-12">
@@ -106,7 +67,7 @@ const Footer: React.FC = () => {
             <h4 className="text-black text-lg font-semibold mb-4">Address</h4>
             <p className="mb-2 flex items-center">
               <FaMapMarkerAlt className="mr-2 text-[#F96176]" />
-              New York, NY 10001, USA
+              California, 93711, USA
             </p>
             {contactInfo.contactNumber &&
               +(
@@ -117,7 +78,7 @@ const Footer: React.FC = () => {
               )}
             <p className="mb-2 flex items-center">
               <FaEnvelope className="mr-2 text-[#F96176]" />
-              info@rabbitmechanicservices.com
+              info@rabbitmechanic.com
             </p>
           </div>
           {/* Quick links Section */}

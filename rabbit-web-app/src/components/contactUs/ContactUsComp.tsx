@@ -170,8 +170,7 @@ export default function ContactUsComp() {
                   <div>
                     <p className="font-semibold">Email</p>
                     <p>
-                      {contactInfo.contactMail ||
-                        "info@rabbitmechanicservices.com"}
+                      {contactInfo.contactMail || "info@rabbitmechanic.com"}
                     </p>
                   </div>
                 </div>
@@ -190,7 +189,7 @@ export default function ContactUsComp() {
                   <FaMapMarkerAlt className="text-[#F96176] text-xl" />
                   <div>
                     <p className="font-semibold">Address</p>
-                    <p>{contactInfo.address || "New York, NY 10001, USA"}</p>
+                    <p>{contactInfo.address || "California, 93711, USA"}</p>
                   </div>
                 </div>
               </div>
