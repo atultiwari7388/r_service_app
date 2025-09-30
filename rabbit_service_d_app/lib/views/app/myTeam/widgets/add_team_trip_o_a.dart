@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,14 +12,17 @@ import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class AddTeamTripOwnerAndAccountant extends StatefulWidget {
-  const AddTeamTripOwnerAndAccountant(
-      {super.key,
-      required this.driverName,
-      required this.mId,
-      required this.teamRole});
+  const AddTeamTripOwnerAndAccountant({
+    super.key,
+    required this.driverName,
+    required this.mId,
+    required this.teamRole,
+    required this.currentUId,
+  });
   final String driverName;
   final String mId;
   final String teamRole;
+  final String currentUId;
 
   @override
   State<AddTeamTripOwnerAndAccountant> createState() =>
@@ -28,7 +31,7 @@ class AddTeamTripOwnerAndAccountant extends StatefulWidget {
 
 class _AddTeamTripOwnerAndAccountantState
     extends State<AddTeamTripOwnerAndAccountant> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   final TextEditingController _tripNameController = TextEditingController();
   final TextEditingController _currentMilesController = TextEditingController();
@@ -311,7 +314,7 @@ class _AddTeamTripOwnerAndAccountantState
 
       DocumentReference tripRef = FirebaseFirestore.instance
           .collection("Users")
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection('trips')
           .doc(selectedTrip);
 
@@ -375,7 +378,7 @@ class _AddTeamTripOwnerAndAccountantState
         };
         await FirebaseFirestore.instance
             .collection("Users")
-            .doc(currentUId)
+            .doc(widget.currentUId)
             .collection("trips")
             .doc(selectedTrip)
             .collection('tripDetails')
@@ -677,7 +680,7 @@ class _AddTeamTripOwnerAndAccountantState
                                 StreamBuilder<QuerySnapshot>(
                                   stream: FirebaseFirestore.instance
                                       .collection("Users")
-                                      .doc(currentUId)
+                                      .doc(widget.currentUId)
                                       .collection('trips')
                                       .snapshots(),
                                   builder: (context, snapshot) {

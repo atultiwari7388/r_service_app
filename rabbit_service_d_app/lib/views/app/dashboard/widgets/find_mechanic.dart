@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -15,17 +14,21 @@ import '../../address/address_management_screen.dart';
 
 class FindMechanic extends StatefulWidget {
   const FindMechanic(
-      {super.key, required this.controller, required this.setTab});
+      {super.key,
+      required this.controller,
+      required this.setTab,
+      required this.currentUId});
 
   final DashboardController controller;
   final Function? setTab;
+  final String currentUId;
 
   @override
   State<FindMechanic> createState() => _FindMechanicState();
 }
 
 class _FindMechanicState extends State<FindMechanic> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   bool isAddressSelected = false;
 
   @override
@@ -41,7 +44,7 @@ class _FindMechanicState extends State<FindMechanic> {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('Users')
-                .doc(currentUId)
+                .doc(widget.currentUId)
                 .collection('Vehicles')
                 .where("active", isEqualTo: true)
                 .snapshots(),
@@ -89,7 +92,8 @@ class _FindMechanicState extends State<FindMechanic> {
                       ),
                     ),
                   ),
-                  widget.controller.role == "Owner"
+                  widget.controller.role == "Owner" ||
+                          widget.controller.role == "SubOwner"
                       ? GestureDetector(
                           onTap: () {
                             if (widget.controller.isAnonymous == true ||
@@ -117,7 +121,9 @@ class _FindMechanicState extends State<FindMechanic> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
-                                                    AddVehicleScreen(),
+                                                    AddVehicleScreen(
+                                                        currentUId:
+                                                            widget.currentUId),
                                               ),
                                             );
                                             if (result != null) {
@@ -145,7 +151,9 @@ class _FindMechanicState extends State<FindMechanic> {
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) =>
-                                                    AddVehicleViaExcelScreen(),
+                                                    AddVehicleViaExcelScreen(
+                                                        currentUId:
+                                                            widget.currentUId),
                                               ),
                                             );
                                           },
@@ -192,7 +200,7 @@ class _FindMechanicState extends State<FindMechanic> {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('Users')
-                .doc(currentUId)
+                .doc(widget.currentUId)
                 .collection('Addresses')
                 .where("isAddressSelected", isEqualTo: true)
                 .snapshots(),
@@ -217,6 +225,7 @@ class _FindMechanicState extends State<FindMechanic> {
                         builder: (context) => AddressManagementScreen(
                           userLat: widget.controller.userLat,
                           userLng: widget.controller.userLong,
+                          currentUId: widget.currentUId,
                         ),
                       ),
                     );
@@ -279,6 +288,7 @@ class _FindMechanicState extends State<FindMechanic> {
                       builder: (context) => AddressManagementScreen(
                         userLat: widget.controller.userLat,
                         userLng: widget.controller.userLong,
+                        currentUId: widget.currentUId,
                       ),
                     ),
                   );
@@ -381,6 +391,7 @@ class _FindMechanicState extends State<FindMechanic> {
                     } else {
                       widget.controller
                           .findMechanic(
+                        widget.currentUId,
                         widget.controller.locationController.text,
                         widget.controller.userPhoto,
                         widget.controller.userName,

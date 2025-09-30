@@ -36,7 +36,7 @@ class _MyTeamScreenState extends State<MyTeamScreen>
   bool isAnonymous = true;
   bool isProfileComplete = false;
   String? ownerId;
-  List<String> _currentUserVehicleIds = []; // Store current user's vehicle IDs
+  List<String> _currentUserVehicleIds = [];
 
   List<String> _selectedRoles = ['All'];
   List<String> _availableRoles = [
@@ -47,6 +47,25 @@ class _MyTeamScreenState extends State<MyTeamScreen>
     'Accountant',
     'Other Staff'
   ];
+
+  // Get effective user ID based on role
+  String get _effectiveUserId {
+    return role == 'SubOwner' ? ownerId! : currentUId;
+  }
+
+  // Check if current user can manage team
+  bool get _canManageTeam {
+    return role == 'Owner' ||
+        role == "SubOwner" && isAnonymous == false && isProfileComplete == true;
+  }
+
+  // Check if current user can view team
+  bool get _canViewTeam {
+    return role == 'Owner' ||
+        role == 'SubOwner' ||
+        role == 'Manager' ||
+        role == 'Accountant';
+  }
 
   @override
   void initState() {
@@ -77,10 +96,9 @@ class _MyTeamScreenState extends State<MyTeamScreen>
           role = userData["role"] ?? "";
           isAnonymous = userData["isAnonymous"] ?? true;
           isProfileComplete = userData["isProfileComplete"] ?? false;
-          ownerId = userData["createdBy"];
+          ownerId = userData["createdBy"] ?? currentUId;
         });
 
-        // Fetch current user's vehicles (for managers/accountants)
         await _fetchCurrentUserVehicles();
         fetchTeamMembersWithVehicles();
       } else {
@@ -114,16 +132,133 @@ class _MyTeamScreenState extends State<MyTeamScreen>
     }
   }
 
+  // Future<void> fetchTeamMembersWithVehicles() async {
+  //   try {
+  //     if (!_canViewTeam) {
+  //       setState(() {
+  //         _errorMessage = 'You are not authorized to view team members';
+  //         _isLoading = false;
+  //       });
+  //       return;
+  //     }
+
+  //     List<Map<String, dynamic>> membersWithVehicles = [];
+  //     String effectiveOwnerId = _effectiveUserId;
+
+  //     if (role == 'SubOwner') {
+  //       DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(effectiveOwnerId)
+  //           .get();
+
+  //       List? teamMembers = ownerDoc['teamMembers'] as List?;
+  //       if (!ownerDoc.exists ||
+  //           teamMembers == null ||
+  //           !teamMembers.contains(currentUId)) {
+  //         setState(() {
+  //           _errorMessage = 'You are not authorized to view this team';
+  //           _isLoading = false;
+  //         });
+  //         return;
+  //       }
+  //     }
+
+  //     QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .where('createdBy', isEqualTo: effectiveOwnerId)
+  //         .get();
+
+  //     for (var member in teamSnapshot.docs) {
+  //       String memberId = member['uid'];
+  //       String memberRole = member['role'] ?? '';
+
+  //       // Skip self for Owners, but include self for SubOwners if they are in the team
+  //       if (role == 'Owner' && memberId == currentUId) continue;
+
+  //       // For non-owners (Managers/Accountants), only process drivers who share vehicles
+  //       if (role != "Owner" && role != "SubOwner" && memberRole != "Driver") {
+  //         continue;
+  //       }
+
+  //       String name = member['userName'] ?? 'No Name';
+  //       String email = member['email'] ?? 'No Email';
+  //       bool isActive = member['active'] ?? false;
+
+  //       QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(memberId)
+  //           .collection('Vehicles')
+  //           .get();
+
+  //       List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
+  //         return {
+  //           'id': doc.id,
+  //           'companyName': doc['companyName'] ?? 'No Company',
+  //           'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+  //         };
+  //       }).toList();
+
+  //       if (role != "Owner" && role != "SubOwner") {
+  //         bool sharesVehicle = vehicles
+  //             .any((vehicle) => _currentUserVehicleIds.contains(vehicle['id']));
+
+  //         if (!sharesVehicle) continue;
+  //       }
+
+  //       vehicles.sort((a, b) => a['vehicleNumber']
+  //           .toString()
+  //           .toLowerCase()
+  //           .compareTo(b['vehicleNumber'].toString().toLowerCase()));
+
+  //       membersWithVehicles.add({
+  //         'name': name,
+  //         'email': email,
+  //         'isActive': isActive,
+  //         'memberId': memberId,
+  //         'ownerId': effectiveOwnerId,
+  //         'vehicles': vehicles,
+  //         'perMileCharge': member['perMileCharge'],
+  //         'role': memberRole,
+  //         'phoneNumber': member['phoneNumber'],
+  //         'isOwnedByCurrentUser': memberId == currentUId,
+  //       });
+  //     }
+
+  //     membersWithVehicles.sort(
+  //         (a, b) => a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
+
+  //     setState(() {
+  //       _allMembers = membersWithVehicles;
+  //       _activeMembers =
+  //           membersWithVehicles.where((m) => m['isActive']).toList();
+  //       _inactiveMembers =
+  //           membersWithVehicles.where((m) => !m['isActive']).toList();
+  //       _isLoading = false;
+  //       _updateAvailableRoles();
+  //     });
+  //   } catch (e) {
+  //     print('Error fetching team members: $e');
+  //     setState(() {
+  //       _errorMessage = 'Error loading team members: $e';
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
   Future<void> fetchTeamMembersWithVehicles() async {
     try {
+      if (!_canViewTeam) {
+        setState(() {
+          _errorMessage = 'You are not authorized to view team members';
+          _isLoading = false;
+        });
+        return;
+      }
+
       List<Map<String, dynamic>> membersWithVehicles = [];
-      String effectiveOwnerId = currentUId;
+      String effectiveOwnerId = _effectiveUserId;
 
-      // If current user is not owner, use their ownerId
-      if (role != "Owner" && ownerId != null) {
-        effectiveOwnerId = ownerId!;
-
-        // Verify that current user is actually in the owner's teamMembers array
+      if (role == 'SubOwner') {
         DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
             .collection('Users')
             .doc(effectiveOwnerId)
@@ -141,7 +276,6 @@ class _MyTeamScreenState extends State<MyTeamScreen>
         }
       }
 
-      // Fetch all team members under the owner
       QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
           .collection('Users')
           .where('createdBy', isEqualTo: effectiveOwnerId)
@@ -151,11 +285,18 @@ class _MyTeamScreenState extends State<MyTeamScreen>
         String memberId = member['uid'];
         String memberRole = member['role'] ?? '';
 
-        // Skip self
-        if (memberId == currentUId) continue;
+        // Skip self for Owners, but include self for SubOwners if they are in the team
+        if (role == 'Owner' && memberId == currentUId) continue;
 
-        // For non-owners, only process drivers who share vehicles
-        if (role != "Owner" && memberRole != "Driver") {
+        // For SubOwners: filter out Owners and SubOwners, only show other roles
+        if (role == 'SubOwner') {
+          if (memberRole == 'Owner' || memberRole == 'SubOwner') {
+            continue; // Skip Owners and SubOwners
+          }
+        }
+
+        // For non-owners (Managers/Accountants), only process drivers who share vehicles
+        if (role != "Owner" && role != "SubOwner" && memberRole != "Driver") {
           continue;
         }
 
@@ -163,7 +304,6 @@ class _MyTeamScreenState extends State<MyTeamScreen>
         String email = member['email'] ?? 'No Email';
         bool isActive = member['active'] ?? false;
 
-        // Fetch member's vehicles
         QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
             .collection('Users')
             .doc(memberId)
@@ -178,8 +318,7 @@ class _MyTeamScreenState extends State<MyTeamScreen>
           };
         }).toList();
 
-        // For managers/accountants, check if driver shares any vehicles
-        if (role != "Owner") {
+        if (role != "Owner" && role != "SubOwner") {
           bool sharesVehicle = vehicles
               .any((vehicle) => _currentUserVehicleIds.contains(vehicle['id']));
 
@@ -201,10 +340,10 @@ class _MyTeamScreenState extends State<MyTeamScreen>
           'perMileCharge': member['perMileCharge'],
           'role': memberRole,
           'phoneNumber': member['phoneNumber'],
+          'isOwnedByCurrentUser': memberId == currentUId,
         });
       }
 
-      // Sort all members alphabetically
       membersWithVehicles.sort(
           (a, b) => a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
 
@@ -215,8 +354,6 @@ class _MyTeamScreenState extends State<MyTeamScreen>
         _inactiveMembers =
             membersWithVehicles.where((m) => !m['isActive']).toList();
         _isLoading = false;
-
-        // Update available roles based on what we actually have
         _updateAvailableRoles();
       });
     } catch (e) {
@@ -235,7 +372,6 @@ class _MyTeamScreenState extends State<MyTeamScreen>
     }
     setState(() {
       _availableRoles = rolesPresent.toList();
-      // Ensure 'All' is always first
       _availableRoles.sort((a, b) => a == 'All'
           ? -1
           : b == 'All'
@@ -255,14 +391,10 @@ class _MyTeamScreenState extends State<MyTeamScreen>
       } else {
         _activeMembers = _allMembers.where((member) {
           if (!member['isActive']) return false;
-
           bool roleMatches = _selectedRoles.contains('All') ||
               _selectedRoles.contains(member['role']);
-
           if (!roleMatches) return false;
-
           if (query.isEmpty) return true;
-
           String name = member['name'].toLowerCase();
           String vehicleDetails = member['vehicles']
               .map<String>((vehicle) =>
@@ -274,14 +406,10 @@ class _MyTeamScreenState extends State<MyTeamScreen>
 
         _inactiveMembers = _allMembers.where((member) {
           if (member['isActive']) return false;
-
           bool roleMatches = _selectedRoles.contains('All') ||
               _selectedRoles.contains(member['role']);
-
           if (!roleMatches) return false;
-
           if (query.isEmpty) return true;
-
           String name = member['name'].toLowerCase();
           String vehicleDetails = member['vehicles']
               .map<String>((vehicle) =>
@@ -303,14 +431,12 @@ class _MyTeamScreenState extends State<MyTeamScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Team"),
-        actions: (isAnonymous == true ||
-                isProfileComplete == false ||
-                role != "Owner")
-            ? []
-            : [
+        title: Text("My Team"),
+        actions: _canManageTeam
+            ? [
                 InkWell(
-                  onTap: () => Get.to(() => const AddTeamMember()),
+                  onTap: () =>
+                      Get.to(() => AddTeamMember(currentUId: _effectiveUserId)),
                   child: CircleAvatar(
                     radius: 20.r,
                     backgroundColor: kPrimary,
@@ -318,7 +444,8 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                   ),
                 ),
                 SizedBox(width: 10.w),
-              ],
+              ]
+            : [],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -332,49 +459,53 @@ class _MyTeamScreenState extends State<MyTeamScreen>
       ),
       body: Column(
         children: [
-          if (role == "Owner") // Only show search and filter for owners
+          if (role == "Owner" || role == "SubOwner")
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search by Name or Vehicle Number',
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.grey[200],
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12.0, horizontal: 20.0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: BorderSide.none,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search by Name or Vehicle Number',
+                            prefixIcon: Icon(Icons.search, color: Colors.grey),
+                            filled: true,
+                            fillColor: Colors.grey[200],
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12.0, horizontal: 20.0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30.0),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30.0),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30.0),
+                              borderSide: BorderSide(color: kPrimary),
+                            ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(Icons.clear, color: Colors.grey),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _filterMembers();
+                                    },
+                                  )
+                                : null,
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: BorderSide(color: kPrimary),
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.clear, color: Colors.grey),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _filterMembers();
-                                },
-                              )
-                            : null,
                       ),
-                    ),
-                  ),
-                  SizedBox(width: 10.w),
-                  IconButton(
-                    icon: Icon(Icons.filter_list, color: kPrimary),
-                    onPressed: _showFilterDialog,
+                      SizedBox(width: 10.w),
+                      IconButton(
+                        icon: Icon(Icons.filter_list, color: kPrimary),
+                        onPressed: _showFilterDialog,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -403,13 +534,45 @@ class _MyTeamScreenState extends State<MyTeamScreen>
       return Center(child: Text(_errorMessage));
     }
 
+    if (!_canViewTeam) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group_off, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text(
+              'Team Access Restricted',
+              style: appStyle(18, kDark, FontWeight.bold),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'You do not have permission to view team members',
+              style: appStyle(14, kGray, FontWeight.normal),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
     if (members.isEmpty) {
       return Center(
-        child: Text(
-          role == "Owner"
-              ? 'No team members found'
-              : 'No drivers sharing vehicles with you found',
-          style: appStyle(16, kDark, FontWeight.normal),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text(
+              role == "SubOwner"
+                  ? "No team members found for owner"
+                  : role == "Owner"
+                      ? 'No team members found'
+                      : 'No drivers sharing vehicles with you found',
+              style: appStyle(16, kDark, FontWeight.normal),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
@@ -419,21 +582,25 @@ class _MyTeamScreenState extends State<MyTeamScreen>
       itemBuilder: (context, index) {
         var member = members[index];
         String name = member['name'];
-        String email = member['email'];
+        // String email = member['email'];
         String phone = member['phoneNumber'];
         bool isActive = member['isActive'];
         String memberId = member['memberId'];
         String ownerId = member['ownerId'];
         String perMileCharge = member['perMileCharge'];
-        List vehicles = member['vehicles'];
+        // List vehicles = member['vehicles'];
         String memberRole = member['role'];
+        bool isOwnedByCurrentUser = member['isOwnedByCurrentUser'] ?? false;
 
-        String vehicleDetails = vehicles.isNotEmpty
-            ? vehicles
-                .map<String>((vehicle) =>
-                    "${vehicle['vehicleNumber']} (${vehicle['companyName']})")
-                .join('\n')
-            : 'No Vehicles';
+        // String vehicleDetails = vehicles.isNotEmpty
+        //     ? vehicles
+        //         .map<String>((vehicle) =>
+        //             "${vehicle['vehicleNumber']} (${vehicle['companyName']})")
+        //         .join('\n')
+        //     : 'No Vehicles';
+
+        // Check if the team member is an Owner - if so, hide switch and menu buttons
+        bool isTeamMemberOwner = memberRole == 'Owner';
 
         return Container(
           margin: EdgeInsets.only(left: 8.w, right: 8.w),
@@ -446,122 +613,170 @@ class _MyTeamScreenState extends State<MyTeamScreen>
             ),
           ),
           child: ListTile(
-            title: Text(
-              name,
-              style:
-                  kIsWeb ? TextStyle() : appStyle(16, kDark, FontWeight.bold),
+            title: Row(
+              children: [
+                Text(
+                  name,
+                  style: kIsWeb
+                      ? TextStyle()
+                      : appStyle(16, kDark, FontWeight.bold),
+                ),
+                if (isOwnedByCurrentUser)
+                  Container(
+                    margin: EdgeInsets.only(left: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'You',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                if (isTeamMemberOwner)
+                  Container(
+                    margin: EdgeInsets.only(left: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Owner',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  memberRole,
+                  memberRole == "SubOwner" ? "Co-Owner" : memberRole,
                   style: kIsWeb
                       ? TextStyle()
                       : appStyle(14, kDark, FontWeight.normal),
                 ),
               ],
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                InkWell(
-                  onTap: () => makePhoneCall(phone),
-                  child: CircleAvatar(
-                    radius: 18.r,
-                    backgroundColor: kSecondary,
-                    child: Icon(Icons.call, color: kWhite),
-                  ),
-                ),
-                SizedBox(width: 2.w),
-                if (role == "Owner") // Only owners can change status
-                  Switch(
-                    activeColor: kPrimary,
-                    value: isActive,
-                    onChanged: (bool value) async {
-                      try {
-                        await FirebaseFirestore.instance
-                            .collection('Users')
-                            .doc(memberId)
-                            .update({'active': value});
-
-                        await fetchTeamMembersWithVehicles();
-                        showToastMessage(
-                            "Success", "Member status updated", Colors.green);
-                      } catch (e) {
-                        showToastMessage(
-                            "Error", "Failed to update status", Colors.red);
-                      }
-                    },
-                  ),
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert_rounded),
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      if (role == "Owner") {
-                        Get.to(() => EditTeamMember(memberId: memberId));
-                      } else {
-                        showToastMessage("Permission Denied",
-                            "Only owners can edit team members", Colors.red);
-                      }
-                    } else if (value == 'view_trip') {
-                      Get.to(() => ViewMemberTrip(
-                            memberName: name,
-                            memberId: memberId,
-                            ownerId: ownerId,
-                            perMileCharge: num.parse(perMileCharge),
-                            role: role,
-                            teamRole: memberRole,
-                          ));
-                    } else if (value == 'view_vehicles') {
-                      Get.to(() => MemberVehiclesScreen(
-                            memberName: name,
-                            memberContact: phone,
-                            memberId: memberId,
-                            vehicles: member['vehicles'],
-                          ));
-                    } else if (value == 'view_jobs') {
-                      Get.to(() => MemberJobsHistoryScreen(
-                            memberName: name,
-                            memebrId: memberId,
-                            ownerId: ownerId,
-                          ));
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => [
-                    if (role == "Owner")
-                      PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                          leading: Icon(Icons.edit, color: kPrimary),
-                          title: Text('Edit'),
+            trailing: isTeamMemberOwner
+                ? SizedBox(width: 48.w) // Empty space to maintain layout
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => makePhoneCall(phone),
+                        child: CircleAvatar(
+                          radius: 18.r,
+                          backgroundColor: kSecondary,
+                          child: Icon(Icons.call, color: kWhite),
                         ),
                       ),
-                    PopupMenuItem(
-                      value: 'view_trip',
-                      child: ListTile(
-                        leading: Icon(Icons.directions_car, color: kPrimary),
-                        title: Text('View Trip'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'view_vehicles',
-                      child: ListTile(
-                        leading: Icon(Icons.work, color: kPrimary),
-                        title: Text('View Vehicles'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'view_jobs',
-                      child: ListTile(
-                        leading: Icon(Icons.work, color: kPrimary),
-                        title: Text('View Jobs'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                      SizedBox(width: 2.w),
+                      if (_canManageTeam && !isOwnedByCurrentUser)
+                        Switch(
+                          activeColor: kPrimary,
+                          value: isActive,
+                          onChanged: (bool value) async {
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('Users')
+                                  .doc(memberId)
+                                  .update({'active': value});
+
+                              await fetchTeamMembersWithVehicles();
+                              showToastMessage("Success",
+                                  "Member status updated", Colors.green);
+                            } catch (e) {
+                              showToastMessage("Error",
+                                  "Failed to update status", Colors.red);
+                            }
+                          },
+                        ),
+                      if (!isTeamMemberOwner) // Only show menu for non-owner team members
+                        PopupMenuButton<String>(
+                          icon: Icon(Icons.more_vert_rounded),
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              if (_canManageTeam && !isOwnedByCurrentUser) {
+                                Get.to(() => EditTeamMember(
+                                    memberId: memberId,
+                                    currentUId: _effectiveUserId));
+                              } else {
+                                showToastMessage(
+                                    "Permission Denied",
+                                    "Only owners can edit team members",
+                                    Colors.red);
+                              }
+                            } else if (value == 'view_trip') {
+                              Get.to(() => ViewMemberTrip(
+                                    memberName: name,
+                                    memberId: memberId,
+                                    ownerId: ownerId,
+                                    perMileCharge: num.parse(perMileCharge),
+                                    role: role,
+                                    teamRole: memberRole,
+                                    effectiveUserId: _effectiveUserId,
+                                  ));
+                            } else if (value == 'view_vehicles') {
+                              Get.to(() => MemberVehiclesScreen(
+                                    memberName: name,
+                                    memberContact: phone,
+                                    memberId: memberId,
+                                    vehicles: member['vehicles'],
+                                  ));
+                            } else if (value == 'view_jobs') {
+                              Get.to(() => MemberJobsHistoryScreen(
+                                    memberName: name,
+                                    memebrId: memberId,
+                                    ownerId: ownerId,
+                                  ));
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => [
+                            if (_canManageTeam && !isOwnedByCurrentUser)
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit, color: kPrimary),
+                                  title: Text('Edit'),
+                                ),
+                              ),
+                            PopupMenuItem(
+                              value: 'view_trip',
+                              child: ListTile(
+                                leading:
+                                    Icon(Icons.directions_car, color: kPrimary),
+                                title: Text('View Trip'),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'view_vehicles',
+                              child: ListTile(
+                                leading: Icon(Icons.work, color: kPrimary),
+                                title: Text('View Vehicles'),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'view_jobs',
+                              child: ListTile(
+                                leading: Icon(Icons.work, color: kPrimary),
+                                title: Text('View Jobs'),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
           ),
         );
       },

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/myJobs/widgets/my_jobs_card.dart';
@@ -23,6 +24,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
   // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   User? get currentUser => FirebaseAuth.instance.currentUser;
   String get currentUId => currentUser?.uid ?? '';
+
+  final DashboardController _dashboardController =
+      Get.find<DashboardController>();
+
+  // Get effective user ID based on role
+  String get _effectiveUserId {
+    return _dashboardController.role == 'SubOwner'
+        ? _dashboardController.ownerId
+        : currentUId;
+  }
 
   String _selectedSortOption = "Sort";
   int? _selectedCardIndex;
@@ -185,7 +196,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('Users')
-            .doc(currentUId)
+            .doc(_effectiveUserId)
             .collection('UserNotifications')
             .where('isRead', isEqualTo: false)
             .snapshots(),
@@ -200,7 +211,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   label: Text(unreadCount.toString(),
                       style: appStyle(12, kWhite, FontWeight.normal)),
                   child: GestureDetector(
-                    onTap: () => Get.to(() => CloudNotificationMessageCenter()),
+                    onTap: () => Get.to(() => CloudNotificationMessageCenter(
+                        currentUId: _effectiveUserId)),
                     child: CircleAvatar(
                         backgroundColor: kPrimary,
                         radius: 17.r,
@@ -213,7 +225,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   label: Text(unreadCount.toString(),
                       style: appStyle(12, kWhite, FontWeight.normal)),
                   child: GestureDetector(
-                    onTap: () => Get.to(() => CloudNotificationMessageCenter()),
+                    onTap: () => Get.to(() => CloudNotificationMessageCenter(
+                        currentUId: _effectiveUserId)),
                     child: CircleAvatar(
                         backgroundColor: kPrimary,
                         radius: 17.r,
@@ -278,7 +291,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Stream<QuerySnapshot> _getFilteredHistoryStream() {
     final collection = FirebaseFirestore.instance
         .collection('Users')
-        .doc(currentUId)
+        .doc(_effectiveUserId)
         .collection("history")
         .orderBy("orderDate", descending: true);
 

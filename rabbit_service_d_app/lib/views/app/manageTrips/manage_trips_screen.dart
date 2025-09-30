@@ -61,6 +61,11 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   String _imageUrl = '';
   DateTime? selectedDate;
 
+  // Get effective user ID based on role
+  String get _effectiveUserId {
+    return role == 'SubOwner' ? ownerId : currentUId;
+  }
+
   void addTrip() async {
     if (_tripNameController.text.isEmpty ||
         _currentMilesController.text.isEmpty) {
@@ -410,7 +415,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
           setState(() {
             perMileCharge = userData['perMileCharge'];
             role = userData['role'];
-            ownerId = userData['createdBy'];
+            ownerId = userData['createdBy'] ?? currentUId;
           });
         }
       }
@@ -419,7 +424,7 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
     // Setup vehicle stream
     vehiclesSubscription = FirebaseFirestore.instance
         .collection('Users')
-        .doc(currentUId)
+        .doc(_effectiveUserId)
         .collection("Vehicles")
         .where("active", isEqualTo: true)
         .where("vehicleType", whereIn: ["Truck", "Trailer"])

@@ -32,6 +32,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         if (controller.isLoading) {
           return Center(child: CircularProgressIndicator());
         } else {
+          // Use the effectiveUserId from the controller
+          String effectiveUserId =
+              controller.role == 'SubOwner' ? controller.ownerId : currentUId;
           return Scaffold(
             appBar: AppBar(
               backgroundColor: kWhite,
@@ -46,7 +49,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Users')
-                      .doc(currentUId)
+                      .doc(effectiveUserId)
                       .collection('UserNotifications')
                       .where('isRead', isEqualTo: false)
                       .snapshots(),
@@ -61,8 +64,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             label: Text(unreadCount.toString(),
                                 style: appStyle(12, kWhite, FontWeight.normal)),
                             child: GestureDetector(
-                              onTap: () => Get.to(
-                                  () => CloudNotificationMessageCenter()),
+                              onTap: () => Get.to(() =>
+                                  CloudNotificationMessageCenter(
+                                      currentUId: effectiveUserId)),
                               child: CircleAvatar(
                                   backgroundColor: kPrimary,
                                   radius: 17.r,
@@ -75,8 +79,10 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                             label: Text(unreadCount.toString(),
                                 style: appStyle(12, kWhite, FontWeight.normal)),
                             child: GestureDetector(
-                              onTap: () => Get.to(
-                                  () => CloudNotificationMessageCenter()),
+                              onTap: () =>
+                                  Get.to(() => CloudNotificationMessageCenter(
+                                        currentUId: effectiveUserId,
+                                      )),
                               child: CircleAvatar(
                                   backgroundColor: kPrimary,
                                   radius: 17.r,
@@ -148,7 +154,10 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FindMechanic(controller: controller, setTab: widget.setTab),
+                    FindMechanic(
+                        controller: controller,
+                        setTab: widget.setTab,
+                        currentUId: effectiveUserId),
                     SizedBox(height: 12.h),
                     // Quick Search Section
                     Align(

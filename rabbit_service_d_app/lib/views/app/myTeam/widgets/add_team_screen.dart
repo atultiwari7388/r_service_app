@@ -2,7 +2,6 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
@@ -17,14 +16,15 @@ import '../../../../utils/show_toast_msg.dart';
 import '../../../../widgets/text_field.dart';
 
 class AddTeamMember extends StatefulWidget {
-  const AddTeamMember({super.key});
+  const AddTeamMember({super.key, required this.currentUId});
+  final String currentUId;
 
   @override
   State<AddTeamMember> createState() => _AddTeamMemberState();
 }
 
 class _AddTeamMemberState extends State<AddTeamMember> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   TextEditingController nameController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -67,7 +67,28 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   List<String> chequeAccessCheckBox = [
     "Cheque",
   ];
-  List<String> roles = [
+  // List<String> roles = [
+  //   "SubOwner",
+  //   "Manager",
+  //   "Driver",
+  //   "Vendor",
+  //   "Accountant",
+  //   "Other Staff"
+  // ];
+
+  // UI display names
+  List<String> roleDisplayNames = [
+    "Co-Owner",
+    "Manager",
+    "Driver",
+    "Vendor",
+    "Accountant",
+    "Other Staff"
+  ];
+
+  // Database storage values
+  List<String> roleDatabaseValues = [
+    "SubOwner",
     "Manager",
     "Driver",
     "Vendor",
@@ -93,7 +114,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     try {
       QuerySnapshot vehiclesSnapshot = await _firestore
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection('Vehicles')
           .where('active', isEqualTo: true)
           .get();
@@ -167,10 +188,22 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                       selectedPayType = null;
                     });
                   },
-                  items: roles.map((String role) {
+                  //     items: roles.map((String role) {
+                  //       return DropdownMenuItem<String>(
+                  //         value: role,
+                  //         child: Text(role),
+                  //       );
+                  //     }).toList(),
+                  //   ),
+                  // ),
+                  items: roleDisplayNames.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    String displayName = entry.value;
+                    String databaseValue = roleDatabaseValues[index];
+
                     return DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(role),
+                      value: databaseValue,
+                      child: Text(displayName),
                     );
                   }).toList(),
                 ),
@@ -326,7 +359,9 @@ class _AddTeamMemberState extends State<AddTeamMember> {
               else
                 Text("Firstly select a role"),
               SizedBox(height: 10.h),
-              if (selectedRole != null && selectedRole != "Vendor") ...[
+              if (selectedRole != null &&
+                  selectedRole != "Vendor" &&
+                  selectedRole != "SubOwner") ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -463,7 +498,9 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 ),
               ],
               SizedBox(height: 10.h),
-              if (selectedRole != null && selectedRole != "Vendor") ...[
+              if (selectedRole != null &&
+                  selectedRole != "Vendor" &&
+                  selectedRole != "SubOwner") ...[
                 //payment type access
                 Text(
                   "Assign Payment Type Access",
@@ -505,20 +542,54 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   : CustomButton(
                       text: "Add Member",
                       onPress: () async {
+                        // Common required fields for all roles
                         if (nameController.text.isEmpty ||
                             emailController.text.isEmpty ||
                             phoneController.text.isEmpty ||
                             passController.text.isEmpty ||
-                            countryController.text.isEmpty ||
-                            stateController.text.isEmpty ||
-                            cityController.text.isEmpty ||
-                            selectedPayType == null ||
-                            selectedRole == null ||
-                            (selectedRole == 'Driver' &&
-                                selectedVehicles.isEmpty)) {
+                            selectedRole == null) {
                           showToastMessage("Error",
                               "Please fill all required fields", Colors.red);
                           return;
+                        }
+
+                        // Additional validation for Vendor role
+                        if (selectedRole == "Vendor") {
+                          if (companyController.text.isEmpty) {
+                            showToastMessage("Error",
+                                "Please fill company name", Colors.red);
+                            return;
+                          }
+                        }
+                        // Additional validation for non-Vendor roles
+                        else {
+                          if (countryController.text.isEmpty ||
+                              stateController.text.isEmpty ||
+                              cityController.text.isEmpty) {
+                            showToastMessage("Error",
+                                "Please fill all required fields", Colors.red);
+                            return;
+                          }
+                        }
+
+                        // Additional validation for non-Vendor and non-SubOwner roles
+                        if (selectedRole != "Vendor" &&
+                            selectedRole != "SubOwner") {
+                          if (selectedPayType == null) {
+                            showToastMessage("Error",
+                                "Please select a pay type", Colors.red);
+                            return;
+                          }
+
+                          // Driver-specific validation
+                          if (selectedRole == 'Driver' &&
+                              selectedVehicles.isEmpty) {
+                            showToastMessage(
+                                "Error",
+                                "Please assign at least one vehicle",
+                                Colors.red);
+                            return;
+                          }
                         }
 
                         if (selectedRole == 'Driver' &&
@@ -581,9 +652,9 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           email: emailController.text,
                           phone: phoneController.text,
                           password: passController.text,
-                          currentUId: currentUId,
+                          currentUId: widget.currentUId,
                           selectedRole: selectedRole!,
-                          selectedPayType: selectedPayType!,
+                          selectedPayType: selectedPayType ?? "",
                           selectedVehicles: selectedVehicles,
                           perMileCharge: perMileChargeController.text,
                           selectedRecordAccess: selectedRecordAccess,
@@ -861,7 +932,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   Future<List<Map<String, dynamic>>> checkVehicleConflicts(
       List<String> selectedVehicleIds) async {
     List<Map<String, dynamic>> conflicts = [];
-    String ownerId = currentUId;
+    String ownerId = widget.currentUId;
 
     // Fetch all team members
     QuerySnapshot teamMembers = await FirebaseFirestore.instance

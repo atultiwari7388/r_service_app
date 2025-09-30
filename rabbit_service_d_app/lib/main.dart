@@ -5,6 +5,10 @@
 // import 'package:flutter/material.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 // import 'package:get/get.dart';
+// import 'package:regal_service_d_app/controllers/add_vehicle_controller.dart';
+// import 'package:regal_service_d_app/controllers/authentication_controller.dart';
+// import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
+// import 'package:regal_service_d_app/controllers/reports_controller.dart';
 // import 'package:regal_service_d_app/services/userRoleService.dart';
 // import 'package:regal_service_d_app/utils/constants.dart';
 // import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
@@ -12,7 +16,6 @@
 // import 'services/push_notification.dart';
 // import 'entry_screen.dart';
 
-// // Initialize the navigator key
 // final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 // // Function to handle background messages
@@ -26,122 +29,120 @@
 // void main() async {
 //   WidgetsFlutterBinding.ensureInitialized();
 
-//   if (kIsWeb) {
-//     await Firebase.initializeApp(
-//       options: FirebaseOptions(
-//           apiKey: "AIzaSyBmSrQA3tnTlbjtKpotxZbd5cN7RsOPqoY",
-//           authDomain: "rabbit-service-d3d90.firebaseapp.com",
-//           projectId: "rabbit-service-d3d90",
-//           storageBucket: "rabbit-service-d3d90.appspot.com",
-//           messagingSenderId: "605779344995",
-//           appId: "1:605779344995:web:4620205702854da4018256",
-//           measurementId: "G-YCPVGY76G2"),
-//     );
-//   } else {
-//     await Firebase.initializeApp();
+//   // Initialize Firebase only
+//   await Firebase.initializeApp(
+//     options: kIsWeb
+//         ? const FirebaseOptions(
+//             apiKey: "...",
+//             authDomain: "...",
+//             projectId: "...",
+//             storageBucket: "...",
+//             messagingSenderId: "...",
+//             appId: "...",
+//             measurementId: "...",
+//           )
+//         : null,
+//   );
 
-//     // Initialize Push Notifications
-//     PushNotification pushNotification = PushNotification();
-//     await pushNotification.localNotiInit(); // Initialize channels first
-//     await pushNotification.init(); // Then initialize FCM and permissions
+//   // Register background handler early
+//   FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessaging);
 
-//     // Listen for background messages
-//     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessaging);
-
-//     // Listen for when a user taps on a notification when the app is in background
-//     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-//       if (message.notification != null) {
-//         log("Background Notification Tapped");
-//         // Handle navigation based on notification type
-//         String notificationType = message.data['type'] ?? 'default';
-//         if (notificationType == 'new_job') {
-//           navigatorKey.currentState?.pushNamed("/newJob", arguments: message);
-//         } else if (notificationType == 'offer_accepted') {
-//           navigatorKey.currentState
-//               ?.pushNamed("/offerAccepted", arguments: message);
-//         } else {
-//           navigatorKey.currentState?.pushNamed("/default", arguments: message);
-//         }
-//       }
-//     });
-
-//     // Handle notifications when the app is launched from a terminated state
-//     final RemoteMessage? initialMessage =
-//         await FirebaseMessaging.instance.getInitialMessage();
-
-//     if (initialMessage != null) {
-//       log("Launched from terminated state");
-//       Future.delayed(const Duration(seconds: 1), () {
-//         String notificationType = initialMessage.data['type'] ?? 'default';
-//         if (notificationType == 'new_job') {
-//           navigatorKey.currentState
-//               ?.pushNamed("/newJob", arguments: initialMessage);
-//         } else if (notificationType == 'offer_accepted') {
-//           navigatorKey.currentState
-//               ?.pushNamed("/offerAccepted", arguments: initialMessage);
-//         } else {
-//           navigatorKey.currentState
-//               ?.pushNamed("/default", arguments: initialMessage);
-//         }
-//       });
-//     }
-//   }
-
-//   // Initialize services
-//   await Get.putAsync(() async => UserService());
-
-//   runApp(MyApp());
+//   runApp(const MyApp());
 // }
 
-// class MyApp extends StatelessWidget {
+// class MyApp extends StatefulWidget {
 //   const MyApp({Key? key}) : super(key: key);
+
+//   @override
+//   State<MyApp> createState() => _MyAppState();
+// }
+
+// class _MyAppState extends State<MyApp> {
+//   late final PushNotification pushNotification;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _setupServices();
+//   }
+
+//   Future<void> _setupServices() async {
+//     void _handleNotificationNavigation(RemoteMessage message) {
+//       final type = message.data['type'] ?? 'default';
+//       if (type == 'new_job') {
+//         navigatorKey.currentState?.pushNamed("/newJob", arguments: message);
+//       } else if (type == 'offer_accepted') {
+//         navigatorKey.currentState
+//             ?.pushNamed("/offerAccepted", arguments: message);
+//       } else {
+//         navigatorKey.currentState?.pushNamed("/default", arguments: message);
+//       }
+//     }
+
+//     // Init Push Notifications
+//     pushNotification = PushNotification();
+//     await pushNotification.localNotiInit();
+//     await pushNotification.init();
+
+//     // Handle foreground taps
+//     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+//       _handleNotificationNavigation(message);
+//     });
+
+//     // Handle terminated state
+//     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+//     if (initialMessage != null) {
+//       WidgetsBinding.instance.addPostFrameCallback((_) {
+//         _handleNotificationNavigation(initialMessage);
+//       });
+//     }
+
+//     // Init services
+//     await Get.putAsync(() async => UserService());
+
+//     // Register controllers
+//     Get.put(AuthController());
+//     Get.put(AddVehicleController());
+//     Get.put(DashboardController());
+//     Get.put(ReportsController());
+//   }
 
 //   @override
 //   Widget build(BuildContext context) {
 //     return ScreenUtilInit(
 //       designSize: const Size(375, 825),
-//       minTextAdapt: true,
-//       splitScreenMode: true,
-//       builder: (context, child) {
+//       builder: (_, __) {
 //         return GetMaterialApp(
 //           navigatorKey: navigatorKey,
-//           onGenerateRoute: (settings) {
-//             // Define your routes here
-//             switch (settings.name) {
-//               case '/newJob':
-//                 return MaterialPageRoute(
-//                   builder: (context) => EntryScreen(),
-//                 );
-//               case '/offerAccepted':
-//                 return MaterialPageRoute(
-//                   builder: (context) => EntryScreen(),
-//                 );
-//               case '/default':
-//                 return MaterialPageRoute(
-//                   builder: (context) => EntryScreen(),
-//                 );
-//               default:
-//                 return MaterialPageRoute(
-//                   builder: (context) => SplashScreen(),
-//                 );
-//             }
-//           },
-//           themeMode: ThemeMode.system,
 //           debugShowCheckedModeBanner: false,
 //           title: appName,
-//           // home: SplashScreen(),
+//           themeMode: ThemeMode.system,
+//           onGenerateRoute: (settings) {
+//             switch (settings.name) {
+//               case '/newJob':
+//               case '/offerAccepted':
+//               case '/default':
+//                 return MaterialPageRoute(builder: (_) => EntryScreen());
+//               default:
+//                 return MaterialPageRoute(builder: (_) => SplashScreen());
+//             }
+//           },
 //           home: FutureBuilder(
-//               future: Get.putAsync(() async => UserService()),
-//               builder: (context, snapshot) {
-//                 return Obx(() {
-//                   final userService = UserService.to;
-//                   if (userService.currentUser.value == null) {
-//                     return const OnBoardingScreen();
-//                   } else {
-//                     return const SplashScreen();
-//                   }
-//                 });
-//               }),
+//             future: _setupServices(), // call once
+//             builder: (context, snapshot) {
+//               if (snapshot.connectionState == ConnectionState.waiting) {
+//                 return const SplashScreen(); // or loader
+//               }
+//               return Obx(() {
+//                 final userService = UserService.to;
+//                 if (userService.currentUser.value == null) {
+//                   return const OnBoardingScreen();
+//                 } else {
+//                   return const SplashScreen();
+//                 }
+//               });
+//             },
+//           ),
 //         );
 //       },
 //     );

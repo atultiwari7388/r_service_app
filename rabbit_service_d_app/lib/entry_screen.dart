@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/controllers/reports_controller.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/views/app/adminContact/admin_contact_screen.dart';
@@ -14,7 +15,6 @@ import 'package:regal_service_d_app/views/app/history/history_screen.dart';
 import 'package:regal_service_d_app/views/app/myJobs/my_jobs_screen.dart';
 import 'package:regal_service_d_app/views/app/reports/reports_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class EntryScreen extends StatefulWidget {
   const EntryScreen({super.key});
@@ -32,6 +32,26 @@ class _EntryScreenState extends State<EntryScreen>
   User? _currentUser;
   StreamSubscription<DocumentSnapshot>? _userStatusSubscription;
   String? whatsAppNumber;
+  String? _userRole;
+  String? _ownerId;
+
+  // Add ReportsController instance
+  final ReportsController reportsController = Get.put(ReportsController());
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   WidgetsBinding.instance.addObserver(this);
+  //   _initScreen();
+  //   getAnonymousUserFromSharedPrefs();
+  //   fetchHelpContact().then((_) {
+  //     setState(() {});
+  //   });
+  //   _animationController = AnimationController(
+  //     duration: const Duration(milliseconds: 1000),
+  //     vsync: this,
+  //   )..repeat();
+  // }
 
   @override
   void initState() {
@@ -87,6 +107,9 @@ class _EntryScreenState extends State<EntryScreen>
           await _currentUser!.sendEmailVerification();
         }
 
+        // Load user role and ownerId first
+        await _loadUserRoleAndOwnerId();
+
         // Start listening to user status changes
         _setupUserStatusListener();
 
@@ -107,12 +130,43 @@ class _EntryScreenState extends State<EntryScreen>
     }
   }
 
+  Future<void> _loadUserRoleAndOwnerId() async {
+    if (_currentUser == null) return;
+
+    try {
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(_currentUser!.uid)
+          .get();
+
+      if (userSnapshot.exists) {
+        final data = userSnapshot.data() as Map<String, dynamic>;
+        _userRole = data['role']?.toString() ?? '';
+        _ownerId = data['createdBy']?.toString() ?? _currentUser!.uid;
+
+        log("User role: $_userRole, Owner ID: $_ownerId");
+      }
+    } catch (e) {
+      log("Error loading user role and ownerId: $e");
+      _userRole = '';
+      _ownerId = _currentUser!.uid;
+    }
+  }
+
+  String get _effectiveUserId {
+    return _userRole == 'SubOwner' ? _ownerId! : _currentUser!.uid;
+  }
+
   void _setupUserStatusListener() {
     if (_currentUser == null) return;
 
+    // Use effectiveUserId for SubOwner role
+    final userIdToListen =
+        _userRole == 'SubOwner' ? _effectiveUserId : _currentUser!.uid;
+
     _userStatusSubscription = FirebaseFirestore.instance
         .collection('Users')
-        .doc(_currentUser?.uid)
+        .doc(userIdToListen)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {
@@ -141,9 +195,13 @@ class _EntryScreenState extends State<EntryScreen>
     try {
       if (_currentUser == null) return;
 
+      // Use effectiveUserId for SubOwner role
+      final userIdToCheck =
+          _userRole == 'SubOwner' ? _effectiveUserId : _currentUser!.uid;
+
       final userSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(_currentUser?.uid)
+          .doc(userIdToCheck)
           .get();
 
       if (!userSnapshot.exists) {
@@ -170,6 +228,18 @@ class _EntryScreenState extends State<EntryScreen>
     }
   }
 
+  // Add this method to refresh reports when tab changes
+  void _refreshReportsOnTabChange(int index) {
+    if (index == 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        reportsController.initializeStreams();
+      });
+    }
+    setState(() {
+      tab = index;
+    });
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -183,7 +253,10 @@ class _EntryScreenState extends State<EntryScreen>
       setState(() {
         _currentUser = user;
       });
-      // No redirection - just update the current user
+      // Reload user role and ownerId when user changes
+      if (_currentUser != null) {
+        await _loadUserRoleAndOwnerId();
+      }
     }
   }
 
@@ -228,78 +301,57 @@ class _EntryScreenState extends State<EntryScreen>
         index: tab,
         children: pages,
       ),
-      // floatingActionButton: whatsAppNumber != null
-      //     ? FloatingActionButton(
-      //         backgroundColor: kPrimary,
-      //         onPressed: () async {
-      //           final uri = Uri.parse(
-      //               "https://wa.me/${whatsAppNumber!.replaceAll('+', '')}");
-
-      //           if (await canLaunchUrl(uri)) {
-      //             await launchUrl(uri, mode: LaunchMode.externalApplication);
-      //           } else {
-      //             print("Could not launch WhatsApp");
-      //           }
-      //         },
-      //         child: const Icon(AntDesign.message1, color: kWhite),
-      //       )
-      //     : null,
-
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
   BottomNavigationBar _buildBottomNavBar() {
     return BottomNavigationBar(
-      elevation: kIsWeb ? 1 : 5,
-      items: [
-        BottomNavigationBarItem(
-          backgroundColor: kPrimary,
-          tooltip: "Records",
-          icon: AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Color.lerp(
-                        kPrimary, kSecondary, _animationController.value)),
-                child: const Icon(AntDesign.barschart, color: kWhite),
-              );
-            },
+        elevation: kIsWeb ? 1 : 5,
+        items: [
+          BottomNavigationBarItem(
+            backgroundColor: kPrimary,
+            tooltip: "Records",
+            icon: AnimatedBuilder(
+              animation: _animationController,
+              builder: (context, child) {
+                return Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Color.lerp(
+                          kPrimary, kSecondary, _animationController.value)),
+                  child: const Icon(AntDesign.barschart, color: kWhite),
+                );
+              },
+            ),
+            label: "RECORDS",
           ),
-          label: "RECORDS",
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(AntDesign.jpgfile1),
-          label: "My Jobs",
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(AntDesign.book),
-          label: "History",
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(AntDesign.search1),
-          label: "Mechanic",
-        ),
-      ],
-      currentIndex: tab,
-      selectedItemColor: kPrimary,
-      showSelectedLabels: true,
-      showUnselectedLabels: true,
-      unselectedIconTheme:
-          tab == 3 ? IconThemeData(color: kDark) : IconThemeData(color: kGray),
-      selectedIconTheme: const IconThemeData(color: kPrimary),
-      selectedLabelStyle: tab == 3
-          ? appStyle(14, kPrimary, FontWeight.bold)
-          : appStyle(12, kSecondary, FontWeight.bold),
-      type: BottomNavigationBarType.fixed,
-      onTap: (index) {
-        setState(() {
-          tab = index;
-        });
-      },
-    );
+          const BottomNavigationBarItem(
+            icon: Icon(AntDesign.jpgfile1),
+            label: "My Jobs",
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(AntDesign.book),
+            label: "History",
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(AntDesign.search1),
+            label: "Mechanic",
+          ),
+        ],
+        currentIndex: tab,
+        selectedItemColor: kPrimary,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        unselectedIconTheme: tab == 3
+            ? IconThemeData(color: kDark)
+            : IconThemeData(color: kGray),
+        selectedIconTheme: const IconThemeData(color: kPrimary),
+        selectedLabelStyle: tab == 3
+            ? appStyle(14, kPrimary, FontWeight.bold)
+            : appStyle(12, kSecondary, FontWeight.bold),
+        type: BottomNavigationBarType.fixed,
+        onTap: _refreshReportsOnTabChange);
   }
 }

@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -8,7 +7,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:regal_service_d_app/utils/app_styles.dart';
-import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/text_field.dart';
@@ -689,57 +687,57 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
     );
   }
 
-  Future<void> _editVehicle(
-      String vehicleId, String? company, String? vehicleNumber) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddVehicleScreen(),
-      ),
-    );
+  // Future<void> _editVehicle(
+  //     String vehicleId, String? company, String? vehicleNumber) async {
+  //   final result = await Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => AddVehicleScreen(),
+  //     ),
+  //   );
 
-    if (result != null) {
-      String? updatedCompany = result['company'];
-      String? updatedVehicleNumber = result['vehicleNumber'];
+  //   if (result != null) {
+  //     String? updatedCompany = result['company'];
+  //     String? updatedVehicleNumber = result['vehicleNumber'];
 
-      try {
-        await FirebaseFirestore.instance
-            .collection("Users")
-            .doc(currentUId)
-            .collection("Vehicles")
-            .doc(vehicleId)
-            .update({
-          'company': updatedCompany,
-          'vehicleNumber': updatedVehicleNumber,
-          'updatedAt': DateTime.now(),
-        });
+  //     try {
+  //       await FirebaseFirestore.instance
+  //           .collection("Users")
+  //           .doc(currentUId)
+  //           .collection("Vehicles")
+  //           .doc(vehicleId)
+  //           .update({
+  //         'company': updatedCompany,
+  //         'vehicleNumber': updatedVehicleNumber,
+  //         'updatedAt': DateTime.now(),
+  //       });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vehicle updated successfully')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update vehicle: $e')),
-        );
-      }
-    }
-  }
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Vehicle updated successfully')),
+  //       );
+  //     } catch (e) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Failed to update vehicle: $e')),
+  //       );
+  //     }
+  //   }
+  // }
 
-  Future<void> _deleteVehicle(String vehicleId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection("Users")
-          .doc(currentUId)
-          .collection("Vehicles")
-          .doc(vehicleId)
-          .delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vehicle deleted successfully')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete vehicle: $e')),
-      );
-    }
-  }
+  // Future<void> _deleteVehicle(String vehicleId) async {
+  //   try {
+  //     await FirebaseFirestore.instance
+  //         .collection("Users")
+  //         .doc(currentUId)
+  //         .collection("Vehicles")
+  //         .doc(vehicleId)
+  //         .delete();
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Vehicle deleted successfully')),
+  //     );
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Failed to delete vehicle: $e')),
+  //     );
+  //   }
+  // }
 }

@@ -7,7 +7,8 @@ import 'package:regal_service_d_app/views/app/manageCheck/widgets/check_series_d
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class ManageCheckNumbersScreen extends StatefulWidget {
-  const ManageCheckNumbersScreen({super.key});
+  const ManageCheckNumbersScreen({super.key, required this.currentUId});
+  final String currentUId;
 
   @override
   State<ManageCheckNumbersScreen> createState() =>
@@ -17,7 +18,7 @@ class ManageCheckNumbersScreen extends StatefulWidget {
 class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
   final TextEditingController _startNumberController = TextEditingController();
   final TextEditingController _endNumberController = TextEditingController();
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   List<Map<String, dynamic>> _checkSeries = [];
   bool _isLoading = true;
   String _errorMessage = '';
@@ -34,7 +35,7 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('CheckSeries')
-          .where('userId', isEqualTo: currentUId)
+          .where('userId', isEqualTo: widget.currentUId)
           .orderBy('createdAt', descending: true)
           .get();
 
@@ -61,7 +62,7 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .get();
 
       if (snapshot.exists) {
@@ -155,7 +156,7 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
       // Save the series to Firestore
       DocumentReference seriesRef =
           await FirebaseFirestore.instance.collection('CheckSeries').add({
-        'userId': currentUId,
+        'userId': widget.currentUId,
         'startNumber': start,
         'endNumber': end,
         'createdAt': FieldValue.serverTimestamp(),
@@ -175,7 +176,7 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
         batch.set(docRef, {
           ...check,
           'seriesId': seriesRef.id,
-          'userId': currentUId,
+          'userId': widget.currentUId,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
@@ -186,7 +187,7 @@ class _ManageCheckNumbersScreenState extends State<ManageCheckNumbersScreen> {
       if (_currentCheckNumber == null) {
         await FirebaseFirestore.instance
             .collection('Users')
-            .doc(currentUId)
+            .doc(widget.currentUId)
             .update({'currentCheckNumber': start});
         setState(() {
           _currentCheckNumber = start;

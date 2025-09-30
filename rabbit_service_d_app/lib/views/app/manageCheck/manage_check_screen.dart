@@ -23,6 +23,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   bool _isLoading = true;
   String _errorMessage = '';
   late String role = "";
+  String? _ownerId;
 
   // Add Check Dialog variables
   String? _selectedType;
@@ -46,20 +47,33 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   String? _currentCheckNumber;
   String? _nextCheckNumber;
 
+  // Get effective user ID based on role
+  String get _effectiveUserId {
+    return role == 'SubOwner' ? _ownerId! : currentUId;
+  }
+
+  // Check if current user can manage checks
+  // bool get _canManageChecks {
+  //   return role != 'SubOwner' &&
+  //       isAnonymous == false &&
+  //       isProfileComplete == true;
+  // }
+
   @override
   void initState() {
     super.initState();
-    fetchUserDetails();
-    fetchTeamMembersWithVehicles();
-    fetchChecks();
-    _fetchCurrentCheckNumber();
+    fetchUserDetails().then((_) {
+      fetchTeamMembersWithVehicles();
+      fetchChecks();
+      _fetchCurrentCheckNumber();
+    });
   }
 
   Future<void> _fetchCurrentCheckNumber() async {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .get();
 
       if (snapshot.exists) {
@@ -82,10 +96,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     if (_currentCheckNumber == null) return null;
 
     try {
-      // Get all check series for this user
+      // Get all check series for the effective user
       QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
           .collection('CheckSeries')
-          .where('userId', isEqualTo: currentUId)
+          .where('userId', isEqualTo: _effectiveUserId) // Use effective user ID
           .get();
 
       // Get all checks from all series
@@ -104,7 +118,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
       // Sort the check numbers
       allCheckNumbers.sort((a, b) {
-        // Extract prefix and numeric parts for comparison
         String prefixA = a.replaceAll(RegExp(r'[0-9]'), '');
         String prefixB = b.replaceAll(RegExp(r'[0-9]'), '');
 
@@ -121,7 +134,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         QuerySnapshot usedCheck = await FirebaseFirestore.instance
             .collection('Checks')
             .where('checkNumber', isEqualTo: checkNumber)
-            .where('createdBy', isEqualTo: currentUId)
+            .where('createdBy',
+                isEqualTo: _effectiveUserId) // Use effective user ID
             .get();
 
         if (usedCheck.docs.isEmpty) {
@@ -141,7 +155,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       // Find the check number in the CheckSeries subcollection and mark it as used
       QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
           .collection('CheckSeries')
-          .where('userId', isEqualTo: currentUId)
+          .where('userId', isEqualTo: _effectiveUserId) // Use effective user ID
           .get();
 
       for (var seriesDoc in seriesSnapshot.docs) {
@@ -161,7 +175,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               .update({
             'isUsed': true,
             'usedAt': FieldValue.serverTimestamp(),
-            'usedBy': currentUId,
+            'usedBy': _effectiveUserId, // Use effective user ID
           });
           break;
         }
@@ -170,7 +184,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       // Update the current check number in user document
       await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .update({'currentCheckNumber': checkNumber});
     } catch (e) {
       print('Error updating check number usage: $e');
@@ -181,7 +195,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     try {
       Query query = FirebaseFirestore.instance
           .collection('Checks')
-          .where('createdBy', isEqualTo: currentUId)
+          .where('createdBy',
+              isEqualTo: _effectiveUserId) // Use effective user ID
           .orderBy('date', descending: true);
 
       if (_filterType != null) {
@@ -243,16 +258,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            padding: pw.EdgeInsets.all(0),
+            padding: pw.EdgeInsets.all(40),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                // pw.Divider(thickness: 1),
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(""),
-                    pw.SizedBox(width: 50),
                     pw.Spacer(),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
@@ -261,8 +274,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ],
                 ),
                 pw.SizedBox(height: 15),
-
-                // Pay to the order of section with dotted line
                 pw.Row(
                   children: [
                     pw.Text(
@@ -276,16 +287,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           fontSize: 14, fontWeight: pw.FontWeight.bold),
                     ),
                     pw.Spacer(),
-                    //money
                     pw.Text(
                       '\$${check['totalAmount'].toStringAsFixed(2)}',
                       style: pw.TextStyle(fontSize: 14),
                     ),
                   ],
                 ),
-
                 pw.SizedBox(height: 15),
-                // Amount in words
                 pw.Row(children: [
                   pw.SizedBox(width: 10),
                   pw.Text(
@@ -294,7 +302,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ),
                 ]),
                 pw.SizedBox(height: 30),
-                // Memo number if exists
                 if (check['memoNumber'] != null)
                   pw.Row(
                     children: [
@@ -306,12 +313,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       ),
                     ],
                   ),
-                pw.SizedBox(height: 150),
-                pw.Spacer(),
+                pw.SizedBox(height: 50),
                 pw.Divider(thickness: 1),
                 pw.SizedBox(height: 30),
-
-                // Check number and date
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -326,7 +330,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ],
                 ),
                 pw.SizedBox(height: 10),
-                //Services details
                 ...check['serviceDetails'].map<pw.Widget>((detail) {
                   return pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -351,53 +354,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         fontSize: 16, fontWeight: pw.FontWeight.bold),
                   ),
                 ]),
-
-                pw.Divider(thickness: 1),
-                pw.SizedBox(height: 30),
-
-                // Check number and date
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      'Check. No. #${check['checkNumber']}',
-                      style: pw.TextStyle(fontSize: 15),
-                    ),
-                    pw.Text(
-                      DateFormat('MM/dd/yyyy').format(check['date']),
-                      style: pw.TextStyle(fontSize: 15),
-                    ),
-                  ],
-                ),
-                pw.SizedBox(height: 10),
-                //Services details
-                ...check['serviceDetails'].map<pw.Widget>((detail) {
-                  return pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(
-                        detail['serviceName'],
-                        style: pw.TextStyle(fontSize: 13),
-                      ),
-                      pw.Text(
-                        '\$${detail['amount'].toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 13),
-                      ),
-                    ],
-                  );
-                }).toList(),
-                pw.SizedBox(height: 20),
-                pw.Row(children: [
-                  pw.Spacer(),
-                  pw.Text(
-                    '\$${check['totalAmount'].toStringAsFixed(2)}',
-                    style: pw.TextStyle(
-                        fontSize: 16, fontWeight: pw.FontWeight.bold),
-                  ),
-                ]),
-
-                pw.Spacer(),
-                pw.Spacer(),
               ],
             ),
           );
@@ -417,7 +373,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     String wholeWords = _numberToWords(wholePart);
     String decimalWords = _numberToWords(decimalPart);
 
-    // String result = wholeWords + ' Dollars';
     String result = wholeWords + '';
 
     if (decimalPart > 0) {
@@ -566,6 +521,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 style: appStyle(12, kGray, FontWeight.normal),
               ),
             SizedBox(height: 8),
+            // if (_canManageChecks) // Only show print button if user can manage checks
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -646,6 +602,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           role = userData["role"] ?? "";
           isAnonymous = userData["isAnonymous"] ?? true;
           isProfileComplete = userData["isProfileComplete"] ?? false;
+          _ownerId = userData["createdBy"]?.toString() ?? currentUId;
         });
       } else {
         setState(() {
@@ -665,8 +622,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
       QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .where('createdBy', isEqualTo: currentUId)
-          .where('uid', isNotEqualTo: currentUId)
+          .where('createdBy',
+              isEqualTo: _effectiveUserId) // Use effective user ID
+          .where('uid', isNotEqualTo: _effectiveUserId) // Use effective user ID
           .get();
 
       for (var member in teamSnapshot.docs) {
@@ -751,7 +709,32 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Check Number Field
+                    // if (role == 'SubOwner')
+                    //   Container(
+                    //     width: double.infinity,
+                    //     padding: EdgeInsets.all(8),
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.blue[50],
+                    //       borderRadius: BorderRadius.circular(4),
+                    //     ),
+                    //     child: Row(
+                    //       children: [
+                    //         Icon(Icons.info_outline,
+                    //             color: Colors.blue, size: 16),
+                    //         SizedBox(width: 8),
+                    //         Expanded(
+                    //           child: Text(
+                    //             'Writing check on behalf of owner',
+                    //             style: TextStyle(
+                    //               fontSize: 12,
+                    //               color: Colors.blue[700],
+                    //             ),
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    SizedBox(height: 16),
                     TextField(
                       controller: _checkNumberController,
                       decoration: InputDecoration(
@@ -762,8 +745,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       readOnly: true,
                     ),
                     SizedBox(height: 16),
-
-                    // Select Type Dropdown
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: 'Select Type',
@@ -794,8 +775,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       validator: (value) => value == null ? 'Required' : null,
                     ),
                     SizedBox(height: 16),
-
-                    // Select Name Dropdown
                     if (_selectedType != null)
                       DropdownButtonFormField<String>(
                         decoration: InputDecoration(
@@ -823,8 +802,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         validator: (value) => value == null ? 'Required' : null,
                       ),
                     SizedBox(height: 16),
-
-                    // Add Detail Button
                     if (_selectedUserId != null)
                       Column(
                         children: [
@@ -838,8 +815,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           SizedBox(height: 16),
                         ],
                       ),
-
-                    // Service Details List
                     if (_serviceDetails.isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,8 +854,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           SizedBox(height: 16),
                         ],
                       ),
-
-                    // Memo Number
                     TextField(
                       controller: _memoNumberController,
                       decoration: InputDecoration(
@@ -890,8 +863,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       ),
                     ),
                     SizedBox(height: 16),
-
-                    // Date Picker
                     Row(
                       children: [
                         Text('Date: ',
@@ -1087,7 +1058,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             ? null
             : _memoNumberController.text,
         'date': _selectedDate,
-        'createdBy': currentUId,
+        'createdBy': _effectiveUserId, // Use effective user ID
+        'createdByUser': currentUId, // Track actual user who created
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -1128,8 +1100,26 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       appBar: AppBar(
         backgroundColor: kPrimary,
         iconTheme: const IconThemeData(color: kWhite),
-        title: Text('Manage Checks',
-            style: appStyle(18, kWhite, FontWeight.normal)),
+        title: Text(
+          'Manage Checks',
+          style: appStyle(18, kWhite, FontWeight.normal),
+        ),
+        //   actions: _canManageChecks
+        //       ? [
+        //           IconButton(
+        //             icon: Icon(Icons.numbers),
+        //             onPressed: () {
+        //               Navigator.push(
+        //                 context,
+        //                 MaterialPageRoute(
+        //                   builder: (context) => const ManageCheckNumbersScreen(),
+        //                 ),
+        //               );
+        //             },
+        //           ),
+        //         ]
+        //       : [],
+        // ),
         actions: (isAnonymous == true && isProfileComplete == false)
             ? []
             : [
@@ -1139,7 +1129,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const ManageCheckNumbersScreen(),
+                        builder: (context) => ManageCheckNumbersScreen(
+                            currentUId: _effectiveUserId),
                       ),
                     );
                   },
@@ -1152,19 +1143,38 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              (isAnonymous == true && isProfileComplete == false)
-                  ? Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        'Please create and account to write checks.',
-                        style: appStyle(14, Colors.red, FontWeight.bold),
-                      ),
-                    )
-                  : CustomButton(
-                      text: "Write Check",
-                      onPress: _showAddCheckDialog,
-                      color: kPrimary,
-                    ),
+              // if (role == 'SubOwner')
+              //   Container(
+              //     width: double.infinity,
+              //     padding: EdgeInsets.all(12),
+              //     margin: EdgeInsets.only(bottom: 16),
+              //     decoration: BoxDecoration(
+              //       color: Colors.blue[50],
+              //       borderRadius: BorderRadius.circular(8),
+              //     ),
+              //     child: Row(
+              //       children: [
+              //         Icon(Icons.info_outline, color: Colors.blue, size: 20),
+              //         SizedBox(width: 8),
+              //         Expanded(
+              //           child: Text(
+              //             "Viewing and managing checks on behalf of the owner",
+              //             style: TextStyle(
+              //               fontSize: 14,
+              //               color: Colors.blue[700],
+              //               fontWeight: FontWeight.w500,
+              //             ),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+
+              CustomButton(
+                text: "Write Check",
+                onPress: _showAddCheckDialog,
+                color: kPrimary,
+              ),
               const SizedBox(height: 16),
               _buildFilterRow(),
               if (_dateRange != null)

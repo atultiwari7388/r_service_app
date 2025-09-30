@@ -17,7 +17,8 @@ import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/custom_container.dart';
 
 class AddVehicleViaExcelScreen extends StatefulWidget {
-  const AddVehicleViaExcelScreen({super.key});
+  const AddVehicleViaExcelScreen({super.key, required this.currentUId});
+  final String currentUId;
 
   @override
   State<AddVehicleViaExcelScreen> createState() =>
@@ -26,7 +27,7 @@ class AddVehicleViaExcelScreen extends StatefulWidget {
 
 class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
   late final TextEditingController _currentMilesController;
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   String? _selectedVehicleType;
   String? _selectedEngineName;
@@ -180,7 +181,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       // 3. Check for existing vehicle
       final duplicateQuery = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection('Vehicles')
           .where('vehicleNumber', isEqualTo: vehicleNumber)
           .where('vehicleType', isEqualTo: vehicleType)
@@ -294,7 +295,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
       // 9. Save to Firestore
       final docRef = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection('Vehicles')
           .add(vehicleData);
 
@@ -306,7 +307,7 @@ class _AddVehicleViaExcelScreenState extends State<AddVehicleViaExcelScreen> {
           .httpsCallable('checkAndNotifyUserForVehicleService');
 
       await callable.call({
-        'userId': currentUId,
+        'userId': widget.currentUId,
         'vehicleId': docRef.id,
       });
 

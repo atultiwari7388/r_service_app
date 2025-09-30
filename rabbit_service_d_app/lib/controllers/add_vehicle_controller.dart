@@ -6,7 +6,6 @@ import "package:firebase_auth/firebase_auth.dart";
 import "package:flutter/material.dart";
 import "package:get/get.dart";
 import "package:intl/intl.dart";
-import "package:regal_service_d_app/services/collection_references.dart";
 import "package:regal_service_d_app/utils/constants.dart";
 import "package:regal_service_d_app/utils/show_toast_msg.dart";
 

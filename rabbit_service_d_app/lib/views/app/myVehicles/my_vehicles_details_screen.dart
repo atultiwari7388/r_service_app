@@ -1,7 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -22,10 +21,14 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 class MyVehiclesDetailsScreen extends StatefulWidget {
   const MyVehiclesDetailsScreen(
-      {super.key, required this.vehicleData, required this.role});
+      {super.key,
+      required this.vehicleData,
+      required this.role,
+      required this.currentUId});
 
   final Map<String, dynamic> vehicleData;
   final String role;
+  final String currentUId;
 
   @override
   State<MyVehiclesDetailsScreen> createState() =>
@@ -33,7 +36,7 @@ class MyVehiclesDetailsScreen extends StatefulWidget {
 }
 
 class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   final List<Map<String, dynamic>> uploadedFiles = [];
   final ImagePicker _imagePicker = ImagePicker();
@@ -73,7 +76,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
       await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection("Vehicles")
           .doc(vehicleId)
           .update({
@@ -137,7 +140,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         iconTheme: IconThemeData(color: kWhite),
         backgroundColor: kPrimary,
         actions: [
-          widget.role == "Owner"
+          widget.role == "Owner" || widget.role == "SubOwner"
               ? Switch(
                   value: isActive,
                   activeColor: kSecondary,
@@ -152,7 +155,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                       // 1. Always update owner's vehicle and DataServices
                       final ownerVehicleRef = FirebaseFirestore.instance
                           .collection("Users")
-                          .doc(currentUId)
+                          .doc(widget.currentUId)
                           .collection('Vehicles')
                           .doc(vehicleId);
                       batch.update(ownerVehicleRef, {'active': value});
@@ -160,7 +163,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                       // Update owner's DataServices
                       final ownerDataServices = await FirebaseFirestore.instance
                           .collection("Users")
-                          .doc(currentUId)
+                          .doc(widget.currentUId)
                           .collection('DataServices')
                           .where("vehicleId", isEqualTo: vehicleId)
                           .get();
@@ -172,7 +175,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                       // 2. Check if owner has any team members
                       final teamCheck = await FirebaseFirestore.instance
                           .collection('Users')
-                          .where('createdBy', isEqualTo: currentUId)
+                          .where('createdBy', isEqualTo: widget.currentUId)
                           .where('isTeamMember', isEqualTo: true)
                           .limit(1)
                           .get();
@@ -181,7 +184,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         // Owner has team members - get all members
                         final teamMembers = await FirebaseFirestore.instance
                             .collection('Users')
-                            .where('createdBy', isEqualTo: currentUId)
+                            .where('createdBy', isEqualTo: widget.currentUId)
                             .where('isTeamMember', isEqualTo: true)
                             .get();
 
@@ -258,7 +261,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
           : StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('Users')
-                  .doc(currentUId)
+                  .doc(widget.currentUId)
                   .collection("Vehicles")
                   .doc(vehicleId)
                   .snapshots(),
@@ -332,7 +335,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 _buildInfoRow("Vehicle Type:",
                                     vehicleData['vehicleType']),
                                 SizedBox(height: 10.h),
-                                widget.role == "Owner"
+                                widget.role == "Owner" ||
+                                        widget.role == "SubOwner"
                                     ? CustomButton(
                                         text: "Edit Vehicle",
                                         onPress: () {
@@ -348,7 +352,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         ),
                         const SizedBox(height: 20),
 
-                        widget.role == "Owner"
+                        widget.role == "Owner" || widget.role == "SubOwner"
                             ? _buildSection(
                                 title: 'Uploaded Documents',
                                 content: uploadedDocuments.isNotEmpty
@@ -428,7 +432,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                               )
                             : SizedBox(),
 
-                        widget.role == "Owner"
+                        widget.role == "Owner" || widget.role == "SubOwner"
                             ? Column(
                                 children: [
                                   const SizedBox(height: 20),
@@ -551,7 +555,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             : SizedBox(),
 //========================= Services ================================================
 
-                        widget.role == "Owner"
+                        widget.role == "Owner" || widget.role == "SubOwner"
                             ? Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
@@ -653,7 +657,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     try {
       final userDocRef = FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection("Vehicles")
           .doc(vehicleId);
 
@@ -955,17 +959,17 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 try {
                   // First update the current user's vehicle (whether owner or team member)
                   await _updateServiceValue(
-                      currentUId, vehicleId, service, newValue);
+                      widget.currentUId, vehicleId, service, newValue);
 
                   if (widget.role == "Owner") {
                     // If current user is owner, update all team members with this vehicle
                     await _updateTeamMembers(
-                        currentUId, vehicleId, service, newValue);
+                        widget.currentUId, vehicleId, service, newValue);
                   } else {
                     // If current user is team member, update owner's vehicle
                     final userDoc = await FirebaseFirestore.instance
                         .collection('Users')
-                        .doc(currentUId)
+                        .doc(widget.currentUId)
                         .get();
 
                     final createdBy = userDoc['createdBy'];
@@ -1045,53 +1049,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
       }
     }
   }
-
-  // Future<void> _updateServiceValue(String userId, String vehicleId,
-  //     Map<String, dynamic> service, int newValue) async {
-  //   final vehicleDocRef = FirebaseFirestore.instance
-  //       .collection('Users')
-  //       .doc(userId)
-  //       .collection('Vehicles')
-  //       .doc(vehicleId);
-
-  //   await FirebaseFirestore.instance.runTransaction((transaction) async {
-  //     final docSnapshot = await transaction.get(vehicleDocRef);
-  //     if (!docSnapshot.exists) throw Exception('Document not found');
-
-  //     List<dynamic> services = List.from(docSnapshot['services']);
-  //     int index = services.indexWhere(
-  //       (s) => s['serviceName'] == service['serviceName'],
-  //     );
-
-  //     if (index == -1) throw Exception('Service not found');
-
-  //     // Get current values
-  //     Map<String, dynamic> currentService = Map.from(services[index]);
-  //     int currentDefault = currentService['defaultNotificationValue'];
-  //     int currentNext = currentService['nextNotificationValue'];
-
-  //     // Calculate the difference between current values
-  //     int difference = currentNext - currentDefault;
-
-  //     // Calculate new next value based on the difference
-  //     int newNextValue = newValue + difference;
-
-  //     // Ensure the new next value is not less than the new default
-  //     if (newNextValue < newValue) {
-  //       newNextValue = newValue;
-  //     }
-
-  //     // Update the service
-  //     Map<String, dynamic> updatedService = Map.from(currentService);
-  //     updatedService['defaultNotificationValue'] = newValue;
-  //     updatedService['nextNotificationValue'] = newNextValue;
-  //     updatedService['preValue'] = currentDefault; // Store previous value
-
-  //     services[index] = updatedService;
-
-  //     transaction.update(vehicleDocRef, {'services': services});
-  //   });
-  // }
 
   Future<void> _updateServiceValue(String userId, String vehicleId,
       Map<String, dynamic> service, int newValue) async {

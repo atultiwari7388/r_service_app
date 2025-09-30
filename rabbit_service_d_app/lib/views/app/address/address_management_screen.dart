@@ -17,9 +17,13 @@ import 'select_location_from_map.dart';
 class AddressManagementScreen extends StatefulWidget {
   final double userLat;
   final double userLng;
+  final String currentUId;
 
   const AddressManagementScreen(
-      {super.key, required this.userLat, required this.userLng});
+      {super.key,
+      required this.userLat,
+      required this.userLng,
+      required this.currentUId});
 
   @override
   _AddressManagementScreenState createState() =>
@@ -27,7 +31,7 @@ class AddressManagementScreen extends StatefulWidget {
 }
 
 class _AddressManagementScreenState extends State<AddressManagementScreen> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   final TextEditingController _addressController = TextEditingController();
   LocationData? currentLocation;
@@ -97,7 +101,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
   }
 
   Future<void> saveAddress() async {
-    String userId = FirebaseAuth.instance.currentUser!.uid;
+    // String userId = FirebaseAuth.instance.currentUser!.uid;
+    String userId = widget.currentUId;
     String address = _addressController.text.trim();
 
     if (address.isNotEmpty && selectedLat != null && selectedLng != null) {
@@ -118,7 +123,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
       // Retrieve the document ID
       String docId = addressRef.id;
       await addressRef.update({'id': docId});
-      // _addressController.clear();
+      _addressController.clear();
       showToastMessage("Success", "Address added successfully", Colors.green);
       // Navigator.pop(context);
       // Return the selected address to the previous screen
@@ -152,7 +157,8 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             },
           ),
           onTap: () async {
-            String userId = FirebaseAuth.instance.currentUser!.uid;
+            // String userId = FirebaseAuth.instance.currentUser!.uid;
+            String userId = widget.currentUId;
 
             // Get a reference to the address document
             DocumentReference addressRef = document.reference;
@@ -256,7 +262,7 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('Users')
-                          .doc(currentUId)
+                          .doc(widget.currentUId)
                           .collection('Addresses')
                           .orderBy("date", descending: true)
                           .snapshots(),

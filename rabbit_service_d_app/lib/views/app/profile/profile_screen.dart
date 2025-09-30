@@ -156,12 +156,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }),
                     if (role == "Owner" ||
                         role == "Manager" ||
-                        role == "Accountant") ...[
+                        role == "Accountant" ||
+                        role == "SubOwner") ...[
                       buildListTile("assets/team.png", "Manage Team", () {
                         Get.to(() => MyTeamScreen());
                       })
                     ],
-                    if (role == "Owner" || role == "Driver") ...[
+                    if (role == "Owner" ||
+                        role == "Driver" ||
+                        role == "SubOwner") ...[
                       buildListTile("assets/manage_trip.png", "My Trips", () {
                         if (isAnonymous == true || isProfileComplete == false) {
                           Get.to(() => RegistrationScreen());

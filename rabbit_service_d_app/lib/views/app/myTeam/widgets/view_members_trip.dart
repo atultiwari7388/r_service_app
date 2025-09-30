@@ -19,6 +19,7 @@ class ViewMemberTrip extends StatefulWidget {
     required this.perMileCharge,
     required this.role,
     required this.teamRole,
+    required this.effectiveUserId,
   });
 
   final String memberId;
@@ -27,6 +28,7 @@ class ViewMemberTrip extends StatefulWidget {
   final num perMileCharge;
   final String role;
   final String teamRole;
+  final String effectiveUserId;
 
   @override
   State<ViewMemberTrip> createState() => _ViewMemberTripState();
@@ -590,6 +592,7 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                       driverName: widget.memberName,
                       mId: widget.memberId,
                       teamRole: widget.teamRole,
+                      currentUId: widget.effectiveUserId,
                     ));
               },
               icon: Icon(Icons.add, color: kWhite),
@@ -1120,7 +1123,9 @@ class _ViewMemberTripState extends State<ViewMemberTrip> {
                             foregroundColor: kWhite),
                       ),
                 SizedBox(width: 10.w),
-                (widget.role == "Accountant" || widget.role == "Owner")
+                (widget.role == "Accountant" ||
+                        widget.role == "Owner" ||
+                        widget.role == "SubOwner")
                     ? ElevatedButton(
                         onPressed: () => _showGoogleMilesDialog(doc),
                         child: Text(

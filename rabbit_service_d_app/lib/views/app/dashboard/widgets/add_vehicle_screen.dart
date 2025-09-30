@@ -13,13 +13,15 @@ import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 class AddVehicleScreen extends StatefulWidget {
+  AddVehicleScreen({required this.currentUId});
+
+  final String currentUId;
+
   @override
   _AddVehicleScreenState createState() => _AddVehicleScreenState();
 }
 
 class _AddVehicleScreenState extends State<AddVehicleScreen> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
-
   final _vehicleNumberController = TextEditingController();
   final _vinController = TextEditingController();
   final _licensePlateController = TextEditingController();
@@ -261,7 +263,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     try {
       CollectionReference vehiclesRef = FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(widget.currentUId)
           .collection('Vehicles');
 
       // Check if the vehicle already exists based on vehicle number, vehicleType, companyName, and engineName
@@ -370,11 +372,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       // Call the function with necessary data
       await callable.call({
-        'userId': currentUId, // Pass userId
+        'userId': widget.currentUId, // Pass userId
         'vehicleId': vehicleDocRef.id, // Pass the vehicleId
       });
 
-      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: $currentUId");
+      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: ${widget.currentUId}");
 
       setState(() {
         isSaving = false;
@@ -683,6 +685,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             if (_selectedVehicleType == 'Trailer') ...[
                               SizedBox(height: 16.h),
                             ],
+                            SizedBox(height: 16.h),
 
                             Container(
                               margin: kIsWeb

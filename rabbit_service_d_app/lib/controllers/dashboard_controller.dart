@@ -123,15 +123,22 @@ class DashboardController extends GetxController {
       final role = doc.get('role')?.toString() ?? '';
       isAnonymous = doc.get('isAnonymous') ?? true;
       isProfileComplete = doc.get('isProfileComplete') ?? false;
+      ownerId = doc.get('createdBy')?.toString() ?? user.uid; // Set ownerId
 
       if (role.isEmpty) throw Exception("Role not set");
 
       _role.value = role;
       log("Role definitively set to: $role");
+      log("Owner ID set to: $ownerId");
     } catch (e) {
       _role.value = '';
       rethrow;
     }
+  }
+
+  // Helper method to get the correct user ID based on role
+  String get _effectiveUserId {
+    return role == 'SubOwner' ? ownerId : currentUId;
   }
 
   Future<void> _loadAllData() async {
@@ -214,10 +221,9 @@ class DashboardController extends GetxController {
     try {
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection('Vehicles')
           .where('isSet', isEqualTo: true)
-          // .orderBy('vehicleNumber')
           .get();
 
       if (vehiclesSnapshot.docs.isNotEmpty) {
@@ -262,7 +268,7 @@ class DashboardController extends GetxController {
     try {
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection('Vehicles')
           .where("active", isEqualTo: true)
           .orderBy('vehicleNumber')
@@ -348,7 +354,6 @@ class DashboardController extends GetxController {
                         prefixIcon: Icon(Icons.search),
                       ),
                       onChanged: (value) {
-                        // filterselectedCompanyAndvehicle(value);
                         onSearchChanged(value);
                       },
                     ),
@@ -400,13 +405,13 @@ class DashboardController extends GetxController {
       // First, set all vehicles' isSet to false
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection('Vehicles')
           .get();
 
       // Check if there are any vehicles to update
       if (vehiclesSnapshot.docs.isEmpty) {
-        log("No vehicles found for user $currentUId");
+        log("No vehicles found for user $_effectiveUserId");
         return;
       }
 
@@ -414,7 +419,7 @@ class DashboardController extends GetxController {
       for (var doc in vehiclesSnapshot.docs) {
         await FirebaseFirestore.instance
             .collection('Users')
-            .doc(currentUId)
+            .doc(_effectiveUserId) // Use effective user ID
             .collection('Vehicles')
             .doc(doc.id)
             .update({'isSet': false});
@@ -423,7 +428,7 @@ class DashboardController extends GetxController {
       // Then, set the selected vehicle's isSet to true
       QuerySnapshot selectedVehicleSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection('Vehicles')
           .where('vehicleNumber',
               isEqualTo: selectedVehicle) // Ensure the field name is correct
@@ -433,7 +438,7 @@ class DashboardController extends GetxController {
       if (selectedVehicleSnapshot.docs.isNotEmpty) {
         await FirebaseFirestore.instance
             .collection('Users')
-            .doc(currentUId)
+            .doc(_effectiveUserId) // Use effective user ID
             .collection('Vehicles')
             .doc(selectedVehicleSnapshot.docs.first.id)
             .update({'isSet': true});
@@ -524,6 +529,7 @@ class DashboardController extends GetxController {
 //=============================== Order Generation =====================================
 
   Future<void> findMechanic(
+    String userId,
     String address,
     String userPhoto,
     String name,
@@ -567,7 +573,7 @@ class DashboardController extends GetxController {
         'orderId': orderId.toString(),
         "cancelReason": "",
         "cancelBy": "",
-        'userId': currentUId,
+        'userId': userId,
         "userPhoto": userPhoto,
         'userName': name,
         'selectedService': selectedService,
@@ -583,7 +589,7 @@ class DashboardController extends GetxController {
         'userLong': userLongitude,
         'orderDate': DateTime.now(),
         "role": role.toString(),
-        "ownerId": ownerId.toString(),
+        "ownerId": ownerId.toString(), // Use ownerId for tracking ownership
         "payMode": "",
         "status": 0,
         "rating": "4.3",
@@ -599,7 +605,7 @@ class DashboardController extends GetxController {
       // Save order details to user's history subcollection
       await FirebaseFirestore.instance
           .collection("Users")
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Always save under current user's history
           .collection("history")
           .doc(orderId.toString())
           .set(data);
@@ -631,7 +637,7 @@ class DashboardController extends GetxController {
     try {
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .get();
 
       if (userDoc.exists && userDoc.data() != null) {
@@ -659,7 +665,7 @@ class DashboardController extends GetxController {
     try {
       QuerySnapshot addressSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection("Addresses")
           .where('isAddressSelected', isEqualTo: true)
           .get();
@@ -756,7 +762,7 @@ class DashboardController extends GetxController {
   }
 
   void saveUserLocation(double latitude, double longitude, String userAddress) {
-    FirebaseFirestore.instance.collection('Users').doc(currentUId).set({
+    FirebaseFirestore.instance.collection('Users').doc(_effectiveUserId).set({
       'isLocationSet': true,
       'lastLocation': {
         'latitude': latitude,
@@ -767,7 +773,7 @@ class DashboardController extends GetxController {
 
     FirebaseFirestore.instance
         .collection('Users')
-        .doc(currentUId)
+        .doc(_effectiveUserId)
         .collection("Addresses")
         .add({
       'address': userAddress,
@@ -779,14 +785,6 @@ class DashboardController extends GetxController {
       "isAddressSelected": true,
     });
   }
-
-  // void checkIfAllSelected() {
-  //   if (isVehicleSelected && isServiceSelected && isAddressSelected) {
-  //     isFindMechanicEnabled = true;
-  //   } else {
-  //     isFindMechanicEnabled = false;
-  //   }
-  // }
 
   void checkIfAllSelected() {
     if (isVehicleSelected && isServiceSelected) {

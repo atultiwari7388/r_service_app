@@ -1,8 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:regal_service_d_app/services/collection_references.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/notification_detail_screen.dart';
@@ -10,8 +8,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class CloudNotificationMessageCenter extends StatelessWidget {
-  CloudNotificationMessageCenter({super.key});
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  CloudNotificationMessageCenter({super.key, required this.currentUId});
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  final String currentUId;
 
   Future<Map<String, dynamic>> getVehicleDetails(String vehicleId) async {
     DocumentSnapshot vehicleDoc = await FirebaseFirestore.instance
@@ -269,7 +268,7 @@ class NotificationCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8.0),
                             ),
                           ),
-                          child: Text("Read",
+                          child: Text("Disappear",
                               style: appStyle(14, kWhite, FontWeight.normal)),
                         ),
                         SizedBox(width: 10),

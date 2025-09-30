@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/myJobs/widgets/my_jobs_card.dart';
@@ -21,11 +22,17 @@ class MyJobsScreen extends StatefulWidget {
 }
 
 class _MyJobsScreenState extends State<MyJobsScreen> {
-  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
-  // final User? user = FirebaseAuth.instance.currentUser!;
-
   User? get currentUser => FirebaseAuth.instance.currentUser;
   String get currentUId => currentUser?.uid ?? '';
+  final DashboardController _dashboardController =
+      Get.find<DashboardController>();
+
+  // Get effective user ID based on role
+  String get _effectiveUserId {
+    return _dashboardController.role == 'SubOwner'
+        ? _dashboardController.ownerId
+        : currentUId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +52,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Users')
-                      .doc(currentUId)
+                      .doc(_effectiveUserId) // Use effective user ID
                       .collection('UserNotifications')
                       .where('isRead', isEqualTo: false)
                       .snapshots(),
@@ -60,8 +67,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             label: Text(unreadCount.toString(),
                                 style: appStyle(12, kWhite, FontWeight.normal)),
                             child: GestureDetector(
-                              onTap: () => Get.to(
-                                  () => CloudNotificationMessageCenter()),
+                              onTap: () => Get.to(() =>
+                                  CloudNotificationMessageCenter(
+                                      currentUId: _effectiveUserId)),
                               child: CircleAvatar(
                                   backgroundColor: kPrimary,
                                   radius: 17.r,
@@ -74,8 +82,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             label: Text(unreadCount.toString(),
                                 style: appStyle(12, kWhite, FontWeight.normal)),
                             child: GestureDetector(
-                              onTap: () => Get.to(
-                                  () => CloudNotificationMessageCenter()),
+                              onTap: () => Get.to(() =>
+                                  CloudNotificationMessageCenter(
+                                      currentUId: _effectiveUserId)),
                               child: CircleAvatar(
                                   backgroundColor: kPrimary,
                                   radius: 17.r,
@@ -96,7 +105,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                     child: StreamBuilder<DocumentSnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('Users')
-                          .doc(currentUId)
+                          .doc(_effectiveUserId) // Use effective user ID
                           .snapshots(),
                       builder: (BuildContext context,
                           AsyncSnapshot<DocumentSnapshot> snapshot) {
@@ -125,7 +134,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                           return ClipOval(
                             child: Image.network(
                               userPhoto,
-                              width: 38.r, // Set appropriate size for the image
+                              width: 38.r,
                               height: 35.r,
                               fit: BoxFit.cover,
                             ),
@@ -173,7 +182,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
             StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection('Users')
-                  .doc(currentUId)
+                  .doc(_effectiveUserId) // Use effective user ID for SubOwner
                   .collection("history")
                   .where("status", whereIn: [0, 1, 2, 3, 4])
                   .orderBy("orderDate", descending: true)
@@ -221,8 +230,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             imagePath: job["userPhoto"].toString().isEmpty
                                 ? "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/profile.png?alt=media&token=43b149e9-b4ee-458f-8271-5946b77ff658"
                                 : job["userPhoto"].toString(),
-                            dateTime:
-                                orderDateTime, // Pass DateTime object directly
+                            dateTime: orderDateTime,
                             onButtonTap: () {
                               Get.to(() => RequestsScreen(
                                     serviceName:
@@ -233,7 +241,6 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                   ));
                             },
                             onCancelBtnTap: () {
-                              // Step 1: Show the first confirmation dialog (Are you sure?)
                               showDialog(
                                 context: context,
                                 builder: (context) {
@@ -243,7 +250,6 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                     actions: [
                                       TextButton(
                                         onPressed: () {
-                                          // If "No" is pressed, close the dialog
                                           Navigator.pop(context);
                                         },
                                         child: Text("No"),
@@ -300,7 +306,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
       // Check if the history document exists
       DocumentReference historyDoc = await FirebaseFirestore.instance
           .collection("Users")
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection("history")
           .doc(jobId);
 
@@ -332,7 +338,6 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
   }
 
   void _showReasonDialog(String orderId) {
-    // List of reasons for canceling the job
     List<String> reasons = [
       'Driver Late',
       'Mis-Communication',
@@ -358,9 +363,8 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                   setState(() {
                     selectedReason = value!;
                   });
-                  Navigator.pop(context); // Close the reason selection dialog
-                  _updateJobStatus(orderId,
-                      selectedReason!); // Proceed to update the job status
+                  Navigator.pop(context);
+                  _updateJobStatus(orderId, selectedReason!);
                 },
               );
             }).toList(),
@@ -378,11 +382,9 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           .doc(orderId)
           .get();
 
-      // Cast job data to Map<String, dynamic>
       Map<String, dynamic>? jobData =
           jobSnapshot.data() as Map<String, dynamic>?;
 
-      // Access mechanicsOffer from jobData, if it exists
       List<dynamic> mechanicsOffer = jobData?['mechanicsOffer'] ?? [];
 
       // Update the status in each mechanic's offer if mechanicsOffer is not empty
@@ -394,13 +396,11 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         }).toList();
       }
 
-      // Data to update in the main job document and in the user's history
       final data = {
-        'status': -1, // Update status to cancelled
-        'cancelReason': reason, // Store the selected reason
+        'status': -1,
+        'cancelReason': reason,
         'cancelBy': 'Driver',
-        'mechanicsOffer':
-            mechanicsOffer, // Update the mechanicsOffer with new statuses
+        'mechanicsOffer': mechanicsOffer,
       };
 
       // Update the job document in Firestore
@@ -409,18 +409,16 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           .doc(orderId)
           .update(data);
 
-      // Update the job in the user's history subcollection
+      // Update the job in the user's history subcollection using effective user ID
       await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(_effectiveUserId) // Use effective user ID
           .collection('history')
           .doc(orderId)
           .update(data);
 
-      // Print the updated mechanicsOffer list
       print("Updated mechanicsOffer: $mechanicsOffer");
 
-      // Show a success message
       Get.snackbar(
         "Job Cancelled",
         "The job was cancelled due to: $reason",
@@ -429,7 +427,6 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         colorText: Colors.white,
       );
     } catch (error) {
-      // Handle any errors
       Get.snackbar(
         "Error",
         "Failed to cancel job: $error",
