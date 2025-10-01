@@ -1255,4 +1255,24 @@ class ReportsController extends GetxController {
       );
     }
   }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    vehiclesSubscription.cancel();
+    recordsSubscription.cancel();
+    servicesSubscription.cancel();
+    milesSubscription.cancel();
+    packagesSubscription.cancel();
+    usersSubscription.cancel();
+    milesController.dispose();
+    hoursController.dispose();
+    workshopController.dispose();
+    invoiceController.dispose();
+    invoiceAmountController.dispose();
+    serviceSearchController.dispose();
+    vehicleSearchController.dispose();
+    dateSearchController.dispose();
+  }
 }

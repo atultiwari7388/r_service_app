@@ -156,6 +156,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
@@ -216,6 +217,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _setupServices() async {
     // Init services
     await Get.putAsync(() async => UserService());
+    Get.put(DashboardController());
 
     // Init Push Notifications
     pushNotification = PushNotification();
