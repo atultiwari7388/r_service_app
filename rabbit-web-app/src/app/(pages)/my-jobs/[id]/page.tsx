@@ -19,37 +19,46 @@ export default function JobIdDetails({
   const [loading, setLoading] = useState(true);
   const [jobDetails, setJobDetails] = useState<HistoryItem | null>(null);
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("");
+  const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
+  const [userRole, setUserRole] = useState("");
 
   const { id } = use(params);
 
-  // useEffect(() => {
-  //   const fetchJobDetails = async () => {
-  //     if (!user) return;
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    if (!user?.uid) return;
 
-  //     try {
-  //       const jobRef = doc(db, "Users", user.uid, "history", `#${id}`);
-  //       const jobSnap = await getDoc(jobRef);
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
 
-  //       if (jobSnap.exists()) {
-  //         const data = jobSnap.data() as HistoryItem;
-  //         setJobDetails(data);
-  //       } else {
-  //         console.log("No such job!");
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching job details:", error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
 
-  //   fetchJobDetails();
-  // }, [user, id]);
+    fetchUserData();
+  }, [user?.uid]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!effectiveUserId) return;
 
-    const jobRef = doc(db, "Users", user.uid, "history", `#${id}`);
+    const jobRef = doc(db, "Users", effectiveUserId, "history", `#${id}`);
 
     const unsubscribe = onSnapshot(jobRef, (jobSnap) => {
       if (jobSnap.exists()) {
@@ -60,11 +69,11 @@ export default function JobIdDetails({
       setLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup on unmount
-  }, [user, id]);
+    return () => unsubscribe();
+  }, [effectiveUserId, id]);
 
   const handleAcceptOffer = async (mechanicId: string) => {
-    if (!jobDetails || !user) return;
+    if (!jobDetails || !effectiveUserId) return;
 
     const confirmAccept = window.confirm(
       "Are you sure you want to accept this offer?"
@@ -81,7 +90,13 @@ export default function JobIdDetails({
       };
 
       // Update user history document
-      const userHistoryRef = doc(db, "Users", user.uid, "history", `#${id}`);
+      const userHistoryRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "history",
+        `#${id}`
+      );
       await updateDoc(userHistoryRef, updates);
 
       // Update jobs document
@@ -99,7 +114,7 @@ export default function JobIdDetails({
   };
 
   const handlePayment = async (mechanicId: string) => {
-    if (!jobDetails || !user) return;
+    if (!jobDetails || !effectiveUserId) return;
 
     try {
       const updates = {
@@ -111,7 +126,13 @@ export default function JobIdDetails({
         })),
       };
 
-      const userHistoryRef = doc(db, "Users", user.uid, "history", `#${id}`);
+      const userHistoryRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "history",
+        `#${id}`
+      );
       const jobRef = doc(db, "jobs", `#${id}`);
 
       await updateDoc(userHistoryRef, updates);
@@ -127,7 +148,7 @@ export default function JobIdDetails({
   };
 
   const handleStartJob = async (mechanicId: string) => {
-    if (!jobDetails || !user) return;
+    if (!jobDetails || !effectiveUserId) return; // Change from user to effectiveUserId
 
     const confirmAccept = window.confirm(
       "Are you sure the Mechanic has arrived and you want to start the job?"
@@ -143,7 +164,13 @@ export default function JobIdDetails({
         })),
       };
 
-      const userHistoryRef = doc(db, "Users", user.uid, "history", `#${id}`);
+      const userHistoryRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "history",
+        `#${id}`
+      ); // Use effectiveUserId
       const jobRef = doc(db, "jobs", `#${id}`);
 
       await updateDoc(userHistoryRef, updates);
@@ -160,6 +187,14 @@ export default function JobIdDetails({
 
   if (!user) {
     return <div>Please login to view job details</div>;
+  }
+
+  if (!effectiveUserId) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
+        <HashLoader color="#F96176" />
+      </div>
+    );
   }
 
   if (loading) {
@@ -182,6 +217,13 @@ export default function JobIdDetails({
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
       {/* Job Details Section */}
+      {userRole === "SubOwner" && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-700 text-sm">
+            Viewing job as Co-Owner (Owner&apos;s data)
+          </p>
+        </div>
+      )}
       <div className="bg-white rounded-xl shadow-lg p-8 mb-8 hover:shadow-xl transition-shadow duration-300">
         <div className="flex items-center mb-2 gap-2">
           {/** Top Section */}

@@ -96,8 +96,41 @@ export default function AddVehiclePage() {
   const [dot, setDot] = useState<string>("");
   const [iccms, setIccms] = useState<string>("");
   const [servicesData, setServicesData] = useState<Service[]>([]);
+  const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
 
   const router = useRouter();
+
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
 
   const fetchVehicleTypes = async () => {
     try {
@@ -196,14 +229,6 @@ export default function AddVehiclePage() {
       return false;
     }
 
-    // if (
-    //   selectedVehicleType === "Trailer" &&
-    //   (!oilChangeDate || !hoursReading)
-    // ) {
-    //   toast.error("Please enter oil change date and hours reading for Trailer");
-    //   return false;
-    // }
-
     return true;
   };
 
@@ -215,8 +240,7 @@ export default function AddVehiclePage() {
       if (service.vType === selectedVehicleType) {
         const serName = service.sName;
         const serId = service.sId || "";
-        // const serviceId = service.sId || ""; // Renamed from serId
-        const serviceName = service.sName; // Renamed from serName
+        const serviceName = service.sName;
         const subServices = service.subServices || [];
         const defaultValues = service.dValues || [];
         let foundMatch = false;
@@ -276,7 +300,7 @@ export default function AddVehiclePage() {
     setLoading(true);
 
     try {
-      if (!user) {
+      if (!effectiveUserId) {
         toast.error("Please login first");
         return;
       }
@@ -286,7 +310,7 @@ export default function AddVehiclePage() {
         return;
       }
 
-      const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+      const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
 
       const existingVehicles = await getDocs(
         query(
@@ -385,7 +409,7 @@ export default function AddVehiclePage() {
       );
 
       await checkAndNotifyUser({
-        userId: user.uid, // Pass userId
+        userId: effectiveUserId, // Pass userId
         vehicleId: vehicleDocRef.id, // Pass the vehicleId
       });
 
@@ -395,7 +419,7 @@ export default function AddVehiclePage() {
         "My Current Miles is : ",
         currentReading,
         "And my User id is : ",
-        user.uid,
+        effectiveUserId,
         "and my vehicle id is : ",
         vehicleDocRef.id
       );
@@ -441,6 +465,13 @@ export default function AddVehiclePage() {
       </h1>
 
       <div className="max-w-2xl mx-auto">
+        {userRole === "SubOwner" && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-700 text-sm">
+              Adding vehicle to Owner&lsquo;s account
+            </p>
+          </div>
+        )}
         <form className="space-y-6" onSubmit={handleSubmit}>
           {/* Vehicle Type Selection */}
           <div>
@@ -531,51 +562,6 @@ export default function AddVehiclePage() {
               />
             </div>
           )}
-
-          {/* {selectedVehicleType === "Trailer" && (
-            <>
-              {selectedCompany === "DRY VAN" ? (
-                ""
-              ) : (
-                <>
-                  <div>
-                    <label
-                      htmlFor="oilChangeDate"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Oil Change Date *
-                    </label>
-                    <input
-                      type="date"
-                      id="oilChangeDate"
-                      value={oilChangeDate}
-                      onChange={(e) => setOilChangeDate(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="hoursReading"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Hours Reading *
-                    </label>
-                    <input
-                      type="number"
-                      id="hoursReading"
-                      value={hoursReading}
-                      onChange={(e) =>
-                        setHoursReading(e.target.value.toUpperCase())
-                      }
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-                      placeholder="Enter hours reading"
-                    />
-                  </div>
-                </>
-              )}
-            </>
-          )} */}
 
           {/* Vehicle Number */}
           <div>

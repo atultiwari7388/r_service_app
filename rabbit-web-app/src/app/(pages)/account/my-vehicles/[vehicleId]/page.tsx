@@ -75,22 +75,35 @@ export default function MyVehicleDetailsScreen() {
   const [role, setRole] = useState("");
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [currentImage, setCurrentImage] = useState<string>("");
+  const [effectiveUserId, setEffectiveUserId] = useState<string>("");
 
+  //firstly we fetch the user data to get the role and createdBy field and then we determine the effectiveUserId based on that
   useEffect(() => {
     if (!user?.uid) return;
 
-    const fetchUserData = async () => {
-      const userDoc = await getDoc(doc(db, "Users", user?.uid));
+    const fetchUserDataAndDetermineEffectiveUserId = async () => {
+      const userDoc = await getDoc(doc(db, "Users", user.uid));
       if (userDoc.exists()) {
         const data = userDoc.data() as ProfileValues;
         setRole(data.role);
+
+        // Determine effectiveUserId based on role
+        if (data.role === "SubOwner" && data.createdBy) {
+          setEffectiveUserId(data.createdBy);
+        } else {
+          setEffectiveUserId(user.uid);
+        }
       }
     };
 
-    const fetchVehicleData = async () => {
-      if (!vehicleId || !user?.uid) return;
+    fetchUserDataAndDetermineEffectiveUserId();
+  }, [user?.uid]);
 
-      const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+  useEffect(() => {
+    const fetchVehicleData = async () => {
+      if (!vehicleId || !effectiveUserId) return;
+
+      const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
@@ -102,8 +115,7 @@ export default function MyVehicleDetailsScreen() {
     };
 
     fetchVehicleData();
-    fetchUserData();
-  }, [vehicleId, user?.uid]);
+  }, [vehicleId, effectiveUserId]);
 
   const handlePrint = async () => {
     const printContent = `
@@ -206,7 +218,7 @@ export default function MyVehicleDetailsScreen() {
   };
 
   const handleUpload = async () => {
-    if (!vehicleId || !user?.uid || filesToUpload.length === 0) return;
+    if (!vehicleId || !effectiveUserId || filesToUpload.length === 0) return;
 
     setLoading(true);
     const uploads: VehicleDocument[] = [];
@@ -215,14 +227,16 @@ export default function MyVehicleDetailsScreen() {
       for (const { file, customText } of filesToUpload) {
         const storageRef = ref(
           storage,
-          `vehicle_images/${user.uid}/${vehicleId}/${file.name}_${Date.now()}`
+          `vehicle_images/${effectiveUserId}/${vehicleId}/${
+            file.name
+          }_${Date.now()}`
         );
         await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(storageRef);
         uploads.push({ imageUrl: downloadURL, text: customText });
       }
 
-      const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+      const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
       await updateDoc(docRef, {
         uploadedDocuments: [
           ...(vehicleData?.uploadedDocuments || []),
@@ -260,7 +274,7 @@ export default function MyVehicleDetailsScreen() {
   };
 
   const handleDeleteDocument = async () => {
-    if (!docToDelete || !user?.uid || !vehicleId) return;
+    if (!docToDelete || !effectiveUserId || !vehicleId) return;
 
     setDeleteLoading(true);
     try {
@@ -269,7 +283,7 @@ export default function MyVehicleDetailsScreen() {
       await deleteObject(imageRef);
 
       // Delete from Firestore
-      const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+      const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
       await updateDoc(docRef, {
         uploadedDocuments: arrayRemove(docToDelete),
       });
@@ -386,7 +400,7 @@ export default function MyVehicleDetailsScreen() {
         await updateCurrentUserVehicle(updatedService);
 
         // Check if current user is owner and update team members
-        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
         const userData = userDoc.data();
 
         if (userData?.role === "Owner") {
@@ -466,7 +480,7 @@ export default function MyVehicleDetailsScreen() {
     const updatedServices = [...(vehicleData.services || [])];
     updatedServices[serviceIndex] = updatedService;
 
-    const docRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+    const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
     await updateDoc(docRef, { services: updatedServices });
 
     setVehicleData((prevData) => ({
@@ -482,7 +496,7 @@ export default function MyVehicleDetailsScreen() {
     // Get all team members
     const teamMembersQuery = query(
       collection(db, "Users"),
-      where("createdBy", "==", user.uid),
+      where("createdBy", "==", effectiveUserId),
       where("isTeamMember", "==", true)
     );
 
@@ -513,7 +527,13 @@ export default function MyVehicleDetailsScreen() {
     updatedService: ServiceData
   ) => {
     try {
-      const vehicleDocRef = doc(db, "Users", userId, "Vehicles", vehicleId);
+      const vehicleDocRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "Vehicles",
+        vehicleId
+      );
       const vehicleDoc = await getDoc(vehicleDocRef);
 
       if (vehicleDoc.exists()) {
@@ -541,26 +561,6 @@ export default function MyVehicleDetailsScreen() {
     setShowImageViewer(true);
   };
 
-  // const handleDownloadImage = async (imageUrl: string, fileName: string) => {
-  //   try {
-  //     const response = await fetch(imageUrl);
-  //     const blob = await response.blob();
-  //     const url = window.URL.createObjectURL(blob);
-  //     const a = document.createElement("a");
-  //     a.style.display = "none";
-  //     a.href = url;
-  //     a.download = fileName || "document";
-  //     document.body.appendChild(a);
-  //     a.click();
-  //     window.URL.revokeObjectURL(url);
-  //     document.body.removeChild(a);
-  //     toast.success("Document downloaded successfully!");
-  //   } catch (error) {
-  //     console.error("Error downloading document:", error);
-  //     toast.error("Error downloading document");
-  //   }
-  // };
-
   const handleDownloadImage = async (imageUrl: string, fileName: string) => {
     try {
       // Fetch with CORS support
@@ -576,7 +576,7 @@ export default function MyVehicleDetailsScreen() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${fileName}.jpg`; // ✅ Ensure extension (jpg/png)
+      a.download = `${fileName}.jpg`;
       document.body.appendChild(a);
 
       a.click(); // Trigger download
@@ -735,7 +735,7 @@ export default function MyVehicleDetailsScreen() {
       </div>
 
       {/** Show Services only Owner */}
-      {role === "Owner" ? (
+      {role === "Owner" || role === "SubOwner" ? (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">Services</h2>
           <div className="overflow-x-auto">
@@ -781,7 +781,7 @@ export default function MyVehicleDetailsScreen() {
           </div>
         </div>
       ) : null}
-      {role === "Owner" ? (
+      {role === "Owner" || role === "SubOwner" ? (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
           <div className="flex gap-4 mb-4">
@@ -839,7 +839,7 @@ export default function MyVehicleDetailsScreen() {
         </div>
       ) : null}
 
-      {role === "Owner" || role === "Accountant" ? (
+      {role === "Owner" || role === "Accountant" || role === "SubOwner" ? (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold mb-4">Uploaded Documents</h2>
           {vehicleData?.uploadedDocuments?.length ? (

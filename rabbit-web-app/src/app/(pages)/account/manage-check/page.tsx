@@ -113,11 +113,10 @@ export default function ManageCheckScreen() {
   const [checkSeries, setCheckSeries] = useState<CheckSeries[]>([]);
   const [isAnonymous, setIsAnonymous] = useState<boolean>(true);
   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [currentUserRole, setCurrentUserRole] = useState("");
 
   const { user } = useAuth() || { user: null };
-  // const [currentPrintCheck, setCurrentPrintCheck] = useState<Check | null>(
-  //   null
-  // );
 
   useEffect(() => {
     if (!user) return;
@@ -130,16 +129,23 @@ export default function ManageCheckScreen() {
         if (docSnap.exists()) {
           const userProfile = docSnap.data();
           setUserRole(userProfile.role || "");
+          setCurrentUserRole(userProfile.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userProfile.role === "SubOwner" && userProfile.createdBy) {
+            setEffectiveUserId(userProfile.createdBy);
+            console.log(
+              `SubOwner detected, using createdBy as effectiveUserId ${userProfile.createdBy} ${currentUserRole}`
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log(`Regular user, using own uid: ${user.uid}`);
+          }
+
           setIsCheque(userProfile.isCheque || false);
           setCurrentCheckNumber(userProfile.currentCheckNumber || null);
           setIsAnonymous(userProfile.isAnonymous || true);
           setIsProfileComplete(userProfile.isProfileComplete || false);
-
-          if (userProfile.isCheque) {
-            fetchTeamMembersWithVehicles();
-            fetchChecks();
-            fetchCheckSeries();
-          }
         } else {
           GlobalToastError("User document not found");
         }
@@ -155,14 +161,29 @@ export default function ManageCheckScreen() {
     return () => unsubscribe();
   }, [user]);
 
+  useEffect(() => {
+    console.log(
+      "effectiveUserId changed:",
+      effectiveUserId,
+      "isCheque:",
+      isCheque
+    );
+    if (effectiveUserId && isCheque) {
+      console.log("Triggering data fetches...");
+      fetchTeamMembersWithVehicles();
+      fetchChecks();
+      fetchCheckSeries();
+    }
+  }, [effectiveUserId, isCheque]);
+
   const fetchTeamMembersWithVehicles = async () => {
     try {
-      if (!user) return;
+      if (!effectiveUserId) return;
 
       const teamQuery = query(
         collection(db, "Users"),
-        where("createdBy", "==", user.uid),
-        where("uid", "!=", user.uid)
+        where("createdBy", "==", effectiveUserId),
+        where("uid", "!=", effectiveUserId)
       );
 
       const teamSnapshot = await getDocs(teamQuery);
@@ -208,12 +229,12 @@ export default function ManageCheckScreen() {
 
   const fetchChecks = async () => {
     try {
-      if (!user) return;
+      if (!effectiveUserId) return;
 
       setLoadingChecks(true);
       let checksQuery = query(
         collection(db, "Checks"),
-        where("createdBy", "==", user.uid),
+        where("createdBy", "==", effectiveUserId),
         orderBy("date", "desc")
       );
 
@@ -236,7 +257,7 @@ export default function ManageCheckScreen() {
           id: doc.id,
           checkNumber: data.checkNumber || 0,
           type: data.type || "",
-          userId: data.userId || "",
+          userId: effectiveUserId || "",
           userName: data.userName || "",
           serviceDetails: data.serviceDetails || [],
           totalAmount: data.totalAmount || 0,
@@ -257,11 +278,11 @@ export default function ManageCheckScreen() {
 
   const fetchCheckSeries = async () => {
     try {
-      if (!user) return;
+      if (!effectiveUserId) return;
 
       const seriesQuery = query(
         collection(db, "CheckSeries"),
-        where("userId", "==", user.uid),
+        where("userId", "==", effectiveUserId),
         orderBy("createdAt", "desc")
       );
 
@@ -290,7 +311,7 @@ export default function ManageCheckScreen() {
     try {
       const seriesQuery = query(
         collection(db, "CheckSeries"),
-        where("userId", "==", user?.uid)
+        where("userId", "==", effectiveUserId)
       );
       const seriesSnapshot = await getDocs(seriesQuery);
 
@@ -323,7 +344,7 @@ export default function ManageCheckScreen() {
         const usedCheckQuery = query(
           collection(db, "Checks"),
           where("checkNumber", "==", checkNumber),
-          where("createdBy", "==", user?.uid)
+          where("createdBy", "==", effectiveUserId)
         );
         const usedCheckSnapshot = await getDocs(usedCheckQuery);
 
@@ -343,7 +364,7 @@ export default function ManageCheckScreen() {
     try {
       const seriesQuery = query(
         collection(db, "CheckSeries"),
-        where("userId", "==", user?.uid)
+        where("userId", "==", effectiveUserId)
       );
       const seriesSnapshot = await getDocs(seriesQuery);
 
@@ -366,7 +387,7 @@ export default function ManageCheckScreen() {
             {
               isUsed: true,
               usedAt: serverTimestamp(),
-              usedBy: user?.uid,
+              usedBy: effectiveUserId,
             }
           );
           break;
@@ -374,7 +395,7 @@ export default function ManageCheckScreen() {
       }
 
       if (user) {
-        await updateDoc(doc(db, "Users", user.uid), {
+        await updateDoc(doc(db, "Users", effectiveUserId), {
           currentCheckNumber: checkNumber,
         });
       }
@@ -483,7 +504,7 @@ export default function ManageCheckScreen() {
     if (
       !selectedUserId ||
       serviceDetails.length === 0 ||
-      !user ||
+      !effectiveUserId ||
       !checkNumber
     ) {
       GlobalToastError("Please fill all required fields");
@@ -500,7 +521,7 @@ export default function ManageCheckScreen() {
         totalAmount: totalAmount,
         memoNumber: memoNumber || null,
         date: Timestamp.fromDate(selectedDate),
-        createdBy: user.uid,
+        createdBy: effectiveUserId,
         createdAt: serverTimestamp(),
       };
 
@@ -612,97 +633,6 @@ export default function ManageCheckScreen() {
 
     return result + " Only";
   };
-
-  // const handlePrint = (check: Check) => {
-  //   setCurrentPrintCheck(check);
-  //   console.log("Printing check:", currentPrintCheck);
-  //   setTimeout(() => {
-  //     const printContent = document.getElementById("print-check-content");
-  //     if (printContent) {
-  //       const printWindow = window.open("", "_blank");
-  //       if (printWindow) {
-  //         printWindow.document.write(`
-  //           <html>
-  //             <head>
-  //               <title>Check #${check.checkNumber}</title>
-  //               <style>
-  //                 body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-  //                 .check-container { max-width: 800px; margin: 0 auto; border: 1px solid #000; padding: 20px; }
-  //                 .check-header { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-  //                 .pay-to { margin: 20px 0; }
-  //                 .amount-words { margin: 10px 0; font-style: italic; }
-  //                 .service-details { margin: 20px 0; }
-  //                 .service-item { display: flex; justify-content: space-between; margin: 5px 0; }
-  //                 .total { border-top: 1px solid #000; padding-top: 10px; margin-top: 20px; font-weight: bold; }
-  //                 @media print { body { margin: 0; } .check-container { border: none; padding: 0; } }
-  //               </style>
-  //             </head>
-  //             <body>
-  //               <div class="check-container">
-  //                 <div class="check-header">
-  //                   <div>
-  //                     <h3>Western Truck & Trailer Maintenance</h3>
-  //                     <p>5250 N. Barcus Ave, Fresno, CA 93722</p>
-  //                     <p>559-271-7275</p>
-  //                   </div>
-  //                   <div>
-  //                     <p>Date: ${format(check.date, "MM/dd/yyyy")}</p>
-  //                   </div>
-  //                 </div>
-
-  //                 <div class="pay-to">
-  //                   <p><strong>PAY TO THE ORDER OF:</strong> ${
-  //                     check.userName
-  //                   }</p>
-  //                   <p><strong>AMOUNT:</strong> $${check.totalAmount.toFixed(
-  //                     2
-  //                   )}</p>
-  //                 </div>
-
-  //                 <div class="amount-words">
-  //                   <p>${amountToWords(check.totalAmount)}</p>
-  //                 </div>
-
-  //                 ${
-  //                   check.memoNumber
-  //                     ? `<p><strong>Memo:</strong> ${check.memoNumber}</p>`
-  //                     : ""
-  //                 }
-
-  //                 <div class="service-details">
-  //                   <h4>Service Details:</h4>
-  //                   ${check.serviceDetails
-  //                     .map(
-  //                       (detail) => `
-  //                     <div class="service-item">
-  //                       <span>${detail.serviceName}</span>
-  //                       <span>$${detail.amount.toFixed(2)}</span>
-  //                     </div>
-  //                   `
-  //                     )
-  //                     .join("")}
-  //                 </div>
-
-  //                 <div class="total">
-  //                   <div class="service-item">
-  //                     <span>TOTAL</span>
-  //                     <span>$${check.totalAmount.toFixed(2)}</span>
-  //                   </div>
-  //                 </div>
-
-  //                 <div style="margin-top: 40px; border-top: 1px solid #000; padding-top: 20px;">
-  //                   <p>Check #${check.checkNumber}</p>
-  //                 </div>
-  //               </div>
-  //             </body>
-  //           </html>
-  //         `);
-  //         printWindow.document.close();
-  //         printWindow.print();
-  //       }
-  //     }
-  //   }, 100);
-  // };
 
   const handlePrint = (check: Check) => {
     const printWindow = window.open("", "_blank");
@@ -1273,7 +1203,6 @@ export default function ManageCheckScreen() {
         </div>
       )}
 
-      {/* Rest of the component remains the same (Filters, Checks List, etc.) */}
       {/* Filters Section */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
         <div className="flex items-center justify-center mb-6">

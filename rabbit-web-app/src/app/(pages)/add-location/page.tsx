@@ -1,8 +1,13 @@
 // "use client";
 
-// import React, { useState, useMemo, useRef, useCallback } from "react";
+// import React, { useState, useRef, useCallback, useEffect } from "react";
 // import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
-// import { FaSearch, FaMapMarkerAlt, FaMapMarked } from "react-icons/fa";
+// import {
+//   FaSearch,
+//   FaMapMarkerAlt,
+//   FaMapMarked,
+//   FaLocationArrow,
+// } from "react-icons/fa";
 // import usePlacesAutocomplete, {
 //   getGeocode,
 //   getLatLng,
@@ -24,16 +29,83 @@
 //   const [selectedLocation, setSelectedLocation] = useState("");
 //   const [markerPosition, setMarkerPosition] =
 //     useState<google.maps.LatLngLiteral | null>(null);
+//   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+//   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral | null>(
+//     null
+//   );
 
 //   const router = useRouter();
 //   const mapRef = useRef<google.maps.Map | null>(null);
-
-//   const mapCenter = useMemo(() => ({ lat: 36.778259, lng: -119.417931 }), []);
 
 //   const { isLoaded, loadError } = useLoadScript({
 //     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
 //     libraries,
 //   });
+
+//   const fetchAddressFromLatLng = async (lat: number, lng: number) => {
+//     try {
+//       const response = await fetch(
+//         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`
+//       );
+
+//       if (!response.ok) throw new Error("Failed to fetch address");
+
+//       const data = await response.json();
+//       const address = data.results[0]?.formatted_address || "Unknown Location";
+//       setSelectedLocation(address);
+//       return address;
+//     } catch (error) {
+//       console.error("Error fetching address:", error);
+//       toast.error("Failed to retrieve location address.");
+//       return null;
+//     }
+//   };
+
+//   const getUserLocation = useCallback(async () => {
+//     if (navigator.geolocation) {
+//       setIsFetchingLocation(true);
+//       try {
+//         const position = await new Promise<GeolocationPosition>(
+//           (resolve, reject) => {
+//             navigator.geolocation.getCurrentPosition(resolve, reject, {
+//               timeout: 10000,
+//             });
+//           }
+//         );
+
+//         const userLocation = {
+//           lat: position.coords.latitude,
+//           lng: position.coords.longitude,
+//         };
+
+//         setMapCenter(userLocation);
+//         setMarkerPosition(userLocation);
+//         const address = await fetchAddressFromLatLng(
+//           userLocation.lat,
+//           userLocation.lng
+//         );
+
+//         if (address) {
+//           toast.success(`Found your location: ${address}`);
+//         }
+//       } catch (error) {
+//         console.error("Error getting location:", error);
+//         toast.error("Could not get your location. Using default location.");
+//         setMapCenter({ lat: 36.778259, lng: -119.417931 });
+//       } finally {
+//         setIsFetchingLocation(false);
+//       }
+//     } else {
+//       toast.error("Geolocation is not supported by this browser.");
+//       setMapCenter({ lat: 36.778259, lng: -119.417931 });
+//     }
+//   }, []);
+
+//   useEffect(() => {
+//     if (isLoaded) {
+//       getUserLocation();
+//     }
+//   }, [isLoaded, getUserLocation]);
 
 //   const onMapLoad = useCallback((map: google.maps.Map) => {
 //     mapRef.current = map;
@@ -45,21 +117,14 @@
 //     const lat = event.latLng.lat();
 //     const lng = event.latLng.lng();
 //     setMarkerPosition({ lat, lng });
+//     await fetchAddressFromLatLng(lat, lng);
+//   };
 
-//     try {
-//       const response = await fetch(
-//         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_API_KEY}`
-//       );
-
-//       if (!response.ok) throw new Error("Failed to fetch address");
-
-//       const data = await response.json();
-//       const address = data.results[0]?.formatted_address || "Unknown Location";
-//       setSelectedLocation(address);
-//       toast.success(`Location selected: ${address}`);
-//     } catch (error) {
-//       console.error("Error fetching address:", error);
-//       toast.error("Failed to retrieve location. Please try again.");
+//   const handleCurrentLocation = async () => {
+//     await getUserLocation();
+//     if (markerPosition && mapRef.current) {
+//       mapRef.current.panTo(markerPosition);
+//       mapRef.current.setZoom(15);
 //     }
 //   };
 
@@ -112,11 +177,13 @@
 //     return <div>Error loading Google Maps. Please try again later.</div>;
 //   }
 
-//   if (!isLoaded) {
+//   if (!isLoaded || isFetchingLocation) {
 //     return (
 //       <div className="flex justify-center items-center min-h-screen">
 //         <div className="animate-pulse text-xl font-semibold">
-//           Loading Maps...
+//           {isFetchingLocation
+//             ? "Detecting your location..."
+//             : "Loading Maps..."}
 //         </div>
 //       </div>
 //     );
@@ -150,33 +217,44 @@
 //           </div>
 //         )}
 
-//         <div className="rounded-lg overflow-hidden shadow-lg mb-6">
-//           <GoogleMap
-//             onClick={handleMapClick}
-//             onLoad={onMapLoad}
-//             center={markerPosition || mapCenter}
-//             zoom={12}
-//             mapContainerStyle={{ height: "500px", width: "100%" }}
-//             options={{
-//               streetViewControl: false,
-//               mapTypeControl: false,
-//               fullscreenControl: true,
-//               zoomControl: true,
-//             }}
-//           >
-//             {markerPosition && (
-//               <Marker
-//                 position={markerPosition}
-//                 animation={google.maps.Animation.DROP}
-//               />
-//             )}
-//           </GoogleMap>
+//         <div className="rounded-lg overflow-hidden shadow-lg mb-6 relative">
+//           {mapCenter && (
+//             <>
+//               <GoogleMap
+//                 onClick={handleMapClick}
+//                 onLoad={onMapLoad}
+//                 center={markerPosition || mapCenter}
+//                 zoom={15}
+//                 mapContainerStyle={{ height: "500px", width: "100%" }}
+//                 options={{
+//                   streetViewControl: false,
+//                   mapTypeControl: false,
+//                   fullscreenControl: true,
+//                   zoomControl: true,
+//                 }}
+//               >
+//                 {markerPosition && (
+//                   <Marker
+//                     position={markerPosition}
+//                     animation={google.maps.Animation.DROP}
+//                   />
+//                 )}
+//               </GoogleMap>
+//               <button
+//                 onClick={handleCurrentLocation}
+//                 className="absolute top-4 right-4 bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-colors"
+//                 title="Use my current location"
+//               >
+//                 <FaLocationArrow className="text-[#F96176]" />
+//               </button>
+//             </>
+//           )}
 //         </div>
 
 //         <div className="flex justify-center">
 //           <button
 //             onClick={handleAddLocation}
-//             className="px-8 py-3 bg-[#F96176] text-white rounded-lg hover:bg-[#F96176] transition-colors duration-200 flex items-center font-semibold"
+//             className="px-8 py-3 bg-[#F96176] text-white rounded-lg hover:bg-[#F96176]/90 transition-colors duration-200 flex items-center font-semibold"
 //             disabled={!selectedLocation}
 //           >
 //             <FaMapMarkerAlt className="mr-2" />
@@ -187,8 +265,6 @@
 //     </div>
 //   );
 // };
-
-// export default AddLocation;
 
 // const SearchBox = ({
 //   mapRef,
@@ -288,6 +364,8 @@
 //   );
 // };
 
+// export default AddLocation;
+
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
@@ -309,11 +387,18 @@ import {
   writeBatch,
   query,
   getDocs,
+  getDoc,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContexts";
 
 const libraries: ["places"] = ["places"];
+
+interface UserData {
+  role: string;
+  createdBy?: string;
+}
 
 const AddLocation = () => {
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -323,14 +408,43 @@ const AddLocation = () => {
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral | null>(
     null
   );
+  const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null);
+  const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
 
   const router = useRouter();
   const mapRef = useRef<google.maps.Map | null>(null);
+  const { user } = useAuth() || { user: null };
+  const currentUserId = user?.uid;
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
     libraries,
   });
+
+  // Fetch current user data and determine effectiveUserId
+  const fetchCurrentUserData = async () => {
+    if (!currentUserId) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, "Users", currentUserId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as UserData;
+        setCurrentUserData(userData);
+        console.log("Current user data:", currentUserData);
+
+        // If current user is SubOwner, use createdBy as effectiveUserId
+        // Otherwise, use their own user ID
+        if (userData.role === "SubOwner" && userData.createdBy) {
+          setEffectiveUserId(userData.createdBy);
+        } else {
+          setEffectiveUserId(currentUserId);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching current user data:", error);
+      toast.error("Failed to load user data");
+    }
+  };
 
   const fetchAddressFromLatLng = async (lat: number, lng: number) => {
     try {
@@ -391,11 +505,18 @@ const AddLocation = () => {
     }
   }, []);
 
+  // Fetch current user data on component mount
   useEffect(() => {
-    if (isLoaded) {
+    if (currentUserId) {
+      fetchCurrentUserData();
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (isLoaded && effectiveUserId) {
       getUserLocation();
     }
-  }, [isLoaded, getUserLocation]);
+  }, [isLoaded, getUserLocation, effectiveUserId]);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -424,6 +545,11 @@ const AddLocation = () => {
       return;
     }
 
+    if (!effectiveUserId) {
+      toast.error("User authentication error");
+      return;
+    }
+
     try {
       const user = auth.currentUser;
       if (!user) {
@@ -432,7 +558,12 @@ const AddLocation = () => {
       }
 
       const batch = writeBatch(db);
-      const userAddressesRef = collection(db, "Users", user.uid, "Addresses");
+      const userAddressesRef = collection(
+        db,
+        "Users",
+        effectiveUserId,
+        "Addresses"
+      );
 
       const existingAddresses = await getDocs(query(userAddressesRef));
       existingAddresses.forEach((doc) => {
@@ -467,11 +598,13 @@ const AddLocation = () => {
     return <div>Error loading Google Maps. Please try again later.</div>;
   }
 
-  if (!isLoaded || isFetchingLocation) {
+  if (!isLoaded || isFetchingLocation || !effectiveUserId) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-pulse text-xl font-semibold">
-          {isFetchingLocation
+          {!effectiveUserId
+            ? "Loading user data..."
+            : isFetchingLocation
             ? "Detecting your location..."
             : "Loading Maps..."}
         </div>

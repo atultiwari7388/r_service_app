@@ -14,6 +14,7 @@ import {
   doc,
   updateDoc,
   setDoc,
+  getDoc,
 } from "firebase/firestore";
 import { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -37,11 +38,44 @@ export default function HistoryPage(): JSX.Element {
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [userRole, setUserRole] = useState("");
 
   const itemsPerPage = 10;
 
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user?.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
+
   const handleRating = async () => {
-    if (!selectedItem) return;
+    if (!selectedItem || !effectiveUserId) return;
 
     try {
       const jobRef = doc(db, "jobs", selectedItem.orderId);
@@ -55,7 +89,7 @@ export default function HistoryPage(): JSX.Element {
       const userHistoryRef = doc(
         db,
         "Users",
-        user!.uid,
+        effectiveUserId, // Use effectiveUserId
         "history",
         selectedItem.orderId
       );
@@ -68,7 +102,6 @@ export default function HistoryPage(): JSX.Element {
         uId: user!.uid,
         orderId: selectedItem.orderId,
       };
-      // Create the mechanic rating document first if it doesn't exist
       await setDoc(mechanicRatingRef, ratingData);
       // Then update the other documents
       await Promise.all([
@@ -93,9 +126,10 @@ export default function HistoryPage(): JSX.Element {
 
   const fetchUserHistory = async (direction: "next" | "prev" | "initial") => {
     setLoading(true);
-    if (user) {
+    if (effectiveUserId) {
+      // Change from user to effectiveUserId
       try {
-        const historyRef = collection(db, "Users", user.uid, "history");
+        const historyRef = collection(db, "Users", effectiveUserId, "history"); // Use effectiveUserId
         let q;
 
         if (direction === "next" && lastDoc) {
@@ -149,14 +183,25 @@ export default function HistoryPage(): JSX.Element {
   };
 
   useEffect(() => {
-    fetchUserHistory("initial");
-  }, [user]);
+    if (effectiveUserId) {
+      fetchUserHistory("initial");
+    }
+  }, [effectiveUserId]);
 
   const handleNext = () => fetchUserHistory("next");
   const handlePrevious = () => fetchUserHistory("prev");
 
   if (!user) {
     return <div>Please log in to access the history page.</div>;
+  }
+
+  // Add loading check for effectiveUserId
+  if (!effectiveUserId) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
+        <HashLoader color="#F96176" />
+      </div>
+    );
   }
 
   if (loading) {
@@ -170,6 +215,13 @@ export default function HistoryPage(): JSX.Element {
   return (
     <div className="container mx-auto p-4">
       {/* Table Layout for larger screens */}
+      {userRole === "SubOwner" && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-700 text-sm">
+            Viewing history as Co-Owner (Owner&#39;s data)
+          </p>
+        </div>
+      )}
       <div className="hidden lg:block">
         <table className="min-w-full bg-white border border-gray-200 rounded-lg">
           <thead>

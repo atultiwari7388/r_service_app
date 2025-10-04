@@ -132,6 +132,8 @@ export default function RecordsPage() {
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const { user } = useAuth() || { user: null };
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [userRole, setUserRole] = useState("");
 
   // Search & Filter State
   const [filterVehicle, setFilterVehicle] = useState("");
@@ -217,11 +219,42 @@ export default function RecordsPage() {
     window.location.href = path;
   };
 
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchEffectiveUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data() as ProfileValues;
+          setUserData(userData);
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchEffectiveUserData();
+  }, [user?.uid]);
+
   const fetchVehicles = async () => {
-    if (!user) return;
+    if (!effectiveUserId) return;
 
     try {
-      const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+      const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
       const q = query(vehiclesRef, where("active", "==", true));
 
       // Replace getDocs with onSnapshot for real-time updates
@@ -283,13 +316,13 @@ export default function RecordsPage() {
   };
 
   const updateServiceDefaultValues = async () => {
-    if (!selectedVehicle || !user?.uid) return;
+    if (!selectedVehicle || !effectiveUserId) return;
 
     try {
       const vehicleRef = doc(
         db,
         "Users",
-        user.uid,
+        effectiveUserId,
         "Vehicles",
         selectedVehicle
       );
@@ -407,7 +440,7 @@ export default function RecordsPage() {
 
   const handleAddMiles = async () => {
     setIsMilesSaving(true);
-    if (!selectedVehicle || !todayMiles || !user?.uid) {
+    if (!selectedVehicle || !todayMiles || !effectiveUserId) {
       toast.error("Please select a vehicle and enter miles/hours.");
       return;
     }
@@ -420,16 +453,16 @@ export default function RecordsPage() {
 
     try {
       // Check if current user is team member and get owner ID
-      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+      const currentUserDoc = await getDoc(doc(db, "Users", effectiveUserId));
       const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
       const ownerId = isTeamMember
-        ? currentUserDoc.data()?.createdBy || user.uid
-        : user.uid;
+        ? currentUserDoc.data()?.createdBy || effectiveUserId
+        : effectiveUserId;
 
       const vehicleRef = doc(
         db,
         "Users",
-        user.uid,
+        effectiveUserId,
         "Vehicles",
         selectedVehicle
       );
@@ -502,7 +535,7 @@ export default function RecordsPage() {
         const teamMemberUid = memberDoc.id;
 
         // Skip current user if they're a team member (we'll update them separately)
-        if (isTeamMember && teamMemberUid === user.uid) continue;
+        if (isTeamMember && teamMemberUid === effectiveUserId) continue;
 
         const teamMemberVehicleRef = doc(
           db,
@@ -519,11 +552,11 @@ export default function RecordsPage() {
       }
 
       // If current user is team member, also update their own vehicle
-      if (isTeamMember && user.uid !== ownerId) {
+      if (isTeamMember && effectiveUserId !== ownerId) {
         const currentUserVehicleRef = doc(
           db,
           "Users",
-          user.uid,
+          effectiveUserId,
           "Vehicles",
           selectedVehicle
         );
@@ -596,10 +629,10 @@ export default function RecordsPage() {
     setSelectedVehicleData(null);
     setSelectedPackages(new Set());
 
-    if (!user?.uid || !value) return;
+    if (!effectiveUserId || !value) return;
 
     try {
-      const vehicleRef = doc(db, "Users", user.uid, "Vehicles", value);
+      const vehicleRef = doc(db, "Users", effectiveUserId, "Vehicles", value);
       const vehicleDoc = await getDoc(vehicleRef);
 
       if (vehicleDoc.exists()) {
@@ -620,26 +653,6 @@ export default function RecordsPage() {
   const normalizePackageName = (name: string) => {
     return name.toLowerCase().replace(/\s+/g, "");
   };
-
-  // const handlePackageSelect = (selectedPackages: string[]) => {
-  //   const newSelectedServices = new Set(selectedServices);
-
-  //   selectedPackages.forEach((pkg) => {
-  //     services.forEach((service) => {
-  //       if (
-  //         service.pName &&
-  //         service.pName.some(
-  //           (p) => normalizePackageName(p) === normalizePackageName(pkg)
-  //         )
-  //       ) {
-  //         newSelectedServices.add(service.sId);
-  //       }
-  //     });
-  //   });
-
-  //   setSelectedServices(newSelectedServices);
-  //   setSelectedPackages(new Set(selectedPackages));
-  // };
 
   const handlePackageSelect = (selectedPackageNames: string[]) => {
     const newSelectedPackages = new Set(selectedPackageNames);
@@ -710,7 +723,7 @@ export default function RecordsPage() {
   };
 
   const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile || !user?.uid) return null;
+    if (!imageFile || !effectiveUserId) return null;
 
     try {
       setIsUploading(true);
@@ -718,7 +731,7 @@ export default function RecordsPage() {
 
       const storageRef = ref(
         storage,
-        `service-records/${user.uid}/${Date.now()}_${imageFile.name}`
+        `service-records/${effectiveUserId}/${Date.now()}_${imageFile.name}`
       );
       const uploadTask = uploadBytesResumable(storageRef, imageFile);
 
@@ -812,10 +825,10 @@ export default function RecordsPage() {
     fetchServices();
     fetchServicePackages();
 
-    if (!user?.uid) return;
+    if (!effectiveUserId) return;
 
     const fetchUserData = async () => {
-      const userDoc = await getDoc(doc(db, "Users", user.uid));
+      const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
       if (userDoc.exists()) {
         const data = userDoc.data() as ProfileValues;
         setUserData(data);
@@ -825,7 +838,7 @@ export default function RecordsPage() {
     };
 
     const recordsQuery = query(
-      collection(db, "Users", user.uid, "DataServices"),
+      collection(db, "Users", effectiveUserId, "DataServices"),
       where("active", "==", true)
     );
 
@@ -986,7 +999,7 @@ export default function RecordsPage() {
       setIsRecordSaving(true);
 
       // Validate inputs
-      if (!user || !selectedVehicle || selectedServices.size === 0) {
+      if (!effectiveUserId || !selectedVehicle || selectedServices.size === 0) {
         toast.error("Please select vehicle and at least one service");
         return;
       }
@@ -1015,7 +1028,7 @@ export default function RecordsPage() {
       const vehicleRef = doc(
         db,
         "Users",
-        user.uid,
+        effectiveUserId,
         "Vehicles",
         selectedVehicle
       );
@@ -1125,7 +1138,7 @@ export default function RecordsPage() {
       const formattedDate = baseDate.toISOString().split("T")[0];
 
       const recordData = {
-        userId: user.uid,
+        userId: effectiveUserId,
         vehicleId: selectedVehicle,
         imageUrl,
         vehicleDetails: {
@@ -1152,11 +1165,11 @@ export default function RecordsPage() {
       const batch = writeBatch(db);
 
       // Determine owner and if current user is team member
-      const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
+      const currentUserDoc = await getDoc(doc(db, "Users", effectiveUserId));
       const isTeamMember = currentUserDoc.data()?.isTeamMember;
       const ownerId = isTeamMember
         ? currentUserDoc.data()?.createdBy
-        : user.uid;
+        : effectiveUserId;
 
       // 1. Handle record in owner's collection
       const recordId =
@@ -1245,11 +1258,11 @@ export default function RecordsPage() {
       }
 
       // 5. If current user is team member, ensure their record exists
-      if (isTeamMember && user.uid !== ownerId) {
+      if (isTeamMember && effectiveUserId !== ownerId) {
         const currentUserRecordRef = doc(
           db,
           "Users",
-          user.uid,
+          effectiveUserId,
           "DataServices",
           recordId
         );
@@ -1593,8 +1606,16 @@ export default function RecordsPage() {
         </button>
       </div>
 
+      {userRole === "SubOwner" && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-700 text-sm">
+            Viewing records as Co-Owner (Owner&apos;s data)
+          </p>
+        </div>
+      )}
+
       {/* Summary Box */}
-      {(role === "Owner" || role === "Accountant") && (
+      {(role === "Owner" || role === "Accountant" || role === "SubOwner") && (
         <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Invoice Summary</h2>

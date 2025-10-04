@@ -34,12 +34,46 @@ const NotificationPage = () => {
   const { user } = useAuth() || { user: null };
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
+  const [userRole, setUserRole] = useState(""); // Add user role state
 
+  // Fetch user data and determine effectiveUserId
   useEffect(() => {
     if (!user?.uid) return;
 
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
+
+  // Update the notifications useEffect to use effectiveUserId
+  useEffect(() => {
+    if (!effectiveUserId) return; // Wait for effectiveUserId to be set
+
     const q = query(
-      collection(db, "Users", user.uid, "UserNotifications"),
+      collection(db, "Users", effectiveUserId, "UserNotifications"), // Use effectiveUserId
       where("isRead", "==", false),
       orderBy("date", "desc")
     );
@@ -56,7 +90,7 @@ const NotificationPage = () => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [effectiveUserId]); // Change dependency to effectiveUserId
 
   const groupNotificationsByDate = () => {
     const grouped: { [key: string]: Notification[] } = {};
@@ -73,7 +107,7 @@ const NotificationPage = () => {
   };
 
   const handleMarkAsRead = async (notificationId: string) => {
-    if (!user?.uid) return;
+    if (!effectiveUserId) return; // Change from user to effectiveUserId
 
     if (
       window.confirm("Are you sure you want to mark this notification as read?")
@@ -82,7 +116,7 @@ const NotificationPage = () => {
         const notificationRef = doc(
           db,
           "Users",
-          user.uid,
+          effectiveUserId, // Use effectiveUserId
           "UserNotifications",
           notificationId
         );
@@ -92,6 +126,24 @@ const NotificationPage = () => {
       }
     }
   };
+
+  // Update loading checks
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div>Please log in to access notifications</div>
+      </div>
+    );
+  }
+
+  // Add loading check for effectiveUserId
+  if (!effectiveUserId) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -104,6 +156,15 @@ const NotificationPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto p-4">
+        {/* Role Indicator */}
+        {userRole === "SubOwner" && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-700 text-sm">
+              Viewing notifications as Co-Owner (Owner&apos;s data)
+            </p>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">
             Notification Center
@@ -117,7 +178,7 @@ const NotificationPage = () => {
             <NotificationList
               groupedNotifications={groupNotificationsByDate()}
               onMarkAsRead={handleMarkAsRead}
-              userId={user?.uid || ""}
+              userId={effectiveUserId}
             />
           )}
         </div>
@@ -129,7 +190,7 @@ const NotificationPage = () => {
 const NotificationList = ({
   groupedNotifications,
   onMarkAsRead,
-  userId,
+  userId, // This now receives effectiveUserId
 }: {
   groupedNotifications: { [key: string]: Notification[] };
   onMarkAsRead: (id: string) => void;
@@ -148,7 +209,7 @@ const NotificationList = ({
               key={notification.id}
               notification={notification}
               onMarkAsRead={onMarkAsRead}
-              userId={userId}
+              userId={userId} // Pass effectiveUserId down
             />
           ))}
         </div>
@@ -160,7 +221,7 @@ const NotificationList = ({
 const NotificationCard = ({
   notification,
   onMarkAsRead,
-  userId,
+  userId, // This now receives effectiveUserId
 }: {
   notification: Notification;
   onMarkAsRead: (id: string) => void;
@@ -173,15 +234,14 @@ const NotificationCard = ({
   useEffect(() => {
     const fetchVehicleDetails = async () => {
       try {
-        const vehicleDoc = await doc(
+        const vehicleDoc = doc(
           db,
           "Users",
-          userId,
+          userId, // Use the passed effectiveUserId
           "Vehicles",
           notification.vehicleId
         );
 
-        // You'll need to implement getDoc here
         const vehicleSnapshot = await getDoc(vehicleDoc);
         if (vehicleSnapshot.exists()) {
           setVehicleDetails(vehicleSnapshot.data() as VehicleDetails);
@@ -194,7 +254,7 @@ const NotificationCard = ({
     if (notification.vehicleId) {
       fetchVehicleDetails();
     }
-  }, [notification.vehicleId, userId]);
+  }, [notification.vehicleId, userId]); // userId is now effectiveUserId
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-4 border border-gray-100">

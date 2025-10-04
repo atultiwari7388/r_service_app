@@ -1,4 +1,3 @@
-// pages/my-vehicles.tsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -15,7 +14,6 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-// import Image from "next/image";
 import Link from "next/link";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import PopupModal from "@/components/PopupModal";
@@ -33,6 +31,7 @@ interface Vehicle {
 
 interface UserData {
   role?: string;
+  createdBy?: string;
 }
 
 interface RedirectProps {
@@ -46,6 +45,7 @@ export default function MyVehiclesPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [role, setRole] = useState("");
+  const [effectiveUserId, setEffectiveUserId] = useState<string>("");
 
   // Sort vehicles alphabetically by vehicleNumber
   const sortedVehicles = useMemo(() => {
@@ -62,33 +62,55 @@ export default function MyVehiclesPage() {
       return;
     }
 
-    // Fetch user data to check role
-    const userUnsubscribe = onSnapshot(doc(db, "Users", user.uid), (doc) => {
-      if (doc.exists()) {
-        setUserData(doc.data() as UserData);
-        setRole((doc.data() as UserData).role || "");
-      }
-    });
+    // First: Fetch user data to determine role and effectiveUserId
+    const userUnsubscribe = onSnapshot(
+      doc(db, "Users", user.uid),
+      (doc) => {
+        if (doc.exists()) {
+          const data = doc.data() as UserData;
+          setUserData(data);
+          setRole(data.role || "");
 
-    const vehiclesUnsubscribe = onSnapshot(
-      collection(doc(db, "Users", user.uid), "Vehicles"),
-      (snapshot) => {
-        const vehiclesData: Vehicle[] = [];
-        snapshot.forEach((doc) => {
-          vehiclesData.push({ id: doc.id, ...doc.data() } as Vehicle);
-        });
-        setVehicles(vehiclesData);
-        setLoading(false);
+          // Determine effectiveUserId based on role
+          const calculatedEffectiveUserId =
+            data.role === "SubOwner" && data.createdBy
+              ? data.createdBy
+              : user.uid;
+
+          setEffectiveUserId(calculatedEffectiveUserId);
+
+          // Second: Now fetch vehicles using the effectiveUserId
+          const vehiclesUnsubscribe = onSnapshot(
+            collection(db, "Users", calculatedEffectiveUserId, "Vehicles"),
+            (snapshot) => {
+              const vehiclesData: Vehicle[] = [];
+              snapshot.forEach((doc) => {
+                vehiclesData.push({ id: doc.id, ...doc.data() } as Vehicle);
+              });
+              setVehicles(vehiclesData);
+              setLoading(false);
+            },
+            (error) => {
+              console.error("Error fetching vehicles: ", error);
+              setLoading(false);
+            }
+          );
+
+          // Return cleanup function for vehicles unsubscribe
+          return () => {
+            vehiclesUnsubscribe();
+          };
+        }
       },
       (error) => {
-        console.error("Error fetching vehicles: ", error);
+        console.error("Error fetching user data: ", error);
         setLoading(false);
       }
     );
 
+    // Return cleanup function for user unsubscribe
     return () => {
       userUnsubscribe();
-      vehiclesUnsubscribe();
     };
   }, [user]);
 
@@ -98,19 +120,25 @@ export default function MyVehiclesPage() {
   };
 
   const handleToggleActive = async (vehicleId: string, newValue: boolean) => {
-    if (!user) return;
+    if (!user || !effectiveUserId) return;
 
     try {
       const batch = writeBatch(db);
 
-      // 1. Update owner's vehicle
-      const ownerVehicleRef = doc(db, "Users", user.uid, "Vehicles", vehicleId);
+      // Use effectiveUserId for all operations
+      const ownerVehicleRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "Vehicles",
+        vehicleId
+      );
       batch.update(ownerVehicleRef, { active: newValue });
 
-      // Update owner's DataServices
+      // Update owner's DataServices using effectiveUserId
       const ownerDataServices = await getDocs(
         query(
-          collection(db, "Users", user.uid, "DataServices"),
+          collection(db, "Users", effectiveUserId, "DataServices"),
           where("vehicleId", "==", vehicleId)
         )
       );
@@ -119,22 +147,21 @@ export default function MyVehiclesPage() {
         batch.update(doc.ref, { active: newValue });
       });
 
-      // 2. Check if owner has any team members
+      // Check if owner has any team members using effectiveUserId
       const teamCheck = await getDocs(
         query(
           collection(db, "Users"),
-          where("createdBy", "==", user.uid),
+          where("createdBy", "==", effectiveUserId),
           where("isTeamMember", "==", true),
           limit(1)
         )
       );
 
       if (!teamCheck.empty) {
-        // Owner has team members - get all members
         const teamMembers = await getDocs(
           query(
             collection(db, "Users"),
-            where("createdBy", "==", user.uid),
+            where("createdBy", "==", effectiveUserId),
             where("isTeamMember", "==", true)
           )
         );
@@ -143,7 +170,6 @@ export default function MyVehiclesPage() {
           const memberId = member.id;
 
           try {
-            // Check if team member has this specific vehicle
             const memberVehicleRef = doc(
               db,
               "Users",
@@ -154,10 +180,8 @@ export default function MyVehiclesPage() {
             const memberVehicleDoc = await getDoc(memberVehicleRef);
 
             if (memberVehicleDoc.exists()) {
-              // Only update if vehicle exists for team member
               batch.update(memberVehicleRef, { active: newValue });
 
-              // Update team member's DataServices if they have any
               const memberDataServices = await getDocs(
                 query(
                   collection(db, "Users", memberId, "DataServices"),
@@ -181,7 +205,6 @@ export default function MyVehiclesPage() {
     } catch (e) {
       console.error("Error updating vehicle status:", e);
       toast.error("Failed to update vehicle status");
-      // Revert the UI state if the update fails
       setVehicles((prev) =>
         prev.map((v) => (v.id === vehicleId ? { ...v, active: !newValue } : v))
       );
@@ -256,14 +279,15 @@ export default function MyVehiclesPage() {
                 >
                   Company Name
                 </th>
-                {userData?.role === "Owner" && (
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
-                  >
-                    Active
-                  </th>
-                )}
+                {userData?.role === "Owner" ||
+                  (userData?.role === "SubOwner" && (
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                    >
+                      Active
+                    </th>
+                  ))}
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
@@ -290,33 +314,35 @@ export default function MyVehiclesPage() {
                       {vehicle.companyName || "Unknown Company"}
                     </div>
                   </td>
-                  {userData?.role === "Owner" && (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Switch
-                        checked={vehicle.active || false}
-                        onChange={(value) => {
-                          // Optimistic UI update
-                          setVehicles((prev) =>
-                            prev.map((v) =>
-                              v.id === vehicle.id ? { ...v, active: value } : v
-                            )
-                          );
-                          handleToggleActive(vehicle.id, value);
-                        }}
-                        className={`${
-                          vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
-                        }
-                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
-                      >
-                        <span
+                  {userData?.role === "Owner" ||
+                    (userData?.role === "SubOwner" && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Switch
+                          checked={vehicle.active || false}
+                          onChange={(value) => {
+                            setVehicles((prev) =>
+                              prev.map((v) =>
+                                v.id === vehicle.id
+                                  ? { ...v, active: value }
+                                  : v
+                              )
+                            );
+                            handleToggleActive(vehicle.id, value);
+                          }}
                           className={`${
-                            vehicle.active ? "translate-x-6" : "translate-x-1"
+                            vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
                           }
+                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
+                        >
+                          <span
+                            className={`${
+                              vehicle.active ? "translate-x-6" : "translate-x-1"
+                            }
                             inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                        />
-                      </Switch>
-                    </td>
-                  )}
+                          />
+                        </Switch>
+                      </td>
+                    ))}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <Link
                       href={`/account/my-vehicles/${vehicle.id}`}
@@ -324,14 +350,15 @@ export default function MyVehiclesPage() {
                     >
                       View
                     </Link>
-                    {role === "Owner" && (
-                      <Link
-                        href={`/account/my-vehicles/edit/${vehicle.id}`}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Edit
-                      </Link>
-                    )}
+                    {role === "Owner" ||
+                      (role === "SubOwner" && (
+                        <Link
+                          href={`/account/my-vehicles/edit/${vehicle.id}`}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          Edit
+                        </Link>
+                      ))}
                   </td>
                 </tr>
               ))}

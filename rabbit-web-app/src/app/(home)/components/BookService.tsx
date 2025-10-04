@@ -52,6 +52,47 @@ const BookingSection: React.FC = () => {
 
   const [showPopup, setShowPopup] = useState(false);
 
+  const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+  const [role, setRole] = useState("");
+
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    const fetchUserDataAndDetermineEffectiveUserId = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const userDocRef = doc(db, "Users", user.uid);
+        console.log("Fetching user data for uid:", user.uid);
+        const userSnapshot = await getDoc(userDocRef);
+
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.data() as ProfileValues;
+          console.log("User data fetched successfully:", userData);
+          setUserData(userData);
+          setRole(userData.role);
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        } else {
+          console.log("No user document found for uid:", user.uid);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserDataAndDetermineEffectiveUserId();
+  }, [user?.uid]);
+
   // Handle selection changes
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const service = e.target.value;
@@ -73,6 +114,7 @@ const BookingSection: React.FC = () => {
     console.log("Selected Location:", location);
   };
 
+  // Fetch data using effectiveUserId
   useEffect(() => {
     const fetchServices = async (): Promise<ServiceType[]> => {
       try {
@@ -98,8 +140,10 @@ const BookingSection: React.FC = () => {
 
     const fetchUserVehicles = async (): Promise<VehicleTypes[]> => {
       try {
+        if (!effectiveUserId) return [];
+
         const vehiclesSnapshot = await getDocs(
-          collection(db, "Users", user?.uid as string, "Vehicles")
+          collection(db, "Users", effectiveUserId, "Vehicles")
         );
         if (!vehiclesSnapshot.empty) {
           return vehiclesSnapshot.docs
@@ -136,8 +180,10 @@ const BookingSection: React.FC = () => {
 
     const fetchUserAddress = async (): Promise<AddressType[]> => {
       try {
+        if (!effectiveUserId) return [];
+
         const addressesSnapshot = await getDocs(
-          collection(db, "Users", user?.uid as string, "Addresses")
+          collection(db, "Users", effectiveUserId, "Addresses")
         );
         if (!addressesSnapshot.empty) {
           return addressesSnapshot.docs.map((doc) => {
@@ -161,50 +207,28 @@ const BookingSection: React.FC = () => {
       return [];
     };
 
-    const fetchUserData = async (): Promise<ProfileValues | null> => {
-      try {
-        const userDocRef = doc(db, "Users", user?.uid as string);
-        console.log("Fetching user data for uid:", user?.uid);
-        const userSnapshot = await getDoc(userDocRef);
-        if (userSnapshot.exists()) {
-          const userData = userSnapshot.data() as ProfileValues;
-          console.log("User data fetched successfully:", userData);
-          return userData;
-        } else {
-          console.log("No user document found for uid:", user?.uid);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-      return null;
-    };
-
     const loadData = async () => {
       try {
         setLoading(true);
-        const [servicesData, vehicleData, locationData, userProfileData] =
-          await Promise.all([
-            fetchServices(),
-            fetchUserVehicles(),
-            fetchUserAddress(),
-            fetchUserData(),
-          ]);
+        const [servicesData, vehicleData, locationData] = await Promise.all([
+          fetchServices(),
+          fetchUserVehicles(),
+          fetchUserAddress(),
+        ]);
         setServices(servicesData);
         setVehicles(vehicleData);
         setLocation(locationData);
-        setUserData(userProfileData);
       } catch (error) {
         console.error("Error loading data:", error);
-        // toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
-    if (user?.uid) {
+    if (effectiveUserId) {
       loadData();
     }
-  }, [user]);
+  }, [effectiveUserId]);
 
   const handleFindMechanicClick = async (
     e: React.MouseEvent<HTMLButtonElement>
@@ -279,7 +303,7 @@ const BookingSection: React.FC = () => {
         images: imageUrls,
         orderDate: new Date(),
         role: userData.role,
-        ownerId: user.uid,
+        ownerId: effectiveUserId,
         payMode: "",
         status: 0,
         rating: "4.3",
@@ -292,8 +316,18 @@ const BookingSection: React.FC = () => {
         mechanicsOffer: [],
       };
 
-      // Store in Users/uid/history
-      await setDoc(doc(db, "Users", user.uid, "history", orderId), jobData);
+      await setDoc(
+        doc(db, "Users", effectiveUserId, "history", orderId),
+        jobData
+      );
+
+      if (role === "SubOwner" && user.uid !== effectiveUserId) {
+        await setDoc(doc(db, "Users", user.uid, "history", orderId), {
+          ...jobData,
+          isSubOwnerBooking: true,
+          ownerId: effectiveUserId,
+        });
+      }
 
       // Store in jobs collection
       await setDoc(doc(db, "jobs", orderId), jobData);

@@ -116,23 +116,49 @@ export default function ManageTripPage() {
 
   const [selectLoadType, setSelectLoadType] = useState("Empty");
 
+  const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+
   const router = useRouter();
 
+  // Fetch user data and determine effectiveUserId
   useEffect(() => {
     if (!user?.uid) return;
 
-    const fetchUserData = async () => {
-      const userDoc = await getDoc(doc(db, "Users", user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data() as ProfileValues;
-        setUserData(data);
-        setRole(data.role);
-        setOwnerId(data.createdBy || user.uid);
+    const fetchUserDataAndDetermineEffectiveUserId = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data() as ProfileValues;
+          setUserData(data);
+          setRole(data.role);
+
+          // Determine effectiveUserId based on role
+          if (data.role === "SubOwner" && data.createdBy) {
+            setEffectiveUserId(data.createdBy);
+            setOwnerId(data.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              data.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            setOwnerId(data.createdBy || user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
       }
     };
 
+    fetchUserDataAndDetermineEffectiveUserId();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!effectiveUserId) return;
+
     const unsubscribeTrips = onSnapshot(
-      collection(db, "Users", user.uid, "trips"),
+      collection(db, "Users", effectiveUserId, "trips"),
       (snapshot) => {
         const tripsData: TripDetails[] = snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -144,14 +170,14 @@ export default function ManageTripPage() {
 
     // Fetch trucks (vehicles)
     const trucksQuery = query(
-      collection(db, "Users", user.uid, "Vehicles"),
+      collection(db, "Users", effectiveUserId, "Vehicles"),
       where("active", "==", true),
       where("vehicleType", "==", "Truck")
     );
 
     // Fetch trailers
     const trailersQuery = query(
-      collection(db, "Users", user.uid, "Vehicles"),
+      collection(db, "Users", effectiveUserId, "Vehicles"),
       where("active", "==", true),
       where("vehicleType", "==", "Trailer")
     );
@@ -172,14 +198,13 @@ export default function ManageTripPage() {
       setTrailers(trailersData);
     });
 
-    fetchUserData();
     return () => {
       // unsubscribeVehicles();
       unsubscribeTrips();
       unsubscribeTrucks();
       unsubscribeTrailers();
     };
-  }, [user]);
+  }, [effectiveUserId]);
 
   const filteredTrips = trips.filter((trip) => {
     const startDate = trip.tripStartDate.toDate();
@@ -225,7 +250,7 @@ export default function ManageTripPage() {
       const batch = writeBatch(db);
       const tripRef = doc(collection(db, "trips"));
       const userTripRef = doc(
-        collection(db, "Users", user!.uid, "trips"),
+        collection(db, "Users", effectiveUserId, "trips"),
         tripRef.id
       );
 
@@ -236,7 +261,7 @@ export default function ManageTripPage() {
       const tripData = {
         tripName,
         vehicleId: selectedVehicle,
-        currentUID: user!.uid,
+        currentUID: effectiveUserId,
         role,
         companyName: vehicle?.companyName,
         vehicleNumber: vehicle?.vehicleNumber,
@@ -268,14 +293,14 @@ export default function ManageTripPage() {
       const vehicleRef = doc(
         db,
         "Users",
-        user!.uid,
+        effectiveUserId,
         "Vehicles",
         selectedVehicle
       );
       batch.update(vehicleRef, { tripAssign: true });
 
       // Update driver vehicles if owner
-      if (role === "Owner") {
+      if (role === "Owner" || role === "SubOwner") {
         const driversSnapshot = await getDocs(
           query(
             collection(db, "Users"),
@@ -361,7 +386,7 @@ export default function ManageTripPage() {
         collection(
           db,
           "Users",
-          user!.uid,
+          effectiveUserId,
           "trips",
           selectedTrip,
           "tripDetails"
@@ -414,7 +439,7 @@ export default function ManageTripPage() {
       const vehicleRef = doc(
         db,
         "Users",
-        user!.uid,
+        effectiveUserId,
         "Vehicles",
         trip.vehicleId
       );
@@ -451,7 +476,7 @@ export default function ManageTripPage() {
               collection(
                 db,
                 "Users",
-                user!.uid,
+                effectiveUserId,
                 "trips",
                 trip.id,
                 "tripDetails"
@@ -527,7 +552,7 @@ export default function ManageTripPage() {
       const userTripRef = doc(
         db,
         "Users",
-        user!.uid,
+        effectiveUserId,
         "trips",
         currentTripEdit.id
       );
@@ -851,7 +876,7 @@ export default function ManageTripPage() {
               <button
                 onClick={() =>
                   router.push(
-                    `/account/manage-trip/${trip.id}?userId=${user?.uid}`
+                    `/account/manage-trip/${trip.id}?userId=${effectiveUserId}`
                   )
                 }
                 className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200"

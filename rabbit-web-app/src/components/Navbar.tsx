@@ -396,6 +396,8 @@ interface UserData {
   phoneNumber: string;
   email: string;
   wallet: number;
+  role: string; // Add role field
+  createdBy?: string; // Add createdBy field for SubOwner
 }
 
 interface Notification {
@@ -413,6 +415,7 @@ export default function NavBar() {
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
 
   const router = useRouter();
 
@@ -446,7 +449,20 @@ export default function NavBar() {
           const docRef = doc(db, "Users", user.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            setUserData(docSnap.data() as UserData);
+            const userData = docSnap.data() as UserData;
+            setUserData(userData);
+
+            // Determine effectiveUserId based on role
+            if (userData.role === "SubOwner" && userData.createdBy) {
+              setEffectiveUserId(userData.createdBy);
+              console.log(
+                "SubOwner detected, using effectiveUserId:",
+                userData.createdBy
+              );
+            } else {
+              setEffectiveUserId(user.uid);
+              console.log("Regular user, using own uid:", user.uid);
+            }
           } else {
             console.log("No such document!");
           }
@@ -465,13 +481,14 @@ export default function NavBar() {
     }
   }, [user]);
 
+  // Update notifications useEffect to use effectiveUserId
   useEffect(() => {
-    if (!user?.uid || !isEmailVerified) return;
+    if (!effectiveUserId || !isEmailVerified) return; // Use effectiveUserId instead of user.uid
 
     const notificationsRef = collection(
       db,
       "Users",
-      user.uid,
+      effectiveUserId, // Use effectiveUserId
       "UserNotifications"
     );
     const q = query(
@@ -489,12 +506,17 @@ export default function NavBar() {
         } as Notification);
       });
       setNotifications(notificationsData);
-      console.log("Notifications:", notifications);
+      console.log(
+        "Notifications:",
+        notificationsData,
+        "notifications:",
+        notifications
+      );
       setUnreadCount(notificationsData.length);
     });
 
     return () => unsubscribe();
-  }, [user?.uid, isEmailVerified]);
+  }, [effectiveUserId, isEmailVerified]); // Change dependency to effectiveUserId
 
   if (isLoading) {
     return (

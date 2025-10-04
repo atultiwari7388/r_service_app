@@ -35,6 +35,12 @@ interface Vehicle {
   driverNames: string[];
 }
 
+interface UserData {
+  role: string;
+  createdBy?: string;
+  userName: string;
+}
+
 const getStringFromTripStatus = (status: number): string => {
   switch (status) {
     case 0:
@@ -52,9 +58,53 @@ const getStringFromTripStatus = (status: number): string => {
 
 export default function TripWiseVehicleScreen() {
   const { user } = useAuth() || { user: null };
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    const fetchUserDataAndDetermineEffectiveUserId = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data() as UserData;
+          setUserData(data);
+
+          // Determine effectiveUserId based on role
+          if (data.role === "SubOwner" && data.createdBy) {
+            setEffectiveUserId(data.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              data.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserDataAndDetermineEffectiveUserId();
+  }, [user?.uid]);
 
   if (!user) {
     return <div>Please log in to view this page.</div>;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <HashLoader color="#3B82F6" />
+      </div>
+    );
   }
 
   return (
@@ -62,6 +112,11 @@ export default function TripWiseVehicleScreen() {
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
         <div className="p-4 border-b">
           <h1 className="text-xl font-bold text-gray-800">Trip Wise Vehicle</h1>
+          {userData?.role === "SubOwner" && (
+            <p className="text-sm text-gray-600 mt-1">
+              {/* Viewing data as SubOwner (Owner: {effectiveUserId}) */}
+            </p>
+          )}
         </div>
 
         <Tab.Group>
@@ -91,10 +146,16 @@ export default function TripWiseVehicleScreen() {
           </Tab.List>
           <Tab.Panels className="p-4">
             <Tab.Panel>
-              <AssignTripScreen ownerId={user.uid} />
+              <AssignTripScreen
+                effectiveUserId={effectiveUserId}
+                currentUserRole={userData?.role}
+              />
             </Tab.Panel>
             <Tab.Panel>
-              <NotAssignedTripScreen ownerId={user.uid} />
+              <NotAssignedTripScreen
+                effectiveUserId={effectiveUserId}
+                currentUserRole={userData?.role}
+              />
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
@@ -103,7 +164,13 @@ export default function TripWiseVehicleScreen() {
   );
 }
 
-function AssignTripScreen({ ownerId }: { ownerId: string }) {
+function AssignTripScreen({
+  effectiveUserId,
+  currentUserRole,
+}: {
+  effectiveUserId: string;
+  currentUserRole?: string;
+}) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -113,18 +180,22 @@ function AssignTripScreen({ ownerId }: { ownerId: string }) {
         setLoading(true);
         const vehicleTrips: Record<string, Trip> = {};
 
-        // First get the owner's name
-        const ownerDoc = await getDoc(doc(db, "Users", ownerId));
-        const ownerName = ownerDoc.data()?.userName as string;
+        // First get the effective user's name
+        const effectiveUserDoc = await getDoc(
+          doc(db, "Users", effectiveUserId)
+        );
+        const effectiveUserName = effectiveUserDoc.data()?.userName as string;
 
-        // Fetch owner's trips
-        const ownerTripsQuery = query(
-          collection(db, "Users", ownerId, "trips"),
+        // Fetch effective user's trips
+        const effectiveUserTripsQuery = query(
+          collection(db, "Users", effectiveUserId, "trips"),
           where("tripStatus", "==", 1)
         );
-        const ownerTripsSnapshot = await getDocs(ownerTripsQuery);
+        const effectiveUserTripsSnapshot = await getDocs(
+          effectiveUserTripsQuery
+        );
 
-        ownerTripsSnapshot.forEach((tripDoc) => {
+        effectiveUserTripsSnapshot.forEach((tripDoc) => {
           const tripData = tripDoc.data();
           const vehicleNumber = tripData.vehicleNumber as string;
           vehicleTrips[vehicleNumber] = {
@@ -132,7 +203,7 @@ function AssignTripScreen({ ownerId }: { ownerId: string }) {
             vehicleNumber,
             tripName: tripData.tripName,
             tripStartDate: tripData.tripStartDate,
-            driverNames: [ownerName],
+            driverNames: [effectiveUserName],
             tripStatus: tripData.tripStatus,
             isOwnerTrip: true,
             trailerNumber: tripData.trailerNumber,
@@ -140,48 +211,50 @@ function AssignTripScreen({ ownerId }: { ownerId: string }) {
           };
         });
 
-        // Fetch team members' trips
-        const teamMembersQuery = query(
-          collection(db, "Users"),
-          where("createdBy", "==", ownerId),
-          where("isTeamMember", "==", true)
-        );
-        const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-        for (const userDoc of teamMembersSnapshot.docs) {
-          const driverTripsQuery = query(
-            collection(db, "Users", userDoc.id, "trips"),
-            where("tripStatus", "==", 1)
+        // Fetch team members' trips (only if effective user is Owner)
+        if (currentUserRole === "Owner" || currentUserRole === "SubOwner") {
+          const teamMembersQuery = query(
+            collection(db, "Users"),
+            where("createdBy", "==", effectiveUserId),
+            where("isTeamMember", "==", true)
           );
-          const driverTripsSnapshot = await getDocs(driverTripsQuery);
+          const teamMembersSnapshot = await getDocs(teamMembersQuery);
 
-          const driverDoc = await getDoc(doc(db, "Users", userDoc.id));
-          const driverName = driverDoc.data()?.userName as string;
+          for (const userDoc of teamMembersSnapshot.docs) {
+            const driverTripsQuery = query(
+              collection(db, "Users", userDoc.id, "trips"),
+              where("tripStatus", "==", 1)
+            );
+            const driverTripsSnapshot = await getDocs(driverTripsQuery);
 
-          for (const tripDoc of driverTripsSnapshot.docs) {
-            const tripData = tripDoc.data();
-            const vehicleNumber = tripData.vehicleNumber as string;
+            const driverDoc = await getDoc(doc(db, "Users", userDoc.id));
+            const driverName = driverDoc.data()?.userName as string;
 
-            if (vehicleTrips[vehicleNumber]) {
-              // If vehicle already has a trip, add driver name if not already present
-              if (
-                !vehicleTrips[vehicleNumber].driverNames.includes(driverName)
-              ) {
-                vehicleTrips[vehicleNumber].driverNames.push(driverName);
+            for (const tripDoc of driverTripsSnapshot.docs) {
+              const tripData = tripDoc.data();
+              const vehicleNumber = tripData.vehicleNumber as string;
+
+              if (vehicleTrips[vehicleNumber]) {
+                // If vehicle already has a trip, add driver name if not already present
+                if (
+                  !vehicleTrips[vehicleNumber].driverNames.includes(driverName)
+                ) {
+                  vehicleTrips[vehicleNumber].driverNames.push(driverName);
+                }
+              } else {
+                // New vehicle trip
+                vehicleTrips[vehicleNumber] = {
+                  companyName: tripData.companyName,
+                  vehicleNumber,
+                  tripName: tripData.tripName,
+                  tripStartDate: tripData.tripStartDate,
+                  driverNames: [driverName],
+                  tripStatus: tripData.tripStatus,
+                  isOwnerTrip: false,
+                  trailerNumber: tripData.trailerNumber,
+                  trailerCompanyName: tripData.trailerCompanyName,
+                };
               }
-            } else {
-              // New vehicle trip
-              vehicleTrips[vehicleNumber] = {
-                companyName: tripData.companyName,
-                vehicleNumber,
-                tripName: tripData.tripName,
-                tripStartDate: tripData.tripStartDate,
-                driverNames: [driverName],
-                tripStatus: tripData.tripStatus,
-                isOwnerTrip: false,
-                trailerNumber: tripData.trailerNumber,
-                trailerCompanyName: tripData.trailerCompanyName,
-              };
             }
           }
         }
@@ -198,8 +271,10 @@ function AssignTripScreen({ ownerId }: { ownerId: string }) {
       }
     };
 
-    fetchTrips();
-  }, [ownerId]);
+    if (effectiveUserId) {
+      fetchTrips();
+    }
+  }, [effectiveUserId, currentUserRole]);
 
   if (loading) {
     return (
@@ -275,7 +350,13 @@ function AssignTripScreen({ ownerId }: { ownerId: string }) {
   );
 }
 
-function NotAssignedTripScreen({ ownerId }: { ownerId: string }) {
+function NotAssignedTripScreen({
+  effectiveUserId,
+  currentUserRole,
+}: {
+  effectiveUserId: string;
+  currentUserRole?: string;
+}) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -285,62 +366,70 @@ function NotAssignedTripScreen({ ownerId }: { ownerId: string }) {
         setLoading(true);
         const uniqueVehicles: Record<string, Vehicle> = {};
 
-        // First get the owner's name
-        const ownerDoc = await getDoc(doc(db, "Users", ownerId));
-        const ownerName = ownerDoc.data()?.userName as string;
+        // First get the effective user's name
+        const effectiveUserDoc = await getDoc(
+          doc(db, "Users", effectiveUserId)
+        );
+        const effectiveUserName = effectiveUserDoc.data()?.userName as string;
 
-        // Fetch owner's vehicles
-        const ownerVehiclesQuery = query(
-          collection(db, "Users", ownerId, "Vehicles"),
+        // Fetch effective user's vehicles
+        const effectiveUserVehiclesQuery = query(
+          collection(db, "Users", effectiveUserId, "Vehicles"),
           where("tripAssign", "==", false)
         );
-        const ownerVehiclesSnapshot = await getDocs(ownerVehiclesQuery);
+        const effectiveUserVehiclesSnapshot = await getDocs(
+          effectiveUserVehiclesQuery
+        );
 
-        ownerVehiclesSnapshot.forEach((vehicleDoc) => {
+        effectiveUserVehiclesSnapshot.forEach((vehicleDoc) => {
           const vehicleData = vehicleDoc.data();
           uniqueVehicles[vehicleDoc.id] = {
             companyName: vehicleData.companyName,
             vehicleNumber: vehicleData.vehicleNumber,
-            driverNames: [ownerName],
+            driverNames: [effectiveUserName],
           };
         });
 
-        // Fetch team members' vehicles
-        const teamMembersQuery = query(
-          collection(db, "Users"),
-          where("createdBy", "==", ownerId),
-          where("isTeamMember", "==", true)
-        );
-        const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-        for (const userDoc of teamMembersSnapshot.docs) {
-          const driverDoc = await getDoc(doc(db, "Users", userDoc.id));
-          const driverName = driverDoc.data()?.userName as string;
-
-          const teamVehiclesQuery = query(
-            collection(db, "Users", userDoc.id, "Vehicles"),
-            where("tripAssign", "==", false)
+        // Fetch team members' vehicles (only if effective user is Owner)
+        if (currentUserRole === "Owner" || currentUserRole === "SubOwner") {
+          const teamMembersQuery = query(
+            collection(db, "Users"),
+            where("createdBy", "==", effectiveUserId),
+            where("isTeamMember", "==", true)
           );
-          const teamVehiclesSnapshot = await getDocs(teamVehiclesQuery);
+          const teamMembersSnapshot = await getDocs(teamMembersQuery);
 
-          teamVehiclesSnapshot.forEach((vehicleDoc) => {
-            const vehicleId = vehicleDoc.id;
-            const vehicleData = vehicleDoc.data();
+          for (const userDoc of teamMembersSnapshot.docs) {
+            const driverDoc = await getDoc(doc(db, "Users", userDoc.id));
+            const driverName = driverDoc.data()?.userName as string;
 
-            if (uniqueVehicles[vehicleId]) {
-              // If vehicle exists, add driver name if not already present
-              if (!uniqueVehicles[vehicleId].driverNames.includes(driverName)) {
-                uniqueVehicles[vehicleId].driverNames.push(driverName);
+            const teamVehiclesQuery = query(
+              collection(db, "Users", userDoc.id, "Vehicles"),
+              where("tripAssign", "==", false)
+            );
+            const teamVehiclesSnapshot = await getDocs(teamVehiclesQuery);
+
+            teamVehiclesSnapshot.forEach((vehicleDoc) => {
+              const vehicleId = vehicleDoc.id;
+              const vehicleData = vehicleDoc.data();
+
+              if (uniqueVehicles[vehicleId]) {
+                // If vehicle exists, add driver name if not already present
+                if (
+                  !uniqueVehicles[vehicleId].driverNames.includes(driverName)
+                ) {
+                  uniqueVehicles[vehicleId].driverNames.push(driverName);
+                }
+              } else {
+                // New vehicle
+                uniqueVehicles[vehicleId] = {
+                  companyName: vehicleData.companyName,
+                  vehicleNumber: vehicleData.vehicleNumber,
+                  driverNames: [driverName],
+                };
               }
-            } else {
-              // New vehicle
-              uniqueVehicles[vehicleId] = {
-                companyName: vehicleData.companyName,
-                vehicleNumber: vehicleData.vehicleNumber,
-                driverNames: [driverName],
-              };
-            }
-          });
+            });
+          }
         }
 
         setVehicles(
@@ -358,8 +447,10 @@ function NotAssignedTripScreen({ ownerId }: { ownerId: string }) {
       }
     };
 
-    fetchNotAssignedVehicles();
-  }, [ownerId]);
+    if (effectiveUserId) {
+      fetchNotAssignedVehicles();
+    }
+  }, [effectiveUserId, currentUserRole]);
 
   if (loading) {
     return (

@@ -24,12 +24,46 @@ export default function MyJobsPage() {
   const [loading, setLoading] = useState(false);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [distanceOptions, setDistanceOptions] = useState<number[]>([]);
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [userRole, setUserRole] = useState("");
+
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy,
+              userRole
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
 
   //handle distance change
   const handleDistanceChange = async (jobId: string, newDistance: number) => {
     try {
       // Update history collection
-      const jobRef = doc(db, "Users", user!.uid, "history", jobId);
+      const jobRef = doc(db, "Users", effectiveUserId, "history", jobId);
       await updateDoc(jobRef, {
         nearByDistance: newDistance,
       });
@@ -52,10 +86,10 @@ export default function MyJobsPage() {
 
   //fetch user ongoing history with real-time updates
   useEffect(() => {
-    if (!user) return;
+    if (!effectiveUserId) return;
 
     setLoading(true);
-    const historyRef = collection(db, "Users", user.uid, "history");
+    const historyRef = collection(db, "Users", effectiveUserId, "history");
     const q = query(
       historyRef,
       where("status", ">=", 0),
@@ -74,11 +108,6 @@ export default function MyJobsPage() {
         setLoading(false);
       },
       (error) => {
-        // toast.error(
-        //   `Something went wrong. Error: ${
-        //     error instanceof Error ? error.message : String(error)
-        //   }`
-        // );
         console.log(error);
         setLoading(false);
       }
@@ -144,7 +173,6 @@ export default function MyJobsPage() {
           status: number;
           fixPrice?: number;
           arrivalCharges?: number;
-          // [key: string]: any; // for other potential properties we want to preserve
         }
 
         mechanicsOffer = mechanicsOffer.map(
@@ -163,9 +191,16 @@ export default function MyJobsPage() {
 
         await updateDoc(jobRef, updateData);
 
-        // Update in User's History
-        if (user?.uid) {
-          const userHistoryRef = doc(db, "Users", user.uid, "history", orderId);
+        // Update in User's History using effectiveUserId
+        if (effectiveUserId) {
+          // Change from user?.uid to effectiveUserId
+          const userHistoryRef = doc(
+            db,
+            "Users",
+            effectiveUserId,
+            "history",
+            orderId
+          ); // Use effectiveUserId
           await updateDoc(userHistoryRef, updateData);
         }
 
@@ -270,27 +305,6 @@ export default function MyJobsPage() {
                       <span className="text-yellow-500">In Progress</span>
                     )}
                   </td>
-                  {/* <td className="px-4 py-2 border-b">
-                    {item.status === 0 ? (
-                      <button
-                        onClick={() => handleCancelClick(item.id)}
-                        className="bg-red-500 text-white px-2 py-1 rounded-sm"
-                      >
-                        Cancel
-                      </button>
-                    ) : item.mechanicsOffer.some(
-                        (offer) => offer.status === 1
-                      ) ? (
-                      <Link
-                        href={`/my-jobs/${item.id.replace("#", "")}`}
-                        className="bg-[#F96176] text-white px-2 py-2 rounded-sm"
-                      >
-                        View
-                      </Link>
-                    ) : (
-                      ""
-                    )}
-                  </td> */}
 
                   <td className="px-4 py-2 border-b">
                     {item.mechanicsOffer.some((offer) => offer.status === 1) ? (

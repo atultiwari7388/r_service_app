@@ -70,16 +70,17 @@ export default function ManageTeam(): JSX.Element {
   ]);
   const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
   const [showFilters, setShowFilters] = useState(false);
+  const [effectiveUserId, setEffectiveUserId] = useState("");
 
+  // Step 1: Fetch user data and determine effectiveUserId
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchUserData = async () => {
       if (!authUser) return;
 
       try {
         setLoading(true);
         setErrorMessage("");
 
-        // 1. First fetch user details
         const userSnapshot = await getDoc(doc(db, "Users", authUser.uid));
         if (!userSnapshot.exists()) {
           setErrorMessage("User not found");
@@ -94,12 +95,58 @@ export default function ManageTeam(): JSX.Element {
         setCurrentUserId(authUser.uid);
         setRole(userRole);
         setOwnerId(createdBy);
+
+        // Determine effectiveUserId based on role
+        // let effectiveOwnerId = authUser.uid;
+        if (userRole === "SubOwner" && createdBy) {
+          // effectiveOwnerId = createdBy;
+          setEffectiveUserId(createdBy);
+          console.log("SubOwner detected, using effectiveUserId:", createdBy);
+        } else {
+          setEffectiveUserId(authUser.uid);
+          console.log("Regular user, using own uid:", authUser.uid);
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setErrorMessage("Error loading user data");
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [authUser]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!effectiveUserId) return;
+
+      try {
+        setLoading(true);
+        setErrorMessage("");
+
+        // 1. First fetch user details
+        const userSnapshot = await getDoc(doc(db, "Users", effectiveUserId));
+        if (!userSnapshot.exists()) {
+          setErrorMessage("User not found");
+          setLoading(false);
+          return;
+        }
+
+        const userData = userSnapshot.data();
+        const userRole = userData.role || "";
+        const createdBy = userData.createdBy || "";
+
+        setCurrentUserId(effectiveUserId);
+        setRole(userRole);
+        setOwnerId(createdBy);
         console.log("user id is ", currentUserId);
         console.log("Owner id is ", ownerId);
 
         // 2. Fetch current user's vehicles
         const vehiclesSnapshot = await getDocs(
-          collection(db, "Users", authUser.uid, "Vehicles")
+          collection(db, "Users", effectiveUserId, "Vehicles")
         );
         const vehicleIds = vehiclesSnapshot.docs.map((doc) => doc.id);
 
@@ -107,7 +154,7 @@ export default function ManageTeam(): JSX.Element {
         console.log("Current user vehicle IDs:", currentUserVehicleIds); // For debugging
 
         // 3. Now fetch team members with proper vehicle checks
-        let effectiveOwnerId = authUser.uid;
+        let effectiveOwnerId = effectiveUserId;
         const membersWithVehicles: TeamMember[] = [];
 
         if (userRole !== "Owner" && createdBy) {
@@ -126,7 +173,7 @@ export default function ManageTeam(): JSX.Element {
           const memberId = member.id;
           const memberRole = memberData.role || "";
 
-          if (memberId === authUser.uid) continue;
+          if (memberId === effectiveUserId) continue;
 
           if (userRole !== "Owner" && memberRole !== "Driver") continue;
 
@@ -179,7 +226,7 @@ export default function ManageTeam(): JSX.Element {
     };
 
     fetchData();
-  }, [authUser]);
+  }, [effectiveUserId]);
 
   const filterMembers = () => {
     const query = searchQuery.toLowerCase();
@@ -269,14 +316,15 @@ export default function ManageTeam(): JSX.Element {
           <h1 className="text-2xl text-gray-800 font-bold mb-4 sm:mb-0">
             Manage Team
           </h1>
-          {role === "Owner" && (
-            <Link href="/account/manage-team/create-team-member">
-              <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center">
-                <span className="mr-2">+</span>
-                Add Member
-              </button>
-            </Link>
-          )}
+          {role === "Owner" ||
+            (role === "SubOwner" && (
+              <Link href="/account/manage-team/create-team-member">
+                <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center">
+                  <span className="mr-2">+</span>
+                  Add Member
+                </button>
+              </Link>
+            ))}
         </div>
 
         {/* Search and Filters */}
@@ -294,69 +342,74 @@ export default function ManageTeam(): JSX.Element {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {role === "Owner" && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md transition-colors"
-                >
-                  <FiFilter />
-                  <span>Filter</span>
-                </button>
+            {role === "Owner" ||
+              (role === "SubOwner" && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md transition-colors"
+                  >
+                    <FiFilter />
+                    <span>Filter</span>
+                  </button>
 
-                {showFilters && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 p-4 border border-gray-200">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-medium">Filter by Role</h3>
-                      <button onClick={() => setShowFilters(false)}>
-                        <FiX />
+                  {showFilters && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 p-4 border border-gray-200">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium">Filter by Role</h3>
+                        <button onClick={() => setShowFilters(false)}>
+                          <FiX />
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {availableRoles.map((role) => (
+                          <div key={role} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id={`role-${role}`}
+                              checked={selectedRoles.includes(role)}
+                              onChange={() => {
+                                if (role === "All") {
+                                  setSelectedRoles(["All"]);
+                                } else {
+                                  const newSelected = selectedRoles.includes(
+                                    role
+                                  )
+                                    ? selectedRoles.filter((r) => r !== role)
+                                    : [
+                                        ...selectedRoles.filter(
+                                          (r) => r !== "All"
+                                        ),
+                                        role,
+                                      ];
+                                  setSelectedRoles(
+                                    newSelected.length > 0
+                                      ? newSelected
+                                      : ["All"]
+                                  );
+                                }
+                              }}
+                              className="h-4 w-4 text-[#F96176] focus:ring-[#F96176] border-gray-300 rounded"
+                            />
+                            <label
+                              htmlFor={`role-${role}`}
+                              className="ml-2 text-sm text-gray-700"
+                            >
+                              {role}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={resetFilters}
+                        className="mt-3 text-sm text-[#F96176] hover:text-[#e54d62]"
+                      >
+                        Reset all filters
                       </button>
                     </div>
-                    <div className="space-y-2">
-                      {availableRoles.map((role) => (
-                        <div key={role} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            id={`role-${role}`}
-                            checked={selectedRoles.includes(role)}
-                            onChange={() => {
-                              if (role === "All") {
-                                setSelectedRoles(["All"]);
-                              } else {
-                                const newSelected = selectedRoles.includes(role)
-                                  ? selectedRoles.filter((r) => r !== role)
-                                  : [
-                                      ...selectedRoles.filter(
-                                        (r) => r !== "All"
-                                      ),
-                                      role,
-                                    ];
-                                setSelectedRoles(
-                                  newSelected.length > 0 ? newSelected : ["All"]
-                                );
-                              }
-                            }}
-                            className="h-4 w-4 text-[#F96176] focus:ring-[#F96176] border-gray-300 rounded"
-                          />
-                          <label
-                            htmlFor={`role-${role}`}
-                            className="ml-2 text-sm text-gray-700"
-                          >
-                            {role}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={resetFilters}
-                      className="mt-3 text-sm text-[#F96176] hover:text-[#e54d62]"
-                    >
-                      Reset all filters
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              ))}
           </div>
         </div>
 

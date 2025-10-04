@@ -121,6 +121,8 @@ export default function ImportVehicle() {
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [effectiveUserId, setEffectiveUserId] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
   const router = useRouter();
 
   const sampleFiles = {
@@ -134,10 +136,39 @@ export default function ImportVehicle() {
       "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/trailer_company_name_and_engine_name_29_april.xlsx?alt=media&token=63e5fb03-1dce-4ec0-bf91-2aed82ddabb1",
   };
 
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
+
   useEffect(() => {
     const fetchServicesData = async () => {
-      if (!user?.uid) return;
-
       try {
         const docRef = doc(db, "metadata", "serviceData");
         const docSnap = await getDoc(docRef);
@@ -302,7 +333,7 @@ export default function ImportVehicle() {
   };
 
   const saveVehicle = async (data: Partial<Vehicle>) => {
-    if (!user?.uid) throw new Error("User not authenticated");
+    if (!effectiveUserId) throw new Error("User not authenticated");
 
     try {
       // 1. Validate required fields
@@ -332,7 +363,7 @@ export default function ImportVehicle() {
       }
 
       // 3. Check for duplicate vehicle
-      const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
+      const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
       const duplicateQuery = await getDocs(
         query(
           vehiclesRef,
@@ -432,7 +463,7 @@ export default function ImportVehicle() {
         "checkAndNotifyUserForVehicleService"
       );
       await callable({
-        userId: user.uid,
+        userId: effectiveUserId,
         vehicleId: docRef.id,
       });
 
@@ -493,6 +524,13 @@ export default function ImportVehicle() {
     <div className="container mx-auto p-4">
       <ToastContainer />
       <h1 className="text-2xl font-bold mb-6">Import Vehicles</h1>
+      {userRole === "SubOwner" && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-700 text-sm">
+            Adding vehicle to Owner&lsquo;s account
+          </p>
+        </div>
+      )}
 
       <Card className="p-4 mb-6">
         <div className="space-y-4">

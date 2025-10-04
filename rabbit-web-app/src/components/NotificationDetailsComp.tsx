@@ -41,15 +41,54 @@ export default function NotificationDetailsComponent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { user } = useAuth() || { user: null };
+  const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
+  const [userRole, setUserRole] = useState(""); // Add user role state
 
+  // Fetch user data and determine effectiveUserId
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchUserData = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUserRole(userData.role || "");
+
+          // Determine effectiveUserId based on role
+          if (userData.role === "SubOwner" && userData.createdBy) {
+            setEffectiveUserId(userData.createdBy);
+            console.log(
+              "SubOwner detected, using effectiveUserId:",
+              userData.createdBy
+            );
+          } else {
+            setEffectiveUserId(user.uid);
+            console.log("Regular user, using own uid:", user.uid);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.uid]);
+
+  // Update the main data fetching useEffect to use effectiveUserId
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch notification data
-        if (!user?.uid) {
-          throw new Error("User not authenticated");
-        }
-        const notRef = doc(db, "Users", user.uid, "UserNotifications", notId);
+        if (!effectiveUserId) return; // Wait for effectiveUserId to be set
+
+        // Fetch notification data using effectiveUserId
+        const notRef = doc(
+          db,
+          "Users",
+          effectiveUserId,
+          "UserNotifications",
+          notId
+        ); // Use effectiveUserId
         const notSnapshot = await getDoc(notRef);
 
         if (!notSnapshot.exists()) {
@@ -59,11 +98,11 @@ export default function NotificationDetailsComponent({
         const notData = notSnapshot.data() as NotificationData;
         setNotification(notData);
 
-        // Fetch vehicle data
+        // Fetch vehicle data using effectiveUserId
         const vehicleRef = doc(
           db,
           "Users",
-          user.uid,
+          effectiveUserId, // Use effectiveUserId
           "Vehicles",
           notData.vehicleId
         );
@@ -81,21 +120,55 @@ export default function NotificationDetailsComponent({
     };
 
     fetchData();
-  }, [notId]);
+  }, [notId, effectiveUserId]); // Add effectiveUserId to dependencies
 
-  if (loading)
+  // Update loading checks
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-red-500">
+          Please log in to view notification details
+        </div>
+      </div>
+    );
+  }
+
+  // Add loading check for effectiveUserId
+  if (!effectiveUserId) {
     return (
       <div className="flex justify-center items-center h-screen">
         <HashLoader color="#36d7b7" size={50} />
-        <span className="text-gray-700 ml-4">Loading...</span>
+        <span className="text-gray-700 ml-4">Loading user data...</span>
       </div>
     );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <HashLoader color="#36d7b7" size={50} />
+        <span className="text-gray-700 ml-4">
+          Loading notification details...
+        </span>
+      </div>
+    );
+  }
+
   if (error) return <div className="text-red-500 p-4">{error}</div>;
   if (!notification || !vehicleData) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto p-4">
+        {/* Role Indicator */}
+        {userRole === "SubOwner" && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-700 text-sm">
+              Viewing notification as Co-Owner (Owner&apos;s data)
+            </p>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="mb-6 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">
