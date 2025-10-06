@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -1249,7 +1248,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                     },
                   ),
                 ),
-                if (reController.role == "Owner")
+                if (reController.role == "Owner" ||
+                    reController.role == "SubOwner")
                   Padding(
                     padding: const EdgeInsets.only(left: 8.0),
                     child: InkWell(

@@ -199,22 +199,22 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
                   );
                 },
               ),
-              if (role == "Owner") // Only show import for Owners
-                ListTile(
-                  leading: Icon(Icons.upload_file),
-                  title: Text("Import Vehicle"),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddVehicleViaExcelScreen(
-                            currentUId:
-                                _effectiveUserId), // Use effective user ID
-                      ),
-                    );
-                  },
-                ),
+              // if (role == "Owner") // Only show import for Owners
+              ListTile(
+                leading: Icon(Icons.upload_file),
+                title: Text("Import Vehicle"),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddVehicleViaExcelScreen(
+                          currentUId:
+                              _effectiveUserId), // Use effective user ID
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         );

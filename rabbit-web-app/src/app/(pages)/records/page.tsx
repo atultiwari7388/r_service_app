@@ -229,6 +229,7 @@ export default function RecordsPage() {
           const userData = userDoc.data() as ProfileValues;
           setUserData(userData);
           setUserRole(userData.role || "");
+          setRole(userData.role || "");
 
           // Determine effectiveUserId based on role
           if (userData.role === "SubOwner" && userData.createdBy) {
@@ -250,31 +251,31 @@ export default function RecordsPage() {
     fetchEffectiveUserData();
   }, [user?.uid]);
 
-  const fetchVehicles = async () => {
-    if (!effectiveUserId) return;
+  // const fetchVehicles = async () => {
+  //   if (!effectiveUserId) return;
 
-    try {
-      const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
-      const q = query(vehiclesRef, where("active", "==", true));
+  //   try {
+  //     const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
+  //     const q = query(vehiclesRef, where("active", "==", true));
 
-      // Replace getDocs with onSnapshot for real-time updates
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const vehiclesList = snapshot.docs.map(
-          (doc) =>
-            ({
-              id: doc.id,
-              ...doc.data(),
-            } as VehicleTypes)
-        );
-        setVehicles(vehiclesList);
-      });
+  //     // Replace getDocs with onSnapshot for real-time updates
+  //     const unsubscribe = onSnapshot(q, (snapshot) => {
+  //       const vehiclesList = snapshot.docs.map(
+  //         (doc) =>
+  //           ({
+  //             id: doc.id,
+  //             ...doc.data(),
+  //           } as VehicleTypes)
+  //       );
+  //       setVehicles(vehiclesList);
+  //     });
 
-      // Return the unsubscribe function to clean up later
-      return unsubscribe;
-    } catch (error) {
-      console.error("Error fetching vehicles:", error);
-    }
-  };
+  //     // Return the unsubscribe function to clean up later
+  //     return unsubscribe;
+  //   } catch (error) {
+  //     console.error("Error fetching vehicles:", error);
+  //   }
+  // };
 
   const fetchServices = async () => {
     try {
@@ -821,21 +822,7 @@ export default function RecordsPage() {
   const handleSearchFilterClose = () => setShowSearchFilter(false);
 
   useEffect(() => {
-    fetchVehicles();
-    fetchServices();
-    fetchServicePackages();
-
-    if (!effectiveUserId) return;
-
-    const fetchUserData = async () => {
-      const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
-      if (userDoc.exists()) {
-        const data = userDoc.data() as ProfileValues;
-        setUserData(data);
-        console.log("User data fetched:", userData);
-        setRole(data.role);
-      }
-    };
+    if (!effectiveUserId) return; // Wait until effectiveUserId is set
 
     const recordsQuery = query(
       collection(db, "Users", effectiveUserId, "DataServices"),
@@ -853,13 +840,48 @@ export default function RecordsPage() {
       });
 
       setRecords(recordsData);
-      console.log(`Fetched ${recordsData.length} records`);
+      console.log(
+        `Fetched ${recordsData.length} records for user: ${effectiveUserId}`
+      );
     });
 
-    fetchUserData();
+    // Fetch vehicles using effectiveUserId
+    const fetchData = async () => {
+      try {
+        const vehiclesRef = collection(
+          db,
+          "Users",
+          effectiveUserId,
+          "Vehicles"
+        );
+        const q = query(vehiclesRef, where("active", "==", true));
+
+        const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
+          const vehiclesList = snapshot.docs.map(
+            (doc) =>
+              ({
+                id: doc.id,
+                ...doc.data(),
+              } as VehicleTypes)
+          );
+          setVehicles(vehiclesList);
+          console.log(
+            `Fetched ${vehiclesList.length} vehicles for user: ${effectiveUserId}`
+          );
+        });
+
+        return unsubscribeVehicles;
+      } catch (error) {
+        console.error("Error fetching vehicles:", error);
+      }
+    };
+
+    fetchData();
+    fetchServices();
+    fetchServicePackages();
+
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     updateServiceDefaultValues();
@@ -1640,32 +1662,6 @@ export default function RecordsPage() {
                 placeholderText="Start Date"
                 className="p-2 border rounded w-40"
               />
-
-              {/* <DatePicker
-                selected={summaryStartDate}
-                selectsRange
-                startDate={summaryStartDate}
-                endDate={summaryEndDate}
-                onChange={(update: [Date | null, Date | null]) => {
-                  setSummaryStartDate(update[0]);
-                  setSummaryEndDate(update[1]);
-                }}
-                className="border p-2 rounded"
-                placeholderText="Select date range"
-              /> */}
-
-              {/* <DatePicker
-                selected={summaryEndDate}
-                selectsRange
-                startDate={summaryStartDate}
-                endDate={summaryEndDate}
-                onChange={(update: [Date | null, Date | null]) => {
-                  setSummaryStartDate(update[0]);
-                  setSummaryEndDate(update[1]);
-                }}
-                className="border p-2 rounded"
-                placeholderText="Select date range"
-              /> */}
 
               <DatePicker
                 selected={summaryEndDate}
@@ -2556,9 +2552,6 @@ export default function RecordsPage() {
                   {filteredRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell className="table-cell">
-                        {/* {new Date(record.date).toLocaleDateString()} */}
-                        {/* {new Date(record.date).toString()} */}
-
                         <TableCell className="table-cell">
                           {format(parseISO(record.date), "MM-dd-yyyy")}
                         </TableCell>

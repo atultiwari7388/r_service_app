@@ -504,6 +504,385 @@ class ReportsController extends GetxController {
     );
   }
 
+  // Future<void> handleSaveRecords(mounted, context) async {
+  //   try {
+  //     if (!_validateMandatoryFields()) {
+  //       return;
+  //     }
+
+  //     String? imageUrl;
+
+  //     // Upload images to Firebase Storage
+  //     if (image != null) {
+  //       String fileName =
+  //           DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
+  //       Reference storageRef = FirebaseStorage.instance
+  //           .ref()
+  //           .child('service_images')
+  //           .child(fileName);
+
+  //       UploadTask uploadTask = storageRef.putFile(image!);
+  //       imageUrl = await (await uploadTask).ref.getDownloadURL();
+  //     } else if (isEditing && existingImageUrl != null) {
+  //       imageUrl = existingImageUrl;
+  //     }
+
+  //     // Subservice validation check
+  //     for (var serviceId in selectedServices) {
+  //       final service = services.firstWhere(
+  //         (s) => s['sId'] == serviceId,
+  //         orElse: () => {},
+  //       );
+
+  //       if (service.isNotEmpty) {
+  //         final hasSubServices = service.containsKey('subServices') &&
+  //             (service['subServices'] as List).isNotEmpty;
+
+  //         final selectedSubServiceList = selectedSubServices[serviceId] ?? [];
+
+  //         if (hasSubServices && selectedSubServiceList.isEmpty) {
+  //           showToastMessage(
+  //               "Info",
+  //               "Please select at least one subservice for ${service['sName']}",
+  //               kRed);
+  //           return;
+  //         }
+  //       }
+  //     }
+
+  //     final dataServicesRef =
+  //         FirebaseFirestore.instance.collection("DataServicesRecords");
+  //     final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
+
+  //     final currentMiles = int.tryParse(milesController.text) ?? 0;
+  //     final currentHours = int.tryParse(hoursController.text) ?? 0;
+
+  //     // Get vehicle document to check for service-specific defaults
+  //     final vehicleDoc = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(effectiveUserId)
+  //         .collection('Vehicles')
+  //         .doc(selectedVehicle)
+  //         .get();
+
+  //     final vehicleServices =
+  //         List<Map<String, dynamic>>.from(vehicleDoc.data()?['services'] ?? []);
+
+  //     List<Map<String, dynamic>> servicesData = [];
+  //     List<Map<String, dynamic>> notificationData = [];
+  //     Map<String, dynamic> serviceDetailsMap = {};
+
+  //     for (var serviceId in selectedServices) {
+  //       final service = services.firstWhere(
+  //         (s) => s['sId'] == serviceId,
+  //         orElse: () => {},
+  //       );
+
+  //       if (service.isEmpty) continue;
+
+  //       // Check if vehicle has a default value for this service
+  //       final vehicleService = vehicleServices.firstWhere(
+  //         (vs) => vs['serviceId'] == serviceId,
+  //         orElse: () => {},
+  //       );
+
+  //       String type = "reading";
+  //       int defaultValue = 0;
+  //       DateTime? nextNotificationDate;
+
+  //       // Priority 1: Use vehicle-specific default if available
+  //       if (vehicleService.isNotEmpty &&
+  //           vehicleService['defaultNotificationValue'] != null) {
+  //         type = vehicleService['type']?.toString().toLowerCase() ?? "reading";
+  //         defaultValue = vehicleService['defaultNotificationValue'] is int
+  //             ? vehicleService['defaultNotificationValue']
+  //             : int.tryParse(
+  //                     vehicleService['defaultNotificationValue'].toString()) ??
+  //                 0;
+  //       }
+  //       // Priority 2: Fall back to metadata defaults
+  //       else {
+  //         final engineName =
+  //             selectedVehicleData?['engineName'].toString().toUpperCase();
+  //         final dValues = service['dValues'] as List<dynamic>;
+  //         final matchingDValue = dValues.firstWhere(
+  //           (dv) => dv['brand'].toString().toUpperCase() == engineName,
+  //           orElse: () => null,
+  //         );
+
+  //         if (matchingDValue != null) {
+  //           type =
+  //               (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
+  //           defaultValue = serviceDefaultValues[serviceId] ?? 0;
+  //         }
+  //       }
+
+  //       String formattedDate = '';
+  //       int nextNotificationValue = 0;
+
+  //       if (defaultValue > 0) {
+  //         if (type == 'reading') {
+  //           nextNotificationValue = currentMiles + defaultValue;
+  //         } else if (type == 'day') {
+  //           final baseDate = selectedDate ?? DateTime.now();
+  //           final nextDate = baseDate.add(Duration(days: defaultValue));
+  //           formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
+  //           nextNotificationValue = nextDate.millisecondsSinceEpoch;
+  //         } else if (type == 'hours') {
+  //           nextNotificationValue = currentHours + defaultValue;
+  //         }
+  //       }
+
+  //       // Store details for vehicle update
+  //       serviceDetailsMap[serviceId] = {
+  //         'type': type,
+  //         'defaultValue': defaultValue,
+  //         "nextNotificationValue":
+  //             type == 'day' ? formattedDate : nextNotificationValue,
+  //         'formattedDate': formattedDate,
+  //         'serviceName': service['sName'],
+  //         'subServices': selectedSubServices[serviceId],
+  //       };
+
+  //       servicesData.add({
+  //         "serviceId": serviceId,
+  //         "serviceName": service['sName'],
+  //         "type": type,
+  //         "defaultNotificationValue": defaultValue,
+  //         "nextNotificationValue":
+  //             type == 'day' ? formattedDate : nextNotificationValue,
+  //         "subServices": selectedSubServices[serviceId]
+  //                 ?.map((subService) => {
+  //                       "name": subService,
+  //                       "id": "${serviceId}_${subService.replaceAll(' ', '_')}"
+  //                     })
+  //                 .toList() ??
+  //             [],
+  //       });
+
+  //       notificationData.add({
+  //         "serviceName": service['sName'],
+  //         "type": type,
+  //         "nextNotificationValue":
+  //             type == 'day' ? formattedDate : nextNotificationValue,
+  //         "subServices": selectedSubServices[serviceId] ?? [],
+  //       });
+  //     }
+
+  //     final formattedDate = selectedDate != null
+  //         ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+  //         : null;
+  //     final recordData = {
+  //       "active": true,
+  //       "userId": effectiveUserId,
+  //       "vehicleId": selectedVehicle,
+  //       "imageUrl": imageUrl,
+  //       "vehicleDetails": {
+  //         ...selectedVehicleData!,
+  //         "currentMiles": currentMiles.toString(),
+  //         "nextNotificationMiles": notificationData,
+  //       },
+  //       "services": servicesData,
+  //       "invoice": invoiceController.text,
+  //       "invoiceAmount": invoiceAmountController.text,
+  //       "description": descriptionController.text.toString(),
+  //       "miles": isEditing
+  //           ? currentMiles
+  //           : selectedVehicleData?['vehicleType'] == "Truck" &&
+  //                   selectedServiceData.any((s) => s['vType'] == "Truck")
+  //               ? int.parse(currentMiles.toString())
+  //               : 0,
+  //       "hours": isEditing
+  //           ? int.tryParse(hoursController.text) ?? 0
+  //           : selectedVehicleData?['vehicleType'] == "Trailer" &&
+  //                   selectedServiceData.any((s) => s['vType'] == "Trailer")
+  //               ? int.tryParse(hoursController.text) ?? 0
+  //               : 0,
+  //       "date": formattedDate,
+  //       "workshopName": workshopController.text,
+  //       "createdAt": DateTime.now().toIso8601String(),
+  //       "updatedAt": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+  //       "addedFrom": Platform.isAndroid
+  //           ? "Android"
+  //           : Platform.isIOS
+  //               ? "iOS"
+  //               : "N/A",
+  //     };
+
+  //     // Get current user data to determine if we're a team member
+  //     final currentUserDoc = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(effectiveUserId) //value changed here 6 oct
+  //         .get();
+
+  //     final isTeamMember = currentUserDoc.data()?['isTeamMember'] == true;
+  //     final ownerUid =
+  //         (isTeamMember == true && currentUserDoc.data()?['createdBy'] != null)
+  //             ? currentUserDoc.data()!['createdBy']
+  //             : effectiveUserId;
+
+  //     final batch = FirebaseFirestore.instance.batch();
+
+  //     // Save to owner's DataServices collection
+  //     final ownerDataServicesRef = FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .doc(ownerUid)
+  //         .collection('DataServices');
+  //     batch.set(ownerDataServicesRef.doc(docId), recordData);
+
+  //     // Query all team members under this owner
+  //     final teamMembersSnapshot = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .where('createdBy', isEqualTo: ownerUid)
+  //         .where('isTeamMember', isEqualTo: true)
+  //         .get();
+
+  //     // Save to all team members who have this vehicle
+  //     for (final doc in teamMembersSnapshot.docs) {
+  //       final teamMemberUid = doc.id;
+  //       final vehicleSnapshot = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(teamMemberUid)
+  //           .collection('Vehicles')
+  //           .doc(selectedVehicle)
+  //           .get();
+
+  //       if (vehicleSnapshot.exists) {
+  //         final teamMemberDataServicesRef = FirebaseFirestore.instance
+  //             .collection('Users')
+  //             .doc(teamMemberUid)
+  //             .collection('DataServices');
+  //         batch.set(teamMemberDataServicesRef.doc(docId), recordData);
+  //       }
+  //     }
+
+  //     // If current user is team member, also save to their own collection
+  //     if (isTeamMember && currentUId != ownerUid) {
+  //       final currentUserDataServicesRef = FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(currentUId)
+  //           .collection('DataServices');
+  //       batch.set(currentUserDataServicesRef.doc(docId), recordData);
+  //     }
+
+  //     // Prepare list of user IDs whose vehicles need updating
+  //     List<String> userIdsToUpdate = [ownerUid];
+
+  //     // Add current user if they're a team member
+  //     if (isTeamMember && currentUId != ownerUid) {
+  //       userIdsToUpdate.add(currentUId);
+  //     }
+
+  //     // Add all team members who have this vehicle
+  //     for (final doc in teamMembersSnapshot.docs) {
+  //       final teamMemberUid = doc.id;
+  //       if (teamMemberUid != currentUId) {
+  //         final vehicleSnapshot = await FirebaseFirestore.instance
+  //             .collection('Users')
+  //             .doc(teamMemberUid)
+  //             .collection('Vehicles')
+  //             .doc(selectedVehicle)
+  //             .get();
+  //         if (vehicleSnapshot.exists) {
+  //           userIdsToUpdate.add(teamMemberUid);
+  //         }
+  //       }
+  //     }
+
+  //     // Update vehicles for all relevant users
+  //     for (final userId in userIdsToUpdate) {
+  //       final userVehicleRef = FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(userId)
+  //           .collection('Vehicles')
+  //           .doc(selectedVehicle);
+
+  //       final vehicleSnapshot = await userVehicleRef.get();
+  //       if (vehicleSnapshot.exists) {
+  //         Map<String, dynamic> vehicleData = vehicleSnapshot.data() ?? {};
+  //         List<dynamic> updatedVehicleServices =
+  //             List.from(vehicleData['services'] ?? []);
+
+  //         for (var serviceId in selectedServices) {
+  //           final serviceInfo = serviceDetailsMap[serviceId];
+  //           if (serviceInfo == null) continue;
+
+  //           final type = serviceInfo['type'];
+  //           final defaultValue = serviceInfo['defaultValue'];
+  //           final nextNotificationValue = serviceInfo['nextNotificationValue'];
+  //           final formattedDate = serviceInfo['formattedDate'];
+  //           final serviceName = serviceInfo['serviceName'];
+  //           final subServices = serviceInfo['subServices'];
+
+  //           int index = updatedVehicleServices
+  //               .indexWhere((s) => s['serviceId'] == serviceId);
+
+  //           if (index != -1) {
+  //             updatedVehicleServices[index] = {
+  //               ...updatedVehicleServices[index],
+  //               'nextNotificationValue':
+  //                   type == 'day' ? formattedDate : nextNotificationValue,
+  //               'type': type,
+  //               'defaultNotificationValue': defaultValue,
+  //               'subServices': (subServices as List<dynamic>?)
+  //                       ?.map((subService) => {
+  //                             "name": subService.toString(),
+  //                             "id":
+  //                                 "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+  //                           })
+  //                       .toList() ??
+  //                   [],
+  //             };
+  //           } else {
+  //             updatedVehicleServices.add({
+  //               'serviceId': serviceId,
+  //               'serviceName': serviceName,
+  //               'nextNotificationValue':
+  //                   type == 'day' ? formattedDate : nextNotificationValue,
+  //               'type': type,
+  //               'defaultNotificationValue': defaultValue,
+  //               'subServices': (subServices as List<dynamic>?)
+  //                       ?.map((subService) => {
+  //                             "name": subService.toString(),
+  //                             "id":
+  //                                 "${serviceId}_${subService.toString().replaceAll(' ', '_')}"
+  //                           })
+  //                       .toList() ??
+  //                   [],
+  //             });
+  //           }
+  //         }
+
+  //         batch.update(userVehicleRef, {
+  //           'updatedAt': FieldValue.serverTimestamp(),
+  //           'services': updatedVehicleServices,
+  //           'currentMiles': currentMiles.toString(),
+  //           'currentMilesArray': FieldValue.arrayUnion([
+  //             {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
+  //           ]),
+  //           'nextNotificationMiles': notificationData,
+  //         });
+  //       }
+  //     }
+
+  //     await batch.commit();
+  //     resetForm();
+
+  //     showToastMessage(
+  //         "Info",
+  //         isEditing
+  //             ? "Record updated successfully"
+  //             : "Record saved successfully",
+  //         kSecondary);
+
+  //     refreshPage(mounted, context);
+  //   } catch (e, stackTrace) {
+  //     debugPrint('Error Saving records: ${e.toString()}');
+  //     debugPrint(stackTrace.toString());
+  //     showToastMessage("Info", "Error saving records.", kRed);
+  //   }
+  // }
+
   Future<void> handleSaveRecords(mounted, context) async {
     try {
       if (!_validateMandatoryFields()) {
@@ -560,7 +939,7 @@ class ReportsController extends GetxController {
       // Get vehicle document to check for service-specific defaults
       final vehicleDoc = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(effectiveUserId)
+          .doc(effectiveUserId) // Use effectiveUserId for vehicle data
           .collection('Vehicles')
           .doc(selectedVehicle)
           .get();
@@ -674,7 +1053,7 @@ class ReportsController extends GetxController {
           : null;
       final recordData = {
         "active": true,
-        "userId": effectiveUserId,
+        "userId": effectiveUserId, // Use effectiveUserId for the record
         "vehicleId": selectedVehicle,
         "imageUrl": imageUrl,
         "vehicleDetails": {
@@ -709,21 +1088,24 @@ class ReportsController extends GetxController {
                 : "N/A",
       };
 
-      // Get current user data to determine if we're a team member
+      // Get current user data to determine the actual owner
       final currentUserDoc = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(currentUId)
+          .doc(currentUId) // Use currentUId to check team membership
           .get();
 
       final isTeamMember = currentUserDoc.data()?['isTeamMember'] == true;
-      final ownerUid = effectiveUserId; // Use effectiveUserId as owner
+      final ownerUid =
+          (isTeamMember == true && currentUserDoc.data()?['createdBy'] != null)
+              ? currentUserDoc.data()!['createdBy']
+              : currentUId; // Use currentUId for non-team members
 
       final batch = FirebaseFirestore.instance.batch();
 
       // Save to owner's DataServices collection
       final ownerDataServicesRef = FirebaseFirestore.instance
           .collection('Users')
-          .doc(ownerUid)
+          .doc(ownerUid) // Use the determined ownerUid
           .collection('DataServices');
       batch.set(ownerDataServicesRef.doc(docId), recordData);
 
@@ -1254,25 +1636,5 @@ class ReportsController extends GetxController {
         ),
       );
     }
-  }
-
-  @override
-  void dispose() {
-    // TODO: implement dispose
-    super.dispose();
-    vehiclesSubscription.cancel();
-    recordsSubscription.cancel();
-    servicesSubscription.cancel();
-    milesSubscription.cancel();
-    packagesSubscription.cancel();
-    usersSubscription.cancel();
-    milesController.dispose();
-    hoursController.dispose();
-    workshopController.dispose();
-    invoiceController.dispose();
-    invoiceAmountController.dispose();
-    serviceSearchController.dispose();
-    vehicleSearchController.dispose();
-    dateSearchController.dispose();
   }
 }

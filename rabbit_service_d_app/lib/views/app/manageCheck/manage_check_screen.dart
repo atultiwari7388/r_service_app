@@ -1036,6 +1036,64 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         0.0, (sum, detail) => sum + (detail['amount'] as num).toDouble());
   }
 
+  // Future<void> _saveCheck() async {
+  //   if (_selectedUserId == null || _serviceDetails.isEmpty) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Please fill all required fields')),
+  //     );
+  //     return;
+  //   }
+
+  //   try {
+  //     String checkNumber = _checkNumberController.text;
+
+  //     await FirebaseFirestore.instance.collection('Checks').add({
+  //       'checkNumber': checkNumber,
+  //       'type': _selectedType,
+  //       'userId': _selectedUserId,
+  //       'userName': _selectedUserName,
+  //       'serviceDetails': _serviceDetails,
+  //       'totalAmount': _totalAmount,
+  //       'memoNumber': _memoNumberController.text.isEmpty
+  //           ? null
+  //           : _memoNumberController.text,
+  //       'date': _selectedDate,
+  //       'createdBy': _effectiveUserId, // Use effective user ID
+  //       'createdByUser': currentUId, // Track actual user who created
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //     });
+
+  //     // Mark this check number as used
+  //     await _updateCheckNumberUsage(checkNumber);
+
+  //     if (_selectedType == 'Driver') {
+  //       final querySnapshot = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(_selectedUserId)
+  //           .collection('trips')
+  //           .where('isPaid', isEqualTo: false)
+  //           .get();
+
+  //       final batch = FirebaseFirestore.instance.batch();
+  //       for (final doc in querySnapshot.docs) {
+  //         batch.update(doc.reference, {'isPaid': true});
+  //       }
+  //       await batch.commit();
+  //     }
+
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Check saved successfully')),
+  //     );
+
+  //     Navigator.of(context).pop();
+  //     await fetchChecks();
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error saving check: $e')),
+  //     );
+  //   }
+  // }
+
   Future<void> _saveCheck() async {
     if (_selectedUserId == null || _serviceDetails.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1047,6 +1105,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     try {
       String checkNumber = _checkNumberController.text;
 
+      // Create check document
       await FirebaseFirestore.instance.collection('Checks').add({
         'checkNumber': checkNumber,
         'type': _selectedType,
@@ -1058,14 +1117,23 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             ? null
             : _memoNumberController.text,
         'date': _selectedDate,
-        'createdBy': _effectiveUserId, // Use effective user ID
-        'createdByUser': currentUId, // Track actual user who created
+        'createdBy': _effectiveUserId,
+        'createdByUser': currentUId,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Mark this check number as used
+      // MARK CHECK NUMBER AS USED
       await _updateCheckNumberUsage(checkNumber);
 
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(_selectedUserId!)
+          .get();
+      final currentWallet =
+          (userDoc.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
+      final newWalletBalance = currentWallet + _totalAmount;
+
+      await userDoc.reference.update({'wallet': newWalletBalance});
       if (_selectedType == 'Driver') {
         final querySnapshot = await FirebaseFirestore.instance
             .collection('Users')
