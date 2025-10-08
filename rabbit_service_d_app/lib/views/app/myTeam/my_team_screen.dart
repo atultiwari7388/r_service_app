@@ -10,6 +10,7 @@ import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/edit_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/member_jobs_history.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/view_member_profile_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/view_members_trip.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/view_vehicles_screen.dart';
 import '../../../utils/app_styles.dart';
@@ -600,6 +601,87 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                           },
                         ),
                       if (!isTeamMemberOwner) // Only show menu for non-owner team members
+                        // PopupMenuButton<String>(
+                        //   icon: Icon(Icons.more_vert_rounded),
+                        //   onSelected: (value) {
+                        //     if (value == 'edit') {
+                        //       // Only Owners and SubOwners can edit team members
+                        //       if ((role == "Owner" || role == "SubOwner") &&
+                        //           !isOwnedByCurrentUser) {
+                        //         Get.to(() => EditTeamMember(
+                        //             memberId: memberId,
+                        //             currentUId: role == 'SubOwner'
+                        //                 ? ownerId!
+                        //                 : currentUId));
+                        //       } else {
+                        //         showToastMessage(
+                        //             "Permission Denied",
+                        //             "Only owners can edit team members",
+                        //             Colors.red);
+                        //       }
+                        //     } else if (value == 'view_trip') {
+                        //       Get.to(() => ViewMemberTrip(
+                        //             memberName: name,
+                        //             memberId: memberId,
+                        //             ownerId: ownerId,
+                        //             perMileCharge: num.parse(perMileCharge),
+                        //             role: role,
+                        //             teamRole: memberRole,
+                        //             effectiveUserId: role == 'SubOwner'
+                        //                 ? ownerId!
+                        //                 : currentUId,
+                        //           ));
+                        //     } else if (value == 'view_vehicles') {
+                        //       Get.to(() => MemberVehiclesScreen(
+                        //             memberName: name,
+                        //             memberContact: phone,
+                        //             memberId: memberId,
+                        //             vehicles: member['vehicles'],
+                        //           ));
+                        //     } else if (value == 'view_jobs') {
+                        //       Get.to(() => MemberJobsHistoryScreen(
+                        //             memberName: name,
+                        //             memebrId: memberId,
+                        //             ownerId: ownerId,
+                        //           ));
+                        //     }
+                        //   },
+                        //   itemBuilder: (BuildContext context) => [
+                        //     // Show edit option only for Owners and SubOwners
+                        //     if ((role == "Owner" || role == "SubOwner") &&
+                        //         !isOwnedByCurrentUser)
+                        //       PopupMenuItem(
+                        //         value: 'edit',
+                        //         child: ListTile(
+                        //           leading: Icon(Icons.edit, color: kPrimary),
+                        //           title: Text('Edit'),
+                        //         ),
+                        //       ),
+                        //     PopupMenuItem(
+                        //       value: 'view_trip',
+                        //       child: ListTile(
+                        //         leading:
+                        //             Icon(Icons.directions_car, color: kPrimary),
+                        //         title: Text('View Trip'),
+                        //       ),
+                        //     ),
+                        //     PopupMenuItem(
+                        //       value: 'view_vehicles',
+                        //       child: ListTile(
+                        //         leading: Icon(Icons.work, color: kPrimary),
+                        //         title: Text('View Vehicles'),
+                        //       ),
+                        //     ),
+                        //     PopupMenuItem(
+                        //       value: 'view_jobs',
+                        //       child: ListTile(
+                        //         leading: Icon(Icons.work, color: kPrimary),
+                        //         title: Text('View Jobs'),
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
+
                         PopupMenuButton<String>(
                           icon: Icon(Icons.more_vert_rounded),
                           onSelected: (value) {
@@ -643,42 +725,71 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                                     memebrId: memberId,
                                     ownerId: ownerId,
                                   ));
+                            } else if (value == 'view_profile') {
+                              Get.to(() => ViewMemberProfileScreen(
+                                    memberId: memberId,
+                                    memberName: name,
+                                  ));
                             }
                           },
-                          itemBuilder: (BuildContext context) => [
-                            // Show edit option only for Owners and SubOwners
-                            if ((role == "Owner" || role == "SubOwner") &&
-                                !isOwnedByCurrentUser)
+                          itemBuilder: (BuildContext context) {
+                            if (memberRole == "SubOwner" ||
+                                memberRole == "Co-Owner") {
+                              return [
+                                PopupMenuItem(
+                                  value: 'view_profile',
+                                  child: ListTile(
+                                    leading:
+                                        Icon(Icons.person, color: kPrimary),
+                                    title: Text('View Profile'),
+                                  ),
+                                ),
+                              ];
+                            }
+
+                            // For other team member roles, show all options
+                            return [
+                              // Show edit option only for Owners and SubOwners (current user)
+                              if ((role == "Owner" || role == "SubOwner") &&
+                                  !isOwnedByCurrentUser)
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: ListTile(
+                                    leading: Icon(Icons.edit, color: kPrimary),
+                                    title: Text('Edit'),
+                                  ),
+                                ),
                               PopupMenuItem(
-                                value: 'edit',
+                                value: 'view_trip',
                                 child: ListTile(
-                                  leading: Icon(Icons.edit, color: kPrimary),
-                                  title: Text('Edit'),
+                                  leading: Icon(Icons.directions_car,
+                                      color: kPrimary),
+                                  title: Text('View Trip'),
                                 ),
                               ),
-                            PopupMenuItem(
-                              value: 'view_trip',
-                              child: ListTile(
-                                leading:
-                                    Icon(Icons.directions_car, color: kPrimary),
-                                title: Text('View Trip'),
+                              PopupMenuItem(
+                                value: 'view_vehicles',
+                                child: ListTile(
+                                  leading: Icon(Icons.work, color: kPrimary),
+                                  title: Text('View Vehicles'),
+                                ),
                               ),
-                            ),
-                            PopupMenuItem(
-                              value: 'view_vehicles',
-                              child: ListTile(
-                                leading: Icon(Icons.work, color: kPrimary),
-                                title: Text('View Vehicles'),
+                              PopupMenuItem(
+                                value: 'view_jobs',
+                                child: ListTile(
+                                  leading: Icon(Icons.work, color: kPrimary),
+                                  title: Text('View Jobs'),
+                                ),
                               ),
-                            ),
-                            PopupMenuItem(
-                              value: 'view_jobs',
-                              child: ListTile(
-                                leading: Icon(Icons.work, color: kPrimary),
-                                title: Text('View Jobs'),
+                              PopupMenuItem(
+                                value: 'view_profile',
+                                child: ListTile(
+                                  leading: Icon(Icons.person, color: kPrimary),
+                                  title: Text('View Profile'),
+                                ),
                               ),
-                            ),
-                          ],
+                            ];
+                          },
                         ),
                     ],
                   ),
