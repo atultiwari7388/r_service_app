@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             children: [
                               Image.asset(
-                                'assets/mechanic_app_new_logo.png',
+                                'assets/new_logo_m.png',
                                 height: 270.h,
                                 width: double.maxFinite,
                                 // color: kWhite,

@@ -297,7 +297,7 @@ const NotificationCard = ({
               onClick={() => onMarkAsRead(notification.id)}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
             >
-              Mark as Read
+              Disappear
             </button>
             <Link
               href={`/account/notifications/${notification.id}`}

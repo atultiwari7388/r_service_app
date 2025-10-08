@@ -78,7 +78,7 @@ class _SplashScreenState extends State<SplashScreen> {
             );
           },
           child: Image.asset(
-            "assets/mechanic_app_new_logo.png",
+            "assets/new_logo_m.png",
             height: 200.h,
             fit: BoxFit.cover,
           ),

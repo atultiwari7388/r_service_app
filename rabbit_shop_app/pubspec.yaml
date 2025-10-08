@@ -56,7 +56,7 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/mechanic_app_new_logo.png"
+  image_path: "assets/new_logo_m.png"
   min_sdk_android: 21
 
   flutter_lints: ^2.0.0

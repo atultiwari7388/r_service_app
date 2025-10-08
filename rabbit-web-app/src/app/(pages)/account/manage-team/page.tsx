@@ -25,6 +25,7 @@ import {
   FiCalendar,
   FiTruck,
   FiBriefcase,
+  FiUser,
 } from "react-icons/fi";
 import { Menu, Switch, Transition } from "@headlessui/react";
 
@@ -316,15 +317,16 @@ export default function ManageTeam(): JSX.Element {
           <h1 className="text-2xl text-gray-800 font-bold mb-4 sm:mb-0">
             Manage Team
           </h1>
-          {role === "Owner" ||
-            (role === "SubOwner" && (
-              <Link href="/account/manage-team/create-team-member">
-                <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center">
-                  <span className="mr-2">+</span>
-                  Add Member
-                </button>
-              </Link>
-            ))}
+          {role === "Owner" || role === "SubOwner" ? (
+            <Link href="/account/manage-team/create-team-member">
+              <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center">
+                <span className="mr-2">+</span>
+                Add Member
+              </button>
+            </Link>
+          ) : (
+            <div></div>
+          )}
         </div>
 
         {/* Search and Filters */}
@@ -342,74 +344,71 @@ export default function ManageTeam(): JSX.Element {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {role === "Owner" ||
-              (role === "SubOwner" && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md transition-colors"
-                  >
-                    <FiFilter />
-                    <span>Filter</span>
-                  </button>
+            {role === "Owner" || role === "SubOwner" ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md transition-colors"
+                >
+                  <FiFilter />
+                  <span>Filter</span>
+                </button>
 
-                  {showFilters && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 p-4 border border-gray-200">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-medium">Filter by Role</h3>
-                        <button onClick={() => setShowFilters(false)}>
-                          <FiX />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {availableRoles.map((role) => (
-                          <div key={role} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              id={`role-${role}`}
-                              checked={selectedRoles.includes(role)}
-                              onChange={() => {
-                                if (role === "All") {
-                                  setSelectedRoles(["All"]);
-                                } else {
-                                  const newSelected = selectedRoles.includes(
-                                    role
-                                  )
-                                    ? selectedRoles.filter((r) => r !== role)
-                                    : [
-                                        ...selectedRoles.filter(
-                                          (r) => r !== "All"
-                                        ),
-                                        role,
-                                      ];
-                                  setSelectedRoles(
-                                    newSelected.length > 0
-                                      ? newSelected
-                                      : ["All"]
-                                  );
-                                }
-                              }}
-                              className="h-4 w-4 text-[#F96176] focus:ring-[#F96176] border-gray-300 rounded"
-                            />
-                            <label
-                              htmlFor={`role-${role}`}
-                              className="ml-2 text-sm text-gray-700"
-                            >
-                              {role}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={resetFilters}
-                        className="mt-3 text-sm text-[#F96176] hover:text-[#e54d62]"
-                      >
-                        Reset all filters
+                {showFilters && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 p-4 border border-gray-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-medium">Filter by Role</h3>
+                      <button onClick={() => setShowFilters(false)}>
+                        <FiX />
                       </button>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="space-y-2">
+                      {availableRoles.map((role) => (
+                        <div key={role} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`role-${role}`}
+                            checked={selectedRoles.includes(role)}
+                            onChange={() => {
+                              if (role === "All") {
+                                setSelectedRoles(["All"]);
+                              } else {
+                                const newSelected = selectedRoles.includes(role)
+                                  ? selectedRoles.filter((r) => r !== role)
+                                  : [
+                                      ...selectedRoles.filter(
+                                        (r) => r !== "All"
+                                      ),
+                                      role,
+                                    ];
+                                setSelectedRoles(
+                                  newSelected.length > 0 ? newSelected : ["All"]
+                                );
+                              }
+                            }}
+                            className="h-4 w-4 text-[#F96176] focus:ring-[#F96176] border-gray-300 rounded"
+                          />
+                          <label
+                            htmlFor={`role-${role}`}
+                            className="ml-2 text-sm text-gray-700"
+                          >
+                            {role}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={resetFilters}
+                      className="mt-3 text-sm text-[#F96176] hover:text-[#e54d62]"
+                    >
+                      Reset all filters
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div></div>
+            )}
           </div>
         </div>
 
@@ -548,68 +547,88 @@ export default function ManageTeam(): JSX.Element {
                           >
                             <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                               <div className="py-1">
-                                {role === "Owner" && (
+                                {member.role === "SubOwner" ? (
                                   <Menu.Item>
                                     {({ active }) => (
                                       <Link
-                                        href={`/account/manage-team/edit/${member.uid}`}
+                                        href={`/account/manage-team/member-profile/${member.uid}`}
                                         className={`${
                                           active
                                             ? "bg-gray-100 text-gray-900"
                                             : "text-gray-700"
                                         } flex items-center px-4 py-2 text-sm`}
                                       >
-                                        <FiEdit className="mr-3 h-5 w-5 text-gray-400" />
-                                        Edit
+                                        <FiUser className="mr-3 h-5 w-5 text-gray-400" />
+                                        View Profile
                                       </Link>
                                     )}
                                   </Menu.Item>
+                                ) : (
+                                  <>
+                                    {role === "Owner" && (
+                                      <Menu.Item>
+                                        {({ active }) => (
+                                          <Link
+                                            href={`/account/manage-team/edit/${member.uid}`}
+                                            className={`${
+                                              active
+                                                ? "bg-gray-100 text-gray-900"
+                                                : "text-gray-700"
+                                            } flex items-center px-4 py-2 text-sm`}
+                                          >
+                                            <FiEdit className="mr-3 h-5 w-5 text-gray-400" />
+                                            Edit
+                                          </Link>
+                                        )}
+                                      </Menu.Item>
+                                    )}
+                                    <Menu.Item>
+                                      {({ active }) => (
+                                        <Link
+                                          href={`/account/manage-team/member-trips/${member.uid}?ownerId=${member.createdBy}&perMileCharge=${member.perMileCharge}`}
+                                          className={`${
+                                            active
+                                              ? "bg-gray-100 text-gray-900"
+                                              : "text-gray-700"
+                                          } flex items-center px-4 py-2 text-sm`}
+                                        >
+                                          <FiCalendar className="mr-3 h-5 w-5 text-gray-400" />
+                                          View Trips
+                                        </Link>
+                                      )}
+                                    </Menu.Item>
+                                    <Menu.Item>
+                                      {({ active }) => (
+                                        <Link
+                                          href={`/account/manage-team/member-vehicles/${member.uid}`}
+                                          className={`${
+                                            active
+                                              ? "bg-gray-100 text-gray-900"
+                                              : "text-gray-700"
+                                          } flex items-center px-4 py-2 text-sm`}
+                                        >
+                                          <FiTruck className="mr-3 h-5 w-5 text-gray-400" />
+                                          View Vehicles
+                                        </Link>
+                                      )}
+                                    </Menu.Item>
+                                    <Menu.Item>
+                                      {({ active }) => (
+                                        <Link
+                                          href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
+                                          className={`${
+                                            active
+                                              ? "bg-gray-100 text-gray-900"
+                                              : "text-gray-700"
+                                          } flex items-center px-4 py-2 text-sm`}
+                                        >
+                                          <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
+                                          View Jobs
+                                        </Link>
+                                      )}
+                                    </Menu.Item>
+                                  </>
                                 )}
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <Link
-                                      href={`/account/manage-team/member-trips/${member.uid}?ownerId=${member.createdBy}&perMileCharge=${member.perMileCharge}`}
-                                      className={`${
-                                        active
-                                          ? "bg-gray-100 text-gray-900"
-                                          : "text-gray-700"
-                                      } flex items-center px-4 py-2 text-sm`}
-                                    >
-                                      <FiCalendar className="mr-3 h-5 w-5 text-gray-400" />
-                                      View Trips
-                                    </Link>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <Link
-                                      href={`/account/manage-team/member-vehicles/${member.uid}`}
-                                      className={`${
-                                        active
-                                          ? "bg-gray-100 text-gray-900"
-                                          : "text-gray-700"
-                                      } flex items-center px-4 py-2 text-sm`}
-                                    >
-                                      <FiTruck className="mr-3 h-5 w-5 text-gray-400" />
-                                      View Vehicles
-                                    </Link>
-                                  )}
-                                </Menu.Item>
-                                <Menu.Item>
-                                  {({ active }) => (
-                                    <Link
-                                      href={`/account/manage-team/member-jobs/${member.uid}?ownerId=${member.createdBy}`}
-                                      className={`${
-                                        active
-                                          ? "bg-gray-100 text-gray-900"
-                                          : "text-gray-700"
-                                      } flex items-center px-4 py-2 text-sm`}
-                                    >
-                                      <FiBriefcase className="mr-3 h-5 w-5 text-gray-400" />
-                                      View Jobs
-                                    </Link>
-                                  )}
-                                </Menu.Item>
                               </div>
                             </Menu.Items>
                           </Transition>
