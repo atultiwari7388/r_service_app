@@ -415,8 +415,6 @@ class AuthController extends GetxController {
         showToastMessage("Error", "Wrong password provided.", Colors.red);
         break;
       default:
-        showToastMessage("Error",
-            "Invalid email or password , create new account", Colors.red);
     }
   }
 

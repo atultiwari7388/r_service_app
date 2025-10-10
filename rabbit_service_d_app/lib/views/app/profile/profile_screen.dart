@@ -488,7 +488,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               height: 20.h, width: 20.w, color: kWhite),
                           SizedBox(width: 5.w),
                           ReusableText(
-                            text: "\$${wallet.toStringAsFixed(0)}",
+                            text: "\$${wallet}",
                             style: kIsWeb
                                 ? TextStyle(color: kWhite)
                                 : appStyle(17, kWhite, FontWeight.bold),

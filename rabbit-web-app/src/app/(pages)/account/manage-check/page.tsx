@@ -1083,7 +1083,7 @@ export default function ManageCheckScreen() {
               )}
 
               {/* Add Detail Section */}
-              {showAddDetail && (
+              {/* {showAddDetail && (
                 <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-lg font-semibold text-gray-800">
@@ -1156,6 +1156,113 @@ export default function ManageCheckScreen() {
                       <div className="p-3 bg-yellow-100 rounded-lg text-yellow-800">
                         <span className="font-semibold">Total Unpaid:</span> $
                         {driverUnpaidTotal.toFixed(2)}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      onClick={() => setShowAddDetail(false)}
+                      className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveDetail}
+                      className="px-8 py-2.5 bg-[#F96176] rounded-full shadow-sm text-white hover:bg-[#F96176]/80 transition-all"
+                    >
+                      Add Detail
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              */}
+
+              {showAddDetail && (
+                <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-800">
+                      Add Service Detail
+                    </h4>
+                    <button
+                      onClick={() => setShowAddDetail(false)}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Service Name
+                      </label>
+                      <input
+                        type="text"
+                        value={serviceName}
+                        onChange={(e) => setServiceName(e.target.value)}
+                        placeholder="Enter service description"
+                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Amount
+                      </label>
+                      <input
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Enter amount"
+                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                      />
+                    </div>
+                  </div>
+
+                  {selectedType === "Driver" && unpaidTrips.length > 0 && (
+                    <div className="mt-6">
+                      <div className="flex items-center mb-3">
+                        <div className="bg-yellow-100 p-2 rounded-full mr-3">
+                          <FiClock className="text-yellow-600" />
+                        </div>
+                        <h5 className="text-md font-semibold text-gray-800">
+                          Unpaid Trips
+                        </h5>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        {unpaidTrips.map((trip, index) => (
+                          <div
+                            key={index}
+                            className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg"
+                          >
+                            <span className="text-gray-700">
+                              {trip.tripName}
+                            </span>
+                            <span className="font-semibold text-gray-800">
+                              ${trip.oEarnings.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-3 bg-yellow-100 rounded-lg text-yellow-800">
+                        <span className="font-semibold">Total Unpaid:</span> $
+                        {driverUnpaidTotal.toFixed(2)}
+                      </div>
+
+                      {/* Add this button to use the unpaid trips total */}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() =>
+                            setAmount(driverUnpaidTotal.toFixed(2))
+                          }
+                          className="px-4 py-2 bg-[#F96176] text-white rounded-lg hover:bg-[#F96176]/80 transition-all"
+                        >
+                          Use Unpaid Total
+                        </button>
                       </div>
                     </div>
                   )}
