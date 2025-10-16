@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -148,7 +149,7 @@ class _MyJobsCardState extends State<MyJobsCard> {
         }).toList();
       });
     } catch (e) {
-      print("Error fetching mechanics: $e");
+      log("Error fetching mechanics: $e");
     }
   }
 

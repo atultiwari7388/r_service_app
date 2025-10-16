@@ -737,10 +737,15 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                       buildInfoRow(
                                                                         Icons
                                                                             .build_outlined,
-                                                                        services
-                                                                            .map((service) =>
-                                                                                service['serviceName'])
-                                                                            .join(", "),
+                                                                        () {
+                                                                          List<String>
+                                                                              serviceNames =
+                                                                              services.map((service) => service['serviceName'].toString()).toList();
+                                                                          serviceNames
+                                                                              .sort();
+                                                                          return serviceNames
+                                                                              .join(", ");
+                                                                        }(),
                                                                       ),
                                                                       Divider(
                                                                           height:
