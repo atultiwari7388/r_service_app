@@ -1172,22 +1172,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           'Manage Checks',
           style: appStyle(18, kWhite, FontWeight.normal),
         ),
-        //   actions: _canManageChecks
-        //       ? [
-        //           IconButton(
-        //             icon: Icon(Icons.numbers),
-        //             onPressed: () {
-        //               Navigator.push(
-        //                 context,
-        //                 MaterialPageRoute(
-        //                   builder: (context) => const ManageCheckNumbersScreen(),
-        //                 ),
-        //               );
-        //             },
-        //           ),
-        //         ]
-        //       : [],
-        // ),
         actions: (isAnonymous == true && isProfileComplete == false)
             ? []
             : [

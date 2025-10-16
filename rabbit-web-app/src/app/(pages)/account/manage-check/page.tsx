@@ -35,6 +35,7 @@ import {
   FiFileText,
   FiTrash2,
   FiSave,
+  FiHash,
 } from "react-icons/fi";
 import { FaFileAlt } from "react-icons/fa";
 
@@ -77,8 +78,9 @@ interface Check {
 interface CheckSeries {
   id: string;
   userId: string;
-  startNumber: number;
-  endNumber: number;
+  startNumber: string;
+  endNumber: string;
+  totalChecks: number;
   createdAt: Date;
 }
 
@@ -107,7 +109,7 @@ export default function ManageCheckScreen() {
   const [unpaidTrips, setUnpaidTrips] = useState<Trip[]>([]);
   const [driverUnpaidTotal, setDriverUnpaidTotal] = useState<number>(0);
   const [checkNumber, setCheckNumber] = useState<string>("");
-  const [currentCheckNumber, setCurrentCheckNumber] = useState<number | null>(
+  const [currentCheckNumber, setCurrentCheckNumber] = useState<string | null>(
     null
   );
   const [checkSeries, setCheckSeries] = useState<CheckSeries[]>([]);
@@ -115,6 +117,10 @@ export default function ManageCheckScreen() {
   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const [showAddSeries, setShowAddSeries] = useState<boolean>(false);
+  const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
+  const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
+  const [addingSeries, setAddingSeries] = useState<boolean>(false);
 
   const { user } = useAuth() || { user: null };
 
@@ -139,7 +145,6 @@ export default function ManageCheckScreen() {
             );
           } else {
             setEffectiveUserId(user.uid);
-            console.log(`Regular user, using own uid: ${user.uid}`);
           }
 
           setIsCheque(userProfile.isCheque || false);
@@ -162,14 +167,7 @@ export default function ManageCheckScreen() {
   }, [user]);
 
   useEffect(() => {
-    console.log(
-      "effectiveUserId changed:",
-      effectiveUserId,
-      "isCheque:",
-      isCheque
-    );
     if (effectiveUserId && isCheque) {
-      console.log("Triggering data fetches...");
       fetchTeamMembersWithVehicles();
       fetchChecks();
       fetchCheckSeries();
@@ -294,14 +292,130 @@ export default function ManageCheckScreen() {
           userId: data.userId,
           startNumber: data.startNumber,
           endNumber: data.endNumber,
+          totalChecks: data.totalChecks || 0,
           createdAt: data.createdAt?.toDate() || new Date(),
         };
       });
 
       setCheckSeries(seriesData);
-      console.log("Fetched check series:", checkSeries);
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const generateCheckNumbers = (start: string, end: string): string[] => {
+    const checkNumbers: string[] = [];
+
+    try {
+      // Extract prefix and numeric parts
+      const prefix = start.replace(/\d/g, "");
+      const endPrefix = end.replace(/\d/g, "");
+
+      // Verify prefixes match
+      if (prefix !== endPrefix) {
+        GlobalToastError("Number prefixes must match");
+        return [];
+      }
+
+      // Extract numeric parts
+      const startNumStr = start.replace(prefix, "");
+      const endNumStr = end.replace(prefix, "");
+
+      const startNum = parseInt(startNumStr);
+      const endNum = parseInt(endNumStr);
+
+      if (startNum >= endNum) {
+        GlobalToastError("End number must be greater than start number");
+        return [];
+      }
+
+      // Generate all numbers in the range
+      for (let i = startNum; i <= endNum; i++) {
+        // Format number with leading zeros to match the original format
+        let numStr = i.toString();
+        if (startNumStr.length > numStr.length) {
+          numStr = numStr.padStart(startNumStr.length, "0");
+        }
+
+        checkNumbers.push(`${prefix}${numStr}`);
+      }
+    } catch (error) {
+      GlobalToastError("Error generating check numbers");
+      console.error(error);
+      return [];
+    }
+
+    return checkNumbers;
+  };
+
+  const handleAddCheckSeries = async () => {
+    if (!startSeriesNumber || !endSeriesNumber) {
+      GlobalToastError("Please enter both start and end numbers");
+      return;
+    }
+
+    setAddingSeries(true);
+
+    try {
+      // Generate the check numbers
+      const checkNumbers = generateCheckNumbers(
+        startSeriesNumber,
+        endSeriesNumber
+      );
+
+      if (checkNumbers.length === 0) {
+        return;
+      }
+
+      // Save the series to Firestore
+      const seriesRef = await addDoc(collection(db, "CheckSeries"), {
+        userId: effectiveUserId,
+        startNumber: startSeriesNumber,
+        endNumber: endSeriesNumber,
+        createdAt: serverTimestamp(),
+        totalChecks: checkNumbers.length,
+      });
+
+      // Save individual check numbers to a subcollection
+      const batch = writeBatch(db);
+
+      for (const checkNumber of checkNumbers) {
+        const docRef = doc(
+          collection(db, "CheckSeries", seriesRef.id, "Checks")
+        );
+        batch.set(docRef, {
+          checkNumber: checkNumber,
+          isUsed: false,
+          seriesId: seriesRef.id,
+          userId: effectiveUserId,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      // Update current check number if not set
+      if (!currentCheckNumber) {
+        await updateDoc(doc(db, "Users", effectiveUserId), {
+          currentCheckNumber: startSeriesNumber,
+        });
+        setCurrentCheckNumber(startSeriesNumber);
+      }
+
+      GlobalToastSuccess("Check series saved successfully!");
+
+      // Reset form and close
+      setStartSeriesNumber("");
+      setEndSeriesNumber("");
+      setShowAddSeries(false);
+
+      // Refresh data
+      await fetchCheckSeries();
+    } catch (error) {
+      GlobalToastError("Error saving check series");
+      console.error(error);
+    } finally {
+      setAddingSeries(false);
     }
   };
 
@@ -899,10 +1013,160 @@ export default function ManageCheckScreen() {
               <FiPlus className="mr-2" />
               {showWriteCheck ? "Cancel Write Check" : "Write Check"}
             </button>
+            <button
+              onClick={() => setShowAddSeries(true)}
+              className="flex items-center px-6 py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white"
+            >
+              <FiHash className="mr-2" />
+              Add Check Series
+            </button>
           </div>
         )}
       </div>
 
+      {/* Current Check Number Display */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-center">
+        <p className="text-lg font-semibold text-blue-800">
+          Current Check Number: {currentCheckNumber || "Not set"}
+        </p>
+      </div>
+
+      {/* Add Check Series Modal */}
+      {showAddSeries && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="bg-green-100 p-3 rounded-full mr-4">
+                  <FiHash className="text-green-600" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-serif font-bold text-gray-800">
+                    Add Check Series
+                  </h3>
+                  <p className="text-gray-600">
+                    Create a new range of check numbers
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddSeries(false)}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Number (e.g., RMS001)
+                </label>
+                <input
+                  type="text"
+                  value={startSeriesNumber}
+                  onChange={(e) => setStartSeriesNumber(e.target.value)}
+                  placeholder="Enter start number"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Number (e.g., RMS050)
+                </label>
+                <input
+                  type="text"
+                  value={endSeriesNumber}
+                  onChange={(e) => setEndSeriesNumber(e.target.value)}
+                  placeholder="Enter end number"
+                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                />
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> Make sure the prefix (e.g.,
+                  &quot;RMS&quot;) matches for both numbers. The end number must
+                  be greater than the start number.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowAddSeries(false)}
+                className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCheckSeries}
+                disabled={addingSeries}
+                className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
+                  addingSeries
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-[#58BB87] hover:bg-[#58BB87]"
+                } text-white`}
+              >
+                {addingSeries ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <FiSave className="mr-2" />
+                    Save Series
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Check Series List */}
+      {checkSeries.length > 0 && (
+        <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <div className="bg-green-100 p-2 rounded-full mr-3">
+                <FiHash className="text-green-600" size={20} />
+              </div>
+              <h3 className="text-xl font-serif font-bold text-gray-800">
+                Check Series
+              </h3>
+            </div>
+            <span className="text-sm text-gray-500">
+              {checkSeries.length} series
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {checkSeries.map((series) => (
+              <div
+                key={series.id}
+                className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-green-300 transition-all"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-semibold text-gray-800">
+                    {series.startNumber} - {series.endNumber}
+                  </h4>
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    {series.totalChecks} checks
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Created: {format(series.createdAt, "MMM dd, yyyy")}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Write Check Section */}
       {/* Write Check Section */}
       {showWriteCheck && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
@@ -1081,103 +1345,6 @@ export default function ManageCheckScreen() {
                   </div>
                 </div>
               )}
-
-              {/* Add Detail Section */}
-              {/* {showAddDetail && (
-                <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-800">
-                      Add Service Detail
-                    </h4>
-                    <button
-                      onClick={() => setShowAddDetail(false)}
-                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
-                    >
-                      <FiX size={16} />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Service Name
-                      </label>
-                      <input
-                        type="text"
-                        value={serviceName}
-                        onChange={(e) => setServiceName(e.target.value)}
-                        placeholder="Enter service description"
-                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Amount
-                      </label>
-                      <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        disabled={selectedType === "Driver"}
-                        placeholder="Enter amount"
-                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                      />
-                    </div>
-                  </div>
-
-                  {selectedType === "Driver" && unpaidTrips.length > 0 && (
-                    <div className="mt-6">
-                      <div className="flex items-center mb-3">
-                        <div className="bg-yellow-100 p-2 rounded-full mr-3">
-                          <FiClock className="text-yellow-600" />
-                        </div>
-                        <h5 className="text-md font-semibold text-gray-800">
-                          Unpaid Trips
-                        </h5>
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        {unpaidTrips.map((trip, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg"
-                          >
-                            <span className="text-gray-700">
-                              {trip.tripName}
-                            </span>
-                            <span className="font-semibold text-gray-800">
-                              ${trip.oEarnings.toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="p-3 bg-yellow-100 rounded-lg text-yellow-800">
-                        <span className="font-semibold">Total Unpaid:</span> $
-                        {driverUnpaidTotal.toFixed(2)}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end space-x-3 mt-6">
-                    <button
-                      onClick={() => setShowAddDetail(false)}
-                      className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveDetail}
-                      className="px-8 py-2.5 bg-[#F96176] rounded-full shadow-sm text-white hover:bg-[#F96176]/80 transition-all"
-                    >
-                      Add Detail
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              */}
 
               {showAddDetail && (
                 <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
@@ -1454,12 +1621,20 @@ export default function ManageCheckScreen() {
               : "It looks like you haven't written any checks yet. Get started by creating your first check."}
           </p>
           {!(isAnonymous && !isProfileComplete) && !showWriteCheck && (
-            <button
-              onClick={handleWriteCheck}
-              className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
-            >
-              Write First Check
-            </button>
+            <div className="space-x-4">
+              <button
+                onClick={handleWriteCheck}
+                className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
+              >
+                Write First Check
+              </button>
+              <button
+                onClick={() => setShowAddSeries(true)}
+                className="px-8 py-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+              >
+                Add Check Series
+              </button>
+            </div>
           )}
         </div>
       ) : (
