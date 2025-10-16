@@ -40,6 +40,10 @@ const Login: React.FC = () => {
     }));
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -56,7 +60,7 @@ const Login: React.FC = () => {
       if (user) {
         if (!user.emailVerified) {
           alert(
-            "Email not verified. Please verify your email. If you haven’t received the mail, please also check your Spam folder."
+            "Email not verified. Please verify your email. If you haven't received the mail, please also check your Spam folder."
           );
           await sendEmailVerification(user);
           await signOut(auth);
@@ -127,10 +131,6 @@ const Login: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
   };
 
   return (
@@ -213,7 +213,16 @@ const Login: React.FC = () => {
                 )}
               </button>
             </div>
+            <div className="text-right mt-2">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-medium text-[#F96176] hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
+
           {/* Submit Button */}
           <Button
             type="submit"
@@ -232,7 +241,7 @@ const Login: React.FC = () => {
 
         {/* Sign-up Link */}
         <p className="text-sm text-center text-gray-600 mt-4">
-          Don’t have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             href="/sign-up"
             className="font-medium text-[#F96176] hover:underline"
