@@ -40,10 +40,6 @@ const Login: React.FC = () => {
     }));
   };
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -60,7 +56,7 @@ const Login: React.FC = () => {
       if (user) {
         if (!user.emailVerified) {
           alert(
-            "Email not verified. Please verify your email. If you haven't received the mail, please also check your Spam folder."
+            "Email not verified. Please verify your email. If you haven’t received the mail, please also check your Spam folder."
           );
           await sendEmailVerification(user);
           await signOut(auth);
@@ -133,6 +129,10 @@ const Login: React.FC = () => {
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="flex items-center justify-center mt-10 mb-5">
       <div className="w-full max-w-md p-8 space-y-4 bg-white rounded-lg shadow-lg">
@@ -156,7 +156,7 @@ const Login: React.FC = () => {
           </div>
 
           {/* Password Input */}
-          <div className="form-control w-full relative">
+          <div className="form-control w-full">
             <label htmlFor="password" className="label">
               <span className="label-text text-gray-700">Password</span>
             </label>
@@ -172,7 +172,7 @@ const Login: React.FC = () => {
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-0 flex items-center pr-3 pt-8"
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
                 onClick={togglePasswordVisibility}
               >
                 {showPassword ? (
@@ -213,7 +213,7 @@ const Login: React.FC = () => {
                 )}
               </button>
             </div>
-            <div className="text-right mt-2">
+            {/* <div className="text-right mt-2">
               <Link
                 href="/forgot-password"
                 className="text-sm font-medium text-[#F96176] hover:underline"
@@ -221,8 +221,8 @@ const Login: React.FC = () => {
                 Forgot Password?
               </Link>
             </div>
+           */}
           </div>
-
           {/* Submit Button */}
           <Button
             type="submit"
@@ -241,7 +241,7 @@ const Login: React.FC = () => {
 
         {/* Sign-up Link */}
         <p className="text-sm text-center text-gray-600 mt-4">
-          Don&apos;t have an account?{" "}
+          Don’t have an account?{" "}
           <Link
             href="/sign-up"
             className="font-medium text-[#F96176] hover:underline"
