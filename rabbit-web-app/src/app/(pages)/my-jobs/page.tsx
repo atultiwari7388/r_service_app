@@ -33,18 +33,18 @@ export default function MyJobsPage() {
 
     const fetchUserData = async () => {
       try {
-        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        const userDoc = await getDoc(doc(db, "Users", user?.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setUserRole(userData.role || "");
+          console.log("User role:", userRole);
 
           // Determine effectiveUserId based on role
           if (userData.role === "SubOwner" && userData.createdBy) {
             setEffectiveUserId(userData.createdBy);
             console.log(
               "SubOwner detected, using effectiveUserId:",
-              userData.createdBy,
-              userRole
+              userData.createdBy
             );
           } else {
             setEffectiveUserId(user.uid);
@@ -114,7 +114,7 @@ export default function MyJobsPage() {
     );
 
     return () => unsubscribe();
-  }, [user]);
+  }, [effectiveUserId]);
 
   //fetch distance options with real-time updates
   useEffect(() => {

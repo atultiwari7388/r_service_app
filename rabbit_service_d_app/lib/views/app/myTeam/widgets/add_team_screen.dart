@@ -31,7 +31,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   TextEditingController telephoneController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController email2Controller = TextEditingController();
-  TextEditingController companyController = TextEditingController();
+  // TextEditingController companyController = TextEditingController();
   TextEditingController addressController = TextEditingController();
   TextEditingController cityController = TextEditingController();
   TextEditingController stateController = TextEditingController();
@@ -67,14 +67,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
   List<String> chequeAccessCheckBox = [
     "Cheque",
   ];
-  // List<String> roles = [
-  //   "SubOwner",
-  //   "Manager",
-  //   "Driver",
-  //   "Vendor",
-  //   "Accountant",
-  //   "Other Staff"
-  // ];
 
   // UI display names
   List<String> roleDisplayNames = [
@@ -209,7 +201,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 ),
               ),
               SizedBox(height: 24.h),
-              if (selectedRole == "Vendor")
+              if (selectedRole == "Vendor" || selectedRole == "Other Staff")
                 _buildVendorForm()
               else if (selectedRole != null)
                 Column(
@@ -361,6 +353,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
               SizedBox(height: 10.h),
               if (selectedRole != null &&
                   selectedRole != "Vendor" &&
+                  selectedRole != "Other Staff" &&
                   selectedRole != "SubOwner") ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -500,6 +493,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
               SizedBox(height: 10.h),
               if (selectedRole != null &&
                   selectedRole != "Vendor" &&
+                  selectedRole != "Other Staff" &&
                   selectedRole != "SubOwner") ...[
                 //payment type access
                 Text(
@@ -554,13 +548,13 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                         }
 
                         // Additional validation for Vendor role
-                        if (selectedRole == "Vendor") {
-                          if (companyController.text.isEmpty) {
-                            showToastMessage("Error",
-                                "Please fill company name", Colors.red);
-                            return;
-                          }
-                        }
+                        // if (selectedRole == "Vendor") {
+                        //   if (companyController.text.isEmpty) {
+                        //     showToastMessage("Error",
+                        //         "Please fill company name", Colors.red);
+                        //     return;
+                        //   }
+                        // }
                         // Additional validation for non-Vendor roles
                         else {
                           if (countryController.text.isEmpty ||
@@ -675,16 +669,16 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // SizedBox(height: 15.h),
+        // buildTextFieldInputWidget(
+        //   "Company Name*",
+        //   TextInputType.text,
+        //   companyController,
+        //   MaterialCommunityIcons.office_building,
+        // ),
         SizedBox(height: 15.h),
         buildTextFieldInputWidget(
-          "Company Name*",
-          TextInputType.text,
-          companyController,
-          MaterialCommunityIcons.office_building,
-        ),
-        SizedBox(height: 15.h),
-        buildTextFieldInputWidget(
-          "Name*",
+          "Name* / company name*",
           TextInputType.text,
           nameController,
           MaterialCommunityIcons.account,
@@ -862,7 +856,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         'name': name,
         'email': email,
         "email2": email2Controller.text,
-        'companyName': companyController.text,
+        // 'companyName': companyController.text,
+        'companyName': '',
         'phone': phone,
         'telephone': telephoneController.text,
         'address': addressController.text,
@@ -988,7 +983,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     telephoneController.dispose();
     addressController.dispose();
     email2Controller.dispose();
-    companyController.dispose();
+    // companyController.dispose();
     cityController.dispose();
     stateController.dispose();
     postalController.dispose();

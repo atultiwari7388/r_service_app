@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
@@ -8,6 +10,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/manageCheck/widgets/manage_check_numder_screen.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class ManageCheckScreen extends StatefulWidget {
@@ -561,18 +564,47 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         ))
                     .toList(),
               ],
-              onChanged: (value) async {
+              onChanged: (value) {
                 setState(() {
                   _filterType = value;
+                  _loadingChecks = true; // Show loading immediately
                 });
-                await fetchChecks();
+                fetchChecks(); // Fetch checks with new filter
               },
             ),
           ),
           SizedBox(width: 8),
+          if (role == "Owner" || role == "SubOwner")
+            GestureDetector(
+                onTap: () =>
+                    Get.to(() => AddTeamMember(currentUId: currentUId)),
+                child: CircleAvatar(
+                    backgroundColor: kPrimary,
+                    radius: 20.r,
+                    child: Icon(Icons.add, color: kWhite))),
+          SizedBox(width: 8),
           IconButton(
             icon: Icon(Icons.calendar_today, color: kPrimary),
-            onPressed: _showDateRangePicker,
+            onPressed: () async {
+              final DateTimeRange? picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+                initialDateRange: _dateRange ??
+                    DateTimeRange(
+                      start: DateTime.now().subtract(Duration(days: 30)),
+                      end: DateTime.now(),
+                    ),
+              );
+
+              if (picked != null) {
+                setState(() {
+                  _dateRange = picked;
+                  _loadingChecks = true;
+                });
+                await fetchChecks();
+              }
+            },
           ),
           if (_dateRange != null)
             IconButton(
@@ -580,6 +612,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               onPressed: () async {
                 setState(() {
                   _dateRange = null;
+                  _loadingChecks = true; // Show loading immediately
                 });
                 await fetchChecks();
               },
@@ -1036,64 +1069,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         0.0, (sum, detail) => sum + (detail['amount'] as num).toDouble());
   }
 
-  // Future<void> _saveCheck() async {
-  //   if (_selectedUserId == null || _serviceDetails.isEmpty) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Please fill all required fields')),
-  //     );
-  //     return;
-  //   }
-
-  //   try {
-  //     String checkNumber = _checkNumberController.text;
-
-  //     await FirebaseFirestore.instance.collection('Checks').add({
-  //       'checkNumber': checkNumber,
-  //       'type': _selectedType,
-  //       'userId': _selectedUserId,
-  //       'userName': _selectedUserName,
-  //       'serviceDetails': _serviceDetails,
-  //       'totalAmount': _totalAmount,
-  //       'memoNumber': _memoNumberController.text.isEmpty
-  //           ? null
-  //           : _memoNumberController.text,
-  //       'date': _selectedDate,
-  //       'createdBy': _effectiveUserId, // Use effective user ID
-  //       'createdByUser': currentUId, // Track actual user who created
-  //       'createdAt': FieldValue.serverTimestamp(),
-  //     });
-
-  //     // Mark this check number as used
-  //     await _updateCheckNumberUsage(checkNumber);
-
-  //     if (_selectedType == 'Driver') {
-  //       final querySnapshot = await FirebaseFirestore.instance
-  //           .collection('Users')
-  //           .doc(_selectedUserId)
-  //           .collection('trips')
-  //           .where('isPaid', isEqualTo: false)
-  //           .get();
-
-  //       final batch = FirebaseFirestore.instance.batch();
-  //       for (final doc in querySnapshot.docs) {
-  //         batch.update(doc.reference, {'isPaid': true});
-  //       }
-  //       await batch.commit();
-  //     }
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Check saved successfully')),
-  //     );
-
-  //     Navigator.of(context).pop();
-  //     await fetchChecks();
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error saving check: $e')),
-  //     );
-  //   }
-  // }
-
   Future<void> _saveCheck() async {
     if (_selectedUserId == null || _serviceDetails.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1195,33 +1170,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // if (role == 'SubOwner')
-              //   Container(
-              //     width: double.infinity,
-              //     padding: EdgeInsets.all(12),
-              //     margin: EdgeInsets.only(bottom: 16),
-              //     decoration: BoxDecoration(
-              //       color: Colors.blue[50],
-              //       borderRadius: BorderRadius.circular(8),
-              //     ),
-              //     child: Row(
-              //       children: [
-              //         Icon(Icons.info_outline, color: Colors.blue, size: 20),
-              //         SizedBox(width: 8),
-              //         Expanded(
-              //           child: Text(
-              //             "Viewing and managing checks on behalf of the owner",
-              //             style: TextStyle(
-              //               fontSize: 14,
-              //               color: Colors.blue[700],
-              //               fontWeight: FontWeight.w500,
-              //             ),
-              //           ),
-              //         ),
-              //       ],
-              //     ),
-              //   ),
-
               CustomButton(
                 text: "Write Check",
                 onPress: _showAddCheckDialog,
@@ -1229,6 +1177,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               ),
               const SizedBox(height: 16),
               _buildFilterRow(),
+              // if (role == "Owner" || role == "SubOwner")
+              //   GestureDetector(
+              //       onTap: () =>
+              //           Get.to(() => AddTeamMember(currentUId: currentUId)),
+              //       child: CircleAvatar(radius: 20.r, child: Icon(Icons.add))),
               if (_dateRange != null)
                 Padding(
                   padding: EdgeInsets.only(bottom: 8),
