@@ -225,6 +225,55 @@ export default function ManageCheckScreen() {
     }
   };
 
+  // const fetchChecks = async () => {
+  //   try {
+  //     if (!effectiveUserId) return;
+
+  //     setLoadingChecks(true);
+  //     let checksQuery = query(
+  //       collection(db, "Checks"),
+  //       where("createdBy", "==", effectiveUserId),
+  //       orderBy("date", "desc")
+  //     );
+
+  //     if (filterType) {
+  //       checksQuery = query(checksQuery, where("type", "==", filterType));
+  //     }
+
+  //     if (startDate && endDate) {
+  //       checksQuery = query(
+  //         checksQuery,
+  //         where("date", ">=", Timestamp.fromDate(startDate)),
+  //         where("date", "<=", Timestamp.fromDate(endDate))
+  //       );
+  //     }
+
+  //     const snapshot = await getDocs(checksQuery);
+  //     const checksData: Check[] = snapshot.docs.map((doc) => {
+  //       const data = doc.data();
+  //       return {
+  //         id: doc.id,
+  //         checkNumber: data.checkNumber || 0,
+  //         type: data.type || "",
+  //         userId: effectiveUserId || "",
+  //         userName: data.userName || "",
+  //         serviceDetails: data.serviceDetails || [],
+  //         totalAmount: data.totalAmount || 0,
+  //         memoNumber: data.memoNumber || undefined,
+  //         date: data.date?.toDate() || new Date(),
+  //         createdBy: data.createdBy || "",
+  //         createdAt: data.createdAt,
+  //       };
+  //     });
+
+  //     setChecks(checksData);
+  //     setLoadingChecks(false);
+  //   } catch (error) {
+  //     setLoadingChecks(false);
+  //     console.error(error);
+  //   }
+  // };
+
   const fetchChecks = async () => {
     try {
       if (!effectiveUserId) return;
@@ -267,10 +316,11 @@ export default function ManageCheckScreen() {
       });
 
       setChecks(checksData);
-      setLoadingChecks(false);
     } catch (error) {
-      setLoadingChecks(false);
       console.error(error);
+      GlobalToastError("Error loading checks");
+    } finally {
+      setLoadingChecks(false);
     }
   };
 
@@ -302,6 +352,12 @@ export default function ManageCheckScreen() {
       console.error(error);
     }
   };
+
+  useEffect(() => {
+    if (effectiveUserId && isCheque) {
+      fetchChecks();
+    }
+  }, [filterType, startDate, endDate, effectiveUserId, isCheque]);
 
   const generateCheckNumbers = (start: string, end: string): string[] => {
     const checkNumbers: string[] = [];
@@ -1007,12 +1063,15 @@ export default function ManageCheckScreen() {
         ) : (
           <div className="flex justify-center space-x-4">
             <button
-              onClick={handleWriteCheck}
+              onClick={
+                showWriteCheck ? handleCancelWriteCheck : handleWriteCheck
+              }
               className="flex items-center px-6 py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white"
             >
               <FiPlus className="mr-2" />
               {showWriteCheck ? "Cancel Write Check" : "Write Check"}
             </button>
+
             <button
               onClick={() => setShowAddSeries(true)}
               className="flex items-center px-6 py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white"
@@ -1166,7 +1225,6 @@ export default function ManageCheckScreen() {
         </div>
       )}
 
-      {/* Write Check Section */}
       {/* Write Check Section */}
       {showWriteCheck && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
@@ -1505,7 +1563,9 @@ export default function ManageCheckScreen() {
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                     }`}
                     onClick={() => {
-                      setFilterType(filterType === type ? null : type);
+                      const newFilterType = filterType === type ? null : type;
+                      setFilterType(newFilterType);
+                      setLoadingChecks(true);
                       fetchChecks();
                     }}
                   >
