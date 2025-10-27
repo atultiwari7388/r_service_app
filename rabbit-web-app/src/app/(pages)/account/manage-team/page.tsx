@@ -670,7 +670,9 @@ export default function ManageTeam(): JSX.Element {
                     <h3 className="text-lg font-medium text-gray-900">
                       {member.userName}
                     </h3>
-                    <p className="text-sm text-gray-500">{member.role}</p>
+                    <p className="text-sm text-gray-500">
+                      {member.role === "SubOwner" ? "Co-Owner" : member.role}
+                    </p>
                     <span
                       className={`px-2 text-xs leading-5 font-semibold rounded-full ${
                         member.active
@@ -690,10 +692,16 @@ export default function ManageTeam(): JSX.Element {
                     <span className="font-medium">Phone:</span>{" "}
                     {member.phoneNumber}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  {/* <p className="text-sm text-gray-500">
                     <span className="font-medium">Vehicles:</span>{" "}
                     {member.vehicles.length}
-                  </p>
+                  </p> */}
+                  {member.role !== "SubOwner" && (
+                    <p className="text-sm text-gray-500">
+                      <span className="font-medium">Vehicles:</span>{" "}
+                      {member.vehicles.length}
+                    </p>
+                  )}
                 </div>
                 <div className="mt-4 flex justify-between items-center">
                   {role === "Owner" && (
