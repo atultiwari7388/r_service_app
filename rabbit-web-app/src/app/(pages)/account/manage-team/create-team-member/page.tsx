@@ -1703,8 +1703,7 @@ export default function CreateTeamMemberPage() {
 
                 {/* Cheque Access - Show for Manager, Accountant, and SubOwner */}
                 {(formData.role === "Manager" ||
-                  formData.role === "Accountant" ||
-                  formData.role === "SubOwner") && (
+                  formData.role === "Accountant") && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Cheque Access
