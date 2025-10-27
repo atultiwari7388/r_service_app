@@ -489,10 +489,12 @@ export default function ManageTeam(): JSX.Element {
                       {member.phoneNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {member.role}
+                      {member.role === "SubOwner" ? "Co-Owner" : member.role}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {member.vehicles.length > 0 ? (
+                      {member.role === "SubOwner" ? (
+                        <span className="text-gray-400">-</span>
+                      ) : member.vehicles.length > 0 ? (
                         <span className="inline-block bg-gray-100 rounded-full px-3 py-1 text-xs">
                           {member.vehicles.length} vehicles
                         </span>
@@ -500,6 +502,7 @@ export default function ManageTeam(): JSX.Element {
                         <span className="text-gray-400">None</span>
                       )}
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
