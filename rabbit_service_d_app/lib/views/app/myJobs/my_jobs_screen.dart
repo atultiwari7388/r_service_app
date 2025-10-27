@@ -52,7 +52,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('Users')
-                      .doc(_effectiveUserId) // Use effective user ID
+                      .doc(_effectiveUserId)
                       .collection('UserNotifications')
                       .where('isRead', isEqualTo: false)
                       .snapshots(),
@@ -105,7 +105,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                     child: StreamBuilder<DocumentSnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('Users')
-                          .doc(_effectiveUserId) // Use effective user ID
+                          .doc(_effectiveUserId)
                           .snapshots(),
                       builder: (BuildContext context,
                           AsyncSnapshot<DocumentSnapshot> snapshot) {
@@ -182,7 +182,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
             StreamBuilder(
               stream: FirebaseFirestore.instance
                   .collection('Users')
-                  .doc(_effectiveUserId) // Use effective user ID for SubOwner
+                  .doc(_effectiveUserId)
                   .collection("history")
                   .where("status", whereIn: [0, 1, 2, 3, 4])
                   .orderBy("orderDate", descending: true)

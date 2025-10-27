@@ -51,16 +51,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   String? _nextCheckNumber;
 
   // Get effective user ID based on role
-  String get _effectiveUserId {
-    return role == 'SubOwner' ? _ownerId! : currentUId;
-  }
-
-  // Check if current user can manage checks
-  // bool get _canManageChecks {
-  //   return role != 'SubOwner' &&
-  //       isAnonymous == false &&
-  //       isProfileComplete == true;
+  // String get _effectiveUserId {
+  //   return role == 'SubOwner' ? _ownerId! : currentUId;
   // }
+
+  String get _effectiveUserId {
+    final rolesThatUseOwnerId = ['SubOwner', 'Manager', 'Accountant'];
+    return rolesThatUseOwnerId.contains(role) ? _ownerId! : currentUId;
+  }
 
   @override
   void initState() {
@@ -76,7 +74,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(_effectiveUserId) // Use effective user ID
+          .doc(_effectiveUserId)
           .get();
 
       if (snapshot.exists) {
@@ -233,25 +231,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
   }
 
-  Future<void> _showDateRangePicker() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      initialDateRange: _dateRange ??
-          DateTimeRange(
-            start: DateTime.now().subtract(Duration(days: 30)),
-            end: DateTime.now(),
-          ),
-    );
+  // Future<void> _showDateRangePicker() async {
+  //   final DateTimeRange? picked = await showDateRangePicker(
+  //     context: context,
+  //     firstDate: DateTime(2000),
+  //     lastDate: DateTime(2100),
+  //     initialDateRange: _dateRange ??
+  //         DateTimeRange(
+  //           start: DateTime.now().subtract(Duration(days: 30)),
+  //           end: DateTime.now(),
+  //         ),
+  //   );
 
-    if (picked != null) {
-      setState(() {
-        _dateRange = picked;
-      });
-      await fetchChecks();
-    }
-  }
+  //   if (picked != null) {
+  //     setState(() {
+  //       _dateRange = picked;
+  //     });
+  //     await fetchChecks();
+  //   }
+  // }
 
   Future<void> _printCheck(Map<String, dynamic> check) async {
     final pdf = pw.Document();
@@ -261,29 +259,30 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            padding: pw.EdgeInsets.all(40),
+            // padding: pw.EdgeInsets.all(20),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  // mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(""),
                     pw.Spacer(),
+                    pw.SizedBox(width: 50),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
                       style: pw.TextStyle(fontSize: 15),
                     ),
                   ],
                 ),
-                pw.SizedBox(height: 15),
+                pw.SizedBox(height: 30),
                 pw.Row(
                   children: [
                     pw.Text(
                       '',
                       style: pw.TextStyle(fontSize: 11),
                     ),
-                    pw.SizedBox(width: 50),
+                    pw.SizedBox(width: 45),
                     pw.Text(
                       check['userName'],
                       style: pw.TextStyle(
@@ -294,6 +293,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       '\$${check['totalAmount'].toStringAsFixed(2)}',
                       style: pw.TextStyle(fontSize: 14),
                     ),
+                    pw.SizedBox(width: 50),
                   ],
                 ),
                 pw.SizedBox(height: 15),
@@ -316,9 +316,52 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       ),
                     ],
                   ),
-                pw.SizedBox(height: 50),
+                pw.SizedBox(height: 65),
                 pw.Divider(thickness: 1),
-                pw.SizedBox(height: 30),
+                pw.SizedBox(height: 20),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Check. No. #${check['checkNumber']}',
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
+                      style: pw.TextStyle(fontSize: 15),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  return pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        detail['serviceName'],
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                      pw.Text(
+                        '\$${detail['amount'].toStringAsFixed(2)}',
+                        style: pw.TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  );
+                }).toList(),
+                pw.SizedBox(height: 20),
+                pw.Row(children: [
+                  pw.Spacer(),
+                  pw.Text(
+                    '\$${check['totalAmount'].toStringAsFixed(2)}',
+                    style: pw.TextStyle(
+                        fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  ),
+                ]),
+
+                //duplicate
+                pw.SizedBox(height: 65),
+                pw.Divider(thickness: 1),
+                pw.SizedBox(height: 20),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -658,6 +701,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           .where('createdBy',
               isEqualTo: _effectiveUserId) // Use effective user ID
           .where('uid', isNotEqualTo: _effectiveUserId) // Use effective user ID
+          .where("active", isEqualTo: true)
           .get();
 
       for (var member in teamSnapshot.docs) {

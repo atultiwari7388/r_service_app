@@ -399,28 +399,27 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                       .createUserWithEmailAndPassword();
 
                                   // Show verification dialog
-                                  showDialog(
-                                    context: context,
-                                    barrierDismissible:
-                                        false, // User must tap button to close
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: Text("Verify Your Email"),
-                                        content: Text(
-                                            "Signup Complete! Check your inbox (or spam) to verify."),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
-                                              // Get.offAll(() =>
-                                              //     LoginScreen()); // Redirect to login
-                                            },
-                                            child: Text("OK"),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
+                                  // showDialog(
+                                  //   context: context,
+                                  //   barrierDismissible: false,
+                                  //   builder: (BuildContext context) {
+                                  //     return AlertDialog(
+                                  //       title: Text("Verify Your Email"),
+                                  //       content: Text(
+                                  //           "Signup Complete! Check your inbox (or spam) to verify."),
+                                  //       actions: [
+                                  //         TextButton(
+                                  //           onPressed: () {
+                                  //             Navigator.of(context).pop();
+                                  //             // Get.offAll(() =>
+                                  //             //     LoginScreen()); // Redirect to login
+                                  //           },
+                                  //           child: Text("OK"),
+                                  //         ),
+                                  //       ],
+                                  //     );
+                                  //   },
+                                  // );
                                 } else {
                                   // Your existing validation error handling code
                                   if (controller

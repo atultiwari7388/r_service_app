@@ -7,7 +7,6 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/widgets/request_history_upcoming_request.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../services/collection_references.dart';
 import '../../../services/find_mechanic.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';

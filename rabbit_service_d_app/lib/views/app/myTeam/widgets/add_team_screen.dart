@@ -180,14 +180,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                       selectedPayType = null;
                     });
                   },
-                  //     items: roles.map((String role) {
-                  //       return DropdownMenuItem<String>(
-                  //         value: role,
-                  //         child: Text(role),
-                  //       );
-                  //     }).toList(),
-                  //   ),
-                  // ),
                   items: roleDisplayNames.asMap().entries.map((entry) {
                     int index = entry.key;
                     String displayName = entry.value;
@@ -535,6 +527,117 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   ? CircularProgressIndicator()
                   : CustomButton(
                       text: "Add Member",
+                      // onPress: () async {
+                      //   // Common required fields for all roles
+                      //   if (nameController.text.isEmpty ||
+                      //       emailController.text.isEmpty ||
+                      //       phoneController.text.isEmpty ||
+                      //       passController.text.isEmpty ||
+                      //       selectedRole == null) {
+                      //     showToastMessage("Error",
+                      //         "Please fill all required fields", Colors.red);
+                      //     return;
+                      //   } else {
+                      //     if (countryController.text.isEmpty ||
+                      //         stateController.text.isEmpty ||
+                      //         cityController.text.isEmpty) {
+                      //       showToastMessage("Error",
+                      //           "Please fill all required fields", Colors.red);
+                      //       return;
+                      //     }
+                      //   }
+
+                      //   // Additional validation for non-Vendor and non-SubOwner roles
+                      //   if (selectedRole != "Vendor" &&
+                      //       selectedRole != "SubOwner") {
+                      //     if (selectedPayType == null) {
+                      //       showToastMessage("Error",
+                      //           "Please select a pay type", Colors.red);
+                      //       return;
+                      //     }
+
+                      //     // Driver-specific validation
+                      //     if (selectedRole == 'Driver' &&
+                      //         selectedVehicles.isEmpty) {
+                      //       showToastMessage(
+                      //           "Error",
+                      //           "Please assign at least one vehicle",
+                      //           Colors.red);
+                      //       return;
+                      //     }
+                      //   }
+
+                      //   if (selectedRole == 'Driver' &&
+                      //       selectedVehicles.isNotEmpty) {
+                      //     List<Map<String, dynamic>> conflicts =
+                      //         await checkVehicleConflicts(selectedVehicles);
+                      //     if (conflicts.isNotEmpty) {
+                      //       bool confirm = await showDialog(
+                      //         context: context,
+                      //         builder: (context) => AlertDialog(
+                      //           title:
+                      //               const Text("Vehicle Assignment Conflict"),
+                      //           content: SingleChildScrollView(
+                      //             child: Column(
+                      //               mainAxisSize: MainAxisSize.min,
+                      //               crossAxisAlignment:
+                      //                   CrossAxisAlignment.start,
+                      //               children: [
+                      //                 const Text(
+                      //                     "The following vehicles are already assigned to other members:"),
+                      //                 const SizedBox(height: 10),
+                      //                 ...conflicts.map((conflict) => Padding(
+                      //                       padding: const EdgeInsets.symmetric(
+                      //                           vertical: 4.0),
+                      //                       child: Text(
+                      //                         "- ${conflict['vehicle']['companyName']} (${conflict['vehicle']['vehicleNumber']}) is assigned to ${conflict['existingMember']}",
+                      //                         style: const TextStyle(
+                      //                             color: Colors.red),
+                      //                       ),
+                      //                     )),
+                      //                 const SizedBox(height: 20),
+                      //                 const Text(
+                      //                     "Are you sure you want to assign these vehicles to both drivers?"),
+                      //               ],
+                      //             ),
+                      //           ),
+                      //           actions: [
+                      //             TextButton(
+                      //               onPressed: () =>
+                      //                   Navigator.pop(context, false),
+                      //               child: const Text("Cancel"),
+                      //             ),
+                      //             TextButton(
+                      //               onPressed: () =>
+                      //                   Navigator.pop(context, true),
+                      //               child: const Text("Proceed"),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //       );
+
+                      //       if (confirm != true) {
+                      //         return;
+                      //       }
+                      //     }
+                      //   }
+
+                      //   createMemberWithCloudFunction(
+                      //     name: nameController.text,
+                      //     email: emailController.text,
+                      //     phone: phoneController.text,
+                      //     password: passController.text,
+                      //     currentUId: widget.currentUId,
+                      //     selectedRole: selectedRole!,
+                      //     selectedPayType: selectedPayType ?? "",
+                      //     selectedVehicles: selectedVehicles,
+                      //     perMileCharge: perMileChargeController.text,
+                      //     selectedRecordAccess: selectedRecordAccess,
+                      //     selectedChequeAccess: selectedChequeAccess,
+                      //   );
+                      // },
+
+                      // Replace your existing onPress method in the CustomButton with this:
                       onPress: () async {
                         // Common required fields for all roles
                         if (nameController.text.isEmpty ||
@@ -550,8 +653,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                         // Additional validation for Vendor role
                         // if (selectedRole == "Vendor") {
                         //   if (companyController.text.isEmpty) {
-                        //     showToastMessage("Error",
-                        //         "Please fill company name", Colors.red);
+                        //     showToastMessage("Error", "Please fill company name", Colors.red);
                         //     return;
                         //   }
                         // }
@@ -641,20 +743,63 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           }
                         }
 
-                        createMemberWithCloudFunction(
-                          name: nameController.text,
-                          email: emailController.text,
-                          phone: phoneController.text,
-                          password: passController.text,
-                          currentUId: widget.currentUId,
-                          selectedRole: selectedRole!,
-                          selectedPayType: selectedPayType ?? "",
-                          selectedVehicles: selectedVehicles,
-                          perMileCharge: perMileChargeController.text,
-                          selectedRecordAccess: selectedRecordAccess,
-                          selectedChequeAccess: selectedChequeAccess,
+                        // Show email confirmation dialog
+                        bool confirmEmail = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text(
+                              "Confirm Email Address",
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Please verify that ${emailController.text} is correct.",
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  "After creating this team member, you won't be able to change their email address. An invitation will be sent to this email for account activation.",
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel",
+                                    style: TextStyle(color: Colors.grey)),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text("Confirm",
+                                    style: TextStyle(color: kPrimary)),
+                              ),
+                            ],
+                          ),
                         );
+
+                        if (confirmEmail == true) {
+                          // Proceed with member creation
+                          createMemberWithCloudFunction(
+                            name: nameController.text,
+                            email: emailController.text,
+                            phone: phoneController.text,
+                            password: passController.text,
+                            currentUId: widget.currentUId,
+                            selectedRole: selectedRole!,
+                            selectedPayType: selectedPayType ?? "",
+                            selectedVehicles: selectedVehicles,
+                            perMileCharge: perMileChargeController.text,
+                            selectedRecordAccess: selectedRecordAccess,
+                            selectedChequeAccess: selectedChequeAccess,
+                          );
+                        }
                       },
+
                       color: kPrimary,
                     ),
               SizedBox(height: 24.h),

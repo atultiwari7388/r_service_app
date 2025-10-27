@@ -110,15 +110,56 @@ class _MyJobsCardState extends State<MyJobsCard> {
   }
 
   /// Fetches available mechanics based on nearby distance, selected service, and active status.
-  Future<void> fetchAvailableMechanics() async {
-    // Replace with your user's current location coordinates
-    final userLocation =
-        LatLng(widget.userLat.toDouble(), widget.userLong.toDouble());
+  // Future<void> fetchAvailableMechanics() async {
+  //   // Replace with your user's current location coordinates
+  //   final userLocation =
+  //       LatLng(widget.userLat.toDouble(), widget.userLong.toDouble());
+  //   try {
+  //     QuerySnapshot snapshot =
+  //         await FirebaseFirestore.instance.collection('Mechanics').get();
 
+  //     List<Map<String, dynamic>> mechanics = snapshot.docs.map((doc) {
+  //       return {
+  //         'id': doc.id,
+  //         'name': doc['userName'],
+  //         'location': doc['location'],
+  //         'selected_services': doc['selected_services'],
+  //         'active': doc['active'],
+  //       };
+  //     }).toList();
+
+  //     // Calculate distances, filter based on nearby distance, selected services, and active status
+  //     setState(() {
+  //       _availableMechanics = mechanics.where((mechanic) {
+  //         double distance = calculateDistance(
+  //           userLocation.latitude,
+  //           userLocation.longitude,
+  //           mechanic['location']['latitude'],
+  //           mechanic['location']['longitude'],
+  //         );
+
+  //         // Check if the mechanic provides the service, is within the distance range, and is active
+  //         bool serviceMatch =
+  //             mechanic['selected_services'].contains(widget.serviceName);
+  //         bool isActive = mechanic['active'] == true;
+
+  //         return distance <= widget.nearByDistance && serviceMatch && isActive;
+  //       }).toList();
+  //     });
+  //   } catch (e) {
+  //     print(e.toString());
+  //     log("Error fetching mechanics: $e");
+  //   }
+  // }
+
+  Future<void> fetchAvailableMechanics() async {
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('Mechanics') // Your mechanics collection name
-          .get();
+      final double userLat = (widget.userLat as num).toDouble();
+      final double userLong = (widget.userLong as num).toDouble();
+      final userLocation = LatLng(userLat, userLong);
+
+      QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('Mechanics').get();
 
       List<Map<String, dynamic>> mechanics = snapshot.docs.map((doc) {
         return {
@@ -130,17 +171,22 @@ class _MyJobsCardState extends State<MyJobsCard> {
         };
       }).toList();
 
-      // Calculate distances, filter based on nearby distance, selected services, and active status
+      // ✅ Only update UI if widget is still mounted
+      if (!mounted) return;
+
       setState(() {
         _availableMechanics = mechanics.where((mechanic) {
+          final loc = mechanic['location'];
+          final double lat = (loc['latitude'] as num).toDouble();
+          final double lng = (loc['longitude'] as num).toDouble();
+
           double distance = calculateDistance(
             userLocation.latitude,
             userLocation.longitude,
-            mechanic['location']['latitude'],
-            mechanic['location']['longitude'],
+            lat,
+            lng,
           );
 
-          // Check if the mechanic provides the service, is within the distance range, and is active
           bool serviceMatch =
               mechanic['selected_services'].contains(widget.serviceName);
           bool isActive = mechanic['active'] == true;
@@ -156,7 +202,7 @@ class _MyJobsCardState extends State<MyJobsCard> {
   @override
   void dispose() {
     // _timer?.cancel();
-    _distanceSubscription?.cancel(); // Cancel the Firestore subscription
+    _distanceSubscription?.cancel();
     super.dispose();
   }
 
