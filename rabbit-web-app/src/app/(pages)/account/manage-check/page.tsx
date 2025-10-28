@@ -919,36 +919,8 @@ export default function ManageCheckScreen() {
               <div class="total-line">
                 <div>$${check.totalAmount.toFixed(2)}</div>
               </div>
-            </div>
-          </div>
-          
-          <!-- Duplicate Copy -->
-          <div class="duplicate">
-            <div class="date-section">
-              ${format(check.date, "MM/dd/yyyy")}
-            </div>
-            
-            <div class="payee-section">
-              <div class="payee-spacing"></div>
-              <div class="payee-name">${check.userName}</div>
-              <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
-            </div>
-            
-            <div class="amount-words">
-              ${amountToWords(check.totalAmount)}
-            </div>
-            
-            ${
-              check.memoNumber
-                ? `
-              <div class="memo-section">
-                ${check.memoNumber}
-              </div>
-            `
-                : '<div class="memo-section"></div>'
-            }
-            
-            <div class="divider"></div>
+
+               <div class="divider"></div>
             
             <div class="details-section">
               <div class="check-number">
@@ -972,8 +944,7 @@ export default function ManageCheckScreen() {
               </div>
             </div>
           </div>
-        </div>
-        
+          
         <script>
           window.onload = function() {
             setTimeout(function() {
