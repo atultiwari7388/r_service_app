@@ -118,6 +118,7 @@ export default function ManageCheckScreen() {
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [showAddSeries, setShowAddSeries] = useState<boolean>(false);
+  const [showCheckSeries, setShowCheckSeries] = useState<boolean>(false);
   const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
   const [addingSeries, setAddingSeries] = useState<boolean>(false);
@@ -224,55 +225,6 @@ export default function ManageCheckScreen() {
       console.error(error);
     }
   };
-
-  // const fetchChecks = async () => {
-  //   try {
-  //     if (!effectiveUserId) return;
-
-  //     setLoadingChecks(true);
-  //     let checksQuery = query(
-  //       collection(db, "Checks"),
-  //       where("createdBy", "==", effectiveUserId),
-  //       orderBy("date", "desc")
-  //     );
-
-  //     if (filterType) {
-  //       checksQuery = query(checksQuery, where("type", "==", filterType));
-  //     }
-
-  //     if (startDate && endDate) {
-  //       checksQuery = query(
-  //         checksQuery,
-  //         where("date", ">=", Timestamp.fromDate(startDate)),
-  //         where("date", "<=", Timestamp.fromDate(endDate))
-  //       );
-  //     }
-
-  //     const snapshot = await getDocs(checksQuery);
-  //     const checksData: Check[] = snapshot.docs.map((doc) => {
-  //       const data = doc.data();
-  //       return {
-  //         id: doc.id,
-  //         checkNumber: data.checkNumber || 0,
-  //         type: data.type || "",
-  //         userId: effectiveUserId || "",
-  //         userName: data.userName || "",
-  //         serviceDetails: data.serviceDetails || [],
-  //         totalAmount: data.totalAmount || 0,
-  //         memoNumber: data.memoNumber || undefined,
-  //         date: data.date?.toDate() || new Date(),
-  //         createdBy: data.createdBy || "",
-  //         createdAt: data.createdAt,
-  //       };
-  //     });
-
-  //     setChecks(checksData);
-  //     setLoadingChecks(false);
-  //   } catch (error) {
-  //     setLoadingChecks(false);
-  //     console.error(error);
-  //   }
-  // };
 
   const fetchChecks = async () => {
     try {
@@ -821,139 +773,152 @@ export default function ManageCheckScreen() {
           body {
             font-family: 'Courier New', monospace;
             margin: 0;
-            padding: 40px;
+            padding: 20px;
             background: white;
             line-height: 1.2;
-          }
-          .check-page {
-            width: 100%;
             height: 100vh;
-            position: relative;
+            overflow: hidden;
+          }
+          .check-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
+          .check-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
           }
           .date-section {
             text-align: right;
-            margin-bottom: 60px;
-            padding-right: 200px;
+            margin-bottom: 30px;
+            padding-right: 50px;
           }
           .payee-section {
             display: flex;
-            margin-bottom: 60px;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
           }
           .payee-spacing {
-            width: 200px;
+            width: 45px;
           }
           .payee-name {
             flex: 1;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
           }
           .payee-amount {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
             margin-left: 20px;
+            padding-right: 50px;
           }
           .amount-words {
-            margin-left: 50px;
-            margin-bottom: 100px;
-            font-size: 14px;
+            margin-left: 10px;
+            margin-bottom: 30px;
+            font-size: 13px;
             font-style: italic;
           }
           .memo-section {
-            margin-left: 200px;
-            margin-bottom: 200px;
-            font-size: 14px;
+            margin-left: 50px;
+            margin-bottom: 30px;
+            font-size: 13px;
           }
           .divider {
             border-top: 2px solid #000;
-            margin: 40px 0;
+            margin: 20px 0;
           }
           .details-section {
-            margin-top: 60px;
+            margin-top: 20px;
           }
           .check-number {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             font-size: 15px;
           }
           .service-line {
             display: flex;
             justify-content: space-between;
-            margin: 8px 0;
-            font-size: 14px;
+            margin: 5px 0;
+            font-size: 13px;
           }
           .total-line {
             display: flex;
             justify-content: flex-end;
-            margin-top: 30px;
+            margin-top: 15px;
             font-size: 16px;
             font-weight: bold;
             border-top: 1px solid #000;
             padding-top: 10px;
           }
           .duplicate {
-            margin-top: 100px;
+            margin-top: 40px;
             border-top: 2px solid #000;
-            padding-top: 60px;
+            padding-top: 20px;
           }
           @media print {
             body {
               padding: 20px;
               margin: 0;
+              height: 100vh;
+            }
+            .check-container {
+              height: 100vh;
             }
           }
         </style>
       </head>
       <body>
-        <div class="check-page">
+        <div class="check-container">
           <!-- Original Check -->
-          <div class="date-section">
-            ${format(check.date, "MM/dd/yyyy")}
-          </div>
-          
-          <div class="payee-section">
-            <div class="payee-spacing"></div>
-            <div class="payee-name">${check.userName}</div>
-            <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
-          </div>
-          
-          <div class="amount-words">
-            ${amountToWords(check.totalAmount)}
-          </div>
-          
-          ${
-            check.memoNumber
-              ? `
-            <div class="memo-section">
-              ${check.memoNumber}
-            </div>
-          `
-              : '<div class="memo-section"></div>'
-          }
-          
-          <div class="divider"></div>
-          
-          <div class="details-section">
-            <div class="check-number">
-              <div>Check No. #${check.checkNumber}</div>
-              <div>${format(check.date, "MM/dd/yyyy")}</div>
+          <div class="check-section">
+            <div class="date-section">
+              ${format(check.date, "MM/dd/yyyy")}
             </div>
             
-            ${check.serviceDetails
-              .map(
-                (detail) => `
-              <div class="service-line">
-                <div>${detail.serviceName}</div>
-                <div>$${detail.amount.toFixed(2)}</div>
+            <div class="payee-section">
+              <div class="payee-spacing"></div>
+              <div class="payee-name">${check.userName}</div>
+              <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
+            </div>
+            
+            <div class="amount-words">
+              ${amountToWords(check.totalAmount)}
+            </div>
+            
+            ${
+              check.memoNumber
+                ? `
+              <div class="memo-section">
+                ${check.memoNumber}
               </div>
             `
-              )
-              .join("")}
+                : '<div class="memo-section"></div>'
+            }
             
-            <div class="total-line">
-              <div>$${check.totalAmount.toFixed(2)}</div>
+            <div class="divider"></div>
+            
+            <div class="details-section">
+              <div class="check-number">
+                <div>Check No. #${check.checkNumber}</div>
+                <div>${format(check.date, "MM/dd/yyyy")}</div>
+              </div>
+              
+              ${check.serviceDetails
+                .map(
+                  (detail) => `
+                <div class="service-line">
+                  <div>${detail.serviceName}</div>
+                  <div>$${detail.amount.toFixed(2)}</div>
+                </div>
+              `
+                )
+                .join("")}
+              
+              <div class="total-line">
+                <div>$${check.totalAmount.toFixed(2)}</div>
+              </div>
             </div>
           </div>
           
@@ -1079,15 +1044,16 @@ export default function ManageCheckScreen() {
               <FiHash className="mr-2" />
               Add Check Series
             </button>
+
+            <button
+              onClick={() => setShowCheckSeries(!showCheckSeries)}
+              className="flex items-center justify-center px-6 py-2.5 bg-gray-100 rounded-full shadow-md hover:bg-gray-200 transition-all duration-300 text-gray-700 mx-auto"
+            >
+              <FiHash className="mr-2" />
+              {showCheckSeries ? "Hide Check Series" : "Show Check Series"}
+            </button>
           </div>
         )}
-      </div>
-
-      {/* Current Check Number Display */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-center">
-        <p className="text-lg font-semibold text-blue-800">
-          Current Check Number: {currentCheckNumber || "Not set"}
-        </p>
       </div>
 
       {/* Add Check Series Modal */}
@@ -1185,46 +1151,55 @@ export default function ManageCheckScreen() {
         </div>
       )}
 
-      {/* Check Series List */}
-      {checkSeries.length > 0 && (
-        <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <div className="bg-green-100 p-2 rounded-full mr-3">
-                <FiHash className="text-green-600" size={20} />
-              </div>
-              <h3 className="text-xl font-serif font-bold text-gray-800">
-                Check Series
-              </h3>
-            </div>
-            <span className="text-sm text-gray-500">
-              {checkSeries.length} series
-            </span>
+      {showCheckSeries && (
+        <>
+          {/* Current Check Number Display */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-center">
+            <p className="text-lg font-semibold text-blue-800">
+              Current Check Number: {currentCheckNumber || "Not set"}
+            </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {checkSeries.map((series) => (
-              <div
-                key={series.id}
-                className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-green-300 transition-all"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-semibold text-gray-800">
-                    {series.startNumber} - {series.endNumber}
-                  </h4>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                    {series.totalChecks} checks
-                  </span>
+          {/* Check Series List */}
+          {checkSeries.length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <div className="bg-green-100 p-2 rounded-full mr-3">
+                    <FiHash className="text-green-600" size={20} />
+                  </div>
+                  <h3 className="text-xl font-serif font-bold text-gray-800">
+                    Check Series
+                  </h3>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Created: {format(series.createdAt, "MMM dd, yyyy")}
-                </p>
+                <span className="text-sm text-gray-500">
+                  {checkSeries.length} series
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {checkSeries.map((series) => (
+                  <div
+                    key={series.id}
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-green-300 transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold text-gray-800">
+                        {series.startNumber} - {series.endNumber}
+                      </h4>
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                        {series.totalChecks} checks
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Created: {format(series.createdAt, "MMM dd, yyyy")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
       {/* Write Check Section */}
       {showWriteCheck && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">

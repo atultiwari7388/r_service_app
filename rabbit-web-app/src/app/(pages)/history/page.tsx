@@ -350,16 +350,25 @@ export default function HistoryPage(): JSX.Element {
             </Dialog.Title>
 
             <div className="space-y-4">
-              <Rating
-                initialValue={rating}
-                onClick={setRating}
-                allowFraction={false}
-              />
+              <div className="flex flex-col items-center">
+                <Rating
+                  initialValue={rating}
+                  onClick={setRating}
+                  allowFraction={false}
+                  className="flex justify-center"
+                  SVGstyle={{ display: "inline-block" }}
+                />
+                <span className="text-sm text-gray-600 mt-2">
+                  {rating > 0
+                    ? `You rated: ${rating} star${rating !== 1 ? "s" : ""}`
+                    : "Click stars to rate"}
+                </span>
+              </div>
 
               <textarea
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
-                placeholder="Write a review"
+                placeholder="Write a review (optional)"
                 className="w-full p-2 border rounded"
                 rows={3}
               />
@@ -367,13 +376,14 @@ export default function HistoryPage(): JSX.Element {
               <div className="flex justify-end space-x-2">
                 <button
                   onClick={() => setIsRatingOpen(false)}
-                  className="bg-gray-500 text-white py-2 px-4 rounded"
+                  className="bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleRating}
-                  className="bg-[#F96176] text-white py-2 px-4 rounded"
+                  disabled={rating === 0}
+                  className="bg-[#F96176] text-white py-2 px-4 rounded disabled:opacity-50 hover:bg-[#eb4d64] transition-colors"
                 >
                   Submit
                 </button>

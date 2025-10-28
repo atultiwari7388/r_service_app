@@ -80,37 +80,44 @@ export default function RequestAcceptHistoryCard({
       </div>
 
       <div className="flex justify-between gap-4">
-        <div className="mt-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 flex-1">
-          {jobDetails.fixPriceEnabled ? (
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-700">Fix Price</span>
-              <span className="text-xl font-bold text-green-600">
-                ${mechanic.fixPrice}
-              </span>
+        <div className="flex-1">
+          <div className="mt-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 flex-1">
+            {jobDetails.fixPriceEnabled ? (
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-700">Fix Price</span>
+                <span className="text-xl font-bold text-green-600">
+                  ${mechanic.fixPrice}
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">
+                    Arrival Charges
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
+                    ${mechanic.arrivalCharges}
+                  </span>
+                </div>
+                <div className="border-t border-gray-200 my-3" />
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">
+                    Per Hour Charges
+                  </span>
+                  <span className="text-lg font-bold text-green-600">
+                    ${mechanic.perHourCharges}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {mechanic.status === 3 && (
+            <div className="text-yellow-600 font-medium">
+              *Mechanic accepted your Job. Wait for Mechanic*
             </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-700">
-                  Arrival Charges
-                </span>
-                <span className="text-lg font-bold text-green-600">
-                  ${mechanic.arrivalCharges}
-                </span>
-              </div>
-              <div className="border-t border-gray-200 my-3" />
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-700">
-                  Per Hour Charges
-                </span>
-                <span className="text-lg font-bold text-green-600">
-                  ${mechanic.perHourCharges}
-                </span>
-              </div>
-            </>
           )}
         </div>
-
         <div className="mt-6 flex items-center">
           {mechanic.status === 1 && (
             <button
