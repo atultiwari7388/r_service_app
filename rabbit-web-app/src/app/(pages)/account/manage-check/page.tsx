@@ -756,210 +756,6 @@ export default function ManageCheckScreen() {
     return result + " Only";
   };
 
-  // const handlePrint = (check: Check) => {
-  //   const printWindow = window.open("", "_blank");
-  //   if (!printWindow) return;
-
-  //   const printContent = `
-  //   <!DOCTYPE html>
-  //   <html>
-  //     <head>
-  //       <title>Check #${check.checkNumber}</title>
-  //       <style>
-  //         @page {
-  //           size: A4;
-  //           margin: 0;
-  //         }
-  //         body {
-  //           font-family: 'Courier New', monospace;
-  //           margin: 0;
-  //           padding: 20px;
-  //           background: white;
-  //           line-height: 1.2;
-  //           height: 100vh;
-  //           overflow: hidden;
-  //         }
-  //         .check-container {
-  //           display: flex;
-  //           flex-direction: column;
-  //           height: 100%;
-  //         }
-  //         .check-section {
-  //           flex: 1;
-  //           display: flex;
-  //           flex-direction: column;
-  //         }
-  //         .date-section {
-  //           text-align: right;
-  //           margin-bottom: 30px;
-  //           padding-right: 50px;
-  //         }
-  //         .payee-section {
-  //           display: flex;
-  //           margin-bottom: 15px;
-  //           padding-bottom: 5px;
-  //         }
-  //         .payee-spacing {
-  //           width: 45px;
-  //         }
-  //         .payee-name {
-  //           flex: 1;
-  //           font-weight: bold;
-  //           font-size: 14px;
-  //         }
-  //         .payee-amount {
-  //           font-weight: bold;
-  //           font-size: 14px;
-  //           margin-left: 20px;
-  //           padding-right: 50px;
-  //         }
-  //         .amount-words {
-  //           margin-left: 10px;
-  //           margin-bottom: 30px;
-  //           font-size: 13px;
-  //           font-style: italic;
-  //         }
-  //         .memo-section {
-  //           margin-left: 50px;
-  //           margin-bottom: 30px;
-  //           font-size: 13px;
-  //         }
-  //         .divider {
-  //           border-top: 2px solid #000;
-  //           margin: 20px 0;
-  //         }
-  //         .details-section {
-  //           margin-top: 20px;
-  //         }
-  //         .check-number {
-  //           display: flex;
-  //           justify-content: space-between;
-  //           margin-bottom: 10px;
-  //           font-size: 15px;
-  //         }
-  //         .service-line {
-  //           display: flex;
-  //           justify-content: space-between;
-  //           margin: 5px 0;
-  //           font-size: 13px;
-  //         }
-  //         .total-line {
-  //           display: flex;
-  //           justify-content: flex-end;
-  //           margin-top: 15px;
-  //           font-size: 16px;
-  //           font-weight: bold;
-  //           border-top: 1px solid #000;
-  //           padding-top: 10px;
-  //         }
-  //         .duplicate {
-  //           margin-top: 40px;
-  //           border-top: 2px solid #000;
-  //           padding-top: 20px;
-  //         }
-  //         @media print {
-  //           body {
-  //             padding: 20px;
-  //             margin: 0;
-  //             height: 100vh;
-  //           }
-  //           .check-container {
-  //             height: 100vh;
-  //           }
-  //         }
-  //       </style>
-  //     </head>
-  //     <body>
-  //       <div class="check-container">
-  //         <!-- Original Check -->
-  //         <div class="check-section">
-  //           <div class="date-section">
-  //             ${format(check.date, "MM/dd/yyyy")}
-  //           </div>
-
-  //           <div class="payee-section">
-  //             <div class="payee-spacing"></div>
-  //             <div class="payee-name">${check.userName}</div>
-  //             <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
-  //           </div>
-
-  //           <div class="amount-words">
-  //             ${amountToWords(check.totalAmount)}
-  //           </div>
-
-  //           ${
-  //             check.memoNumber
-  //               ? `
-  //             <div class="memo-section">
-  //               ${check.memoNumber}
-  //             </div>
-  //           `
-  //               : '<div class="memo-section"></div>'
-  //           }
-
-  //           <div class="divider"></div>
-
-  //           <div class="details-section">
-  //             <div class="check-number">
-  //               <div>Check No. #${check.checkNumber}</div>
-  //               <div>${format(check.date, "MM/dd/yyyy")}</div>
-  //             </div>
-
-  //             ${check.serviceDetails
-  //               .map(
-  //                 (detail) => `
-  //               <div class="service-line">
-  //                 <div>${detail.serviceName}</div>
-  //                 <div>$${detail.amount.toFixed(2)}</div>
-  //               </div>
-  //             `
-  //               )
-  //               .join("")}
-
-  //             <div class="total-line">
-  //               <div>$${check.totalAmount.toFixed(2)}</div>
-  //             </div>
-
-  //              <div class="divider"></div>
-
-  //           <div class="details-section">
-  //             <div class="check-number">
-  //               <div>Check No. #${check.checkNumber}</div>
-  //               <div>${format(check.date, "MM/dd/yyyy")}</div>
-  //             </div>
-
-  //             ${check.serviceDetails
-  //               .map(
-  //                 (detail) => `
-  //               <div class="service-line">
-  //                 <div>${detail.serviceName}</div>
-  //                 <div>$${detail.amount.toFixed(2)}</div>
-  //               </div>
-  //             `
-  //               )
-  //               .join("")}
-
-  //             <div class="total-line">
-  //               <div>$${check.totalAmount.toFixed(2)}</div>
-  //             </div>
-  //           </div>
-  //         </div>
-
-  //       <script>
-  //         window.onload = function() {
-  //           setTimeout(function() {
-  //             window.print();
-  //           }, 500);
-  //         };
-  //       </script>
-  //     </body>
-  //   </html>
-  // `;
-
-  //   printWindow.document.write(printContent);
-  //   printWindow.document.close();
-  // };
-
   const handlePrint = (check: Check) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -977,7 +773,7 @@ export default function ManageCheckScreen() {
           body {
             font-family: 'Courier New', monospace;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             background: white;
             line-height: 1.2;
             height: 100vh;
@@ -986,31 +782,26 @@ export default function ManageCheckScreen() {
           .check-container {
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            padding: 0;
-            margin: 0;
+            height: 100%;
           }
           .check-section {
             flex: 1;
             display: flex;
             flex-direction: column;
-            position: relative;
           }
           .date-section {
-            position: absolute;
-            top: 0.9in;
-            left: 0.5in;
-            margin: 0;
-            padding: 0;
+            text-align: right;
+            margin-top: 0.9in;
+            margin-bottom: 30px;
+            margin-right: 30px;
+            padding-right: 50px;
           }
           .payee-section {
             display: flex;
-            position: absolute;
-            top: 0.9in;
-            left: 0.5in;
-            width: calc(100% - 1in);
-            margin: 0;
-            padding: 0;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            margin-left: 0.5in;
+            margin-right: 0.5in;
           }
           .payee-spacing {
             width: 45px;
@@ -1024,35 +815,18 @@ export default function ManageCheckScreen() {
             font-weight: bold;
             font-size: 14px;
             margin-left: 20px;
-            position: absolute;
-            right: 0.4in;
-            top: 0.8in;
-          }
-          .payee-amount-no-symbol {
-            font-weight: bold;
-            font-size: 14px;
-            margin-left: 20px;
-            position: absolute;
-            right: 0.4in;
-            top: 0.8in;
+            padding-right: 50px;
           }
           .amount-words {
-            position: absolute;
-            top: 0.9in;
-            left: 0.5in;
-            width: calc(100% - 1in);
+            margin-left: 0.5in;
+            margin-bottom: 30px;
             font-size: 13px;
             font-style: italic;
-            margin: 0;
-            padding: 0;
           }
           .memo-section {
-            position: absolute;
-            left: 50px;
-            top: 1.4in;
+            margin-left: 50px;
+            margin-bottom: 30px;
             font-size: 13px;
-            margin: 0;
-            padding: 0;
           }
           .divider {
             border-top: 2px solid #000;
@@ -1087,34 +861,9 @@ export default function ManageCheckScreen() {
             border-top: 2px solid #000;
             padding-top: 20px;
           }
-          .receipt-section {
-            margin-top: 30px;
-            border-top: 2px solid #000;
-            padding-top: 20px;
-          }
-          .receipt-payee {
-            font-weight: bold;
-            margin-bottom: 10px;
-            font-size: 14px;
-          }
-          .receipt-service-line {
-            display: flex;
-            justify-content: space-between;
-            margin: 5px 0;
-            font-size: 13px;
-          }
-          .receipt-total-line {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            border-top: 1px solid #000;
-            padding-top: 10px;
-          }
           @media print {
             body {
-              padding: 0;
+              padding: 20px;
               margin: 0;
               height: 100vh;
             }
@@ -1131,17 +880,17 @@ export default function ManageCheckScreen() {
             <div class="date-section">
               ${format(check.date, "MM/dd/yyyy")}
             </div>
-            
+
             <div class="payee-section">
               <div class="payee-spacing"></div>
               <div class="payee-name">${check.userName}</div>
-              <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
+              <div class="payee-amount">${check.totalAmount.toFixed(2)}</div>
             </div>
-            
+
             <div class="amount-words">
               ${amountToWords(check.totalAmount)}
             </div>
-            
+
             ${
               check.memoNumber
                 ? `
@@ -1151,15 +900,15 @@ export default function ManageCheckScreen() {
             `
                 : '<div class="memo-section"></div>'
             }
-            
+
             <div class="divider"></div>
-            
+
             <div class="details-section">
               <div class="check-number">
-                <div>Check No. #${check.checkNumber}</div>
+                <div class="payee-name">${check.userName}</div>
                 <div>${format(check.date, "MM/dd/yyyy")}</div>
               </div>
-              
+
               ${check.serviceDetails
                 .map(
                   (detail) => `
@@ -1170,40 +919,36 @@ export default function ManageCheckScreen() {
               `
                 )
                 .join("")}
-              
+
               <div class="total-line">
                 <div>$${check.totalAmount.toFixed(2)}</div>
               </div>
-            </div>
 
-            <!-- Receipt Section (Duplicate) -->
-            <div class="receipt-section">
-              <div class="receipt-payee">
-                Payee: ${check.userName}
-              </div>
-              
+               <div class="divider"></div>
+
+            <div class="details-section">
               <div class="check-number">
-                <div>Date: ${format(check.date, "MM/dd/yyyy")}</div>
+                <div class="payee-name">${check.userName}</div>
+                <div>${format(check.date, "MM/dd/yyyy")}</div>
               </div>
-              
+
               ${check.serviceDetails
                 .map(
                   (detail) => `
-                <div class="receipt-service-line">
+                <div class="service-line">
                   <div>${detail.serviceName}</div>
                   <div>$${detail.amount.toFixed(2)}</div>
                 </div>
               `
                 )
                 .join("")}
-              
-              <div class="receipt-total-line">
+
+              <div class="total-line">
                 <div>$${check.totalAmount.toFixed(2)}</div>
               </div>
             </div>
           </div>
-        </div>
-        
+
         <script>
           window.onload = function() {
             setTimeout(function() {
