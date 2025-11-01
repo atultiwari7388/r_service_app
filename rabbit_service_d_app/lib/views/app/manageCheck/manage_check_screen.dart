@@ -231,26 +231,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
   }
 
-  // Future<void> _showDateRangePicker() async {
-  //   final DateTimeRange? picked = await showDateRangePicker(
-  //     context: context,
-  //     firstDate: DateTime(2000),
-  //     lastDate: DateTime(2100),
-  //     initialDateRange: _dateRange ??
-  //         DateTimeRange(
-  //           start: DateTime.now().subtract(Duration(days: 30)),
-  //           end: DateTime.now(),
-  //         ),
-  //   );
-
-  //   if (picked != null) {
-  //     setState(() {
-  //       _dateRange = picked;
-  //     });
-  //     await fetchChecks();
-  //   }
-  // }
-
   Future<void> _printCheck(Map<String, dynamic> check) async {
     final pdf = pw.Document();
 
@@ -290,7 +270,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                     pw.Spacer(),
                     pw.Text(
-                      '\$${check['totalAmount'].toStringAsFixed(2)}',
+                      '${check['totalAmount'].toStringAsFixed(2)}',
                       style: pw.TextStyle(fontSize: 14),
                     ),
                     pw.SizedBox(width: 50),
@@ -322,9 +302,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
+                    // pw.Text(
+                    //   'Check. No. #${check['checkNumber']}',
+                    //   style: pw.TextStyle(fontSize: 15),
+                    // ),
                     pw.Text(
-                      'Check. No. #${check['checkNumber']}',
-                      style: pw.TextStyle(fontSize: 15),
+                      check['userName'],
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold),
                     ),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
@@ -365,9 +350,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
+                    // pw.Text(
+                    //   'Check. No. #${check['checkNumber']}',
+                    //   style: pw.TextStyle(fontSize: 15),
+                    // ),
                     pw.Text(
-                      'Check. No. #${check['checkNumber']}',
-                      style: pw.TextStyle(fontSize: 15),
+                      check['userName'],
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold),
                     ),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
