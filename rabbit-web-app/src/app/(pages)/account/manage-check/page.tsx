@@ -71,6 +71,11 @@ interface Check {
   totalAmount: number;
   memoNumber?: string;
   date: Date;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
   createdBy: string;
   createdAt: string;
 }
@@ -181,6 +186,7 @@ export default function ManageCheckScreen() {
 
       const teamQuery = query(
         collection(db, "Users"),
+        where("active", "==", true),
         where("createdBy", "==", effectiveUserId),
         where("uid", "!=", effectiveUserId)
       );
@@ -264,6 +270,11 @@ export default function ManageCheckScreen() {
           date: data.date?.toDate() || new Date(),
           createdBy: data.createdBy || "",
           createdAt: data.createdAt,
+          address: data.address || "",
+          city: data.city || "",
+          state: data.state || "",
+          country: data.country || "",
+          postalCode: data.postalCode || "",
         };
       });
 
@@ -756,6 +767,214 @@ export default function ManageCheckScreen() {
     return result + " Only";
   };
 
+  // const handlePrint = (check: Check) => {
+  //   const printWindow = window.open("", "_blank");
+  //   if (!printWindow) return;
+
+  //   const printContent = `
+  //   <!DOCTYPE html>
+  //   <html>
+  //     <head>
+  //       <title>Check #${check.checkNumber}</title>
+  //       <style>
+  //         @page {
+  //           size: A4;
+  //           margin: 0;
+  //         }
+  //         body {
+  //           font-family: 'Courier New', monospace;
+  //           margin: 0;
+  //           padding: 20px;
+  //           background: white;
+  //           line-height: 1.2;
+  //           height: 100vh;
+  //           overflow: hidden;
+  //         }
+  //         .check-container {
+  //           display: flex;
+  //           flex-direction: column;
+  //           height: 100%;
+  //         }
+  //         .check-section {
+  //           flex: 1;
+  //           display: flex;
+  //           flex-direction: column;
+  //         }
+  //         .date-section {
+  //           text-align: right;
+  //           margin-top: 0.9in;
+  //           margin-bottom: 30px;
+  //           margin-right: 30px;
+  //           padding-right: 50px;
+  //         }
+  //         .payee-section {
+  //           display: flex;
+  //           margin-bottom: 15px;
+  //           padding-bottom: 5px;
+  //           margin-left: 0.5in;
+  //           margin-right: 0.5in;
+  //         }
+  //         .payee-spacing {
+  //           width: 45px;
+  //         }
+  //         .payee-name {
+  //           flex: 1;
+  //           font-weight: bold;
+  //           font-size: 14px;
+  //         }
+  //         .payee-amount {
+  //           font-weight: bold;
+  //           font-size: 14px;
+  //           margin-left: 20px;
+  //           padding-right: 50px;
+  //         }
+  //         .amount-words {
+  //           margin-left: 0.5in;
+  //           margin-bottom: 30px;
+  //           font-size: 13px;
+  //           font-style: italic;
+  //         }
+  //         .memo-section {
+  //           margin-left: 50px;
+  //           margin-bottom: 30px;
+  //           font-size: 13px;
+  //         }
+  //         .divider {
+  //           border-top: 2px solid #000;
+  //           margin: 20px 0;
+  //         }
+  //         .details-section {
+  //           margin-top: 20px;
+  //         }
+  //         .check-number {
+  //           display: flex;
+  //           justify-content: space-between;
+  //           margin-bottom: 10px;
+  //           font-size: 15px;
+  //         }
+  //         .service-line {
+  //           display: flex;
+  //           justify-content: space-between;
+  //           margin: 5px 0;
+  //           font-size: 13px;
+  //         }
+  //         .total-line {
+  //           display: flex;
+  //           justify-content: flex-end;
+  //           margin-top: 15px;
+  //           font-size: 16px;
+  //           font-weight: bold;
+  //           border-top: 1px solid #000;
+  //           padding-top: 10px;
+  //         }
+  //         .duplicate {
+  //           margin-top: 40px;
+  //           border-top: 2px solid #000;
+  //           padding-top: 20px;
+  //         }
+  //         @media print {
+  //           body {
+  //             padding: 20px;
+  //             margin: 0;
+  //             height: 100vh;
+  //           }
+  //           .check-container {
+  //             height: 100vh;
+  //           }
+  //         }
+  //       </style>
+  //     </head>
+  //     <body>
+  //       <div class="check-container">
+  //         <!-- Original Check -->
+  //         <div class="check-section">
+  //           <div class="date-section">
+  //             ${format(check.date, "MM/dd/yyyy")}
+  //           </div>
+
+  //           <div class="payee-section">
+  //             <div class="payee-spacing"></div>
+  //             <div class="payee-name">${check.userName}</div>
+  //             <div class="payee-amount">${check.totalAmount.toFixed(2)}</div>
+  //           </div>
+
+  //           <div class="amount-words">
+  //             ${amountToWords(check.totalAmount)}
+  //           </div>
+
+  //           ${
+  //             check.memoNumber
+  //               ? `
+  //             <div class="memo-section">
+  //               ${check.memoNumber}
+  //             </div>
+  //           `
+  //               : '<div class="memo-section"></div>'
+  //           }
+
+  //           <div class="divider"></div>
+
+  //           <div class="details-section">
+  //             <div class="check-number">
+  //               <div class="payee-name">${check.userName}</div>
+  //               <div>${format(check.date, "MM/dd/yyyy")}</div>
+  //             </div>
+
+  //             ${check.serviceDetails
+  //               .map(
+  //                 (detail) => `
+  //               <div class="service-line">
+  //                 <div>${detail.serviceName}</div>
+  //                 <div>$${detail.amount.toFixed(2)}</div>
+  //               </div>
+  //             `
+  //               )
+  //               .join("")}
+
+  //             <div class="total-line">
+  //               <div>$${check.totalAmount.toFixed(2)}</div>
+  //             </div>
+
+  //              <div class="divider"></div>
+
+  //           <div class="details-section">
+  //             <div class="check-number">
+  //               <div class="payee-name">${check.userName}</div>
+  //               <div>${format(check.date, "MM/dd/yyyy")}</div>
+  //             </div>
+
+  //             ${check.serviceDetails
+  //               .map(
+  //                 (detail) => `
+  //               <div class="service-line">
+  //                 <div>${detail.serviceName}</div>
+  //                 <div>$${detail.amount.toFixed(2)}</div>
+  //               </div>
+  //             `
+  //               )
+  //               .join("")}
+
+  //             <div class="total-line">
+  //               <div>$${check.totalAmount.toFixed(2)}</div>
+  //             </div>
+  //           </div>
+  //         </div>
+
+  //       <script>
+  //         window.onload = function() {
+  //           setTimeout(function() {
+  //             window.print();
+  //           }, 500);
+  //         };
+  //       </script>
+  //     </body>
+  //   </html>
+  // `;
+
+  //   printWindow.document.write(printContent);
+  //   printWindow.document.close();
+  // };
+
   const handlePrint = (check: Check) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -823,6 +1042,13 @@ export default function ManageCheckScreen() {
             font-size: 13px;
             font-style: italic;
           }
+          .payee-address {
+            margin-left: 0.5in;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: bold;
+          }
           .memo-section {
             margin-left: 50px;
             margin-bottom: 30px;
@@ -861,6 +1087,11 @@ export default function ManageCheckScreen() {
             border-top: 2px solid #000;
             padding-top: 20px;
           }
+          .amount-star {
+            color: red;
+            font-weight: bold;
+            margin: 0 2px;
+          }
           @media print {
             body {
               padding: 20px;
@@ -884,11 +1115,23 @@ export default function ManageCheckScreen() {
             <div class="payee-section">
               <div class="payee-spacing"></div>
               <div class="payee-name">${check.userName}</div>
-              <div class="payee-amount">${check.totalAmount.toFixed(2)}</div>
+              <div class="payee-amount">
+                <span class="amount-star">*</span>${check.totalAmount.toFixed(
+                  2
+                )}<span class="amount-star">*</span>
+              </div>
             </div>
 
             <div class="amount-words">
-              ${amountToWords(check.totalAmount)}
+              <span class="amount-star">*</span>${amountToWords(
+                check.totalAmount
+              )}<span class="amount-star">*</span>
+            </div>
+
+            <div class="payee-address">
+              ${check.address}<br/>
+              ${check.city}<br/>
+              ${check.state} ${check.postalCode}
             </div>
 
             ${
