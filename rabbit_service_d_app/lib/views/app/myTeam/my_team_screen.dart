@@ -130,6 +130,155 @@ class _MyTeamScreenState extends State<MyTeamScreen>
     }
   }
 
+  // Future<void> fetchTeamMembersWithVehicles() async {
+  //   try {
+  //     if (!_canViewTeam) {
+  //       setState(() {
+  //         _errorMessage = 'You are not authorized to view team members';
+  //         _isLoading = false;
+  //       });
+  //       return;
+  //     }
+
+  //     List<Map<String, dynamic>> membersWithVehicles = [];
+
+  //     // Determine the effective owner ID based on role
+  //     String effectiveOwnerId = currentUId;
+
+  //     // For SubOwner, use the createdBy as ownerId
+  //     if (role == 'SubOwner') {
+  //       effectiveOwnerId = ownerId!;
+
+  //       // Verify that SubOwner is in the owner's teamMembers array
+  //       DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(effectiveOwnerId)
+  //           .get();
+
+  //       List? teamMembers = ownerDoc['teamMembers'] as List?;
+  //       if (!ownerDoc.exists ||
+  //           teamMembers == null ||
+  //           !teamMembers.contains(currentUId)) {
+  //         setState(() {
+  //           _errorMessage = 'You are not authorized to view this team';
+  //           _isLoading = false;
+  //         });
+  //         return;
+  //       }
+  //     }
+
+  //     // For Managers and Accountants, use their ownerId (createdBy)
+  //     if ((role == "Manager" || role == "Accountant") && ownerId != null) {
+  //       effectiveOwnerId = ownerId!;
+
+  //       // Verify that current user is actually in the owner's teamMembers array
+  //       DocumentSnapshot ownerDoc = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(effectiveOwnerId)
+  //           .get();
+
+  //       List? teamMembers = ownerDoc['teamMembers'] as List?;
+  //       if (!ownerDoc.exists ||
+  //           teamMembers == null ||
+  //           !teamMembers.contains(currentUId)) {
+  //         setState(() {
+  //           _errorMessage = 'You are not authorized to view this team';
+  //           _isLoading = false;
+  //         });
+  //         return;
+  //       }
+  //     }
+
+  //     // Fetch all team members under the owner
+  //     QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
+  //         .collection('Users')
+  //         .where('createdBy', isEqualTo: effectiveOwnerId)
+  //         .get();
+
+  //     for (var member in teamSnapshot.docs) {
+  //       String memberId = member['uid'];
+  //       String memberRole = member['role'] ?? '';
+
+  //       // Skip the current logged-in user (regardless of role)
+  //       if (memberId == currentUId) continue;
+
+  //       // For SubOwners: filter out Owners, only show other roles
+  //       if (role == 'SubOwner') {
+  //         if (memberRole == 'Owner') {
+  //           continue; // Skip Owners for SubOwners
+  //         }
+  //       }
+
+  //       String name = member['userName'] ?? 'No Name';
+  //       String email = member['email'] ?? 'No Email';
+  //       bool isActive = member['active'] ?? false;
+
+  //       // Fetch member's vehicles
+  //       QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
+  //           .collection('Users')
+  //           .doc(memberId)
+  //           .collection('Vehicles')
+  //           .get();
+
+  //       List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
+  //         return {
+  //           'id': doc.id,
+  //           'companyName': doc['companyName'] ?? 'No Company',
+  //           'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+  //         };
+  //       }).toList();
+
+  //       // For Managers and Accountants, check if driver shares any vehicles
+  //       if (role == "Manager" || role == "Accountant") {
+  //         bool sharesVehicle = vehicles
+  //             .any((vehicle) => _currentUserVehicleIds.contains(vehicle['id']));
+
+  //         if (!sharesVehicle) continue;
+  //       }
+
+  //       vehicles.sort((a, b) => a['vehicleNumber']
+  //           .toString()
+  //           .toLowerCase()
+  //           .compareTo(b['vehicleNumber'].toString().toLowerCase()));
+
+  //       membersWithVehicles.add({
+  //         'name': name,
+  //         'email': email,
+  //         'isActive': isActive,
+  //         'memberId': memberId,
+  //         'ownerId': effectiveOwnerId,
+  //         'vehicles': vehicles,
+  //         'perMileCharge': member['perMileCharge'],
+  //         'role': memberRole,
+  //         'phoneNumber': member['phoneNumber'],
+  //         'isOwnedByCurrentUser': memberId == currentUId,
+  //       });
+  //     }
+
+  //     // Sort all members alphabetically
+  //     membersWithVehicles.sort(
+  //         (a, b) => a['name'].toLowerCase().compareTo(b['name'].toLowerCase()));
+
+  //     setState(() {
+  //       _allMembers = membersWithVehicles;
+  //       _activeMembers =
+  //           membersWithVehicles.where((m) => m['isActive']).toList();
+  //       _inactiveMembers =
+  //           membersWithVehicles.where((m) => !m['isActive']).toList();
+  //       _isLoading = false;
+
+  //       // Update available roles based on what we actually have
+  //       _updateAvailableRoles();
+  //     });
+  //   } catch (e) {
+  //     print('Error fetching team members: $e');
+  //     setState(() {
+  //       _errorMessage = 'Error loading team members: $e';
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
+
   Future<void> fetchTeamMembersWithVehicles() async {
     try {
       if (!_canViewTeam) {
@@ -201,6 +350,13 @@ class _MyTeamScreenState extends State<MyTeamScreen>
 
         // Skip the current logged-in user (regardless of role)
         if (memberId == currentUId) continue;
+
+        // For Managers and Accountants: only show Drivers
+        if (role == "Manager" || role == "Accountant") {
+          if (memberRole != 'Driver') {
+            continue; // Skip non-Driver members for Managers and Accountants
+          }
+        }
 
         // For SubOwners: filter out Owners, only show other roles
         if (role == 'SubOwner') {

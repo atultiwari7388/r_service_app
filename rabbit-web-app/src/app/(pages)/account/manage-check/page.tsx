@@ -17,6 +17,7 @@ import {
   writeBatch,
   orderBy,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
@@ -834,6 +835,13 @@ export default function ManageCheckScreen() {
   //           font-size: 13px;
   //           font-style: italic;
   //         }
+  //         .payee-address {
+  //           margin-left: 0.5in;
+  //           margin-bottom: 10px;
+  //           font-size: 12px;
+  //           text-transform: uppercase;
+  //           font-weight: bold;
+  //         }
   //         .memo-section {
   //           margin-left: 50px;
   //           margin-bottom: 30px;
@@ -872,6 +880,11 @@ export default function ManageCheckScreen() {
   //           border-top: 2px solid #000;
   //           padding-top: 20px;
   //         }
+  //         .amount-star {
+  //           color: red;
+  //           font-weight: bold;
+  //           margin: 0 2px;
+  //         }
   //         @media print {
   //           body {
   //             padding: 20px;
@@ -895,11 +908,23 @@ export default function ManageCheckScreen() {
   //           <div class="payee-section">
   //             <div class="payee-spacing"></div>
   //             <div class="payee-name">${check.userName}</div>
-  //             <div class="payee-amount">${check.totalAmount.toFixed(2)}</div>
+  //             <div class="payee-amount">
+  //               <span class="amount-star">*</span>${check.totalAmount.toFixed(
+  //                 2
+  //               )}<span class="amount-star">*</span>
+  //             </div>
   //           </div>
 
   //           <div class="amount-words">
-  //             ${amountToWords(check.totalAmount)}
+  //             <span class="amount-star">*</span>${amountToWords(
+  //               check.totalAmount
+  //             )}<span class="amount-star">*</span>
+  //           </div>
+
+  //           <div class="payee-address">
+  //             ${check.address}<br/>
+  //             ${check.city}<br/>
+  //             ${check.state} ${check.postalCode}
   //           </div>
 
   //           ${
@@ -975,7 +1000,26 @@ export default function ManageCheckScreen() {
   //   printWindow.document.close();
   // };
 
-  const handlePrint = (check: Check) => {
+  const handlePrint = async (check: Check) => {
+    // If address is not already in check, fetch it
+    let printCheck = { ...check };
+
+    if (!check.address || !check.city || !check.state) {
+      try {
+        // Fetch user address from your API or Firebase
+        const userAddress = await fetchUserAddress(check.userId);
+        printCheck = {
+          ...check,
+          address: userAddress.street || "",
+          city: userAddress.city || "",
+          state: userAddress.state || "",
+          postalCode: userAddress.postalCode || userAddress.postalCode || "",
+        };
+      } catch (error) {
+        console.error("Error fetching user address:", error);
+      }
+    }
+
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -983,7 +1027,7 @@ export default function ManageCheckScreen() {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Check #${check.checkNumber}</title>
+        <title>Check #${printCheck.checkNumber}</title>
         <style>
           @page {
             size: A4;
@@ -992,16 +1036,19 @@ export default function ManageCheckScreen() {
           body {
             font-family: 'Courier New', monospace;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background: white;
             line-height: 1.2;
             height: 100vh;
             overflow: hidden;
+            position: relative;
+            top: -20px;
           }
           .check-container {
             display: flex;
             flex-direction: column;
             height: 100%;
+            margin-top: -20px;
           }
           .check-section {
             flex: 1;
@@ -1010,7 +1057,7 @@ export default function ManageCheckScreen() {
           }
           .date-section {
             text-align: right;
-            margin-top: 0.9in;
+            margin-top: 0.7in;
             margin-bottom: 30px;
             margin-right: 30px;
             padding-right: 50px;
@@ -1029,6 +1076,7 @@ export default function ManageCheckScreen() {
             flex: 1;
             font-weight: bold;
             font-size: 14px;
+            text-transform: uppercase;
           }
           .payee-amount {
             font-weight: bold;
@@ -1094,12 +1142,14 @@ export default function ManageCheckScreen() {
           }
           @media print {
             body {
-              padding: 20px;
+              padding: 0;
               margin: 0;
               height: 100vh;
+              top: -20px;
             }
             .check-container {
               height: 100vh;
+              margin-top: -20px;
             }
           }
         </style>
@@ -1109,14 +1159,14 @@ export default function ManageCheckScreen() {
           <!-- Original Check -->
           <div class="check-section">
             <div class="date-section">
-              ${format(check.date, "MM/dd/yyyy")}
+              ${format(printCheck.date, "MM/dd/yyyy")}
             </div>
 
             <div class="payee-section">
               <div class="payee-spacing"></div>
-              <div class="payee-name">${check.userName}</div>
+              <div class="payee-name">${printCheck.userName}</div>
               <div class="payee-amount">
-                <span class="amount-star">*</span>${check.totalAmount.toFixed(
+                <span class="amount-star">*</span>${printCheck.totalAmount.toFixed(
                   2
                 )}<span class="amount-star">*</span>
               </div>
@@ -1124,21 +1174,27 @@ export default function ManageCheckScreen() {
 
             <div class="amount-words">
               <span class="amount-star">*</span>${amountToWords(
-                check.totalAmount
+                printCheck.totalAmount
               )}<span class="amount-star">*</span>
             </div>
 
-            <div class="payee-address">
-              ${check.address}<br/>
-              ${check.city}<br/>
-              ${check.state} ${check.postalCode}
-            </div>
+            ${
+              printCheck.address && printCheck.city && printCheck.state
+                ? `
+              <div class="payee-address">
+                ${printCheck.address}<br/>
+                ${printCheck.city}<br/>
+                ${printCheck.state} ${printCheck.postalCode || ""}
+              </div>
+            `
+                : ""
+            }
 
             ${
-              check.memoNumber
+              printCheck.memoNumber
                 ? `
               <div class="memo-section">
-                ${check.memoNumber}
+                ${printCheck.memoNumber}
               </div>
             `
                 : '<div class="memo-section"></div>'
@@ -1148,11 +1204,11 @@ export default function ManageCheckScreen() {
 
             <div class="details-section">
               <div class="check-number">
-                <div class="payee-name">${check.userName}</div>
-                <div>${format(check.date, "MM/dd/yyyy")}</div>
+                <div class="payee-name">${printCheck.userName}</div>
+                <div>${format(printCheck.date, "MM/dd/yyyy")}</div>
               </div>
 
-              ${check.serviceDetails
+              ${printCheck.serviceDetails
                 .map(
                   (detail) => `
                 <div class="service-line">
@@ -1164,33 +1220,36 @@ export default function ManageCheckScreen() {
                 .join("")}
 
               <div class="total-line">
-                <div>$${check.totalAmount.toFixed(2)}</div>
+                <div>$${printCheck.totalAmount.toFixed(2)}</div>
               </div>
+            </div>
 
-               <div class="divider"></div>
-
-            <div class="details-section">
-              <div class="check-number">
-                <div class="payee-name">${check.userName}</div>
-                <div>${format(check.date, "MM/dd/yyyy")}</div>
-              </div>
-
-              ${check.serviceDetails
-                .map(
-                  (detail) => `
-                <div class="service-line">
-                  <div>${detail.serviceName}</div>
-                  <div>$${detail.amount.toFixed(2)}</div>
+            <!-- Duplicate Section -->
+            <div class="duplicate">
+              <div class="details-section">
+                <div class="check-number">
+                  <div class="payee-name">${printCheck.userName}</div>
+                  <div>${format(printCheck.date, "MM/dd/yyyy")}</div>
                 </div>
-              `
-                )
-                .join("")}
 
-              <div class="total-line">
-                <div>$${check.totalAmount.toFixed(2)}</div>
+                ${printCheck.serviceDetails
+                  .map(
+                    (detail) => `
+                  <div class="service-line">
+                    <div>${detail.serviceName}</div>
+                    <div>$${detail.amount.toFixed(2)}</div>
+                  </div>
+                `
+                  )
+                  .join("")}
+
+                <div class="total-line">
+                  <div>$${printCheck.totalAmount.toFixed(2)}</div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
         <script>
           window.onload = function() {
@@ -1205,6 +1264,31 @@ export default function ManageCheckScreen() {
 
     printWindow.document.write(printContent);
     printWindow.document.close();
+  };
+
+  const fetchUserAddress = async (userId: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, "Users", userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return {
+          street: userData.address || userData.street || "",
+          city: userData.city || "",
+          state: userData.state || "",
+          postalCode:
+            userData.zipCode || userData.zip || userData.postalCode || "",
+        };
+      }
+      throw new Error("User not found");
+    } catch (error) {
+      console.error("Error fetching user address:", error);
+      return {
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+      };
+    }
   };
 
   if (!user) {

@@ -231,7 +231,205 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
   }
 
+  // Future<void> _printCheck(Map<String, dynamic> check) async {
+  //   final pdf = pw.Document();
+
+  //   pdf.addPage(
+  //     pw.Page(
+  //       pageFormat: PdfPageFormat.a4,
+  //       build: (pw.Context context) {
+  //         return pw.Container(
+  //           // padding: pw.EdgeInsets.all(20),
+  //           child: pw.Column(
+  //             crossAxisAlignment: pw.CrossAxisAlignment.start,
+  //             children: [
+  //               pw.Row(
+  //                 // mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                 children: [
+  //                   pw.Text(""),
+  //                   pw.Spacer(),
+  //                   pw.SizedBox(width: 50),
+  //                   pw.Text(
+  //                     DateFormat('MM/dd/yyyy').format(check['date']),
+  //                     style: pw.TextStyle(fontSize: 15),
+  //                   ),
+  //                 ],
+  //               ),
+  //               pw.SizedBox(height: 30),
+  //               pw.Row(
+  //                 children: [
+  //                   pw.Text(
+  //                     '',
+  //                     style: pw.TextStyle(fontSize: 11),
+  //                   ),
+  //                   pw.SizedBox(width: 45),
+  //                   pw.Text(
+  //                     check['userName'],
+  //                     style: pw.TextStyle(
+  //                         fontSize: 14, fontWeight: pw.FontWeight.bold),
+  //                   ),
+  //                   pw.Spacer(),
+  //                   pw.Text(
+  //                     '*${check['totalAmount'].toStringAsFixed(2)}*',
+  //                     style: pw.TextStyle(fontSize: 14),
+  //                   ),
+  //                   pw.SizedBox(width: 50),
+  //                 ],
+  //               ),
+  //               pw.SizedBox(height: 15),
+  //               pw.Row(children: [
+  //                 pw.SizedBox(width: 10),
+  //                 pw.Text(
+  //                   "*${_amountToWords(check['totalAmount'])}*",
+  //                   style: pw.TextStyle(fontSize: 13),
+  //                 ),
+  //               ]),
+  //               pw.SizedBox(height: 30),
+  //               if (check['memoNumber'] != null)
+  //                 pw.Row(
+  //                   children: [
+  //                     pw.Text(""),
+  //                     pw.SizedBox(width: 50),
+  //                     pw.Text(
+  //                       '${check['memoNumber']}',
+  //                       style: pw.TextStyle(fontSize: 13),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               pw.SizedBox(height: 65),
+  //               pw.Divider(thickness: 1),
+  //               pw.SizedBox(height: 20),
+  //               pw.Row(
+  //                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                 children: [
+  //                   // pw.Text(
+  //                   //   'Check. No. #${check['checkNumber']}',
+  //                   //   style: pw.TextStyle(fontSize: 15),
+  //                   // ),
+  //                   pw.Text(
+  //                     check['userName'],
+  //                     style: pw.TextStyle(
+  //                         fontSize: 14, fontWeight: pw.FontWeight.bold),
+  //                   ),
+  //                   pw.Text(
+  //                     DateFormat('MM/dd/yyyy').format(check['date']),
+  //                     style: pw.TextStyle(fontSize: 15),
+  //                   ),
+  //                 ],
+  //               ),
+  //               pw.SizedBox(height: 10),
+  //               ...check['serviceDetails'].map<pw.Widget>((detail) {
+  //                 return pw.Row(
+  //                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                   children: [
+  //                     pw.Text(
+  //                       detail['serviceName'],
+  //                       style: pw.TextStyle(fontSize: 13),
+  //                     ),
+  //                     pw.Text(
+  //                       '\$${detail['amount'].toStringAsFixed(2)}',
+  //                       style: pw.TextStyle(fontSize: 13),
+  //                     ),
+  //                   ],
+  //                 );
+  //               }).toList(),
+  //               pw.SizedBox(height: 20),
+  //               pw.Row(children: [
+  //                 pw.Spacer(),
+  //                 pw.Text(
+  //                   '\$${check['totalAmount'].toStringAsFixed(2)}',
+  //                   style: pw.TextStyle(
+  //                       fontSize: 16, fontWeight: pw.FontWeight.bold),
+  //                 ),
+  //               ]),
+
+  //               //duplicate
+  //               pw.SizedBox(height: 65),
+  //               pw.Divider(thickness: 1),
+  //               pw.SizedBox(height: 20),
+  //               pw.Row(
+  //                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                 children: [
+  //                   // pw.Text(
+  //                   //   'Check. No. #${check['checkNumber']}',
+  //                   //   style: pw.TextStyle(fontSize: 15),
+  //                   // ),
+  //                   pw.Text(
+  //                     check['userName'],
+  //                     style: pw.TextStyle(
+  //                         fontSize: 14, fontWeight: pw.FontWeight.bold),
+  //                   ),
+  //                   pw.Text(
+  //                     DateFormat('MM/dd/yyyy').format(check['date']),
+  //                     style: pw.TextStyle(fontSize: 15),
+  //                   ),
+  //                 ],
+  //               ),
+  //               pw.SizedBox(height: 10),
+  //               ...check['serviceDetails'].map<pw.Widget>((detail) {
+  //                 return pw.Row(
+  //                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                   children: [
+  //                     pw.Text(
+  //                       detail['serviceName'],
+  //                       style: pw.TextStyle(fontSize: 13),
+  //                     ),
+  //                     pw.Text(
+  //                       '\$${detail['amount'].toStringAsFixed(2)}',
+  //                       style: pw.TextStyle(fontSize: 13),
+  //                     ),
+  //                   ],
+  //                 );
+  //               }).toList(),
+  //               pw.SizedBox(height: 20),
+  //               pw.Row(children: [
+  //                 pw.Spacer(),
+  //                 pw.Text(
+  //                   '\$${check['totalAmount'].toStringAsFixed(2)}',
+  //                   style: pw.TextStyle(
+  //                       fontSize: 16, fontWeight: pw.FontWeight.bold),
+  //                 ),
+  //               ]),
+  //             ],
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+
+  //   await Printing.layoutPdf(
+  //     onLayout: (PdfPageFormat format) async => pdf.save(),
+  //   );
+  // }
+
   Future<void> _printCheck(Map<String, dynamic> check) async {
+    // Fetch user address
+    String userAddress = '';
+    try {
+      DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(check['userId'])
+          .get();
+
+      if (userSnapshot.exists) {
+        final userData = userSnapshot.data() as Map<String, dynamic>;
+        String street = userData['address'] ?? userData['street'] ?? '';
+        String city = userData['city'] ?? '';
+        String state = userData['state'] ?? '';
+        String zipCode = userData['zipCode'] ?? userData['zip'] ?? '';
+
+        List<String> addressParts = [];
+        if (street.isNotEmpty) addressParts.add(street.toUpperCase());
+        if (city.isNotEmpty) addressParts.add(city.toUpperCase());
+        if (state.isNotEmpty) addressParts.add(state.toUpperCase());
+        if (zipCode.isNotEmpty) addressParts.add(zipCode.toUpperCase());
+
+        userAddress = addressParts.join(', ');
+      }
+    } catch (e) {
+      print('Error fetching user address: $e');
+    }
+
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -239,16 +437,16 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            // padding: pw.EdgeInsets.all(20),
+            margin: pw.EdgeInsets.only(top: -20),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
+                // Date row
                 pw.Row(
-                  // mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(""),
                     pw.Spacer(),
-                    pw.SizedBox(width: 50),
+                    pw.SizedBox(width: 70),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
                       style: pw.TextStyle(fontSize: 15),
@@ -256,6 +454,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ],
                 ),
                 pw.SizedBox(height: 30),
+
+                // Payee Name (in CAPITAL)
                 pw.Row(
                   children: [
                     pw.Text(
@@ -264,27 +464,50 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                     pw.SizedBox(width: 45),
                     pw.Text(
-                      check['userName'],
+                      check['userName'].toString().toUpperCase(),
                       style: pw.TextStyle(
                           fontSize: 14, fontWeight: pw.FontWeight.bold),
                     ),
                     pw.Spacer(),
                     pw.Text(
-                      '${check['totalAmount'].toStringAsFixed(2)}',
+                      '***${check['totalAmount'].toStringAsFixed(2)}',
                       style: pw.TextStyle(fontSize: 14),
                     ),
-                    pw.SizedBox(width: 50),
+                    pw.SizedBox(width: 30),
                   ],
                 ),
+
                 pw.SizedBox(height: 15),
+
+                // Amount in words
                 pw.Row(children: [
                   pw.SizedBox(width: 10),
                   pw.Text(
-                    _amountToWords(check['totalAmount']),
+                    "${_amountToWords(check['totalAmount'])}***********",
                     style: pw.TextStyle(fontSize: 13),
                   ),
                 ]),
                 pw.SizedBox(height: 30),
+
+                // Payee Address (in CAPITAL)
+                if (userAddress.isNotEmpty)
+                  pw.Row(
+                    children: [
+                      pw.Text(
+                        '',
+                        style: pw.TextStyle(fontSize: 11),
+                      ),
+                      pw.SizedBox(width: 45),
+                      pw.Text(
+                        userAddress, // Already in uppercase from construction
+                        style: pw.TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+
+                pw.SizedBox(height: userAddress.isNotEmpty ? 10 : 15),
+
+                // Memo number
                 if (check['memoNumber'] != null)
                   pw.Row(
                     children: [
@@ -297,17 +520,17 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ],
                   ),
                 pw.SizedBox(height: 65),
+
+                // Divider and duplicate section (rest of your existing code remains the same)
                 pw.Divider(thickness: 1),
                 pw.SizedBox(height: 20),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    // pw.Text(
-                    //   'Check. No. #${check['checkNumber']}',
-                    //   style: pw.TextStyle(fontSize: 15),
-                    // ),
                     pw.Text(
-                      check['userName'],
+                      check['userName']
+                          .toString()
+                          .toUpperCase(), // Convert to uppercase
                       style: pw.TextStyle(
                           fontSize: 14, fontWeight: pw.FontWeight.bold),
                     ),
@@ -343,19 +566,17 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ),
                 ]),
 
-                //duplicate
+                //duplicate section
                 pw.SizedBox(height: 65),
                 pw.Divider(thickness: 1),
                 pw.SizedBox(height: 20),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    // pw.Text(
-                    //   'Check. No. #${check['checkNumber']}',
-                    //   style: pw.TextStyle(fontSize: 15),
-                    // ),
                     pw.Text(
-                      check['userName'],
+                      check['userName']
+                          .toString()
+                          .toUpperCase(), // Convert to uppercase
                       style: pw.TextStyle(
                           fontSize: 14, fontWeight: pw.FontWeight.bold),
                     ),
