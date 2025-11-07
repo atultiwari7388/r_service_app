@@ -768,238 +768,6 @@ export default function ManageCheckScreen() {
     return result + " Only";
   };
 
-  // const handlePrint = (check: Check) => {
-  //   const printWindow = window.open("", "_blank");
-  //   if (!printWindow) return;
-
-  //   const printContent = `
-  //   <!DOCTYPE html>
-  //   <html>
-  //     <head>
-  //       <title>Check #${check.checkNumber}</title>
-  //       <style>
-  //         @page {
-  //           size: A4;
-  //           margin: 0;
-  //         }
-  //         body {
-  //           font-family: 'Courier New', monospace;
-  //           margin: 0;
-  //           padding: 20px;
-  //           background: white;
-  //           line-height: 1.2;
-  //           height: 100vh;
-  //           overflow: hidden;
-  //         }
-  //         .check-container {
-  //           display: flex;
-  //           flex-direction: column;
-  //           height: 100%;
-  //         }
-  //         .check-section {
-  //           flex: 1;
-  //           display: flex;
-  //           flex-direction: column;
-  //         }
-  //         .date-section {
-  //           text-align: right;
-  //           margin-top: 0.9in;
-  //           margin-bottom: 30px;
-  //           margin-right: 30px;
-  //           padding-right: 50px;
-  //         }
-  //         .payee-section {
-  //           display: flex;
-  //           margin-bottom: 15px;
-  //           padding-bottom: 5px;
-  //           margin-left: 0.5in;
-  //           margin-right: 0.5in;
-  //         }
-  //         .payee-spacing {
-  //           width: 45px;
-  //         }
-  //         .payee-name {
-  //           flex: 1;
-  //           font-weight: bold;
-  //           font-size: 14px;
-  //         }
-  //         .payee-amount {
-  //           font-weight: bold;
-  //           font-size: 14px;
-  //           margin-left: 20px;
-  //           padding-right: 50px;
-  //         }
-  //         .amount-words {
-  //           margin-left: 0.5in;
-  //           margin-bottom: 30px;
-  //           font-size: 13px;
-  //           font-style: italic;
-  //         }
-  //         .payee-address {
-  //           margin-left: 0.5in;
-  //           margin-bottom: 10px;
-  //           font-size: 12px;
-  //           text-transform: uppercase;
-  //           font-weight: bold;
-  //         }
-  //         .memo-section {
-  //           margin-left: 50px;
-  //           margin-bottom: 30px;
-  //           font-size: 13px;
-  //         }
-  //         .divider {
-  //           border-top: 2px solid #000;
-  //           margin: 20px 0;
-  //         }
-  //         .details-section {
-  //           margin-top: 20px;
-  //         }
-  //         .check-number {
-  //           display: flex;
-  //           justify-content: space-between;
-  //           margin-bottom: 10px;
-  //           font-size: 15px;
-  //         }
-  //         .service-line {
-  //           display: flex;
-  //           justify-content: space-between;
-  //           margin: 5px 0;
-  //           font-size: 13px;
-  //         }
-  //         .total-line {
-  //           display: flex;
-  //           justify-content: flex-end;
-  //           margin-top: 15px;
-  //           font-size: 16px;
-  //           font-weight: bold;
-  //           border-top: 1px solid #000;
-  //           padding-top: 10px;
-  //         }
-  //         .duplicate {
-  //           margin-top: 40px;
-  //           border-top: 2px solid #000;
-  //           padding-top: 20px;
-  //         }
-  //         .amount-star {
-  //           color: red;
-  //           font-weight: bold;
-  //           margin: 0 2px;
-  //         }
-  //         @media print {
-  //           body {
-  //             padding: 20px;
-  //             margin: 0;
-  //             height: 100vh;
-  //           }
-  //           .check-container {
-  //             height: 100vh;
-  //           }
-  //         }
-  //       </style>
-  //     </head>
-  //     <body>
-  //       <div class="check-container">
-  //         <!-- Original Check -->
-  //         <div class="check-section">
-  //           <div class="date-section">
-  //             ${format(check.date, "MM/dd/yyyy")}
-  //           </div>
-
-  //           <div class="payee-section">
-  //             <div class="payee-spacing"></div>
-  //             <div class="payee-name">${check.userName}</div>
-  //             <div class="payee-amount">
-  //               <span class="amount-star">*</span>${check.totalAmount.toFixed(
-  //                 2
-  //               )}<span class="amount-star">*</span>
-  //             </div>
-  //           </div>
-
-  //           <div class="amount-words">
-  //             <span class="amount-star">*</span>${amountToWords(
-  //               check.totalAmount
-  //             )}<span class="amount-star">*</span>
-  //           </div>
-
-  //           <div class="payee-address">
-  //             ${check.address}<br/>
-  //             ${check.city}<br/>
-  //             ${check.state} ${check.postalCode}
-  //           </div>
-
-  //           ${
-  //             check.memoNumber
-  //               ? `
-  //             <div class="memo-section">
-  //               ${check.memoNumber}
-  //             </div>
-  //           `
-  //               : '<div class="memo-section"></div>'
-  //           }
-
-  //           <div class="divider"></div>
-
-  //           <div class="details-section">
-  //             <div class="check-number">
-  //               <div class="payee-name">${check.userName}</div>
-  //               <div>${format(check.date, "MM/dd/yyyy")}</div>
-  //             </div>
-
-  //             ${check.serviceDetails
-  //               .map(
-  //                 (detail) => `
-  //               <div class="service-line">
-  //                 <div>${detail.serviceName}</div>
-  //                 <div>$${detail.amount.toFixed(2)}</div>
-  //               </div>
-  //             `
-  //               )
-  //               .join("")}
-
-  //             <div class="total-line">
-  //               <div>$${check.totalAmount.toFixed(2)}</div>
-  //             </div>
-
-  //              <div class="divider"></div>
-
-  //           <div class="details-section">
-  //             <div class="check-number">
-  //               <div class="payee-name">${check.userName}</div>
-  //               <div>${format(check.date, "MM/dd/yyyy")}</div>
-  //             </div>
-
-  //             ${check.serviceDetails
-  //               .map(
-  //                 (detail) => `
-  //               <div class="service-line">
-  //                 <div>${detail.serviceName}</div>
-  //                 <div>$${detail.amount.toFixed(2)}</div>
-  //               </div>
-  //             `
-  //               )
-  //               .join("")}
-
-  //             <div class="total-line">
-  //               <div>$${check.totalAmount.toFixed(2)}</div>
-  //             </div>
-  //           </div>
-  //         </div>
-
-  //       <script>
-  //         window.onload = function() {
-  //           setTimeout(function() {
-  //             window.print();
-  //           }, 500);
-  //         };
-  //       </script>
-  //     </body>
-  //   </html>
-  // `;
-
-  //   printWindow.document.write(printContent);
-  //   printWindow.document.close();
-  // };
-
   const handlePrint = async (check: Check) => {
     // If address is not already in check, fetch it
     let printCheck = { ...check };
@@ -1014,6 +782,7 @@ export default function ManageCheckScreen() {
           city: userAddress.city || "",
           state: userAddress.state || "",
           postalCode: userAddress.postalCode || userAddress.postalCode || "",
+          country: userAddress.country || "",
         };
       } catch (error) {
         console.error("Error fetching user address:", error);
@@ -1022,6 +791,25 @@ export default function ManageCheckScreen() {
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+
+    // Format address lines like in the app
+    const addressLines = [];
+    if (printCheck.address) addressLines.push(printCheck.address.toUpperCase());
+    if (printCheck.city && printCheck.state) {
+      addressLines.push(
+        `${printCheck.city.toUpperCase()}, ${printCheck.state.toUpperCase()}`
+      );
+    }
+    if (printCheck.country || printCheck.postalCode) {
+      const countryZipParts = [];
+      if (printCheck.country)
+        countryZipParts.push(printCheck.country.toUpperCase());
+      if (printCheck.postalCode)
+        countryZipParts.push(printCheck.postalCode.toUpperCase());
+      addressLines.push(countryZipParts.join(", "));
+    }
+
+    const addressHeight = calculateAddressHeight(addressLines);
 
     const printContent = `
     <!DOCTYPE html>
@@ -1038,220 +826,227 @@ export default function ManageCheckScreen() {
             margin: 0;
             padding: 0;
             background: white;
-            line-height: 1.2;
+            line-height: 1.1;
             height: 100vh;
             overflow: hidden;
-            position: relative;
-            top: -20px;
           }
           .check-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            margin-top: -20px;
+            width: 210mm;
+            height: 297mm;
+            padding: 0;
+            margin: 0;
+            position: relative;
           }
-          .check-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-          }
-          .date-section {
+          
+          /* TOP SECTION - Check */
+          .date-row {
             text-align: right;
-            margin-top: 0.7in;
-            margin-bottom: 30px;
-            margin-right: 30px;
-            padding-right: 50px;
+            padding-top: 8px;
+            padding-right: 85mm;
           }
-          .payee-section {
+          .date-text {
+            font-size: 12px;
+          }
+          
+          .payee-row {
             display: flex;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            margin-left: 0.5in;
-            margin-right: 0.5in;
-          }
-          .payee-spacing {
-            width: 45px;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            padding-left: 15mm;
+            padding-right: 65mm;
           }
           .payee-name {
-            flex: 1;
-            font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
+            font-weight: normal;
             text-transform: uppercase;
           }
           .payee-amount {
-            font-weight: bold;
-            font-size: 14px;
-            margin-left: 20px;
-            padding-right: 50px;
+            font-size: 12px;
+            margin-left: auto;
+            padding-right: 10mm;
           }
+          
           .amount-words {
-            margin-left: 0.5in;
-            margin-bottom: 30px;
-            font-size: 13px;
-            font-style: italic;
+            margin-top: 5px;
+            padding-left: 2mm;
+            font-size: 12px;
           }
-          .payee-address {
-            margin-left: 0.5in;
-            margin-bottom: 10px;
+          
+          .address-section {
+            margin-top: 15px;
+            padding-left: 5mm;
+          }
+          .address-line {
             font-size: 12px;
             text-transform: uppercase;
-            font-weight: bold;
+            margin: 0;
+            padding: 0;
           }
+          
           .memo-section {
-            margin-left: 50px;
-            margin-bottom: 30px;
+            margin-top: ${addressHeight}px;
+            padding-left: 5mm;
             font-size: 13px;
           }
-          .divider {
-            border-top: 2px solid #000;
-            margin: 20px 0;
-          }
+          
+          /* MIDDLE SECTION - Original Details */
           .details-section {
-            margin-top: 20px;
+            margin-top: 65px;
+            padding: 0 10mm;
           }
-          .check-number {
+          .check-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
+          }
+          .check-payee {
+            font-size: 13px;
+            font-weight: normal;
+            text-transform: uppercase;
+          }
+          .check-date {
             font-size: 15px;
           }
           .service-line {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
+            margin: 1px 0;
             font-size: 13px;
           }
           .total-line {
             display: flex;
             justify-content: flex-end;
-            margin-top: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            border-top: 1px solid #000;
-            padding-top: 10px;
+            margin-top: 20px;
+            font-size: 13px;
+            font-weight: normal;
+            border-top: none;
+            padding-top: 0;
           }
-          .duplicate {
-            margin-top: 40px;
-            border-top: 2px solid #000;
-            padding-top: 20px;
+          
+          /* BOTTOM SECTION - Duplicate */
+          .duplicate-section {
+            margin-top: 140px;
+            padding: 0 10mm;
           }
-          .amount-star {
-            color: red;
-            font-weight: bold;
-            margin: 0 2px;
-          }
+          
           @media print {
             body {
-              padding: 0;
               margin: 0;
-              height: 100vh;
-              top: -20px;
+              padding: 0;
+              width: 210mm;
+              height: 297mm;
             }
             .check-container {
-              height: 100vh;
-              margin-top: -20px;
+              width: 210mm;
+              height: 297mm;
             }
           }
         </style>
       </head>
       <body>
         <div class="check-container">
-          <!-- Original Check -->
-          <div class="check-section">
-            <div class="date-section">
-              ${format(printCheck.date, "MM/dd/yyyy")}
+          <!-- TOP: Check Section -->
+          <div class="date-row">
+            <span class="date-text">${format(
+              printCheck.date,
+              "MM/dd/yyyy"
+            )}</span>
+          </div>
+          
+          <div class="payee-row">
+            <div class="payee-name">${printCheck.userName.toUpperCase()}</div>
+            <div class="payee-amount">**${printCheck.totalAmount.toFixed(
+              2
+            )}</div>
+          </div>
+          
+          <div class="amount-words">
+            ${amountToWords(printCheck.totalAmount)}***********
+          </div>
+          
+          <div class="address-section">
+            ${addressLines
+              .map(
+                (line) => `
+              <div class="address-line">${line}</div>
+            `
+              )
+              .join("")}
+          </div>
+          
+          ${
+            printCheck.memoNumber
+              ? `
+            <div class="memo-section">${printCheck.memoNumber}</div>
+          `
+              : `<div class="memo-section"></div>`
+          }
+          
+          <!-- MIDDLE: Original Details -->
+          <div class="details-section">
+            <div class="check-header">
+              <div class="check-payee">${printCheck.userName.toUpperCase()}</div>
+              <div class="check-date">${format(
+                printCheck.date,
+                "MM/dd/yyyy"
+              )}</div>
             </div>
-
-            <div class="payee-section">
-              <div class="payee-spacing"></div>
-              <div class="payee-name">${printCheck.userName}</div>
-              <div class="payee-amount">
-                <span class="amount-star">*</span>${printCheck.totalAmount.toFixed(
-                  2
-                )}<span class="amount-star">*</span>
-              </div>
-            </div>
-
-            <div class="amount-words">
-              <span class="amount-star">*</span>${amountToWords(
-                printCheck.totalAmount
-              )}<span class="amount-star">*</span>
-            </div>
-
-            ${
-              printCheck.address && printCheck.city && printCheck.state
-                ? `
-              <div class="payee-address">
-                ${printCheck.address}<br/>
-                ${printCheck.city}<br/>
-                ${printCheck.state} ${printCheck.postalCode || ""}
+            
+            ${printCheck.serviceDetails
+              .map(
+                (detail) => `
+              <div class="service-line">
+                <div>${detail.serviceName}</div>
+                <div>$${detail.amount.toFixed(2)}</div>
               </div>
             `
-                : ""
-            }
-
-            ${
-              printCheck.memoNumber
-                ? `
-              <div class="memo-section">
-                ${printCheck.memoNumber}
+              )
+              .join("")}
+            
+            <div class="total-line">
+              <div>$${printCheck.totalAmount.toFixed(2)}</div>
+            </div>
+          </div>
+          
+          <!-- BOTTOM: Duplicate Section -->
+          <div class="duplicate-section">
+            <div class="check-header">
+              <div class="check-payee">${printCheck.userName.toUpperCase()}</div>
+              <div class="check-date">${format(
+                printCheck.date,
+                "MM/dd/yyyy"
+              )}</div>
+            </div>
+            
+            ${printCheck.serviceDetails
+              .map(
+                (detail) => `
+              <div class="service-line">
+                <div>${detail.serviceName}</div>
+                <div>$${detail.amount.toFixed(2)}</div>
               </div>
             `
-                : '<div class="memo-section"></div>'
-            }
-
-            <div class="divider"></div>
-
-            <div class="details-section">
-              <div class="check-number">
-                <div class="payee-name">${printCheck.userName}</div>
-                <div>${format(printCheck.date, "MM/dd/yyyy")}</div>
-              </div>
-
-              ${printCheck.serviceDetails
-                .map(
-                  (detail) => `
-                <div class="service-line">
-                  <div>${detail.serviceName}</div>
-                  <div>$${detail.amount.toFixed(2)}</div>
-                </div>
-              `
-                )
-                .join("")}
-
-              <div class="total-line">
-                <div>$${printCheck.totalAmount.toFixed(2)}</div>
-              </div>
-            </div>
-
-            <!-- Duplicate Section -->
-            <div class="duplicate">
-              <div class="details-section">
-                <div class="check-number">
-                  <div class="payee-name">${printCheck.userName}</div>
-                  <div>${format(printCheck.date, "MM/dd/yyyy")}</div>
-                </div>
-
-                ${printCheck.serviceDetails
-                  .map(
-                    (detail) => `
-                  <div class="service-line">
-                    <div>${detail.serviceName}</div>
-                    <div>$${detail.amount.toFixed(2)}</div>
-                  </div>
-                `
-                  )
-                  .join("")}
-
-                <div class="total-line">
-                  <div>$${printCheck.totalAmount.toFixed(2)}</div>
-                </div>
-              </div>
+              )
+              .join("")}
+            
+            <div class="total-line">
+              <div>$${printCheck.totalAmount.toFixed(2)}</div>
             </div>
           </div>
         </div>
 
         <script>
+          // Helper function to calculate address height
+          function calculateAddressHeight(addressLines) {
+            const lineCount = addressLines.filter(line => line.trim()).length;
+            if (lineCount === 0) return 15;
+            if (lineCount === 1) return 25;
+            if (lineCount === 2) return 15;
+            return 10;
+          }
+
           window.onload = function() {
             setTimeout(function() {
               window.print();
@@ -1277,6 +1072,7 @@ export default function ManageCheckScreen() {
           state: userData.state || "",
           postalCode:
             userData.zipCode || userData.zip || userData.postalCode || "",
+          country: userData.country || "",
         };
       }
       throw new Error("User not found");
@@ -1287,8 +1083,20 @@ export default function ManageCheckScreen() {
         city: "",
         state: "",
         postalCode: "",
+        country: "",
       };
     }
+  };
+
+  // Helper function to calculate appropriate spacing based on address lines
+  const calculateAddressHeight = (addressLines: string[]): number => {
+    const lineCount = addressLines.filter((line) => line.trim() !== "").length;
+
+    // Adjust this value based on your layout needs
+    if (lineCount === 0) return 15;
+    if (lineCount === 1) return 25;
+    if (lineCount === 2) return 15;
+    return 10; // for 3 lines
   };
 
   if (!user) {
