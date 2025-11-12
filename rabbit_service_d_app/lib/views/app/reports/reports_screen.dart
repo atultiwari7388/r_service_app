@@ -1657,9 +1657,6 @@ class _ReportsScreenState extends State<ReportsScreen>
                   width: reController.isEditing ? 100 : 220.w,
                   onPress: () {
                     if (reController.isAdd == true) {
-                      // reController.handleSaveRecords().then((refreshPage) {
-                      // _refreshPage(reController);
-                      // });
                       reController.handleSaveRecords(mounted, context);
                     } else {
                       showToastMessage(

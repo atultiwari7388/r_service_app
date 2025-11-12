@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -1245,6 +1246,7 @@ class ReportsController extends GetxController {
       }
 
       await batch.commit();
+      await triggerDailyDayCheck(ownerUid, selectedVehicle!);
       resetForm();
 
       showToastMessage(
@@ -1259,6 +1261,23 @@ class ReportsController extends GetxController {
       debugPrint('Error Saving records: ${e.toString()}');
       debugPrint(stackTrace.toString());
       showToastMessage("Info", "Error saving records.", kRed);
+    }
+  }
+
+  Future<void> triggerDailyDayCheck(String ownerId, String vehicleId) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'startDailyDayCheckForUser',
+      );
+
+      await callable.call({
+        'ownerId': ownerId,
+        'vehicleId': vehicleId,
+      });
+
+      print('Daily day check started for owner: $ownerId, vehicle: $vehicleId');
+    } catch (e) {
+      print('Error triggering daily day check: $e');
     }
   }
 

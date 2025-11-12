@@ -249,7 +249,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         String city = userData['city'] ?? '';
         String state = userData['state'] ?? '';
         String zipCode = userData['zipCode'] ?? userData['zip'] ?? '';
-        String country = userData['country'] ?? ''; // Add country if available
+        String country = userData['country'] ?? '';
 
         // First line: Street address
         if (street.isNotEmpty) streetLine = street.toUpperCase();
@@ -277,7 +277,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            margin: pw.EdgeInsets.only(top: -15),
+            margin: pw.EdgeInsets.only(top: -10),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -297,34 +297,36 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 pw.SizedBox(height: 30),
 
                 // Payee Name (in CAPITAL)
-                pw.Row(
-                  children: [
-                    pw.SizedBox(width: 5),
-                    pw.Text(
-                      check['userName'].toString().toUpperCase(),
-                      style: pw.TextStyle(
-                          fontSize: 12, fontWeight: pw.FontWeight.normal),
-                    ),
-                    pw.Spacer(),
-                    pw.SizedBox(width: 360),
-                    pw.Text(
-                      '**${check['totalAmount'].toStringAsFixed(2)}',
-                      style: pw.TextStyle(fontSize: 12),
-                    ),
-                    // pw.SizedBox(width: 30),
-                  ],
+                pw.Container(
+                  margin: pw.EdgeInsets.only(top: -5),
+                  child: pw.Row(
+                    children: [
+                      pw.SizedBox(width: 5),
+                      pw.Text(
+                        check['userName'].toString().toUpperCase(),
+                        style: pw.TextStyle(
+                            fontSize: 12, fontWeight: pw.FontWeight.normal),
+                      ),
+                      pw.Spacer(),
+                      pw.SizedBox(width: 382),
+                      pw.Text(
+                        '**${check['totalAmount'].toStringAsFixed(2)}',
+                        style: pw.TextStyle(fontSize: 12),
+                      ),
+                      // pw.SizedBox(width: 30),
+                    ],
+                  ),
                 ),
-
-                pw.SizedBox(height: 5),
+                pw.SizedBox(height: 15),
 
                 pw.Container(
-                  margin: pw.EdgeInsets.only(left: -18),
+                  margin: pw.EdgeInsets.only(left: -18, top: -5),
                   child: pw.Text(
                     "${_amountToWords(check['totalAmount'])}***********",
                     style: pw.TextStyle(fontSize: 12),
                   ),
                 ),
-                pw.SizedBox(height: 15),
+                pw.SizedBox(height: 20),
 
                 // Payee Address - Now in 3 lines
                 if (streetLine.isNotEmpty)
@@ -489,15 +491,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     final decimalPart = ((amount - wholePart) * 100).round();
 
     String wholeWords = _numberToWords(wholePart);
-    String decimalWords = _numberToWords(decimalPart);
 
-    String result = wholeWords + '';
+    // Format decimal part as fraction (e.g., "82/100")
+    String decimalFraction = '${decimalPart.toString().padLeft(2, '0')}/100';
 
-    if (decimalPart > 0) {
-      result += ' and ' + decimalWords + ' Cents';
-    }
-
-    return result + '';
+    return '$wholeWords and $decimalFraction********';
   }
 
   String _numberToWords(int number) {
