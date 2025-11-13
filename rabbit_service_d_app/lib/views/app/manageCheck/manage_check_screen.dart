@@ -3,10 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/manageCheck/widgets/manage_check_numder_screen.dart';
@@ -271,6 +273,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     }
 
     final pdf = pw.Document();
+    final universeFont =
+        pw.Font.ttf(await rootBundle.load('assets/font/UniversRegular.ttf'));
+    final universeBoldFont =
+        pw.Font.ttf(await rootBundle.load('assets/font/UniversBold.ttf'));
 
     pdf.addPage(
       pw.Page(
@@ -290,7 +296,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.SizedBox(width: 450),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
-                      style: pw.TextStyle(fontSize: 12),
+                      style: pw.TextStyle(fontSize: 12, font: universeFont),
                     ),
                   ],
                 ),
@@ -305,13 +311,15 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       pw.Text(
                         check['userName'].toString().toUpperCase(),
                         style: pw.TextStyle(
-                            fontSize: 12, fontWeight: pw.FontWeight.normal),
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.normal,
+                            font: universeFont),
                       ),
                       pw.Spacer(),
-                      pw.SizedBox(width: 382),
+                      pw.SizedBox(width: 410),
                       pw.Text(
                         '**${check['totalAmount'].toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 12),
+                        style: pw.TextStyle(fontSize: 12, font: universeFont),
                       ),
                       // pw.SizedBox(width: 30),
                     ],
@@ -322,8 +330,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 pw.Container(
                   margin: pw.EdgeInsets.only(left: -18, top: -5),
                   child: pw.Text(
-                    "${_amountToWords(check['totalAmount'])}***********",
-                    style: pw.TextStyle(fontSize: 12),
+                    "****${_amountToWords(check['totalAmount'])}***********",
+                    style: pw.TextStyle(fontSize: 12, font: universeFont),
                   ),
                 ),
                 pw.SizedBox(height: 20),
@@ -334,7 +342,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       streetLine,
-                      style: pw.TextStyle(fontSize: 12),
+                      style: pw.TextStyle(fontSize: 12, font: universeFont),
                     ),
                   ),
 
@@ -343,7 +351,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       cityStateLine,
-                      style: pw.TextStyle(fontSize: 12),
+                      style: pw.TextStyle(fontSize: 12, font: universeFont),
                     ),
                   ),
 
@@ -352,7 +360,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       countryZipLine,
-                      style: pw.TextStyle(fontSize: 12),
+                      style: pw.TextStyle(fontSize: 12, font: universeFont),
                     ),
                   ),
 
@@ -367,14 +375,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       '${check['memoNumber']}',
-                      style: pw.TextStyle(fontSize: 13),
+                      style: pw.TextStyle(fontSize: 13, font: universeFont),
                     ),
                   ),
 
                 pw.SizedBox(height: 65),
-
-                // Rest of your existing code remains the same...
-                // pw.Divider(thickness: 1),
                 pw.SizedBox(height: 20),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -382,11 +387,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.Text(
                       check['userName'].toString().toUpperCase(),
                       style: pw.TextStyle(
-                          fontSize: 13, fontWeight: pw.FontWeight.normal),
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.normal,
+                          font: universeFont),
                     ),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
-                      style: pw.TextStyle(fontSize: 15),
+                      style: pw.TextStyle(fontSize: 15, font: universeFont),
                     ),
                   ],
                 ),
@@ -397,11 +404,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     children: [
                       pw.Text(
                         detail['serviceName'],
-                        style: pw.TextStyle(fontSize: 13),
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
                       ),
                       pw.Text(
                         '\$${detail['amount'].toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 13),
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
                       ),
                     ],
                   );
@@ -412,7 +419,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   pw.Text(
                     '\$${check['totalAmount'].toStringAsFixed(2)}',
                     style: pw.TextStyle(
-                        fontSize: 13, fontWeight: pw.FontWeight.normal),
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.normal,
+                        font: universeFont),
                   ),
                 ]),
 
@@ -426,11 +435,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.Text(
                       check['userName'].toString().toUpperCase(),
                       style: pw.TextStyle(
-                          fontSize: 13, fontWeight: pw.FontWeight.normal),
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.normal,
+                          font: universeFont),
                     ),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
-                      style: pw.TextStyle(fontSize: 15),
+                      style: pw.TextStyle(fontSize: 15, font: universeFont),
                     ),
                   ],
                 ),
@@ -441,11 +452,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     children: [
                       pw.Text(
                         detail['serviceName'],
-                        style: pw.TextStyle(fontSize: 13),
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
                       ),
                       pw.Text(
                         '\$${detail['amount'].toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 13),
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
                       ),
                     ],
                   );
@@ -456,7 +467,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   pw.Text(
                     '\$${check['totalAmount'].toStringAsFixed(2)}',
                     style: pw.TextStyle(
-                        fontSize: 13, fontWeight: pw.FontWeight.normal),
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.normal,
+                        font: universeFont),
                   ),
                 ]),
               ],
