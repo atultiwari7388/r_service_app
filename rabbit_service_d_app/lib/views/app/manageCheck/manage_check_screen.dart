@@ -296,7 +296,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.SizedBox(width: 450),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
-                      style: pw.TextStyle(fontSize: 12, font: universeFont),
+                      style: pw.TextStyle(fontSize: 10, font: universeFont),
                     ),
                   ],
                 ),
@@ -311,7 +311,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       pw.Text(
                         check['userName'].toString().toUpperCase(),
                         style: pw.TextStyle(
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: pw.FontWeight.normal,
                             font: universeFont),
                       ),
@@ -319,7 +319,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       pw.SizedBox(width: 410),
                       pw.Text(
                         '**${check['totalAmount'].toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 12, font: universeFont),
+                        style: pw.TextStyle(fontSize: 10, font: universeFont),
                       ),
                       // pw.SizedBox(width: 30),
                     ],
@@ -331,7 +331,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   margin: pw.EdgeInsets.only(left: -18, top: -5),
                   child: pw.Text(
                     "****${_amountToWords(check['totalAmount'])}***********",
-                    style: pw.TextStyle(fontSize: 12, font: universeFont),
+                    style: pw.TextStyle(fontSize: 10, font: universeFont),
                   ),
                 ),
                 pw.SizedBox(height: 20),
@@ -342,7 +342,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       streetLine,
-                      style: pw.TextStyle(fontSize: 12, font: universeFont),
+                      style: pw.TextStyle(fontSize: 10, font: universeFont),
                     ),
                   ),
 
@@ -351,7 +351,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       cityStateLine,
-                      style: pw.TextStyle(fontSize: 12, font: universeFont),
+                      style: pw.TextStyle(fontSize: 10, font: universeFont),
                     ),
                   ),
 
@@ -360,7 +360,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       countryZipLine,
-                      style: pw.TextStyle(fontSize: 12, font: universeFont),
+                      style: pw.TextStyle(fontSize: 10, font: universeFont),
                     ),
                   ),
 
@@ -375,7 +375,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       '${check['memoNumber']}',
-                      style: pw.TextStyle(fontSize: 13, font: universeFont),
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
                     ),
                   ),
 
@@ -387,7 +387,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.Text(
                       check['userName'].toString().toUpperCase(),
                       style: pw.TextStyle(
-                          fontSize: 13,
+                          fontSize: 11,
                           fontWeight: pw.FontWeight.normal,
                           font: universeFont),
                     ),

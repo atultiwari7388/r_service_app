@@ -213,16 +213,8 @@ const Login: React.FC = () => {
                 )}
               </button>
             </div>
-            {/* <div className="text-right mt-2">
-              <Link
-                href="/forgot-password"
-                className="text-sm font-medium text-[#F96176] hover:underline"
-              >
-                Forgot Password?
-              </Link>
-            </div>
-           */}
           </div>
+
           {/* Submit Button */}
           <Button
             type="submit"
