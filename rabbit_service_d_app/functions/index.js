@@ -1244,7 +1244,11 @@ exports.startDailyDayCheckForUser = functions.https.onCall(
     }
 
     try {
-      // Create a document in a collection to track daily checks for this user
+      // Calculate next check for TOMORROW (24 hours later)
+      const nextCheckDate = new Date();
+      nextCheckDate.setDate(nextCheckDate.getDate() + 1); // Add 1 day
+      nextCheckDate.setHours(nextCheckDate.getHours());
+
       const userDailyCheckRef = admin
         .firestore()
         .collection("UserDailyChecks")
@@ -1255,18 +1259,19 @@ exports.startDailyDayCheckForUser = functions.https.onCall(
         vehicleId: vehicleId,
         isActive: true,
         lastChecked: null,
-        nextCheck: new Date(), // Check immediately first time
+        nextCheck: nextCheckDate,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       console.log(
-        `Started daily day check for owner ${ownerId}, vehicle ${vehicleId}`
+        `Started daily day check for owner ${ownerId}, vehicle ${vehicleId}. Next check: ${nextCheckDate}`
       );
 
       return {
         success: true,
         message: "Daily day check started successfully",
+        nextCheck: nextCheckDate.toISOString(),
       };
     } catch (error) {
       console.error("Error starting daily day check:", error);
@@ -1345,16 +1350,14 @@ async function processSingleUserDailyCheck(
       `Processing daily check for owner ${ownerId}, vehicle ${vehicleId}`
     );
 
-    // Use the EXACT same logic from checkDataServicesAndNotify but only for day type
     const result = await checkDayServicesForVehicle(
       ownerId,
       vehicleId,
       currentDate
     );
 
-    // Schedule next check for 24 hours later
     const nextCheckDate = new Date(currentDate);
-    nextCheckDate.setHours(nextCheckDate.getHours() + 24);
+    nextCheckDate.setDate(nextCheckDate.getDate() + 1); // Add 1 day
 
     // Update the check document
     await checkDocRef.update({
