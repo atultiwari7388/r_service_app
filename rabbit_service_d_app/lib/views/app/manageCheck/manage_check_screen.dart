@@ -275,8 +275,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     final pdf = pw.Document();
     final universeFont =
         pw.Font.ttf(await rootBundle.load('assets/font/UniversRegular.ttf'));
-    final universeBoldFont =
-        pw.Font.ttf(await rootBundle.load('assets/font/UniversBold.ttf'));
 
     pdf.addPage(
       pw.Page(

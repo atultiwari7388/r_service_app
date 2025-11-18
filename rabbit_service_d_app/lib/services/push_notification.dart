@@ -32,12 +32,14 @@ class PushNotification {
       'Default notification channel.';
 
   // Sound file names (without extension)
-  static const String _soundNewJob = 'new_job_sound';
+  static const String _soundNewJob = 'default_sound';
   static const String _soundOfferAccepted = 'offer_accepted_sound';
   static const String _soundDefault = 'default_sound';
 
   // Initialize Push Notifications
   Future init() async {
+    await localNotiInit();
+
     // Request notification permissions
     await _firebaseMessaging.requestPermission(
       alert: true,

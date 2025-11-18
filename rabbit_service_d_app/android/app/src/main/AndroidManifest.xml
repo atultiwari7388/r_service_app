@@ -30,13 +30,6 @@
             android:name="com.google.firebase.messaging.default_notification_icon" 
             android:resource="@mipmap/ic_launcher" />
         
-        <!-- Uncomment if needed for custom notifications -->
-        <!-- <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="rabbit_services_driver"/> 
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_sound"
-            android:value="noti" /> -->
 
         <activity
             android:name=".MainActivity"
@@ -59,10 +52,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="rabbit_services_driver"/>
         
         <meta-data
             android:name="flutterEmbedding"
