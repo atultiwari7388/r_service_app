@@ -1183,7 +1183,7 @@ export default function ManageCheckScreen() {
     else if (lineCount === 2) extraMm = 4;
     else extraMm = 2.5;
 
-    const globalTop = 30;
+    const globalTop = 10;
 
     const dateTopMm = globalTop + 10;
     const payeeTopMm = globalTop + 23;
