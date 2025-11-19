@@ -689,7 +689,7 @@ export default function ManageCheckScreen() {
   };
 
   // const handlePrint = async (check: Check) => {
-  //   // Helper: fetch address if missing (your existing fetchUserAddress)
+  //   // Fetch address if missing
   //   let printCheck = { ...check };
   //   if (!check.address || !check.city || !check.state) {
   //     try {
@@ -699,7 +699,7 @@ export default function ManageCheckScreen() {
   //         address: userAddress.street || "",
   //         city: userAddress.city || "",
   //         state: userAddress.state || "",
-  //         postalCode: userAddress.postalCode || userAddress.postalCode || "",
+  //         postalCode: userAddress.postalCode || "",
   //         country: userAddress.country || "",
   //       };
   //     } catch (error) {
@@ -707,9 +707,9 @@ export default function ManageCheckScreen() {
   //     }
   //   }
 
-  //   // JS implementation of amount -> words + cents fraction (matches Flutter)
-  //   function numberToWords(number: number): string {
-  //     if (number === 0) return "Zero";
+  //   function numberToWords(num: number): string {
+  //     if (num === 0) return "Zero";
+
   //     const units = [
   //       "",
   //       "One",
@@ -749,10 +749,12 @@ export default function ManageCheckScreen() {
 
   //     function underThousand(n: number): string {
   //       let w = "";
+
   //       if (Math.floor(n / 100) > 0) {
   //         w += units[Math.floor(n / 100)] + " Hundred ";
   //         n = n % 100;
   //       }
+
   //       if (n > 0) {
   //         if (n < 10) w += units[n];
   //         else if (n < 20) w += teens[n - 10];
@@ -761,296 +763,282 @@ export default function ManageCheckScreen() {
   //           if (n % 10 > 0) w += " " + units[n % 10];
   //         }
   //       }
+
   //       return w.trim();
   //     }
 
   //     let w = "";
-  //     if (Math.floor(number / 1000) > 0) {
-  //       w += underThousand(Math.floor(number / 1000)) + " Thousand ";
-  //       number = number % 1000;
+
+  //     if (Math.floor(num / 1000) > 0) {
+  //       w += underThousand(Math.floor(num / 1000)) + " Thousand ";
+  //       num = num % 1000;
   //     }
-  //     if (number > 0) {
-  //       w += underThousand(number) + " ";
-  //     }
+
+  //     if (num > 0) w += underThousand(num);
+
   //     return w.trim();
   //   }
 
+  //   // Full amount → words + cents (“and 55/100”)
   //   function amountToWords(amount: number): string {
   //     const whole = Math.floor(amount);
-  //     const decimal = Math.round((amount - whole) * 100);
-  //     const wholeWords = numberToWords(whole) || "Zero";
-  //     const decimalFraction = `${decimal.toString().padStart(2, "0")}/100`;
-  //     // match Flutter formatting and trailing stars will be added in template
-  //     return `${wholeWords} and ${decimalFraction}`;
+  //     const cents = Math.round((amount - whole) * 100);
+  //     const words = numberToWords(whole);
+  //     const centsText = `${cents.toString().padStart(2, "0")}/100`;
+  //     return `${words} and ${centsText}`;
   //   }
 
-  //   // Build address lines (uppercase) exactly like Flutter logic
   //   const addressLines: string[] = [];
+
   //   if (printCheck.address)
-  //     addressLines.push(String(printCheck.address).toUpperCase());
+  //     addressLines.push(printCheck.address.toString().toUpperCase());
+
   //   if (printCheck.city || printCheck.state) {
-  //     const parts = [];
-  //     if (printCheck.city) parts.push(String(printCheck.city).toUpperCase());
-  //     if (printCheck.state) parts.push(String(printCheck.state).toUpperCase());
-  //     if (parts.length) addressLines.push(parts.join(", "));
+  //     const cityState = [];
+  //     if (printCheck.city) cityState.push(printCheck.city.toUpperCase());
+  //     if (printCheck.state) cityState.push(printCheck.state.toUpperCase());
+  //     addressLines.push(cityState.join(", "));
   //   }
+
   //   if (printCheck.country || printCheck.postalCode) {
   //     const parts = [];
-  //     if (printCheck.country)
-  //       parts.push(String(printCheck.country).toUpperCase());
+  //     if (printCheck.country) parts.push(printCheck.country.toUpperCase());
   //     if (printCheck.postalCode)
-  //       parts.push(String(printCheck.postalCode).toUpperCase());
-  //     if (parts.length) addressLines.push(parts.join(", "));
+  //       parts.push(printCheck.postalCode.toUpperCase());
+  //     addressLines.push(parts.join(", "));
   //   }
 
-  //   // Map your Flutter _calculateAddressHeight to mm offsets used for top positions
-  //   // Flutter returns (px-ish): 0->15, 1->25, 2->15, 3->10
-  //   // Convert these heuristically to mm to shift subsequent top positions
-  //   const lineCount = addressLines.filter(
-  //     (l) => l && String(l).trim().length > 0
-  //   ).length;
+  //   // Convert Flutter spacing to mm
   //   let extraMm = 0;
-  //   if (lineCount === 0) extraMm = 4; // ~15px -> ~4mm
-  //   else if (lineCount === 1) extraMm = 7; // ~25px -> ~7mm
-  //   else if (lineCount === 2) extraMm = 4; // ~15px -> ~4mm
-  //   else extraMm = 2.5; // ~10px -> ~2.5mm
+  //   const lineCount = addressLines.length;
 
-  //   // Base top positions that we derived to match Flutter PDF (mm)
-  //   const dateTopMm = 10;
-  //   const payeeTopMm = 23;
-  //   const amountWordsTopMm = 32;
-  //   const addressTopMm = 42;
-  //   const memoBaseTopMm = 62; // will be shifted by extraMm
-  //   const detailsBaseTopMm = 90; // will be shifted by extraMm
-  //   const duplicateBaseTopMm = 160; // will be shifted by extraMm
+  //   if (lineCount === 0) extraMm = 4;
+  //   else if (lineCount === 1) extraMm = 7;
+  //   else if (lineCount === 2) extraMm = 4;
+  //   else extraMm = 2.5;
 
-  //   const memoTopMm = memoBaseTopMm + extraMm;
-  //   const detailsTopMm = detailsBaseTopMm + extraMm;
-  //   const duplicateTopMm = duplicateBaseTopMm + extraMm;
+  //   const globalTop = 10;
 
-  //   // Precompute formatted strings
-  //   const formattedDate = format(printCheck.date, "MM/dd/yyyy"); // assuming you have date-fns format imported
-  //   const formattedTotal = Number(printCheck.totalAmount).toFixed(2);
-  //   const amountWords = amountToWords(Number(printCheck.totalAmount));
-  //   const amountWordsWithStars = `****${amountWords}*******************`; // matches example
+  //   const dateTopMm = globalTop + 10;
+  //   const payeeTopMm = globalTop + 23;
+  //   const wordsTopMm = globalTop + 32;
+  //   const addressTopMm = globalTop + 42;
 
-  //   // Open print window
+  //   const memoTopMm = globalTop + 62 + extraMm;
+  //   const detailsTopMm = globalTop + 90 + extraMm;
+  //   const duplicateTopMm = globalTop + 160 + extraMm;
+
+  //   /* --------------------------------------------------
+  //    PREP TEXT STRINGS
+  //    -------------------------------------------------- */
+  //   const formattedDate = format(printCheck.date, "MM/dd/yyyy");
+  //   const totalFormatted = Number(printCheck.totalAmount).toFixed(2);
+
+  //   // EXACT Flutter format:
+  //   // "****Five Hundred Eighty and 55/100*******************"
+  //   const amountWordsFormatted = `****${amountToWords(
+  //     Number(printCheck.totalAmount)
+  //   )}*******************`;
+
+  //   /* --------------------------------------------------
+  //    CREATE PRINT WINDOW
+  //    -------------------------------------------------- */
   //   const printWindow = window.open("", "_blank");
   //   if (!printWindow) return;
 
-  //   // Build the HTML with mm-based absolute positions and Courier New font
-  //   const printContent = `
+  //   const html = `
   // <!doctype html>
   // <html>
-  // <head>
-  //   <meta charset="utf-8">
-  //   <title>Check #${printCheck.checkNumber || ""}</title>
-  //   <style>
-  //     @page { size: A4; margin: 0; }
-  //     html, body { margin:0; padding:0; background:white; }
-  //     body { font-family: "Courier New", Courier, monospace; line-height: 1.1; }
+  //   <head>
+  //     <meta charset="utf-8">
+  //     <title>Check</title>
 
-  //     .check-container {
-  //       width: 210mm;
-  //       height: 297mm;
-  //       position: relative;
-  //     }
-
-  //     /* TOP */
-  //     .date-row {
-  //       position: absolute;
-  //       top: ${dateTopMm}mm;
-  //       right: 15mm;
-  //       font-size: 10pt; /* Flutter used 10 */
-  //     }
-
-  //     .payee-row {
-  //       position: absolute;
-  //       top: ${payeeTopMm}mm;
-  //       left: 15mm;
-  //       right: 15mm;
-  //       display: flex;
-  //       justify-content: space-between;
-  //       align-items: center;
-  //       font-size: 10pt;
-  //       text-transform: uppercase;
-  //     }
-
-  //     .amount-words {
-  //       position: absolute;
-  //       top: ${amountWordsTopMm}mm;
-  //       left: 15mm;
-  //       font-size: 10pt;
-  //     }
-
-  //     .address-section {
-  //       position: absolute;
-  //       top: ${addressTopMm}mm;
-  //       left: 15mm;
-  //       font-size: 10pt;
-  //       text-transform: uppercase;
-  //     }
-  //     .address-line { margin: 2px 0; }
-
-  //     .memo-section {
-  //       position: absolute;
-  //       top: ${memoTopMm}mm;
-  //       left: 15mm;
-  //       font-size: 11pt; /* Flutter used 11 for memo */
-  //     }
-
-  //     /* MIDDLE (original) */
-  //     .details-section {
-  //       position: absolute;
-  //       top: ${detailsTopMm}mm;
-  //       left: 15mm;
-  //       right: 15mm;
-  //       font-size: 12pt;
-  //     }
-
-  //     .check-header {
-  //       display: flex;
-  //       justify-content: space-between;
-  //       align-items: center;
-  //       margin-bottom: 5px;
-  //       text-transform: uppercase;
-  //     }
-
-  //     .service-line {
-  //       display: flex;
-  //       justify-content: space-between;
-  //       margin: 0;
-  //       font-size: 13pt; /* Flutter used 13 for services */
-  //     }
-
-  //     .total-line {
-  //       display: flex;
-  //       justify-content: flex-end;
-  //       margin-top: 4px;
-  //       font-size: 13pt;
-  //     }
-
-  //     /* DUPLICATE (bottom) */
-  //     .duplicate-section {
-  //       position: absolute;
-  //       top: ${duplicateTopMm}mm;
-  //       left: 15mm;
-  //       right: 15mm;
-  //       font-size: 12pt;
-  //     }
-
-  //     @media print {
-  //       html, body {
-  //         width: 210mm;
-  //         height: 297mm;
+  //     <style>
+  //       @page { size: A4; margin: 0; }
+  //       body {
+  //         margin: 0;
+  //         padding: 0;
+  //         background: white;
+  //         font-family: "Courier New", monospace; /* NO ARIAL */
+  //         line-height: 1.1;
   //       }
+
   //       .check-container {
   //         width: 210mm;
   //         height: 297mm;
-  //       }
-  //     }
-  //   </style>
-  // </head>
-  // <body>
-  //   <div class="check-container">
-  //     <!-- DATE -->
-  //     <div class="date-row">${formattedDate}</div>
-
-  //     <!-- PAYEE + AMOUNT -->
-  //     <div class="payee-row">
-  //       <div class="payee-name">${String(
-  //         printCheck.userName || ""
-  //       ).toUpperCase()}</div>
-  //       <div class="payee-amount">**${formattedTotal}</div>
-  //     </div>
-
-  //     <!-- AMOUNT IN WORDS -->
-  //     <div class="amount-words">${amountWordsWithStars}</div>
-
-  //     <!-- ADDRESS LINES -->
-  //     <div class="address-section">
-  //       ${addressLines
-  //         .map((line) => `<div class="address-line">${line}</div>`)
-  //         .join("")}
-  //     </div>
-
-  //     <!-- MEMO -->
-  //     <div class="memo-section">${
-  //       printCheck.memoNumber ? String(printCheck.memoNumber) : ""
-  //     }</div>
-
-  //     <!-- ORIGINAL DETAILS -->
-  //     <div class="details-section">
-  //       <div class="check-header">
-  //         <div class="check-payee">${String(
-  //           printCheck.userName || ""
-  //         ).toUpperCase()}</div>
-  //         <div class="check-date">${formattedDate}</div>
-  //       </div>
-
-  //       ${
-  //         Array.isArray(printCheck.serviceDetails) &&
-  //         printCheck.serviceDetails.length
-  //           ? printCheck.serviceDetails
-  //               .map(
-  //                 (d: ServiceDetail) => `
-  //           <div class="service-line">
-  //             <div>${d.serviceName}</div>
-  //             <div>$${Number(d.amount).toFixed(2)}</div>
-  //           </div>
-  //         `
-  //               )
-  //               .join("")
-  //           : ""
+  //         position: relative;
   //       }
 
-  //       <div class="total-line">
-  //         <div>$${formattedTotal}</div>
-  //       </div>
-  //     </div>
-
-  //     <!-- DUPLICATE SECTION -->
-  //     <div class="duplicate-section">
-  //       <div class="check-header">
-  //         <div class="check-payee">${String(
-  //           printCheck.userName || ""
-  //         ).toUpperCase()}</div>
-  //         <div class="check-date">${formattedDate}</div>
-  //       </div>
-
-  //       ${
-  //         Array.isArray(printCheck.serviceDetails) &&
-  //         printCheck.serviceDetails.length
-  //           ? printCheck.serviceDetails
-  //               .map(
-  //                 (d: ServiceDetail) => `
-  //           <div class="service-line">
-  //             <div>${d.serviceName}</div>
-  //             <div>$${Number(d.amount).toFixed(2)}</div>
-  //           </div>
-  //         `
-  //               )
-  //               .join("")
-  //           : ""
+  //       /* Date (top-right) */
+  //       .date-row {
+  //         position: absolute;
+  //         top: ${dateTopMm}mm;
+  //         right: 15mm;
+  //         font-size: 10pt;
   //       }
 
-  //       <div class="total-line">
-  //         <div>$${formattedTotal}</div>
-  //       </div>
-  //     </div>
-  //   </div>
+  //       /* Payee + Amount same row */
+  //       .payee-row {
+  //         position: absolute;
+  //         top: ${payeeTopMm}mm;
+  //         left: 15mm;
+  //         right: 15mm;
+  //         font-size: 10pt;
+  //         text-transform: uppercase;
+  //         display: flex;
+  //         justify-content: space-between;
+  //       }
 
-  //   <script>
-  //     // Auto-print (short delay to ensure layout/render)
-  //     window.onload = function() {
-  //       setTimeout(function(){ window.print(); }, 300);
-  //     };
-  //   </script>
-  // </body>
+  //       /* Amount in words */
+  //       .amount-words {
+  //         position: absolute;
+  //         top: ${wordsTopMm}mm;
+  //         left: 15mm;
+  //         font-size: 10pt;
+  //       }
+
+  //       /* Address */
+  //       .address-section {
+  //         position: absolute;
+  //         top: ${addressTopMm}mm;
+  //         left: 15mm;
+  //         font-size: 10pt;
+  //         text-transform: uppercase;
+  //       }
+  //       .address-line { margin: 2px 0; }
+
+  //       /* Memo */
+  //       .memo-section {
+  //         position: absolute;
+  //         top: ${memoTopMm}mm;
+  //         left: 15mm;
+  //         font-size: 11pt;
+  //       }
+
+  //       /* Middle (original details) */
+  //       .details-section {
+  //         position: absolute;
+  //         top: ${detailsTopMm}mm;
+  //         left: 15mm;
+  //         right: 15mm;
+  //       }
+
+  //       .check-header {
+  //         display: flex;
+  //         justify-content: space-between;
+  //         text-transform: uppercase;
+  //         margin-bottom: 5px;
+  //         font-size: 12pt;
+  //       }
+
+  //       .service-line {
+  //         display: flex;
+  //         justify-content: space-between;
+  //         font-size: 13pt;
+  //         margin: 0;
+  //       }
+
+  //       .total-line {
+  //         font-size: 13pt;
+  //         display: flex;
+  //         justify-content: flex-end;
+  //         margin-top: 4px;
+  //       }
+
+  //       /* Duplicate (bottom copy) */
+  //       .duplicate-section {
+  //         position: absolute;
+  //         top: ${duplicateTopMm}mm;
+  //         left: 15mm;
+  //         right: 15mm;
+  //         font-size: 12pt;
+  //       }
+  //     </style>
+  //   </head>
+
+  //   <body>
+  //     <div class="check-container">
+
+  //       <!-- DATE -->
+  //       <div class="date-row">${formattedDate}</div>
+
+  //       <!-- PAYEE + AMOUNT -->
+  //       <div class="payee-row">
+  //         <div>${String(printCheck.userName).toUpperCase()}</div>
+  //         <div>**${totalFormatted}</div>
+  //       </div>
+
+  //       <!-- AMOUNT IN WORDS -->
+  //       <div class="amount-words">${amountWordsFormatted}</div>
+
+  //       <!-- ADDRESS -->
+  //       <div class="address-section">
+  //         ${addressLines
+  //           .map((l) => `<div class="address-line">${l}</div>`)
+  //           .join("")}
+  //       </div>
+
+  //       <!-- MEMO -->
+  //       <div class="memo-section">
+  //         ${printCheck.memoNumber || ""}
+  //       </div>
+
+  //       <!-- ORIGINAL DETAILS -->
+  //       <div class="details-section">
+
+  //         <div class="check-header">
+  //           <div>${String(printCheck.userName).toUpperCase()}</div>
+  //           <div>${formattedDate}</div>
+  //         </div>
+
+  //         ${printCheck.serviceDetails
+  //           .map(
+  //             (s: ServiceDetail) => `
+  //             <div class="service-line">
+  //               <div>${s.serviceName}</div>
+  //               <div>$${Number(s.amount).toFixed(2)}</div>
+  //             </div>
+  //           `
+  //           )
+  //           .join("")}
+
+  //         <div class="total-line">$${totalFormatted}</div>
+  //       </div>
+
+  //       <!-- DUPLICATE (BOTTOM) -->
+  //       <div class="duplicate-section">
+
+  //         <div class="check-header">
+  //           <div>${String(printCheck.userName).toUpperCase()}</div>
+  //           <div>${formattedDate}</div>
+  //         </div>
+
+  //         ${printCheck.serviceDetails
+  //           .map(
+  //             (s: ServiceDetail) => `
+  //             <div class="service-line">
+  //               <div>${s.serviceName}</div>
+  //               <div>$${Number(s.amount).toFixed(2)}</div>
+  //             </div>
+  //           `
+  //           )
+  //           .join("")}
+
+  //         <div class="total-line">$${totalFormatted}</div>
+  //       </div>
+
+  //     </div>
+
+  //     <script>
+  //       window.onload = function(){
+  //         setTimeout(() => window.print(), 300);
+  //       };
+  //     </script>
+  //   </body>
   // </html>
   // `;
 
-  //   printWindow.document.write(printContent);
+  //   printWindow.document.write(html);
   //   printWindow.document.close();
   // };
 
@@ -1073,6 +1061,9 @@ export default function ManageCheckScreen() {
       }
     }
 
+    /* -----------------------------
+      Words conversion functions
+     ----------------------------- */
     function numberToWords(num: number): string {
       if (num === 0) return "Zero";
 
@@ -1115,12 +1106,10 @@ export default function ManageCheckScreen() {
 
       function underThousand(n: number): string {
         let w = "";
-
         if (Math.floor(n / 100) > 0) {
           w += units[Math.floor(n / 100)] + " Hundred ";
-          n = n % 100;
+          n %= 100;
         }
-
         if (n > 0) {
           if (n < 10) w += units[n];
           else if (n < 20) w += teens[n - 10];
@@ -1129,23 +1118,18 @@ export default function ManageCheckScreen() {
             if (n % 10 > 0) w += " " + units[n % 10];
           }
         }
-
         return w.trim();
       }
 
       let w = "";
-
       if (Math.floor(num / 1000) > 0) {
         w += underThousand(Math.floor(num / 1000)) + " Thousand ";
-        num = num % 1000;
+        num %= 1000;
       }
-
       if (num > 0) w += underThousand(num);
-
       return w.trim();
     }
 
-    // Full amount → words + cents (“and 55/100”)
     function amountToWords(amount: number): string {
       const whole = Math.floor(amount);
       const cents = Math.round((amount - whole) * 100);
@@ -1154,16 +1138,19 @@ export default function ManageCheckScreen() {
       return `${words} and ${centsText}`;
     }
 
+    /* -----------------------------
+      ADDRESS LINES
+     ----------------------------- */
     const addressLines: string[] = [];
 
     if (printCheck.address)
       addressLines.push(printCheck.address.toString().toUpperCase());
 
     if (printCheck.city || printCheck.state) {
-      const cityState = [];
-      if (printCheck.city) cityState.push(printCheck.city.toUpperCase());
-      if (printCheck.state) cityState.push(printCheck.state.toUpperCase());
-      addressLines.push(cityState.join(", "));
+      const parts = [];
+      if (printCheck.city) parts.push(printCheck.city.toUpperCase());
+      if (printCheck.state) parts.push(printCheck.state.toUpperCase());
+      addressLines.push(parts.join(", "));
     }
 
     if (printCheck.country || printCheck.postalCode) {
@@ -1174,235 +1161,252 @@ export default function ManageCheckScreen() {
       addressLines.push(parts.join(", "));
     }
 
-    // Convert Flutter spacing to mm
+    // Dynamic space below address (converted from Flutter)
     let extraMm = 0;
     const lineCount = addressLines.length;
-
     if (lineCount === 0) extraMm = 4;
     else if (lineCount === 1) extraMm = 7;
     else if (lineCount === 2) extraMm = 4;
     else extraMm = 2.5;
 
+    /* -----------------------------
+      TOP OFFSET (you chose 10mm)
+     ----------------------------- */
     const globalTop = 10;
 
     const dateTopMm = globalTop + 10;
     const payeeTopMm = globalTop + 23;
     const wordsTopMm = globalTop + 32;
     const addressTopMm = globalTop + 42;
-
     const memoTopMm = globalTop + 62 + extraMm;
     const detailsTopMm = globalTop + 90 + extraMm;
     const duplicateTopMm = globalTop + 160 + extraMm;
 
-    /* --------------------------------------------------
-     PREP TEXT STRINGS
-     -------------------------------------------------- */
+    /* -----------------------------
+      Prepare values
+     ----------------------------- */
     const formattedDate = format(printCheck.date, "MM/dd/yyyy");
     const totalFormatted = Number(printCheck.totalAmount).toFixed(2);
-
-    // EXACT Flutter format:
-    // "****Five Hundred Eighty and 55/100*******************"
     const amountWordsFormatted = `****${amountToWords(
       Number(printCheck.totalAmount)
     )}*******************`;
 
-    /* --------------------------------------------------
-     CREATE PRINT WINDOW
-     -------------------------------------------------- */
+    /* -----------------------------
+      Open Print Window
+     ----------------------------- */
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
     const html = `
-  <!doctype html>
-  <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Check</title>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Check</title>
 
-      <style>
-        @page { size: A4; margin: 0; }
-        body {
-          margin: 0;
-          padding: 0;
-          background: white;
-          font-family: "Courier New", monospace; /* NO ARIAL */
-          line-height: 1.1;
-        }
+    <style>
+      @page { size: A4; margin: 0; }
 
-        .check-container {
-          width: 210mm;
-          height: 297mm;
-          position: relative;
-        }
+      /* LOAD UNIVERSE FONT */
+      @font-face {
+        font-family: "Univers";
+        src: url("/fonts/UniversRegular.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+      }
 
-        /* Date (top-right) */
-        .date-row {
-          position: absolute;
-          top: ${dateTopMm}mm;
-          right: 15mm;
-          font-size: 10pt;
-        }
+      body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: "Univers", sans-serif;
+        line-height: 1.1;
+      }
 
-        /* Payee + Amount same row */
-        .payee-row {
-          position: absolute;
-          top: ${payeeTopMm}mm;
-          left: 15mm;
-          right: 15mm;
-          font-size: 10pt;
-          text-transform: uppercase;
-          display: flex;
-          justify-content: space-between;
-        }
+      .check-container {
+        width: 210mm;
+        height: 297mm;
+        position: relative;
+        font-family: "Univers", sans-serif;
+      }
 
-        /* Amount in words */
-        .amount-words {
-          position: absolute;
-          top: ${wordsTopMm}mm;
-          left: 15mm;
-          font-size: 10pt;
-        }
+      /* DATE — MOVED RIGHT BY 6mm */
+      .date-row {
+        position: absolute;
+        top: ${dateTopMm}mm;
+        right: 9mm;
+        font-size: 10pt;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-        /* Address */
-        .address-section {
-          position: absolute;
-          top: ${addressTopMm}mm;
-          left: 15mm;
-          font-size: 10pt;
-          text-transform: uppercase;
-        }
-        .address-line { margin: 2px 0; }
+      /* PAYEE + AMOUNT */
+      .payee-row {
+        position: absolute;
+        top: ${payeeTopMm}mm;
+        left: 15mm;
+        right: 9mm;
+        font-size: 10pt;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-        /* Memo */
-        .memo-section {
-          position: absolute;
-          top: ${memoTopMm}mm;
-          left: 15mm;
-          font-size: 11pt;
-        }
+      /* AMOUNT IN WORDS */
+      .amount-words {
+        position: absolute;
+        top: ${wordsTopMm}mm;
+        left: 15mm;
+        font-size: 10pt;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-        /* Middle (original details) */
-        .details-section {
-          position: absolute;
-          top: ${detailsTopMm}mm;
-          left: 15mm;
-          right: 15mm;
-        }
+      /* ADDRESS */
+      .address-section {
+        position: absolute;
+        top: ${addressTopMm}mm;
+        left: 15mm;
+        font-size: 10pt;
+        text-transform: uppercase;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
+      .address-line {
+        margin: 2px 0;
+        font-family: "Univers", sans-serif;
+      }
 
-        .check-header {
-          display: flex;
-          justify-content: space-between;
-          text-transform: uppercase;
-          margin-bottom: 5px;
-          font-size: 12pt;
-        }
+      /* MEMO */
+      .memo-section {
+        position: absolute;
+        top: ${memoTopMm}mm;
+        left: 15mm;
+        font-size: 11pt;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-        .service-line {
-          display: flex;
-          justify-content: space-between;
-          font-size: 13pt;
-          margin: 0;
-        }
+      /* DETAILS SECTION */
+      .details-section {
+        position: absolute;
+        top: ${detailsTopMm}mm;
+        left: 15mm;
+        right: 9mm;
+        font-family: "Univers", sans-serif;
+      }
 
-        .total-line {
-          font-size: 13pt;
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 4px;
-        }
+      .check-header {
+        display: flex;
+        justify-content: space-between;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        font-size: 12pt;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-        /* Duplicate (bottom copy) */
-        .duplicate-section {
-          position: absolute;
-          top: ${duplicateTopMm}mm;
-          left: 15mm;
-          right: 15mm;
-          font-size: 12pt;
-        }
-      </style>
-    </head>
+      .service-line {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13pt;
+        margin: 0;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-    <body>
-      <div class="check-container">
+      .total-line {
+        font-size: 13pt;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 4px;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
 
-        <!-- DATE -->
-        <div class="date-row">${formattedDate}</div>
+      /* DUPLICATE SECTION */
+      .duplicate-section {
+        position: absolute;
+        top: ${duplicateTopMm}mm;
+        left: 15mm;
+        right: 9mm;
+        font-size: 12pt;
+        font-weight: 400;
+        font-family: "Univers", sans-serif;
+      }
+    </style>
+  </head>
 
-        <!-- PAYEE + AMOUNT -->
-        <div class="payee-row">
-          <div>${String(printCheck.userName).toUpperCase()}</div>
-          <div>**${totalFormatted}</div>
-        </div>
+  <body>
+    <div class="check-container">
 
-        <!-- AMOUNT IN WORDS -->
-        <div class="amount-words">${amountWordsFormatted}</div>
+      <div class="date-row">${formattedDate}</div>
 
-        <!-- ADDRESS -->
-        <div class="address-section">
-          ${addressLines
-            .map((l) => `<div class="address-line">${l}</div>`)
-            .join("")}
-        </div>
-
-        <!-- MEMO -->
-        <div class="memo-section">
-          ${printCheck.memoNumber || ""}
-        </div>
-
-        <!-- ORIGINAL DETAILS -->
-        <div class="details-section">
-
-          <div class="check-header">
-            <div>${String(printCheck.userName).toUpperCase()}</div>
-            <div>${formattedDate}</div>
-          </div>
-
-          ${printCheck.serviceDetails
-            .map(
-              (s: ServiceDetail) => `
-              <div class="service-line">
-                <div>${s.serviceName}</div>
-                <div>$${Number(s.amount).toFixed(2)}</div>
-              </div>
-            `
-            )
-            .join("")}
-
-          <div class="total-line">$${totalFormatted}</div>
-        </div>
-
-        <!-- DUPLICATE (BOTTOM) -->
-        <div class="duplicate-section">
-
-          <div class="check-header">
-            <div>${String(printCheck.userName).toUpperCase()}</div>
-            <div>${formattedDate}</div>
-          </div>
-
-          ${printCheck.serviceDetails
-            .map(
-              (s: ServiceDetail) => `
-              <div class="service-line">
-                <div>${s.serviceName}</div>
-                <div>$${Number(s.amount).toFixed(2)}</div>
-              </div>
-            `
-            )
-            .join("")}
-
-          <div class="total-line">$${totalFormatted}</div>
-        </div>
-
+      <div class="payee-row">
+        <div>${String(printCheck.userName).toUpperCase()}</div>
+        <div>**${totalFormatted}</div>
       </div>
 
-      <script>
-        window.onload = function(){
-          setTimeout(() => window.print(), 300);
-        };
-      </script>
-    </body>
-  </html>
-  `;
+      <div class="amount-words">${amountWordsFormatted}</div>
+
+      <div class="address-section">
+        ${addressLines
+          .map((l) => `<div class="address-line">${l}</div>`)
+          .join("")}
+      </div>
+
+      <div class="memo-section">${printCheck.memoNumber || ""}</div>
+
+      <div class="details-section">
+        <div class="check-header">
+          <div>${String(printCheck.userName).toUpperCase()}</div>
+          <div>${formattedDate}</div>
+        </div>
+
+        ${printCheck.serviceDetails
+          .map(
+            (s: ServiceDetail) => `
+          <div class="service-line">
+            <div>${s.serviceName}</div>
+            <div>$${Number(s.amount).toFixed(2)}</div>
+          </div>`
+          )
+          .join("")}
+
+        <div class="total-line">$${totalFormatted}</div>
+      </div>
+
+      <div class="duplicate-section">
+        <div class="check-header">
+          <div>${String(printCheck.userName).toUpperCase()}</div>
+          <div>${formattedDate}</div>
+        </div>
+
+        ${printCheck.serviceDetails
+          .map(
+            (s: ServiceDetail) => `
+          <div class="service-line">
+            <div>${s.serviceName}</div>
+            <div>$${Number(s.amount).toFixed(2)}</div>
+          </div>`
+          )
+          .join("")}
+
+        <div class="total-line">$${totalFormatted}</div>
+      </div>
+
+    </div>
+
+    <script>
+      window.onload = function() {
+        setTimeout(() => window.print(), 300);
+      };
+    </script>
+  </body>
+</html>
+`;
 
     printWindow.document.write(html);
     printWindow.document.close();
@@ -1434,17 +1438,6 @@ export default function ManageCheckScreen() {
       };
     }
   };
-
-  // Helper function to calculate appropriate spacing based on address lines
-  // const calculateAddressHeight = (addressLines: string[]): number => {
-  //   const lineCount = addressLines.filter((line) => line.trim() !== "").length;
-
-  //   // Adjust this value based on your layout needs
-  //   if (lineCount === 0) return 15;
-  //   if (lineCount === 1) return 25;
-  //   if (lineCount === 2) return 15;
-  //   return 10; // for 3 lines
-  // };
 
   if (!user) {
     return <div>Please log in to access the manage team page.</div>;
