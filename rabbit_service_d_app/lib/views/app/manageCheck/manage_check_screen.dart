@@ -281,7 +281,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            margin: pw.EdgeInsets.only(top: -10),
+            margin: pw.EdgeInsets.only(top: -8),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [

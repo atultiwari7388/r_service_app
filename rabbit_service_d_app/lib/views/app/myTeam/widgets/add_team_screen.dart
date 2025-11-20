@@ -527,117 +527,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   ? CircularProgressIndicator()
                   : CustomButton(
                       text: "Add Member",
-                      // onPress: () async {
-                      //   // Common required fields for all roles
-                      //   if (nameController.text.isEmpty ||
-                      //       emailController.text.isEmpty ||
-                      //       phoneController.text.isEmpty ||
-                      //       passController.text.isEmpty ||
-                      //       selectedRole == null) {
-                      //     showToastMessage("Error",
-                      //         "Please fill all required fields", Colors.red);
-                      //     return;
-                      //   } else {
-                      //     if (countryController.text.isEmpty ||
-                      //         stateController.text.isEmpty ||
-                      //         cityController.text.isEmpty) {
-                      //       showToastMessage("Error",
-                      //           "Please fill all required fields", Colors.red);
-                      //       return;
-                      //     }
-                      //   }
-
-                      //   // Additional validation for non-Vendor and non-SubOwner roles
-                      //   if (selectedRole != "Vendor" &&
-                      //       selectedRole != "SubOwner") {
-                      //     if (selectedPayType == null) {
-                      //       showToastMessage("Error",
-                      //           "Please select a pay type", Colors.red);
-                      //       return;
-                      //     }
-
-                      //     // Driver-specific validation
-                      //     if (selectedRole == 'Driver' &&
-                      //         selectedVehicles.isEmpty) {
-                      //       showToastMessage(
-                      //           "Error",
-                      //           "Please assign at least one vehicle",
-                      //           Colors.red);
-                      //       return;
-                      //     }
-                      //   }
-
-                      //   if (selectedRole == 'Driver' &&
-                      //       selectedVehicles.isNotEmpty) {
-                      //     List<Map<String, dynamic>> conflicts =
-                      //         await checkVehicleConflicts(selectedVehicles);
-                      //     if (conflicts.isNotEmpty) {
-                      //       bool confirm = await showDialog(
-                      //         context: context,
-                      //         builder: (context) => AlertDialog(
-                      //           title:
-                      //               const Text("Vehicle Assignment Conflict"),
-                      //           content: SingleChildScrollView(
-                      //             child: Column(
-                      //               mainAxisSize: MainAxisSize.min,
-                      //               crossAxisAlignment:
-                      //                   CrossAxisAlignment.start,
-                      //               children: [
-                      //                 const Text(
-                      //                     "The following vehicles are already assigned to other members:"),
-                      //                 const SizedBox(height: 10),
-                      //                 ...conflicts.map((conflict) => Padding(
-                      //                       padding: const EdgeInsets.symmetric(
-                      //                           vertical: 4.0),
-                      //                       child: Text(
-                      //                         "- ${conflict['vehicle']['companyName']} (${conflict['vehicle']['vehicleNumber']}) is assigned to ${conflict['existingMember']}",
-                      //                         style: const TextStyle(
-                      //                             color: Colors.red),
-                      //                       ),
-                      //                     )),
-                      //                 const SizedBox(height: 20),
-                      //                 const Text(
-                      //                     "Are you sure you want to assign these vehicles to both drivers?"),
-                      //               ],
-                      //             ),
-                      //           ),
-                      //           actions: [
-                      //             TextButton(
-                      //               onPressed: () =>
-                      //                   Navigator.pop(context, false),
-                      //               child: const Text("Cancel"),
-                      //             ),
-                      //             TextButton(
-                      //               onPressed: () =>
-                      //                   Navigator.pop(context, true),
-                      //               child: const Text("Proceed"),
-                      //             ),
-                      //           ],
-                      //         ),
-                      //       );
-
-                      //       if (confirm != true) {
-                      //         return;
-                      //       }
-                      //     }
-                      //   }
-
-                      //   createMemberWithCloudFunction(
-                      //     name: nameController.text,
-                      //     email: emailController.text,
-                      //     phone: phoneController.text,
-                      //     password: passController.text,
-                      //     currentUId: widget.currentUId,
-                      //     selectedRole: selectedRole!,
-                      //     selectedPayType: selectedPayType ?? "",
-                      //     selectedVehicles: selectedVehicles,
-                      //     perMileCharge: perMileChargeController.text,
-                      //     selectedRecordAccess: selectedRecordAccess,
-                      //     selectedChequeAccess: selectedChequeAccess,
-                      //   );
-                      // },
-
-                      // Replace your existing onPress method in the CustomButton with this:
                       onPress: () async {
                         // Common required fields for all roles
                         if (nameController.text.isEmpty ||
@@ -648,17 +537,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           showToastMessage("Error",
                               "Please fill all required fields", Colors.red);
                           return;
-                        }
-
-                        // Additional validation for Vendor role
-                        // if (selectedRole == "Vendor") {
-                        //   if (companyController.text.isEmpty) {
-                        //     showToastMessage("Error", "Please fill company name", Colors.red);
-                        //     return;
-                        //   }
-                        // }
-                        // Additional validation for non-Vendor roles
-                        else {
+                        } else {
                           if (countryController.text.isEmpty ||
                               stateController.text.isEmpty ||
                               cityController.text.isEmpty) {
@@ -670,7 +549,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
 
                         // Additional validation for non-Vendor and non-SubOwner roles
                         if (selectedRole != "Vendor" &&
-                            selectedRole != "SubOwner") {
+                            selectedRole != "SubOwner" &&
+                            selectedRole != "Other Staff") {
                           if (selectedPayType == null) {
                             showToastMessage("Error",
                                 "Please select a pay type", Colors.red);
@@ -799,7 +679,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           );
                         }
                       },
-
                       color: kPrimary,
                     ),
               SizedBox(height: 24.h),
@@ -814,16 +693,9 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // SizedBox(height: 15.h),
-        // buildTextFieldInputWidget(
-        //   "Company Name*",
-        //   TextInputType.text,
-        //   companyController,
-        //   MaterialCommunityIcons.office_building,
-        // ),
         SizedBox(height: 15.h),
         buildTextFieldInputWidget(
-          "Name* / company name*",
+          selectedRole == "Other Staff" ? "Name*" : "Name* / company name*",
           TextInputType.text,
           nameController,
           MaterialCommunityIcons.account,
