@@ -281,7 +281,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            margin: pw.EdgeInsets.only(top: -8),
+            margin: pw.EdgeInsets.only(top: -10),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
@@ -377,8 +377,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                   ),
 
-                pw.SizedBox(height: 65),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 85),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -422,11 +421,28 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         font: universeFont),
                   ),
                 ]),
+                pw.SizedBox(height: 10),
+                pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.start,
+                    children: [
+                      // pw.Text(
+                      //   'Memo Number :',
+                      //   style: pw.TextStyle(
+                      //       fontSize: 13,
+                      //       fontWeight: pw.FontWeight.normal,
+                      //       font: universeFont),
+                      // ),
+                      pw.Text(
+                        '${check['memoNumber'].toString()}',
+                        style: pw.TextStyle(
+                            fontSize: 13,
+                            fontWeight: pw.FontWeight.normal,
+                            font: universeFont),
+                      ),
+                    ]),
 
                 //duplicate section
-                pw.SizedBox(height: 140),
-                // pw.Divider(thickness: 1),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 200),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
@@ -470,6 +486,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                         font: universeFont),
                   ),
                 ]),
+                pw.SizedBox(height: 10),
+                pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.start,
+                    children: [
+                      // pw.Text(
+                      //   'Memo Number :',
+                      //   style: pw.TextStyle(
+                      //       fontSize: 13,
+                      //       fontWeight: pw.FontWeight.normal,
+                      //       font: universeFont),
+                      // ),
+                      pw.Text(
+                        '${check['memoNumber'].toString()}',
+                        style: pw.TextStyle(
+                            fontSize: 13,
+                            fontWeight: pw.FontWeight.normal,
+                            font: universeFont),
+                      ),
+                    ]),
               ],
             ),
           );
@@ -615,9 +650,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      detail['serviceName'],
-                      style: appStyle(14, kDark, FontWeight.normal),
+                    Expanded(
+                      child: Text(
+                        detail['serviceName'],
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: appStyle(14, kDark, FontWeight.normal),
+                      ),
                     ),
                     Text(
                       '\$${detail['amount'].toStringAsFixed(2)}',
@@ -1114,6 +1153,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               children: [
                 TextField(
                   controller: serviceNameController,
+                  maxLength: 70,
                   decoration: InputDecoration(
                     labelText: 'Enter Service Name',
                     labelStyle: appStyle(14, kDark, FontWeight.normal),
