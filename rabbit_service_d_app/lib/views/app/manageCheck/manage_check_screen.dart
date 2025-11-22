@@ -281,11 +281,11 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return pw.Container(
-            margin: pw.EdgeInsets.only(top: -10),
+            margin: pw.EdgeInsets.only(top: -4),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 6),
                 // Date row
                 pw.Row(
                   children: [
@@ -294,7 +294,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.SizedBox(width: 450),
                     pw.Text(
                       DateFormat('MM/dd/yyyy').format(check['date']),
-                      style: pw.TextStyle(fontSize: 10, font: universeFont),
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
                     ),
                   ],
                 ),
@@ -309,7 +309,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       pw.Text(
                         check['userName'].toString().toUpperCase(),
                         style: pw.TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: pw.FontWeight.normal,
                             font: universeFont),
                       ),
@@ -317,7 +317,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       pw.SizedBox(width: 410),
                       pw.Text(
                         '**${check['totalAmount'].toStringAsFixed(2)}',
-                        style: pw.TextStyle(fontSize: 10, font: universeFont),
+                        style: pw.TextStyle(fontSize: 11, font: universeFont),
                       ),
                       // pw.SizedBox(width: 30),
                     ],
@@ -329,7 +329,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   margin: pw.EdgeInsets.only(left: -18, top: -5),
                   child: pw.Text(
                     "****${_amountToWords(check['totalAmount'])}***********",
-                    style: pw.TextStyle(fontSize: 10, font: universeFont),
+                    style: pw.TextStyle(fontSize: 11, font: universeFont),
                   ),
                 ),
                 pw.SizedBox(height: 20),
@@ -340,7 +340,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       streetLine,
-                      style: pw.TextStyle(fontSize: 10, font: universeFont),
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
                     ),
                   ),
 
@@ -349,7 +349,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       cityStateLine,
-                      style: pw.TextStyle(fontSize: 10, font: universeFont),
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
                     ),
                   ),
 
@@ -358,7 +358,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     margin: pw.EdgeInsets.only(left: -15),
                     child: pw.Text(
                       countryZipLine,
-                      style: pw.TextStyle(fontSize: 10, font: universeFont),
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
                     ),
                   ),
 
@@ -422,24 +422,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ),
                 ]),
                 pw.SizedBox(height: 10),
-                pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.start,
-                    children: [
-                      // pw.Text(
-                      //   'Memo Number :',
-                      //   style: pw.TextStyle(
-                      //       fontSize: 13,
-                      //       fontWeight: pw.FontWeight.normal,
-                      //       font: universeFont),
-                      // ),
-                      pw.Text(
-                        '${check['memoNumber'].toString()}',
-                        style: pw.TextStyle(
-                            fontSize: 13,
-                            fontWeight: pw.FontWeight.normal,
-                            font: universeFont),
-                      ),
-                    ]),
+                if (check['memoNumber'] != null)
+                  pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.start,
+                      children: [
+                        // pw.Text(
+                        //   'Memo Number :',
+                        //   style: pw.TextStyle(
+                        //       fontSize: 13,
+                        //       fontWeight: pw.FontWeight.normal,
+                        //       font: universeFont),
+                        // ),
+                        pw.Text(
+                          '${check['memoNumber'].toString()}',
+                          style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.normal,
+                              font: universeFont),
+                        ),
+                      ]),
 
                 //duplicate section
                 pw.SizedBox(height: 200),
@@ -487,24 +488,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   ),
                 ]),
                 pw.SizedBox(height: 10),
-                pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.start,
-                    children: [
-                      // pw.Text(
-                      //   'Memo Number :',
-                      //   style: pw.TextStyle(
-                      //       fontSize: 13,
-                      //       fontWeight: pw.FontWeight.normal,
-                      //       font: universeFont),
-                      // ),
-                      pw.Text(
-                        '${check['memoNumber'].toString()}',
-                        style: pw.TextStyle(
-                            fontSize: 13,
-                            fontWeight: pw.FontWeight.normal,
-                            font: universeFont),
-                      ),
-                    ]),
+                if (check['memoNumber'] != null)
+                  pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.start,
+                      children: [
+                        // pw.Text(
+                        //   'Memo Number :',
+                        //   style: pw.TextStyle(
+                        //       fontSize: 13,
+                        //       fontWeight: pw.FontWeight.normal,
+                        //       font: universeFont),
+                        // ),
+                        pw.Text(
+                          '${check['memoNumber'].toString()}',
+                          style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.normal,
+                              font: universeFont),
+                        ),
+                      ]),
               ],
             ),
           );

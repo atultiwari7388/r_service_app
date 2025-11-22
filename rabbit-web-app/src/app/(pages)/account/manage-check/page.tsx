@@ -875,6 +875,7 @@ export default function ManageCheckScreen() {
         position: relative;
         font-family: "Univers", sans-serif;
         margin-left: -3mm;
+        margin-top: 0.6mm;
       }
 
       /* DATE — MOVED RIGHT BY 6mm */
@@ -1022,6 +1023,16 @@ export default function ManageCheckScreen() {
           </div>`
           )
           .join("")}
+          ${
+            printCheck.memoNumber
+              ? `
+        <div class="service-line">
+          <div>${printCheck.memoNumber}</div>
+        </div>
+`
+              : ""
+          }
+
 
         <div class="total-line">$${totalFormatted}</div>
       </div>
@@ -1041,6 +1052,16 @@ export default function ManageCheckScreen() {
           </div>`
           )
           .join("")}
+          ${
+            printCheck.memoNumber
+              ? `
+      <div class="service-line">
+        <div>${printCheck.memoNumber}</div>
+         </div>
+`
+              : ""
+          }
+
 
         <div class="total-line">$${totalFormatted}</div>
       </div>
