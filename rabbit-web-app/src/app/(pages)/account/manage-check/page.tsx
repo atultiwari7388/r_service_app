@@ -875,7 +875,7 @@ export default function ManageCheckScreen() {
         position: relative;
         font-family: "Univers", sans-serif;
         margin-left: -3mm;
-        margin-top: 0.65mm;
+        margin-top: 0.7mm; /** adjust as needed */
       }
 
       /* DATE — MOVED RIGHT BY 6mm */
