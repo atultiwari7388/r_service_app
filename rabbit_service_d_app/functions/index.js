@@ -900,436 +900,247 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
   }
 );
 
-//daily check functions
+// ======================================================
+// START DAILY DAY CHECK (Triggered when vehicle added)
+// ======================================================
 exports.startDailyDayCheckForUser = functions.https.onCall(
   async (data, context) => {
     const ownerId = data.ownerId;
     const vehicleId = data.vehicleId;
 
-    console.log("🚀 startDailyDayCheckForUser: Starting for:", {
-      ownerId,
-      vehicleId,
-    });
-
     try {
-      // Calculate next check for TOMORROW
-      const now = new Date();
-      const nextCheckDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Exactly 24 hours
-
-      const nextCheckTimestamp =
-        admin.firestore.Timestamp.fromDate(nextCheckDate);
-
-      const docId = `${ownerId}_${vehicleId}`;
-      const userDailyCheckRef = admin
-        .firestore()
-        .collection("UserDailyChecks")
-        .doc(docId);
-
-      await userDailyCheckRef.set({
-        ownerId: ownerId,
-        vehicleId: vehicleId,
-        isActive: true,
-        lastChecked: null,
-        nextCheck: nextCheckTimestamp,
+      await admin.firestore().collection("UserDailyChecks").doc(vehicleId).set({
+        ownerId,
+        vehicleId,
+        services: [], // Will be populated by CRON after 6 hrs
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        totalNotifications: 0,
-        lastNotificationDate: null,
+        lastRunAt: null,
+        status: "active",
       });
 
-      console.log(
-        "✅ startDailyDayCheckForUser: Document created. Next check:",
-        nextCheckDate.toISOString()
-      );
-
-      return { success: true, nextCheck: nextCheckDate.toISOString() };
-    } catch (error) {
-      console.error("❌ startDailyDayCheckForUser: Error:", error);
+      return { success: true };
+    } catch (err) {
+      console.error("Error starting daily check:", err);
       throw new functions.https.HttpsError(
         "internal",
-        "Error starting daily day check"
+        "Error starting daily check"
       );
     }
   }
 );
 
-exports.processUserDailyChecks = functions.pubsub
-  .schedule("every 60 minutes")
-  .onRun(async (context) => {
-    const currentDate = new Date();
-    const currentTimestamp = admin.firestore.Timestamp.fromDate(currentDate);
+// ======================================================
+// CRON JOB — RUNS EVERY 6 HOURS
+// ======================================================
+exports.runDailyDayCronJob = functions.pubsub
+  .schedule("every 1440 minutes")
+  .timeZone("Asia/Kolkata")
+  .onRun(async () => {
+    console.log("Running Daily Day Cron Job...");
 
-    console.log("🚀 CRON JOB: Started at:", currentDate.toISOString());
+    const snap = await admin.firestore().collection("UserDailyChecks").get();
 
-    try {
-      const userChecksSnapshot = await admin
-        .firestore()
-        .collection("UserDailyChecks")
-        .where("isActive", "==", true)
-        .where("nextCheck", "<=", currentTimestamp)
-        .get();
-
-      console.log(`📊 Found ${userChecksSnapshot.size} checks due`);
-
-      if (userChecksSnapshot.empty) {
-        console.log("❌ No checks due");
-        return null;
-      }
-
-      // Process each check SEQUENTIALLY to avoid conflicts
-      for (const checkDoc of userChecksSnapshot.docs) {
-        try {
-          const checkData = checkDoc.data();
-          console.log(
-            `🔄 Processing: ${checkDoc.id}, NextCheck: ${checkData.nextCheck
-              .toDate()
-              .toISOString()}`
-          );
-
-          await processSingleUserDailyCheck(
-            checkData.ownerId,
-            checkData.vehicleId,
-            checkDoc.ref,
-            currentDate
-          );
-
-          console.log(`✅ Completed: ${checkDoc.id}`);
-        } catch (error) {
-          console.error(`❌ Failed: ${checkDoc.id}`, error);
-        }
-      }
-
-      console.log("✅ All checks processed");
+    if (snap.empty) {
+      console.log("No daily checks found.");
       return null;
-    } catch (error) {
-      console.error("❌ Cron job error:", error);
-      throw error;
     }
+
+    for (const doc of snap.docs) {
+      try {
+        await processVehicleDailyCheck(doc.data(), doc.id);
+      } catch (err) {
+        console.error("Cron error:", err);
+      }
+    }
+
+    return null;
   });
 
-async function processSingleUserDailyCheck(
-  ownerId,
-  vehicleId,
-  checkDocRef,
-  currentDate
-) {
-  console.log(
-    `🔄 processSingleUserDailyCheck: Starting for ${ownerId}, ${vehicleId}`
+async function processVehicleDailyCheck(entry, entryId) {
+  const ownerId = entry.ownerId;
+  const vehicleId = entry.vehicleId;
+
+  const ref = admin
+    .firestore()
+    .collection("Users")
+    .doc(ownerId)
+    .collection("Vehicles")
+    .doc(vehicleId);
+
+  const vDoc = await ref.get();
+  if (!vDoc.exists) return;
+
+  const vehicle = vDoc.data();
+  if (!vehicle.services) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dueServices = [];
+
+  // ============================================
+  // SCAN ALL SERVICES INSIDE VEHICLE
+  // ============================================
+  for (const s of vehicle.services) {
+    if ((s.type || "").toLowerCase() !== "day") continue;
+    if (!s.nextNotificationValue) continue;
+
+    let value = s.nextNotificationValue;
+
+    // Skip non-string values like 350, 3, 390 etc.
+    if (typeof value !== "string") continue;
+
+    value = value.trim();
+
+    // Skip invalid date formats
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) continue;
+
+    // ✅ Correct: parse dd/MM/YYYY
+    const [dd, mm, yyyy] = value.split("/").map(Number);
+    const dueDate = new Date(yyyy, mm - 1, dd); // month is zero-indexed
+
+    // Calculate daysRemaining
+    const diffMs = dueDate - today;
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    dueServices.push({
+      serviceId: s.serviceId || null,
+      serviceName: s.serviceName,
+      dueDate: value,
+      daysRemaining,
+    });
+  }
+
+  // Update Firestore with latest services list
+  await admin.firestore().collection("UserDailyChecks").doc(entryId).update({
+    services: dueServices,
+    lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  if (dueServices.length === 0) return;
+
+  // Filter services that must trigger notifications
+  const mustNotify = dueServices.filter(
+    (s) => s.daysRemaining <= 10 && s.daysRemaining >= 0
   );
 
-  try {
-    // STEP 1: Check for notifications
-    const result = await checkDayServicesForVehicle(
-      ownerId,
-      vehicleId,
-      currentDate
-    );
-    console.log(`📊 Check result: ${result.notificationCount} notifications`);
+  if (mustNotify.length === 0) return;
 
-    // STEP 2: Calculate NEXT next check (24 hours from NOW, not from current nextCheck)
-    const nextNextCheckDate = new Date(
-      currentDate.getTime() + 24 * 60 * 60 * 1000
-    );
-    const nextNextCheckTimestamp =
-      admin.firestore.Timestamp.fromDate(nextNextCheckDate);
+  // Send to owner + team
+  const recipients = await getAllRecipients(ownerId, vehicleId);
 
-    console.log(`📅 Scheduling next check:`);
-    console.log(`   Current: ${currentDate.toISOString()}`);
-    console.log(`   Next: ${nextNextCheckDate.toISOString()}`);
-
-    // STEP 3: Update the document with ALL information
-    const updateData = {
-      lastChecked: admin.firestore.Timestamp.fromDate(currentDate),
-      nextCheck: nextNextCheckTimestamp, // This is the KEY FIX - update to next day
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastProcessed: currentDate.toISOString(),
-      hasNotifications: result.hasNotifications,
-      lastNotificationCount: result.notificationCount || 0,
-      lastRecipientCount: result.recipientCount || 0,
-    };
-
-    // If notifications were sent, update notification stats
-    if (result.hasNotifications) {
-      updateData.totalNotifications = admin.firestore.FieldValue.increment(
-        result.notificationCount || 0
-      );
-      updateData.lastNotificationDate =
-        admin.firestore.Timestamp.fromDate(currentDate);
-    }
-
-    console.log(`💾 Updating document:`, JSON.stringify(updateData));
-
-    // STEP 4: Perform the update
-    await checkDocRef.update(updateData);
-
-    // STEP 5: Verify the update
-    const updatedDoc = await checkDocRef.get();
-    const updatedData = updatedDoc.data();
-
-    console.log(`✅ Document updated successfully:`);
-    console.log(
-      `   - New nextCheck: ${updatedData.nextCheck.toDate().toISOString()}`
-    );
-    console.log(
-      `   - Last checked: ${updatedData.lastChecked.toDate().toISOString()}`
-    );
-    console.log(`   - Has notifications: ${updatedData.hasNotifications}`);
-    console.log(`   - Total notifications: ${updatedData.totalNotifications}`);
-
-    return result;
-  } catch (error) {
-    console.error(`❌ Error in processSingleUserDailyCheck:`, error);
-
-    // Still update the document even on error, but mark the error
-    await checkDocRef.update({
-      lastError: error.message,
-      lastErrorAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    throw error;
+  for (const uid of recipients) {
+    await sendDailyReminder(uid, vehicleId, mustNotify, vehicle);
   }
+
+  // Store global log
+  await admin
+    .firestore()
+    .collection("ServiceNotifications")
+    .add({
+      vehicleId,
+      services: mustNotify,
+      triggeredBy: ownerId,
+      recipients: Array.from(recipients),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 }
 
-async function checkDayServicesForVehicle(ownerId, vehicleId, currentDate) {
-  console.log(
-    `🔍 checkDayServicesForVehicle: Checking ${ownerId}, ${vehicleId}`
-  );
+// ======================================================
+// GET OWNER + TEAM MEMBERS WHO HAVE THE VEHICLE
+// ======================================================
+async function getAllRecipients(ownerId, vehicleId) {
+  const set = new Set([ownerId]);
 
-  try {
-    // Get vehicle data
-    const vehicleDoc = await admin
+  const teamSnap = await admin
+    .firestore()
+    .collection("Users")
+    .where("createdBy", "==", ownerId)
+    .where("isTeamMember", "==", true)
+    .get();
+
+  for (const tm of teamSnap.docs) {
+    const memberId = tm.id;
+
+    const veh = await admin
       .firestore()
       .collection("Users")
-      .doc(ownerId)
+      .doc(memberId)
       .collection("Vehicles")
       .doc(vehicleId)
       .get();
 
-    if (!vehicleDoc.exists) {
-      console.log(`❌ Vehicle not found`);
-      return {
-        hasNotifications: false,
-        notificationCount: 0,
-        recipientCount: 0,
-      };
-    }
-
-    const vehicleData = vehicleDoc.data();
-    if (!vehicleData.services || vehicleData.services.length === 0) {
-      console.log(`ℹ️ No services found`);
-      return {
-        hasNotifications: false,
-        notificationCount: 0,
-        recipientCount: 0,
-      };
-    }
-
-    console.log(`🔍 Found ${vehicleData.services.length} services`);
-
-    // Get recipients (owner + team members)
-    const notificationRecipients = new Set([ownerId]);
-
-    const teamMembersSnapshot = await admin
-      .firestore()
-      .collection("Users")
-      .where("createdBy", "==", ownerId)
-      .where("isTeamMember", "==", true)
-      .get();
-
-    for (const memberDoc of teamMembersSnapshot.docs) {
-      const memberId = memberDoc.id;
-      const memberVehicleDoc = await admin
-        .firestore()
-        .collection("Users")
-        .doc(memberId)
-        .collection("Vehicles")
-        .doc(vehicleId)
-        .get();
-      if (memberVehicleDoc.exists) {
-        notificationRecipients.add(memberId);
-      }
-    }
-
-    console.log(`👥 Recipients: ${notificationRecipients.size}`);
-
-    let hasNotifications = false;
-    const serviceNotifications = [];
-
-    // Check each service
-    vehicleData.services.forEach((service) => {
-      const type = (service.type || "reading").toLowerCase();
-      const nextNotificationValue = service.nextNotificationValue;
-
-      if (type !== "day") return;
-      if (!isNaN(nextNotificationValue)) return;
-
-      if (
-        typeof nextNotificationValue === "string" &&
-        nextNotificationValue.includes("/")
-      ) {
-        try {
-          const [day, month, year] = nextNotificationValue
-            .split("/")
-            .map(Number);
-          const notificationDate = new Date(year, month - 1, day);
-          const shouldNotify = currentDate >= notificationDate;
-
-          if (shouldNotify) {
-            hasNotifications = true;
-            serviceNotifications.push({
-              serviceName: service.serviceName,
-              type: type,
-              nextNotificationValue: service.nextNotificationValue,
-              message: `${service.serviceName} for your ${vehicleData.vehicleType} is due!`,
-            });
-            console.log(`🔔 Notification: ${service.serviceName}`);
-          }
-        } catch (error) {
-          console.error(`❌ Date parse error: ${nextNotificationValue}`);
-        }
-      }
-    });
-
-    console.log(`📊 Results: ${serviceNotifications.length} notifications`);
-
-    // Send notifications if any
-    if (hasNotifications && serviceNotifications.length > 0) {
-      console.log(
-        `📨 Sending ${serviceNotifications.length} notifications to ${notificationRecipients.size} recipients`
-      );
-      await sendNotificationsToRecipients(
-        ownerId,
-        vehicleId,
-        vehicleData,
-        serviceNotifications,
-        notificationRecipients
-      );
-    }
-
-    return {
-      hasNotifications: hasNotifications,
-      notificationCount: serviceNotifications.length,
-      recipientCount: notificationRecipients.size,
-    };
-  } catch (error) {
-    console.error(`❌ Error in checkDayServicesForVehicle:`, error);
-    return { hasNotifications: false, notificationCount: 0, recipientCount: 0 };
+    if (veh.exists) set.add(memberId);
   }
+
+  return set;
 }
 
-async function sendNotificationsToRecipients(
-  ownerId,
-  vehicleId,
-  vehicleData,
-  notifications,
-  recipients
-) {
-  console.log(
-    `📨 sendNotificationsToRecipients: Sending to ${recipients.size} recipients`
-  );
+// ======================================================
+// SEND NOTIFICATION TO USER
+// ======================================================
+async function sendDailyReminder(userId, vehicleId, services, vehicleData) {
+  const userDoc = await admin.firestore().collection("Users").doc(userId).get();
+  const user = userDoc.data();
+  if (!user || user.isNotificationOn === false) return;
 
-  const vehicleType = vehicleData.vehicleType;
-  const currentMiles = parseInt(vehicleData.currentMiles || "0");
-  const hoursReading = parseInt(vehicleData.hoursReading || "0");
+  const fcmToken = user.fcmToken;
+  const name = user.userName || "User";
 
-  for (const recipientId of recipients) {
-    try {
-      const recipientDoc = await admin
-        .firestore()
-        .collection("Users")
-        .doc(recipientId)
-        .get();
-      const recipientData = recipientDoc.data();
+  // Prepare notifications array exactly like before
+  const notifications = services.map((s) => ({
+    message:
+      s.daysRemaining === 0
+        ? `${s.serviceName} is due today!`
+        : `${s.serviceName} is due in ${s.daysRemaining} days.`,
+    nextNotificationValue: s.dueDate,
+    serviceName: s.serviceName,
+    type: "day",
+  }));
 
-      if (recipientData.isNotificationOn === false) continue;
-
-      const userName = recipientData.userName || "User";
-      const fcmToken = recipientData.fcmToken;
-
-      // Save to UserNotifications
-      await admin
-        .firestore()
-        .collection("Users")
-        .doc(recipientId)
-        .collection("UserNotifications")
-        .doc()
-        .set({
-          vehicleId: vehicleId,
-          notifications: notifications,
-          date: admin.firestore.FieldValue.serverTimestamp(),
-          isRead: false,
-          message: `Hey ${userName}, ${notifications.length} service${
-            notifications.length > 1 ? "s" : ""
-          } for your ${vehicleType} ${
-            notifications.length > 1 ? "are" : "is"
-          } due!`,
-          currentMiles: vehicleType === "Truck" ? currentMiles : null,
-          hoursReading: vehicleType === "Trailer" ? hoursReading : null,
-        });
-
-      console.log(`✅ Notification saved for: ${recipientId}`);
-
-      // Send FCM if token exists
-      if (fcmToken) {
-        try {
-          await admin.messaging().send({
-            token: fcmToken,
-            notification: {
-              title: "Service Reminder 🚗",
-              body: `Hey ${userName}, ${notifications.length} service${
-                notifications.length > 1 ? "s" : ""
-              } for your ${vehicleType} ${
-                notifications.length > 1 ? "are" : "is"
-              } due!`,
-            },
-            data: {
-              userId: recipientId,
-              vehicleId: vehicleId,
-              type: "service_reminder",
-            },
-          });
-          console.log(`📱 FCM sent to: ${recipientId}`);
-        } catch (fcmError) {
-          console.error(`❌ FCM error for ${recipientId}:`, fcmError.message);
-          // Clean invalid token
-          if (
-            fcmError.code === "messaging/invalid-argument" ||
-            fcmError.code === "messaging/registration-token-not-registered"
-          ) {
-            await admin
-              .firestore()
-              .collection("Users")
-              .doc(recipientId)
-              .update({
-                fcmToken: admin.firestore.FieldValue.delete(),
-              });
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Error notifying ${recipientId}:`, error);
-    }
-  }
-
-  // Save to global notifications
+  // Save to UserNotifications
   await admin
     .firestore()
-    .collection("ServiceNotifications")
-    .doc()
-    .set({
-      vehicleId: vehicleId,
-      notifications: notifications,
+    .collection("Users")
+    .doc(userId)
+    .collection("UserNotifications")
+    .add({
+      vehicleId,
+      notifications,
       date: admin.firestore.FieldValue.serverTimestamp(),
       isRead: false,
-      message: `Vehicle services need attention for vehicle ${vehicleId}`,
-      currentMiles: vehicleType === "Truck" ? currentMiles : 0,
-      hoursReading: vehicleType === "Trailer" ? hoursReading : 0,
-      triggeredBy: "daily_cron_job",
-      recipients: Array.from(recipients),
+      message: `Hey ${userName}, some of your vehicle services need attention.`,
+      currentMiles: vehicleData.currentMiles || null,
+      hoursReading: vehicleData.hoursReading || null,
     });
 
-  console.log(`✅ All notifications sent successfully`);
+  // Send FCM
+  if (fcmToken) {
+    try {
+      await admin.messaging().send({
+        token: fcmToken,
+        notification: {
+          title: "Service Reminder 🚛",
+          body: notifications[0].message,
+        },
+        data: {
+          type: "daily_day_service",
+          userId,
+          vehicleId,
+        },
+      });
+    } catch (err) {
+      console.error("FCM error:", err.code, err.message);
+      if (
+        err.code === "messaging/invalid-argument" ||
+        err.code === "messaging/registration-token-not-registered"
+      ) {
+        await userDoc.ref.update({
+          fcmToken: admin.firestore.FieldValue.delete(),
+        });
+      }
+    }
+  }
 }
 
 // Function to send a new notification to the nearby Mechanics when a job is created
