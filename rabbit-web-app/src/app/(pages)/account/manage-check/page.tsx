@@ -1541,13 +1541,36 @@ export default function ManageCheckScreen() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Service Name
                       </label>
-                      <input
+                      {/* <input
                         type="text"
                         value={serviceName}
                         onChange={(e) => setServiceName(e.target.value)}
                         placeholder="Enter service description"
                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                      />
+                      /> */}
+                      <div>
+                        <input
+                          type="text"
+                          value={serviceName}
+                          onChange={(e) => {
+                            const text = e.target.value;
+                            const words = text.trim().split(/\s+/);
+
+                            if (words.length <= 70) {
+                              setServiceName(text);
+                            }
+                          }}
+                          placeholder="Enter service description"
+                          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                        />
+
+                        <p className="text-sm text-gray-500 mt-1">
+                          {serviceName.trim() === ""
+                            ? 0
+                            : serviceName.trim().split(/\s+/).length}
+                          /70 words
+                        </p>
+                      </div>
                     </div>
 
                     <div>
