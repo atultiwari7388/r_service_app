@@ -343,6 +343,7 @@
 
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -427,55 +428,6 @@ class _EntryScreenState extends State<EntryScreen>
   }
 
   // CHECK FOR APP UPDATE (MAIN LOGIC)
-  // Future<void> checkAppUpdate() async {
-  //   try {
-  //     final doc = await FirebaseFirestore.instance
-  //         .collection('metadata')
-  //         .doc('versions')
-  //         .get();
-
-  //     if (!doc.exists) return;
-
-  //     final data = doc.data();
-  //     if (data == null) return;
-
-  //     final latestVersion = data["android"]?.toString() ?? "";
-
-  //     if (latestVersion.isEmpty) return;
-
-  //     final info = await PackageInfo.fromPlatform();
-  //     final currentVersion = "${info.version}+${info.buildNumber}";
-
-  //     log("Current Version: $currentVersion, Latest Version: $latestVersion");
-
-  //     if (currentVersion != latestVersion) {
-  //       WidgetsBinding.instance.addPostFrameCallback((_) {
-  //         showDialog(
-  //           context: context,
-  //           barrierDismissible: false,
-  //           builder: (_) => AlertDialog(
-  //             title: const Text("Update Available"),
-  //             content: Text(
-  //                 "A newer version ($latestVersion) of the app is available. Please update to continue."),
-  //             actions: [
-  //               TextButton(
-  //                 onPressed: () {
-  //                   launchUrl(Uri.parse(
-  //                       "https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app"));
-  //                 },
-  //                 child: const Text("Update Now"),
-  //               ),
-  //             ],
-  //           ),
-  //         );
-  //       });
-  //     }
-  //   } catch (e) {
-  //     debugPrint("Error checking app update: $e");
-  //   }
-  // }
-
-  // CHECK FOR APP UPDATE (MAIN LOGIC)
   Future<void> checkAppUpdate() async {
     try {
       final doc = await FirebaseFirestore.instance
@@ -488,7 +440,10 @@ class _EntryScreenState extends State<EntryScreen>
       final data = doc.data();
       if (data == null) return;
 
-      final latestVersion = data["android"]?.toString() ?? "";
+      // final latestVersion = data["android"]?.toString() ?? "";
+      final latestVersion = Platform.isIOS
+          ? data["ios"]?.toString() ?? ""
+          : data["android"]?.toString() ?? "";
 
       if (latestVersion.isEmpty) return;
 
@@ -769,12 +724,12 @@ class _EntryScreenState extends State<EntryScreen>
   void _setupUserStatusListener() {
     if (_currentUser == null) return;
 
-    final userIdToListen =
-        _userRole == 'SubOwner' ? _effectiveUserId : _currentUser!.uid;
+    // final userIdToListen =
+    //     _userRole == 'SubOwner' ? _effectiveUserId : _currentUser!.uid;
 
     _userStatusSubscription = FirebaseFirestore.instance
         .collection('Users')
-        .doc(userIdToListen)
+        .doc(_currentUser!.uid)
         .snapshots()
         .listen((snapshot) {
       if (snapshot.exists) {

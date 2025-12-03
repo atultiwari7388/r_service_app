@@ -1089,6 +1089,9 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                               String vehicleNumber = doc['vehicleNumber'];
                               String companyName = doc['companyName'];
                               String loadValue = doc['loadType'];
+                              String trailerCompanyName =
+                                  doc['trailerCompanyName'];
+                              String trailerNumber = doc['trailerNumber'];
 
                               return FutureBuilder<QuerySnapshot>(
                                 future: FirebaseFirestore.instance
@@ -1128,6 +1131,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                       vehicleNumber,
                                       companyName,
                                       loadValue,
+                                      trailerCompanyName,
+                                      trailerNumber,
                                     );
                                   }
 
@@ -1155,6 +1160,8 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                                     vehicleNumber,
                                     companyName,
                                     loadValue,
+                                    trailerCompanyName,
+                                    trailerNumber,
                                   );
                                 },
                               );
@@ -1179,24 +1186,25 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
   }
 
   GestureDetector buildTripCard(
-    QueryDocumentSnapshot<Object?> doc,
-    String formattedStartDate,
-    num tripStartMiles,
-    String tripStatus,
-    String formattedEndDate,
-    num tripEndMiles,
-    num totalMiles,
-    num earnings,
-    bool isPaid,
-    num totalExpenses,
-    BuildContext context,
-    String role,
-    num oEarnings,
-    String vehicleID,
-    String vehicleNumber,
-    String companyName,
-    String loadValue,
-  ) {
+      QueryDocumentSnapshot<Object?> doc,
+      String formattedStartDate,
+      num tripStartMiles,
+      String tripStatus,
+      String formattedEndDate,
+      num tripEndMiles,
+      num totalMiles,
+      num earnings,
+      bool isPaid,
+      num totalExpenses,
+      BuildContext context,
+      String role,
+      num oEarnings,
+      String vehicleID,
+      String vehicleNumber,
+      String companyName,
+      String loadValue,
+      String trailerCompanyName,
+      String trailerNumber) {
     // Check if google miles data exists
     bool hasGoogleMiles = doc['googleMiles'] != null;
     num googleMiles = hasGoogleMiles ? doc['googleMiles'] : 0;
@@ -1226,6 +1234,17 @@ class _ManageTripsScreenState extends State<ManageTripsScreen> {
                 Container(),
               ],
             ),
+            SizedBox(height: 10.h),
+            if (trailerCompanyName.isNotEmpty && trailerNumber.isNotEmpty) ...[
+              Row(
+                children: [
+                  Text("${trailerNumber} (${trailerCompanyName})",
+                      textAlign: TextAlign.left,
+                      style: appStyle(14, kPrimary, FontWeight.w500)),
+                  Container(),
+                ],
+              ),
+            ],
             SizedBox(height: 10.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

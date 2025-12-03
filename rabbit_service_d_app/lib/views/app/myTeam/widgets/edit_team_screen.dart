@@ -59,6 +59,9 @@ class _EditTeamMemberState extends State<EditTeamMember> {
   List<Map<String, dynamic>> ownerVehicles = [];
   List<Map<String, dynamic>> memberVehicles = [];
   List<dynamic> selectedVehicles = [];
+  String? selectedPayType;
+
+  List<String> payTypeModes = [];
 
   // UI display names
   List<String> roleDisplayNames = [
@@ -93,6 +96,12 @@ class _EditTeamMemberState extends State<EditTeamMember> {
     super.initState();
     _loadMemberData();
     fetchOwnerVehiclesDetails();
+    payTypeModes = [
+      "Per Mile",
+      "Per Trip",
+      "Per Hour",
+      "Per Month",
+    ];
   }
 
   Future<void> _loadMemberData() async {
@@ -124,6 +133,7 @@ class _EditTeamMemberState extends State<EditTeamMember> {
         lastDrugTest = memberDoc['lastDrugTestDate']?.toDate();
         dateOfHire = memberDoc['dateOfHire']?.toDate();
         dateOfTermination = memberDoc['dateOfTermination']?.toDate();
+        selectedPayType = memberDoc['payMode'] ?? null;
 
         // Role and permissions
         selectedRole = memberDoc['role'];
@@ -472,6 +482,38 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                             }).toList(),
                           ),
                         ],
+                      ),
+                    ],
+
+                    if (selectedRole != null &&
+                        selectedRole != "Vendor" &&
+                        selectedRole != "Other Staff" &&
+                        selectedRole != "SubOwner") ...[
+                      //payment type access
+                      Text(
+                        "Assign Payment Type Access",
+                        style: appStyle(16, Colors.black, FontWeight.bold),
+                      ),
+                      SizedBox(height: 10.h),
+                      Divider(),
+
+                      Padding(
+                        padding: const EdgeInsets.only(left: 10, right: 10),
+                        child: DropdownButtonFormField<String>(
+                          hint: Text("Select Pay Type"),
+                          value: selectedPayType,
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              selectedPayType = newValue;
+                            });
+                          },
+                          items: payTypeModes.map((String payMode) {
+                            return DropdownMenuItem<String>(
+                              value: payMode,
+                              child: Text(payMode),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ],
 

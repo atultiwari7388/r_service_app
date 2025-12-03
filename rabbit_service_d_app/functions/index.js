@@ -762,13 +762,30 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
               vehicleType === "Trailer" &&
               hoursReading >= nextNotificationValue;
             break;
+          // case "day":
+          //   if (createdAt) {
+          //     const notificationDate = new Date(createdAt);
+          //     notificationDate.setDate(
+          //       notificationDate.getDate() + nextNotificationValue
+          //     );
+          //     shouldNotify = currentDate >= notificationDate;
+          //   }
+          //   break;
+
           case "day":
-            if (createdAt) {
-              const notificationDate = new Date(createdAt);
-              notificationDate.setDate(
-                notificationDate.getDate() + nextNotificationValue
-              );
-              shouldNotify = currentDate >= notificationDate;
+            if (service.nextNotificationValue) {
+              const dateStr = service.nextNotificationValue.trim();
+              const [dd, mm, yyyy] = dateStr.split("/").map(Number);
+
+              const dueDate = new Date(yyyy, mm - 1, dd);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+
+              const diffMs = dueDate - today;
+              const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+              // Notify when 15 days or less remain (and not expired)
+              shouldNotify = daysRemaining <= 15 && daysRemaining >= 0;
             }
             break;
         }
@@ -900,248 +917,248 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
   }
 );
 
-// ======================================================
-// START DAILY DAY CHECK (Triggered when vehicle added)
-// ======================================================
-exports.startDailyDayCheckForUser = functions.https.onCall(
-  async (data, context) => {
-    const ownerId = data.ownerId;
-    const vehicleId = data.vehicleId;
+// // ======================================================
+// // START DAILY DAY CHECK (Triggered when vehicle added)
+// // ======================================================
+// exports.startDailyDayCheckForUser = functions.https.onCall(
+//   async (data, context) => {
+//     const ownerId = data.ownerId;
+//     const vehicleId = data.vehicleId;
 
-    try {
-      await admin.firestore().collection("UserDailyChecks").doc(vehicleId).set({
-        ownerId,
-        vehicleId,
-        services: [], // Will be populated by CRON after 6 hrs
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        lastRunAt: null,
-        status: "active",
-      });
+//     try {
+//       await admin.firestore().collection("UserDailyChecks").doc(vehicleId).set({
+//         ownerId,
+//         vehicleId,
+//         services: [], // Will be populated by CRON after 6 hrs
+//         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+//         lastRunAt: null,
+//         status: "active",
+//       });
 
-      return { success: true };
-    } catch (err) {
-      console.error("Error starting daily check:", err);
-      throw new functions.https.HttpsError(
-        "internal",
-        "Error starting daily check"
-      );
-    }
-  }
-);
+//       return { success: true };
+//     } catch (err) {
+//       console.error("Error starting daily check:", err);
+//       throw new functions.https.HttpsError(
+//         "internal",
+//         "Error starting daily check"
+//       );
+//     }
+//   }
+// );
 
-// ======================================================
-// CRON JOB — RUNS EVERY 1440  minutes (24 hours)
-// ======================================================
-exports.runDailyDayCronJob = functions.pubsub
-  .schedule("every 1440 minutes")
-  .timeZone("Asia/Kolkata")
-  .onRun(async () => {
-    console.log("Running Daily Day Cron Job...");
+// // ======================================================
+// // CRON JOB — RUNS EVERY 1440  minutes (24 hours)
+// // ======================================================
+// exports.runDailyDayCronJob = functions.pubsub
+//   .schedule("every 1440 minutes")
+//   .timeZone("Asia/Kolkata")
+//   .onRun(async () => {
+//     console.log("Running Daily Day Cron Job...");
 
-    const snap = await admin.firestore().collection("UserDailyChecks").get();
+//     const snap = await admin.firestore().collection("UserDailyChecks").get();
 
-    if (snap.empty) {
-      console.log("No daily checks found.");
-      return null;
-    }
+//     if (snap.empty) {
+//       console.log("No daily checks found.");
+//       return null;
+//     }
 
-    for (const doc of snap.docs) {
-      try {
-        await processVehicleDailyCheck(doc.data(), doc.id);
-      } catch (err) {
-        console.error("Cron error:", err);
-      }
-    }
+//     for (const doc of snap.docs) {
+//       try {
+//         await processVehicleDailyCheck(doc.data(), doc.id);
+//       } catch (err) {
+//         console.error("Cron error:", err);
+//       }
+//     }
 
-    return null;
-  });
+//     return null;
+//   });
 
-async function processVehicleDailyCheck(entry, entryId) {
-  const ownerId = entry.ownerId;
-  const vehicleId = entry.vehicleId;
+// async function processVehicleDailyCheck(entry, entryId) {
+//   const ownerId = entry.ownerId;
+//   const vehicleId = entry.vehicleId;
 
-  const ref = admin
-    .firestore()
-    .collection("Users")
-    .doc(ownerId)
-    .collection("Vehicles")
-    .doc(vehicleId);
+//   const ref = admin
+//     .firestore()
+//     .collection("Users")
+//     .doc(ownerId)
+//     .collection("Vehicles")
+//     .doc(vehicleId);
 
-  const vDoc = await ref.get();
-  if (!vDoc.exists) return;
+//   const vDoc = await ref.get();
+//   if (!vDoc.exists) return;
 
-  const vehicle = vDoc.data();
-  if (!vehicle.services) return;
+//   const vehicle = vDoc.data();
+//   if (!vehicle.services) return;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
 
-  const dueServices = [];
+//   const dueServices = [];
 
-  // ============================================
-  // SCAN ALL SERVICES INSIDE VEHICLE
-  // ============================================
-  for (const s of vehicle.services) {
-    if ((s.type || "").toLowerCase() !== "day") continue;
-    if (!s.nextNotificationValue) continue;
+//   // ============================================
+//   // SCAN ALL SERVICES INSIDE VEHICLE
+//   // ============================================
+//   for (const s of vehicle.services) {
+//     if ((s.type || "").toLowerCase() !== "day") continue;
+//     if (!s.nextNotificationValue) continue;
 
-    let value = s.nextNotificationValue;
+//     let value = s.nextNotificationValue;
 
-    // Skip non-string values like 350, 3, 390 etc.
-    if (typeof value !== "string") continue;
+//     // Skip non-string values like 350, 3, 390 etc.
+//     if (typeof value !== "string") continue;
 
-    value = value.trim();
+//     value = value.trim();
 
-    // Skip invalid date formats
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) continue;
+//     // Skip invalid date formats
+//     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) continue;
 
-    // ✅ Correct: parse dd/MM/YYYY
-    const [dd, mm, yyyy] = value.split("/").map(Number);
-    const dueDate = new Date(yyyy, mm - 1, dd); // month is zero-indexed
+//     // ✅ Correct: parse dd/MM/YYYY
+//     const [dd, mm, yyyy] = value.split("/").map(Number);
+//     const dueDate = new Date(yyyy, mm - 1, dd); // month is zero-indexed
 
-    // Calculate daysRemaining
-    const diffMs = dueDate - today;
-    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+//     // Calculate daysRemaining
+//     const diffMs = dueDate - today;
+//     const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    dueServices.push({
-      serviceId: s.serviceId || null,
-      serviceName: s.serviceName,
-      dueDate: value,
-      daysRemaining,
-    });
-  }
+//     dueServices.push({
+//       serviceId: s.serviceId || null,
+//       serviceName: s.serviceName,
+//       dueDate: value,
+//       daysRemaining,
+//     });
+//   }
 
-  // Update Firestore with latest services list
-  await admin.firestore().collection("UserDailyChecks").doc(entryId).update({
-    services: dueServices,
-    lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+//   // Update Firestore with latest services list
+//   await admin.firestore().collection("UserDailyChecks").doc(entryId).update({
+//     services: dueServices,
+//     lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
+//   });
 
-  if (dueServices.length === 0) return;
+//   if (dueServices.length === 0) return;
 
-  // Filter services that must trigger notifications
-  const mustNotify = dueServices.filter(
-    (s) => s.daysRemaining <= 10 && s.daysRemaining >= 0
-  );
+//   // Filter services that must trigger notifications
+//   const mustNotify = dueServices.filter(
+//     (s) => s.daysRemaining <= 10 && s.daysRemaining >= 0
+//   );
 
-  if (mustNotify.length === 0) return;
+//   if (mustNotify.length === 0) return;
 
-  // Send to owner + team
-  const recipients = await getAllRecipients(ownerId, vehicleId);
+//   // Send to owner + team
+//   const recipients = await getAllRecipients(ownerId, vehicleId);
 
-  for (const uid of recipients) {
-    await sendDailyReminder(uid, vehicleId, mustNotify, vehicle);
-  }
+//   for (const uid of recipients) {
+//     await sendDailyReminder(uid, vehicleId, mustNotify, vehicle);
+//   }
 
-  // Store global log
-  await admin
-    .firestore()
-    .collection("ServiceNotifications")
-    .add({
-      vehicleId,
-      services: mustNotify,
-      triggeredBy: ownerId,
-      recipients: Array.from(recipients),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-}
+//   // Store global log
+//   await admin
+//     .firestore()
+//     .collection("ServiceNotifications")
+//     .add({
+//       vehicleId,
+//       services: mustNotify,
+//       triggeredBy: ownerId,
+//       recipients: Array.from(recipients),
+//       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+//     });
+// }
 
-// ======================================================
-// GET OWNER + TEAM MEMBERS WHO HAVE THE VEHICLE
-// ======================================================
-async function getAllRecipients(ownerId, vehicleId) {
-  const set = new Set([ownerId]);
+// // ======================================================
+// // GET OWNER + TEAM MEMBERS WHO HAVE THE VEHICLE
+// // ======================================================
+// async function getAllRecipients(ownerId, vehicleId) {
+//   const set = new Set([ownerId]);
 
-  const teamSnap = await admin
-    .firestore()
-    .collection("Users")
-    .where("createdBy", "==", ownerId)
-    .where("isTeamMember", "==", true)
-    .get();
+//   const teamSnap = await admin
+//     .firestore()
+//     .collection("Users")
+//     .where("createdBy", "==", ownerId)
+//     .where("isTeamMember", "==", true)
+//     .get();
 
-  for (const tm of teamSnap.docs) {
-    const memberId = tm.id;
+//   for (const tm of teamSnap.docs) {
+//     const memberId = tm.id;
 
-    const veh = await admin
-      .firestore()
-      .collection("Users")
-      .doc(memberId)
-      .collection("Vehicles")
-      .doc(vehicleId)
-      .get();
+//     const veh = await admin
+//       .firestore()
+//       .collection("Users")
+//       .doc(memberId)
+//       .collection("Vehicles")
+//       .doc(vehicleId)
+//       .get();
 
-    if (veh.exists) set.add(memberId);
-  }
+//     if (veh.exists) set.add(memberId);
+//   }
 
-  return set;
-}
+//   return set;
+// }
 
-// ======================================================
-// SEND NOTIFICATION TO USER
-// ======================================================
-async function sendDailyReminder(userId, vehicleId, services, vehicleData) {
-  const userDoc = await admin.firestore().collection("Users").doc(userId).get();
-  const user = userDoc.data();
-  if (!user || user.isNotificationOn === false) return;
+// // ======================================================
+// // SEND NOTIFICATION TO USER
+// // ======================================================
+// async function sendDailyReminder(userId, vehicleId, services, vehicleData) {
+//   const userDoc = await admin.firestore().collection("Users").doc(userId).get();
+//   const user = userDoc.data();
+//   if (!user || user.isNotificationOn === false) return;
 
-  const fcmToken = user.fcmToken;
-  const name = user.userName || "User";
+//   const fcmToken = user.fcmToken;
+//   const name = user.userName || "User";
 
-  // Prepare notifications array exactly like before
-  const notifications = services.map((s) => ({
-    message:
-      s.daysRemaining === 0
-        ? `${s.serviceName} is due today!`
-        : `${s.serviceName} is due in ${s.daysRemaining} days.`,
-    nextNotificationValue: s.dueDate,
-    serviceName: s.serviceName,
-    type: "day",
-  }));
+//   // Prepare notifications array exactly like before
+//   const notifications = services.map((s) => ({
+//     message:
+//       s.daysRemaining === 0
+//         ? `${s.serviceName} is due today!`
+//         : `${s.serviceName} is due in ${s.daysRemaining} days.`,
+//     nextNotificationValue: s.dueDate,
+//     serviceName: s.serviceName,
+//     type: "day",
+//   }));
 
-  // Save to UserNotifications
-  await admin
-    .firestore()
-    .collection("Users")
-    .doc(userId)
-    .collection("UserNotifications")
-    .add({
-      vehicleId,
-      notifications,
-      date: admin.firestore.FieldValue.serverTimestamp(),
-      isRead: false,
-      message: `Hey ${name}, some of your vehicle services need attention.`,
-      currentMiles: vehicleData.currentMiles || null,
-      hoursReading: vehicleData.hoursReading || null,
-    });
+//   // Save to UserNotifications
+//   await admin
+//     .firestore()
+//     .collection("Users")
+//     .doc(userId)
+//     .collection("UserNotifications")
+//     .add({
+//       vehicleId,
+//       notifications,
+//       date: admin.firestore.FieldValue.serverTimestamp(),
+//       isRead: false,
+//       message: `Hey ${name}, some of your vehicle services need attention.`,
+//       currentMiles: vehicleData.currentMiles || null,
+//       hoursReading: vehicleData.hoursReading || null,
+//     });
 
-  // Send FCM
-  if (fcmToken) {
-    try {
-      await admin.messaging().send({
-        token: fcmToken,
-        notification: {
-          title: "Service Reminder 🚛",
-          body: notifications[0].message,
-        },
-        data: {
-          type: "daily_day_service",
-          userId,
-          vehicleId,
-        },
-      });
-    } catch (err) {
-      console.error("FCM error:", err.code, err.message);
-      if (
-        err.code === "messaging/invalid-argument" ||
-        err.code === "messaging/registration-token-not-registered"
-      ) {
-        await userDoc.ref.update({
-          fcmToken: admin.firestore.FieldValue.delete(),
-        });
-      }
-    }
-  }
-}
+//   // Send FCM
+//   if (fcmToken) {
+//     try {
+//       await admin.messaging().send({
+//         token: fcmToken,
+//         notification: {
+//           title: "Service Reminder 🚛",
+//           body: notifications[0].message,
+//         },
+//         data: {
+//           type: "daily_day_service",
+//           userId,
+//           vehicleId,
+//         },
+//       });
+//     } catch (err) {
+//       console.error("FCM error:", err.code, err.message);
+//       if (
+//         err.code === "messaging/invalid-argument" ||
+//         err.code === "messaging/registration-token-not-registered"
+//       ) {
+//         await userDoc.ref.update({
+//           fcmToken: admin.firestore.FieldValue.delete(),
+//         });
+//       }
+//     }
+//   }
+// }
 
 // Function to send a new notification to the nearby Mechanics when a job is created
 exports.sendNewMechanicNotification = functions.firestore

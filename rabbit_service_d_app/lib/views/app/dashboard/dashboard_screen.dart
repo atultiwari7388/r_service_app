@@ -157,7 +157,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     FindMechanic(
                         controller: controller,
                         setTab: widget.setTab,
-                        currentUId: effectiveUserId),
+                        currentUId: controller.role == 'SubOwner'
+                            ? controller.ownerId
+                            : currentUId),
                     SizedBox(height: 12.h),
                     // Quick Search Section
                     Align(

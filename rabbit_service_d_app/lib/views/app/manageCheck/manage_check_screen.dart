@@ -519,7 +519,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     );
   }
 
-  // Helper function to calculate appropriate spacing based on address lines
   double _calculateAddressHeight(
       String street, String cityState, String countryZip) {
     int lineCount = 0;
@@ -534,13 +533,91 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     return 10; // for 3 lines
   }
 
+  // String _amountToWords(num amount) {
+  //   final wholePart = amount.floor();
+  //   final decimalPart = ((amount - wholePart) * 100).round();
+
+  //   String wholeWords = _numberToWords(wholePart);
+
+  //   // Format decimal part as fraction (e.g., "82/100")
+  //   String decimalFraction = '${decimalPart.toString().padLeft(2, '0')}/100';
+
+  //   return '$wholeWords and $decimalFraction********';
+  // }
+
+  // String _numberToWords(int number) {
+  //   if (number == 0) return 'Zero';
+
+  //   final units = [
+  //     '',
+  //     'One',
+  //     'Two',
+  //     'Three',
+  //     'Four',
+  //     'Five',
+  //     'Six',
+  //     'Seven',
+  //     'Eight',
+  //     'Nine'
+  //   ];
+  //   final teens = [
+  //     'Ten',
+  //     'Eleven',
+  //     'Twelve',
+  //     'Thirteen',
+  //     'Fourteen',
+  //     'Fifteen',
+  //     'Sixteen',
+  //     'Seventeen',
+  //     'Eighteen',
+  //     'Nineteen'
+  //   ];
+  //   final tens = [
+  //     '',
+  //     'Ten',
+  //     'Twenty',
+  //     'Thirty',
+  //     'Forty',
+  //     'Fifty',
+  //     'Sixty',
+  //     'Seventy',
+  //     'Eighty',
+  //     'Ninety'
+  //   ];
+
+  //   String words = '';
+
+  //   if ((number / 1000).floor() > 0) {
+  //     words += _numberToWords((number / 1000).floor()) + ' Thousand ';
+  //     number %= 1000;
+  //   }
+
+  //   if ((number / 100).floor() > 0) {
+  //     words += _numberToWords((number / 100).floor()) + ' Hundred ';
+  //     number %= 100;
+  //   }
+
+  //   if (number > 0) {
+  //     if (number < 10) {
+  //       words += units[number];
+  //     } else if (number < 20) {
+  //       words += teens[number - 10];
+  //     } else {
+  //       words += tens[(number / 10).floor()];
+  //       if ((number % 10) > 0) {
+  //         words += ' ' + units[number % 10];
+  //       }
+  //     }
+  //   }
+
+  //   return words.trim();
+  // }
+
   String _amountToWords(num amount) {
     final wholePart = amount.floor();
     final decimalPart = ((amount - wholePart) * 100).round();
 
     String wholeWords = _numberToWords(wholePart);
-
-    // Format decimal part as fraction (e.g., "82/100")
     String decimalFraction = '${decimalPart.toString().padLeft(2, '0')}/100';
 
     return '$wholeWords and $decimalFraction********';
@@ -561,6 +638,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       'Eight',
       'Nine'
     ];
+
     final teens = [
       'Ten',
       'Eleven',
@@ -573,6 +651,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       'Eighteen',
       'Nineteen'
     ];
+
     final tens = [
       '',
       'Ten',
@@ -588,16 +667,31 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
     String words = '';
 
-    if ((number / 1000).floor() > 0) {
+    // 👉 Ten Million
+    if (number >= 10000000) {
+      words += _numberToWords((number / 10000000).floor()) + ' Ten Million ';
+      number %= 10000000;
+    }
+
+    // 👉 Million
+    if (number >= 1000000) {
+      words += _numberToWords((number / 1000000).floor()) + ' Million ';
+      number %= 1000000;
+    }
+
+    // 👉 Thousands
+    if (number >= 1000) {
       words += _numberToWords((number / 1000).floor()) + ' Thousand ';
       number %= 1000;
     }
 
-    if ((number / 100).floor() > 0) {
+    // 👉 Hundreds
+    if (number >= 100) {
       words += _numberToWords((number / 100).floor()) + ' Hundred ';
       number %= 100;
     }
 
+    // 👉 Tens and Units
     if (number > 0) {
       if (number < 10) {
         words += units[number];
