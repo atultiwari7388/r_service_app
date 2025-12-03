@@ -906,7 +906,7 @@ export default function ManageCheckScreen() {
       .date-row {
         position: absolute;
         top: ${dateTopMm}mm;
-        right: 9mm;
+        right: 10mm;   /* was 9mm → moved 1mm more right */
         font-size: 11pt;
         font-weight: 400;
         font-family: "Univers", sans-serif;
