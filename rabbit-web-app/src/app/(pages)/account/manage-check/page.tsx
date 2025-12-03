@@ -867,7 +867,7 @@ export default function ManageCheckScreen() {
         background: white;
         font-family: "Univers", sans-serif;
         line-height: 1.1;
-        padding-top: 5mm;
+        padding-top: 7mm;
       }
 
       .check-container {

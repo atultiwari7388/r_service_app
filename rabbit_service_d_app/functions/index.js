@@ -930,7 +930,7 @@ exports.startDailyDayCheckForUser = functions.https.onCall(
 );
 
 // ======================================================
-// CRON JOB — RUNS EVERY 6 HOURS
+// CRON JOB — RUNS EVERY 1440  minutes (24 hours)
 // ======================================================
 exports.runDailyDayCronJob = functions.pubsub
   .schedule("every 1440 minutes")
@@ -1109,7 +1109,7 @@ async function sendDailyReminder(userId, vehicleId, services, vehicleData) {
       notifications,
       date: admin.firestore.FieldValue.serverTimestamp(),
       isRead: false,
-      message: `Hey ${userName}, some of your vehicle services need attention.`,
+      message: `Hey ${name}, some of your vehicle services need attention.`,
       currentMiles: vehicleData.currentMiles || null,
       hoursReading: vehicleData.hoursReading || null,
     });
