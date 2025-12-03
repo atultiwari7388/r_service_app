@@ -725,6 +725,7 @@ export default function ManageCheckScreen() {
         "Eight",
         "Nine",
       ];
+
       const teens = [
         "Ten",
         "Eleven",
@@ -737,9 +738,10 @@ export default function ManageCheckScreen() {
         "Eighteen",
         "Nineteen",
       ];
+
       const tens = [
         "",
-        "Ten",
+        "",
         "Twenty",
         "Thirty",
         "Forty",
@@ -752,10 +754,12 @@ export default function ManageCheckScreen() {
 
       function underThousand(n: number): string {
         let w = "";
+
         if (Math.floor(n / 100) > 0) {
           w += units[Math.floor(n / 100)] + " Hundred ";
           n %= 100;
         }
+
         if (n > 0) {
           if (n < 10) w += units[n];
           else if (n < 20) w += teens[n - 10];
@@ -764,16 +768,35 @@ export default function ManageCheckScreen() {
             if (n % 10 > 0) w += " " + units[n % 10];
           }
         }
+
         return w.trim();
       }
 
-      let w = "";
-      if (Math.floor(num / 1000) > 0) {
-        w += underThousand(Math.floor(num / 1000)) + " Thousand ";
+      let words = "";
+
+      const billions = Math.floor(num / 1_000_000_000);
+      if (billions > 0) {
+        words += underThousand(billions) + " Billion ";
+        num %= 1_000_000_000;
+      }
+
+      const millions = Math.floor(num / 1_000_000);
+      if (millions > 0) {
+        words += underThousand(millions) + " Million ";
+        num %= 1_000_000;
+      }
+
+      const thousands = Math.floor(num / 1000);
+      if (thousands > 0) {
+        words += underThousand(thousands) + " Thousand ";
         num %= 1000;
       }
-      if (num > 0) w += underThousand(num);
-      return w.trim();
+
+      if (num > 0) {
+        words += underThousand(num);
+      }
+
+      return words.trim();
     }
 
     function amountToWords(amount: number): string {
