@@ -1027,8 +1027,8 @@ export default function ManageCheckScreen() {
       .payee-row {
         position: absolute;
         top: ${payeeTopMm}mm;
-        left: 25mm;      /* was 15mm → moved 10mm more left */
-        right: 12mm;    /* was 10mm → moved 2mm left */
+        left: 35mm;     /* 25 was 15mm → moved 10mm more left */
+        right: 10mm;    /* was 10mm → moved 2mm left */
         font-size: 11pt;
         text-transform: uppercase;
         display: flex;
