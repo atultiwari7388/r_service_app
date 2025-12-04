@@ -1593,9 +1593,9 @@ export default function ManageCheckScreen() {
                       className="grid grid-cols-1 md:grid-cols-2 gap-4"
                     >
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {/* <label className="block text-sm font-medium text-gray-700 mb-1">
                           Service Name
-                        </label>
+                        </label> */}
                         <input
                           type="text"
                           value={detail.serviceName}
@@ -1622,9 +1622,9 @@ export default function ManageCheckScreen() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {/* <label className="block text-sm font-medium text-gray-700 mb-1">
                           Amount
-                        </label>
+                        </label> */}
                         <input
                           type="number"
                           step="0.01"
