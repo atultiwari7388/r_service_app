@@ -1594,7 +1594,7 @@ export default function ManageCheckScreen() {
                     >
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Service Name {index + 1}
+                          Service Name
                         </label>
                         <input
                           type="text"
@@ -1610,7 +1610,7 @@ export default function ManageCheckScreen() {
                               setServiceDetails(newDetails);
                             }
                           }}
-                          placeholder={`Enter service ${index + 1} description`}
+                          placeholder={`Enter service description`}
                           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                         />
                         <p className="text-sm text-gray-500 mt-1">
@@ -1623,7 +1623,7 @@ export default function ManageCheckScreen() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount {index + 1}
+                          Amount
                         </label>
                         <input
                           type="number"
