@@ -906,7 +906,7 @@ export default function ManageCheckScreen() {
       .date-row {
         position: absolute;
         top: ${dateTopMm}mm;
-        right: 13mm;   /* was 9mm → moved 1mm more right */
+        right: 10mm;   /* was 9mm → moved 1mm more right */
         font-size: 11pt;
         font-weight: 400;
         font-family: "Univers", sans-serif;
@@ -917,7 +917,7 @@ export default function ManageCheckScreen() {
         position: absolute;
         top: ${payeeTopMm}mm;
         left: 25mm;      /* was 15mm → moved 10mm more left */
-        right: 10mm;    /* was 9mm → moved 2mm left */
+        right: 12mm;    /* was 10mm → moved 2mm left */
         font-size: 11pt;
         text-transform: uppercase;
         display: flex;
