@@ -30,11 +30,11 @@ import {
   FiPrinter,
   FiUser,
   FiCalendar,
-  FiClock,
+  // FiClock,
   FiList,
   FiEdit2,
   FiFileText,
-  FiTrash2,
+  // FiTrash2,
   FiSave,
   FiHash,
 } from "react-icons/fi";
@@ -110,10 +110,10 @@ export default function ManageCheckScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [showAddDetail, setShowAddDetail] = useState<boolean>(false);
-  const [serviceName, setServiceName] = useState<string>("");
-  const [amount, setAmount] = useState<string>("");
+  // const [serviceName, setServiceName] = useState<string>("");
+  // const [amount, setAmount] = useState<string>("");
   const [unpaidTrips, setUnpaidTrips] = useState<Trip[]>([]);
-  const [driverUnpaidTotal, setDriverUnpaidTotal] = useState<number>(0);
+  // const [driverUnpaidTotal, setDriverUnpaidTotal] = useState<number>(0);
   const [checkNumber, setCheckNumber] = useState<string>("");
   const [currentCheckNumber, setCurrentCheckNumber] = useState<string | null>(
     null
@@ -322,6 +322,18 @@ export default function ManageCheckScreen() {
       fetchChecks();
     }
   }, [filterType, startDate, endDate, effectiveUserId, isCheque]);
+
+  useEffect(() => {
+    // Calculate total whenever serviceDetails changes
+    const total = serviceDetails.reduce((sum, detail) => {
+      // Only add to total if service name is not empty
+      if (detail.serviceName.trim() !== "") {
+        return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+      }
+      return sum;
+    }, 0);
+    setTotalAmount(total);
+  }, [serviceDetails]);
 
   const generateCheckNumbers = (start: string, end: string): string[] => {
     const checkNumbers: string[] = [];
@@ -538,6 +550,31 @@ export default function ManageCheckScreen() {
     }
   };
 
+  // const handleWriteCheck = async () => {
+  //   if (isAnonymous && !isProfileComplete) {
+  //     GlobalToastError("Please create an account to write checks.");
+  //     return;
+  //   }
+
+  //   setSelectedType(null);
+  //   setSelectedUserId(null);
+  //   setSelectedUserName(null);
+  //   setServiceDetails([]);
+  //   setMemoNumber("");
+  //   setSelectedDate(new Date());
+  //   setTotalAmount(0);
+
+  //   const nextCheckNumber = await getNextAvailableCheckNumber();
+  //   if (nextCheckNumber) {
+  //     setCheckNumber(nextCheckNumber);
+  //     setShowWriteCheck(true);
+  //   } else {
+  //     GlobalToastError(
+  //       "No available check numbers. Please add a check series first."
+  //     );
+  //   }
+  // };
+
   const handleWriteCheck = async () => {
     if (isAnonymous && !isProfileComplete) {
       GlobalToastError("Please create an account to write checks.");
@@ -547,7 +584,14 @@ export default function ManageCheckScreen() {
     setSelectedType(null);
     setSelectedUserId(null);
     setSelectedUserName(null);
-    setServiceDetails([]);
+    // Initialize with 5 empty service details
+    setServiceDetails([
+      { serviceName: "", amount: 0 },
+      { serviceName: "", amount: 0 },
+      { serviceName: "", amount: 0 },
+      { serviceName: "", amount: 0 },
+      { serviceName: "", amount: 0 },
+    ]);
     setMemoNumber("");
     setSelectedDate(new Date());
     setTotalAmount(0);
@@ -563,85 +607,150 @@ export default function ManageCheckScreen() {
     }
   };
 
+  // const handleCancelWriteCheck = () => {
+  //   setShowWriteCheck(false);
+  //   setSelectedType(null);
+  //   setSelectedUserId(null);
+  //   setSelectedUserName(null);
+  //   setServiceDetails([]);
+  //   setMemoNumber("");
+  //   setSelectedDate(new Date());
+  //   setTotalAmount(0);
+  //   // setShowAddDetail(false);
+  // };
   const handleCancelWriteCheck = () => {
     setShowWriteCheck(false);
     setSelectedType(null);
     setSelectedUserId(null);
     setSelectedUserName(null);
-    setServiceDetails([]);
+    setServiceDetails([]); // Reset to empty array
     setMemoNumber("");
     setSelectedDate(new Date());
     setTotalAmount(0);
     setShowAddDetail(false);
   };
 
-  const handleAddDetail = () => {
-    setServiceName("");
-    setAmount("");
-    setUnpaidTrips([]);
-    setDriverUnpaidTotal(0);
+  // const handleAddDetail = () => {
+  //   setServiceName("");
+  //   setAmount("");
+  //   setUnpaidTrips([]);
+  //   setDriverUnpaidTotal(0);
 
-    if (selectedType === "Driver" && selectedUserId) {
-      fetchUnpaidTrips();
-    }
+  //   if (selectedType === "Driver" && selectedUserId) {
+  //     fetchUnpaidTrips();
+  //   }
 
-    setShowAddDetail(true);
-  };
+  //   setShowAddDetail(true);
+  // };
 
-  const fetchUnpaidTrips = async () => {
-    try {
-      if (!selectedUserId) return;
+  // const fetchUnpaidTrips = async () => {
+  //   try {
+  //     if (!selectedUserId) return;
 
-      const tripsQuery = query(
-        collection(db, "Users", selectedUserId, "trips"),
-        where("isPaid", "==", false)
-      );
+  //     const tripsQuery = query(
+  //       collection(db, "Users", selectedUserId, "trips"),
+  //       where("isPaid", "==", false)
+  //     );
 
-      const snapshot = await getDocs(tripsQuery);
-      const trips: Trip[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        tripName: doc.data().tripName || "Unnamed Trip",
-        oEarnings: doc.data().oEarnings || 0,
-      }));
+  //     const snapshot = await getDocs(tripsQuery);
+  //     const trips: Trip[] = snapshot.docs.map((doc) => ({
+  //       id: doc.id,
+  //       tripName: doc.data().tripName || "Unnamed Trip",
+  //       oEarnings: doc.data().oEarnings || 0,
+  //     }));
 
-      const total = trips.reduce((sum, trip) => sum + trip.oEarnings, 0);
-      setUnpaidTrips(trips);
-      setDriverUnpaidTotal(total);
-      setAmount(total.toFixed(2));
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  //     const total = trips.reduce((sum, trip) => sum + trip.oEarnings, 0);
+  //     setUnpaidTrips(trips);
+  //     setDriverUnpaidTotal(total);
+  //     setAmount(total.toFixed(2));
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // };
 
-  const saveDetail = () => {
-    if (!serviceName || !amount) {
-      GlobalToastError("Please fill all fields");
-      return;
-    }
+  // const saveDetail = () => {
+  //   if (!serviceName || !amount) {
+  //     GlobalToastError("Please fill all fields");
+  //     return;
+  //   }
 
-    const newDetail: ServiceDetail = {
-      serviceName,
-      amount: parseFloat(amount),
-    };
+  //   const newDetail: ServiceDetail = {
+  //     serviceName,
+  //     amount: parseFloat(amount),
+  //   };
 
-    setServiceDetails([...serviceDetails, newDetail]);
-    calculateTotal([...serviceDetails, newDetail]);
-    setShowAddDetail(false);
-  };
+  //   setServiceDetails([...serviceDetails, newDetail]);
+  //   calculateTotal([...serviceDetails, newDetail]);
+  //   setShowAddDetail(false);
+  // };
 
-  const calculateTotal = (details: ServiceDetail[]) => {
-    const total = details.reduce((sum, detail) => sum + detail.amount, 0);
-    setTotalAmount(total);
-  };
+  // const calculateTotal = (details: ServiceDetail[]) => {
+  //   const total = details.reduce((sum, detail) => sum + detail.amount, 0);
+  //   setTotalAmount(total);
+  // };
+
+  // const saveCheck = async () => {
+  //   if (
+  //     !selectedUserId ||
+  //     serviceDetails.length === 0 ||
+  //     !effectiveUserId ||
+  //     !checkNumber
+  //   ) {
+  //     GlobalToastError("Please fill all required fields");
+  //     return;
+  //   }
+
+  //   try {
+  //     const checkData = {
+  //       checkNumber: checkNumber,
+  //       type: selectedType,
+  //       userId: selectedUserId,
+  //       userName: selectedUserName,
+  //       serviceDetails: serviceDetails,
+  //       totalAmount: totalAmount,
+  //       memoNumber: memoNumber || null,
+  //       date: Timestamp.fromDate(selectedDate),
+  //       createdBy: effectiveUserId,
+  //       createdAt: serverTimestamp(),
+  //     };
+
+  //     await addDoc(collection(db, "Checks"), checkData);
+
+  //     await updateCheckNumberUsage(checkNumber);
+
+  //     if (selectedType === "Driver") {
+  //       const batch = writeBatch(db);
+  //       // unpaidTrips.forEach((trip) => {
+  //       //   const tripRef = doc(db, "Users", selectedUserId, "trips", trip.id);
+  //       //   batch.update(tripRef, { isPaid: true });
+  //       // });
+  //       await batch.commit();
+  //     }
+
+  //     GlobalToastSuccess("Check created successfully!");
+  //     handleCancelWriteCheck();
+  //     fetchChecks();
+  //   } catch (error) {
+  //     console.error(error);
+  //     GlobalToastError("Error saving check");
+  //   }
+  // };
 
   const saveCheck = async () => {
+    // Filter out empty service details
+    const nonEmptyDetails = serviceDetails.filter(
+      (detail) => detail.serviceName.trim() !== "" && detail.amount > 0
+    );
+
     if (
       !selectedUserId ||
-      serviceDetails.length === 0 ||
+      nonEmptyDetails.length === 0 ||
       !effectiveUserId ||
       !checkNumber
     ) {
-      GlobalToastError("Please fill all required fields");
+      GlobalToastError(
+        "Please fill at least one service detail with a valid amount"
+      );
       return;
     }
 
@@ -651,7 +760,7 @@ export default function ManageCheckScreen() {
         type: selectedType,
         userId: selectedUserId,
         userName: selectedUserName,
-        serviceDetails: serviceDetails,
+        serviceDetails: nonEmptyDetails, // Use only non-empty details
         totalAmount: totalAmount,
         memoNumber: memoNumber || null,
         date: Timestamp.fromDate(selectedDate),
@@ -681,12 +790,12 @@ export default function ManageCheckScreen() {
     }
   };
 
-  const removeServiceDetail = (index: number) => {
-    const newDetails = [...serviceDetails];
-    newDetails.splice(index, 1);
-    setServiceDetails(newDetails);
-    calculateTotal(newDetails);
-  };
+  // const removeServiceDetail = (index: number) => {
+  //   const newDetails = [...serviceDetails];
+  //   newDetails.splice(index, 1);
+  //   setServiceDetails(newDetails);
+  //   calculateTotal(newDetails);
+  // };
 
   const handlePrint = async (check: Check) => {
     // Fetch address if missing
@@ -1466,187 +1575,93 @@ export default function ManageCheckScreen() {
           {selectedUserId && (
             <>
               <div className="mb-6">
-                <button
-                  type="button"
-                  onClick={handleAddDetail}
-                  className="flex items-center px-5 py-2.5 bg-white border border-[#F96176] text-[#F96176] rounded-full shadow-sm hover:bg-[#F96176]/10 transition-all"
-                >
-                  <FiPlus className="mr-2" />
-                  Add Service Detail
-                </button>
-              </div>
-
-              {serviceDetails.length > 0 && (
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex items-center mb-4">
-                    <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
-                      <FiList className="text-[#F96176]" />
-                    </div>
-                    <h4 className="text-lg font-semibold text-gray-800">
-                      Service Details
-                    </h4>
+                <div className="flex items-center mb-4">
+                  <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+                    <FiList className="text-[#F96176]" />
                   </div>
-
-                  <div className="space-y-3 mb-6">
-                    {serviceDetails.map((detail, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
-                      >
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {detail.serviceName}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            ${detail.amount.toFixed(2)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => removeServiceDetail(index)}
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-all"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                    <span className="text-lg font-semibold text-gray-800">
-                      Total:
-                    </span>
-                    <span className="text-2xl font-bold text-[#F96176]">
-                      ${totalAmount.toFixed(2)}
-                    </span>
-                  </div>
+                  <h4 className="text-lg font-semibold text-gray-800">
+                    Service Details (Fill at least one)
+                  </h4>
                 </div>
-              )}
 
-              {showAddDetail && (
-                <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-800">
-                      Add Service Detail
-                    </h4>
-                    <button
-                      onClick={() => setShowAddDetail(false)}
-                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+                <div className="space-y-4 mb-6">
+                  {serviceDetails.map((detail, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
                     >
-                      <FiX size={16} />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Service Name
-                      </label>
-                      {/* <input
-                        type="text"
-                        value={serviceName}
-                        onChange={(e) => setServiceName(e.target.value)}
-                        placeholder="Enter service description"
-                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                      /> */}
                       <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Service Name {index + 1}
+                        </label>
                         <input
                           type="text"
-                          value={serviceName}
+                          value={detail.serviceName}
                           onChange={(e) => {
+                            const newDetails = [...serviceDetails];
                             const text = e.target.value;
                             const words = text.trim().split(/\s+/);
 
+                            // Limit to 70 words
                             if (words.length <= 70) {
-                              setServiceName(text);
+                              newDetails[index].serviceName = text;
+                              setServiceDetails(newDetails);
                             }
                           }}
-                          placeholder="Enter service description"
+                          placeholder={`Enter service ${index + 1} description`}
                           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                         />
-
                         <p className="text-sm text-gray-500 mt-1">
-                          {serviceName.trim() === ""
+                          {detail.serviceName.trim() === ""
                             ? 0
-                            : serviceName.trim().split(/\s+/).length}
+                            : detail.serviceName.trim().split(/\s+/).length}
                           /70 words
                         </p>
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Amount
-                      </label>
-                      <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="Enter amount"
-                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                      />
-                    </div>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Amount {index + 1}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={detail.amount === 0 ? "" : detail.amount}
+                          onChange={(e) => {
+                            const newDetails = [...serviceDetails];
+                            const value = e.target.value;
+                            newDetails[index].amount =
+                              value === "" ? 0 : parseFloat(value);
+                            setServiceDetails(newDetails);
 
-                  {selectedType === "Driver" && unpaidTrips.length > 0 && (
-                    <div className="mt-6">
-                      <div className="flex items-center mb-3">
-                        <div className="bg-yellow-100 p-2 rounded-full mr-3">
-                          <FiClock className="text-yellow-600" />
-                        </div>
-                        <h5 className="text-md font-semibold text-gray-800">
-                          Unpaid Trips
-                        </h5>
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        {unpaidTrips.map((trip, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg"
-                          >
-                            <span className="text-gray-700">
-                              {trip.tripName}
-                            </span>
-                            <span className="font-semibold text-gray-800">
-                              ${trip.oEarnings.toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="p-3 bg-yellow-100 rounded-lg text-yellow-800">
-                        <span className="font-semibold">Total Unpaid:</span> $
-                        {driverUnpaidTotal.toFixed(2)}
-                      </div>
-
-                      {/* Add this button to use the unpaid trips total */}
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          onClick={() =>
-                            setAmount(driverUnpaidTotal.toFixed(2))
-                          }
-                          className="px-4 py-2 bg-[#F96176] text-white rounded-lg hover:bg-[#F96176]/80 transition-all"
-                        >
-                          Use Unpaid Total
-                        </button>
+                            // Calculate total after each change
+                            const total = newDetails.reduce((sum, d) => {
+                              // Only add to total if service name is not empty
+                              if (d.serviceName.trim() !== "") {
+                                return sum + (isNaN(d.amount) ? 0 : d.amount);
+                              }
+                              return sum;
+                            }, 0);
+                            setTotalAmount(total);
+                          }}
+                          placeholder="Enter amount"
+                          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                        />
                       </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+              </div>
 
-                  <div className="flex justify-end space-x-3 mt-6">
-                    <button
-                      onClick={() => setShowAddDetail(false)}
-                      className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveDetail}
-                      className="px-8 py-2.5 bg-[#F96176] rounded-full shadow-sm text-white hover:bg-[#F96176]/80 transition-all"
-                    >
-                      Add Detail
-                    </button>
-                  </div>
+              {/* Show total amount */}
+              {totalAmount > 0 && (
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
+                  <span className="text-lg font-semibold text-gray-800">
+                    Total Amount:
+                  </span>
+                  <span className="text-2xl font-bold text-[#F96176]">
+                    ${totalAmount.toFixed(2)}
+                  </span>
                 </div>
               )}
 
@@ -1660,9 +1675,17 @@ export default function ManageCheckScreen() {
                 </button>
                 <button
                   onClick={saveCheck}
-                  disabled={serviceDetails.length === 0}
+                  disabled={
+                    !serviceDetails.some(
+                      (detail) =>
+                        detail.serviceName.trim() !== "" && detail.amount > 0
+                    )
+                  }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    serviceDetails.length === 0
+                    !serviceDetails.some(
+                      (detail) =>
+                        detail.serviceName.trim() !== "" && detail.amount > 0
+                    )
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-[#F96176] hover:bg-[#F96176]/80"
                   } text-white`}
