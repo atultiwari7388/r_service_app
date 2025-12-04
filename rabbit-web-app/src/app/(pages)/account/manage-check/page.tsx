@@ -600,6 +600,8 @@ export default function ManageCheckScreen() {
     if (nextCheckNumber) {
       setCheckNumber(nextCheckNumber);
       setShowWriteCheck(true);
+      console.log(`Next check number: ${showAddDetail}`);
+      console.log(`Service details initialized: ${setUnpaidTrips}`);
     } else {
       GlobalToastError(
         "No available check numbers. Please add a check series first."
