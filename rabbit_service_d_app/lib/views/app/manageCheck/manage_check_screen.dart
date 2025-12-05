@@ -52,15 +52,15 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   String? _currentCheckNumber;
   String? _nextCheckNumber;
 
-  // Get effective user ID based on role
-  // String get _effectiveUserId {
-  //   return role == 'SubOwner' ? _ownerId! : currentUId;
-  // }
-
   String get _effectiveUserId {
     final rolesThatUseOwnerId = ['SubOwner', 'Manager', 'Accountant'];
     return rolesThatUseOwnerId.contains(role) ? _ownerId! : currentUId;
   }
+
+  // Edit Check variables
+  bool _isEditing = false;
+  String? _editingCheckId;
+  String? _editingCheckNumber;
 
   @override
   void initState() {
@@ -637,6 +637,362 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     return words.trim();
   }
 
+  Future<void> _showEditCheckDialog(Map<String, dynamic> check) async {
+    setState(() {
+      _isEditing = true;
+      _editingCheckId = check['id'];
+      _editingCheckNumber = check['checkNumber'].toString();
+      _selectedType = check['type'];
+      _selectedUserId = check['userId'];
+      _selectedUserName = check['userName'];
+      _serviceDetails.clear();
+      _serviceDetails
+          .addAll(List<Map<String, dynamic>>.from(check['serviceDetails']));
+      _memoNumberController.text = check['memoNumber'] ?? '';
+      _selectedDate = check['date'];
+      _totalAmount = (check['totalAmount'] as num).toDouble();
+      _calculateTotal();
+    });
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Edit Check',
+                  style: appStyle(18, kDark, FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(height: 16),
+                    TextField(
+                      controller:
+                          TextEditingController(text: _editingCheckNumber),
+                      decoration: InputDecoration(
+                        labelText: 'Check Number',
+                        labelStyle: appStyle(14, kDark, FontWeight.normal),
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.grey[200],
+                      ),
+                      readOnly: true,
+                      enabled: false,
+                    ),
+                    SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: 'Select Type',
+                        labelStyle: appStyle(14, kDark, FontWeight.normal),
+                        border: OutlineInputBorder(),
+                      ),
+                      value: _selectedType,
+                      items: <String>[
+                        'Manager',
+                        'Accountant',
+                        'Driver',
+                        'Vendor',
+                        'Other Staff'
+                      ]
+                          .map<DropdownMenuItem<String>>(
+                              (String type) => DropdownMenuItem<String>(
+                                    value: type,
+                                    child: Text(type),
+                                  ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedType = value;
+                          _selectedUserId = null;
+                          _selectedUserName = null;
+                        });
+                      },
+                      validator: (value) => value == null ? 'Required' : null,
+                    ),
+                    SizedBox(height: 16),
+                    if (_selectedType != null)
+                      DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Select Name',
+                          labelStyle: appStyle(14, kDark, FontWeight.normal),
+                          border: OutlineInputBorder(),
+                        ),
+                        value: _selectedUserId,
+                        items: _allMembers
+                            .where((member) => member['role'] == _selectedType)
+                            .map<DropdownMenuItem<String>>(
+                                (member) => DropdownMenuItem<String>(
+                                      value: member['memberId'],
+                                      child: Text(member['name']),
+                                    ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedUserId = value;
+                            _selectedUserName = _allMembers.firstWhere(
+                                (member) =>
+                                    member['memberId'] == value)['name'];
+                          });
+                        },
+                        validator: (value) => value == null ? 'Required' : null,
+                      ),
+                    SizedBox(height: 16),
+                    if (_selectedUserId != null)
+                      Column(
+                        children: [
+                          CustomButton(
+                            text: "Add Detail",
+                            onPress: () {
+                              _showAddDetailDialog(context, setState);
+                            },
+                            color: kPrimary,
+                          ),
+                          SizedBox(height: 16),
+                        ],
+                      ),
+                    if (_serviceDetails.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Service Details:',
+                              style: appStyle(14, kDark, FontWeight.bold)),
+                          SizedBox(height: 8),
+                          ..._serviceDetails.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final detail = entry.value;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${detail['serviceName']}: \$${detail['amount']}',
+                                      style: appStyle(
+                                          12, kDark, FontWeight.normal),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: kPrimary),
+                                    onPressed: () {
+                                      _showEditDetailDialog(
+                                          context, setState, index);
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () {
+                                      setState(() {
+                                        _serviceDetails.removeAt(index);
+                                        _calculateTotal();
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                          SizedBox(height: 8),
+                          Divider(),
+                          Text('Total: \$$_totalAmount',
+                              style: appStyle(14, kDark, FontWeight.bold)),
+                          SizedBox(height: 16),
+                        ],
+                      ),
+                    TextField(
+                      controller: _memoNumberController,
+                      decoration: InputDecoration(
+                        labelText: 'Memo Number (Optional)',
+                        labelStyle: appStyle(14, kDark, FontWeight.normal),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text('Date: ',
+                            style: appStyle(14, kDark, FontWeight.normal)),
+                        TextButton(
+                          onPressed: () async {
+                            final DateTime? picked = await showDatePicker(
+                              context: context,
+                              initialDate: _selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null && picked != _selectedDate) {
+                              setState(() {
+                                _selectedDate = picked;
+                              });
+                            }
+                          },
+                          child: Text(
+                            DateFormat('MM/dd/yyyy').format(_selectedDate),
+                            style: appStyle(14, kPrimary, FontWeight.normal),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _resetForm();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel',
+                      style: appStyle(14, kDark, FontWeight.normal)),
+                ),
+                ElevatedButton(
+                  onPressed: _serviceDetails.isEmpty ? null : _updateCheck,
+                  style:
+                      ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  child: Text('Update Check',
+                      style: appStyle(14, kWhite, FontWeight.normal)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditDetailDialog(
+      BuildContext context, StateSetter setState, int index) {
+    final detail = _serviceDetails[index];
+    final TextEditingController serviceNameController =
+        TextEditingController(text: detail['serviceName']);
+    final TextEditingController amountController =
+        TextEditingController(text: detail['amount'].toString());
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Service Detail',
+              style: appStyle(16, kDark, FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: serviceNameController,
+                  maxLength: 70,
+                  decoration: InputDecoration(
+                    labelText: 'Enter Service Name',
+                    labelStyle: appStyle(14, kDark, FontWeight.normal),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  controller: amountController,
+                  decoration: InputDecoration(
+                    labelText: 'Enter Amount',
+                    labelStyle: appStyle(14, kDark, FontWeight.normal),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child:
+                  Text('Cancel', style: appStyle(14, kDark, FontWeight.normal)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (serviceNameController.text.isEmpty ||
+                    amountController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please fill all fields')),
+                  );
+                  return;
+                }
+
+                setState(() {
+                  _serviceDetails[index] = {
+                    'serviceName': serviceNameController.text,
+                    'amount': double.parse(amountController.text),
+                  };
+                  _calculateTotal();
+                });
+
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
+              child: Text('Update',
+                  style: appStyle(14, kWhite, FontWeight.normal)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateCheck() async {
+    if (_editingCheckId == null ||
+        _selectedUserId == null ||
+        _serviceDetails.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please fill all required fields')),
+      );
+      return;
+    }
+
+    try {
+      // Update check document
+      await FirebaseFirestore.instance
+          .collection('Checks')
+          .doc(_editingCheckId)
+          .update({
+        'type': _selectedType,
+        'userId': _selectedUserId,
+        'userName': _selectedUserName,
+        'serviceDetails': _serviceDetails,
+        'totalAmount': _totalAmount,
+        'memoNumber': _memoNumberController.text.isEmpty
+            ? null
+            : _memoNumberController.text,
+        'date': _selectedDate,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Check updated successfully')),
+      );
+
+      _resetForm();
+      Navigator.of(context).pop();
+      await fetchChecks();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating check: $e')),
+      );
+    }
+  }
+
+  void _resetForm() {
+    setState(() {
+      _isEditing = false;
+      _editingCheckId = null;
+      _editingCheckNumber = null;
+      _selectedType = null;
+      _selectedUserId = null;
+      _selectedUserName = null;
+      _serviceDetails.clear();
+      _memoNumberController.clear();
+      _selectedDate = DateTime.now();
+      _totalAmount = 0.0;
+    });
+  }
+
   Widget _buildCheckCard(Map<String, dynamic> check) {
     final numberFormat = NumberFormat("#,##0.00", "en_US");
     final formattedTotal = numberFormat.format(check['totalAmount']);
@@ -662,6 +1018,13 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   DateFormat('MMM dd, yyyy').format(check['date']),
                   style: appStyle(14, kGray, FontWeight.normal),
                 ),
+                if (role == "Owner" || role == "SubOwner") ...[
+                  SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.edit, color: Colors.orange, size: 20),
+                    onPressed: () => _showEditCheckDialog(check),
+                  ),
+                ],
               ],
             ),
             SizedBox(height: 8),
