@@ -2153,7 +2153,7 @@ export default function ManageCheckScreen() {
                     <span className="text-sm text-gray-500">
                       {format(check.date, "MMM dd, yyyy")}
                     </span>
-                    {(role === "Owner" || role === "Sub-Owner") && (
+                    {(role === "Owner" || role === "SubOwner") && (
                       <button
                         onClick={() => handleEditCheck(check.id)}
                         className="p-2 bg-yellow-100 rounded-full hover:bg-yellow-200 transition-all"
