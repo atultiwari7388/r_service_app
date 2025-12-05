@@ -17,6 +17,7 @@
 //   writeBatch,
 //   orderBy,
 //   updateDoc,
+//   getDoc,
 // } from "firebase/firestore";
 // import React, { useEffect, useState } from "react";
 // import DatePicker from "react-datepicker";
@@ -29,12 +30,13 @@
 //   FiPrinter,
 //   FiUser,
 //   FiCalendar,
-//   FiClock,
+//   // FiClock,
 //   FiList,
 //   FiEdit2,
 //   FiFileText,
-//   FiTrash2,
+//   // FiTrash2,
 //   FiSave,
+//   FiHash,
 // } from "react-icons/fi";
 // import { FaFileAlt } from "react-icons/fa";
 
@@ -70,6 +72,11 @@
 //   totalAmount: number;
 //   memoNumber?: string;
 //   date: Date;
+//   address: string;
+//   city: string;
+//   state: string;
+//   country: string;
+//   postalCode: string;
 //   createdBy: string;
 //   createdAt: string;
 // }
@@ -77,8 +84,9 @@
 // interface CheckSeries {
 //   id: string;
 //   userId: string;
-//   startNumber: number;
-//   endNumber: number;
+//   startNumber: string;
+//   endNumber: string;
+//   totalChecks: number;
 //   createdAt: Date;
 // }
 
@@ -102,12 +110,9 @@
 //   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 //   const [totalAmount, setTotalAmount] = useState<number>(0);
 //   const [showAddDetail, setShowAddDetail] = useState<boolean>(false);
-//   const [serviceName, setServiceName] = useState<string>("");
-//   const [amount, setAmount] = useState<string>("");
 //   const [unpaidTrips, setUnpaidTrips] = useState<Trip[]>([]);
-//   const [driverUnpaidTotal, setDriverUnpaidTotal] = useState<number>(0);
 //   const [checkNumber, setCheckNumber] = useState<string>("");
-//   const [currentCheckNumber, setCurrentCheckNumber] = useState<number | null>(
+//   const [currentCheckNumber, setCurrentCheckNumber] = useState<string | null>(
 //     null
 //   );
 //   const [checkSeries, setCheckSeries] = useState<CheckSeries[]>([]);
@@ -115,6 +120,11 @@
 //   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
 //   const [effectiveUserId, setEffectiveUserId] = useState("");
 //   const [currentUserRole, setCurrentUserRole] = useState("");
+//   const [showAddSeries, setShowAddSeries] = useState<boolean>(false);
+//   const [showCheckSeries, setShowCheckSeries] = useState<boolean>(false);
+//   const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
+//   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
+//   const [addingSeries, setAddingSeries] = useState<boolean>(false);
 
 //   const { user } = useAuth() || { user: null };
 
@@ -139,7 +149,6 @@
 //             );
 //           } else {
 //             setEffectiveUserId(user.uid);
-//             console.log(`Regular user, using own uid: ${user.uid}`);
 //           }
 
 //           setIsCheque(userProfile.isCheque || false);
@@ -162,14 +171,7 @@
 //   }, [user]);
 
 //   useEffect(() => {
-//     console.log(
-//       "effectiveUserId changed:",
-//       effectiveUserId,
-//       "isCheque:",
-//       isCheque
-//     );
 //     if (effectiveUserId && isCheque) {
-//       console.log("Triggering data fetches...");
 //       fetchTeamMembersWithVehicles();
 //       fetchChecks();
 //       fetchCheckSeries();
@@ -182,6 +184,7 @@
 
 //       const teamQuery = query(
 //         collection(db, "Users"),
+//         where("active", "==", true),
 //         where("createdBy", "==", effectiveUserId),
 //         where("uid", "!=", effectiveUserId)
 //       );
@@ -265,14 +268,20 @@
 //           date: data.date?.toDate() || new Date(),
 //           createdBy: data.createdBy || "",
 //           createdAt: data.createdAt,
+//           address: data.address || "",
+//           city: data.city || "",
+//           state: data.state || "",
+//           country: data.country || "",
+//           postalCode: data.postalCode || "",
 //         };
 //       });
 
 //       setChecks(checksData);
-//       setLoadingChecks(false);
 //     } catch (error) {
-//       setLoadingChecks(false);
 //       console.error(error);
+//       GlobalToastError("Error loading checks");
+//     } finally {
+//       setLoadingChecks(false);
 //     }
 //   };
 
@@ -294,14 +303,176 @@
 //           userId: data.userId,
 //           startNumber: data.startNumber,
 //           endNumber: data.endNumber,
+//           totalChecks: data.totalChecks || 0,
 //           createdAt: data.createdAt?.toDate() || new Date(),
 //         };
 //       });
 
 //       setCheckSeries(seriesData);
-//       console.log("Fetched check series:", checkSeries);
 //     } catch (error) {
 //       console.error(error);
+//     }
+//   };
+
+//   useEffect(() => {
+//     if (effectiveUserId && isCheque) {
+//       fetchChecks();
+//     }
+//   }, [filterType, startDate, endDate, effectiveUserId, isCheque]);
+
+//   useEffect(() => {
+//     // Calculate total whenever serviceDetails changes
+//     const total = serviceDetails.reduce((sum, detail, index) => {
+//       // First row: must have service name (amount can be 0, positive, or negative)
+//       if (index === 0) {
+//         if (detail.serviceName.trim() !== "") {
+//           // For first row, include the amount even if it's 0 or negative
+//           return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//         }
+//         return sum;
+//       }
+//       // Other rows: include amount if it's entered (can be 0, positive, or negative)
+//       // Service name is optional for other rows
+//       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
+//         return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//       }
+//       return sum;
+//     }, 0);
+//     setTotalAmount(total);
+//   }, [serviceDetails]);
+
+//   const calculateTotal = (details: ServiceDetail[]) => {
+//     const total = details.reduce((sum, detail, index) => {
+//       // First row: must have service name (amount can be 0, positive, or negative)
+//       if (index === 0) {
+//         if (detail.serviceName.trim() !== "") {
+//           // For first row, include the amount even if it's 0 or negative
+//           return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//         }
+//         return sum;
+//       }
+//       // Other rows: include amount if it's entered OR if service name exists
+//       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
+//         return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//       }
+//       return sum;
+//     }, 0);
+//     setTotalAmount(total);
+//   };
+
+//   const generateCheckNumbers = (start: string, end: string): string[] => {
+//     const checkNumbers: string[] = [];
+
+//     try {
+//       // Extract prefix and numeric parts
+//       const prefix = start.replace(/\d/g, "");
+//       const endPrefix = end.replace(/\d/g, "");
+
+//       // Verify prefixes match
+//       if (prefix !== endPrefix) {
+//         GlobalToastError("Number prefixes must match");
+//         return [];
+//       }
+
+//       // Extract numeric parts
+//       const startNumStr = start.replace(prefix, "");
+//       const endNumStr = end.replace(prefix, "");
+
+//       const startNum = parseInt(startNumStr);
+//       const endNum = parseInt(endNumStr);
+
+//       if (startNum >= endNum) {
+//         GlobalToastError("End number must be greater than start number");
+//         return [];
+//       }
+
+//       // Generate all numbers in the range
+//       for (let i = startNum; i <= endNum; i++) {
+//         // Format number with leading zeros to match the original format
+//         let numStr = i.toString();
+//         if (startNumStr.length > numStr.length) {
+//           numStr = numStr.padStart(startNumStr.length, "0");
+//         }
+
+//         checkNumbers.push(`${prefix}${numStr}`);
+//       }
+//     } catch (error) {
+//       GlobalToastError("Error generating check numbers");
+//       console.error(error);
+//       return [];
+//     }
+
+//     return checkNumbers;
+//   };
+
+//   const handleAddCheckSeries = async () => {
+//     if (!startSeriesNumber || !endSeriesNumber) {
+//       GlobalToastError("Please enter both start and end numbers");
+//       return;
+//     }
+
+//     setAddingSeries(true);
+
+//     try {
+//       // Generate the check numbers
+//       const checkNumbers = generateCheckNumbers(
+//         startSeriesNumber,
+//         endSeriesNumber
+//       );
+
+//       if (checkNumbers.length === 0) {
+//         return;
+//       }
+
+//       // Save the series to Firestore
+//       const seriesRef = await addDoc(collection(db, "CheckSeries"), {
+//         userId: effectiveUserId,
+//         startNumber: startSeriesNumber,
+//         endNumber: endSeriesNumber,
+//         createdAt: serverTimestamp(),
+//         totalChecks: checkNumbers.length,
+//       });
+
+//       // Save individual check numbers to a subcollection
+//       const batch = writeBatch(db);
+
+//       for (const checkNumber of checkNumbers) {
+//         const docRef = doc(
+//           collection(db, "CheckSeries", seriesRef.id, "Checks")
+//         );
+//         batch.set(docRef, {
+//           checkNumber: checkNumber,
+//           isUsed: false,
+//           seriesId: seriesRef.id,
+//           userId: effectiveUserId,
+//           createdAt: serverTimestamp(),
+//         });
+//       }
+
+//       await batch.commit();
+
+//       // Update current check number if not set
+//       if (!currentCheckNumber) {
+//         await updateDoc(doc(db, "Users", effectiveUserId), {
+//           currentCheckNumber: startSeriesNumber,
+//         });
+//         setCurrentCheckNumber(startSeriesNumber);
+//       }
+
+//       GlobalToastSuccess("Check series saved successfully!");
+
+//       // Reset form and close
+//       setStartSeriesNumber("");
+//       setEndSeriesNumber("");
+//       setShowAddSeries(false);
+
+//       // Refresh data
+//       await fetchCheckSeries();
+//     } catch (error) {
+//       GlobalToastError("Error saving check series");
+//       console.error(error);
+//     } finally {
+//       setAddingSeries(false);
 //     }
 //   };
 
@@ -413,7 +584,14 @@
 //     setSelectedType(null);
 //     setSelectedUserId(null);
 //     setSelectedUserName(null);
-//     setServiceDetails([]);
+//     // Initialize with 5 empty service details
+//     setServiceDetails([
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//     ]);
 //     setMemoNumber("");
 //     setSelectedDate(new Date());
 //     setTotalAmount(0);
@@ -422,6 +600,8 @@
 //     if (nextCheckNumber) {
 //       setCheckNumber(nextCheckNumber);
 //       setShowWriteCheck(true);
+//       console.log(`Next check number: ${showAddDetail}`);
+//       console.log(`Service details initialized: ${setUnpaidTrips}`);
 //     } else {
 //       GlobalToastError(
 //         "No available check numbers. Please add a check series first."
@@ -441,75 +621,32 @@
 //     setShowAddDetail(false);
 //   };
 
-//   const handleAddDetail = () => {
-//     setServiceName("");
-//     setAmount("");
-//     setUnpaidTrips([]);
-//     setDriverUnpaidTotal(0);
-
-//     if (selectedType === "Driver" && selectedUserId) {
-//       fetchUnpaidTrips();
-//     }
-
-//     setShowAddDetail(true);
-//   };
-
-//   const fetchUnpaidTrips = async () => {
-//     try {
-//       if (!selectedUserId) return;
-
-//       const tripsQuery = query(
-//         collection(db, "Users", selectedUserId, "trips"),
-//         where("isPaid", "==", false)
-//       );
-
-//       const snapshot = await getDocs(tripsQuery);
-//       const trips: Trip[] = snapshot.docs.map((doc) => ({
-//         id: doc.id,
-//         tripName: doc.data().tripName || "Unnamed Trip",
-//         oEarnings: doc.data().oEarnings || 0,
-//       }));
-
-//       const total = trips.reduce((sum, trip) => sum + trip.oEarnings, 0);
-//       setUnpaidTrips(trips);
-//       setDriverUnpaidTotal(total);
-//       setAmount(total.toFixed(2));
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
-
-//   const saveDetail = () => {
-//     if (!serviceName || !amount) {
-//       GlobalToastError("Please fill all fields");
-//       return;
-//     }
-
-//     const newDetail: ServiceDetail = {
-//       serviceName,
-//       amount: parseFloat(amount),
-//     };
-
-//     setServiceDetails([...serviceDetails, newDetail]);
-//     calculateTotal([...serviceDetails, newDetail]);
-//     setShowAddDetail(false);
-//   };
-
-//   const calculateTotal = (details: ServiceDetail[]) => {
-//     const total = details.reduce((sum, detail) => sum + detail.amount, 0);
-//     setTotalAmount(total);
-//   };
-
 //   const saveCheck = async () => {
+//     // Filter out service details based on the new logic
+//     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
+//       // First row: must have service name (amount can be 0 or negative)
+//       if (index === 0) {
+//         return detail.serviceName.trim() !== "";
+//       }
+//       // Other rows: can have either service name OR amount (amount can be 0 or negative)
+//       return detail.serviceName.trim() !== "" || detail.amount !== 0;
+//     });
+
 //     if (
 //       !selectedUserId ||
-//       serviceDetails.length === 0 ||
+//       nonEmptyDetails.length === 0 ||
 //       !effectiveUserId ||
 //       !checkNumber
 //     ) {
-//       GlobalToastError("Please fill all required fields");
+//       GlobalToastError("Please fill at least the first service detail");
 //       return;
 //     }
+
+//     // Ensure we include 0 amounts properly
+//     const detailsToSave = nonEmptyDetails.map((detail) => ({
+//       serviceName: detail.serviceName,
+//       amount: isNaN(detail.amount) ? 0 : detail.amount,
+//     }));
 
 //     try {
 //       const checkData = {
@@ -517,7 +654,7 @@
 //         type: selectedType,
 //         userId: selectedUserId,
 //         userName: selectedUserName,
-//         serviceDetails: serviceDetails,
+//         serviceDetails: detailsToSave,
 //         totalAmount: totalAmount,
 //         memoNumber: memoNumber || null,
 //         date: Timestamp.fromDate(selectedDate),
@@ -547,311 +684,448 @@
 //     }
 //   };
 
-//   const removeServiceDetail = (index: number) => {
-//     const newDetails = [...serviceDetails];
-//     newDetails.splice(index, 1);
-//     setServiceDetails(newDetails);
-//     calculateTotal(newDetails);
-//   };
+//   const handlePrint = async (check: Check) => {
+//     // Fetch address if missing
+//     let printCheck = { ...check };
+//     if (!check.address || !check.city || !check.state) {
+//       try {
+//         const userAddress = await fetchUserAddress(check.userId);
+//         printCheck = {
+//           ...check,
+//           address: userAddress.street || "",
+//           city: userAddress.city || "",
+//           state: userAddress.state || "",
+//           postalCode: userAddress.postalCode || "",
+//           country: userAddress.country || "",
+//         };
+//       } catch (error) {
+//         console.error("Error fetching user address:", error);
+//       }
+//     }
 
-//   const amountToWords = (amount: number): string => {
-//     const wholePart = Math.floor(amount);
-//     const decimalPart = Math.round((amount - wholePart) * 100);
-
-//     const units = [
-//       "",
-//       "One",
-//       "Two",
-//       "Three",
-//       "Four",
-//       "Five",
-//       "Six",
-//       "Seven",
-//       "Eight",
-//       "Nine",
-//     ];
-//     const teens = [
-//       "Ten",
-//       "Eleven",
-//       "Twelve",
-//       "Thirteen",
-//       "Fourteen",
-//       "Fifteen",
-//       "Sixteen",
-//       "Seventeen",
-//       "Eighteen",
-//       "Nineteen",
-//     ];
-//     const tens = [
-//       "",
-//       "Ten",
-//       "Twenty",
-//       "Thirty",
-//       "Forty",
-//       "Fifty",
-//       "Sixty",
-//       "Seventy",
-//       "Eighty",
-//       "Ninety",
-//     ];
-
-//     const numberToWords = (num: number): string => {
+//     /* -----------------------------
+//       Words conversion functions
+//      ----------------------------- */
+//     function numberToWords(num: number): string {
 //       if (num === 0) return "Zero";
+
+//       const units = [
+//         "",
+//         "One",
+//         "Two",
+//         "Three",
+//         "Four",
+//         "Five",
+//         "Six",
+//         "Seven",
+//         "Eight",
+//         "Nine",
+//       ];
+
+//       const teens = [
+//         "Ten",
+//         "Eleven",
+//         "Twelve",
+//         "Thirteen",
+//         "Fourteen",
+//         "Fifteen",
+//         "Sixteen",
+//         "Seventeen",
+//         "Eighteen",
+//         "Nineteen",
+//       ];
+
+//       const tens = [
+//         "",
+//         "",
+//         "Twenty",
+//         "Thirty",
+//         "Forty",
+//         "Fifty",
+//         "Sixty",
+//         "Seventy",
+//         "Eighty",
+//         "Ninety",
+//       ];
+
+//       function underThousand(n: number): string {
+//         let w = "";
+
+//         if (Math.floor(n / 100) > 0) {
+//           w += units[Math.floor(n / 100)] + " Hundred ";
+//           n %= 100;
+//         }
+
+//         if (n > 0) {
+//           if (n < 10) w += units[n];
+//           else if (n < 20) w += teens[n - 10];
+//           else {
+//             w += tens[Math.floor(n / 10)];
+//             if (n % 10 > 0) w += " " + units[n % 10];
+//           }
+//         }
+
+//         return w.trim();
+//       }
 
 //       let words = "";
 
-//       if (Math.floor(num / 1000) > 0) {
-//         words += numberToWords(Math.floor(num / 1000)) + " Thousand ";
+//       const billions = Math.floor(num / 1_000_000_000);
+//       if (billions > 0) {
+//         words += underThousand(billions) + " Billion ";
+//         num %= 1_000_000_000;
+//       }
+
+//       const millions = Math.floor(num / 1_000_000);
+//       if (millions > 0) {
+//         words += underThousand(millions) + " Million ";
+//         num %= 1_000_000;
+//       }
+
+//       const thousands = Math.floor(num / 1000);
+//       if (thousands > 0) {
+//         words += underThousand(thousands) + " Thousand ";
 //         num %= 1000;
 //       }
 
-//       if (Math.floor(num / 100) > 0) {
-//         words += numberToWords(Math.floor(num / 100)) + " Hundred ";
-//         num %= 100;
-//       }
-
 //       if (num > 0) {
-//         if (num < 10) {
-//           words += units[num];
-//         } else if (num < 20) {
-//           words += teens[num - 10];
-//         } else {
-//           words += tens[Math.floor(num / 10)];
-//           if (num % 10 > 0) {
-//             words += " " + units[num % 10];
-//           }
-//         }
+//         words += underThousand(num);
 //       }
 
 //       return words.trim();
-//     };
-
-//     let result = numberToWords(wholePart);
-//     if (decimalPart > 0) {
-//       result += " and " + numberToWords(decimalPart) + " Cents";
 //     }
 
-//     return result + " Only";
-//   };
+//     function amountToWords(amount: number): string {
+//       const whole = Math.floor(amount);
+//       const cents = Math.round((amount - whole) * 100);
+//       const words = numberToWords(whole);
+//       const centsText = `${cents.toString().padStart(2, "0")}/100`;
+//       return `${words} and ${centsText}`;
+//     }
 
-//   const handlePrint = (check: Check) => {
+//     /* -----------------------------
+//       ADDRESS LINES
+//      ----------------------------- */
+//     const addressLines: string[] = [];
+
+//     if (printCheck.address)
+//       addressLines.push(printCheck.address.toString().toUpperCase());
+
+//     if (printCheck.city || printCheck.state) {
+//       const parts = [];
+//       if (printCheck.city) parts.push(printCheck.city.toUpperCase());
+//       if (printCheck.state) parts.push(printCheck.state.toUpperCase());
+//       addressLines.push(parts.join(", "));
+//     }
+
+//     if (printCheck.country || printCheck.postalCode) {
+//       const parts = [];
+//       if (printCheck.country) parts.push(printCheck.country.toUpperCase());
+//       if (printCheck.postalCode)
+//         parts.push(printCheck.postalCode.toUpperCase());
+//       addressLines.push(parts.join(", "));
+//     }
+
+//     // Dynamic space below address (converted from Flutter)
+//     let extraMm = 0;
+//     const lineCount = addressLines.length;
+//     if (lineCount === 0) extraMm = 4;
+//     else if (lineCount === 1) extraMm = 7;
+//     else if (lineCount === 2) extraMm = 4;
+//     else extraMm = 2.5;
+
+//     /* -----------------------------
+//       TOP OFFSET (you chose 10mm)
+//      ----------------------------- */
+//     const globalTop = 9;
+
+//     const dateTopMm = globalTop + 8;
+//     const payeeTopMm = globalTop + 23;
+//     const wordsTopMm = globalTop + 32;
+//     const addressTopMm = globalTop + 42;
+//     const memoTopMm = globalTop + 57 + extraMm;
+//     const detailsTopMm = globalTop + 90 + extraMm;
+//     const duplicateTopMm = globalTop + 190 + extraMm;
+
+//     /* -----------------------------
+//       Prepare values
+//      ----------------------------- */
+//     const formattedDate = format(printCheck.date, "MM/dd/yyyy");
+//     const totalFormatted = Number(printCheck.totalAmount).toFixed(2);
+//     const amountWordsFormatted = `****${amountToWords(
+//       Number(printCheck.totalAmount)
+//     )}*******************`;
+
+//     /* -----------------------------
+//       Open Print Window
+//      ----------------------------- */
 //     const printWindow = window.open("", "_blank");
 //     if (!printWindow) return;
 
-//     const printContent = `
-//     <!DOCTYPE html>
-//     <html>
-//       <head>
-//         <title>Check #${check.checkNumber}</title>
-//         <style>
-//           @page {
-//             size: A4;
-//             margin: 0;
-//           }
-//           body {
-//             font-family: 'Courier New', monospace;
-//             margin: 0;
-//             padding: 40px;
-//             background: white;
-//             line-height: 1.2;
-//           }
-//           .check-page {
-//             width: 100%;
-//             height: 100vh;
-//             position: relative;
-//           }
-//           .date-section {
-//             text-align: right;
-//             margin-bottom: 60px;
-//             padding-right: 200px;
-//           }
-//           .payee-section {
-//             display: flex;
-//             margin-bottom: 60px;
-//             border-bottom: 1px dashed #000;
-//             padding-bottom: 10px;
-//           }
-//           .payee-spacing {
-//             width: 200px;
-//           }
-//           .payee-name {
-//             flex: 1;
-//             font-weight: bold;
-//             font-size: 16px;
-//           }
-//           .payee-amount {
-//             font-weight: bold;
-//             font-size: 16px;
-//             margin-left: 20px;
-//           }
-//           .amount-words {
-//             margin-left: 50px;
-//             margin-bottom: 100px;
-//             font-size: 14px;
-//             font-style: italic;
-//           }
-//           .memo-section {
-//             margin-left: 200px;
-//             margin-bottom: 200px;
-//             font-size: 14px;
-//           }
-//           .divider {
-//             border-top: 2px solid #000;
-//             margin: 40px 0;
-//           }
-//           .details-section {
-//             margin-top: 60px;
-//           }
-//           .check-number {
-//             display: flex;
-//             justify-content: space-between;
-//             margin-bottom: 20px;
-//             font-size: 15px;
-//           }
-//           .service-line {
-//             display: flex;
-//             justify-content: space-between;
-//             margin: 8px 0;
-//             font-size: 14px;
-//           }
-//           .total-line {
-//             display: flex;
-//             justify-content: flex-end;
-//             margin-top: 30px;
-//             font-size: 16px;
-//             font-weight: bold;
-//             border-top: 1px solid #000;
-//             padding-top: 10px;
-//           }
-//           .duplicate {
-//             margin-top: 100px;
-//             border-top: 2px solid #000;
-//             padding-top: 60px;
-//           }
-//           @media print {
-//             body {
-//               padding: 20px;
-//               margin: 0;
-//             }
-//           }
-//         </style>
-//       </head>
-//       <body>
-//         <div class="check-page">
-//           <!-- Original Check -->
-//           <div class="date-section">
-//             ${format(check.date, "MM/dd/yyyy")}
-//           </div>
+//     const html = `
+// <!doctype html>
+// <html>
+//   <head>
+//     <meta charset="utf-8" />
+//     <title>Check</title>
 
-//           <div class="payee-section">
-//             <div class="payee-spacing"></div>
-//             <div class="payee-name">${check.userName}</div>
-//             <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
-//           </div>
+//     <style>
+//       @page { size: A4; margin: 0; }
 
-//           <div class="amount-words">
-//             ${amountToWords(check.totalAmount)}
-//           </div>
+//       /* LOAD UNIVERSE FONT */
+//       @font-face {
+//         font-family: "Univers";
+//         src: url("/fonts/UniversRegular.ttf") format("truetype");
+//         font-weight: normal;
+//         font-style: normal;
+//       }
 
-//           ${
-//             check.memoNumber
-//               ? `
-//             <div class="memo-section">
-//               ${check.memoNumber}
-//             </div>
-//           `
-//               : '<div class="memo-section"></div>'
-//           }
+//       body {
+//         margin: 0;
+//         padding: 0;
+//         background: white;
+//         font-family: "Univers", sans-serif;
+//         line-height: 1.1;
+//         padding-top: 3mm;
+//       }
 
-//           <div class="divider"></div>
+//       .check-container {
+//         width: 210mm;
+//         height: 297mm;
+//         position: relative;
+//         font-family: "Univers", sans-serif;
+//         margin-left: -3mm;
+//         margin-top: 0.7mm; /** adjust as needed */
+//       }
 
-//           <div class="details-section">
-//             <div class="check-number">
-//               <div>Check No. #${check.checkNumber}</div>
-//               <div>${format(check.date, "MM/dd/yyyy")}</div>
-//             </div>
+//       /* DATE — MOVED RIGHT BY 6mm */
+//       .date-row {
+//         position: absolute;
+//         top: ${dateTopMm}mm;
+//         right: 10mm;   /* was 9mm → moved 1mm more right */
+//         font-size: 11pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             ${check.serviceDetails
-//               .map(
-//                 (detail) => `
-//               <div class="service-line">
-//                 <div>${detail.serviceName}</div>
-//                 <div>$${detail.amount.toFixed(2)}</div>
-//               </div>
-//             `
-//               )
-//               .join("")}
+//       /* PAYEE + AMOUNT */
+//       .payee-row {
+//         position: absolute;
+//         top: ${payeeTopMm}mm;
+//         left: 35mm;     /* 25 was 15mm → moved 10mm more left */
+//         right: 10mm;    /* was 10mm → moved 2mm left */
+//         font-size: 11pt;
+//         text-transform: uppercase;
+//         display: flex;
+//         justify-content: space-between;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             <div class="total-line">
-//               <div>$${check.totalAmount.toFixed(2)}</div>
-//             </div>
-//           </div>
 
-//           <!-- Duplicate Copy -->
-//           <div class="duplicate">
-//             <div class="date-section">
-//               ${format(check.date, "MM/dd/yyyy")}
-//             </div>
+//       /* AMOUNT IN WORDS */
+//       .amount-words {
+//         position: absolute;
+//         top: ${wordsTopMm}mm;
+//         left: 15mm;
+//         font-size: 11pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             <div class="payee-section">
-//               <div class="payee-spacing"></div>
-//               <div class="payee-name">${check.userName}</div>
-//               <div class="payee-amount">$${check.totalAmount.toFixed(2)}</div>
-//             </div>
+//       /* ADDRESS */
+//       .address-section {
+//         position: absolute;
+//         top: ${addressTopMm}mm;
+//         left: 20mm; /** was 15mm → moved 5mm more right */
+//         font-size: 11pt;
+//         text-transform: uppercase;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+//       .address-line {
+//         margin: 2px 0;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             <div class="amount-words">
-//               ${amountToWords(check.totalAmount)}
-//             </div>
+//       /* MEMO */
+//       .memo-section {
+//         position: absolute;
+//         top: ${memoTopMm + 3}mm;
+//         left: 20mm; /** was 15mm → moved 5mm more right */
+//         font-size: 11pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             ${
-//               check.memoNumber
-//                 ? `
-//               <div class="memo-section">
-//                 ${check.memoNumber}
-//               </div>
-//             `
-//                 : '<div class="memo-section"></div>'
-//             }
+//       /* DETAILS SECTION */
+//       .details-section {
+//         position: absolute;
+//         top: ${detailsTopMm}mm;
+//         left: 15mm;
+//         right: 9mm;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             <div class="divider"></div>
+//       .check-header {
+//         display: flex;
+//         justify-content: space-between;
+//         text-transform: uppercase;
+//         margin-bottom: 5px;
+//         font-size: 12pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//             <div class="details-section">
-//               <div class="check-number">
-//                 <div>Check No. #${check.checkNumber}</div>
-//                 <div>${format(check.date, "MM/dd/yyyy")}</div>
-//               </div>
+//       .service-line {
+//         display: flex;
+//         justify-content: space-between;
+//         font-size: 13pt;
+//         margin: 0;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//               ${check.serviceDetails
-//                 .map(
-//                   (detail) => `
-//                 <div class="service-line">
-//                   <div>${detail.serviceName}</div>
-//                   <div>$${detail.amount.toFixed(2)}</div>
-//                 </div>
-//               `
-//                 )
-//                 .join("")}
+//       .total-line {
+//         font-size: 13pt;
+//         display: flex;
+//         justify-content: flex-end;
+//         margin-top: 4px;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
 
-//               <div class="total-line">
-//                 <div>$${check.totalAmount.toFixed(2)}</div>
-//               </div>
-//             </div>
-//           </div>
+//       /* DUPLICATE SECTION */
+//       .duplicate-section {
+//         position: absolute;
+//         top: ${duplicateTopMm}mm;
+//         left: 15mm;
+//         right: 9mm;
+//         font-size: 12pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+//     </style>
+//   </head>
+
+//   <body>
+//     <div class="check-container">
+
+//       <div class="date-row">${formattedDate}</div>
+
+//       <div class="payee-row">
+//         <div>${String(printCheck.userName).toUpperCase()}</div>
+//         <div>**${totalFormatted}</div>
+//       </div>
+
+//       <div class="amount-words">${amountWordsFormatted}</div>
+
+//       <div class="address-section">
+//         ${addressLines
+//           .map((l) => `<div class="address-line">${l}</div>`)
+//           .join("")}
+//       </div>
+
+//       <div class="memo-section">${printCheck.memoNumber || ""}</div>
+
+//       <div class="details-section">
+//         <div class="check-header">
+//           <div>${String(printCheck.userName).toUpperCase()}</div>
+//           <div>${formattedDate}</div>
 //         </div>
 
-//         <script>
-//           window.onload = function() {
-//             setTimeout(function() {
-//               window.print();
-//             }, 500);
-//           };
-//         </script>
-//       </body>
-//     </html>
-//   `;
+//         ${printCheck.serviceDetails
+//           .map(
+//             (s: ServiceDetail) => `
+//           <div class="service-line">
+//             <div>${s.serviceName}</div>
+//             <div>$${Number(s.amount).toFixed(2)}</div>
+//           </div>`
+//           )
+//           .join("")}
+//           ${
+//             printCheck.memoNumber
+//               ? `
+//         <div class="service-line">
+//           <div>${printCheck.memoNumber}</div>
+//         </div>
+// `
+//               : ""
+//           }
 
-//     printWindow.document.write(printContent);
+
+//         <div class="total-line">$${totalFormatted}</div>
+//       </div>
+
+//       <div class="duplicate-section">
+//         <div class="check-header">
+//           <div>${String(printCheck.userName).toUpperCase()}</div>
+//           <div>${formattedDate}</div>
+//         </div>
+
+//         ${printCheck.serviceDetails
+//           .map(
+//             (s: ServiceDetail) => `
+//           <div class="service-line">
+//             <div>${s.serviceName}</div>
+//             <div>$${Number(s.amount).toFixed(2)}</div>
+//           </div>`
+//           )
+//           .join("")}
+//           ${
+//             printCheck.memoNumber
+//               ? `
+//       <div class="service-line">
+//         <div>${printCheck.memoNumber}</div>
+//          </div>
+// `
+//               : ""
+//           }
+
+
+//         <div class="total-line">$${totalFormatted}</div>
+//       </div>
+
+//     </div>
+
+//     <script>
+//       window.onload = function() {
+//         setTimeout(() => window.print(), 300);
+//       };
+//     </script>
+//   </body>
+// </html>
+// `;
+
+//     printWindow.document.write(html);
 //     printWindow.document.close();
+//   };
+
+//   const fetchUserAddress = async (userId: string) => {
+//     try {
+//       const userDoc = await getDoc(doc(db, "Users", userId));
+//       if (userDoc.exists()) {
+//         const userData = userDoc.data();
+//         return {
+//           street: userData.address || userData.street || "",
+//           city: userData.city || "",
+//           state: userData.state || "",
+//           postalCode:
+//             userData.zipCode || userData.zip || userData.postalCode || "",
+//           country: userData.country || "",
+//         };
+//       }
+//       throw new Error("User not found");
+//     } catch (error) {
+//       console.error("Error fetching user address:", error);
+//       return {
+//         street: "",
+//         city: "",
+//         state: "",
+//         postalCode: "",
+//         country: "",
+//       };
+//     }
 //   };
 
 //   if (!user) {
@@ -893,16 +1167,178 @@
 //         ) : (
 //           <div className="flex justify-center space-x-4">
 //             <button
-//               onClick={handleWriteCheck}
+//               onClick={
+//                 showWriteCheck ? handleCancelWriteCheck : handleWriteCheck
+//               }
 //               className="flex items-center px-6 py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white"
 //             >
 //               <FiPlus className="mr-2" />
 //               {showWriteCheck ? "Cancel Write Check" : "Write Check"}
 //             </button>
+
+//             <button
+//               onClick={() => setShowAddSeries(true)}
+//               className="flex items-center px-6 py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white"
+//             >
+//               <FiHash className="mr-2" />
+//               Add Check Series
+//             </button>
+
+//             <button
+//               onClick={() => setShowCheckSeries(!showCheckSeries)}
+//               className="flex items-center justify-center px-6 py-2.5 bg-gray-100 rounded-full shadow-md hover:bg-gray-200 transition-all duration-300 text-gray-700 mx-auto"
+//             >
+//               <FiHash className="mr-2" />
+//               {showCheckSeries ? "Hide Check Series" : "Show Check Series"}
+//             </button>
 //           </div>
 //         )}
 //       </div>
 
+//       {/* Add Check Series Modal */}
+//       {showAddSeries && (
+//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+//           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+//             <div className="flex items-center justify-between mb-6">
+//               <div className="flex items-center">
+//                 <div className="bg-green-100 p-3 rounded-full mr-4">
+//                   <FiHash className="text-green-600" size={24} />
+//                 </div>
+//                 <div>
+//                   <h3 className="text-2xl font-serif font-bold text-gray-800">
+//                     Add Check Series
+//                   </h3>
+//                   <p className="text-gray-600">
+//                     Create a new range of check numbers
+//                   </p>
+//                 </div>
+//               </div>
+//               <button
+//                 onClick={() => setShowAddSeries(false)}
+//                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+//               >
+//                 <FiX size={20} />
+//               </button>
+//             </div>
+
+//             <div className="space-y-4">
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Start Number (e.g., RMS001)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={startSeriesNumber}
+//                   onChange={(e) => setStartSeriesNumber(e.target.value)}
+//                   placeholder="Enter start number"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   End Number (e.g., RMS050)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={endSeriesNumber}
+//                   onChange={(e) => setEndSeriesNumber(e.target.value)}
+//                   placeholder="Enter end number"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+
+//               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+//                 <p className="text-sm text-yellow-800">
+//                   <strong>Note:</strong> Make sure the prefix (e.g.,
+//                   &quot;RMS&quot;) matches for both numbers. The end number must
+//                   be greater than the start number.
+//                 </p>
+//               </div>
+//             </div>
+
+//             <div className="flex justify-end space-x-3 mt-6">
+//               <button
+//                 onClick={() => setShowAddSeries(false)}
+//                 className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 onClick={handleAddCheckSeries}
+//                 disabled={addingSeries}
+//                 className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
+//                   addingSeries
+//                     ? "bg-gray-300 cursor-not-allowed"
+//                     : "bg-[#58BB87] hover:bg-[#58BB87]"
+//                 } text-white`}
+//               >
+//                 {addingSeries ? (
+//                   <>
+//                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+//                     Adding...
+//                   </>
+//                 ) : (
+//                   <>
+//                     <FiSave className="mr-2" />
+//                     Save Series
+//                   </>
+//                 )}
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {showCheckSeries && (
+//         <>
+//           {/* Current Check Number Display */}
+//           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-center">
+//             <p className="text-lg font-semibold text-blue-800">
+//               Current Check Number: {currentCheckNumber || "Not set"}
+//             </p>
+//           </div>
+//           {/* Check Series List */}
+//           {checkSeries.length > 0 && (
+//             <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+//               <div className="flex items-center justify-between mb-6">
+//                 <div className="flex items-center">
+//                   <div className="bg-green-100 p-2 rounded-full mr-3">
+//                     <FiHash className="text-green-600" size={20} />
+//                   </div>
+//                   <h3 className="text-xl font-serif font-bold text-gray-800">
+//                     Check Series
+//                   </h3>
+//                 </div>
+//                 <span className="text-sm text-gray-500">
+//                   {checkSeries.length} series
+//                 </span>
+//               </div>
+
+//               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//                 {checkSeries.map((series) => (
+//                   <div
+//                     key={series.id}
+//                     className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-green-300 transition-all"
+//                   >
+//                     <div className="flex justify-between items-start mb-2">
+//                       <h4 className="font-semibold text-gray-800">
+//                         {series.startNumber} - {series.endNumber}
+//                       </h4>
+//                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+//                         {series.totalChecks} checks
+//                       </span>
+//                     </div>
+//                     <p className="text-sm text-gray-600">
+//                       Created: {format(series.createdAt, "MMM dd, yyyy")}
+//                     </p>
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           )}
+//         </>
+//       )}
 //       {/* Write Check Section */}
 //       {showWriteCheck && (
 //         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
@@ -1026,261 +1462,106 @@
 //           {selectedUserId && (
 //             <>
 //               <div className="mb-6">
-//                 <button
-//                   type="button"
-//                   onClick={handleAddDetail}
-//                   className="flex items-center px-5 py-2.5 bg-white border border-[#F96176] text-[#F96176] rounded-full shadow-sm hover:bg-[#F96176]/10 transition-all"
-//                 >
-//                   <FiPlus className="mr-2" />
-//                   Add Service Detail
-//                 </button>
+//                 <div className="flex items-center mb-4">
+//                   <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+//                     <FiList className="text-[#F96176]" />
+//                   </div>
+//                   <h4 className="text-lg font-semibold text-gray-800">
+//                     Service Details
+//                   </h4>
+//                 </div>
+
+//                 <div className="space-y-4 mb-6">
+//                   {serviceDetails.map((detail, index) => (
+//                     <div
+//                       key={index}
+//                       className="grid grid-cols-1 md:grid-cols-2 gap-4"
+//                     >
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Service Name{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="text"
+//                           value={detail.serviceName}
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const text = e.target.value;
+//                             const words = text.trim().split(/\s+/);
+
+//                             // Limit to 70 words
+//                             if (words.length <= 70) {
+//                               newDetails[index].serviceName = text;
+//                               setServiceDetails(newDetails);
+
+//                               // Recalculate total
+//                               calculateTotal(newDetails);
+//                             }
+//                           }}
+//                           placeholder={`Enter service description`}
+//                           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                         <p className="text-sm text-gray-500 mt-1">
+//                           {detail.serviceName.trim() === ""
+//                             ? 0
+//                             : detail.serviceName.trim().split(/\s+/).length}
+//                           /70 words
+//                         </p>
+//                       </div>
+
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Amount{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="number"
+//                           step="0.01"
+//                           value={detail.amount === 0 ? "" : detail.amount}
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const value = e.target.value;
+
+//                             // Handle empty string, "-", and valid numbers
+//                             if (value === "" || value === "-") {
+//                               newDetails[index].amount = 0;
+//                             } else {
+//                               const numValue = parseFloat(value);
+//                               // Allow any number including 0
+//                               newDetails[index].amount = isNaN(numValue)
+//                                 ? 0
+//                                 : numValue;
+//                             }
+
+//                             setServiceDetails(newDetails);
+//                           }}
+//                           placeholder="Enter amount"
+//                           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
 //               </div>
 
-//               {serviceDetails.length > 0 && (
-//                 <div className="border-t border-gray-200 pt-6">
-//                   <div className="flex items-center mb-4">
-//                     <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
-//                       <FiList className="text-[#F96176]" />
-//                     </div>
-//                     <h4 className="text-lg font-semibold text-gray-800">
-//                       Service Details
-//                     </h4>
-//                   </div>
-
-//                   <div className="space-y-3 mb-6">
-//                     {serviceDetails.map((detail, index) => (
-//                       <div
-//                         key={index}
-//                         className="flex justify-between items-center p-4 bg-gray-50 rounded-lg"
-//                       >
-//                         <div>
-//                           <p className="font-medium text-gray-800">
-//                             {detail.serviceName}
-//                           </p>
-//                           <p className="text-sm text-gray-500">
-//                             ${detail.amount.toFixed(2)}
-//                           </p>
-//                         </div>
-//                         <button
-//                           onClick={() => removeServiceDetail(index)}
-//                           className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-all"
-//                         >
-//                           <FiTrash2 />
-//                         </button>
-//                       </div>
-//                     ))}
-//                   </div>
-
-//                   <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-//                     <span className="text-lg font-semibold text-gray-800">
-//                       Total:
-//                     </span>
-//                     <span className="text-2xl font-bold text-[#F96176]">
-//                       ${totalAmount.toFixed(2)}
-//                     </span>
-//                   </div>
-//                 </div>
-//               )}
-
-//               {/* Add Detail Section */}
-//               {/* {showAddDetail && (
-//                 <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
-//                   <div className="flex items-center justify-between mb-4">
-//                     <h4 className="text-lg font-semibold text-gray-800">
-//                       Add Service Detail
-//                     </h4>
-//                     <button
-//                       onClick={() => setShowAddDetail(false)}
-//                       className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
-//                     >
-//                       <FiX size={16} />
-//                     </button>
-//                   </div>
-
-//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Service Name
-//                       </label>
-//                       <input
-//                         type="text"
-//                         value={serviceName}
-//                         onChange={(e) => setServiceName(e.target.value)}
-//                         placeholder="Enter service description"
-//                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-//                       />
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Amount
-//                       </label>
-//                       <input
-//                         type="number"
-//                         value={amount}
-//                         onChange={(e) => setAmount(e.target.value)}
-//                         disabled={selectedType === "Driver"}
-//                         placeholder="Enter amount"
-//                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-//                       />
-//                     </div>
-//                   </div>
-
-//                   {selectedType === "Driver" && unpaidTrips.length > 0 && (
-//                     <div className="mt-6">
-//                       <div className="flex items-center mb-3">
-//                         <div className="bg-yellow-100 p-2 rounded-full mr-3">
-//                           <FiClock className="text-yellow-600" />
-//                         </div>
-//                         <h5 className="text-md font-semibold text-gray-800">
-//                           Unpaid Trips
-//                         </h5>
-//                       </div>
-
-//                       <div className="space-y-2 mb-4">
-//                         {unpaidTrips.map((trip, index) => (
-//                           <div
-//                             key={index}
-//                             className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg"
-//                           >
-//                             <span className="text-gray-700">
-//                               {trip.tripName}
-//                             </span>
-//                             <span className="font-semibold text-gray-800">
-//                               ${trip.oEarnings.toFixed(2)}
-//                             </span>
-//                           </div>
-//                         ))}
-//                       </div>
-
-//                       <div className="p-3 bg-yellow-100 rounded-lg text-yellow-800">
-//                         <span className="font-semibold">Total Unpaid:</span> $
-//                         {driverUnpaidTotal.toFixed(2)}
-//                       </div>
-//                     </div>
-//                   )}
-
-//                   <div className="flex justify-end space-x-3 mt-6">
-//                     <button
-//                       onClick={() => setShowAddDetail(false)}
-//                       className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
-//                     >
-//                       Cancel
-//                     </button>
-//                     <button
-//                       onClick={saveDetail}
-//                       className="px-8 py-2.5 bg-[#F96176] rounded-full shadow-sm text-white hover:bg-[#F96176]/80 transition-all"
-//                     >
-//                       Add Detail
-//                     </button>
-//                   </div>
-//                 </div>
-//               )}
-
-//               */}
-
-//               {showAddDetail && (
-//                 <div className="bg-gray-50 rounded-lg p-6 mt-6 border border-gray-200">
-//                   <div className="flex items-center justify-between mb-4">
-//                     <h4 className="text-lg font-semibold text-gray-800">
-//                       Add Service Detail
-//                     </h4>
-//                     <button
-//                       onClick={() => setShowAddDetail(false)}
-//                       className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
-//                     >
-//                       <FiX size={16} />
-//                     </button>
-//                   </div>
-
-//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Service Name
-//                       </label>
-//                       <input
-//                         type="text"
-//                         value={serviceName}
-//                         onChange={(e) => setServiceName(e.target.value)}
-//                         placeholder="Enter service description"
-//                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-//                       />
-//                     </div>
-
-//                     <div>
-//                       <label className="block text-sm font-medium text-gray-700 mb-2">
-//                         Amount
-//                       </label>
-//                       <input
-//                         type="number"
-//                         value={amount}
-//                         onChange={(e) => setAmount(e.target.value)}
-//                         placeholder="Enter amount"
-//                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-//                       />
-//                     </div>
-//                   </div>
-
-//                   {selectedType === "Driver" && unpaidTrips.length > 0 && (
-//                     <div className="mt-6">
-//                       <div className="flex items-center mb-3">
-//                         <div className="bg-yellow-100 p-2 rounded-full mr-3">
-//                           <FiClock className="text-yellow-600" />
-//                         </div>
-//                         <h5 className="text-md font-semibold text-gray-800">
-//                           Unpaid Trips
-//                         </h5>
-//                       </div>
-
-//                       <div className="space-y-2 mb-4">
-//                         {unpaidTrips.map((trip, index) => (
-//                           <div
-//                             key={index}
-//                             className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg"
-//                           >
-//                             <span className="text-gray-700">
-//                               {trip.tripName}
-//                             </span>
-//                             <span className="font-semibold text-gray-800">
-//                               ${trip.oEarnings.toFixed(2)}
-//                             </span>
-//                           </div>
-//                         ))}
-//                       </div>
-
-//                       <div className="p-3 bg-yellow-100 rounded-lg text-yellow-800">
-//                         <span className="font-semibold">Total Unpaid:</span> $
-//                         {driverUnpaidTotal.toFixed(2)}
-//                       </div>
-
-//                       {/* Add this button to use the unpaid trips total */}
-//                       <div className="mt-4 flex justify-end">
-//                         <button
-//                           onClick={() =>
-//                             setAmount(driverUnpaidTotal.toFixed(2))
-//                           }
-//                           className="px-4 py-2 bg-[#F96176] text-white rounded-lg hover:bg-[#F96176]/80 transition-all"
-//                         >
-//                           Use Unpaid Total
-//                         </button>
-//                       </div>
-//                     </div>
-//                   )}
-
-//                   <div className="flex justify-end space-x-3 mt-6">
-//                     <button
-//                       onClick={() => setShowAddDetail(false)}
-//                       className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
-//                     >
-//                       Cancel
-//                     </button>
-//                     <button
-//                       onClick={saveDetail}
-//                       className="px-8 py-2.5 bg-[#F96176] rounded-full shadow-sm text-white hover:bg-[#F96176]/80 transition-all"
-//                     >
-//                       Add Detail
-//                     </button>
-//                   </div>
+//               {/* Show total amount */}
+//               {totalAmount !== 0 && (
+//                 <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
+//                   <span className="text-lg font-semibold text-gray-800">
+//                     Total Amount:
+//                   </span>
+//                   <span
+//                     className={`text-2xl font-bold ${
+//                       totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
+//                     }`}
+//                   >
+//                     ${totalAmount.toFixed(2)}
+//                   </span>
 //                 </div>
 //               )}
 
@@ -1294,9 +1575,12 @@
 //                 </button>
 //                 <button
 //                   onClick={saveCheck}
-//                   disabled={serviceDetails.length === 0}
+//                   disabled={
+//                     // First row must have service name (amount can be 0)
+//                     serviceDetails[0].serviceName.trim() === ""
+//                   }
 //                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-//                     serviceDetails.length === 0
+//                     serviceDetails[0].serviceName.trim() === ""
 //                       ? "bg-gray-300 cursor-not-allowed"
 //                       : "bg-[#F96176] hover:bg-[#F96176]/80"
 //                   } text-white`}
@@ -1338,7 +1622,9 @@
 //                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
 //                     }`}
 //                     onClick={() => {
-//                       setFilterType(filterType === type ? null : type);
+//                       const newFilterType = filterType === type ? null : type;
+//                       setFilterType(newFilterType);
+//                       setLoadingChecks(true);
 //                       fetchChecks();
 //                     }}
 //                   >
@@ -1454,12 +1740,20 @@
 //               : "It looks like you haven't written any checks yet. Get started by creating your first check."}
 //           </p>
 //           {!(isAnonymous && !isProfileComplete) && !showWriteCheck && (
-//             <button
-//               onClick={handleWriteCheck}
-//               className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
-//             >
-//               Write First Check
-//             </button>
+//             <div className="space-x-4">
+//               <button
+//                 onClick={handleWriteCheck}
+//                 className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
+//               >
+//                 Write First Check
+//               </button>
+//               <button
+//                 onClick={() => setShowAddSeries(true)}
+//                 className="px-8 py-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+//               >
+//                 Add Check Series
+//               </button>
+//             </div>
 //           )}
 //         </div>
 //       ) : (

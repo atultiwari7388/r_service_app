@@ -1288,7 +1288,7 @@ exports.autoCancelUnacceptedJobs = functions.pubsub
       const jobsSnapshot = await db
         .collection("jobs")
         .where("orderDate", "<=", fiveMinutesAgo)
-        .where("status", "==", 0) // Assuming 0 means job is open
+        .where("status", "==", 0)
         .where("mechanicsOffer", "==", []) // No mechanic has accepted yet
         .get();
 
@@ -1367,6 +1367,100 @@ exports.autoCancelUnacceptedJobs = functions.pubsub
       return null;
     } catch (error) {
       console.error("Error auto-canceling unaccepted jobs:", error);
+      return null;
+    }
+  });
+
+//auto cancel unfinished jobs after 24 hours of acceptance
+exports.autoCancelUnfinishedJobs = functions.pubsub
+  .schedule("every 1 hours") // runs every hour (recommended)
+  .onRun(async (context) => {
+    try {
+      const twentyFourHoursAgo = admin.firestore.Timestamp.now().toDate();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+      const jobsSnapshot = await db
+        .collection("jobs")
+        .where("status", "!=", 5) // not completed
+        .where("offerAcceptedDate", "<=", twentyFourHoursAgo)
+        .get();
+
+      if (jobsSnapshot.empty) {
+        console.log("No unfinished jobs to auto-cancel.");
+        return null;
+      }
+
+      const updatePromises = [];
+      const notificationPromises = [];
+
+      for (const jobDoc of jobsSnapshot.docs) {
+        const jobData = jobDoc.data();
+        const jobId = jobDoc.id;
+        const userId = jobData.userId;
+
+        // Skip if no mechanic ever accepted
+        if (!jobData.offerAcceptedDate) continue;
+
+        // Update job status + reason
+        updatePromises.push(
+          db.collection("jobs").doc(jobId).update({
+            status: -1,
+            cancelReason: "Mechanic did not complete the job within 24 hours",
+            cancelBy: "System",
+          })
+        );
+
+        // Update history
+        const userHistoryRef = db
+          .collection("Users")
+          .doc(userId)
+          .collection("history")
+          .doc(jobId);
+
+        updatePromises.push(
+          userHistoryRef.update({
+            status: -1,
+            cancelReason: "Mechanic did not complete the job within 24 hours",
+            cancelBy: "System",
+          })
+        );
+
+        // Push notification
+        const userSnapshot = await db.collection("Users").doc(userId).get();
+        const userData = userSnapshot.data();
+        const userToken = userData.fcmToken;
+
+        const payload = {
+          notification: {
+            title: "Job Canceled",
+            body: "Your mechanic did not complete the job within 24 hours. The job has been canceled automatically.",
+          },
+          data: {
+            jobId: jobId,
+            type: "default",
+          },
+        };
+
+        if (userToken) {
+          notificationPromises.push(
+            admin.messaging().send({
+              token: userToken,
+              notification: payload.notification,
+              data: payload.data,
+            })
+          );
+          console.log(`Notification sent to user ${userId} for job ${jobId}`);
+        } else {
+          console.log(`User ${userId} has no FCM token.`);
+        }
+      }
+
+      await Promise.all([...updatePromises, ...notificationPromises]);
+
+      console.log("Auto-cancel unfinished jobs function completed.");
+      return null;
+    } catch (error) {
+      console.error("Error auto-canceling unfinished jobs:", error);
       return null;
     }
   });
