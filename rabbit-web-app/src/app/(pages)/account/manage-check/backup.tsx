@@ -30,19 +30,18 @@
 //   FiPrinter,
 //   FiUser,
 //   FiCalendar,
-//   // FiClock,
 //   FiList,
 //   FiEdit2,
 //   FiFileText,
-//   // FiTrash2,
 //   FiSave,
 //   FiHash,
+//   // FiTrash2,
 // } from "react-icons/fi";
 // import { FaFileAlt } from "react-icons/fa";
 
 // interface ServiceDetail {
 //   serviceName: string;
-//   amount: number;
+//   amount: number | null;
 // }
 
 // interface Trip {
@@ -102,6 +101,8 @@
 //   const [endDate, setEndDate] = useState<Date | null>(null);
 //   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
 //   const [showWriteCheck, setShowWriteCheck] = useState<boolean>(false);
+//   const [showEditCheck, setShowEditCheck] = useState<boolean>(false);
+//   const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
 //   const [selectedType, setSelectedType] = useState<string | null>(null);
 //   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 //   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
@@ -125,6 +126,9 @@
 //   const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
 //   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
 //   const [addingSeries, setAddingSeries] = useState<boolean>(false);
+//   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
+
+//   const topSectionRef = React.useRef<HTMLDivElement>(null);
 
 //   const { user } = useAuth() || { user: null };
 
@@ -224,6 +228,9 @@
 //         });
 //       }
 
+//       console.log(`${showAddDetail}`);
+//       console.log(`${setUnpaidTrips}`);
+
 //       setAllMembers(members);
 //     } catch (error) {
 //       console.error(error);
@@ -260,7 +267,7 @@
 //           id: doc.id,
 //           checkNumber: data.checkNumber || 0,
 //           type: data.type || "",
-//           userId: effectiveUserId || "",
+//           userId: data.userId || "",
 //           userName: data.userName || "",
 //           serviceDetails: data.serviceDetails || [],
 //           totalAmount: data.totalAmount || 0,
@@ -327,14 +334,20 @@
 //       if (index === 0) {
 //         if (detail.serviceName.trim() !== "") {
 //           // For first row, include the amount even if it's 0 or negative
-//           return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//           return (
+//             sum +
+//             (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//           );
 //         }
 //         return sum;
 //       }
 //       // Other rows: include amount if it's entered (can be 0, positive, or negative)
 //       // Service name is optional for other rows
 //       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
-//         return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//         return (
+//           sum +
+//           (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//         );
 //       }
 //       return sum;
 //     }, 0);
@@ -347,13 +360,19 @@
 //       if (index === 0) {
 //         if (detail.serviceName.trim() !== "") {
 //           // For first row, include the amount even if it's 0 or negative
-//           return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//           return (
+//             sum +
+//             (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//           );
 //         }
 //         return sum;
 //       }
 //       // Other rows: include amount if it's entered OR if service name exists
 //       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
-//         return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+//         return (
+//           sum +
+//           (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//         );
 //       }
 //       return sum;
 //     }, 0);
@@ -600,13 +619,70 @@
 //     if (nextCheckNumber) {
 //       setCheckNumber(nextCheckNumber);
 //       setShowWriteCheck(true);
-//       console.log(`Next check number: ${showAddDetail}`);
-//       console.log(`Service details initialized: ${setUnpaidTrips}`);
 //     } else {
 //       GlobalToastError(
 //         "No available check numbers. Please add a check series first."
 //       );
 //     }
+//   };
+
+//   const handleEditCheck = async (checkId: string) => {
+//     try {
+//       const checkRef = doc(db, "Checks", checkId);
+//       const checkSnap = await getDoc(checkRef);
+
+//       if (checkSnap.exists()) {
+//         const checkData = checkSnap.data();
+//         setEditingCheckId(checkId);
+//         setEditingCheckNumber(checkData.checkNumber.toString());
+//         setSelectedType(checkData.type);
+//         setSelectedUserId(checkData.userId);
+//         setSelectedUserName(checkData.userName);
+//         setServiceDetails(checkData.serviceDetails || []);
+//         setMemoNumber(checkData.memoNumber || "");
+//         setSelectedDate(checkData.date?.toDate() || new Date());
+//         setTotalAmount(checkData.totalAmount || 0);
+//         setShowEditCheck(true);
+
+//         // Scroll to top after a small delay to ensure state is updated
+//         setTimeout(() => {
+//           scrollToTop();
+//         }, 100);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching check for edit:", error);
+//       GlobalToastError("Error loading check details");
+//     }
+//   };
+
+//   // Function to scroll to top smoothly
+//   const scrollToTop = () => {
+//     if (topSectionRef.current) {
+//       // Scroll to the top section
+//       topSectionRef.current.scrollIntoView({
+//         behavior: "smooth",
+//         block: "start",
+//       });
+//     } else {
+//       // Fallback: scroll to top of page
+//       window.scrollTo({
+//         top: 0,
+//         behavior: "smooth",
+//       });
+//     }
+//   };
+
+//   const handleCancelEditCheck = () => {
+//     setShowEditCheck(false);
+//     setEditingCheckId(null);
+//     setEditingCheckNumber("");
+//     setSelectedType(null);
+//     setSelectedUserId(null);
+//     setSelectedUserName(null);
+//     setServiceDetails([]);
+//     setMemoNumber("");
+//     setSelectedDate(new Date());
+//     setTotalAmount(0);
 //   };
 
 //   const handleCancelWriteCheck = () => {
@@ -645,7 +721,8 @@
 //     // Ensure we include 0 amounts properly
 //     const detailsToSave = nonEmptyDetails.map((detail) => ({
 //       serviceName: detail.serviceName,
-//       amount: isNaN(detail.amount) ? 0 : detail.amount,
+//       amount:
+//         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
 //     }));
 
 //     try {
@@ -662,7 +739,16 @@
 //         createdAt: serverTimestamp(),
 //       };
 
-//       await addDoc(collection(db, "Checks"), checkData);
+//       const detailsToSave2 = nonEmptyDetails.map((detail) => ({
+//         serviceName: detail.serviceName,
+//         amount:
+//           detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
+//       }));
+
+//       await addDoc(collection(db, "Checks"), {
+//         ...checkData,
+//         serviceDetails: detailsToSave2,
+//       });
 
 //       await updateCheckNumberUsage(checkNumber);
 
@@ -681,6 +767,54 @@
 //     } catch (error) {
 //       console.error(error);
 //       GlobalToastError("Error saving check");
+//     }
+//   };
+
+//   const updateCheck = async () => {
+//     if (!editingCheckId) return;
+
+//     // Filter out service details based on the new logic
+//     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
+//       // First row: must have service name (amount can be 0 or negative)
+//       if (index === 0) {
+//         return detail.serviceName.trim() !== "";
+//       }
+//       // Other rows: can have either service name OR amount (amount can be 0 or negative)
+//       return detail.serviceName.trim() !== "" || detail.amount !== 0;
+//     });
+
+//     if (!selectedUserId || nonEmptyDetails.length === 0 || !effectiveUserId) {
+//       GlobalToastError("Please fill at least the first service detail");
+//       return;
+//     }
+
+//     // Ensure we include 0 amounts properly
+//     const detailsToSave = nonEmptyDetails.map((detail) => ({
+//       serviceName: detail.serviceName,
+//       amount:
+//         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
+//     }));
+
+//     try {
+//       const checkRef = doc(db, "Checks", editingCheckId);
+
+//       await updateDoc(checkRef, {
+//         type: selectedType,
+//         userId: selectedUserId,
+//         userName: selectedUserName,
+//         serviceDetails: detailsToSave,
+//         totalAmount: totalAmount,
+//         memoNumber: memoNumber || null,
+//         date: Timestamp.fromDate(selectedDate),
+//         updatedAt: serverTimestamp(),
+//       });
+
+//       GlobalToastSuccess("Check updated successfully!");
+//       handleCancelEditCheck();
+//       fetchChecks();
+//     } catch (error) {
+//       console.error(error);
+//       GlobalToastError("Error updating check");
 //     }
 //   };
 
@@ -922,7 +1056,6 @@
 //         font-family: "Univers", sans-serif;
 //       }
 
-
 //       /* AMOUNT IN WORDS */
 //       .amount-words {
 //         position: absolute;
@@ -1035,12 +1168,20 @@
 //         </div>
 
 //         ${printCheck.serviceDetails
+//           .filter((s, index) => {
+//             // Always show first row
+//             if (index === 0) return true;
+//             // For other rows, only show if amount is not 0
+//             return (
+//               s.amount !== 0 && s.amount !== null && s.amount !== undefined
+//             );
+//           })
 //           .map(
 //             (s: ServiceDetail) => `
-//           <div class="service-line">
-//             <div>${s.serviceName}</div>
-//             <div>$${Number(s.amount).toFixed(2)}</div>
-//           </div>`
+//             <div class="service-line">
+//               <div>${s.serviceName}</div>
+//               <div>$${Number(s.amount).toFixed(2)}</div>
+//             </div>`
 //           )
 //           .join("")}
 //           ${
@@ -1053,7 +1194,6 @@
 //               : ""
 //           }
 
-
 //         <div class="total-line">$${totalFormatted}</div>
 //       </div>
 
@@ -1064,12 +1204,20 @@
 //         </div>
 
 //         ${printCheck.serviceDetails
+//           .filter((s, index) => {
+//             // Always show first row
+//             if (index === 0) return true;
+//             // For other rows, only show if amount is not 0
+//             return (
+//               s.amount !== 0 && s.amount !== null && s.amount !== undefined
+//             );
+//           })
 //           .map(
 //             (s: ServiceDetail) => `
-//           <div class="service-line">
-//             <div>${s.serviceName}</div>
-//             <div>$${Number(s.amount).toFixed(2)}</div>
-//           </div>`
+//             <div class="service-line">
+//               <div>${s.serviceName}</div>
+//               <div>$${Number(s.amount).toFixed(2)}</div>
+//             </div>`
 //           )
 //           .join("")}
 //           ${
@@ -1081,7 +1229,6 @@
 // `
 //               : ""
 //           }
-
 
 //         <div class="total-line">$${totalFormatted}</div>
 //       </div>
@@ -1140,6 +1287,14 @@
 //     return <div>You do not have permission to access this page.</div>;
 //   }
 
+//   // Format number with commas and 2 decimal places
+//   const formatAmount = (amount: number): string => {
+//     return new Intl.NumberFormat("en-US", {
+//       minimumFractionDigits: 2,
+//       maximumFractionDigits: 2,
+//     }).format(amount);
+//   };
+
 //   return (
 //     <div
 //       key={role}
@@ -1168,12 +1323,14 @@
 //           <div className="flex justify-center space-x-4">
 //             <button
 //               onClick={
-//                 showWriteCheck ? handleCancelWriteCheck : handleWriteCheck
+//                 showWriteCheck || showEditCheck
+//                   ? handleCancelWriteCheck
+//                   : handleWriteCheck
 //               }
 //               className="flex items-center px-6 py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white"
 //             >
 //               <FiPlus className="mr-2" />
-//               {showWriteCheck ? "Cancel Write Check" : "Write Check"}
+//               {showWriteCheck || showEditCheck ? "Cancel" : "Write Check"}
 //             </button>
 
 //             <button
@@ -1339,8 +1496,285 @@
 //           )}
 //         </>
 //       )}
-//       {/* Write Check Section */}
-//       {showWriteCheck && (
+
+//       {/* Edit Check Section */}
+//       {showEditCheck && (
+//         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
+//           <div className="flex items-center justify-between mb-6">
+//             <div className="flex items-center">
+//               <div className="bg-yellow-100 p-3 rounded-full mr-4">
+//                 <FiEdit2 className="text-yellow-600" size={24} />
+//               </div>
+//               <div>
+//                 <h3 className="text-2xl font-serif font-bold text-gray-800">
+//                   Edit Check
+//                 </h3>
+//                 <p className="text-gray-600">Update check details below</p>
+//               </div>
+//             </div>
+//             <button
+//               onClick={handleCancelEditCheck}
+//               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+//             >
+//               <FiX size={20} />
+//             </button>
+//           </div>
+
+//           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Check Number
+//               </label>
+//               <input
+//                 type="text"
+//                 value={editingCheckNumber}
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-500"
+//                 readOnly
+//                 disabled
+//               />
+//               <p className="mt-2 text-sm text-gray-500">
+//                 Check number cannot be changed
+//               </p>
+//             </div>
+
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Date
+//               </label>
+//               <DatePicker
+//                 selected={selectedDate}
+//                 onChange={(date: Date | null) =>
+//                   setSelectedDate(date || new Date())
+//                 }
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 dateFormat="MMMM d, yyyy"
+//               />
+//             </div>
+
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Recipient Type
+//               </label>
+//               <select
+//                 value={selectedType || ""}
+//                 onChange={(e) => {
+//                   setSelectedType(e.target.value || null);
+//                   setSelectedUserId(null);
+//                   setSelectedUserName(null);
+//                 }}
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//               >
+//                 <option value="">Select Type</option>
+//                 <option value="Manager">Manager</option>
+//                 <option value="Accountant">Accountant</option>
+//                 <option value="Driver">Driver</option>
+//                 <option value="Vendor">Vendor</option>
+//                 <option value="Other Staff">Other Staff</option>
+//               </select>
+//             </div>
+//           </div>
+
+//           {selectedType && (
+//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Recipient Name
+//                 </label>
+//                 <select
+//                   value={selectedUserId || ""}
+//                   onChange={(e) => {
+//                     const member = allMembers.find(
+//                       (m) => m.memberId === e.target.value
+//                     );
+//                     setSelectedUserId(e.target.value || null);
+//                     setSelectedUserName(member?.name || null);
+//                   }}
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 >
+//                   <option value="">Select Recipient</option>
+//                   {allMembers
+//                     .filter((member) => member.role === selectedType)
+//                     .map((member) => (
+//                       <option key={member.memberId} value={member.memberId}>
+//                         {member.name}
+//                       </option>
+//                     ))}
+//                 </select>
+//               </div>
+
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Memo (Optional)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={memoNumber}
+//                   onChange={(e) => setMemoNumber(e.target.value)}
+//                   placeholder="Enter memo"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+//             </div>
+//           )}
+
+//           {selectedUserId && (
+//             <>
+//               <div className="mb-6">
+//                 <div className="flex items-center mb-4">
+//                   <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+//                     <FiList className="text-[#F96176]" />
+//                   </div>
+//                   <h4 className="text-lg font-semibold text-gray-800">
+//                     Service Details
+//                   </h4>
+//                 </div>
+
+//                 <div className="space-y-4 mb-6">
+//                   {serviceDetails.map((detail, index) => (
+//                     <div
+//                       key={index}
+//                       className="grid grid-cols-1 md:grid-cols-2 gap-4"
+//                     >
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Service Name{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="text"
+//                           value={detail.serviceName}
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const text = e.target.value;
+//                             const words = text.trim().split(/\s+/);
+
+//                             // Limit to 70 words
+//                             if (words.length <= 70) {
+//                               newDetails[index].serviceName = text;
+//                               setServiceDetails(newDetails);
+
+//                               // Recalculate total
+//                               calculateTotal(newDetails);
+//                             }
+//                           }}
+//                           placeholder={`Enter service description`}
+//                           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                         <p className="text-sm text-gray-500 mt-1">
+//                           {detail.serviceName.trim() === ""
+//                             ? 0
+//                             : detail.serviceName.trim().split(/\s+/).length}
+//                           /70 words
+//                         </p>
+//                       </div>
+
+//                       <div>
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Amount{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="number"
+//                           step="0.01"
+//                           value={
+//                             detail.amount === null ||
+//                             detail.amount === undefined
+//                               ? ""
+//                               : detail.amount
+//                           }
+//                           // onChange={(e) => {
+//                           //   const newDetails = [...serviceDetails];
+//                           //   const value = e.target.value;
+
+//                           //   // Handle empty string
+//                           //   if (value === "") {
+//                           //     newDetails[index].amount = 0;
+//                           //   } else {
+//                           //     const numValue = parseFloat(value);
+//                           //     // Allow any number including 0
+//                           //     newDetails[index].amount = isNaN(numValue)
+//                           //       ? 0
+//                           //       : numValue;
+//                           //   }
+
+//                           //   setServiceDetails(newDetails);
+//                           // }}
+
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const value = e.target.value;
+
+//                             if (value === "") {
+//                               newDetails[index].amount = null;
+//                             } else {
+//                               const numValue = parseFloat(value);
+//                               newDetails[index].amount = isNaN(numValue)
+//                                 ? null
+//                                 : numValue;
+//                             }
+
+//                             setServiceDetails(newDetails);
+//                           }}
+//                           placeholder="Enter amount"
+//                           className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               {/* Show total amount */}
+//               {totalAmount !== 0 && (
+//                 <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
+//                   <span className="text-lg font-semibold text-gray-800">
+//                     Total Amount:
+//                   </span>
+//                   <span
+//                     className={`text-2xl font-bold ${
+//                       totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
+//                     }`}
+//                   >
+//                     ${totalAmount.toFixed(2)}
+//                   </span>
+//                 </div>
+//               )}
+
+//               {/* Update Check Button */}
+//               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+//                 <button
+//                   onClick={handleCancelEditCheck}
+//                   className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={updateCheck}
+//                   disabled={
+//                     // First row must have service name (amount can be 0)
+//                     serviceDetails[0].serviceName.trim() === ""
+//                   }
+//                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
+//                     serviceDetails[0].serviceName.trim() === ""
+//                       ? "bg-gray-300 cursor-not-allowed"
+//                       : "bg-[#F96176] hover:bg-[#F96176]"
+//                   } text-white`}
+//                 >
+//                   <FiSave className="mr-2" />
+//                   Update Check
+//                 </button>
+//               </div>
+//             </>
+//           )}
+//         </div>
+//       )}
+
+//       {/* Write Check Section (Only show when not editing) */}
+//       {showWriteCheck && !showEditCheck && (
 //         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
 //           <div className="flex items-center justify-between mb-6">
 //             <div className="flex items-center">
@@ -1522,20 +1956,41 @@
 //                         <input
 //                           type="number"
 //                           step="0.01"
-//                           value={detail.amount === 0 ? "" : detail.amount}
+//                           value={
+//                             detail.amount === null ||
+//                             detail.amount === undefined
+//                               ? ""
+//                               : detail.amount
+//                           }
+//                           // onChange={(e) => {
+//                           //   const newDetails = [...serviceDetails];
+//                           //   const value = e.target.value;
+
+//                           //   // Handle empty string
+//                           //   if (value === "") {
+//                           //     newDetails[index].amount = 0;
+//                           //   } else {
+//                           //     const numValue = parseFloat(value);
+//                           //     // Allow any number including 0
+//                           //     newDetails[index].amount = isNaN(numValue)
+//                           //       ? 0
+//                           //       : numValue;
+//                           //   }
+
+//                           //   setServiceDetails(newDetails);
+//                           // }}
+
 //                           onChange={(e) => {
 //                             const newDetails = [...serviceDetails];
 //                             const value = e.target.value;
 
-//                             // Handle empty string, "-", and valid numbers
-//                             if (value === "" || value === "-") {
-//                               newDetails[index].amount = 0;
+//                             if (value === "") {
+//                               newDetails[index].amount = null; // empty input
 //                             } else {
 //                               const numValue = parseFloat(value);
-//                               // Allow any number including 0
 //                               newDetails[index].amount = isNaN(numValue)
-//                                 ? 0
-//                                 : numValue;
+//                                 ? null
+//                                 : numValue; // allows -123, 0, etc.
 //                             }
 
 //                             setServiceDetails(newDetails);
@@ -1739,22 +2194,24 @@
 //               ? "Please create an account to write checks."
 //               : "It looks like you haven't written any checks yet. Get started by creating your first check."}
 //           </p>
-//           {!(isAnonymous && !isProfileComplete) && !showWriteCheck && (
-//             <div className="space-x-4">
-//               <button
-//                 onClick={handleWriteCheck}
-//                 className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
-//               >
-//                 Write First Check
-//               </button>
-//               <button
-//                 onClick={() => setShowAddSeries(true)}
-//                 className="px-8 py-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
-//               >
-//                 Add Check Series
-//               </button>
-//             </div>
-//           )}
+//           {!(isAnonymous && !isProfileComplete) &&
+//             !showWriteCheck &&
+//             !showEditCheck && (
+//               <div className="space-x-4">
+//                 <button
+//                   onClick={handleWriteCheck}
+//                   className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
+//                 >
+//                   Write First Check
+//                 </button>
+//                 <button
+//                   onClick={() => setShowAddSeries(true)}
+//                   className="px-8 py-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+//                 >
+//                   Add Check Series
+//                 </button>
+//               </div>
+//             )}
 //         </div>
 //       ) : (
 //         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -1786,9 +2243,20 @@
 //                       Check #{check.checkNumber}
 //                     </h3>
 //                   </div>
-//                   <span className="text-sm text-gray-500">
-//                     {format(check.date, "MMM dd, yyyy")}
-//                   </span>
+//                   <div className="flex space-x-2">
+//                     <span className="text-sm text-gray-500">
+//                       {format(check.date, "MMM dd, yyyy")}
+//                     </span>
+//                     {(role === "Owner" || role === "SubOwner") && (
+//                       <button
+//                         onClick={() => handleEditCheck(check.id)}
+//                         className="p-2 bg-yellow-100 rounded-full hover:bg-yellow-200 transition-all"
+//                         title="Edit Check"
+//                       >
+//                         <FiEdit2 className="text-[#F96176]" size={16} />
+//                       </button>
+//                     )}
+//                   </div>
 //                 </div>
 
 //                 {/* Recipient */}
@@ -1805,18 +2273,31 @@
 //                 </div>
 
 //                 {/* Services */}
+//                 {/* Services */}
 //                 <div className="mb-6">
-//                   {check.serviceDetails.map((detail, index) => (
-//                     <div
-//                       key={index}
-//                       className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
-//                     >
-//                       <p className="text-gray-700">{detail.serviceName}</p>
-//                       <p className="font-semibold text-gray-800">
-//                         ${detail.amount.toFixed(2)}
-//                       </p>
-//                     </div>
-//                   ))}
+//                   {check.serviceDetails
+//                     // Filter: Show all non-zero amounts, or the first one even if it's zero
+//                     .filter((detail, index) => {
+//                       // Always show the first service detail (even if amount is 0)
+//                       if (index === 0) return true;
+//                       // For other rows, only show if amount is not 0 (or null/undefined)
+//                       return (
+//                         detail.amount !== 0 &&
+//                         detail.amount !== null &&
+//                         detail.amount !== undefined
+//                       );
+//                     })
+//                     .map((detail, index) => (
+//                       <div
+//                         key={index}
+//                         className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+//                       >
+//                         <p className="text-gray-700">{detail.serviceName}</p>
+//                         <p className="font-semibold text-gray-800">
+//                           ${formatAmount(detail.amount ?? 0)}
+//                         </p>
+//                       </div>
+//                     ))}
 //                 </div>
 
 //                 {/* Footer */}
@@ -1832,7 +2313,8 @@
 //                     </div>
 //                     <div className="flex items-center">
 //                       <span className="text-2xl font-bold text-[#F96176] mr-4">
-//                         ${check.totalAmount.toFixed(2)}
+//                         {/* ${check.totalAmount.toFixed(2)} */}$
+//                         {formatAmount(check.totalAmount ?? 0)}
 //                       </span>
 //                       <button
 //                         onClick={() => handlePrint(check)}

@@ -139,24 +139,50 @@ export default function ManageCheckScreen() {
     const userRef = doc(db, "Users", user.uid);
     const unsubscribe = onSnapshot(
       userRef,
-      (docSnap) => {
+      async (docSnap) => {
         if (docSnap.exists()) {
           const userProfile = docSnap.data();
           setUserRole(userProfile.role || "");
           setCurrentUserRole(userProfile.role || "");
 
           // Determine effectiveUserId based on role
-          if (userProfile.role === "SubOwner" && userProfile.createdBy) {
-            setEffectiveUserId(userProfile.createdBy);
+          let ownerId: string;
+          if (
+            ["SubOwner", "Manager", "Accountant"].includes(userProfile.role) &&
+            userProfile.createdBy
+          ) {
+            ownerId = userProfile.createdBy;
+            setEffectiveUserId(ownerId);
             console.log(
-              `SubOwner detected, using createdBy as effectiveUserId ${userProfile.createdBy} ${currentUserRole}`
+              `${userProfile.role} detected, using owner's ID: ${ownerId}`
             );
           } else {
-            setEffectiveUserId(user.uid);
+            ownerId = user.uid;
+            setEffectiveUserId(ownerId);
+            console.log(`Owner detected, using own ID: ${user.uid}`);
+          }
+
+          // IMPORTANT: Fetch owner's currentCheckNumber from owner's document
+          if (ownerId !== user.uid) {
+            try {
+              const ownerDoc = await getDoc(doc(db, "Users", ownerId));
+              if (ownerDoc.exists()) {
+                const ownerData = ownerDoc.data();
+                setCurrentCheckNumber(ownerData.currentCheckNumber || null);
+                console.log(
+                  "Fetched owner's check number:",
+                  ownerData.currentCheckNumber
+                );
+              }
+            } catch (error) {
+              console.error("Error fetching owner's data:", error);
+            }
+          } else {
+            // For owner, use their own check number
+            setCurrentCheckNumber(userProfile.currentCheckNumber || null);
           }
 
           setIsCheque(userProfile.isCheque || false);
-          setCurrentCheckNumber(userProfile.currentCheckNumber || null);
           setIsAnonymous(userProfile.isAnonymous || true);
           setIsProfileComplete(userProfile.isProfileComplete || false);
         } else {
@@ -186,12 +212,24 @@ export default function ManageCheckScreen() {
     try {
       if (!effectiveUserId) return;
 
-      const teamQuery = query(
-        collection(db, "Users"),
-        where("active", "==", true),
-        where("createdBy", "==", effectiveUserId),
-        where("uid", "!=", effectiveUserId)
-      );
+      let teamQuery;
+
+      if (["Accountant", "Manager", "SubOwner"].includes(currentUserRole)) {
+        teamQuery = query(
+          collection(db, "Users"),
+          where("active", "==", true),
+          where("createdBy", "==", effectiveUserId),
+          where("uid", "!=", user?.uid) // Exclude current user
+        );
+      } else {
+        // For Owner, fetch all team members
+        teamQuery = query(
+          collection(db, "Users"),
+          where("active", "==", true),
+          where("createdBy", "==", effectiveUserId),
+          where("uid", "!=", effectiveUserId) // Exclude owner themselves
+        );
+      }
 
       const teamSnapshot = await getDocs(teamQuery);
       const members: Member[] = [];
@@ -231,6 +269,7 @@ export default function ManageCheckScreen() {
       console.log(`${showAddDetail}`);
       console.log(`${setUnpaidTrips}`);
 
+      console.log("Fetched team members:", members.length);
       setAllMembers(members);
     } catch (error) {
       console.error(error);
@@ -244,7 +283,7 @@ export default function ManageCheckScreen() {
       setLoadingChecks(true);
       let checksQuery = query(
         collection(db, "Checks"),
-        where("createdBy", "==", effectiveUserId),
+        where("createdBy", "==", effectiveUserId), // Always use effectiveUserId (owner's ID)
         orderBy("date", "desc")
       );
 
@@ -298,7 +337,7 @@ export default function ManageCheckScreen() {
 
       const seriesQuery = query(
         collection(db, "CheckSeries"),
-        where("userId", "==", effectiveUserId),
+        where("userId", "==", effectiveUserId), // Use effectiveUserId
         orderBy("createdAt", "desc")
       );
 
@@ -318,6 +357,77 @@ export default function ManageCheckScreen() {
       setCheckSeries(seriesData);
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleAddCheckSeries = async () => {
+    if (!startSeriesNumber || !endSeriesNumber) {
+      GlobalToastError("Please enter both start and end numbers");
+      return;
+    }
+
+    setAddingSeries(true);
+
+    try {
+      // Generate the check numbers
+      const checkNumbers = generateCheckNumbers(
+        startSeriesNumber,
+        endSeriesNumber
+      );
+
+      if (checkNumbers.length === 0) {
+        return;
+      }
+
+      // Save the series to Firestore using effectiveUserId (owner's ID)
+      const seriesRef = await addDoc(collection(db, "CheckSeries"), {
+        userId: effectiveUserId,
+        startNumber: startSeriesNumber,
+        endNumber: endSeriesNumber,
+        createdAt: serverTimestamp(),
+        totalChecks: checkNumbers.length,
+      });
+
+      // Save individual check numbers to a subcollection
+      const batch = writeBatch(db);
+
+      for (const checkNumber of checkNumbers) {
+        const docRef = doc(
+          collection(db, "CheckSeries", seriesRef.id, "Checks")
+        );
+        batch.set(docRef, {
+          checkNumber: checkNumber,
+          isUsed: false,
+          seriesId: seriesRef.id,
+          userId: effectiveUserId,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      // Update current check number if not set
+      if (!currentCheckNumber) {
+        await updateDoc(doc(db, "Users", effectiveUserId), {
+          currentCheckNumber: startSeriesNumber,
+        });
+        setCurrentCheckNumber(startSeriesNumber);
+      }
+
+      GlobalToastSuccess("Check series saved successfully!");
+
+      // Reset form and close
+      setStartSeriesNumber("");
+      setEndSeriesNumber("");
+      setShowAddSeries(false);
+
+      // Refresh data
+      await fetchCheckSeries();
+    } catch (error) {
+      GlobalToastError("Error saving check series");
+      console.error(error);
+    } finally {
+      setAddingSeries(false);
     }
   };
 
@@ -424,84 +534,13 @@ export default function ManageCheckScreen() {
     return checkNumbers;
   };
 
-  const handleAddCheckSeries = async () => {
-    if (!startSeriesNumber || !endSeriesNumber) {
-      GlobalToastError("Please enter both start and end numbers");
-      return;
-    }
-
-    setAddingSeries(true);
-
-    try {
-      // Generate the check numbers
-      const checkNumbers = generateCheckNumbers(
-        startSeriesNumber,
-        endSeriesNumber
-      );
-
-      if (checkNumbers.length === 0) {
-        return;
-      }
-
-      // Save the series to Firestore
-      const seriesRef = await addDoc(collection(db, "CheckSeries"), {
-        userId: effectiveUserId,
-        startNumber: startSeriesNumber,
-        endNumber: endSeriesNumber,
-        createdAt: serverTimestamp(),
-        totalChecks: checkNumbers.length,
-      });
-
-      // Save individual check numbers to a subcollection
-      const batch = writeBatch(db);
-
-      for (const checkNumber of checkNumbers) {
-        const docRef = doc(
-          collection(db, "CheckSeries", seriesRef.id, "Checks")
-        );
-        batch.set(docRef, {
-          checkNumber: checkNumber,
-          isUsed: false,
-          seriesId: seriesRef.id,
-          userId: effectiveUserId,
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      await batch.commit();
-
-      // Update current check number if not set
-      if (!currentCheckNumber) {
-        await updateDoc(doc(db, "Users", effectiveUserId), {
-          currentCheckNumber: startSeriesNumber,
-        });
-        setCurrentCheckNumber(startSeriesNumber);
-      }
-
-      GlobalToastSuccess("Check series saved successfully!");
-
-      // Reset form and close
-      setStartSeriesNumber("");
-      setEndSeriesNumber("");
-      setShowAddSeries(false);
-
-      // Refresh data
-      await fetchCheckSeries();
-    } catch (error) {
-      GlobalToastError("Error saving check series");
-      console.error(error);
-    } finally {
-      setAddingSeries(false);
-    }
-  };
-
   const getNextAvailableCheckNumber = async (): Promise<string | null> => {
     if (!currentCheckNumber) return null;
 
     try {
       const seriesQuery = query(
         collection(db, "CheckSeries"),
-        where("userId", "==", effectiveUserId)
+        where("userId", "==", effectiveUserId) // Use effectiveUserId
       );
       const seriesSnapshot = await getDocs(seriesQuery);
 
@@ -552,6 +591,7 @@ export default function ManageCheckScreen() {
 
   const updateCheckNumberUsage = async (checkNumber: string) => {
     try {
+      // Use effectiveUserId (owner's ID) to find the check series
       const seriesQuery = query(
         collection(db, "CheckSeries"),
         where("userId", "==", effectiveUserId)
@@ -577,17 +617,19 @@ export default function ManageCheckScreen() {
             {
               isUsed: true,
               usedAt: serverTimestamp(),
-              usedBy: effectiveUserId,
+              usedBy: effectiveUserId, // Owner's ID
             }
           );
           break;
         }
       }
 
-      if (user) {
+      // Update the owner's current check number
+      if (effectiveUserId) {
         await updateDoc(doc(db, "Users", effectiveUserId), {
           currentCheckNumber: checkNumber,
         });
+        setCurrentCheckNumber(checkNumber);
       }
     } catch (error) {
       console.error("Error updating check number usage:", error);
@@ -735,20 +777,11 @@ export default function ManageCheckScreen() {
         totalAmount: totalAmount,
         memoNumber: memoNumber || null,
         date: Timestamp.fromDate(selectedDate),
-        createdBy: effectiveUserId,
+        createdBy: effectiveUserId, // Always use effectiveUserId (owner's ID)
         createdAt: serverTimestamp(),
       };
 
-      const detailsToSave2 = nonEmptyDetails.map((detail) => ({
-        serviceName: detail.serviceName,
-        amount:
-          detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
-      }));
-
-      await addDoc(collection(db, "Checks"), {
-        ...checkData,
-        serviceDetails: detailsToSave2,
-      });
+      await addDoc(collection(db, "Checks"), checkData);
 
       await updateCheckNumberUsage(checkNumber);
 
