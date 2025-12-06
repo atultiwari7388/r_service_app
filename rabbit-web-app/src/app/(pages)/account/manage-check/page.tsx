@@ -1618,7 +1618,7 @@ export default function ManageCheckScreen() {
                           )}
                         </label>
                         <input
-                          type="number"
+                          type="tel"
                           step="0.01"
                           value={
                             detail.amount === 0 && detail.amount !== 0
@@ -1877,7 +1877,7 @@ export default function ManageCheckScreen() {
                           )}
                         </label>
                         <input
-                          type="number"
+                          type="tel"
                           step="0.01"
                           value={
                             detail.amount === 0 && detail.amount !== 0
