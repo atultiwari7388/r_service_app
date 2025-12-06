@@ -41,7 +41,7 @@ import { FaFileAlt } from "react-icons/fa";
 
 interface ServiceDetail {
   serviceName: string;
-  amount: number;
+  amount: number | null;
 }
 
 interface Trip {
@@ -332,14 +332,20 @@ export default function ManageCheckScreen() {
       if (index === 0) {
         if (detail.serviceName.trim() !== "") {
           // For first row, include the amount even if it's 0 or negative
-          return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+          return (
+            sum +
+            (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+          );
         }
         return sum;
       }
       // Other rows: include amount if it's entered (can be 0, positive, or negative)
       // Service name is optional for other rows
       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
-        return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+        return (
+          sum +
+          (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+        );
       }
       return sum;
     }, 0);
@@ -352,13 +358,19 @@ export default function ManageCheckScreen() {
       if (index === 0) {
         if (detail.serviceName.trim() !== "") {
           // For first row, include the amount even if it's 0 or negative
-          return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+          return (
+            sum +
+            (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+          );
         }
         return sum;
       }
       // Other rows: include amount if it's entered OR if service name exists
       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
-        return sum + (isNaN(detail.amount) ? 0 : detail.amount);
+        return (
+          sum +
+          (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+        );
       }
       return sum;
     }, 0);
@@ -685,7 +697,8 @@ export default function ManageCheckScreen() {
     // Ensure we include 0 amounts properly
     const detailsToSave = nonEmptyDetails.map((detail) => ({
       serviceName: detail.serviceName,
-      amount: isNaN(detail.amount) ? 0 : detail.amount,
+      amount:
+        detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount,
     }));
 
     try {
@@ -702,7 +715,16 @@ export default function ManageCheckScreen() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "Checks"), checkData);
+      const detailsToSave2 = nonEmptyDetails.map((detail) => ({
+        serviceName: detail.serviceName,
+        amount:
+          detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount,
+      }));
+
+      await addDoc(collection(db, "Checks"), {
+        ...checkData,
+        serviceDetails: detailsToSave2,
+      });
 
       await updateCheckNumberUsage(checkNumber);
 
@@ -745,7 +767,8 @@ export default function ManageCheckScreen() {
     // Ensure we include 0 amounts properly
     const detailsToSave = nonEmptyDetails.map((detail) => ({
       serviceName: detail.serviceName,
-      amount: isNaN(detail.amount) ? 0 : detail.amount,
+      amount:
+        detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount,
     }));
 
     try {
@@ -1618,25 +1641,42 @@ export default function ManageCheckScreen() {
                           )}
                         </label>
                         <input
-                          type="tel"
+                          type="number"
                           step="0.01"
                           value={
-                            detail.amount === 0 && detail.amount !== 0
+                            detail.amount === null ||
+                            detail.amount === undefined
                               ? ""
                               : detail.amount
                           }
+                          // onChange={(e) => {
+                          //   const newDetails = [...serviceDetails];
+                          //   const value = e.target.value;
+
+                          //   // Handle empty string
+                          //   if (value === "") {
+                          //     newDetails[index].amount = 0;
+                          //   } else {
+                          //     const numValue = parseFloat(value);
+                          //     // Allow any number including 0
+                          //     newDetails[index].amount = isNaN(numValue)
+                          //       ? 0
+                          //       : numValue;
+                          //   }
+
+                          //   setServiceDetails(newDetails);
+                          // }}
+
                           onChange={(e) => {
                             const newDetails = [...serviceDetails];
                             const value = e.target.value;
 
-                            // Handle empty string
                             if (value === "") {
-                              newDetails[index].amount = 0;
+                              newDetails[index].amount = null;
                             } else {
                               const numValue = parseFloat(value);
-                              // Allow any number including 0
                               newDetails[index].amount = isNaN(numValue)
-                                ? 0
+                                ? null
                                 : numValue;
                             }
 
@@ -1877,26 +1917,43 @@ export default function ManageCheckScreen() {
                           )}
                         </label>
                         <input
-                          type="tel"
+                          type="number"
                           step="0.01"
                           value={
-                            detail.amount === 0 && detail.amount !== 0
+                            detail.amount === null ||
+                            detail.amount === undefined
                               ? ""
                               : detail.amount
                           }
+                          // onChange={(e) => {
+                          //   const newDetails = [...serviceDetails];
+                          //   const value = e.target.value;
+
+                          //   // Handle empty string
+                          //   if (value === "") {
+                          //     newDetails[index].amount = 0;
+                          //   } else {
+                          //     const numValue = parseFloat(value);
+                          //     // Allow any number including 0
+                          //     newDetails[index].amount = isNaN(numValue)
+                          //       ? 0
+                          //       : numValue;
+                          //   }
+
+                          //   setServiceDetails(newDetails);
+                          // }}
+
                           onChange={(e) => {
                             const newDetails = [...serviceDetails];
                             const value = e.target.value;
 
-                            // Handle empty string
                             if (value === "") {
-                              newDetails[index].amount = 0;
+                              newDetails[index].amount = null; // empty input
                             } else {
                               const numValue = parseFloat(value);
-                              // Allow any number including 0
                               newDetails[index].amount = isNaN(numValue)
-                                ? 0
-                                : numValue;
+                                ? null
+                                : numValue; // allows -123, 0, etc.
                             }
 
                             setServiceDetails(newDetails);
@@ -2188,7 +2245,7 @@ export default function ManageCheckScreen() {
                       <p className="text-gray-700">{detail.serviceName}</p>
                       <p className="font-semibold text-gray-800">
                         {/* ${detail.amount.toFixed(2)} */}$
-                        {formatAmount(detail.amount)}
+                        {formatAmount(detail.amount ?? 0)}
                       </p>
                     </div>
                   ))}
@@ -2208,7 +2265,7 @@ export default function ManageCheckScreen() {
                     <div className="flex items-center">
                       <span className="text-2xl font-bold text-[#F96176] mr-4">
                         {/* ${check.totalAmount.toFixed(2)} */}$
-                        {formatAmount(check.totalAmount)}
+                        {formatAmount(check.totalAmount ?? 0)}
                       </span>
                       <button
                         onClick={() => handlePrint(check)}
