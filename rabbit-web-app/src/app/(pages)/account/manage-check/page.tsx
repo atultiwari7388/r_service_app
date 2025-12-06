@@ -722,7 +722,7 @@ export default function ManageCheckScreen() {
     const detailsToSave = nonEmptyDetails.map((detail) => ({
       serviceName: detail.serviceName,
       amount:
-        detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount,
+        detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
     }));
 
     try {
@@ -742,7 +742,7 @@ export default function ManageCheckScreen() {
       const detailsToSave2 = nonEmptyDetails.map((detail) => ({
         serviceName: detail.serviceName,
         amount:
-          detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount,
+          detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
       }));
 
       await addDoc(collection(db, "Checks"), {
@@ -792,7 +792,7 @@ export default function ManageCheckScreen() {
     const detailsToSave = nonEmptyDetails.map((detail) => ({
       serviceName: detail.serviceName,
       amount:
-        detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount,
+        detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
     }));
 
     try {
@@ -1169,12 +1169,20 @@ export default function ManageCheckScreen() {
         </div>
 
         ${printCheck.serviceDetails
+          .filter((s, index) => {
+            // Always show first row
+            if (index === 0) return true;
+            // For other rows, only show if amount is not 0
+            return (
+              s.amount !== 0 && s.amount !== null && s.amount !== undefined
+            );
+          })
           .map(
             (s: ServiceDetail) => `
-          <div class="service-line">
-            <div>${s.serviceName}</div>
-            <div>$${Number(s.amount).toFixed(2)}</div>
-          </div>`
+            <div class="service-line">
+              <div>${s.serviceName}</div>
+              <div>$${Number(s.amount).toFixed(2)}</div>
+            </div>`
           )
           .join("")}
           ${
@@ -1198,12 +1206,20 @@ export default function ManageCheckScreen() {
         </div>
 
         ${printCheck.serviceDetails
+          .filter((s, index) => {
+            // Always show first row
+            if (index === 0) return true;
+            // For other rows, only show if amount is not 0
+            return (
+              s.amount !== 0 && s.amount !== null && s.amount !== undefined
+            );
+          })
           .map(
             (s: ServiceDetail) => `
-          <div class="service-line">
-            <div>${s.serviceName}</div>
-            <div>$${Number(s.amount).toFixed(2)}</div>
-          </div>`
+            <div class="service-line">
+              <div>${s.serviceName}</div>
+              <div>$${Number(s.amount).toFixed(2)}</div>
+            </div>`
           )
           .join("")}
           ${
@@ -2260,19 +2276,31 @@ export default function ManageCheckScreen() {
                 </div>
 
                 {/* Services */}
+                {/* Services */}
                 <div className="mb-6">
-                  {check.serviceDetails.map((detail, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
-                    >
-                      <p className="text-gray-700">{detail.serviceName}</p>
-                      <p className="font-semibold text-gray-800">
-                        {/* ${detail.amount.toFixed(2)} */}$
-                        {formatAmount(detail.amount ?? 0)}
-                      </p>
-                    </div>
-                  ))}
+                  {check.serviceDetails
+                    // Filter: Show all non-zero amounts, or the first one even if it's zero
+                    .filter((detail, index) => {
+                      // Always show the first service detail (even if amount is 0)
+                      if (index === 0) return true;
+                      // For other rows, only show if amount is not 0 (or null/undefined)
+                      return (
+                        detail.amount !== 0 &&
+                        detail.amount !== null &&
+                        detail.amount !== undefined
+                      );
+                    })
+                    .map((detail, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+                      >
+                        <p className="text-gray-700">{detail.serviceName}</p>
+                        <p className="font-semibold text-gray-800">
+                          ${formatAmount(detail.amount ?? 0)}
+                        </p>
+                      </div>
+                    ))}
                 </div>
 
                 {/* Footer */}
