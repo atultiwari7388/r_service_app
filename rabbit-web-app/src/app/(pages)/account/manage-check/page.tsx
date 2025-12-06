@@ -128,6 +128,8 @@ export default function ManageCheckScreen() {
   const [addingSeries, setAddingSeries] = useState<boolean>(false);
   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
 
+  const topSectionRef = React.useRef<HTMLDivElement>(null);
+
   const { user } = useAuth() || { user: null };
 
   useEffect(() => {
@@ -641,10 +643,32 @@ export default function ManageCheckScreen() {
         setSelectedDate(checkData.date?.toDate() || new Date());
         setTotalAmount(checkData.totalAmount || 0);
         setShowEditCheck(true);
+
+        // Scroll to top after a small delay to ensure state is updated
+        setTimeout(() => {
+          scrollToTop();
+        }, 100);
       }
     } catch (error) {
       console.error("Error fetching check for edit:", error);
       GlobalToastError("Error loading check details");
+    }
+  };
+
+  // Function to scroll to top smoothly
+  const scrollToTop = () => {
+    if (topSectionRef.current) {
+      // Scroll to the top section
+      topSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    } else {
+      // Fallback: scroll to top of page
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     }
   };
 
