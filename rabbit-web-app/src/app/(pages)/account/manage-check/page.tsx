@@ -1013,12 +1013,13 @@ export default function ManageCheckScreen() {
     const memoTopMm = globalTop + 57 + extraMm;
     const detailsTopMm = globalTop + 90 + extraMm;
     const duplicateTopMm = globalTop + 190 + extraMm;
+    // const duplicateTopMm = globalTop + 100 + extraMm;
 
     /* -----------------------------
       Prepare values
      ----------------------------- */
     const formattedDate = format(printCheck.date, "MM/dd/yyyy");
-    const totalFormatted = Number(printCheck.totalAmount).toFixed(2);
+    // const totalFormatted = Number(printCheck.totalAmount).toFixed(2);
     const amountWordsFormatted = `****${amountToWords(
       Number(printCheck.totalAmount)
     )}*******************`;
@@ -1058,7 +1059,7 @@ export default function ManageCheckScreen() {
 
       .check-container {
         width: 210mm;
-        height: 297mm;
+        // height: 297mm;
         position: relative;
         font-family: "Univers", sans-serif;
         margin-left: -3mm;
@@ -1079,8 +1080,8 @@ export default function ManageCheckScreen() {
       .payee-row {
         position: absolute;
         top: ${payeeTopMm}mm;
-        left: 35mm;     /* 25 was 15mm → moved 10mm more left */
-        right: 10mm;    /* was 10mm → moved 2mm left */
+        left: 25mm;     /* 25 was 15mm → moved 10mm more left */
+        right: 12mm;    /* was 10mm → moved 2mm left */
         font-size: 11pt;
         text-transform: uppercase;
         display: flex;
@@ -1165,7 +1166,8 @@ export default function ManageCheckScreen() {
       /* DUPLICATE SECTION */
       .duplicate-section {
         position: absolute;
-        top: ${duplicateTopMm}mm;
+        /* top: ${duplicateTopMm}mm; */
+        top: 190mm;
         left: 15mm;
         right: 9mm;
         font-size: 12pt;
@@ -1182,7 +1184,7 @@ export default function ManageCheckScreen() {
 
       <div class="payee-row">
         <div>${String(printCheck.userName).toUpperCase()}</div>
-        <div>**${totalFormatted}</div>
+        <div>**${formatAmount(printCheck.totalAmount)}</div>
       </div>
 
       <div class="amount-words">${amountWordsFormatted}</div>
@@ -1202,22 +1204,32 @@ export default function ManageCheckScreen() {
         </div>
 
         ${printCheck.serviceDetails
-          .filter((s, index) => {
-            // Always show first row
+          .filter((detail, index) => {
             if (index === 0) return true;
-            // For other rows, only show if amount is not 0
-            return (
-              s.amount !== 0 && s.amount !== null && s.amount !== undefined
-            );
+
+            const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
+            const hasAmount =
+              detail.amount !== null && detail.amount !== undefined;
+
+            return hasDescription || hasAmount;
           })
-          .map(
-            (s: ServiceDetail) => `
-            <div class="service-line">
-              <div>${s.serviceName}</div>
-              <div>$${Number(s.amount).toFixed(2)}</div>
-            </div>`
-          )
+          .map((detail, index) => {
+            const description = detail.serviceName?.trim() ?? "";
+            const amount = detail.amount ?? 0;
+            const isFirst = index === 0;
+            const hasDescription = description !== "";
+
+            const showAmount = isFirst || amount !== 0 || !hasDescription;
+
+            return `
+      <div class="service-line">
+        <div>${hasDescription ? description : ""}</div>
+        ${showAmount ? `<div>$${formatAmount(amount)}</div>` : ""}
+      </div>
+    `;
+          })
           .join("")}
+
           ${
             printCheck.memoNumber
               ? `
@@ -1229,7 +1241,7 @@ export default function ManageCheckScreen() {
           }
 
 
-        <div class="total-line">$${totalFormatted}</div>
+        <div class="total-line">$${formatAmount(printCheck.totalAmount)}</div>
       </div>
 
       <div class="duplicate-section">
@@ -1239,22 +1251,32 @@ export default function ManageCheckScreen() {
         </div>
 
         ${printCheck.serviceDetails
-          .filter((s, index) => {
-            // Always show first row
+          .filter((detail, index) => {
             if (index === 0) return true;
-            // For other rows, only show if amount is not 0
-            return (
-              s.amount !== 0 && s.amount !== null && s.amount !== undefined
-            );
+
+            const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
+            const hasAmount =
+              detail.amount !== null && detail.amount !== undefined;
+
+            return hasDescription || hasAmount;
           })
-          .map(
-            (s: ServiceDetail) => `
-            <div class="service-line">
-              <div>${s.serviceName}</div>
-              <div>$${Number(s.amount).toFixed(2)}</div>
-            </div>`
-          )
+          .map((detail, index) => {
+            const description = detail.serviceName?.trim() ?? "";
+            const amount = detail.amount ?? 0;
+            const isFirst = index === 0;
+            const hasDescription = description !== "";
+
+            const showAmount = isFirst || amount !== 0 || !hasDescription;
+
+            return `
+      <div class="service-line">
+        <div>${hasDescription ? description : ""}</div>
+        ${showAmount ? `<div>$${formatAmount(amount)}</div>` : ""}
+      </div>
+    `;
+          })
           .join("")}
+
           ${
             printCheck.memoNumber
               ? `
@@ -1266,7 +1288,7 @@ export default function ManageCheckScreen() {
           }
 
 
-        <div class="total-line">$${totalFormatted}</div>
+        <div class="total-line">$${formatAmount(printCheck.totalAmount)}</div>
       </div>
 
     </div>
@@ -2307,33 +2329,52 @@ export default function ManageCheckScreen() {
                     </p>
                   </div>
                 </div>
+                {/** Services */}
 
-                {/* Services */}
-                {/* Services */}
                 <div className="mb-6">
                   {check.serviceDetails
-                    // Filter: Show all non-zero amounts, or the first one even if it's zero
                     .filter((detail, index) => {
-                      // Always show the first service detail (even if amount is 0)
+                      // Always show the first row
                       if (index === 0) return true;
-                      // For other rows, only show if amount is not 0 (or null/undefined)
+
+                      // Show row if description or amount exists
                       return (
-                        detail.amount !== 0 &&
-                        detail.amount !== null &&
+                        (detail.serviceName?.trim() ?? "") !== "" ||
+                        detail.amount !== null ||
                         detail.amount !== undefined
                       );
                     })
-                    .map((detail, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
-                      >
-                        <p className="text-gray-700">{detail.serviceName}</p>
-                        <p className="font-semibold text-gray-800">
-                          ${formatAmount(detail.amount ?? 0)}
-                        </p>
-                      </div>
-                    ))}
+                    .map((detail, index) => {
+                      const description = detail.serviceName?.trim() ?? "";
+                      const amount = detail.amount ?? 0;
+                      const isFirst = index === 0;
+                      const hasDescription = description !== "";
+
+                      const showAmount =
+                        isFirst || amount !== 0 || !hasDescription;
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+                        >
+                          {/* LEFT SIDE: Description (only if available) */}
+                          {hasDescription ? (
+                            <p className="text-gray-700">{description}</p>
+                          ) : (
+                            // If no description → create an empty div so layout stays aligned
+                            <div></div>
+                          )}
+
+                          {/* RIGHT SIDE: Amount */}
+                          {showAmount && (
+                            <p className="font-semibold text-gray-800">
+                              ${formatAmount(amount)}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
 
                 {/* Footer */}

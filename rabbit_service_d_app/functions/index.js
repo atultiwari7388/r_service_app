@@ -762,32 +762,56 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
               vehicleType === "Trailer" &&
               hoursReading >= nextNotificationValue;
             break;
-          case "day":
-            if (createdAt) {
-              const notificationDate = new Date(createdAt);
-              notificationDate.setDate(
-                notificationDate.getDate() + nextNotificationValue
-              );
-              shouldNotify = currentDate >= notificationDate;
-            }
-            break;
 
           // case "day":
           //   if (service.nextNotificationValue) {
-          //     const dateStr = service.nextNotificationValue.trim();
-          //     const [dd, mm, yyyy] = dateStr.split("/").map(Number);
+          //     // Only process if nextNotificationValue is a string (date format)
+          //     if (typeof service.nextNotificationValue === "string") {
+          //       const dateStr = service.nextNotificationValue.trim();
+          //       const [dd, mm, yyyy] = dateStr.split("/").map(Number);
 
-          //     const dueDate = new Date(yyyy, mm - 1, dd);
-          //     const today = new Date();
-          //     today.setHours(0, 0, 0, 0);
+          //       const dueDate = new Date(yyyy, mm - 1, dd);
+          //       const today = new Date();
+          //       today.setHours(0, 0, 0, 0);
 
-          //     const diffMs = dueDate - today;
-          //     const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          //       const diffMs = dueDate - today;
+          //       const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-          //     // Notify when 15 days or less remain (and not expired)
-          //     shouldNotify = daysRemaining <= 15 && daysRemaining >= 0;
+          //       shouldNotify = daysRemaining <= 15 && daysRemaining >= 0;
+          //     } else {
+          //       // nextNotificationValue is a number → skip date-related logic
+          //       shouldNotify = false;
+          //     }
           //   }
           //   break;
+
+          case "day":
+            if (service.nextNotificationValue) {
+              if (typeof service.nextNotificationValue === "string") {
+                const dateStr = service.nextNotificationValue.trim();
+                const [dd, mm, yyyy] = dateStr.split("/").map(Number);
+
+                const dueDate = new Date(yyyy, mm - 1, dd);
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const diffMs = dueDate - today;
+                const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+                // NEW LOGIC (matches your requirement)
+                // Notify if:
+                // 1) 15 days before
+                // OR
+                // 2) Date is already passed but user still didn't update
+                shouldNotify =
+                  (daysRemaining <= 15 && daysRemaining >= 0) || // within 15 days
+                  daysRemaining < 0; // expired but unchanged
+              } else {
+                shouldNotify = false; // skip if number
+              }
+            }
+            break;
         }
 
         if (shouldNotify) {
