@@ -932,8 +932,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
         Get.off(() => MyTeamScreen());
       }
     } catch (e) {
-      showToastMessage("Error",
-          "Email Id Already exists or something went wrong", Colors.red);
+      showToastMessage("Error", "Email Id Already exists", Colors.red);
     } finally {
       setState(() {
         isUserAcCreated = false;

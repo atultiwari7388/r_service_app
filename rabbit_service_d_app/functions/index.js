@@ -763,28 +763,6 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
               hoursReading >= nextNotificationValue;
             break;
 
-          // case "day":
-          //   if (service.nextNotificationValue) {
-          //     // Only process if nextNotificationValue is a string (date format)
-          //     if (typeof service.nextNotificationValue === "string") {
-          //       const dateStr = service.nextNotificationValue.trim();
-          //       const [dd, mm, yyyy] = dateStr.split("/").map(Number);
-
-          //       const dueDate = new Date(yyyy, mm - 1, dd);
-          //       const today = new Date();
-          //       today.setHours(0, 0, 0, 0);
-
-          //       const diffMs = dueDate - today;
-          //       const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-          //       shouldNotify = daysRemaining <= 15 && daysRemaining >= 0;
-          //     } else {
-          //       // nextNotificationValue is a number → skip date-related logic
-          //       shouldNotify = false;
-          //     }
-          //   }
-          //   break;
-
           case "day":
             if (service.nextNotificationValue) {
               if (typeof service.nextNotificationValue === "string") {

@@ -278,117 +278,40 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
     pdf.addPage(
       pw.Page(
-        // pageFormat: PdfPageFormat.a4,
-        pageFormat: PdfPageFormat.a4.copyWith(
-          marginTop: 0,
-          marginBottom: 0,
-          marginLeft: 0,
-          marginRight: 0,
-        ),
+        pageFormat: PdfPageFormat.a4,
+        // pageFormat: PdfPageFormat.a4.copyWith(
+        //   marginTop: 0,
+        //   marginBottom: 0,
+        //   marginLeft: 0,
+        //   marginRight: 0,
+        // ),
         build: (pw.Context context) {
-          return pw.Transform.translate(
-            offset: const PdfPoint(0, 20), //pushes entire layout by 40 px
-            child: pw.Container(
-              margin: pw.EdgeInsets.only(top: -4),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.SizedBox(height: 6),
-                  // Date row
-                  pw.Row(
-                    children: [
-                      pw.Text(""),
-                      pw.Spacer(),
-                      pw.SizedBox(width: 450),
-                      pw.Text(
-                        DateFormat('MM/dd/yyyy').format(check['date']),
-                        style: pw.TextStyle(fontSize: 11, font: universeFont),
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 30),
-
-                  // Payee Name (in CAPITAL)
-                  pw.Container(
-                    margin: pw.EdgeInsets.only(top: -5),
-                    child: pw.Row(
-                      children: [
-                        pw.SizedBox(width: 5),
-                        pw.Text(
-                          check['userName'].toString().toUpperCase(),
-                          style: pw.TextStyle(
-                              fontSize: 11,
-                              fontWeight: pw.FontWeight.normal,
-                              font: universeFont),
-                        ),
-                        pw.Spacer(),
-                        pw.SizedBox(width: 410),
-                        pw.Text(
-                          '**${check['totalAmount'].toStringAsFixed(2)}',
-                          style: pw.TextStyle(fontSize: 11, font: universeFont),
-                        ),
-                        // pw.SizedBox(width: 30),
-                      ],
-                    ),
-                  ),
-                  pw.SizedBox(height: 15),
-
-                  pw.Container(
-                    margin: pw.EdgeInsets.only(left: -18, top: -5),
-                    child: pw.Text(
-                      "****${_amountToWords(check['totalAmount'])}***********",
+          return pw.Container(
+            margin: pw.EdgeInsets.only(top: -4),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.SizedBox(height: 6),
+                // Date row
+                pw.Row(
+                  children: [
+                    pw.Text(""),
+                    pw.Spacer(),
+                    pw.SizedBox(width: 450),
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
                       style: pw.TextStyle(fontSize: 11, font: universeFont),
                     ),
-                  ),
-                  pw.SizedBox(height: 20),
+                  ],
+                ),
+                pw.SizedBox(height: 30),
 
-                  // Payee Address - Now in 3 lines
-                  if (streetLine.isNotEmpty)
-                    pw.Container(
-                      margin: pw.EdgeInsets.only(left: -15),
-                      child: pw.Text(
-                        streetLine,
-                        style: pw.TextStyle(fontSize: 11, font: universeFont),
-                      ),
-                    ),
-
-                  if (cityStateLine.isNotEmpty)
-                    pw.Container(
-                      margin: pw.EdgeInsets.only(left: -15),
-                      child: pw.Text(
-                        cityStateLine,
-                        style: pw.TextStyle(fontSize: 11, font: universeFont),
-                      ),
-                    ),
-
-                  if (countryZipLine.isNotEmpty)
-                    pw.Container(
-                      margin: pw.EdgeInsets.only(left: -15),
-                      child: pw.Text(
-                        countryZipLine,
-                        style: pw.TextStyle(fontSize: 11, font: universeFont),
-                      ),
-                    ),
-
-                  // Adjust spacing based on which address lines are present
-                  pw.SizedBox(
-                      height: _calculateAddressHeight(
-                          streetLine, cityStateLine, countryZipLine)),
-
-                  // Memo number with negative margin
-                  if (check['memoNumber'] != null)
-                    pw.Container(
-                      margin: pw.EdgeInsets.only(left: -15),
-                      child: pw.Text(
-                        '${check['memoNumber']}',
-                        style: pw.TextStyle(fontSize: 11, font: universeFont),
-                      ),
-                    ),
-
-                  pw.SizedBox(height: 85),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                // Payee Name (in CAPITAL)
+                pw.Container(
+                  margin: pw.EdgeInsets.only(top: -5),
+                  child: pw.Row(
                     children: [
+                      pw.SizedBox(width: 5),
                       pw.Text(
                         check['userName'].toString().toUpperCase(),
                         style: pw.TextStyle(
@@ -396,127 +319,207 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                             fontWeight: pw.FontWeight.normal,
                             font: universeFont),
                       ),
+                      pw.Spacer(),
+                      pw.SizedBox(width: 410),
                       pw.Text(
-                        DateFormat('MM/dd/yyyy').format(check['date']),
-                        style: pw.TextStyle(fontSize: 15, font: universeFont),
+                        '**${check['totalAmount'] != null ? NumberFormat("#,##0.00", "en_US").format(check['totalAmount']) : "0.00"}',
+                        style: pw.TextStyle(fontSize: 11, font: universeFont),
                       ),
+                      // pw.SizedBox(width: 30),
                     ],
                   ),
-                  pw.SizedBox(height: 10),
-                  ...check['serviceDetails'].map<pw.Widget>((detail) {
-                    return pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text(
-                          detail['serviceName'],
-                          style: pw.TextStyle(fontSize: 13, font: universeFont),
-                        ),
-                        pw.Text(
-                          '\$${detail['amount'].toStringAsFixed(2)}',
-                          style: pw.TextStyle(fontSize: 13, font: universeFont),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  pw.SizedBox(height: 20),
-                  pw.Row(children: [
-                    pw.Spacer(),
+                ),
+                pw.SizedBox(height: 15),
+
+                pw.Container(
+                  margin: pw.EdgeInsets.only(left: -18, top: -5),
+                  child: pw.Text(
+                    "****${_amountToWords(check['totalAmount'])}***********",
+                    style: pw.TextStyle(fontSize: 11, font: universeFont),
+                  ),
+                ),
+                pw.SizedBox(height: 20),
+
+                // Payee Address - Now in 3 lines
+                if (streetLine.isNotEmpty)
+                  pw.Container(
+                    margin: pw.EdgeInsets.only(left: -15),
+                    child: pw.Text(
+                      streetLine,
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
+                    ),
+                  ),
+
+                if (cityStateLine.isNotEmpty)
+                  pw.Container(
+                    margin: pw.EdgeInsets.only(left: -15),
+                    child: pw.Text(
+                      cityStateLine,
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
+                    ),
+                  ),
+
+                if (countryZipLine.isNotEmpty)
+                  pw.Container(
+                    margin: pw.EdgeInsets.only(left: -15),
+                    child: pw.Text(
+                      countryZipLine,
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
+                    ),
+                  ),
+
+                // Adjust spacing based on which address lines are present
+                pw.SizedBox(
+                    height: _calculateAddressHeight(
+                        streetLine, cityStateLine, countryZipLine)),
+
+                // Memo number with negative margin
+                if (check['memoNumber'] != null)
+                  pw.Container(
+                    margin: pw.EdgeInsets.only(left: -15),
+                    child: pw.Text(
+                      '${check['memoNumber']}',
+                      style: pw.TextStyle(fontSize: 11, font: universeFont),
+                    ),
+                  ),
+
+                pw.SizedBox(height: 85),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
                     pw.Text(
-                      '\$${check['totalAmount'].toStringAsFixed(2)}',
+                      check['userName'].toString().toUpperCase(),
                       style: pw.TextStyle(
-                          fontSize: 13,
+                          fontSize: 11,
                           fontWeight: pw.FontWeight.normal,
                           font: universeFont),
                     ),
-                  ]),
-                  pw.SizedBox(height: 10),
-                  if (check['memoNumber'] != null)
-                    pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.start,
-                        children: [
-                          // pw.Text(
-                          //   'Memo Number :',
-                          //   style: pw.TextStyle(
-                          //       fontSize: 13,
-                          //       fontWeight: pw.FontWeight.normal,
-                          //       font: universeFont),
-                          // ),
-                          pw.Text(
-                            '${check['memoNumber'].toString()}',
-                            style: pw.TextStyle(
-                                fontSize: 13,
-                                fontWeight: pw.FontWeight.normal,
-                                font: universeFont),
-                          ),
-                        ]),
-
-                  //duplicate section
-                  pw.SizedBox(height: 200),
-                  pw.Row(
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
+                      style: pw.TextStyle(fontSize: 15, font: universeFont),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  final numberFormat = NumberFormat("#,##0.00", "en_US");
+                  final formattedTotal = numberFormat
+                      .format(detail['amount'] != null ? detail['amount'] : 0);
+                  return pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        check['userName'].toString().toUpperCase(),
-                        style: pw.TextStyle(
-                            fontSize: 13,
-                            fontWeight: pw.FontWeight.normal,
-                            font: universeFont),
+                        detail['serviceName'],
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
                       ),
                       pw.Text(
-                        DateFormat('MM/dd/yyyy').format(check['date']),
-                        style: pw.TextStyle(fontSize: 15, font: universeFont),
+                        '\$${formattedTotal}',
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
                       ),
                     ],
+                  );
+                }).toList(),
+                pw.SizedBox(height: 20),
+                pw.Row(children: [
+                  pw.Spacer(),
+                  pw.Text(
+                    '\$${check['totalAmount'] != null ? NumberFormat("#,##0.00", "en_US").format(check['totalAmount']) : "0.00"}',
+                    style: pw.TextStyle(
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.normal,
+                        font: universeFont),
                   ),
-                  pw.SizedBox(height: 10),
-                  ...check['serviceDetails'].map<pw.Widget>((detail) {
-                    return pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                ]),
+                pw.SizedBox(height: 10),
+                if (check['memoNumber'] != null)
+                  pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.start,
                       children: [
+                        // pw.Text(
+                        //   'Memo Number :',
+                        //   style: pw.TextStyle(
+                        //       fontSize: 13,
+                        //       fontWeight: pw.FontWeight.normal,
+                        //       font: universeFont),
+                        // ),
                         pw.Text(
-                          detail['serviceName'],
-                          style: pw.TextStyle(fontSize: 13, font: universeFont),
+                          '${check['memoNumber'].toString()}',
+                          style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.normal,
+                              font: universeFont),
                         ),
-                        pw.Text(
-                          '\$${detail['amount'].toStringAsFixed(2)}',
-                          style: pw.TextStyle(fontSize: 13, font: universeFont),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  pw.SizedBox(height: 20),
-                  pw.Row(children: [
-                    pw.Spacer(),
+                      ]),
+
+                //duplicate section
+                pw.SizedBox(height: 200),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
                     pw.Text(
-                      '\$${check['totalAmount'].toStringAsFixed(2)}',
+                      check['userName'].toString().toUpperCase(),
                       style: pw.TextStyle(
                           fontSize: 13,
                           fontWeight: pw.FontWeight.normal,
                           font: universeFont),
                     ),
-                  ]),
-                  pw.SizedBox(height: 10),
-                  if (check['memoNumber'] != null)
-                    pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.start,
-                        children: [
-                          // pw.Text(
-                          //   'Memo Number :',
-                          //   style: pw.TextStyle(
-                          //       fontSize: 13,
-                          //       fontWeight: pw.FontWeight.normal,
-                          //       font: universeFont),
-                          // ),
-                          pw.Text(
-                            '${check['memoNumber'].toString()}',
-                            style: pw.TextStyle(
-                                fontSize: 13,
-                                fontWeight: pw.FontWeight.normal,
-                                font: universeFont),
-                          ),
-                        ]),
-                ],
-              ),
+                    pw.Text(
+                      DateFormat('MM/dd/yyyy').format(check['date']),
+                      style: pw.TextStyle(fontSize: 15, font: universeFont),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 10),
+                ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  final numberFormat = NumberFormat("#,##0.00", "en_US");
+                  final formattedTotal = numberFormat
+                      .format(detail['amount'] != null ? detail['amount'] : 0);
+                  return pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        detail['serviceName'],
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
+                      ),
+                      pw.Text(
+                        '\$${formattedTotal}',
+                        style: pw.TextStyle(fontSize: 13, font: universeFont),
+                      ),
+                    ],
+                  );
+                }).toList(),
+                pw.SizedBox(height: 20),
+                pw.Row(children: [
+                  pw.Spacer(),
+                  pw.Text(
+                    '\$${check['totalAmount'].toStringAsFixed(2)}',
+                    style: pw.TextStyle(
+                        fontSize: 13,
+                        fontWeight: pw.FontWeight.normal,
+                        font: universeFont),
+                  ),
+                ]),
+                pw.SizedBox(height: 10),
+                if (check['memoNumber'] != null)
+                  pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.start,
+                      children: [
+                        // pw.Text(
+                        //   'Memo Number :',
+                        //   style: pw.TextStyle(
+                        //       fontSize: 13,
+                        //       fontWeight: pw.FontWeight.normal,
+                        //       font: universeFont),
+                        // ),
+                        pw.Text(
+                          '${check['memoNumber'].toString()}',
+                          style: pw.TextStyle(
+                              fontSize: 13,
+                              fontWeight: pw.FontWeight.normal,
+                              font: universeFont),
+                        ),
+                      ]),
+              ],
             ),
           );
         },
@@ -1035,7 +1038,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             SizedBox(height: 8),
             Divider(),
             ...check['serviceDetails'].map<Widget>((detail) {
-              final formattedAmount = numberFormat.format(detail['amount']);
+              final formattedAmount = numberFormat
+                  .format(detail['amount'] != null ? detail['amount'] : 0);
               return Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
                 child: Row(
