@@ -762,32 +762,32 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
               vehicleType === "Trailer" &&
               hoursReading >= nextNotificationValue;
             break;
-          // case "day":
-          //   if (createdAt) {
-          //     const notificationDate = new Date(createdAt);
-          //     notificationDate.setDate(
-          //       notificationDate.getDate() + nextNotificationValue
-          //     );
-          //     shouldNotify = currentDate >= notificationDate;
-          //   }
-          //   break;
-
           case "day":
-            if (service.nextNotificationValue) {
-              const dateStr = service.nextNotificationValue.trim();
-              const [dd, mm, yyyy] = dateStr.split("/").map(Number);
-
-              const dueDate = new Date(yyyy, mm - 1, dd);
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-
-              const diffMs = dueDate - today;
-              const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-              // Notify when 15 days or less remain (and not expired)
-              shouldNotify = daysRemaining <= 15 && daysRemaining >= 0;
+            if (createdAt) {
+              const notificationDate = new Date(createdAt);
+              notificationDate.setDate(
+                notificationDate.getDate() + nextNotificationValue
+              );
+              shouldNotify = currentDate >= notificationDate;
             }
             break;
+
+          // case "day":
+          //   if (service.nextNotificationValue) {
+          //     const dateStr = service.nextNotificationValue.trim();
+          //     const [dd, mm, yyyy] = dateStr.split("/").map(Number);
+
+          //     const dueDate = new Date(yyyy, mm - 1, dd);
+          //     const today = new Date();
+          //     today.setHours(0, 0, 0, 0);
+
+          //     const diffMs = dueDate - today;
+          //     const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+          //     // Notify when 15 days or less remain (and not expired)
+          //     shouldNotify = daysRemaining <= 15 && daysRemaining >= 0;
+          //   }
+          //   break;
         }
 
         if (shouldNotify) {
