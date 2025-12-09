@@ -19,7 +19,7 @@ interface NotificationData {
 interface Service {
   serviceName: string;
   defaultNotificationValue: number;
-  nextNotificationValue: number;
+  nextNotificationValue: number | string;
   subServices?: string[];
   type: string;
 }
@@ -235,10 +235,19 @@ const InfoRow = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
 const ServiceItem = ({ service }: { service: Service }) => {
   if (service.nextNotificationValue === 0) return null;
 
-  // Format date only when type is "day"
+  const formatToMMDDYYYY = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // fallback if invalid
+
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+  };
+
   const formattedValue =
     service.type === "day"
-      ? new Date(service.nextNotificationValue).toLocaleDateString("en-US") // MM/DD/YYYY
+      ? formatToMMDDYYYY(String(service.nextNotificationValue))
       : service.nextNotificationValue;
 
   return (

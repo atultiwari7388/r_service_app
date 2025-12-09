@@ -344,9 +344,6 @@ class AuthController extends GetxController {
             //navigate to mobile view
             Get.offAll(() => EntryScreen());
             showToastMessage("Success", "Login Successful", Colors.green);
-            // Clear all controllers after successful login
-            // _emailController.clear();
-            // _passController.clear();
           } else if (userDoc['status'] == "deactivated") {
             // User is not active, navigate to ContactWithAdmin screen
             showToastMessage(
@@ -366,8 +363,9 @@ class AuthController extends GetxController {
           Get.to(() => RegistrationScreen());
         }
       }
-    } on FirebaseAuthException catch (e) {
-      handleAuthError(e);
+    } catch (e) {
+      // handleAuthError(e);
+      showToastMessage("Error", "Invalid email and password", Colors.red);
     } finally {
       isUserSign = false;
       update();

@@ -179,8 +179,6 @@ class PushNotification {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(channelDefault);
     }
-
-    // For iOS, ensure that the custom sounds are added to the project
   }
 
   // Handle notification taps
