@@ -321,25 +321,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       _emailController.text.toString(),
                       _passController.text.toString(),
                     );
-
-                    // if (user != null) {
-                    //   // Check if this device is authorized
-                    //   final isAuthorized =
-                    //       await _checkDeviceAuthorization(user.uid);
-
-                    //   // if (!isAuthorized) {
-                    //   //   // Not authorized - sign out and show message
-                    //   //   await FirebaseAuth.instance.signOut();
-                    //   //   showToastMessage(
-                    //   //       "Device Not Authorized",
-                    //   //       "You are already logged in on another device. Please logout from the other device first or contact support.",
-                    //   //       Colors.red);
-                    //   //   return;
-                    //   // }
-
-                    //   // Update device info for authorized login
-                    //   await _updateDeviceInfo(user.uid);
-                    // }
                   } else {
                     showToastMessage(
                         "Error", "Invalid Email or Password", Colors.red);

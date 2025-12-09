@@ -2587,6 +2587,9 @@ export default function RecordsPage() {
                       <TableCell className="table-cell">
                         {record.services && record.services.length > 0
                           ? record.services
+                              .sort((a, b) =>
+                                a.serviceName.localeCompare(b.serviceName)
+                              )
                               .map((service) => service.serviceName)
                               .join(", ")
                           : "N/A"}

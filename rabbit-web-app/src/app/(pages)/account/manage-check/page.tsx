@@ -19,7 +19,7 @@ import {
   updateDoc,
   getDoc,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
@@ -680,7 +680,10 @@ export default function ManageCheckScreen() {
         setSelectedType(checkData.type);
         setSelectedUserId(checkData.userId);
         setSelectedUserName(checkData.userName);
+
+        // Use the saved service details, don't add extra empty rows
         setServiceDetails(checkData.serviceDetails || []);
+
         setMemoNumber(checkData.memoNumber || "");
         setSelectedDate(checkData.date?.toDate() || new Date());
         setTotalAmount(checkData.totalAmount || 0);
@@ -1643,26 +1646,31 @@ export default function ManageCheckScreen() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Recipient Name
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedUserId || ""}
-                  onChange={(e) => {
-                    const member = allMembers.find(
-                      (m) => m.memberId === e.target.value
-                    );
-                    setSelectedUserId(e.target.value || null);
+                  onChange={(value) => {
+                    const member = allMembers.find((m) => m.memberId === value);
+                    setSelectedUserId(value || null);
                     setSelectedUserName(member?.name || null);
                   }}
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                >
-                  <option value="">Select Recipient</option>
-                  {allMembers
+                  options={allMembers
                     .filter((member) => member.role === selectedType)
-                    .map((member) => (
-                      <option key={member.memberId} value={member.memberId}>
-                        {member.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((member) => ({
+                      value: member.memberId,
+                      label: member.name,
+                    }))}
+                  placeholder="Search or select recipient..."
+                  disabled={!selectedType}
+                />
+                {selectedUserId && (
+                  <p className="mt-2 text-sm text-green-600">
+                    Selected:{" "}
+                    {
+                      allMembers.find((m) => m.memberId === selectedUserId)
+                        ?.name
+                    }
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1680,6 +1688,7 @@ export default function ManageCheckScreen() {
             </div>
           )}
 
+          {/* Edit Check Section - Service Details */}
           {selectedUserId && (
             <>
               <div className="mb-6">
@@ -1693,101 +1702,115 @@ export default function ManageCheckScreen() {
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  {serviceDetails.map((detail, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                    >
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Service Name{" "}
-                          {index === 0 && (
-                            <span className="text-red-500">*</span>
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          value={detail.serviceName}
-                          onChange={(e) => {
-                            const newDetails = [...serviceDetails];
-                            const text = e.target.value;
-                            const words = text.trim().split(/\s+/);
+                  {/* First, show all existing service details */}
+                  {serviceDetails
+                    .filter((detail, index) => {
+                      // Always show first row
+                      if (index === 0) return true;
 
-                            // Limit to 70 words
-                            if (words.length <= 70) {
-                              newDetails[index].serviceName = text;
+                      // Show other rows if they have service name OR amount
+                      return (
+                        (detail.serviceName?.trim() ?? "") !== "" ||
+                        detail.amount !== null ||
+                        detail.amount !== undefined
+                      );
+                    })
+                    .map((detail, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                      >
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Service Name{" "}
+                            {index === 0 && (
+                              <span className="text-red-500">*</span>
+                            )}
+                          </label>
+                          <input
+                            type="text"
+                            value={detail.serviceName}
+                            onChange={(e) => {
+                              const newDetails = [...serviceDetails];
+                              const text = e.target.value;
+                              const words = text.trim().split(/\s+/);
+
+                              // Limit to 70 words
+                              if (words.length <= 70) {
+                                newDetails[index].serviceName = text;
+                                setServiceDetails(newDetails);
+                                // Recalculate total
+                                calculateTotal(newDetails);
+                              }
+                            }}
+                            placeholder={`Enter service description`}
+                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                          />
+                          <p className="text-sm text-gray-500 mt-1">
+                            {detail.serviceName.trim() === ""
+                              ? 0
+                              : detail.serviceName.trim().split(/\s+/).length}
+                            /70 words
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Amount{" "}
+                            {index === 0 && (
+                              <span className="text-red-500">*</span>
+                            )}
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={
+                              detail.amount === null ||
+                              detail.amount === undefined
+                                ? ""
+                                : detail.amount
+                            }
+                            onChange={(e) => {
+                              const newDetails = [...serviceDetails];
+                              const value = e.target.value;
+
+                              if (value === "") {
+                                newDetails[index].amount = null;
+                              } else {
+                                const numValue = parseFloat(value);
+                                newDetails[index].amount = isNaN(numValue)
+                                  ? null
+                                  : numValue;
+                              }
+
                               setServiceDetails(newDetails);
-
-                              // Recalculate total
-                              calculateTotal(newDetails);
-                            }
-                          }}
-                          placeholder={`Enter service description`}
-                          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                        />
-                        <p className="text-sm text-gray-500 mt-1">
-                          {detail.serviceName.trim() === ""
-                            ? 0
-                            : detail.serviceName.trim().split(/\s+/).length}
-                          /70 words
-                        </p>
+                            }}
+                            placeholder="Enter amount"
+                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                          />
+                        </div>
                       </div>
+                    ))}
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount{" "}
-                          {index === 0 && (
-                            <span className="text-red-500">*</span>
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={
-                            detail.amount === null ||
-                            detail.amount === undefined
-                              ? ""
-                              : detail.amount
-                          }
-                          // onChange={(e) => {
-                          //   const newDetails = [...serviceDetails];
-                          //   const value = e.target.value;
-
-                          //   // Handle empty string
-                          //   if (value === "") {
-                          //     newDetails[index].amount = 0;
-                          //   } else {
-                          //     const numValue = parseFloat(value);
-                          //     // Allow any number including 0
-                          //     newDetails[index].amount = isNaN(numValue)
-                          //       ? 0
-                          //       : numValue;
-                          //   }
-
-                          //   setServiceDetails(newDetails);
-                          // }}
-
-                          onChange={(e) => {
-                            const newDetails = [...serviceDetails];
-                            const value = e.target.value;
-
-                            if (value === "") {
-                              newDetails[index].amount = null;
-                            } else {
-                              const numValue = parseFloat(value);
-                              newDetails[index].amount = isNaN(numValue)
-                                ? null
-                                : numValue;
-                            }
-
-                            setServiceDetails(newDetails);
-                          }}
-                          placeholder="Enter amount"
-                          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                        />
-                      </div>
-                    </div>
-                  ))}
+                  {/* Add "Add More" button if less than 5 rows */}
+                  {serviceDetails.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newDetails = [
+                          ...serviceDetails,
+                          { serviceName: "", amount: 0 },
+                        ];
+                        setServiceDetails(newDetails);
+                      }}
+                      className="flex items-center justify-center w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#F96176] hover:bg-[#F96176]/5 transition-all"
+                    >
+                      <FiPlus className="mr-2 text-gray-400" />
+                      <span className="text-gray-500 font-medium">
+                        Add More Details
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1919,26 +1942,31 @@ export default function ManageCheckScreen() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Recipient Name
                 </label>
-                <select
+                <SearchableSelect
                   value={selectedUserId || ""}
-                  onChange={(e) => {
-                    const member = allMembers.find(
-                      (m) => m.memberId === e.target.value
-                    );
-                    setSelectedUserId(e.target.value || null);
+                  onChange={(value) => {
+                    const member = allMembers.find((m) => m.memberId === value);
+                    setSelectedUserId(value || null);
                     setSelectedUserName(member?.name || null);
                   }}
-                  className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                >
-                  <option value="">Select Recipient</option>
-                  {allMembers
+                  options={allMembers
                     .filter((member) => member.role === selectedType)
-                    .map((member) => (
-                      <option key={member.memberId} value={member.memberId}>
-                        {member.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((member) => ({
+                      value: member.memberId,
+                      label: member.name,
+                    }))}
+                  placeholder="Search or select recipient..."
+                  disabled={!selectedType}
+                />
+                {selectedUserId && (
+                  <p className="mt-2 text-sm text-green-600">
+                    Selected:{" "}
+                    {
+                      allMembers.find((m) => m.memberId === selectedUserId)
+                        ?.name
+                    }
+                  </p>
+                )}
               </div>
 
               <div>
@@ -2419,3 +2447,145 @@ export default function ManageCheckScreen() {
     </div>
   );
 }
+
+interface SearchableSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onChange,
+  options,
+  placeholder = "Select or search...",
+  disabled = false,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const selectRef = useRef<HTMLDivElement>(null);
+
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        selectRef.current &&
+        !selectRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setFocusedIndex((prev) =>
+          prev < filteredOptions.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setFocusedIndex((prev) =>
+          prev > 0 ? prev - 1 : filteredOptions.length - 1
+        );
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (focusedIndex >= 0 && filteredOptions[focusedIndex]) {
+          onChange(filteredOptions[focusedIndex].value);
+          setIsOpen(false);
+          setSearchTerm("");
+        }
+        break;
+      case "Escape":
+        e.preventDefault();
+        setIsOpen(false);
+        break;
+    }
+  };
+
+  return (
+    <div ref={selectRef} className="relative">
+      <div className="relative">
+        <div className="flex items-center">
+          <input
+            type="text"
+            value={isOpen ? searchTerm : selectedOption?.label || ""}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setIsOpen(true);
+              if (!isOpen) setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled}
+            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            disabled={disabled}
+          >
+            <FiUser size={18} />
+          </button>
+        </div>
+      </div>
+
+      {isOpen && filteredOptions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+          {filteredOptions.map((option, index) => (
+            <div
+              key={option.value}
+              className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+                value === option.value ? "bg-[#F96176]/10" : ""
+              } ${index === focusedIndex ? "bg-gray-100" : ""} ${
+                index > 0 ? "border-t border-gray-100" : ""
+              }`}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+                setSearchTerm("");
+              }}
+              onMouseEnter={() => setFocusedIndex(index)}
+            >
+              <div className="flex items-center">
+                <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                  <FiUser className="text-gray-500" size={14} />
+                </div>
+                <div>
+                  <div className="font-medium text-gray-800">
+                    {option.label}
+                  </div>
+                  {/* <div className="text-sm text-gray-500">{option.value}</div> */}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isOpen && searchTerm && filteredOptions.length === 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+          <p className="text-gray-500 text-center">No recipients found</p>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -21,6 +21,7 @@ interface Service {
   defaultNotificationValue: number;
   nextNotificationValue: number;
   subServices?: string[];
+  type: string;
 }
 
 interface VehicleData {
@@ -234,6 +235,12 @@ const InfoRow = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
 const ServiceItem = ({ service }: { service: Service }) => {
   if (service.nextNotificationValue === 0) return null;
 
+  // Format date only when type is "day"
+  const formattedValue =
+    service.type === "day"
+      ? new Date(service.nextNotificationValue).toLocaleDateString("en-US") // MM/DD/YYYY
+      : service.nextNotificationValue;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -246,7 +253,7 @@ const ServiceItem = ({ service }: { service: Service }) => {
 
         <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
           <FaBell className="text-blue-500" />
-          <span className="text-gray-700">{service.nextNotificationValue}</span>
+          <span className="text-gray-700">{formattedValue}</span>
         </div>
       </div>
     </div>

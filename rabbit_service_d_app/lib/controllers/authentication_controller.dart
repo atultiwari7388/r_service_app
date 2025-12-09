@@ -258,14 +258,6 @@ class AuthController extends GetxController {
     String? deviceId;
     String? fcmToken;
 
-    // if (defaultTargetPlatform == TargetPlatform.android) {
-    //   AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
-    //   deviceId = androidInfo.model;
-    // } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-    //   IosDeviceInfo iosInfo = await deviceInfoPlugin.iosInfo;
-    //   deviceId = iosInfo.identifierForVendor;
-    // }
-
     if (defaultTargetPlatform == TargetPlatform.android) {
       final androidIdPlugin = AndroidId();
       deviceId = await androidIdPlugin.getId(); // ✅ true ANDROID_ID
