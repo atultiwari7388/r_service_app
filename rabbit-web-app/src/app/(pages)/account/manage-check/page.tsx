@@ -1918,17 +1918,53 @@ export default function ManageCheckScreen() {
 
               {/* Show total amount */}
               {totalAmount !== 0 && (
-                <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
-                  <span className="text-lg font-semibold text-gray-800">
-                    Total Amount:
-                  </span>
-                  <span
-                    className={`text-2xl font-bold ${
-                      totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
-                    }`}
-                  >
-                    ${totalAmount.toFixed(2)}
-                  </span>
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Numeric Amount */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-800">
+                          Total Amount:
+                        </span>
+                        <span
+                          className={`text-2xl font-bold ${
+                            totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
+                          }`}
+                        >
+                          ${totalAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Amount in Words */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <FiFileText className="text-gray-400 mr-2" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-700 mb-1">
+                            Amount in Words:
+                          </div>
+                          <div className="text-gray-800 font-medium text-sm bg-gray-50 p-3 rounded border border-gray-100">
+                            {totalAmount === 0 ? (
+                              <span className="text-gray-400 italic">Zero</span>
+                            ) : (
+                              <>
+                                {amountToWords(totalAmount)}
+                                <div className="mt-1 text-xs text-gray-500">
+                                  Dollars
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 italic">
+                            This is how it will appear on the check
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
