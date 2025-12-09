@@ -1361,6 +1361,108 @@ export default function ManageCheckScreen() {
     }).format(amount);
   };
 
+  // helper function
+  const numberToWords = (num: number): string => {
+    if (num === 0) return "Zero";
+
+    const units = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+    ];
+
+    const teens = [
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen",
+    ];
+
+    const tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety",
+    ];
+
+    function underThousand(n: number): string {
+      let w = "";
+
+      if (Math.floor(n / 100) > 0) {
+        w += units[Math.floor(n / 100)] + " Hundred ";
+        n %= 100;
+      }
+
+      if (n > 0) {
+        if (n < 10) w += units[n];
+        else if (n < 20) w += teens[n - 10];
+        else {
+          w += tens[Math.floor(n / 10)];
+          if (n % 10 > 0) w += " " + units[n % 10];
+        }
+      }
+
+      return w.trim();
+    }
+
+    let words = "";
+
+    const billions = Math.floor(num / 1_000_000_000);
+    if (billions > 0) {
+      words += underThousand(billions) + " Billion ";
+      num %= 1_000_000_000;
+    }
+
+    const millions = Math.floor(num / 1_000_000);
+    if (millions > 0) {
+      words += underThousand(millions) + " Million ";
+      num %= 1_000_000;
+    }
+
+    const thousands = Math.floor(num / 1000);
+    if (thousands > 0) {
+      words += underThousand(thousands) + " Thousand ";
+      num %= 1000;
+    }
+
+    if (num > 0) {
+      words += underThousand(num);
+    }
+
+    return words.trim();
+  };
+
+  const amountToWords = (amount: number): string => {
+    const whole = Math.floor(Math.abs(amount));
+    const cents = Math.round((Math.abs(amount) - whole) * 100);
+    const words = numberToWords(whole);
+    const centsText = `${cents.toString().padStart(2, "0")}/100`;
+
+    // Add negative sign if amount is negative
+    const sign = amount < 0 ? "Negative " : "";
+
+    return `${sign}${words} and ${centsText}`;
+  };
+
   return (
     <div
       key={role}
@@ -2053,24 +2155,6 @@ export default function ManageCheckScreen() {
                               ? ""
                               : detail.amount
                           }
-                          // onChange={(e) => {
-                          //   const newDetails = [...serviceDetails];
-                          //   const value = e.target.value;
-
-                          //   // Handle empty string
-                          //   if (value === "") {
-                          //     newDetails[index].amount = 0;
-                          //   } else {
-                          //     const numValue = parseFloat(value);
-                          //     // Allow any number including 0
-                          //     newDetails[index].amount = isNaN(numValue)
-                          //       ? 0
-                          //       : numValue;
-                          //   }
-
-                          //   setServiceDetails(newDetails);
-                          // }}
-
                           onChange={(e) => {
                             const newDetails = [...serviceDetails];
                             const value = e.target.value;
@@ -2097,17 +2181,53 @@ export default function ManageCheckScreen() {
 
               {/* Show total amount */}
               {totalAmount !== 0 && (
-                <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
-                  <span className="text-lg font-semibold text-gray-800">
-                    Total Amount:
-                  </span>
-                  <span
-                    className={`text-2xl font-bold ${
-                      totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
-                    }`}
-                  >
-                    ${totalAmount.toFixed(2)}
-                  </span>
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Numeric Amount */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-gray-800">
+                          Total Amount:
+                        </span>
+                        <span
+                          className={`text-2xl font-bold ${
+                            totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
+                          }`}
+                        >
+                          ${totalAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Amount in Words */}
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <FiFileText className="text-gray-400 mr-2" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-700 mb-1">
+                            Amount in Words:
+                          </div>
+                          <div className="text-gray-800 font-medium text-sm bg-gray-50 p-3 rounded border border-gray-100">
+                            {totalAmount === 0 ? (
+                              <span className="text-gray-400 italic">Zero</span>
+                            ) : (
+                              <>
+                                {amountToWords(totalAmount)}
+                                <div className="mt-1 text-xs text-gray-500">
+                                  Dollars
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 italic">
+                            This is how it will appear on the check
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
