@@ -232,22 +232,21 @@ const InfoRow = ({ icon, text }: { icon: React.ReactNode; text: string }) => (
   </div>
 );
 
+const formatDDMMYYYYtoMMDDYYYY = (value: string | number) => {
+  const str = String(value);
+  const [dd, mm, yyyy] = str.split("/");
+
+  if (!dd || !mm || !yyyy) return str;
+
+  return `${mm}/${dd}/${yyyy}`;
+};
+
 const ServiceItem = ({ service }: { service: Service }) => {
   if (service.nextNotificationValue === 0) return null;
 
-  const formatToMMDDYYYY = (dateString: string) => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; // fallback if invalid
-
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const dd = String(date.getDate()).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
-  };
-
   const formattedValue =
     service.type === "day"
-      ? formatToMMDDYYYY(String(service.nextNotificationValue))
+      ? formatDDMMYYYYtoMMDDYYYY(service.nextNotificationValue)
       : service.nextNotificationValue;
 
   return (
