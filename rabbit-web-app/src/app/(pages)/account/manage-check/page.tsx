@@ -1081,7 +1081,7 @@ export default function ManageCheckScreen() {
         position: absolute;
         top: ${payeeTopMm}mm;
         left: 25mm;     /* 25 was 15mm → moved 10mm more left */
-        right: 12mm;    /* was 10mm → moved 2mm left */
+        right: 7mm;    /* was 10mm → moved 2mm left */
         font-size: 11pt;
         text-transform: uppercase;
         display: flex;
@@ -1090,6 +1090,9 @@ export default function ManageCheckScreen() {
         font-family: "Univers", sans-serif;
       }
 
+      .payee-amount {
+        margin-left: auto;
+        }
 
       /* AMOUNT IN WORDS */
       .amount-words {
@@ -1184,7 +1187,9 @@ export default function ManageCheckScreen() {
 
       <div class="payee-row">
         <div>${String(printCheck.userName).toUpperCase()}</div>
-        <div>**${formatAmount(printCheck.totalAmount)}</div>
+        <div class="payee-amount">**${formatAmount(
+          printCheck.totalAmount
+        )}</div>
       </div>
 
       <div class="amount-words">${amountWordsFormatted}</div>
