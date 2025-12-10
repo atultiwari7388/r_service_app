@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/utils/convert_date_format.dart';
 
 class NotificationDetailsScreen extends StatelessWidget {
   const NotificationDetailsScreen({
@@ -95,6 +96,11 @@ class NotificationDetailsScreen extends StatelessWidget {
                               final serviceName = service['serviceName'] ?? '';
                               final nextNotificationValue =
                                   service['nextNotificationValue'] ?? 0;
+                              final serviceType = service['type'];
+                              final formattedNotificationValue =
+                                  serviceType == "day"
+                                      ? convertDateFormat(nextNotificationValue)
+                                      : nextNotificationValue.toString();
 
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +135,7 @@ class NotificationDetailsScreen extends StatelessWidget {
                                             ),
                                             SizedBox(width: 2.w),
                                             Text(
-                                              "$nextNotificationValue",
+                                              "$formattedNotificationValue",
                                               style: appStyleUniverse(
                                                   16, kDark, FontWeight.w500),
                                             ),

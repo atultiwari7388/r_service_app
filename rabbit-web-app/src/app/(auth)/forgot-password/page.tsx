@@ -38,8 +38,10 @@ const ForgotPassword: React.FC = () => {
       // Call the Firebase method to send the password reset email
       await sendPasswordResetEmail(auth, formValues.email);
       setLoading(false);
-      alert("Password reset link sent to your email.");
-      toast.success("Password reset link sent to your email.");
+      alert("Password reset link sent to your email, check your spam folder");
+      toast.success(
+        "Password reset link sent to your email, check your spam folder"
+      );
     } catch (error) {
       setLoading(false);
       setError("Failed to send reset email. Please try again.");

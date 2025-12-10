@@ -238,6 +238,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                     id: job["orderId"].toString(),
                                     companyAndVehicleName:
                                         "${job["companyName"]} (${vehicleNumber})",
+                                    currentUId: _effectiveUserId,
                                   ));
                             },
                             onCancelBtnTap: () {

@@ -14,22 +14,25 @@ import '../../../widgets/reusable_text.dart';
 import '../profile/profile_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
-  const RequestsScreen(
-      {super.key,
-      required this.serviceName,
-      this.companyAndVehicleName = "",
-      this.id = ""});
+  const RequestsScreen({
+    super.key,
+    required this.serviceName,
+    this.companyAndVehicleName = "",
+    this.id = "",
+    required this.currentUId,
+  });
 
   final String serviceName;
   final String companyAndVehicleName;
   final String id;
+  final String currentUId;
 
   @override
   State<RequestsScreen> createState() => _RequestsScreenState();
 }
 
 class _RequestsScreenState extends State<RequestsScreen> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
 
   String _selectedSortOption = "Sort";
   int? _selectedCardIndex; // Track which card is selected
@@ -57,7 +60,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               child: StreamBuilder<DocumentSnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('Users')
-                    .doc(currentUId)
+                    .doc(widget.currentUId)
                     .snapshots(),
                 builder: (BuildContext context,
                     AsyncSnapshot<DocumentSnapshot> snapshot) {
@@ -173,7 +176,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               StreamBuilder(
                 stream: FirebaseFirestore.instance
                     .collection('Users')
-                    .doc(currentUId)
+                    .doc(widget.currentUId)
                     .collection("history")
                     .where("orderId", isEqualTo: widget.id)
                     .where("status", whereIn: [0, 1, 2, 3, 4, 5]).snapshots(),

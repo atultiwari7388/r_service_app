@@ -1558,7 +1558,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       labelStyle: appStyle(14, kDark, FontWeight.normal),
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.number,
+                    keyboardType: TextInputType.streetAddress,
                     enabled: true),
               ],
             ),
