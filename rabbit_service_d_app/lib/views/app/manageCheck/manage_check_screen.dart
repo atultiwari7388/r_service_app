@@ -1639,25 +1639,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           .collection('Users')
           .doc(_selectedUserId!)
           .get();
-      final currentWallet =
-          (userDoc.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
-      final newWalletBalance = currentWallet + _totalAmount;
+      // final currentWallet =
+      //     (userDoc.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
+      // final newWalletBalance = currentWallet + _totalAmount;
 
-      await userDoc.reference.update({'wallet': newWalletBalance});
-      if (_selectedType == 'Driver') {
-        final querySnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(_selectedUserId)
-            .collection('trips')
-            .where('isPaid', isEqualTo: false)
-            .get();
+      // await userDoc.reference.update({'wallet': newWalletBalance});
+      // if (_selectedType == 'Driver') {
+      //   final querySnapshot = await FirebaseFirestore.instance
+      //       .collection('Users')
+      //       .doc(_selectedUserId)
+      //       .collection('trips')
+      //       .where('isPaid', isEqualTo: false)
+      //       .get();
 
-        final batch = FirebaseFirestore.instance.batch();
-        for (final doc in querySnapshot.docs) {
-          batch.update(doc.reference, {'isPaid': true});
-        }
-        await batch.commit();
-      }
+      //   final batch = FirebaseFirestore.instance.batch();
+      //   for (final doc in querySnapshot.docs) {
+      //     batch.update(doc.reference, {'isPaid': true});
+      //   }
+      //   await batch.commit();
+      // }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Check saved successfully')),

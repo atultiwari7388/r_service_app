@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -5,9 +6,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
+import 'package:regal_service_d_app/views/app/no_internet_screen.dart';
 import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
 import 'package:regal_service_d_app/views/app/splash/splash_screen.dart';
 import 'services/push_notification.dart';
@@ -56,11 +59,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final PushNotification pushNotification;
+  late final StreamSubscription<InternetConnectionStatus> _internetSubscription;
 
   @override
   void initState() {
     super.initState();
     _setupServices();
+    _listenToInternet();
   }
 
   Future<void> _setupServices() async {
@@ -99,6 +104,28 @@ class _MyAppState extends State<MyApp> {
     } else {
       navigatorKey.currentState?.pushNamed("/default", arguments: message);
     }
+  }
+
+  void _listenToInternet() {
+    _internetSubscription = InternetConnectionCheckerPlus()
+        .onStatusChange
+        .listen((InternetConnectionStatus status) {
+      if (status == InternetConnectionStatus.disconnected) {
+        // No internet → show screen
+        Get.to(() => const NoInternetScreen(), transition: Transition.fadeIn);
+      } else {
+        // Internet restored → close screen if open
+        if (Get.isOverlaysOpen) {
+          Get.back();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _internetSubscription.cancel();
+    super.dispose();
   }
 
   @override
