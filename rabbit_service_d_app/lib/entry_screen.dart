@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:regal_service_d_app/controllers/reports_controller.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
@@ -39,12 +40,15 @@ class _EntryScreenState extends State<EntryScreen>
   String? _ownerId;
 
   final ReportsController reportsController = Get.put(ReportsController());
+  final DashboardController dashboardController =
+      Get.put(DashboardController());
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initScreen();
+    dashboardController.initializeController();
     getAnonymousUserFromSharedPrefs();
     fetchHelpContact().then((_) {
       setState(() {});

@@ -88,10 +88,10 @@ class DashboardController extends GetxController {
   void onInit() {
     super.onInit();
 
-    _initializeController();
+    initializeController();
   }
 
-  Future<void> _initializeController() async {
+  Future<void> initializeController() async {
     try {
       setLoading(true);
       await _fetchAndVerifyUserRole();

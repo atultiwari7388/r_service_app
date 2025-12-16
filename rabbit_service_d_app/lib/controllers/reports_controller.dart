@@ -1234,6 +1234,7 @@ class ReportsController extends GetxController {
     workshopController.dispose();
     invoiceController.dispose();
     invoiceAmountController.dispose();
+    invoiceAmountController.dispose();
     serviceSearchController.dispose();
     vehicleSearchController.dispose();
     dateSearchController.dispose();
