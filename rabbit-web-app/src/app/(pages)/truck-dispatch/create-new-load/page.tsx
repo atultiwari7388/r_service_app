@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, useRef } from "react";
@@ -18,6 +19,10 @@ import {
   LucideIcon,
   Eye,
   FileImage,
+  Phone,
+  UserCircle,
+  FileDigit,
+  Clipboard,
 } from "lucide-react";
 
 // --- Type Definitions ---
@@ -25,11 +30,16 @@ import {
 interface Stop {
   id: number;
   company: string;
+  contactPerson: string;
+  phone: string;
   address: string;
   date: string;
   timeStart: string;
   timeEnd: string;
   type: "FCFS" | "Appt" | "Window";
+  pickupNumber: string;
+  loadNumber: string;
+  notes: string;
 }
 
 interface DocumentFile {
@@ -62,6 +72,7 @@ interface FormData {
   specialInstructions: string;
   hazmatClass: string;
   loadValue: string;
+  description: string;
 
   // 3. Pickups (Array)
   pickups: Stop[];
@@ -144,6 +155,7 @@ interface InputGroupProps {
   required?: boolean;
   className?: string;
   disabled?: boolean;
+  icon?: LucideIcon;
 }
 
 const InputGroup: React.FC<InputGroupProps> = ({
@@ -156,12 +168,16 @@ const InputGroup: React.FC<InputGroupProps> = ({
   required = false,
   className = "",
   disabled = false,
+  icon: Icon,
 }) => (
   <div className={`flex flex-col ${className}`}>
     <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     <div className="relative">
+      {Icon && (
+        <Icon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+      )}
       <input
         type={type}
         name={name}
@@ -171,7 +187,7 @@ const InputGroup: React.FC<InputGroupProps> = ({
         disabled={disabled}
         className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
           disabled ? "bg-gray-50 cursor-not-allowed" : ""
-        }`}
+        } ${Icon ? "pl-9" : ""}`}
       />
     </div>
   </div>
@@ -214,6 +230,40 @@ const SelectGroup: React.FC<SelectGroupProps> = ({
       </select>
       <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
     </div>
+  </div>
+);
+
+interface TextAreaGroupProps {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  rows?: number;
+  className?: string;
+}
+
+const TextAreaGroup: React.FC<TextAreaGroupProps> = ({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+  className = "",
+}) => (
+  <div className={`flex flex-col ${className}`}>
+    <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+      {label}
+    </label>
+    <textarea
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      rows={rows}
+      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+    />
   </div>
 );
 
@@ -490,17 +540,23 @@ export default function CreateNewLoadPage() {
     specialInstructions: "",
     hazmatClass: "",
     loadValue: "",
+    description: "",
 
     // 3. Pickups (Array)
     pickups: [
       {
         id: 1,
         company: "",
+        contactPerson: "",
+        phone: "",
         address: "",
         date: "",
         timeStart: "",
         timeEnd: "",
         type: "FCFS",
+        pickupNumber: "",
+        loadNumber: "",
+        notes: "",
       },
     ],
 
@@ -509,11 +565,16 @@ export default function CreateNewLoadPage() {
       {
         id: 1,
         company: "",
+        contactPerson: "",
+        phone: "",
         address: "",
         date: "",
         timeStart: "",
         timeEnd: "",
         type: "FCFS",
+        pickupNumber: "",
+        loadNumber: "",
+        notes: "",
       },
     ],
 
@@ -605,11 +666,16 @@ export default function CreateNewLoadPage() {
         {
           id: newId,
           company: "",
+          contactPerson: "",
+          phone: "",
           address: "",
           date: "",
           timeStart: "",
           timeEnd: "",
           type: "FCFS",
+          pickupNumber: "",
+          loadNumber: "",
+          notes: "",
         },
       ],
     }));
@@ -669,7 +735,6 @@ export default function CreateNewLoadPage() {
 
   const handleCancel = () => {
     setIsCancelled(true);
-    // You could also add additional cleanup logic here
   };
 
   const handleViewPreview = (previewUrl: string) => {
@@ -702,7 +767,6 @@ export default function CreateNewLoadPage() {
       margin: Number(margin),
     });
 
-    // Update main form state for submission
     setFormData((prev) => ({ ...prev, totalCustomerRate: revenue }));
   }, [
     formData.lineHaul,
@@ -714,7 +778,6 @@ export default function CreateNewLoadPage() {
     formData.totalCarrierPay,
   ]);
 
-  // Clean up object URLs when component unmounts
   useEffect(() => {
     return () => {
       formData.documents.forEach((doc) => {
@@ -725,7 +788,6 @@ export default function CreateNewLoadPage() {
     };
   }, [formData.documents]);
 
-  // If cancelled, show cancellation message
   if (isCancelled) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -752,7 +814,6 @@ export default function CreateNewLoadPage() {
 
   return (
     <>
-      {/* Image Preview Modal */}
       {previewImage && (
         <ImagePreviewModal
           imageUrl={previewImage}
@@ -761,7 +822,6 @@ export default function CreateNewLoadPage() {
       )}
 
       <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-        {/* Top Navigation / Action Bar - Mobile Responsive */}
         <div className="bg-white border-b sticky top-0 z-20 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
@@ -780,7 +840,6 @@ export default function CreateNewLoadPage() {
                 </p>
               </div>
 
-              {/* Action Buttons - Stack on mobile, row on desktop */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={handleCancel}
@@ -799,9 +858,7 @@ export default function CreateNewLoadPage() {
           </div>
         </div>
 
-        {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT COLUMN (Main Info) */}
           <div className="lg:col-span-9 space-y-6">
             {/* SECTION 1: Customer & Load Header */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -814,7 +871,7 @@ export default function CreateNewLoadPage() {
               <div className="grid grid-cols-1 gap-4 mb-4">
                 <div className="relative">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
-                    Customer Search
+                    Customer/Broker Search
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -836,7 +893,7 @@ export default function CreateNewLoadPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <InputGroup
-                  label="Customer Name"
+                  label="Customer/Broker Name"
                   name="customerName"
                   value={formData.customerName}
                   onChange={handleInputChange}
@@ -933,7 +990,7 @@ export default function CreateNewLoadPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <InputGroup
-                  label="Temperature (Reefer)"
+                  label="Temperature (If Reefer)"
                   name="temperature"
                   value={formData.temperature}
                   onChange={handleInputChange}
@@ -947,11 +1004,11 @@ export default function CreateNewLoadPage() {
                   placeholder="$100,000"
                 />
                 <InputGroup
-                  label="Hazmat Class"
+                  label="Hazmat Details"
                   name="hazmatClass"
                   value={formData.hazmatClass}
                   onChange={handleInputChange}
-                  placeholder="UN Number if applicable"
+                  placeholder="UN#, Class"
                 />
                 <InputGroup
                   label="Special Instructions"
@@ -962,9 +1019,32 @@ export default function CreateNewLoadPage() {
                   placeholder="Driver needs safety vest, lumper required, etc."
                 />
               </div>
+
+              {/* DESCRIPTION BOX SECTION */}
+              <div className="mt-4">
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-32"
+                    placeholder="Enter detailed description of the load, including packaging details, handling requirements, storage conditions, etc."
+                    rows={6}
+                  />
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-gray-400">
+                      {formData.description.length}/1000 characters
+                    </span>
+                    <span className="text-xs text-gray-400">Optional</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* SECTION 3 & 4: Stops (Pickup & Delivery) - Stack on mobile, side-by-side on medium+ */}
+            {/* SECTION 3 & 4: Stops (Pickup & Delivery) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Pickups */}
               <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
@@ -996,9 +1076,10 @@ export default function CreateNewLoadPage() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {/* Company Name */}
                       <InputGroup
-                        label="Pickup Location Name"
+                        label="Pickup Company Name"
                         value={stop.company}
                         onChange={(e) =>
                           handleStopChange(
@@ -1008,8 +1089,47 @@ export default function CreateNewLoadPage() {
                             e.target.value
                           )
                         }
+                        placeholder="Company Name"
+                        icon={UserCircle}
                         name={""}
                       />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Contact Person */}
+                        <InputGroup
+                          label="Contact Person"
+                          value={stop.contactPerson}
+                          onChange={(e) =>
+                            handleStopChange(
+                              "pickups",
+                              stop.id,
+                              "contactPerson",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Contact Name"
+                          icon={User}
+                          name={""}
+                        />
+                        {/* Phone */}
+                        <InputGroup
+                          label="Phone"
+                          value={stop.phone}
+                          onChange={(e) =>
+                            handleStopChange(
+                              "pickups",
+                              stop.id,
+                              "phone",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Phone Number"
+                          icon={Phone}
+                          name={""}
+                        />
+                      </div>
+
+                      {/* Address */}
                       <InputGroup
                         label="Address"
                         value={stop.address}
@@ -1024,70 +1144,129 @@ export default function CreateNewLoadPage() {
                         placeholder="Full Address with Zip"
                         name={""}
                       />
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-3">
+                          {/* Date */}
+                          <InputGroup
+                            label="Pickup Date"
+                            type="date"
+                            value={stop.date}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "date",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                          {/* Appointment Type */}
+                          <SelectGroup
+                            label="Appt Type"
+                            value={stop.type}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "type",
+                                e.target.value
+                              )
+                            }
+                            options={[
+                              { value: "FCFS", label: "FCFS" },
+                              { value: "Appt", label: "Firm Appt" },
+                              { value: "Window", label: "Window" },
+                            ]}
+                            name={""}
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          {/* Time Start */}
+                          <InputGroup
+                            label="Time Start"
+                            type="time"
+                            value={stop.timeStart}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "timeStart",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                          {/* Time End */}
+                          <InputGroup
+                            label="Time End"
+                            type="time"
+                            value={stop.timeEnd}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "timeEnd",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Pickup Number */}
                         <InputGroup
-                          label="Date"
-                          type="date"
-                          value={stop.date}
+                          label="Pickup Number"
+                          value={stop.pickupNumber}
                           onChange={(e) =>
                             handleStopChange(
                               "pickups",
                               stop.id,
-                              "date",
+                              "pickupNumber",
                               e.target.value
                             )
                           }
+                          placeholder="PU#"
+                          icon={FileDigit}
                           name={""}
                         />
-                        <SelectGroup
-                          label="Appt Type"
-                          value={stop.type}
+                        {/* Load Number */}
+                        <InputGroup
+                          label="Load Number"
+                          value={stop.loadNumber}
                           onChange={(e) =>
                             handleStopChange(
                               "pickups",
                               stop.id,
-                              "type",
+                              "loadNumber",
                               e.target.value
                             )
                           }
-                          options={[
-                            { value: "FCFS", label: "FCFS" },
-                            { value: "Appt", label: "Firm Appt" },
-                            { value: "Window", label: "Window" },
-                          ]}
+                          placeholder="Load #"
+                          icon={Clipboard}
                           name={""}
                         />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <InputGroup
-                          label="Time Start"
-                          type="time"
-                          value={stop.timeStart}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "timeStart",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Time End"
-                          type="time"
-                          value={stop.timeEnd}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "timeEnd",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
-                      </div>
+
+                      {/* Notes */}
+                      <TextAreaGroup
+                        label="Pickup Notes"
+                        value={stop.notes}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "notes",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Special instructions, gate codes, etc."
+                        rows={2}
+                        name={""}
+                      />
                     </div>
                   </div>
                 ))}
@@ -1123,9 +1302,10 @@ export default function CreateNewLoadPage() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {/* Company Name */}
                       <InputGroup
-                        label="Delivery Location Name"
+                        label="Delivery Company Name"
                         value={stop.company}
                         onChange={(e) =>
                           handleStopChange(
@@ -1135,8 +1315,47 @@ export default function CreateNewLoadPage() {
                             e.target.value
                           )
                         }
+                        placeholder="Company Name"
+                        icon={UserCircle}
                         name={""}
                       />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Contact Person */}
+                        <InputGroup
+                          label="Contact Person"
+                          value={stop.contactPerson}
+                          onChange={(e) =>
+                            handleStopChange(
+                              "deliveries",
+                              stop.id,
+                              "contactPerson",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Contact Name"
+                          icon={User}
+                          name={""}
+                        />
+                        {/* Phone */}
+                        <InputGroup
+                          label="Phone"
+                          value={stop.phone}
+                          onChange={(e) =>
+                            handleStopChange(
+                              "deliveries",
+                              stop.id,
+                              "phone",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Phone Number"
+                          icon={Phone}
+                          name={""}
+                        />
+                      </div>
+
+                      {/* Address */}
                       <InputGroup
                         label="Address"
                         value={stop.address}
@@ -1151,70 +1370,129 @@ export default function CreateNewLoadPage() {
                         placeholder="Full Address with Zip"
                         name={""}
                       />
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-3">
+                          {/* Date */}
+                          <InputGroup
+                            label="Delivery Date"
+                            type="date"
+                            value={stop.date}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "date",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                          {/* Appointment Type */}
+                          <SelectGroup
+                            label="Appt Type"
+                            value={stop.type}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "type",
+                                e.target.value
+                              )
+                            }
+                            options={[
+                              { value: "FCFS", label: "FCFS" },
+                              { value: "Appt", label: "Firm Appt" },
+                              { value: "Window", label: "Window" },
+                            ]}
+                            name={""}
+                          />
+                        </div>
+                        <div className="space-y-3">
+                          {/* Time Start */}
+                          <InputGroup
+                            label="Time Start"
+                            type="time"
+                            value={stop.timeStart}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "timeStart",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                          {/* Time End */}
+                          <InputGroup
+                            label="Time End"
+                            type="time"
+                            value={stop.timeEnd}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "timeEnd",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Pickup Number */}
                         <InputGroup
-                          label="Date"
-                          type="date"
-                          value={stop.date}
+                          label="Delivery Number"
+                          value={stop.pickupNumber}
                           onChange={(e) =>
                             handleStopChange(
                               "deliveries",
                               stop.id,
-                              "date",
+                              "pickupNumber",
                               e.target.value
                             )
                           }
+                          placeholder="Delivery #"
+                          icon={FileDigit}
                           name={""}
                         />
-                        <SelectGroup
-                          label="Appt Type"
-                          value={stop.type}
+                        {/* Load Number */}
+                        <InputGroup
+                          label="Load Number"
+                          value={stop.loadNumber}
                           onChange={(e) =>
                             handleStopChange(
                               "deliveries",
                               stop.id,
-                              "type",
+                              "loadNumber",
                               e.target.value
                             )
                           }
-                          options={[
-                            { value: "FCFS", label: "FCFS" },
-                            { value: "Appt", label: "Firm Appt" },
-                            { value: "Window", label: "Window" },
-                          ]}
+                          placeholder="Load #"
+                          icon={Clipboard}
                           name={""}
                         />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <InputGroup
-                          label="Time Start"
-                          type="time"
-                          value={stop.timeStart}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "timeStart",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Time End"
-                          type="time"
-                          value={stop.timeEnd}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "timeEnd",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
-                      </div>
+
+                      {/* Notes */}
+                      <TextAreaGroup
+                        label="Delivery Notes"
+                        value={stop.notes}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "notes",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Special instructions, gate codes, etc."
+                        rows={2}
+                        name={""}
+                      />
                     </div>
                   </div>
                 ))}
@@ -1296,7 +1574,7 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 7: Documents - Enhanced with file upload and preview */}
+            {/* SECTION 7: Documents */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={FileText}
@@ -1338,7 +1616,6 @@ export default function CreateNewLoadPage() {
                 />
               </div>
 
-              {/* Uploaded Files Summary */}
               {formData.documents.length > 0 && (
                 <div className="mt-6 pt-4 border-t">
                   <div className="flex items-center justify-between mb-3">
@@ -1399,7 +1676,6 @@ export default function CreateNewLoadPage() {
                 <StatusBadge status={formData.status} />
               </div>
               <div className="space-y-3 relative">
-                {/* Simple vertical stepper visualization */}
                 <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
                 {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
                   (step, i) => (

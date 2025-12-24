@@ -435,9 +435,9 @@ class PushNotification {
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
-      onDidReceiveLocalNotification: (id, title, body, payload) async {
-        log("iOS Local Notification tapped: $payload");
-      },
+      // onDidReceiveLocalNotification: (id, title, body, payload) async {
+      //   log("iOS Local Notification tapped: $payload");
+      // },
     );
 
     final LinuxInitializationSettings initializationSettingsLinux =

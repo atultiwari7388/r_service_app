@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/entry_screen.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+// import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../utils/constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -153,15 +153,15 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     },
                   ),
                 ),
-                SmoothPageIndicator(
-                  controller: _pageController,
-                  count: _onBoardingData.length,
-                  effect: const WormEffect(
-                    dotHeight: 8,
-                    dotWidth: 8,
-                    activeDotColor: kPrimary,
-                  ),
-                ),
+                // SmoothPageIndicator(
+                //   controller: _pageController,
+                //   count: _onBoardingData.length,
+                //   effect: const WormEffect(
+                //     dotHeight: 8,
+                //     dotWidth: 8,
+                //     activeDotColor: kPrimary,
+                //   ),
+                // ),
                 SizedBox(height: 20.h),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10.0.w),

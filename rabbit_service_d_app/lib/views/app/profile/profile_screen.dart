@@ -22,6 +22,7 @@ import 'package:regal_service_d_app/views/app/profile/profile_details_screen.dar
 import 'package:regal_service_d_app/views/app/ratings/ratings_screen.dart';
 import 'package:regal_service_d_app/views/app/termsCondition/terms_conditions.dart';
 import 'package:regal_service_d_app/views/app/tripWiseVehicle/trip_wise_vehicle_screen.dart';
+import 'package:regal_service_d_app/views/app/truckDispatch/truck_disptach_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import '../../../utils/app_styles.dart';
 import '../../../utils/constants.dart';
@@ -185,6 +186,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());
+                    }),
+                    buildListTile("assets/rating_bw.png", "Truck Dispatch", () {
+                      Get.to(() => TruckDisptachScreen());
                     }),
                     buildListTile("assets/notification_setting.png",
                         "Notification ON/OFF", () {
