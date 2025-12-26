@@ -188,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Get.to(() => RatingsScreen());
                     }),
                     buildListTile("assets/rating_bw.png", "Truck Dispatch", () {
-                      Get.to(() => TruckDisptachScreen());
+                      Get.to(() => TruckDispatchDashboard());
                     }),
                     buildListTile("assets/notification_setting.png",
                         "Notification ON/OFF", () {
