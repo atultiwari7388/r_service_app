@@ -23,6 +23,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // --- Type Definitions ---
 interface LoadData {
@@ -228,6 +229,9 @@ export default function TruckDispatchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Inside your component function:
+  const router = useRouter();
 
   // --- Tabs Data ---
   const tabs: Tab[] = [
@@ -588,8 +592,8 @@ export default function TruckDispatchScreen() {
 
   // --- Action Handlers ---
   const handleViewLoad = (loadId: string) => {
-    console.log("View load:", loadId);
-    // Navigate to load details page
+    // Navigate to view-load-info page
+    router.push(`/truck-dispatch/view-load-info/${loadId}`);
   };
 
   const handleEditLoad = (loadId: string) => {
