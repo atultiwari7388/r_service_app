@@ -625,7 +625,7 @@ export default function TruckDispatchScreen() {
             </p>
           </div>
           <Link href={"/truck-dispatch/create-new-load"}>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium flex items-center gap-2">
+            <button className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] font-medium flex items-center gap-2">
               <Plus className="w-4 h-4" />
               New Load
             </button>
@@ -969,7 +969,7 @@ export default function TruckDispatchScreen() {
                     onClick={() => setCurrentPage(pageNum)}
                     className={`px-3 py-1 rounded-md text-sm ${
                       currentPage === pageNum
-                        ? "bg-blue-600 text-white"
+                        ? "bg-[#F96176] text-white"
                         : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >

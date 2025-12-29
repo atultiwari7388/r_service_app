@@ -850,7 +850,7 @@ export default function CreateNewLoadPage() {
                 <button className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm">
                   <Save className="w-4 h-4" /> Save Draft
                 </button>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow-md flex items-center justify-center gap-2 font-bold text-sm">
+                <button className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] shadow-md flex items-center justify-center gap-2 font-bold text-sm">
                   <Package className="w-4 h-4" /> Create & Post
                 </button>
               </div>
@@ -1686,14 +1686,14 @@ export default function CreateNewLoadPage() {
                       <div
                         className={`w-4 h-4 rounded-full border-2 ${
                           step === formData.status
-                            ? "bg-blue-500 border-blue-500"
+                            ? "bg-[#F96176] border-[#F96176]"
                             : "bg-white border-gray-300"
                         }`}
                       ></div>
                       <span
                         className={`text-sm ${
                           step === formData.status
-                            ? "font-bold text-blue-600"
+                            ? "font-bold text-[#F96176]"
                             : "text-gray-500"
                         }`}
                       >

@@ -255,7 +255,7 @@ const LoadDocsView = ({ docs }: { docs: Document[] }) => (
       <h3 className="font-semibold text-gray-800">
         Uploaded Documents ({docs.length})
       </h3>
-      <button className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition flex items-center gap-2">
+      <button className="text-sm bg-[#F96176] text-white px-3 py-1.5 rounded hover:bg-[#F96176] transition flex items-center gap-2">
         <Paperclip className="w-3 h-3" /> Upload New
       </button>
     </div>
@@ -275,7 +275,7 @@ const LoadDocsView = ({ docs }: { docs: Document[] }) => (
           {docs.map((doc) => (
             <tr
               key={doc.id}
-              className="hover:bg-blue-50/50 transition-colors group"
+              className="hover:bg-[#F96176]50 transition-colors group"
             >
               <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
@@ -296,13 +296,13 @@ const LoadDocsView = ({ docs }: { docs: Document[] }) => (
               <td className="px-6 py-4 text-right">
                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600"
+                    className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-[#F96176]"
                     title="View"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
                   <button
-                    className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600"
+                    className="p-1.5 hover:bg-gray-100 rounded text-gray-500 hover:text-[#F96176]"
                     title="Download"
                   >
                     <Download className="w-4 h-4" />
@@ -338,7 +338,7 @@ const LoadInfoView = ({
               <p className="text-lg font-bold text-gray-900">
                 {loadData.customer}
               </p>
-              <button className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+              <button className="text-sm text-[#F96176] hover:underline flex items-center gap-1">
                 {loadData.customerAddress}
               </button>
             </div>
@@ -438,7 +438,7 @@ const LoadInfoView = ({
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap gap-1">
-                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded border border-blue-200">
+                <span className="text-[10px] px-1.5 py-0.5 bg-[#F96176] text-[#ffffff] rounded border border-[#F96176]">
                   Normal
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded border border-amber-200">
@@ -462,7 +462,7 @@ const LoadInfoView = ({
             <div className="bg-white p-3 rounded border border-gray-200 shadow-sm">
               <div className="text-xs text-gray-500 mb-1">Temperature</div>
               <div className="flex items-center gap-2">
-                <Thermometer className="w-4 h-4 text-blue-400" />
+                <Thermometer className="w-4 h-4 text-[#F96176]" />
                 <span className="font-bold text-gray-900">
                   {loadData.temperature}
                 </span>
@@ -481,11 +481,11 @@ const LoadInfoView = ({
             </div>
           </div>
 
-          <div className="bg-blue-50/50 p-4 rounded border border-blue-100">
-            <div className="text-xs text-blue-500 mb-1 font-medium uppercase">
+          <div className="bg-[#F96176]50 p-4 rounded border border-[#F96176]">
+            <div className="text-xs text-[#F96176] mb-1 font-medium uppercase">
               Declared Value
             </div>
-            <div className="text-xl font-bold text-blue-900">
+            <div className="text-xl font-bold text-[#F96176]">
               {loadData.declaredValue}
             </div>
           </div>
@@ -570,7 +570,7 @@ const LoadInfoView = ({
               <div
                 className={`absolute left-0 top-1 w-10 h-10 rounded-full flex items-center justify-center z-10 border-4 border-white shadow-sm ${
                   stop.type === "PICKUP"
-                    ? "bg-blue-100 text-blue-600"
+                    ? "bg-[#F96176] text-[#FFFFFF]"
                     : "bg-emerald-100 text-emerald-600"
                 }`}
               >
@@ -588,7 +588,7 @@ const LoadInfoView = ({
                     <span
                       className={`text-xs font-bold px-2 py-0.5 rounded border ${
                         stop.type === "PICKUP"
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                          ? "bg-[#F96176]text-[#F96176] border-[#F96176]"
                           : "bg-emerald-50 text-emerald-700 border-emerald-100"
                       }`}
                     >
@@ -728,7 +728,7 @@ export default function ViewLoadInfoPage() {
               <button className="px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm font-medium flex items-center gap-2 shadow-sm transition-all">
                 <Share2 className="w-4 h-4" /> Share
               </button>
-              <button className="px-3 py-2 bg-blue-600 border border-blue-600 rounded-md text-white hover:bg-blue-700 text-sm font-medium flex items-center gap-2 shadow-sm transition-all">
+              <button className="px-3 py-2 bg-[#F96176] border border-[#F96176] rounded-md text-white hover:bg-[#F96176] text-sm font-medium flex items-center gap-2 shadow-sm transition-all">
                 <Settings className="w-4 h-4" /> Actions
               </button>
             </div>
@@ -778,7 +778,7 @@ export default function ViewLoadInfoPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 ${
                   activeTab === tab.id
-                    ? "border-blue-600 text-blue-600 bg-white rounded-t-lg"
+                    ? "border-[#F96176] text-[#F96176] bg-white rounded-t-lg"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 rounded-t-lg"
                 }`}
               >
@@ -840,7 +840,7 @@ export default function ViewLoadInfoPage() {
                   Quick Actions
                 </h3>
                 <div className="space-y-2">
-                  <button className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors">
+                  <button className="w-full px-4 py-2.5 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] text-sm font-medium flex items-center justify-center gap-2 shadow-sm transition-colors">
                     <FileText className="w-4 h-4" /> View BOL / Confirmation
                   </button>
                   <button className="w-full px-4 py-2.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2 transition-colors">
@@ -898,7 +898,7 @@ export default function ViewLoadInfoPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Agency</p>
-                    <select className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 border p-2 bg-gray-50">
+                    <select className="w-full text-sm border-gray-300 rounded-md focus:ring-[#F96176] focus:border-[#F96176] border p-2 bg-gray-50">
                       <option>Braborage Inc.</option>
                       <option>Global Logistics</option>
                     </select>
@@ -929,13 +929,13 @@ export default function ViewLoadInfoPage() {
                       status: "In Transit",
                       date: "Jan 17",
                       time: "02:00 PM",
-                      color: "bg-blue-500",
+                      color: "bg-[#F96176]",
                     },
                     {
                       status: "Picked Up",
                       date: "Jan 17",
                       time: "09:00 AM",
-                      color: "bg-blue-500",
+                      color: "bg-[#F96176]",
                     },
                     {
                       status: "Dispatched",
