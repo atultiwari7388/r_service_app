@@ -19,23 +19,60 @@ import {
   LucideIcon,
   Eye,
   FileImage,
-  Phone,
-  UserCircle,
-  FileDigit,
-  Clipboard,
+  MapPin,
+  Target,
+  Fuel,
+  Scale,
+  Shield,
 } from "lucide-react";
 
 // --- Type Definitions ---
 
 interface Stop {
   id: number;
+  // Basic Info
   company: string;
-  contactPerson: string;
-  phone: string;
-  address: string;
+  customerLoadRefConf: string;
+
+  // Location & Timing
+  locationNotes: string;
   date: string;
   timeStart: string;
   timeEnd: string;
+  stopType: string; // For "Stop pickup" or "Stop delivery"
+  hasAppointment: boolean;
+
+  // Load Details
+  totalQty: string;
+  qtyType: string;
+  totalWeight: string;
+  commodity: string;
+  length: string; // in inches
+  width: string; // in inches
+  height: string; // in inches
+  pickup: string;
+  shipmentBol: string;
+  poNumber: string;
+
+  // Reefer & Equipment (Pickup only)
+  reeferMode: string;
+  routeName: string;
+  instructions: string;
+  seal: string;
+  container: string;
+  chassis: string;
+  customerTrailer: string;
+  pro: string;
+  reeferFuelLevel: string;
+
+  // Split Load
+  splitLoad: string;
+  yardLocation: string;
+
+  // Original fields kept for compatibility
+  contactPerson: string;
+  phone: string;
+  address: string;
   type: "FCFS" | "Appt" | "Window";
   pickupNumber: string;
   loadNumber: string;
@@ -52,35 +89,36 @@ interface DocumentFile {
 }
 
 interface FormData {
-  // 1. Customer Info
+  // 1. Customer & Load Header
+  customerSearch: string;
   customerName: string;
-  contactPerson: string;
-  phone: string;
-  email: string;
-  mcDotNumber: string;
-  billingAddress: string;
-  customerRate: string;
-  paymentTerms: string;
-  referenceNo: string;
-
-  // 2. Load Details
-  loadType: string;
-  commodity: string;
+  primaryFees: number;
+  feeType: string;
+  tenderedMiles: string;
+  fuelSrcType: string;
+  fuelSrc: string;
+  targetRate: number;
+  vanType: string;
+  length: string;
   weight: string;
-  pieces: string;
-  temperature: string;
-  specialInstructions: string;
-  hazmatClass: string;
-  loadValue: string;
-  description: string;
+  bookingAuthority: string;
+  commodity: string;
+  type: string;
+  declaredValue: string;
+  salesAgent: string;
+  bookingTerminalOffice: string;
+  agency: string;
+  brokerageAgent: string;
+  customerLoadNotes: string;
+  dispatchNotes: string;
 
-  // 3. Pickups (Array)
+  // 2. Pickups (Array)
   pickups: Stop[];
 
-  // 4. Deliveries (Array)
+  // 3. Deliveries (Array)
   deliveries: Stop[];
 
-  // 5. Equipment
+  // 4. Equipment
   driverId: string;
   secondDriverId: string;
   truckId: string;
@@ -88,7 +126,7 @@ interface FormData {
   trailerType: string;
   dispatcherId: string;
 
-  // 6. Rates
+  // 5. Rates
   lineHaul: number;
   fuelSurcharge: number;
   detention: number;
@@ -98,20 +136,18 @@ interface FormData {
   totalCustomerRate: number;
   totalCarrierPay: number;
 
-  // 8. Automation
+  // 6. Automation
   autoSendDriver: boolean;
   autoTrack: boolean;
   autoInvoice: boolean;
 
-  // 9. Notes
-  dispatcherNotes: string;
-  driverNotes: string;
+  // 7. Internal Notes
   internalNotes: string;
 
-  // 10. Status
+  // 8. Status
   status: string;
 
-  // 11. Documents
+  // 9. Documents
   documents: DocumentFile[];
 }
 
@@ -125,8 +161,6 @@ interface Calculations {
   estimatedProfit: number;
   margin: number;
 }
-
-// --- Reusable UI Components ---
 
 interface SectionHeaderProps {
   icon: LucideIcon;
@@ -520,39 +554,65 @@ export default function CreateNewLoadPage() {
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    // 1. Customer Info
+    // 1. Customer & Load Header
+    customerSearch: "",
     customerName: "",
-    contactPerson: "",
-    phone: "",
-    email: "",
-    mcDotNumber: "",
-    billingAddress: "",
-    customerRate: "",
-    paymentTerms: "Net 30",
-    referenceNo: "",
-
-    // 2. Load Details
-    loadType: "FTL",
-    commodity: "",
+    primaryFees: 0,
+    feeType: "Line Haul",
+    tenderedMiles: "",
+    fuelSrcType: "Included",
+    fuelSrc: "",
+    targetRate: 0,
+    vanType: "Dry Van",
+    length: "53",
     weight: "",
-    pieces: "",
-    temperature: "",
-    specialInstructions: "",
-    hazmatClass: "",
-    loadValue: "",
-    description: "",
+    bookingAuthority: "Direct",
+    commodity: "",
+    type: "FTL",
+    declaredValue: "",
+    salesAgent: "",
+    bookingTerminalOffice: "",
+    agency: "",
+    brokerageAgent: "",
+    customerLoadNotes: "",
+    dispatchNotes: "",
 
-    // 3. Pickups (Array)
+    // 2. Pickups (Array)
     pickups: [
       {
         id: 1,
         company: "",
-        contactPerson: "",
-        phone: "",
-        address: "",
+        customerLoadRefConf: "",
+        locationNotes: "",
         date: "",
         timeStart: "",
         timeEnd: "",
+        stopType: "live-load",
+        hasAppointment: false,
+        totalQty: "",
+        qtyType: "pallets",
+        totalWeight: "",
+        commodity: "",
+        length: "",
+        width: "",
+        height: "",
+        pickup: "",
+        shipmentBol: "",
+        poNumber: "",
+        reeferMode: "",
+        routeName: "",
+        instructions: "",
+        seal: "",
+        container: "",
+        chassis: "",
+        customerTrailer: "",
+        pro: "",
+        reeferFuelLevel: "",
+        splitLoad: "",
+        yardLocation: "",
+        contactPerson: "",
+        phone: "",
+        address: "",
         type: "FCFS",
         pickupNumber: "",
         loadNumber: "",
@@ -560,17 +620,42 @@ export default function CreateNewLoadPage() {
       },
     ],
 
-    // 4. Deliveries (Array)
+    // 3. Deliveries (Array)
     deliveries: [
       {
         id: 1,
         company: "",
-        contactPerson: "",
-        phone: "",
-        address: "",
+        customerLoadRefConf: "",
+        locationNotes: "",
         date: "",
         timeStart: "",
         timeEnd: "",
+        stopType: "live-load",
+        hasAppointment: false,
+        totalQty: "",
+        qtyType: "pallets",
+        totalWeight: "",
+        commodity: "",
+        length: "",
+        width: "",
+        height: "",
+        pickup: "",
+        shipmentBol: "",
+        poNumber: "",
+        reeferMode: "",
+        routeName: "",
+        instructions: "",
+        seal: "",
+        container: "",
+        chassis: "",
+        customerTrailer: "",
+        pro: "",
+        reeferFuelLevel: "",
+        splitLoad: "",
+        yardLocation: "",
+        contactPerson: "",
+        phone: "",
+        address: "",
         type: "FCFS",
         pickupNumber: "",
         loadNumber: "",
@@ -578,7 +663,7 @@ export default function CreateNewLoadPage() {
       },
     ],
 
-    // 5. Equipment
+    // 4. Equipment
     driverId: "",
     secondDriverId: "",
     truckId: "",
@@ -586,7 +671,7 @@ export default function CreateNewLoadPage() {
     trailerType: "Dry Van",
     dispatcherId: "DISP-001",
 
-    // 6. Rates
+    // 5. Rates
     lineHaul: 0,
     fuelSurcharge: 0,
     detention: 0,
@@ -596,20 +681,18 @@ export default function CreateNewLoadPage() {
     totalCustomerRate: 0,
     totalCarrierPay: 0,
 
-    // 8. Automation
+    // 6. Automation
     autoSendDriver: false,
     autoTrack: true,
     autoInvoice: false,
 
-    // 9. Notes
-    dispatcherNotes: "",
-    driverNotes: "",
+    // 7. Internal Notes
     internalNotes: "",
 
-    // 10. Status
+    // 8. Status
     status: "Draft",
 
-    // 11. Documents
+    // 9. Documents
     documents: [],
   });
 
@@ -618,6 +701,140 @@ export default function CreateNewLoadPage() {
     estimatedProfit: 0,
     margin: 0,
   });
+
+  // Options for dropdowns
+  const feeTypeOptions: Option[] = [
+    { value: "Line Haul", label: "Line Haul" },
+    { value: "Flat Rate", label: "Flat Rate" },
+    { value: "Per Mile", label: "Per Mile" },
+    { value: "Hourly", label: "Hourly" },
+    { value: "Lump Sum", label: "Lump Sum" },
+  ];
+
+  const fuelSrcTypeOptions: Option[] = [
+    { value: "Included", label: "Included" },
+    { value: "Separate", label: "Separate" },
+    { value: "Customer Pays", label: "Customer Pays" },
+    { value: "Carrier Pays", label: "Carrier Pays" },
+  ];
+
+  const vanTypeOptions: Option[] = [
+    { value: "Dry Van", label: "Dry Van" },
+    { value: "Reefer", label: "Reefer" },
+    { value: "Flatbed", label: "Flatbed" },
+    { value: "Step Deck", label: "Step Deck" },
+    { value: "Double Drop", label: "Double Drop" },
+    { value: "Lowboy", label: "Lowboy" },
+    { value: "Conestoga", label: "Conestoga" },
+    { value: "Power Only", label: "Power Only" },
+  ];
+
+  const lengthOptions: Option[] = [
+    { value: "48", label: "48 ft" },
+    { value: "53", label: "53 ft" },
+    { value: "28", label: "28 ft" },
+    { value: "26", label: "26 ft" },
+    { value: "20", label: "20 ft" },
+    { value: "40", label: "40 ft" },
+  ];
+
+  const bookingAuthorityOptions: Option[] = [
+    { value: "Direct", label: "Direct" },
+    { value: "Broker", label: "Broker" },
+    { value: "Online Board", label: "Online Board" },
+    { value: "TMS", label: "TMS" },
+    { value: "Email", label: "Email" },
+    { value: "Phone", label: "Phone" },
+  ];
+
+  const typeOptions: Option[] = [
+    { value: "FTL", label: "FTL" },
+    { value: "LTL", label: "LTL" },
+    { value: "Partial", label: "Partial" },
+    { value: "Team", label: "Team" },
+    { value: "Expedited", label: "Expedited" },
+    { value: "Hazmat", label: "Hazmat" },
+  ];
+
+  const salesAgentOptions: Option[] = [
+    { value: "john.doe@company.com", label: "John Doe" },
+    { value: "jane.smith@company.com", label: "Jane Smith" },
+    { value: "mike.jones@company.com", label: "Mike Jones" },
+    { value: "sarah.wilson@company.com", label: "Sarah Wilson" },
+  ];
+
+  const officeOptions: Option[] = [
+    { value: "main", label: "Main Terminal" },
+    { value: "east", label: "East Coast Office" },
+    { value: "west", label: "West Coast Office" },
+    { value: "south", label: "Southern Terminal" },
+    { value: "midwest", label: "Midwest Hub" },
+  ];
+
+  const agencyOptions: Option[] = [
+    { value: "internal", label: "Internal" },
+    { value: "partner-1", label: "Logistics Partner Inc." },
+    { value: "partner-2", label: "Global Transport Agency" },
+    { value: "partner-3", label: "Freight Solutions LLC" },
+  ];
+
+  const brokerageAgentOptions: Option[] = [
+    { value: "agent-1", label: "David Chen" },
+    { value: "agent-2", label: "Lisa Rodriguez" },
+    { value: "agent-3", label: "Robert Kim" },
+    { value: "agent-4", label: "Emily Watson" },
+  ];
+
+  const shipperOptions: Option[] = [
+    { value: "shipper-1", label: "ABC Manufacturing" },
+    { value: "shipper-2", label: "XYZ Logistics" },
+    { value: "shipper-3", label: "Global Goods Inc." },
+    { value: "shipper-4", label: "Quality Products LLC" },
+    { value: "shipper-5", label: "National Distributors" },
+  ];
+
+  const consigneeOptions: Option[] = [
+    { value: "consignee-1", label: "Retail Chain Corp" },
+    { value: "consignee-2", label: "Distribution Center #5" },
+    { value: "consignee-3", label: "Warehouse Services Inc." },
+    { value: "consignee-4", label: "Final Destination LLC" },
+  ];
+
+  const stopTypeOptions: Option[] = [
+    { value: "live-load", label: "Live Load" },
+    { value: "drop-hook", label: "Drop & Hook" },
+    { value: "drop-only", label: "Drop Only" },
+    { value: "pickup-only", label: "Pickup Only" },
+    { value: "cross-dock", label: "Cross Dock" },
+  ];
+
+  const qtyTypeOptions: Option[] = [
+    { value: "pallets", label: "Pallets" },
+    { value: "cartons", label: "Cartons" },
+    { value: "pieces", label: "Pieces" },
+    { value: "bundles", label: "Bundles" },
+    { value: "drums", label: "Drums" },
+    { value: "units", label: "Units" },
+  ];
+
+  const reeferModeOptions: Option[] = [
+    { value: "continuous", label: "Continuous Run" },
+    { value: "start-stop", label: "Start/Stop" },
+    { value: "monitor-only", label: "Monitor Only" },
+    { value: "off", label: "Off (No Power)" },
+    { value: "pre-cool", label: "Pre-Cool" },
+  ];
+
+  const yardLocationOptions: Option[] = [
+    { value: "dock-1", label: "Dock 1 - Main" },
+    { value: "dock-2", label: "Dock 2 - Receiving" },
+    { value: "dock-3", label: "Dock 3 - Shipping" },
+    { value: "dock-4", label: "Dock 4 - Loading" },
+    { value: "yard-a", label: "Yard A" },
+    { value: "yard-b", label: "Yard B" },
+    { value: "lot-1", label: "Parking Lot 1" },
+    { value: "lot-2", label: "Parking Lot 2" },
+  ];
 
   // --- Handlers ---
 
@@ -864,642 +1081,1050 @@ export default function CreateNewLoadPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={User}
-                title="Customer & Broker Information"
+                title="Customer & Load Information"
                 colorClass="text-blue-600"
               />
 
               <div className="grid grid-cols-1 gap-4 mb-4">
                 <div className="relative">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
-                    Customer/Broker Search
+                    Search Customer/Broker
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search by Name, MC# or Phone..."
+                      name="customerSearch"
+                      value={formData.customerSearch}
+                      onChange={handleInputChange}
+                      placeholder="Search by Name, MC#, Phone, or Reference..."
                       className="w-full pl-9 rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
                 <InputGroup
-                  label="Reference # (PO/Load ID)"
-                  name="referenceNo"
-                  value={formData.referenceNo}
-                  onChange={handleInputChange}
-                  placeholder="e.g. PO-998877"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <InputGroup
-                  label="Customer/Broker Name"
+                  label="Customer Name"
                   name="customerName"
                   value={formData.customerName}
                   onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="Contact Person"
-                  name="contactPerson"
-                  value={formData.contactPerson}
-                  onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="Phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="Email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="MC / DOT #"
-                  name="mcDotNumber"
-                  value={formData.mcDotNumber}
-                  onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="Billing Address"
-                  name="billingAddress"
-                  value={formData.billingAddress}
-                  onChange={handleInputChange}
-                  className="sm:col-span-2"
-                />
-                <SelectGroup
-                  label="Payment Terms"
-                  name="paymentTerms"
-                  value={formData.paymentTerms}
-                  onChange={handleInputChange}
-                  options={[
-                    { value: "Net 7", label: "Net 7" },
-                    { value: "Net 15", label: "Net 15" },
-                    { value: "Net 30", label: "Net 30" },
-                    { value: "QuickPay", label: "QuickPay (2%)" },
-                  ]}
+                  placeholder="Enter customer name"
                 />
               </div>
-            </div>
 
-            {/* SECTION 2: Load Details */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-              <SectionHeader
-                icon={Package}
-                title="Load Details"
-                colorClass="text-indigo-600"
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <SelectGroup
-                  label="Load Type"
-                  name="loadType"
-                  value={formData.loadType}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <InputGroup
+                  label="Primary Fees ($)"
+                  name="primaryFees"
+                  type="number"
+                  value={formData.primaryFees}
                   onChange={handleInputChange}
-                  options={[
-                    { value: "FTL", label: "FTL (Full Truckload)" },
-                    { value: "LTL", label: "LTL (Less-Than-Truckload)" },
-                    { value: "Reefer", label: "Reefer (Temp Control)" },
-                    { value: "Flatbed", label: "Flatbed" },
-                    { value: "Dry Van", label: "Dry Van" },
-                  ]}
+                  placeholder="0.00"
+                  icon={DollarSign}
+                />
+                <SelectGroup
+                  label="Fee Type"
+                  name="feeType"
+                  value={formData.feeType}
+                  onChange={handleInputChange}
+                  options={feeTypeOptions}
+                />
+                <InputGroup
+                  label="Tendered Miles"
+                  name="tenderedMiles"
+                  value={formData.tenderedMiles}
+                  onChange={handleInputChange}
+                  placeholder="Enter miles"
+                  icon={MapPin}
+                />
+                <SelectGroup
+                  label="Fuel Src Type"
+                  name="fuelSrcType"
+                  value={formData.fuelSrcType}
+                  onChange={handleInputChange}
+                  options={fuelSrcTypeOptions}
+                />
+                <InputGroup
+                  label="Fuel Source"
+                  name="fuelSrc"
+                  value={formData.fuelSrc}
+                  onChange={handleInputChange}
+                  placeholder="Fuel source details"
+                  icon={Fuel}
+                />
+                <InputGroup
+                  label="Target Rate ($)"
+                  name="targetRate"
+                  type="number"
+                  value={formData.targetRate}
+                  onChange={handleInputChange}
+                  placeholder="Target rate"
+                  icon={Target}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <SelectGroup
+                  label="Van Type"
+                  name="vanType"
+                  value={formData.vanType}
+                  onChange={handleInputChange}
+                  options={vanTypeOptions}
+                />
+                <SelectGroup
+                  label="Length"
+                  name="length"
+                  value={formData.length}
+                  onChange={handleInputChange}
+                  options={lengthOptions}
+                />
+                <InputGroup
+                  label="Weight (lbs)"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                  placeholder="Enter weight"
+                  icon={Scale}
+                />
+                <SelectGroup
+                  label="Booking Authority"
+                  name="bookingAuthority"
+                  value={formData.bookingAuthority}
+                  onChange={handleInputChange}
+                  options={bookingAuthorityOptions}
                 />
                 <InputGroup
                   label="Commodity"
                   name="commodity"
                   value={formData.commodity}
                   onChange={handleInputChange}
-                  placeholder="e.g. Frozen Chicken"
+                  placeholder="e.g., Electronics, Food, etc."
                 />
-                <InputGroup
-                  label="Weight (lbs)"
-                  name="weight"
-                  type="number"
-                  value={formData.weight}
+                <SelectGroup
+                  label="Type"
+                  name="type"
+                  value={formData.type}
                   onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="Pieces / Pallets"
-                  name="pieces"
-                  value={formData.pieces}
-                  onChange={handleInputChange}
+                  options={typeOptions}
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <InputGroup
-                  label="Temperature (If Reefer)"
-                  name="temperature"
-                  value={formData.temperature}
+                  label="Declared Value ($)"
+                  name="declaredValue"
+                  value={formData.declaredValue}
                   onChange={handleInputChange}
-                  placeholder="-10 F"
+                  placeholder="Value of goods"
+                  icon={Shield}
                 />
-                <InputGroup
-                  label="Load Value ($)"
-                  name="loadValue"
-                  value={formData.loadValue}
+                <SelectGroup
+                  label="Sales Agent"
+                  name="salesAgent"
+                  value={formData.salesAgent}
                   onChange={handleInputChange}
-                  placeholder="$100,000"
+                  options={salesAgentOptions}
                 />
-                <InputGroup
-                  label="Hazmat Details"
-                  name="hazmatClass"
-                  value={formData.hazmatClass}
+                <SelectGroup
+                  label="Booking/Terminal Office"
+                  name="bookingTerminalOffice"
+                  value={formData.bookingTerminalOffice}
                   onChange={handleInputChange}
-                  placeholder="UN#, Class"
+                  options={officeOptions}
                 />
-                <InputGroup
-                  label="Special Instructions"
-                  name="specialInstructions"
-                  value={formData.specialInstructions}
+                <SelectGroup
+                  label="Agency"
+                  name="agency"
+                  value={formData.agency}
                   onChange={handleInputChange}
-                  className="sm:col-span-2 lg:col-span-3"
-                  placeholder="Driver needs safety vest, lumper required, etc."
+                  options={agencyOptions}
+                />
+                <SelectGroup
+                  label="Brokerage Agent"
+                  name="brokerageAgent"
+                  value={formData.brokerageAgent}
+                  onChange={handleInputChange}
+                  options={brokerageAgentOptions}
                 />
               </div>
 
-              {/* DESCRIPTION BOX SECTION */}
-              <div className="mt-4">
-                <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-32"
-                    placeholder="Enter detailed description of the load, including packaging details, handling requirements, storage conditions, etc."
-                    rows={6}
-                  />
-                  <div className="flex justify-between mt-1">
-                    <span className="text-xs text-gray-400">
-                      {formData.description.length}/1000 characters
-                    </span>
-                    <span className="text-xs text-gray-400">Optional</span>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <TextAreaGroup
+                  label="Customer Load Notes"
+                  name="customerLoadNotes"
+                  value={formData.customerLoadNotes}
+                  onChange={handleInputChange}
+                  placeholder="Special instructions, requirements, etc."
+                  rows={3}
+                />
+                <TextAreaGroup
+                  label="Dispatch Notes"
+                  name="dispatchNotes"
+                  value={formData.dispatchNotes}
+                  onChange={handleInputChange}
+                  placeholder="Internal dispatch instructions"
+                  rows={3}
+                />
               </div>
             </div>
 
-            {/* SECTION 3 & 4: Stops (Pickup & Delivery) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Pickups */}
-              <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
-                      A
+            {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */}
+            {/* Pickups */}
+            <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
+                    A
+                  </div>
+                  Pickups
+                </h3>
+                <button
+                  onClick={() => addStop("pickups")}
+                  className="text-xs bg-green-50 text-green-600 px-3 py-2 rounded hover:bg-green-100 font-medium flex items-center justify-center gap-1 w-full sm:w-auto"
+                >
+                  <Plus className="w-3 h-3" /> Add Stop
+                </button>
+              </div>
+
+              {formData.pickups.map((stop, index) => (
+                <div
+                  key={stop.id}
+                  className="mb-6 pb-6 border-b border-dashed last:border-0 last:mb-0 last:pb-0 relative"
+                >
+                  {index > 0 && (
+                    <button
+                      onClick={() => removeStop("pickups", stop.id)}
+                      className="absolute -right-2 -top-2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <div className="space-y-4">
+                    {/* Shipper */}
+                    <SelectGroup
+                      label="Shipper"
+                      value={stop.company}
+                      onChange={(e) =>
+                        handleStopChange(
+                          "pickups",
+                          stop.id,
+                          "company",
+                          e.target.value
+                        )
+                      }
+                      options={shipperOptions}
+                      name={""}
+                    />
+
+                    {/* Customer Load/Ref/Conf */}
+                    <InputGroup
+                      label="Customer Load/Ref/Conf"
+                      value={stop.customerLoadRefConf}
+                      onChange={(e) =>
+                        handleStopChange(
+                          "pickups",
+                          stop.id,
+                          "customerLoadRefConf",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Customer reference number"
+                      name={""}
+                    />
+
+                    {/* Location Notes Heading */}
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Location Notes:
+                      </h4>
                     </div>
-                    Pickups
-                  </h3>
-                  <button
-                    onClick={() => addStop("pickups")}
-                    className="text-xs bg-green-50 text-green-600 px-3 py-2 rounded hover:bg-green-100 font-medium flex items-center justify-center gap-1 w-full sm:w-auto"
-                  >
-                    <Plus className="w-3 h-3" /> Add Stop
-                  </button>
-                </div>
 
-                {formData.pickups.map((stop, index) => (
-                  <div
-                    key={stop.id}
-                    className="mb-6 pb-6 border-b border-dashed last:border-0 last:mb-0 last:pb-0 relative"
-                  >
-                    {index > 0 && (
-                      <button
-                        onClick={() => removeStop("pickups", stop.id)}
-                        className="absolute -right-2 -top-2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1"
+                    {/* Date, Time, Stop Type, Appointment */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <InputGroup
+                        label="Date"
+                        type="date"
+                        value={stop.date}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "date",
+                            e.target.value
+                          )
+                        }
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Start Time"
+                        type="time"
+                        value={stop.timeStart}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "timeStart",
+                            e.target.value
+                          )
+                        }
+                        name={""}
+                      />
+                      <InputGroup
+                        label="End Time"
+                        type="time"
+                        value={stop.timeEnd}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "timeEnd",
+                            e.target.value
+                          )
+                        }
+                        name={""}
+                      />
+                      <SelectGroup
+                        label="Stop Pickup"
+                        value={stop.stopType}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "stopType",
+                            e.target.value
+                          )
+                        }
+                        options={stopTypeOptions}
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Appointment Switch */}
+                    <div className="flex items-center gap-2 p-2 rounded-md border border-gray-200 bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={stop.hasAppointment}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "hasAppointment",
+                            // e.target.checked
+                            e.target.checked ? "true" : "false"
+                          )
+                        }
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        id={`appt-${stop.id}`}
+                      />
+                      <label
+                        htmlFor={`appt-${stop.id}`}
+                        className="text-sm text-gray-700 select-none cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                    <div className="space-y-4">
-                      {/* Company Name */}
+                        Appointment Required
+                      </label>
+                    </div>
+
+                    {/* Total Qty & Qty Type */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <InputGroup
-                        label="Pickup Company Name"
-                        value={stop.company}
+                        label="Total Qty"
+                        value={stop.totalQty}
                         onChange={(e) =>
                           handleStopChange(
                             "pickups",
                             stop.id,
-                            "company",
+                            "totalQty",
                             e.target.value
                           )
                         }
-                        placeholder="Company Name"
-                        icon={UserCircle}
+                        placeholder="Quantity"
                         name={""}
                       />
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Contact Person */}
-                        <InputGroup
-                          label="Contact Person"
-                          value={stop.contactPerson}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "contactPerson",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Contact Name"
-                          icon={User}
-                          name={""}
-                        />
-                        {/* Phone */}
-                        <InputGroup
-                          label="Phone"
-                          value={stop.phone}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "phone",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Phone Number"
-                          icon={Phone}
-                          name={""}
-                        />
-                      </div>
-
-                      {/* Address */}
-                      <InputGroup
-                        label="Address"
-                        value={stop.address}
+                      <SelectGroup
+                        label="Qty Type"
+                        value={stop.qtyType}
                         onChange={(e) =>
                           handleStopChange(
                             "pickups",
                             stop.id,
-                            "address",
+                            "qtyType",
                             e.target.value
                           )
                         }
-                        placeholder="Full Address with Zip"
+                        options={qtyTypeOptions}
                         name={""}
                       />
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-3">
-                          {/* Date */}
-                          <InputGroup
-                            label="Pickup Date"
-                            type="date"
-                            value={stop.date}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "date",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
-                          {/* Appointment Type */}
-                          <SelectGroup
-                            label="Appt Type"
-                            value={stop.type}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "type",
-                                e.target.value
-                              )
-                            }
-                            options={[
-                              { value: "FCFS", label: "FCFS" },
-                              { value: "Appt", label: "Firm Appt" },
-                              { value: "Window", label: "Window" },
-                            ]}
-                            name={""}
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          {/* Time Start */}
-                          <InputGroup
-                            label="Time Start"
-                            type="time"
-                            value={stop.timeStart}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "timeStart",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
-                          {/* Time End */}
-                          <InputGroup
-                            label="Time End"
-                            type="time"
-                            value={stop.timeEnd}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "timeEnd",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Pickup Number */}
-                        <InputGroup
-                          label="Pickup Number"
-                          value={stop.pickupNumber}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "pickupNumber",
-                              e.target.value
-                            )
-                          }
-                          placeholder="PU#"
-                          icon={FileDigit}
-                          name={""}
-                        />
-                        {/* Load Number */}
-                        <InputGroup
-                          label="Load Number"
-                          value={stop.loadNumber}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "loadNumber",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Load #"
-                          icon={Clipboard}
-                          name={""}
-                        />
-                      </div>
-
-                      {/* Notes */}
-                      <TextAreaGroup
-                        label="Pickup Notes"
-                        value={stop.notes}
+                    {/* Total Weight & Commodity */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
+                        label="Total Weight (lbs)"
+                        value={stop.totalWeight}
                         onChange={(e) =>
                           handleStopChange(
                             "pickups",
                             stop.id,
-                            "notes",
+                            "totalWeight",
                             e.target.value
                           )
                         }
-                        placeholder="Special instructions, gate codes, etc."
-                        rows={2}
+                        placeholder="Weight in pounds"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Commodity"
+                        value={stop.commodity}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "commodity",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Type of goods"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Dimensions */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <InputGroup
+                        label="Length (in.)"
+                        value={stop.length}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "length",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Inches"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Width (in.)"
+                        value={stop.width}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "width",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Inches"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Height (in.)"
+                        value={stop.height}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "height",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Inches"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Pickup, BOL, PO Number */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <InputGroup
+                        label="Pickup #"
+                        value={stop.pickup}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "pickup",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Pickup number"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Shipment BOL"
+                        value={stop.shipmentBol}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "shipmentBol",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Bill of lading"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="PO Number"
+                        value={stop.poNumber}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "poNumber",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Purchase order"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Reefer Mode & Route Name */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <SelectGroup
+                        label="Reefer Mode"
+                        value={stop.reeferMode}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "reeferMode",
+                            e.target.value
+                          )
+                        }
+                        options={reeferModeOptions}
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Route Name"
+                        value={stop.routeName}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "routeName",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Route identifier"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Instructions & Seal */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
+                        label="Instructions"
+                        value={stop.instructions}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "instructions",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Special instructions"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Seal #"
+                        value={stop.seal}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "seal",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Seal number"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Container, Chassis, Customer Trailer */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <InputGroup
+                        label="Container #"
+                        value={stop.container}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "container",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Container number"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Chassis #"
+                        value={stop.chassis}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "chassis",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Chassis number"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Customer Trailer #"
+                        value={stop.customerTrailer}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "customerTrailer",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Trailer number"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* PRO & Reefer Fuel Level */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
+                        label="PRO #"
+                        value={stop.pro}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "pro",
+                            e.target.value
+                          )
+                        }
+                        placeholder="PRO number"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Reefer Fuel Level (%)"
+                        type="number"
+                        value={stop.reeferFuelLevel}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "reeferFuelLevel",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Fuel percentage"
+                        // min="0"
+                        // max="100"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Split Load Heading */}
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        Split Load
+                      </h4>
+                    </div>
+
+                    {/* Yard Location & Stop Pickup (again) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <SelectGroup
+                        label="Yard Location"
+                        value={stop.yardLocation}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "yardLocation",
+                            e.target.value
+                          )
+                        }
+                        options={yardLocationOptions}
+                        name={""}
+                      />
+                      <SelectGroup
+                        label="Stop Pickup"
+                        value={stop.stopType}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "stopType",
+                            e.target.value
+                          )
+                        }
+                        options={stopTypeOptions}
                         name={""}
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Deliveries */}
-              <div className="bg-white rounded-lg shadow-sm border-l-4 border-red-500 p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold">
-                      Z
-                    </div>
-                    Deliveries
-                  </h3>
-                  <button
-                    onClick={() => addStop("deliveries")}
-                    className="text-xs bg-red-50 text-red-600 px-3 py-2 rounded hover:bg-red-100 font-medium flex items-center justify-center gap-1 w-full sm:w-auto"
-                  >
-                    <Plus className="w-3 h-3" /> Add Stop
-                  </button>
                 </div>
-
-                {formData.deliveries.map((stop, index) => (
-                  <div
-                    key={stop.id}
-                    className="mb-6 pb-6 border-b border-dashed last:border-0 last:mb-0 last:pb-0 relative"
-                  >
-                    {index > 0 && (
-                      <button
-                        onClick={() => removeStop("deliveries", stop.id)}
-                        className="absolute -right-2 -top-2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                    <div className="space-y-4">
-                      {/* Company Name */}
-                      <InputGroup
-                        label="Delivery Company Name"
-                        value={stop.company}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "company",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Company Name"
-                        icon={UserCircle}
-                        name={""}
-                      />
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Contact Person */}
-                        <InputGroup
-                          label="Contact Person"
-                          value={stop.contactPerson}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "contactPerson",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Contact Name"
-                          icon={User}
-                          name={""}
-                        />
-                        {/* Phone */}
-                        <InputGroup
-                          label="Phone"
-                          value={stop.phone}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "phone",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Phone Number"
-                          icon={Phone}
-                          name={""}
-                        />
-                      </div>
-
-                      {/* Address */}
-                      <InputGroup
-                        label="Address"
-                        value={stop.address}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "address",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Full Address with Zip"
-                        name={""}
-                      />
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-3">
-                          {/* Date */}
-                          <InputGroup
-                            label="Delivery Date"
-                            type="date"
-                            value={stop.date}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "date",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
-                          {/* Appointment Type */}
-                          <SelectGroup
-                            label="Appt Type"
-                            value={stop.type}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "type",
-                                e.target.value
-                              )
-                            }
-                            options={[
-                              { value: "FCFS", label: "FCFS" },
-                              { value: "Appt", label: "Firm Appt" },
-                              { value: "Window", label: "Window" },
-                            ]}
-                            name={""}
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          {/* Time Start */}
-                          <InputGroup
-                            label="Time Start"
-                            type="time"
-                            value={stop.timeStart}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "timeStart",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
-                          {/* Time End */}
-                          <InputGroup
-                            label="Time End"
-                            type="time"
-                            value={stop.timeEnd}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "timeEnd",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Pickup Number */}
-                        <InputGroup
-                          label="Delivery Number"
-                          value={stop.pickupNumber}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "pickupNumber",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Delivery #"
-                          icon={FileDigit}
-                          name={""}
-                        />
-                        {/* Load Number */}
-                        <InputGroup
-                          label="Load Number"
-                          value={stop.loadNumber}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "loadNumber",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Load #"
-                          icon={Clipboard}
-                          name={""}
-                        />
-                      </div>
-
-                      {/* Notes */}
-                      <TextAreaGroup
-                        label="Delivery Notes"
-                        value={stop.notes}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "notes",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Special instructions, gate codes, etc."
-                        rows={2}
-                        name={""}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
+            {/* Deliveries */}
+            <div className="bg-white rounded-lg shadow-sm border-l-4 border-red-500 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold">
+                    Z
+                  </div>
+                  Deliveries
+                </h3>
+                <button
+                  onClick={() => addStop("deliveries")}
+                  className="text-xs bg-red-50 text-red-600 px-3 py-2 rounded hover:bg-red-100 font-medium flex items-center justify-center gap-1 w-full sm:w-auto"
+                >
+                  <Plus className="w-3 h-3" /> Add Stop
+                </button>
+              </div>
 
-            {/* SECTION 5: Equipment & Driver */}
+              {formData.deliveries.map((stop, index) => (
+                <div
+                  key={stop.id}
+                  className="mb-6 pb-6 border-b border-dashed last:border-0 last:mb-0 last:pb-0 relative"
+                >
+                  {index > 0 && (
+                    <button
+                      onClick={() => removeStop("deliveries", stop.id)}
+                      className="absolute -right-2 -top-2 text-gray-400 hover:text-red-500 bg-white rounded-full p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <div className="space-y-4">
+                    {/* Consignee */}
+                    <SelectGroup
+                      label="Consignee"
+                      value={stop.company}
+                      onChange={(e) =>
+                        handleStopChange(
+                          "deliveries",
+                          stop.id,
+                          "company",
+                          e.target.value
+                        )
+                      }
+                      options={consigneeOptions}
+                      name={""}
+                    />
+
+                    {/* Customer Load/Ref/Conf */}
+                    <InputGroup
+                      label="Customer Load/Ref/Conf"
+                      value={stop.customerLoadRefConf}
+                      onChange={(e) =>
+                        handleStopChange(
+                          "deliveries",
+                          stop.id,
+                          "customerLoadRefConf",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Customer reference number"
+                      name={""}
+                    />
+
+                    {/* Location Notes Heading */}
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Location Notes:
+                      </h4>
+                    </div>
+
+                    {/* Date, Time, Stop Type, Appointment */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <InputGroup
+                        label="Date"
+                        type="date"
+                        value={stop.date}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "date",
+                            e.target.value
+                          )
+                        }
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Start Time"
+                        type="time"
+                        value={stop.timeStart}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "timeStart",
+                            e.target.value
+                          )
+                        }
+                        name={""}
+                      />
+                      <InputGroup
+                        label="End Time"
+                        type="time"
+                        value={stop.timeEnd}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "timeEnd",
+                            e.target.value
+                          )
+                        }
+                        name={""}
+                      />
+                      <SelectGroup
+                        label="Stop Delivery"
+                        value={stop.stopType}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "stopType",
+                            e.target.value
+                          )
+                        }
+                        options={stopTypeOptions}
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Appointment Switch */}
+                    <div className="flex items-center gap-2 p-2 rounded-md border border-gray-200 bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={stop.hasAppointment}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "hasAppointment",
+                            e.target.checked ? "true" : "false"
+                          )
+                        }
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        id={`del-appt-${stop.id}`}
+                      />
+                      <label
+                        htmlFor={`del-appt-${stop.id}`}
+                        className="text-sm text-gray-700 select-none cursor-pointer"
+                      >
+                        Appointment Required
+                      </label>
+                    </div>
+
+                    {/* Total Qty & Qty Type */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
+                        label="Total Qty"
+                        value={stop.totalQty}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "totalQty",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Quantity"
+                        name={""}
+                      />
+                      <SelectGroup
+                        label="Qty Type"
+                        value={stop.qtyType}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "qtyType",
+                            e.target.value
+                          )
+                        }
+                        options={qtyTypeOptions}
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Total Weight & Commodity */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputGroup
+                        label="Total Weight (lbs)"
+                        value={stop.totalWeight}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "totalWeight",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Weight in pounds"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Commodity"
+                        value={stop.commodity}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "commodity",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Type of goods"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Dimensions */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <InputGroup
+                        label="Length (in.)"
+                        value={stop.length}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "length",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Inches"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Width (in.)"
+                        value={stop.width}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "width",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Inches"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Height (in.)"
+                        value={stop.height}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "height",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Inches"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Pickup, BOL, PO Number */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <InputGroup
+                        label="Pickup #"
+                        value={stop.pickup}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "pickup",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Pickup number"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="Shipment BOL"
+                        value={stop.shipmentBol}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "shipmentBol",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Bill of lading"
+                        name={""}
+                      />
+                      <InputGroup
+                        label="PO Number"
+                        value={stop.poNumber}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "poNumber",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Purchase order"
+                        name={""}
+                      />
+                    </div>
+
+                    {/* Split Load Heading */}
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        Split Load
+                      </h4>
+                    </div>
+
+                    {/* Yard Location & Stop Pickup */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <SelectGroup
+                        label="Yard Location"
+                        value={stop.yardLocation}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "yardLocation",
+                            e.target.value
+                          )
+                        }
+                        options={yardLocationOptions}
+                        name={""}
+                      />
+                      <SelectGroup
+                        label="Stop Pickup"
+                        value={stop.stopType}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "stopType",
+                            e.target.value
+                          )
+                        }
+                        options={stopTypeOptions}
+                        name={""}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* </div> */}
+
+            {/* SECTION 4: Equipment & Driver - Keep as before */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={Truck}
@@ -1574,7 +2199,7 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 7: Documents */}
+            {/* SECTION 5: Documents - Keep as before */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={FileText}
@@ -1669,7 +2294,7 @@ export default function CreateNewLoadPage() {
 
           {/* RIGHT COLUMN (Financials & Status) */}
           <div className="lg:col-span-3 space-y-6">
-            {/* SECTION 10: Status */}
+            {/* SECTION 6: Status */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                 <h3 className="font-bold text-gray-700">Load Status</h3>
@@ -1678,7 +2303,7 @@ export default function CreateNewLoadPage() {
               <div className="space-y-3 relative">
                 <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
                 {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
-                  (step, i) => (
+                  (step) => (
                     <div
                       key={step}
                       className="flex items-center gap-3 relative z-10"
@@ -1724,7 +2349,7 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 6: Rates & Financials */}
+            {/* SECTION 7: Rates & Financials */}
             <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
               <div className="bg-gray-900 px-4 sm:px-6 py-4 border-b border-gray-800">
                 <div className="flex items-center gap-2 text-white">
@@ -1769,14 +2394,9 @@ export default function CreateNewLoadPage() {
                     name="tonu"
                     type="number"
                     value={formData.tonu}
-                    onChange={handleInputChange}
-                  />
-                  <InputGroup
-                    label="Other Acc."
-                    name="accessorials"
-                    type="number"
-                    value={formData.accessorials}
-                    onChange={handleInputChange}
+                    onChange={function (): void {
+                      throw new Error("Function not implemented.");
+                    }}
                   />
                 </div>
 
@@ -1816,29 +2436,17 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 9: Internal Notes */}
+            {/* SECTION 8: Internal Notes */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={MessageSquare}
-                title="Notes"
+                title="Internal Notes"
                 colorClass="text-yellow-600"
               />
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase">
-                    Driver Notes (App)
-                  </label>
-                  <textarea
-                    name="driverNotes"
-                    value={formData.driverNotes}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-md p-2 text-sm h-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Gate code, instructions..."
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">
-                    Internal / Dispatch
+                    Internal Notes
                   </label>
                   <textarea
                     name="internalNotes"
