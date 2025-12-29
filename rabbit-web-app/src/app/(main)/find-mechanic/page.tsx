@@ -1,4 +1,4 @@
-import BookingSection from "@/app/(home)/components/BookService";
+import BookingSection from "@/app/(main)/(home)/components/BookService";
 
 export default function FindMechanicPage() {
   return (
