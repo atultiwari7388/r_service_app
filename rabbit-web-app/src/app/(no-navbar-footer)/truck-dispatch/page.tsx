@@ -108,6 +108,31 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
     };
   }, [isOpen, onClose]);
 
+  // Adjust position to ensure it stays within viewport
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let adjustedX = position.x;
+      let adjustedY = position.y;
+
+      // Adjust horizontal position if going off-screen
+      if (position.x + rect.width > viewportWidth) {
+        adjustedX = viewportWidth - rect.width - 10;
+      }
+
+      // Adjust vertical position if going off-screen
+      if (position.y + rect.height > viewportHeight) {
+        adjustedY = viewportHeight - rect.height - 10;
+      }
+
+      dropdownRef.current.style.left = `${Math.max(10, adjustedX)}px`;
+      dropdownRef.current.style.top = `${Math.max(10, adjustedY)}px`;
+    }
+  }, [isOpen, position]);
+
   const menuItems = [
     {
       id: "upload-bol",
@@ -176,7 +201,31 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
         left: position.x,
       }}
     >
-      <div className="py-1">
+      {/* Header with close button */}
+      <div className="flex items-center justify-between p-3 border-b border-gray-200">
+        <span className="text-sm font-medium text-gray-700">Actions</span>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-700"
+          aria-label="Close menu"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div className="py-1 max-h-64 overflow-y-auto">
         {menuItems.map((item) => (
           <button
             key={item.id}
@@ -184,10 +233,10 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
               onAction(item.id, loadId);
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${item.color} transition-colors`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${item.color} transition-colors hover:bg-gray-50`}
           >
             {item.icon}
-            {item.label}
+            <span className="flex-1 text-left">{item.label}</span>
           </button>
         ))}
       </div>
@@ -791,11 +840,16 @@ export default function TruckDispatchScreen() {
   // --- Dropdown Handlers ---
   const handleMoreClick = (e: React.MouseEvent, loadId: string) => {
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
+    const button = e.currentTarget as HTMLElement;
+    const rect = button.getBoundingClientRect();
+
+    // Position dropdown below the button, aligned to the right
     setDropdownPosition({
-      x: rect.left - 200, // Position to the left of the button
+      x: rect.right - 224, // 224 = dropdown width (224px) - a bit of offset
       y: rect.bottom + window.scrollY,
     });
+
+    // Toggle dropdown
     setDropdownOpen(dropdownOpen === loadId ? null : loadId);
   };
 
