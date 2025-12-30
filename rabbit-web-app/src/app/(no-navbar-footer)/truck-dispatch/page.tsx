@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Truck,
   Package,
@@ -21,9 +21,17 @@ import {
   ChevronLeft,
   ArrowUpDown,
   DollarSign,
+  FileUp,
+  Mail,
+  FileText,
+  History,
+  Copy,
+  PauseCircle,
+  Phone,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FaFileInvoice } from "react-icons/fa";
 
 // --- Type Definitions ---
 interface LoadData {
@@ -63,34 +71,207 @@ interface Tab {
   bgColor: string;
 }
 
+// --- Dropdown Menu Component ---
+interface DropdownMenuProps {
+  loadId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  position: { x: number; y: number };
+  onAction: (action: string, loadId: string) => void;
+}
+
+const DropdownMenu: React.FC<DropdownMenuProps> = ({
+  loadId,
+  isOpen,
+  onClose,
+  position,
+  onAction,
+}) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  const menuItems = [
+    {
+      id: "upload-bol",
+      label: "Upload BOL",
+      icon: <FileUp className="w-4 h-4" />,
+      color: "text-blue-600 hover:bg-blue-50",
+    },
+    {
+      id: "upload-pod",
+      label: "Upload POD",
+      icon: <FileUp className="w-4 h-4" />,
+      color: "text-green-600 hover:bg-green-50",
+    },
+    {
+      id: "email-log",
+      label: "Email Log",
+      icon: <Mail className="w-4 h-4" />,
+      color: "text-purple-600 hover:bg-purple-50",
+    },
+    {
+      id: "load-notes",
+      label: "Load Notes",
+      icon: <FileText className="w-4 h-4" />,
+      color: "text-yellow-600 hover:bg-yellow-50",
+    },
+    {
+      id: "history",
+      label: "History",
+      icon: <History className="w-4 h-4" />,
+      color: "text-gray-600 hover:bg-gray-50",
+    },
+    {
+      id: "duplicate-load",
+      label: "Duplicate Load",
+      icon: <Copy className="w-4 h-4" />,
+      color: "text-indigo-600 hover:bg-indigo-50",
+    },
+    {
+      id: "additional-invoice",
+      label: "Additional Invoice",
+      icon: <FaFileInvoice className="w-4 h-4" />,
+      color: "text-pink-600 hover:bg-pink-50",
+    },
+    {
+      id: "hold",
+      label: "Hold",
+      icon: <PauseCircle className="w-4 h-4" />,
+      color: "text-orange-600 hover:bg-orange-50",
+    },
+    {
+      id: "view-check-calls",
+      label: "View Check Calls",
+      icon: <Phone className="w-4 h-4" />,
+      color: "text-teal-600 hover:bg-teal-50",
+    },
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="fixed z-50 mt-2 w-56 rounded-md bg-white shadow-lg border border-gray-200"
+      style={{
+        top: position.y,
+        left: position.x,
+      }}
+    >
+      <div className="py-1">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => {
+              onAction(item.id, loadId);
+              onClose();
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-2 text-sm ${item.color} transition-colors`}
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // --- Tab Navigation Component ---
 const TabNavigation: React.FC<{
   tabs: Tab[];
   activeTab: string;
   onTabChange: (tabId: string) => void;
 }> = ({ tabs, activeTab, onTabChange }) => {
+  // Function to get color for each tab type
+  const getTabColors = (tabId: string, isActive: boolean) => {
+    if (isActive) {
+      return {
+        bg: "bg-[#F96176]",
+        text: "text-white",
+        badge: "bg-white/30",
+      };
+    }
+
+    switch (tabId) {
+      case "all":
+        return {
+          bg: "bg-gray-200",
+          text: "text-gray-800",
+          badge: "bg-white/60",
+        };
+      case "booked":
+        return {
+          bg: "bg-amber-200",
+          text: "text-amber-800",
+          badge: "bg-white/60",
+        };
+      case "pre-planned":
+        return {
+          bg: "bg-violet-200",
+          text: "text-violet-800",
+          badge: "bg-white/60",
+        };
+      case "active":
+        return {
+          bg: "bg-pink-200",
+          text: "text-pink-800",
+          badge: "bg-white/60",
+        };
+      case "completed":
+        return {
+          bg: "bg-green-200",
+          text: "text-green-800",
+          badge: "bg-white/60",
+        };
+      default:
+        return {
+          bg: "bg-gray-200",
+          text: "text-gray-800",
+          badge: "bg-white/60",
+        };
+    }
+  };
+
   return (
     <div className="flex flex-wrap gap-2 mb-6">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onTabChange(tab.id)}
-          className={`px-4 py-2 rounded-full flex items-center gap-2 font-medium text-sm transition-all ${
-            activeTab === tab.id
-              ? `${tab.bgColor} ${tab.color} shadow-sm`
-              : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-          }`}
-        >
-          <span>{tab.label}</span>
-          <span
-            className={`px-2 py-0.5 rounded-full text-xs ${
-              activeTab === tab.id ? "bg-white/20" : "bg-gray-100 text-gray-600"
-            }`}
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        const colors = getTabColors(tab.id, isActive);
+
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`px-4 py-2 rounded-full flex items-center gap-2 font-medium text-sm transition-all ${colors.bg} ${colors.text} hover:opacity-90`}
           >
-            {tab.count}
-          </span>
-        </button>
-      ))}
+            <span>{tab.label}</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-medium ${colors.badge}`}
+            >
+              {tab.count}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };
@@ -101,44 +282,51 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     switch (status) {
       case "Booked":
         return {
-          bg: "bg-blue-50",
-          text: "text-blue-700",
+          bg: "bg-amber-50",
+          text: "text-amber-700",
+          border: "border-amber-200",
           icon: <Calendar className="w-3 h-3" />,
         };
       case "Pre-Planned":
         return {
-          bg: "bg-purple-50",
-          text: "text-purple-700",
+          bg: "bg-violet-50",
+          text: "text-violet-700",
+          border: "border-violet-200",
           icon: <Clock className="w-3 h-3" />,
         };
       case "Ready":
         return {
-          bg: "bg-green-50",
-          text: "text-green-700",
+          bg: "bg-emerald-50",
+          text: "text-emerald-700",
+          border: "border-emerald-200",
           icon: <CheckCircle className="w-3 h-3" />,
         };
       case "Active":
         return {
-          bg: "bg-yellow-50",
-          text: "text-yellow-700",
+          bg: "bg-[#F96176]/10",
+          text: "text-[#F96176]",
+          border: "border-[#F96176]/20",
           icon: <Truck className="w-3 h-3" />,
         };
       case "Completed":
         return {
-          bg: "bg-emerald-50",
-          text: "text-emerald-700",
+          bg: "bg-green-50",
+          text: "text-green-700",
+          border: "border-green-200",
           icon: <CheckCircle className="w-3 h-3" />,
         };
       case "Missing BOL":
         return {
           bg: "bg-red-50",
           text: "text-red-700",
+          border: "border-red-200",
           icon: <AlertCircle className="w-3 h-3" />,
         };
       default:
         return {
           bg: "bg-gray-50",
           text: "text-gray-700",
+          border: "border-gray-200",
           icon: <Clock className="w-3 h-3" />,
         };
     }
@@ -148,7 +336,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
   return (
     <span
-      className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${config.bg} ${config.text}`}
+      className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 border ${config.bg} ${config.text} ${config.border}`}
     >
       {config.icon}
       {status}
@@ -228,61 +416,50 @@ export default function TruckDispatchScreen() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
   const itemsPerPage = 10;
 
   // Inside your component function:
   const router = useRouter();
 
   // --- Tabs Data ---
+
   const tabs: Tab[] = [
     {
       id: "all",
       label: "All",
       count: 30,
-      color: "text-blue-700",
-      bgColor: "bg-blue-100",
+      color: "", // Colors handled in component
+      bgColor: "",
     },
     {
       id: "booked",
       label: "Booked",
       count: 10,
-      color: "text-blue-700",
-      bgColor: "bg-blue-100",
+      color: "",
+      bgColor: "",
     },
     {
       id: "pre-planned",
       label: "Pre-Planned",
       count: 5,
-      color: "text-purple-700",
-      bgColor: "bg-purple-100",
-    },
-    {
-      id: "ready",
-      label: "Ready For Dispatch",
-      count: 10,
-      color: "text-green-700",
-      bgColor: "bg-green-100",
+      color: "",
+      bgColor: "",
     },
     {
       id: "active",
       label: "Active",
       count: 25,
-      color: "text-yellow-700",
-      bgColor: "bg-yellow-100",
+      color: "",
+      bgColor: "",
     },
     {
       id: "completed",
       label: "Completed",
       count: 15,
-      color: "text-emerald-700",
-      bgColor: "bg-emerald-100",
-    },
-    {
-      id: "missing-bol",
-      label: "Missing BOL",
-      count: 1,
-      color: "text-red-700",
-      bgColor: "bg-red-100",
+      color: "",
+      bgColor: "",
     },
   ];
 
@@ -611,6 +788,66 @@ export default function TruckDispatchScreen() {
     // Download documents
   };
 
+  // --- Dropdown Handlers ---
+  const handleMoreClick = (e: React.MouseEvent, loadId: string) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDropdownPosition({
+      x: rect.left - 200, // Position to the left of the button
+      y: rect.bottom + window.scrollY,
+    });
+    setDropdownOpen(dropdownOpen === loadId ? null : loadId);
+  };
+
+  const handleCloseDropdown = () => {
+    setDropdownOpen(null);
+  };
+
+  const handleAction = (action: string, loadId: string) => {
+    console.log(`${action} for load:`, loadId);
+
+    switch (action) {
+      case "upload-bol":
+        // Handle BOL upload
+        alert(`Upload BOL for load ${loadId}`);
+        break;
+      case "upload-pod":
+        // Handle POD upload
+        alert(`Upload POD for load ${loadId}`);
+        break;
+      case "email-log":
+        // Open email log
+        alert(`Email log for load ${loadId}`);
+        break;
+      case "load-notes":
+        // Open load notes
+        alert(`Load notes for load ${loadId}`);
+        break;
+      case "history":
+        // View history
+        alert(`History for load ${loadId}`);
+        break;
+      case "duplicate-load":
+        // Duplicate load
+        alert(`Duplicate load ${loadId}`);
+        break;
+      case "additional-invoice":
+        // Additional invoice
+        alert(`Additional invoice for load ${loadId}`);
+        break;
+      case "hold":
+        // Hold load
+        alert(`Hold load ${loadId}`);
+        break;
+      case "view-check-calls":
+        // View check calls
+        alert(`View check calls for load ${loadId}`);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       {/* Header */}
@@ -670,7 +907,7 @@ export default function TruckDispatchScreen() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Avg. Profit/Load</p>
+                <p className="text-sm text-gray-500">Total</p>
                 <p className="text-2xl font-bold text-gray-900">$685</p>
               </div>
               <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
@@ -765,7 +1002,7 @@ export default function TruckDispatchScreen() {
                   <td className="py-4 px-4">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-blue-600">
+                        <span className="text-sm font-semibold text-[#F96176]">
                           {load.loadNumber}
                         </span>
                         <span className="text-xs text-gray-500">•</span>
@@ -901,9 +1138,20 @@ export default function TruckDispatchScreen() {
                       >
                         <Download className="w-4 h-4" />
                       </button>
-                      <button className="p-1.5 hover:bg-gray-100 rounded text-gray-600">
+                      <button
+                        onClick={(e) => handleMoreClick(e, load.id)}
+                        className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
+                        title="More Actions"
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </button>
+                      <DropdownMenu
+                        loadId={load.id}
+                        isOpen={dropdownOpen === load.id}
+                        onClose={handleCloseDropdown}
+                        position={dropdownPosition}
+                        onAction={handleAction}
+                      />
                     </div>
                   </td>
                 </tr>
