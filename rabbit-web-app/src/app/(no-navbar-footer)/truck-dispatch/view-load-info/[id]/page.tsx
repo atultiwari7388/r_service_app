@@ -20,6 +20,7 @@ import {
   Check,
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
+import Link from "next/link";
 
 // --- Types & Interfaces ---
 
@@ -367,7 +368,9 @@ export default function LoadDetailsPage() {
                 href="#"
                 className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <Link href={"/truck-dispatch"}>
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
               </a>
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-bold text-gray-900">
