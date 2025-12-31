@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link"; // Added next/link import
 import {
   Truck,
   Package,
@@ -28,10 +29,16 @@ import {
   Copy,
   PauseCircle,
   Phone,
+  Menu,
+  X,
+  Users,
+  Settings,
+  BarChart,
+  Bell,
+  HelpCircle,
+  Home,
+  Plus as PlusIcon,
 } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FaFileInvoice } from "react-icons/fa";
 
 // --- Type Definitions ---
 interface LoadData {
@@ -71,6 +78,148 @@ interface Tab {
   bgColor: string;
 }
 
+// --- Sidebar Menu Items ---
+const menuItems = [
+  {
+    id: "truck-dispatch",
+    label: "Dispatch",
+    icon: <Truck className="w-5 h-5" />,
+    path: "/truck-dispatch",
+  },
+  {
+    id: "carriers",
+    label: "Carriers",
+    icon: <Users className="w-5 h-5" />,
+    path: "/carriers",
+  },
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: <Home className="w-5 h-5" />,
+    path: "/dashboard",
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    icon: <BarChart className="w-5 h-5" />,
+    path: "/analytics",
+  },
+  {
+    id: "notifications",
+    label: "Notify",
+    icon: <Bell className="w-5 h-5" />,
+    path: "/notifications",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: <Settings className="w-5 h-5" />,
+    path: "/settings",
+  },
+  {
+    id: "help",
+    label: "Support",
+    icon: <HelpCircle className="w-5 h-5" />,
+    path: "/help",
+  },
+];
+
+// --- Sidebar Component ---
+const Sidebar: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  currentPath: string;
+}> = ({ isOpen, onClose, currentPath }) => {
+  // Get active page from pathname
+  const getActivePage = () => {
+    const menuItem = menuItems.find((item) =>
+      currentPath.startsWith(item.path)
+    );
+    return menuItem?.id || "truck-dispatch";
+  };
+
+  const activePage = getActivePage();
+
+  return (
+    <>
+      {/* Overlay for mobile only */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 md:hidden ${
+          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
+        onClick={onClose}
+      />
+
+      {/* Sidebar Container */}
+      <div
+        className={`fixed top-0 left-0 h-full bg-white shadow-2xl z-50 transition-transform duration-300 ease-in-out w-48 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#F96176] rounded-md flex items-center justify-center flex-shrink-0">
+              <Truck className="w-5 h-5 text-white" />
+            </div>
+            <span className="font-bold text-gray-900 text-sm truncate">
+              Dispatch
+            </span>
+          </div>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-100 rounded-md transition-colors text-gray-500"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Navigation Menu */}
+        <nav className="p-3">
+          <ul className="space-y-1">
+            {menuItems.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={item.path}
+                  onClick={() => {
+                    // On mobile, close sidebar after navigation
+                    if (window.innerWidth < 768) {
+                      onClose();
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm ${
+                    activePage === item.id
+                      ? "bg-[#F96176] text-white"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                  title={item.label}
+                >
+                  {item.icon}
+                  <span className="font-medium truncate">{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex-shrink-0"></div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 text-xs truncate">
+                John Doe
+              </p>
+              <p className="text-[10px] text-gray-500 truncate">Manager</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // --- Dropdown Menu Component ---
 interface DropdownMenuProps {
   loadId: string;
@@ -108,7 +257,6 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
     };
   }, [isOpen, onClose]);
 
-  // Adjust position to ensure it stays within viewport
   useEffect(() => {
     if (isOpen && dropdownRef.current) {
       const rect = dropdownRef.current.getBoundingClientRect();
@@ -118,12 +266,10 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
       let adjustedX = position.x;
       let adjustedY = position.y;
 
-      // Adjust horizontal position if going off-screen
       if (position.x + rect.width > viewportWidth) {
         adjustedX = viewportWidth - rect.width - 10;
       }
 
-      // Adjust vertical position if going off-screen
       if (position.y + rect.height > viewportHeight) {
         adjustedY = viewportHeight - rect.height - 10;
       }
@@ -173,7 +319,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
     {
       id: "additional-invoice",
       label: "Additional Invoice",
-      icon: <FaFileInvoice className="w-4 h-4" />,
+      icon: <FileText className="w-4 h-4" />,
       color: "text-pink-600 hover:bg-pink-50",
     },
     {
@@ -201,7 +347,6 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
         left: position.x,
       }}
     >
-      {/* Header with close button */}
       <div className="flex items-center justify-between p-3 border-b border-gray-200">
         <span className="text-sm font-medium text-gray-700">Actions</span>
         <button
@@ -209,19 +354,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
           className="p-1 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-700"
           aria-label="Close menu"
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X className="w-4 h-4" />
         </button>
       </div>
 
@@ -250,7 +383,6 @@ const TabNavigation: React.FC<{
   activeTab: string;
   onTabChange: (tabId: string) => void;
 }> = ({ tabs, activeTab, onTabChange }) => {
-  // Function to get color for each tab type
   const getTabColors = (tabId: string, isActive: boolean) => {
     if (isActive) {
       return {
@@ -462,24 +594,23 @@ const LoadTypeBadge: React.FC<{ type: string }> = ({ type }) => {
 // --- Main Component ---
 export default function TruckDispatchScreen() {
   // --- State ---
+  // Default to false (hidden)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+
   const itemsPerPage = 10;
 
-  // Inside your component function:
-  const router = useRouter();
-
   // --- Tabs Data ---
-
   const tabs: Tab[] = [
     {
       id: "all",
       label: "All",
       count: 30,
-      color: "", // Colors handled in component
+      color: "",
       bgColor: "",
     },
     {
@@ -780,9 +911,8 @@ export default function TruckDispatchScreen() {
     },
   ];
 
-  // --- Filter Loads Based on Active Tab and Search ---
+  // --- Filter Loads ---
   const filteredLoads = dummyLoads.filter((load) => {
-    // Filter by tab
     if (activeTab !== "all") {
       const tabStatusMap: Record<string, string> = {
         booked: "Booked",
@@ -795,7 +925,6 @@ export default function TruckDispatchScreen() {
       if (load.status !== tabStatusMap[activeTab]) return false;
     }
 
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
@@ -818,23 +947,20 @@ export default function TruckDispatchScreen() {
 
   // --- Action Handlers ---
   const handleViewLoad = (loadId: string) => {
-    // Navigate to view-load-info page
-    router.push(`/truck-dispatch/view-load-info/${loadId}`);
+    // Using Link component in the JSX instead
+    console.log("View load:", loadId);
   };
 
   const handleEditLoad = (loadId: string) => {
     console.log("Edit load:", loadId);
-    // Navigate to edit page
   };
 
   const handlePrintLoad = (loadId: string) => {
     console.log("Print load:", loadId);
-    // Print load details
   };
 
   const handleDownloadDocs = (loadId: string) => {
     console.log("Download docs for load:", loadId);
-    // Download documents
   };
 
   // --- Dropdown Handlers ---
@@ -843,13 +969,11 @@ export default function TruckDispatchScreen() {
     const button = e.currentTarget as HTMLElement;
     const rect = button.getBoundingClientRect();
 
-    // Position dropdown below the button, aligned to the right
     setDropdownPosition({
-      x: rect.right - 224, // 224 = dropdown width (224px) - a bit of offset
+      x: rect.right - 224,
       y: rect.bottom + window.scrollY,
     });
 
-    // Toggle dropdown
     setDropdownOpen(dropdownOpen === loadId ? null : loadId);
   };
 
@@ -859,461 +983,429 @@ export default function TruckDispatchScreen() {
 
   const handleAction = (action: string, loadId: string) => {
     console.log(`${action} for load:`, loadId);
+    // Your action handlers
+  };
 
-    switch (action) {
-      case "upload-bol":
-        // Handle BOL upload
-        alert(`Upload BOL for load ${loadId}`);
-        break;
-      case "upload-pod":
-        // Handle POD upload
-        alert(`Upload POD for load ${loadId}`);
-        break;
-      case "email-log":
-        // Open email log
-        alert(`Email log for load ${loadId}`);
-        break;
-      case "load-notes":
-        // Open load notes
-        alert(`Load notes for load ${loadId}`);
-        break;
-      case "history":
-        // View history
-        alert(`History for load ${loadId}`);
-        break;
-      case "duplicate-load":
-        // Duplicate load
-        alert(`Duplicate load ${loadId}`);
-        break;
-      case "additional-invoice":
-        // Additional invoice
-        alert(`Additional invoice for load ${loadId}`);
-        break;
-      case "hold":
-        // Hold load
-        alert(`Hold load ${loadId}`);
-        break;
-      case "view-check-calls":
-        // View check calls
-        alert(`View check calls for load ${loadId}`);
-        break;
-      default:
-        break;
-    }
+  // --- Sidebar Toggle Handler ---
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-              Truck Dispatch
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Manage and track all your loads in one place
-            </p>
-          </div>
-          <Link href={"/truck-dispatch/create-new-load"}>
-            <button className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] font-medium flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              New Load
-            </button>
-          </Link>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Loads</p>
-                <p className="text-2xl font-bold text-gray-900">30</p>
-              </div>
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Package className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Active Loads</p>
-                <p className="text-2xl font-bold text-gray-900">25</p>
-              </div>
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <Truck className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Ready for Dispatch</p>
-                <p className="text-2xl font-bold text-gray-900">10</p>
-              </div>
-              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total</p>
-                <p className="text-2xl font-bold text-gray-900">$685</p>
-              </div>
-              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-emerald-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filter Bar */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search loads by ID, customer, driver, or location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filter
-            </button>
-            <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-              <ArrowUpDown className="w-4 h-4" />
-              Sort
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <TabNavigation
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentPath="/truck-dispatch" // Since we're using Next.js routing, we don't need to track path in state
       />
 
-      {/* Loads Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {/* Table Header */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  SR. NO.
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  LOAD DETAILS
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  TYPE
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  STATUS
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  TRUCK/TRAILER
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  PICKUP
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  DROP
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  PROGRESS
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  QUANTITY
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  ACTIONS
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {paginatedLoads.map((load, index) => (
-                <tr key={load.id} className="hover:bg-gray-50">
-                  {/* SR. NO. */}
-                  <td className="py-4 px-4 text-sm font-medium text-gray-900">
-                    {startIndex + index + 1}
-                  </td>
-
-                  {/* LOAD DETAILS */}
-                  <td className="py-4 px-4">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-[#F96176]">
-                          {load.loadNumber}
-                        </span>
-                        <span className="text-xs text-gray-500">•</span>
-                        <span className="text-sm text-gray-900">
-                          {load.customer}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <User className="w-3 h-3" />
-                        {load.driver}
-                        <span className="text-gray-300">•</span>
-                        <DollarSign className="w-3 h-3" />$
-                        {load.rate.toLocaleString()}
-                        <span className="text-gray-300">•</span>
-                        <span
-                          className={`font-medium ${
-                            load.profit > 0 ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          +${load.profit}
-                        </span>
-                      </div>
-                      {load.specialInstructions && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          <span className="font-medium">Note:</span>{" "}
-                          {load.specialInstructions}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* TYPE */}
-                  <td className="py-4 px-4">
-                    <LoadTypeBadge type={load.type} />
-                  </td>
-
-                  {/* STATUS */}
-                  <td className="py-4 px-4">
-                    <StatusBadge status={load.status} />
-                  </td>
-
-                  {/* TRUCK/TRAILER */}
-                  <td className="py-4 px-4">
-                    <div className="space-y-1">
-                      <div className="text-sm text-gray-900">{load.truck}</div>
-                      <div className="text-xs text-gray-500">
-                        {load.trailer}
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* PICKUP */}
-                  <td className="py-4 px-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm text-gray-900">
-                        <MapPin className="w-3 h-3" />
-                        {load.pickupLocation}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Calendar className="w-3 h-3" />
-                        {load.pickupDate}
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* DROP */}
-                  <td className="py-4 px-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-sm text-gray-900">
-                        <MapPin className="w-3 h-3" />
-                        {load.dropLocation}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Calendar className="w-3 h-3" />
-                        {load.dropDate}
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* PROGRESS */}
-                  <td className="py-4 px-4">
-                    <div className="space-y-2">
-                      <ProgressBar progress={load.progress} />
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">{load.distance}</span>
-                        <span className="font-medium text-gray-700">
-                          {load.weight}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Docs: {load.documents} / 5
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* QUANTITY */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
-                        {load.quantity}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* ACTIONS */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleViewLoad(load.id)}
-                        className="p-1.5 hover:bg-blue-50 rounded text-blue-600"
-                        title="View Load"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditLoad(load.id)}
-                        className="p-1.5 hover:bg-green-50 rounded text-green-600"
-                        title="Edit Load"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handlePrintLoad(load.id)}
-                        className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
-                        title="Print"
-                      >
-                        <Printer className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadDocs(load.id)}
-                        className="p-1.5 hover:bg-purple-50 rounded text-purple-600"
-                        title="Download Documents"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => handleMoreClick(e, load.id)}
-                        className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
-                        title="More Actions"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      <DropdownMenu
-                        loadId={load.id}
-                        isOpen={dropdownOpen === load.id}
-                        onClose={handleCloseDropdown}
-                        position={dropdownPosition}
-                        onAction={handleAction}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Empty State */}
-        {filteredLoads.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No loads found
-            </h3>
-            <p className="text-gray-500">
-              {searchQuery
-                ? "Try adjusting your search or filter to find what you're looking for."
-                : "No loads available for the selected status."}
-            </p>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {filteredLoads.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-gray-500 mb-4 sm:mb-0">
-              Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-              <span className="font-medium">
-                {Math.min(endIndex, filteredLoads.length)}
-              </span>{" "}
-              of <span className="font-medium">{filteredLoads.length}</span>{" "}
-              results
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-md text-sm ${
-                  currentPage === 1
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                return (
+      {/* Main Content Area */}
+      <div
+        className={`flex-1 transition-all duration-300 ${
+          sidebarOpen ? "md:ml-48" : "ml-0"
+        }`}
+      >
+        <div className="p-4 md:p-6">
+          {/* Header with Hamburger Button */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                {/* Hamburger Menu Button - Always visible when sidebar is closed */}
+                {!sidebarOpen && (
                   <button
-                    key={i}
-                    onClick={() => setCurrentPage(pageNum)}
+                    onClick={toggleSidebar}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Toggle menu"
+                  >
+                    <Menu className="w-6 h-6 text-gray-700" />
+                  </button>
+                )}
+                {sidebarOpen && <div className="w-10"></div>} {/* Spacer */}
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                    Truck Dispatch
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    Manage and track all your loads in one place
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/truck-dispatch/create-new-load"
+                className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176]/90 font-medium flex items-center gap-2 transition-colors"
+              >
+                <PlusIcon className="w-4 h-4" />
+                New Load
+              </Link>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Loads</p>
+                    <p className="text-2xl font-bold text-gray-900">30</p>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Package className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Active Loads</p>
+                    <p className="text-2xl font-bold text-gray-900">25</p>
+                  </div>
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <Truck className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Ready for Dispatch</p>
+                    <p className="text-2xl font-bold text-gray-900">10</p>
+                  </div>
+                  <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-yellow-600" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Total</p>
+                    <p className="text-2xl font-bold text-gray-900">$685</p>
+                  </div>
+                  <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search and Filter Bar */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search loads by ID, customer, driver, or location..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <Filter className="w-4 h-4" />
+                  Filter
+                </button>
+                <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <ArrowUpDown className="w-4 h-4" />
+                  Sort
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Navigation */}
+          <TabNavigation
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+
+          {/* Loads Table */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      SR. NO.
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      LOAD DETAILS
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      TYPE
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      STATUS
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      TRUCK/TRAILER
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      PICKUP
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      DROP
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      PROGRESS
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      QUANTITY
+                    </th>
+                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      ACTIONS
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {paginatedLoads.map((load, index) => (
+                    <tr key={load.id} className="hover:bg-gray-50">
+                      <td className="py-4 px-4 text-sm font-medium text-gray-900">
+                        {startIndex + index + 1}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-[#F96176]">
+                              {load.loadNumber}
+                            </span>
+                            <span className="text-xs text-gray-500">•</span>
+                            <span className="text-sm text-gray-900">
+                              {load.customer}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <User className="w-3 h-3" />
+                            {load.driver}
+                            <span className="text-gray-300">•</span>
+                            <DollarSign className="w-3 h-3" />$
+                            {load.rate.toLocaleString()}
+                            <span className="text-gray-300">•</span>
+                            <span
+                              className={`font-medium ${
+                                load.profit > 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              +${load.profit}
+                            </span>
+                          </div>
+                          {load.specialInstructions && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              <span className="font-medium">Note:</span>{" "}
+                              {load.specialInstructions}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <LoadTypeBadge type={load.type} />
+                      </td>
+                      <td className="py-4 px-4">
+                        <StatusBadge status={load.status} />
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-900">
+                            {load.truck}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {load.trailer}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-sm text-gray-900">
+                            <MapPin className="w-3 h-3" />
+                            {load.pickupLocation}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            {load.pickupDate}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-sm text-gray-900">
+                            <MapPin className="w-3 h-3" />
+                            {load.dropLocation}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            {load.dropDate}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="space-y-2">
+                          <ProgressBar progress={load.progress} />
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-500">
+                              {load.distance}
+                            </span>
+                            <span className="font-medium text-gray-700">
+                              {load.weight}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Docs: {load.documents} / 5
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-900 bg-gray-100 px-3 py-1 rounded-full">
+                            {load.quantity}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/truck-dispatch/view-load-info/${load.id}`}
+                            className="p-1.5 hover:bg-blue-50 rounded text-blue-600"
+                            title="View Load"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleEditLoad(load.id)}
+                            className="p-1.5 hover:bg-green-50 rounded text-green-600"
+                            title="Edit Load"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePrintLoad(load.id)}
+                            className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
+                            title="Print"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDownloadDocs(load.id)}
+                            className="p-1.5 hover:bg-purple-50 rounded text-purple-600"
+                            title="Download Documents"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => handleMoreClick(e, load.id)}
+                            className="p-1.5 hover:bg-gray-100 rounded text-gray-600"
+                            title="More Actions"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          <DropdownMenu
+                            loadId={load.id}
+                            isOpen={dropdownOpen === load.id}
+                            onClose={handleCloseDropdown}
+                            position={dropdownPosition}
+                            onAction={handleAction}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Empty State */}
+            {filteredLoads.length === 0 && (
+              <div className="text-center py-12">
+                <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No loads found
+                </h3>
+                <p className="text-gray-500">
+                  {searchQuery
+                    ? "Try adjusting your search or filter to find what you're looking for."
+                    : "No loads available for the selected status."}
+                </p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredLoads.length > 0 && (
+              <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-gray-500 mb-4 sm:mb-0">
+                  Showing <span className="font-medium">{startIndex + 1}</span>{" "}
+                  to{" "}
+                  <span className="font-medium">
+                    {Math.min(endIndex, filteredLoads.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filteredLoads.length}</span>{" "}
+                  results
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
+                    disabled={currentPage === 1}
                     className={`px-3 py-1 rounded-md text-sm ${
-                      currentPage === pageNum
-                        ? "bg-[#F96176] text-white"
+                      currentPage === 1
+                        ? "text-gray-400 cursor-not-allowed"
                         : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
-                    {pageNum}
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                );
-              })}
 
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-md text-sm ${
-                  currentPage === totalPages
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1 rounded-md text-sm ${
+                          currentPage === pageNum
+                            ? "bg-[#F96176] text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      currentPage === totalPages
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
-
-// Add missing Plus icon import
-const Plus = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 4v16m8-8H4"
-    />
-  </svg>
-);
