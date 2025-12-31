@@ -334,7 +334,13 @@ const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
 
 interface FileUploadBoxProps {
   label: string;
-  type: "rate-confirmation" | "bol" | "pod" | "damage-photos";
+  type:
+    | "rate-confirmation"
+    | "bol"
+    | "pod"
+    | "damage-photos"
+    | "scale-ticket"
+    | "lumpor";
   documents: DocumentFile[];
   onFileUpload: (type: string, file: File) => void;
   onFileRemove: (id: string) => void;
@@ -1217,7 +1223,7 @@ export default function CreateNewLoadPage() {
 
               {/* Third Row: Target Rate, Van Type, Length */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <InputGroup
+                {/* <InputGroup
                   label="Target Rate ($)"
                   name="targetRate"
                   type="number"
@@ -1225,7 +1231,7 @@ export default function CreateNewLoadPage() {
                   onChange={handleInputChange}
                   placeholder="Target rate"
                   icon={Target}
-                />
+                /> */}
 
                 <SelectGroup
                   label="Van Type"
@@ -1585,7 +1591,7 @@ export default function CreateNewLoadPage() {
                       </div>
 
                       {/* Dimensions */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <InputGroup
                           label="Length (in.)"
                           value={stop.length}
@@ -1628,7 +1634,7 @@ export default function CreateNewLoadPage() {
                           placeholder="Inches"
                           name={""}
                         />
-                      </div>
+                      </div> */}
 
                       {/* Pickup, BOL, PO Number */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1646,7 +1652,7 @@ export default function CreateNewLoadPage() {
                           placeholder="Pickup number"
                           name={""}
                         />
-                        <InputGroup
+                        {/* <InputGroup
                           label="Shipment BOL"
                           value={stop.shipmentBol}
                           onChange={(e) =>
@@ -1659,7 +1665,7 @@ export default function CreateNewLoadPage() {
                           }
                           placeholder="Bill of lading"
                           name={""}
-                        />
+                        /> */}
                         <InputGroup
                           label="PO Number"
                           value={stop.poNumber}
@@ -1692,7 +1698,7 @@ export default function CreateNewLoadPage() {
                           options={reeferModeOptions}
                           name={""}
                         />
-                        <InputGroup
+                        {/* <InputGroup
                           label="Route Name"
                           value={stop.routeName}
                           onChange={(e) =>
@@ -1705,7 +1711,7 @@ export default function CreateNewLoadPage() {
                           }
                           placeholder="Route identifier"
                           name={""}
-                        />
+                        /> */}
                       </div>
 
                       {/* Instructions & Seal */}
@@ -1741,7 +1747,7 @@ export default function CreateNewLoadPage() {
                       </div>
 
                       {/* Container, Chassis, Customer Trailer */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <InputGroup
                           label="Container #"
                           value={stop.container}
@@ -1784,10 +1790,10 @@ export default function CreateNewLoadPage() {
                           placeholder="Trailer number"
                           name={""}
                         />
-                      </div>
+                      </div> */}
 
                       {/* PRO & Reefer Fuel Level */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <InputGroup
                           label="PRO #"
                           value={stop.pro}
@@ -1819,7 +1825,7 @@ export default function CreateNewLoadPage() {
                           // max="100"
                           name={""}
                         />
-                      </div>
+                      </div> */}
 
                       {/* Split Load Heading */}
                       <div className="mt-4 pt-4 border-t">
@@ -2098,7 +2104,7 @@ export default function CreateNewLoadPage() {
                       </div>
 
                       {/* Dimensions */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <InputGroup
                           label="Length (in.)"
                           value={stop.length}
@@ -2141,12 +2147,12 @@ export default function CreateNewLoadPage() {
                           placeholder="Inches"
                           name={""}
                         />
-                      </div>
+                      </div> */}
 
                       {/* Pickup, BOL, PO Number */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <InputGroup
-                          label="Pickup #"
+                          label="Delivery Instruction"
                           value={stop.pickup}
                           onChange={(e) =>
                             handleStopChange(
@@ -2156,10 +2162,10 @@ export default function CreateNewLoadPage() {
                               e.target.value
                             )
                           }
-                          placeholder="Pickup number"
+                          placeholder="Delivery instruction"
                           name={""}
                         />
-                        <InputGroup
+                        {/* <InputGroup
                           label="Shipment BOL"
                           value={stop.shipmentBol}
                           onChange={(e) =>
@@ -2172,7 +2178,7 @@ export default function CreateNewLoadPage() {
                           }
                           placeholder="Bill of lading"
                           name={""}
-                        />
+                        /> */}
                         <InputGroup
                           label="PO Number"
                           value={stop.poNumber}
@@ -2344,6 +2350,22 @@ export default function CreateNewLoadPage() {
                 <FileUploadBox
                   label="Damage Photos"
                   type="damage-photos"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Scale Ticket"
+                  type="scale-ticket"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Lumpor"
+                  type="lumpor"
                   documents={formData.documents}
                   onFileUpload={handleFileUpload}
                   onFileRemove={handleFileRemove}
