@@ -222,16 +222,16 @@ const MOCK_DOCUMENTS: LoadDocument[] = [
 const TABS = [
   { id: "load-info", label: "Load Information" },
   { id: "load-docs", label: "Load Docs" },
-  { id: "accessorial", label: "Accessorial" },
-  { id: "adjustments", label: "Adjustments" },
-  { id: "support", label: "Support" },
-  { id: "milestone", label: "Milestone" },
-  { id: "check-calls", label: "Check Calls" },
-  { id: "exceptions", label: "Load Exceptions" },
-  { id: "additional-info", label: "Additional Info" },
-  { id: "update-history", label: "Updated History" },
-  { id: "bid-history", label: "Bid History" },
-  { id: "miles", label: "Miles Breakdown" },
+  // { id: "accessorial", label: "Accessorial" },
+  // { id: "adjustments", label: "Adjustments" },
+  // { id: "support", label: "Support" },
+  // { id: "milestone", label: "Milestone" },
+  // { id: "check-calls", label: "Check Calls" },
+  // { id: "exceptions", label: "Load Exceptions" },
+  // { id: "additional-info", label: "Additional Info" },
+  // { id: "update-history", label: "Updated History" },
+  // { id: "bid-history", label: "Bid History" },
+  // { id: "miles", label: "Miles Breakdown" },
 ];
 
 // --- Helper Components ---

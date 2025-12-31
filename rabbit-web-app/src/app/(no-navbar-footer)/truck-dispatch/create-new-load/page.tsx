@@ -125,6 +125,7 @@ interface FormData {
   trailerId: string;
   trailerType: string;
   dispatcherId: string;
+  carrierId: string;
 
   // 5. Rates
   lineHaul: number;
@@ -347,6 +348,139 @@ interface FileUploadBoxProps {
   onViewPreview: (previewUrl: string) => void;
 }
 
+// const FileUploadBox: React.FC<FileUploadBoxProps> = ({
+//   label,
+//   type,
+//   documents,
+//   onFileUpload,
+//   onFileRemove,
+//   onViewPreview,
+// }) => {
+//   const fileInputRef = useRef<HTMLInputElement>(null);
+//   const [isDragging, setIsDragging] = useState(false);
+
+//   const handleFileSelect = () => {
+//     fileInputRef.current?.click();
+//   };
+
+//   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+//     const file = e.target.files?.[0];
+//     if (file) {
+//       onFileUpload(type, file);
+//     }
+//   };
+
+//   const handleDragOver = (e: React.DragEvent) => {
+//     e.preventDefault();
+//     setIsDragging(true);
+//   };
+
+//   const handleDragLeave = (e: React.DragEvent) => {
+//     e.preventDefault();
+//     setIsDragging(false);
+//   };
+
+//   const handleDrop = (e: React.DragEvent) => {
+//     e.preventDefault();
+//     setIsDragging(false);
+
+//     const file = e.dataTransfer.files?.[0];
+//     if (
+//       file &&
+//       (file.type.startsWith("image/") || file.type === "application/pdf")
+//     ) {
+//       onFileUpload(type, file);
+//     }
+//   };
+
+//   const typeDocuments = documents.filter((doc) => doc.type === type);
+//   const hasFiles = typeDocuments.length > 0;
+
+//   return (
+//     <div className="relative">
+//       <div
+//         className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer group ${
+//           isDragging
+//             ? "border-blue-500 bg-blue-50"
+//             : "border-gray-300 hover:bg-blue-50 hover:border-blue-300"
+//         }`}
+//         onClick={handleFileSelect}
+//         onDragOver={handleDragOver}
+//         onDragLeave={handleDragLeave}
+//         onDrop={handleDrop}
+//       >
+//         <UploadCloud
+//           className={`w-8 h-8 mx-auto mb-2 ${
+//             isDragging
+//               ? "text-blue-500"
+//               : "text-gray-400 group-hover:text-blue-500"
+//           }`}
+//         />
+//         <p className="text-sm font-medium text-gray-600">{label}</p>
+//         <p className="text-xs text-gray-400">Drag & drop or click</p>
+
+//         <input
+//           type="file"
+//           ref={fileInputRef}
+//           onChange={handleFileChange}
+//           className="hidden"
+//           accept="image/*,.pdf,.doc,.docx"
+//         />
+//       </div>
+
+//       {/* Uploaded Files Preview */}
+//       {hasFiles && (
+//         <div className="mt-3 space-y-2">
+//           {typeDocuments.map((doc) => (
+//             <div
+//               key={doc.id}
+//               className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
+//             >
+//               <div className="flex items-center gap-2 flex-1 min-w-0">
+//                 <FileImage className="w-4 h-4 text-gray-400 flex-shrink-0" />
+//                 <div className="flex-1 min-w-0">
+//                   <p className="text-xs font-medium text-gray-700 truncate">
+//                     {doc.name}
+//                   </p>
+//                   {doc.size && (
+//                     <p className="text-xs text-gray-400">
+//                       {(doc.size / 1024).toFixed(1)} KB
+//                     </p>
+//                   )}
+//                 </div>
+//               </div>
+//               <div className="flex items-center gap-1">
+//                 {doc.previewUrl && (
+//                   <button
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       onViewPreview(doc.previewUrl!);
+//                     }}
+//                     className="p-1 hover:bg-gray-200 rounded"
+//                     title="View Preview"
+//                   >
+//                     <Eye className="w-4 h-4 text-gray-600" />
+//                   </button>
+//                 )}
+//                 <button
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     onFileRemove(doc.id);
+//                   }}
+//                   className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
+//                   title="Remove File"
+//                 >
+//                   <Trash2 className="w-4 h-4" />
+//                 </button>
+//               </div>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
 const FileUploadBox: React.FC<FileUploadBoxProps> = ({
   label,
   type,
@@ -398,7 +532,7 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
   return (
     <div className="relative">
       <div
-        className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer group ${
+        className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors cursor-pointer group h-full min-h-[120px] flex flex-col justify-center ${
           isDragging
             ? "border-blue-500 bg-blue-50"
             : "border-gray-300 hover:bg-blue-50 hover:border-blue-300"
@@ -409,14 +543,16 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
         onDrop={handleDrop}
       >
         <UploadCloud
-          className={`w-8 h-8 mx-auto mb-2 ${
+          className={`w-6 h-6 mx-auto mb-2 ${
             isDragging
               ? "text-blue-500"
               : "text-gray-400 group-hover:text-blue-500"
           }`}
         />
-        <p className="text-sm font-medium text-gray-600">{label}</p>
-        <p className="text-xs text-gray-400">Drag & drop or click</p>
+        <p className="text-xs font-medium text-gray-600 leading-tight line-clamp-2">
+          {label}
+        </p>
+        <p className="text-[10px] text-gray-400 mt-1">Drag & drop or click</p>
 
         <input
           type="file"
@@ -427,38 +563,33 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
         />
       </div>
 
-      {/* Uploaded Files Preview */}
+      {/* Uploaded Files Preview - Only show for current box */}
       {hasFiles && (
-        <div className="mt-3 space-y-2">
-          {typeDocuments.map((doc) => (
+        <div className="mt-2 space-y-1">
+          {typeDocuments.slice(0, 1).map((doc) => (
             <div
               key={doc.id}
-              className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
+              className="flex items-center justify-between p-1.5 bg-gray-50 rounded border border-gray-200"
             >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <FileImage className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <FileImage className="w-3 h-3 text-gray-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-700 truncate">
+                  <p className="text-[10px] font-medium text-gray-700 truncate">
                     {doc.name}
                   </p>
-                  {doc.size && (
-                    <p className="text-xs text-gray-400">
-                      {(doc.size / 1024).toFixed(1)} KB
-                    </p>
-                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 {doc.previewUrl && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onViewPreview(doc.previewUrl!);
                     }}
-                    className="p-1 hover:bg-gray-200 rounded"
+                    className="p-0.5 hover:bg-gray-200 rounded"
                     title="View Preview"
                   >
-                    <Eye className="w-4 h-4 text-gray-600" />
+                    <Eye className="w-3 h-3 text-gray-600" />
                   </button>
                 )}
                 <button
@@ -466,14 +597,19 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
                     e.stopPropagation();
                     onFileRemove(doc.id);
                   }}
-                  className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
+                  className="p-0.5 hover:bg-red-100 hover:text-red-600 rounded"
                   title="Remove File"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </div>
           ))}
+          {typeDocuments.length > 1 && (
+            <p className="text-[10px] text-gray-500 text-center">
+              +{typeDocuments.length - 1} more
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -676,6 +812,7 @@ export default function CreateNewLoadPage() {
     trailerId: "",
     trailerType: "Dry Van",
     dispatcherId: "DISP-001",
+    carrierId: "",
 
     // 5. Rates
     lineHaul: 0,
@@ -867,7 +1004,7 @@ export default function CreateNewLoadPage() {
     section: "pickups" | "deliveries",
     id: number,
     field: keyof Stop,
-    value: string
+    value: string | boolean
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -876,33 +1013,6 @@ export default function CreateNewLoadPage() {
       ),
     }));
   };
-
-  // const addStop = (section: "pickups" | "deliveries") => {
-  //   const newId =
-  //     formData[section].length > 0
-  //       ? Math.max(...formData[section].map((i) => i.id)) + 1
-  //       : 1;
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     [section]: [
-  //       ...prev[section],
-  //       {
-  //         id: newId,
-  //         company: "",
-  //         contactPerson: "",
-  //         phone: "",
-  //         address: "",
-  //         date: "",
-  //         timeStart: "",
-  //         timeEnd: "",
-  //         type: "FCFS",
-  //         pickupNumber: "",
-  //         loadNumber: "",
-  //         notes: "",
-  //       },
-  //     ],
-  //   }));
-  // };
 
   const addStop = (section: "pickups" | "deliveries") => {
     const newId =
@@ -1441,8 +1551,8 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Date, Time, Stop Type, Appointment */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Date, Time, Appt */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end mb-4">
                         <InputGroup
                           label="Date"
                           type="date"
@@ -1457,34 +1567,67 @@ export default function CreateNewLoadPage() {
                           }
                           name={""}
                         />
-                        <InputGroup
-                          label="Start Time"
-                          type="time"
-                          value={stop.timeStart}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "timeStart",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
-                        <InputGroup
-                          label="End Time"
-                          type="time"
-                          value={stop.timeEnd}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "timeEnd",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
+
+                        {!stop.hasAppointment && (
+                          <InputGroup
+                            label="Start Time"
+                            type="time"
+                            value={stop.timeStart}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "timeStart",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                        )}
+
+                        {!stop.hasAppointment && (
+                          <InputGroup
+                            label="End Time"
+                            type="time"
+                            value={stop.timeEnd}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "timeEnd",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                        )}
+
+                        <div className="flex items-center gap-2 h-[42px] border border-transparent">
+                          <input
+                            type="checkbox"
+                            checked={stop.hasAppointment}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "hasAppointment",
+                                e.target.checked
+                              )
+                            }
+                            className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            id={`appt-${stop.id}`}
+                          />
+                          <label
+                            htmlFor={`appt-${stop.id}`}
+                            className="text-sm font-bold text-gray-700 select-none cursor-pointer"
+                          >
+                            Appt
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Stop Type in its own row now */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectGroup
                           label="Stop Pickup"
                           value={stop.stopType}
@@ -1501,331 +1644,204 @@ export default function CreateNewLoadPage() {
                         />
                       </div>
 
-                      {/* Appointment Switch */}
-                      <div className="flex items-center gap-2 p-2 rounded-md border border-gray-200 bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={stop.hasAppointment}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "hasAppointment",
-                              // e.target.checked
-                              e.target.checked ? "true" : "false"
-                            )
-                          }
-                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                          id={`appt-${stop.id}`}
-                        />
-                        <label
-                          htmlFor={`appt-${stop.id}`}
-                          className="text-sm text-gray-700 select-none cursor-pointer"
-                        >
-                          Appointment Required
-                        </label>
+                      {/* Total Qty, Qty Type, Total Weight in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Total Qty
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.totalQty}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "totalQty",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Quantity"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Qty Type
+                          </label>
+                          <select
+                            value={stop.qtyType}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "qtyType",
+                                e.target.value
+                              )
+                            }
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                          >
+                            <option value="">Select...</option>
+                            {qtyTypeOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Total Weight (lbs)
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.totalWeight}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "totalWeight",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Weight"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
                       </div>
 
-                      {/* Total Qty & Qty Type */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputGroup
-                          label="Total Qty"
-                          value={stop.totalQty}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "totalQty",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Quantity"
-                          name={""}
-                        />
-                        <SelectGroup
-                          label="Qty Type"
-                          value={stop.qtyType}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "qtyType",
-                              e.target.value
-                            )
-                          }
-                          options={qtyTypeOptions}
-                          name={""}
-                        />
+                      {/* Commodity, Pickup #, PO Number in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Commodity
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.commodity}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "commodity",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Type of goods"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Pickup #
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.pickup}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "pickup",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Pickup number"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            PO Number
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.poNumber}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "poNumber",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Purchase order"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
                       </div>
 
-                      {/* Total Weight & Commodity */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputGroup
-                          label="Total Weight (lbs)"
-                          value={stop.totalWeight}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "totalWeight",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Weight in pounds"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Commodity"
-                          value={stop.commodity}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "commodity",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Type of goods"
-                          name={""}
-                        />
+                      {/* Reefer Mode, Instructions, Seal # in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Reefer Mode
+                          </label>
+                          <select
+                            value={stop.reeferMode}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "reeferMode",
+                                e.target.value
+                              )
+                            }
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                          >
+                            <option value="">Select...</option>
+                            {reeferModeOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Instructions
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.instructions}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "instructions",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Special instructions"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Seal #
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.seal}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "seal",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Seal number"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
                       </div>
-
-                      {/* Dimensions */}
-                      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <InputGroup
-                          label="Length (in.)"
-                          value={stop.length}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "length",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Inches"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Width (in.)"
-                          value={stop.width}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "width",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Inches"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Height (in.)"
-                          value={stop.height}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "height",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Inches"
-                          name={""}
-                        />
-                      </div> */}
-
-                      {/* Pickup, BOL, PO Number */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <InputGroup
-                          label="Pickup #"
-                          value={stop.pickup}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "pickup",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Pickup number"
-                          name={""}
-                        />
-                        {/* <InputGroup
-                          label="Shipment BOL"
-                          value={stop.shipmentBol}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "shipmentBol",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Bill of lading"
-                          name={""}
-                        /> */}
-                        <InputGroup
-                          label="PO Number"
-                          value={stop.poNumber}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "poNumber",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Purchase order"
-                          name={""}
-                        />
-                      </div>
-
-                      {/* Reefer Mode & Route Name */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <SelectGroup
-                          label="Reefer Mode"
-                          value={stop.reeferMode}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "reeferMode",
-                              e.target.value
-                            )
-                          }
-                          options={reeferModeOptions}
-                          name={""}
-                        />
-                        {/* <InputGroup
-                          label="Route Name"
-                          value={stop.routeName}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "routeName",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Route identifier"
-                          name={""}
-                        /> */}
-                      </div>
-
-                      {/* Instructions & Seal */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputGroup
-                          label="Instructions"
-                          value={stop.instructions}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "instructions",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Special instructions"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Seal #"
-                          value={stop.seal}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "seal",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Seal number"
-                          name={""}
-                        />
-                      </div>
-
-                      {/* Container, Chassis, Customer Trailer */}
-                      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <InputGroup
-                          label="Container #"
-                          value={stop.container}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "container",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Container number"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Chassis #"
-                          value={stop.chassis}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "chassis",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Chassis number"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Customer Trailer #"
-                          value={stop.customerTrailer}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "customerTrailer",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Trailer number"
-                          name={""}
-                        />
-                      </div> */}
-
-                      {/* PRO & Reefer Fuel Level */}
-                      {/* <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputGroup
-                          label="PRO #"
-                          value={stop.pro}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "pro",
-                              e.target.value
-                            )
-                          }
-                          placeholder="PRO number"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Reefer Fuel Level (%)"
-                          type="number"
-                          value={stop.reeferFuelLevel}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "reeferFuelLevel",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Fuel percentage"
-                          // min="0"
-                          // max="100"
-                          name={""}
-                        />
-                      </div> */}
 
                       {/* Split Load Heading */}
                       <div className="mt-4 pt-4 border-t">
@@ -1835,7 +1851,7 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Yard Location & Stop Pickup (again) */}
+                      {/* Yard Location & Stop Pickup (again - split load context?) - kept original structure but cleaned */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectGroup
                           label="Yard Location"
@@ -1849,20 +1865,6 @@ export default function CreateNewLoadPage() {
                             )
                           }
                           options={yardLocationOptions}
-                          name={""}
-                        />
-                        <SelectGroup
-                          label="Stop Pickup"
-                          value={stop.stopType}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "stopType",
-                              e.target.value
-                            )
-                          }
-                          options={stopTypeOptions}
                           name={""}
                         />
                       </div>
@@ -1955,8 +1957,8 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Date, Time, Stop Type, Appointment */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Date, Time, Appt */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end mb-4">
                         <InputGroup
                           label="Date"
                           type="date"
@@ -1971,34 +1973,66 @@ export default function CreateNewLoadPage() {
                           }
                           name={""}
                         />
-                        <InputGroup
-                          label="Start Time"
-                          type="time"
-                          value={stop.timeStart}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "timeStart",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
-                        <InputGroup
-                          label="End Time"
-                          type="time"
-                          value={stop.timeEnd}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "timeEnd",
-                              e.target.value
-                            )
-                          }
-                          name={""}
-                        />
+
+                        {!stop.hasAppointment && (
+                          <InputGroup
+                            label="Start Time"
+                            type="time"
+                            value={stop.timeStart}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "timeStart",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                        )}
+
+                        {!stop.hasAppointment && (
+                          <InputGroup
+                            label="End Time"
+                            type="time"
+                            value={stop.timeEnd}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "timeEnd",
+                                e.target.value
+                              )
+                            }
+                            name={""}
+                          />
+                        )}
+
+                        <div className="flex items-center gap-2 h-[42px] border border-transparent">
+                          <input
+                            type="checkbox"
+                            checked={stop.hasAppointment}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "hasAppointment",
+                                e.target.checked
+                              )
+                            }
+                            className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            id={`del-appt-${stop.id}`}
+                          />
+                          <label
+                            htmlFor={`del-appt-${stop.id}`}
+                            className="text-sm font-bold text-gray-700 select-none cursor-pointer"
+                          >
+                            Appt
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectGroup
                           label="Stop Delivery"
                           value={stop.stopType}
@@ -2015,184 +2049,135 @@ export default function CreateNewLoadPage() {
                         />
                       </div>
 
-                      {/* Appointment Switch */}
-                      <div className="flex items-center gap-2 p-2 rounded-md border border-gray-200 bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={stop.hasAppointment}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "hasAppointment",
-                              e.target.checked ? "true" : "false"
-                            )
-                          }
-                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                          id={`del-appt-${stop.id}`}
-                        />
-                        <label
-                          htmlFor={`del-appt-${stop.id}`}
-                          className="text-sm text-gray-700 select-none cursor-pointer"
-                        >
-                          Appointment Required
-                        </label>
+                      {/* Total Qty, Qty Type, Total Weight in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Total Qty
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.totalQty}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "totalQty",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Quantity"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Qty Type
+                          </label>
+                          <select
+                            value={stop.qtyType}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "qtyType",
+                                e.target.value
+                              )
+                            }
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                          >
+                            <option value="">Select...</option>
+                            {qtyTypeOptions.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Total Weight (lbs)
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.totalWeight}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "totalWeight",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Weight"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
                       </div>
 
-                      {/* Total Qty & Qty Type */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputGroup
-                          label="Total Qty"
-                          value={stop.totalQty}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "totalQty",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Quantity"
-                          name={""}
-                        />
-                        <SelectGroup
-                          label="Qty Type"
-                          value={stop.qtyType}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "qtyType",
-                              e.target.value
-                            )
-                          }
-                          options={qtyTypeOptions}
-                          name={""}
-                        />
-                      </div>
+                      {/* Commodity, Delivery Instruction, PO Number in same row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Commodity
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.commodity}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "commodity",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Type of goods"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
 
-                      {/* Total Weight & Commodity */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <InputGroup
-                          label="Total Weight (lbs)"
-                          value={stop.totalWeight}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "totalWeight",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Weight in pounds"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Commodity"
-                          value={stop.commodity}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "commodity",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Type of goods"
-                          name={""}
-                        />
-                      </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            Delivery Instruction
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.pickup}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "pickup",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Delivery instruction"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
 
-                      {/* Dimensions */}
-                      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <InputGroup
-                          label="Length (in.)"
-                          value={stop.length}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "length",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Inches"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Width (in.)"
-                          value={stop.width}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "width",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Inches"
-                          name={""}
-                        />
-                        <InputGroup
-                          label="Height (in.)"
-                          value={stop.height}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "height",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Inches"
-                          name={""}
-                        />
-                      </div> */}
-
-                      {/* Pickup, BOL, PO Number */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <InputGroup
-                          label="Delivery Instruction"
-                          value={stop.pickup}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "pickup",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Delivery instruction"
-                          name={""}
-                        />
-                        {/* <InputGroup
-                          label="Shipment BOL"
-                          value={stop.shipmentBol}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "shipmentBol",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Bill of lading"
-                          name={""}
-                        /> */}
-                        <InputGroup
-                          label="PO Number"
-                          value={stop.poNumber}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "poNumber",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Purchase order"
-                          name={""}
-                        />
+                        <div className="flex flex-col">
+                          <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                            PO Number
+                          </label>
+                          <input
+                            type="text"
+                            value={stop.poNumber}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "poNumber",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Purchase order"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
                       </div>
 
                       {/* Split Load Heading */}
@@ -2219,20 +2204,6 @@ export default function CreateNewLoadPage() {
                           options={yardLocationOptions}
                           name={""}
                         />
-                        <SelectGroup
-                          label="Stop Pickup"
-                          value={stop.stopType}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "stopType",
-                              e.target.value
-                            )
-                          }
-                          options={stopTypeOptions}
-                          name={""}
-                        />
                       </div>
                     </div>
                   </div>
@@ -2248,6 +2219,17 @@ export default function CreateNewLoadPage() {
                 colorClass="text-orange-600"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <SelectGroup
+                  label="Select Carrier"
+                  name="carrierId"
+                  value={formData.carrierId}
+                  onChange={handleInputChange}
+                  options={[
+                    { value: "CAR-101", label: "3 Arrows INC." },
+                    { value: "CAR-102", label: "7 Days Carrier" },
+                    { value: "CAR-103", label: "A & D Trucklines" },
+                  ]}
+                />
                 <SelectGroup
                   label="Select Driver"
                   name="driverId"
@@ -2322,7 +2304,7 @@ export default function CreateNewLoadPage() {
                 title="Documents & Compliance"
                 colorClass="text-gray-600"
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <FileUploadBox
                   label="Rate Confirmation"
                   type="rate-confirmation"
