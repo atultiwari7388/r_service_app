@@ -19,15 +19,12 @@ import {
   ChevronRight,
   Search,
   Filter,
-  FileText,
   Mail,
   Phone,
-  MapPin,
   Building,
-  User,
   Calendar,
 } from "lucide-react";
-import Link from "next/link";
+import EditCarrierDialog from "./components/EditCarrierComponent";
 
 // --- Type Definitions ---
 interface Carrier {
@@ -183,6 +180,8 @@ export default function CarriersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedCarrier, setSelectedCarrier] = useState<Carrier | null>(null);
   const itemsPerPage = 7;
 
   // --- Dummy Data (based on your screenshot) ---
@@ -389,6 +388,11 @@ export default function CarriersPage() {
     // Implement action logic here
   };
 
+  const handleRowClick = (carrier: Carrier) => {
+    setSelectedCarrier(carrier);
+    setIsEditDialogOpen(true);
+  };
+
   const toggleDropdown = (carrierId: string) => {
     setOpenDropdown(openDropdown === carrierId ? null : carrierId);
   };
@@ -553,7 +557,11 @@ export default function CarriersPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {paginatedCarriers.map((carrier) => (
-                  <tr key={carrier.id} className="hover:bg-gray-50">
+                  <tr
+                    key={carrier.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleRowClick(carrier)}
+                  >
                     <td className="py-4 px-4">
                       <div className="relative">
                         <button
@@ -724,6 +732,17 @@ export default function CarriersPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Carrier Dialog */}
+      <EditCarrierDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => {
+          setIsEditDialogOpen(false);
+          setSelectedCarrier(null);
+        }}
+        carrierId={selectedCarrier?.id}
+        // carrierData={selectedCarrier}
+      />
     </div>
   );
 }
