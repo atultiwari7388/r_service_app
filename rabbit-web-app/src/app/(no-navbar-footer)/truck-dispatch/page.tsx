@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import Link from "next/link"; // Added next/link import
+import Link from "next/link";
 import {
   Truck,
   Package,

@@ -1413,7 +1413,7 @@ export default function CreateNewLoadPage() {
 
                         {stop.hasAppointment ? (
                           <InputGroup
-                            label="Pick Time"
+                            label="Time"
                             type="time"
                             value={stop.timeStart}
                             onChange={(e) =>
@@ -1824,7 +1824,7 @@ export default function CreateNewLoadPage() {
 
                         {stop.hasAppointment ? (
                           <InputGroup
-                            label="Pick Time"
+                            label="Time"
                             type="time"
                             value={stop.timeStart}
                             onChange={(e) =>
