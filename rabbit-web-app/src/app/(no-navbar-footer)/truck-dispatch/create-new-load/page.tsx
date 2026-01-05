@@ -341,145 +341,12 @@ interface FileUploadBoxProps {
     | "pod"
     | "damage-photos"
     | "scale-ticket"
-    | "lumpor";
+    | "lumper";
   documents: DocumentFile[];
   onFileUpload: (type: string, file: File) => void;
   onFileRemove: (id: string) => void;
   onViewPreview: (previewUrl: string) => void;
 }
-
-// const FileUploadBox: React.FC<FileUploadBoxProps> = ({
-//   label,
-//   type,
-//   documents,
-//   onFileUpload,
-//   onFileRemove,
-//   onViewPreview,
-// }) => {
-//   const fileInputRef = useRef<HTMLInputElement>(null);
-//   const [isDragging, setIsDragging] = useState(false);
-
-//   const handleFileSelect = () => {
-//     fileInputRef.current?.click();
-//   };
-
-//   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-//     const file = e.target.files?.[0];
-//     if (file) {
-//       onFileUpload(type, file);
-//     }
-//   };
-
-//   const handleDragOver = (e: React.DragEvent) => {
-//     e.preventDefault();
-//     setIsDragging(true);
-//   };
-
-//   const handleDragLeave = (e: React.DragEvent) => {
-//     e.preventDefault();
-//     setIsDragging(false);
-//   };
-
-//   const handleDrop = (e: React.DragEvent) => {
-//     e.preventDefault();
-//     setIsDragging(false);
-
-//     const file = e.dataTransfer.files?.[0];
-//     if (
-//       file &&
-//       (file.type.startsWith("image/") || file.type === "application/pdf")
-//     ) {
-//       onFileUpload(type, file);
-//     }
-//   };
-
-//   const typeDocuments = documents.filter((doc) => doc.type === type);
-//   const hasFiles = typeDocuments.length > 0;
-
-//   return (
-//     <div className="relative">
-//       <div
-//         className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer group ${
-//           isDragging
-//             ? "border-blue-500 bg-blue-50"
-//             : "border-gray-300 hover:bg-blue-50 hover:border-blue-300"
-//         }`}
-//         onClick={handleFileSelect}
-//         onDragOver={handleDragOver}
-//         onDragLeave={handleDragLeave}
-//         onDrop={handleDrop}
-//       >
-//         <UploadCloud
-//           className={`w-8 h-8 mx-auto mb-2 ${
-//             isDragging
-//               ? "text-blue-500"
-//               : "text-gray-400 group-hover:text-blue-500"
-//           }`}
-//         />
-//         <p className="text-sm font-medium text-gray-600">{label}</p>
-//         <p className="text-xs text-gray-400">Drag & drop or click</p>
-
-//         <input
-//           type="file"
-//           ref={fileInputRef}
-//           onChange={handleFileChange}
-//           className="hidden"
-//           accept="image/*,.pdf,.doc,.docx"
-//         />
-//       </div>
-
-//       {/* Uploaded Files Preview */}
-//       {hasFiles && (
-//         <div className="mt-3 space-y-2">
-//           {typeDocuments.map((doc) => (
-//             <div
-//               key={doc.id}
-//               className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
-//             >
-//               <div className="flex items-center gap-2 flex-1 min-w-0">
-//                 <FileImage className="w-4 h-4 text-gray-400 flex-shrink-0" />
-//                 <div className="flex-1 min-w-0">
-//                   <p className="text-xs font-medium text-gray-700 truncate">
-//                     {doc.name}
-//                   </p>
-//                   {doc.size && (
-//                     <p className="text-xs text-gray-400">
-//                       {(doc.size / 1024).toFixed(1)} KB
-//                     </p>
-//                   )}
-//                 </div>
-//               </div>
-//               <div className="flex items-center gap-1">
-//                 {doc.previewUrl && (
-//                   <button
-//                     onClick={(e) => {
-//                       e.stopPropagation();
-//                       onViewPreview(doc.previewUrl!);
-//                     }}
-//                     className="p-1 hover:bg-gray-200 rounded"
-//                     title="View Preview"
-//                   >
-//                     <Eye className="w-4 h-4 text-gray-600" />
-//                   </button>
-//                 )}
-//                 <button
-//                   onClick={(e) => {
-//                     e.stopPropagation();
-//                     onFileRemove(doc.id);
-//                   }}
-//                   className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
-//                   title="Remove File"
-//                 >
-//                   <Trash2 className="w-4 h-4" />
-//                 </button>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
 
 const FileUploadBox: React.FC<FileUploadBoxProps> = ({
   label,
@@ -497,9 +364,12 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onFileUpload(type, file);
+    const files = e.target.files;
+    if (files) {
+      // Upload each file
+      Array.from(files).forEach((file) => {
+        onFileUpload(type, file);
+      });
     }
   };
 
@@ -517,12 +387,13 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
     e.preventDefault();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files?.[0];
-    if (
-      file &&
-      (file.type.startsWith("image/") || file.type === "application/pdf")
-    ) {
-      onFileUpload(type, file);
+    const files = e.dataTransfer.files;
+    if (files) {
+      Array.from(files).forEach((file) => {
+        if (file.type.startsWith("image/") || file.type === "application/pdf") {
+          onFileUpload(type, file);
+        }
+      });
     }
   };
 
@@ -552,7 +423,9 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
         <p className="text-xs font-medium text-gray-600 leading-tight line-clamp-2">
           {label}
         </p>
-        <p className="text-[10px] text-gray-400 mt-1">Drag & drop or click</p>
+        <p className="text-[10px] text-gray-400 mt-1">
+          Drag & drop or click to select multiple
+        </p>
 
         <input
           type="file"
@@ -560,56 +433,32 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
           onChange={handleFileChange}
           className="hidden"
           accept="image/*,.pdf,.doc,.docx"
+          multiple // Add multiple attribute
         />
       </div>
 
-      {/* Uploaded Files Preview - Only show for current box */}
+      {/* Show count for this document type */}
       {hasFiles && (
-        <div className="mt-2 space-y-1">
-          {typeDocuments.slice(0, 1).map((doc) => (
-            <div
-              key={doc.id}
-              className="flex items-center justify-between p-1.5 bg-gray-50 rounded border border-gray-200"
-            >
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <FileImage className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-medium text-gray-700 truncate">
-                    {doc.name}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-0.5">
-                {doc.previewUrl && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewPreview(doc.previewUrl!);
-                    }}
-                    className="p-0.5 hover:bg-gray-200 rounded"
-                    title="View Preview"
-                  >
-                    <Eye className="w-3 h-3 text-gray-600" />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onFileRemove(doc.id);
-                  }}
-                  className="p-0.5 hover:bg-red-100 hover:text-red-600 rounded"
-                  title="Remove File"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
+        <div className="mt-2">
+          <div className="flex items-center justify-between p-1.5 bg-gray-50 rounded border border-gray-200">
+            <div className="flex items-center gap-1.5">
+              <FileImage className="w-3 h-3 text-gray-400" />
+              <span className="text-[10px] font-medium text-gray-700">
+                {typeDocuments.length} file(s)
+              </span>
             </div>
-          ))}
-          {typeDocuments.length > 1 && (
-            <p className="text-[10px] text-gray-500 text-center">
-              +{typeDocuments.length - 1} more
-            </p>
-          )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Remove all files of this type
+                typeDocuments.forEach((doc) => onFileRemove(doc.id));
+              }}
+              className="text-[10px] text-red-500 hover:text-red-700"
+              title="Remove all"
+            >
+              Clear All
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1484,22 +1333,19 @@ export default function CreateNewLoadPage() {
                 {formData.pickups.map((stop, index) => (
                   <div
                     key={stop.id}
-                    id={`pickups-${stop.id}`} // Add ID for scrolling
+                    id={`pickups-${stop.id}`}
                     className="mb-6 pb-6 border-b border-dashed last:border-0 last:mb-0 last:pb-0 relative"
                   >
-                    {/* Heading with number */}
                     <div className="flex items-center justify-between mb-4 pb-2 border-b">
                       <h4 className="text-base font-semibold text-gray-700 flex items-center gap-2">
                         {index > 0 && (
                           <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
-                            {String.fromCharCode(65 + index)}{" "}
-                            {/* A, B, C, etc. */}
+                            {String.fromCharCode(65 + index)}
                           </div>
                         )}
                         {index > 0 && `Pickup ${index + 1}`}
                       </h4>
 
-                      {/* Delete button - show for all except first */}
                       {index > 0 && (
                         <button
                           onClick={() => removeStop("pickups", stop.id)}
@@ -1511,7 +1357,6 @@ export default function CreateNewLoadPage() {
                     </div>
 
                     <div className="space-y-4">
-                      {/* Shipper */}
                       <SelectGroup
                         label="Shipper"
                         value={stop.company}
@@ -1527,7 +1372,6 @@ export default function CreateNewLoadPage() {
                         name={""}
                       />
 
-                      {/* Customer Load/Ref/Conf */}
                       <InputGroup
                         label="Customer Load/Ref/Conf"
                         value={stop.customerLoadRefConf}
@@ -1543,7 +1387,6 @@ export default function CreateNewLoadPage() {
                         name={""}
                       />
 
-                      {/* Location Notes Heading */}
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                           <MapPin className="w-4 h-4" />
@@ -1551,7 +1394,7 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Date, Time, Appt */}
+                      {/* Date, Time, Appt - MODIFIED */}
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end mb-4">
                         <InputGroup
                           label="Date"
@@ -1568,9 +1411,9 @@ export default function CreateNewLoadPage() {
                           name={""}
                         />
 
-                        {!stop.hasAppointment && (
+                        {stop.hasAppointment ? (
                           <InputGroup
-                            label="Start Time"
+                            label="Pick Time"
                             type="time"
                             value={stop.timeStart}
                             onChange={(e) =>
@@ -1582,24 +1425,39 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             name={""}
+                            className="sm:col-span-2"
                           />
-                        )}
-
-                        {!stop.hasAppointment && (
-                          <InputGroup
-                            label="End Time"
-                            type="time"
-                            value={stop.timeEnd}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "timeEnd",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
+                        ) : (
+                          <>
+                            <InputGroup
+                              label="Start Time"
+                              type="time"
+                              value={stop.timeStart}
+                              onChange={(e) =>
+                                handleStopChange(
+                                  "pickups",
+                                  stop.id,
+                                  "timeStart",
+                                  e.target.value
+                                )
+                              }
+                              name={""}
+                            />
+                            <InputGroup
+                              label="End Time"
+                              type="time"
+                              value={stop.timeEnd}
+                              onChange={(e) =>
+                                handleStopChange(
+                                  "pickups",
+                                  stop.id,
+                                  "timeEnd",
+                                  e.target.value
+                                )
+                              }
+                              name={""}
+                            />
+                          </>
                         )}
 
                         <div className="flex items-center gap-2 h-[42px] border border-transparent">
@@ -1626,7 +1484,6 @@ export default function CreateNewLoadPage() {
                         </div>
                       </div>
 
-                      {/* Stop Type in its own row now */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectGroup
                           label="Stop Pickup"
@@ -1644,7 +1501,6 @@ export default function CreateNewLoadPage() {
                         />
                       </div>
 
-                      {/* Total Qty, Qty Type, Total Weight in same row */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                         <div className="flex flex-col">
                           <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -1712,7 +1568,6 @@ export default function CreateNewLoadPage() {
                         </div>
                       </div>
 
-                      {/* Commodity, Pickup #, PO Number in same row */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                         <div className="flex flex-col">
                           <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -1775,7 +1630,6 @@ export default function CreateNewLoadPage() {
                         </div>
                       </div>
 
-                      {/* Reefer Mode, Instructions, Seal # in same row */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                         <div className="flex flex-col">
                           <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -1843,7 +1697,6 @@ export default function CreateNewLoadPage() {
                         </div>
                       </div>
 
-                      {/* Split Load Heading */}
                       <div className="mt-4 pt-4 border-t">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                           <Package className="w-4 h-4" />
@@ -1851,7 +1704,6 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Yard Location & Stop Pickup (again - split load context?) - kept original structure but cleaned */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectGroup
                           label="Yard Location"
@@ -1872,6 +1724,7 @@ export default function CreateNewLoadPage() {
                   </div>
                 ))}
               </div>
+
               {/* Deliveries */}
               <div className="bg-white rounded-lg shadow-sm border-l-4 border-red-500 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
@@ -1892,21 +1745,19 @@ export default function CreateNewLoadPage() {
                 {formData.deliveries.map((stop, index) => (
                   <div
                     key={stop.id}
-                    id={`deliveries-${stop.id}`} // Add ID for scrolling
+                    id={`deliveries-${stop.id}`}
                     className="mb-6 pb-6 border-b border-dashed last:border-0 last:mb-0 last:pb-0 relative"
                   >
-                    {/* Heading with number */}
                     <div className="flex items-center justify-between mb-4 pb-2 border-b">
                       <h4 className="text-base font-semibold text-gray-700 flex items-center gap-2">
                         {index > 0 && (
                           <div className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold">
-                            {String.fromCharCode(65 + index)}{" "}
+                            {String.fromCharCode(65 + index)}
                           </div>
                         )}
                         {index > 0 && `Delivery ${index + 1}`}
                       </h4>
 
-                      {/* Delete button - show for all except first */}
                       {index > 0 && (
                         <button
                           onClick={() => removeStop("deliveries", stop.id)}
@@ -1917,7 +1768,6 @@ export default function CreateNewLoadPage() {
                       )}
                     </div>
                     <div className="space-y-4">
-                      {/* Consignee */}
                       <SelectGroup
                         label="Consignee"
                         value={stop.company}
@@ -1933,7 +1783,6 @@ export default function CreateNewLoadPage() {
                         name={""}
                       />
 
-                      {/* Customer Load/Ref/Conf */}
                       <InputGroup
                         label="Customer Load/Ref/Conf"
                         value={stop.customerLoadRefConf}
@@ -1949,7 +1798,6 @@ export default function CreateNewLoadPage() {
                         name={""}
                       />
 
-                      {/* Location Notes Heading */}
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                           <MapPin className="w-4 h-4" />
@@ -1957,7 +1805,7 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Date, Time, Appt */}
+                      {/* Date, Time, Appt - MODIFIED */}
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end mb-4">
                         <InputGroup
                           label="Date"
@@ -1974,9 +1822,9 @@ export default function CreateNewLoadPage() {
                           name={""}
                         />
 
-                        {!stop.hasAppointment && (
+                        {stop.hasAppointment ? (
                           <InputGroup
-                            label="Start Time"
+                            label="Pick Time"
                             type="time"
                             value={stop.timeStart}
                             onChange={(e) =>
@@ -1988,24 +1836,39 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             name={""}
+                            className="sm:col-span-2"
                           />
-                        )}
-
-                        {!stop.hasAppointment && (
-                          <InputGroup
-                            label="End Time"
-                            type="time"
-                            value={stop.timeEnd}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "timeEnd",
-                                e.target.value
-                              )
-                            }
-                            name={""}
-                          />
+                        ) : (
+                          <>
+                            <InputGroup
+                              label="Start Time"
+                              type="time"
+                              value={stop.timeStart}
+                              onChange={(e) =>
+                                handleStopChange(
+                                  "deliveries",
+                                  stop.id,
+                                  "timeStart",
+                                  e.target.value
+                                )
+                              }
+                              name={""}
+                            />
+                            <InputGroup
+                              label="End Time"
+                              type="time"
+                              value={stop.timeEnd}
+                              onChange={(e) =>
+                                handleStopChange(
+                                  "deliveries",
+                                  stop.id,
+                                  "timeEnd",
+                                  e.target.value
+                                )
+                              }
+                              name={""}
+                            />
+                          </>
                         )}
 
                         <div className="flex items-center gap-2 h-[42px] border border-transparent">
@@ -2049,7 +1912,6 @@ export default function CreateNewLoadPage() {
                         />
                       </div>
 
-                      {/* Total Qty, Qty Type, Total Weight in same row */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                         <div className="flex flex-col">
                           <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -2117,7 +1979,6 @@ export default function CreateNewLoadPage() {
                         </div>
                       </div>
 
-                      {/* Commodity, Delivery Instruction, PO Number in same row */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                         <div className="flex flex-col">
                           <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -2180,7 +2041,6 @@ export default function CreateNewLoadPage() {
                         </div>
                       </div>
 
-                      {/* Split Load Heading */}
                       <div className="mt-4 pt-4 border-t">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                           <Package className="w-4 h-4" />
@@ -2188,7 +2048,6 @@ export default function CreateNewLoadPage() {
                         </h4>
                       </div>
 
-                      {/* Yard Location & Stop Pickup */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <SelectGroup
                           label="Yard Location"
@@ -2297,7 +2156,7 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 5: Documents - Keep as before */}
+            {/* SECTION 5: Documents */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={FileText}
@@ -2346,8 +2205,8 @@ export default function CreateNewLoadPage() {
                   onViewPreview={handleViewPreview}
                 />
                 <FileUploadBox
-                  label="Lumpor"
-                  type="lumpor"
+                  label="Lumper"
+                  type="lumper"
                   documents={formData.documents}
                   onFileUpload={handleFileUpload}
                   onFileRemove={handleFileRemove}
@@ -2355,52 +2214,100 @@ export default function CreateNewLoadPage() {
                 />
               </div>
 
+              {/* Uploaded Documents Section - Show ALL documents */}
               {formData.documents.length > 0 && (
                 <div className="mt-6 pt-4 border-t">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-semibold text-gray-700">
-                      Uploaded Documents
+                      All Uploaded Documents
                     </h4>
-                    <span className="text-xs text-gray-500">
-                      {formData.documents.length} file(s)
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {formData.documents.slice(0, 4).map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-md border border-gray-200"
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">
+                        Total: {formData.documents.length} file(s)
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Remove all documents
+                          formData.documents.forEach((doc) =>
+                            handleFileRemove(doc.id)
+                          );
+                        }}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium"
                       >
-                        <FileImage className="w-5 h-5 text-gray-400" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-700 truncate">
-                            {doc.name}
-                          </p>
-                          <p className="text-xs text-gray-500 capitalize">
-                            {doc.type.replace("-", " ")}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {doc.previewUrl && (
-                            <button
-                              onClick={() => handleViewPreview(doc.previewUrl!)}
-                              className="p-1 hover:bg-gray-200 rounded"
-                              title="View Preview"
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Group documents by type */}
+                  {[
+                    "rate-confirmation",
+                    "bol",
+                    "pod",
+                    "damage-photos",
+                    "scale-ticket",
+                    "lumper",
+                  ].map((docType) => {
+                    const typeDocuments = formData.documents.filter(
+                      (doc) => doc.type === docType
+                    );
+                    if (typeDocuments.length === 0) return null;
+
+                    return (
+                      <div key={docType} className="mb-4 last:mb-0">
+                        <h5 className="text-xs font-medium text-gray-600 mb-2 capitalize">
+                          {docType.replace("-", " ")} ({typeDocuments.length})
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {typeDocuments.map((doc) => (
+                            <div
+                              key={doc.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200"
                             >
-                              <Eye className="w-4 h-4 text-gray-600" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleFileRemove(doc.id)}
-                            className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
-                            title="Remove File"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-700 truncate">
+                                    {doc.name}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <span className="capitalize">
+                                      {doc.type.replace("-", " ")}
+                                    </span>
+                                    {doc.size && (
+                                      <span>
+                                        • {(doc.size / 1024).toFixed(1)} KB
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 ml-2">
+                                {doc.previewUrl && (
+                                  <button
+                                    onClick={() =>
+                                      handleViewPreview(doc.previewUrl!)
+                                    }
+                                    className="p-1 hover:bg-gray-200 rounded"
+                                    title="View Preview"
+                                  >
+                                    <Eye className="w-4 h-4 text-gray-600" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleFileRemove(doc.id)}
+                                  className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
+                                  title="Remove File"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
