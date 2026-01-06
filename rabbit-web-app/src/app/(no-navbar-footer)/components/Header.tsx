@@ -17,8 +17,8 @@ export default function Header({
   children,
 }: HeaderProps) {
   return (
-    <div className="sticky top-0 z-40 md:px-6 ">
-      <div className="flex items-center justify-between">
+    <div className="sticky top-0 z-40 md:px-6 bg-white border-b border-gray-200 py-4">
+      <div className="flex items-center justify-between ">
         {/* Left side: Hamburger + Title */}
         <div className="flex items-center gap-4">
           <button
