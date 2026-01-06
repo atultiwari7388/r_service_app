@@ -24,7 +24,7 @@ import {
   Building,
   Calendar,
 } from "lucide-react";
-import EditCarrierDialog from "./components/EditCarrierComponent";
+import EditCarrierDialog from "../components/EditCarrierComponent";
 
 // --- Type Definitions ---
 interface Carrier {
