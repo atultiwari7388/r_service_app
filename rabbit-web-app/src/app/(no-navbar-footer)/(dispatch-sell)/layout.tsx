@@ -15,11 +15,6 @@ const SCREEN_BY_PATH: Record<string, Screen> = {
 const PATH_BY_SCREEN: Record<Screen, string> = {
   "truck-dispatch": "/truck-dispatch",
   carriers: "/carriers",
-  dashboard: "",
-  analytics: "",
-  notifications: "",
-  settings: "",
-  help: "",
 };
 
 export default function DispatchShellLayout({

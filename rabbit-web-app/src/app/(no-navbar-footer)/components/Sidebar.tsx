@@ -14,14 +14,7 @@ import {
 
 /* ---------------- TYPES ---------------- */
 
-export type Screen =
-  | "truck-dispatch"
-  | "carriers"
-  | "dashboard"
-  | "analytics"
-  | "notifications"
-  | "settings"
-  | "help";
+export type Screen = "truck-dispatch" | "carriers";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -47,31 +40,31 @@ const menuItems: {
     label: "Carriers",
     icon: <Users className="w-5 h-5" />,
   },
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: <Home className="w-5 h-5" />,
-  },
-  {
-    id: "analytics",
-    label: "Analytics",
-    icon: <BarChart className="w-5 h-5" />,
-  },
-  {
-    id: "notifications",
-    label: "Notify",
-    icon: <Bell className="w-5 h-5" />,
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: <Settings className="w-5 h-5" />,
-  },
-  {
-    id: "help",
-    label: "Support",
-    icon: <HelpCircle className="w-5 h-5" />,
-  },
+  // {
+  //   id: "dashboard",
+  //   label: "Dashboard",
+  //   icon: <Home className="w-5 h-5" />,
+  // },
+  // {
+  //   id: "analytics",
+  //   label: "Analytics",
+  //   icon: <BarChart className="w-5 h-5" />,
+  // },
+  // {
+  //   id: "notifications",
+  //   label: "Notify",
+  //   icon: <Bell className="w-5 h-5" />,
+  // },
+  // {
+  //   id: "settings",
+  //   label: "Settings",
+  //   icon: <Settings className="w-5 h-5" />,
+  // },
+  // {
+  //   id: "help",
+  //   label: "Support",
+  //   icon: <HelpCircle className="w-5 h-5" />,
+  // },
 ];
 
 /* ---------------- COMPONENT ---------------- */
