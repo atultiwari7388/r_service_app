@@ -54,13 +54,17 @@ export default function DispatchShellLayout({
             onClick={() => setSidebarOpen(true)}
             className="m-4 p-2 rounded-lg hover:bg-gray-100"
           >
-            <Menu />
+            {/* <Menu /> */}
           </button>
         )}
 
-        {activeScreen === "truck-dispatch" && <TruckDispatchScreen />}
+        {activeScreen === "truck-dispatch" && (
+          <TruckDispatchScreen onMenuClick={() => setSidebarOpen(true)} />
+        )}
 
-        {activeScreen === "carriers" && <CarriersScreen />}
+        {activeScreen === "carriers" && (
+          <CarriersScreen onMenuClick={() => setSidebarOpen(true)} />
+        )}
 
         {children}
       </main>

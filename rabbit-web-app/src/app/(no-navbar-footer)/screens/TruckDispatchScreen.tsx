@@ -27,16 +27,21 @@ import {
   PauseCircle,
   Phone,
   X,
-  Plus as PlusIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Header from "../components/Header";
 
-export default function TruckDispatchScreen() {
+export default function TruckDispatchScreen({
+  onMenuClick,
+}: {
+  onMenuClick: () => void;
+}) {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+  // const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -423,74 +428,66 @@ export default function TruckDispatchScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <div className="md:p-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* TOP HEADER ROW - Hamburger, Title, and Action Buttons */}
+      <Header
+        title="Truck Dispatch"
+        description="Manage and track all your loads in one place"
+        onMenuClick={onMenuClick}
+      >
+        <Link
+          href="/create-new-load"
+          className="px-4 py-2 bg-[#F96176] text-white rounded-md flex items-center gap-2"
+        >
+          + New Load
+        </Link>
+      </Header>
+
+      {/* Main Content Area */}
+      <div className="p-4 md:p-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                  Truck Dispatch
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Manage and track all your loads in one place
-                </p>
+                <p className="text-sm text-gray-500">Total Loads</p>
+                <p className="text-2xl font-bold text-gray-900">30</p>
+              </div>
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <Package className="w-5 h-5 text-blue-600" />
               </div>
             </div>
-
-            <Link
-              href="/create-new-load"
-              className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176]/90 font-medium flex items-center gap-2 transition-colors"
-            >
-              <PlusIcon className="w-4 h-4" />
-              New Load
-            </Link>
           </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Total Loads</p>
-                  <p className="text-2xl font-bold text-gray-900">30</p>
-                </div>
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Package className="w-5 h-5 text-blue-600" />
-                </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Active Loads</p>
+                <p className="text-2xl font-bold text-gray-900">25</p>
+              </div>
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <Truck className="w-5 h-5 text-green-600" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Active Loads</p>
-                  <p className="text-2xl font-bold text-gray-900">25</p>
-                </div>
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-green-600" />
-                </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Ready for Dispatch</p>
+                <p className="text-2xl font-bold text-gray-900">10</p>
+              </div>
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Ready for Dispatch</p>
-                  <p className="text-2xl font-bold text-gray-900">10</p>
-                </div>
-                <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-yellow-600" />
-                </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total</p>
+                <p className="text-2xl font-bold text-gray-900">$685</p>
               </div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">$685</p>
-                </div>
-                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-emerald-600" />
-                </div>
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
               </div>
             </div>
           </div>

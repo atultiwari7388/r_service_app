@@ -1,16 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-  Truck,
-  X,
-  Users,
-  Settings,
-  BarChart,
-  Bell,
-  HelpCircle,
-  Home,
-} from "lucide-react";
+import { Truck, X, Users } from "lucide-react";
 
 /* ---------------- TYPES ---------------- */
 
@@ -40,31 +31,6 @@ const menuItems: {
     label: "Carriers",
     icon: <Users className="w-5 h-5" />,
   },
-  // {
-  //   id: "dashboard",
-  //   label: "Dashboard",
-  //   icon: <Home className="w-5 h-5" />,
-  // },
-  // {
-  //   id: "analytics",
-  //   label: "Analytics",
-  //   icon: <BarChart className="w-5 h-5" />,
-  // },
-  // {
-  //   id: "notifications",
-  //   label: "Notify",
-  //   icon: <Bell className="w-5 h-5" />,
-  // },
-  // {
-  //   id: "settings",
-  //   label: "Settings",
-  //   icon: <Settings className="w-5 h-5" />,
-  // },
-  // {
-  //   id: "help",
-  //   label: "Support",
-  //   icon: <HelpCircle className="w-5 h-5" />,
-  // },
 ];
 
 /* ---------------- COMPONENT ---------------- */
