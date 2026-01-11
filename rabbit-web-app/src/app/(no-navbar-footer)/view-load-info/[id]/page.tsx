@@ -18,6 +18,8 @@ import {
   Plus,
   Mail,
   Check,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
 import Link from "next/link";
@@ -222,16 +224,6 @@ const MOCK_DOCUMENTS: LoadDocument[] = [
 const TABS = [
   { id: "load-info", label: "Load Information" },
   { id: "load-docs", label: "Load Docs" },
-  // { id: "accessorial", label: "Accessorial" },
-  // { id: "adjustments", label: "Adjustments" },
-  // { id: "support", label: "Support" },
-  // { id: "milestone", label: "Milestone" },
-  // { id: "check-calls", label: "Check Calls" },
-  // { id: "exceptions", label: "Load Exceptions" },
-  // { id: "additional-info", label: "Additional Info" },
-  // { id: "update-history", label: "Updated History" },
-  // { id: "bid-history", label: "Bid History" },
-  // { id: "miles", label: "Miles Breakdown" },
 ];
 
 // --- Helper Components ---
@@ -276,17 +268,23 @@ const InputField = ({
   disabled = false,
   type = "text",
   className = "",
+  placeholder = "",
+  onChange,
 }: {
   value: string;
   disabled?: boolean;
   type?: string;
   className?: string;
+  placeholder?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) => (
   <input
     type={type}
     value={value}
     disabled={disabled}
-    readOnly={disabled}
+    readOnly={disabled && !onChange}
+    onChange={onChange}
+    placeholder={placeholder}
     className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow
       ${
         disabled
@@ -300,15 +298,20 @@ const SelectField = ({
   value,
   options,
   disabled = false,
+  onChange,
+  placeholder = "Select",
 }: {
   value: string;
   options: string[];
   disabled?: boolean;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  placeholder?: string;
 }) => (
   <div className="relative">
     <select
       value={value}
       disabled={disabled}
+      onChange={onChange}
       className={`w-full px-3 py-2 text-sm border rounded-md appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500
         ${
           disabled
@@ -316,6 +319,7 @@ const SelectField = ({
             : "bg-white text-gray-900 border-gray-300"
         }`}
     >
+      <option value="">{placeholder}</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
           {opt}
@@ -331,13 +335,17 @@ const SelectField = ({
 const ToggleSwitch = ({
   label,
   checked,
+  onChange,
 }: {
   label: string;
   checked: boolean;
+  onChange?: (checked: boolean) => void;
 }) => (
   <div className="flex items-center justify-between bg-white border border-gray-200 rounded-md p-2">
     <span className="text-sm font-medium text-gray-700">{label}</span>
-    <div
+    <button
+      type="button"
+      onClick={() => onChange?.(!checked)}
       className={`w-10 h-5 flex items-center rounded-full p-1 duration-300 ease-in-out ${
         checked ? "bg-[#22c55e]" : "bg-gray-300"
       }`}
@@ -347,621 +355,1094 @@ const ToggleSwitch = ({
           checked ? "translate-x-5" : ""
         }`}
       ></div>
-    </div>
+    </button>
   </div>
 );
+
+// --- Modal/Dialog Components ---
+
+interface DocumentViewModalProps {
+  title: string;
+  isOpen: boolean;
+  onClose: () => void;
+  type: "bol" | "confirmation";
+  onViewPdf: () => void;
+}
+
+const DocumentViewModal = ({
+  title,
+  isOpen,
+  onClose,
+  type,
+  onViewPdf,
+}: DocumentViewModalProps) => {
+  const [showBookingAuthority, setShowBookingAuthority] = useState(true);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">
+              Show Booking Authority
+            </span>
+            <div
+              className={`w-10 h-5 flex items-center rounded-full p-1 duration-300 ease-in-out ${
+                showBookingAuthority ? "bg-[#22c55e]" : "bg-gray-300"
+              }`}
+            >
+              <div
+                className={`bg-white w-3 h-3 rounded-full shadow-md transform duration-300 ease-in-out ${
+                  showBookingAuthority ? "translate-x-5" : ""
+                }`}
+              ></div>
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onViewPdf}
+              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm"
+            >
+              View
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface CheckCallModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: CheckCallFormData) => void;
+}
+
+interface CheckCallFormData {
+  stop: string;
+  location: string;
+  city: string;
+  state: string;
+  temperature: string;
+  source: string;
+  driver: string;
+  notes: string;
+}
+
+const CheckCallModal = ({ isOpen, onClose, onSave }: CheckCallModalProps) => {
+  const [formData, setFormData] = useState<CheckCallFormData>({
+    stop: "",
+    location: "",
+    city: "",
+    state: "",
+    temperature: "",
+    source: "",
+    driver: "",
+    notes: "",
+  });
+
+  const handleInputChange = (field: keyof CheckCallFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-900">Send Check Calls</h2>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <FormLabel>Stop *</FormLabel>
+            <SelectField
+              value={formData.stop}
+              options={["Stop 1", "Stop 2", "Stop 3"]}
+              placeholder="Select Stop"
+              onChange={(e) => handleInputChange("stop", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FormLabel>Location *</FormLabel>
+            <div className="flex gap-2">
+              <InputField
+                value={formData.location}
+                placeholder="Enter location"
+                onChange={(e) => handleInputChange("location", e.target.value)}
+              />
+              <button
+                type="button"
+                className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border border-gray-300 transition-colors whitespace-nowrap"
+              >
+                Get Latest Location
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <FormLabel>City *</FormLabel>
+            <InputField
+              value={formData.city}
+              placeholder="Enter city"
+              onChange={(e) => handleInputChange("city", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FormLabel>State *</FormLabel>
+            <SelectField
+              value={formData.state}
+              options={["CA", "NY", "TX", "FL", "IL", "AR"]}
+              placeholder="Select"
+              onChange={(e) => handleInputChange("state", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FormLabel>Source</FormLabel>
+            <SelectField
+              value={formData.source}
+              options={["Driver", "Dispatcher", "Customer", "Carrier"]}
+              placeholder="Select source"
+              onChange={(e) => handleInputChange("source", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FormLabel>Driver</FormLabel>
+            <SelectField
+              value={formData.driver}
+              options={["Swam Singh", "Steve Expiry", "John Driver"]}
+              placeholder="Select driver"
+              onChange={(e) => handleInputChange("driver", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <FormLabel>Notes</FormLabel>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => handleInputChange("notes", e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow min-h-[80px]"
+              placeholder="Enter notes"
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <FormLabel>Temperature</FormLabel>
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Get Latest Temperature
+              </button>
+            </div>
+            <InputField
+              type="text"
+              value={formData.temperature}
+              placeholder="Enter temperature"
+              onChange={(e) => handleInputChange("temperature", e.target.value)}
+            />
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// --- Action Dropdown Component ---
+
+interface ActionDropdownProps {
+  type: "bol" | "load-sheet";
+  onViewBol?: () => void;
+  onViewConfirmation?: () => void;
+  onSendERate?: () => void;
+  onViewLoadSheet?: () => void;
+  onViewSwarnSheet?: () => void;
+  onViewLoadDriverSheet?: () => void;
+}
+
+const ActionDropdown = ({
+  type,
+  onViewBol,
+  onViewConfirmation,
+  onSendERate,
+  onViewLoadSheet,
+  onViewSwarnSheet,
+  onViewLoadDriverSheet,
+}: ActionDropdownProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        if (!isOpen) setIsHovered(false);
+      }}
+    >
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-center gap-1 px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176] hover:text-white hover:border-[#F96176] transition-all w-full shadow-sm group"
+      >
+        {type === "bol" ? (
+          <>
+            <Printer className="w-4 h-4" />
+            BOL / Confg
+          </>
+        ) : (
+          <>
+            <FileText className="w-4 h-4" />
+            Load / Driver Sheet
+          </>
+        )}
+        <ChevronDown className="w-3 h-3 transition-transform duration-200" />
+      </button>
+
+      {(isOpen || isHovered) && (
+        <div
+          className="absolute z-40 top-full left-0 mt-1 w-full min-w-[200px] bg-white rounded-md shadow-lg border border-gray-200 py-1 animate-in fade-in slide-in-from-top-2 duration-200"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            setIsOpen(false);
+          }}
+        >
+          {type === "bol" ? (
+            <>
+              <button
+                onClick={() => {
+                  onViewConfirmation?.();
+                  setIsOpen(false);
+                  setIsHovered(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                View Confirmation
+              </button>
+              <button
+                onClick={() => {
+                  onViewBol?.();
+                  setIsOpen(false);
+                  setIsHovered(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                View BOL
+              </button>
+              <button
+                onClick={() => {
+                  onSendERate?.();
+                  setIsOpen(false);
+                  setIsHovered(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+              >
+                <Mail className="w-4 h-4" />
+                Send e-rate confirmation
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  onViewLoadSheet?.();
+                  setIsOpen(false);
+                  setIsHovered(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Load Sheet
+              </button>
+              <button
+                onClick={() => {
+                  onViewSwarnSheet?.();
+                  setIsOpen(false);
+                  setIsHovered(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Swarn Sheet
+              </button>
+              <button
+                onClick={() => {
+                  onViewLoadDriverSheet?.();
+                  setIsOpen(false);
+                  setIsHovered(false);
+                }}
+                className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View (Load/Driver Sheet)
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // --- Main Page Component ---
 
 export default function LoadDetailsPage() {
   const [activeTab, setActiveTab] = useState("load-info");
+  const [showBolModal, setShowBolModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showCheckCallModal, setShowCheckCallModal] = useState(false);
+
+  // PDF Mapping Function
+  const handleViewPdf = (pdfType?: string) => {
+    const pdfMap: Record<string, string> = {
+      bol: "/LoadBolPdf.pdf",
+      confirmation: "/LoadConfirmationPdfV2.pdf",
+      "load-sheet": "/DriverSheetPdfModal.pdf",
+      "swarn-sheet": "/LoadInfoSheet.pdf",
+      "load-driver-sheet": "/DriverSheetPdfModal.pdf",
+      "rate-confirmation": "/RateConfirmation.pdf",
+      "bill-of-lading": "/LoadBolPdf.pdf",
+      "proof-of-delivery": "/ProofOfDelivery.pdf",
+      insurance: "/InsuranceCertificate.pdf",
+      receipt: "/Receipt.pdf",
+      default: "/sample.pdf",
+    };
+
+    const pdfPath = pdfType
+      ? pdfMap[pdfType] || pdfMap.default
+      : pdfMap.default;
+    window.open(pdfPath, "_blank");
+  };
+
+  const handleSaveCheckCall = (data: CheckCallFormData) => {
+    console.log("Check call data saved:", data);
+    alert("Check call saved successfully!");
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100/50 font-sans text-gray-900 pb-20">
-      {/* --- TOP HEADER SECTION --- */}
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            {/* Left: Title & Badges */}
-            <div className="flex items-center gap-4">
-              <a
-                href="#"
-                className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
-              >
-                <Link href={"/truck-dispatch"}>
-                  <ArrowLeft className="w-5 h-5" />
-                </Link>
-              </a>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl font-bold text-gray-900">
-                  Load #{MOCK_LOAD_DATA.loadNumber}
-                </h1>
+    <>
+      <div className="min-h-screen bg-gray-100/50 font-sans text-gray-900 pb-20">
+        {/* --- TOP HEADER SECTION --- */}
+        <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Left: Title & Badges */}
+              <div className="flex items-center gap-4">
+                <a
+                  href="#"
+                  className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
+                >
+                  <Link href={"/truck-dispatch"}>
+                    <ArrowLeft className="w-5 h-5" />
+                  </Link>
+                </a>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-bold text-gray-900">
+                    Load #{MOCK_LOAD_DATA.loadNumber}
+                  </h1>
 
-                {MOCK_LOAD_DATA.isInvoiced && (
-                  <span className="px-3 py-1 bg-[#22c55e]/10 text-[#22c55e] text-xs font-bold uppercase rounded-full border border-[#22c55e]/20 tracking-wide">
-                    Invoiced
-                  </span>
-                )}
+                  {MOCK_LOAD_DATA.isInvoiced && (
+                    <span className="px-3 py-1 bg-[#22c55e]/10 text-[#22c55e] text-xs font-bold uppercase rounded-full border border-[#22c55e]/20 tracking-wide">
+                      Invoiced
+                    </span>
+                  )}
 
-                {MOCK_LOAD_DATA.isLocked && (
-                  <span
-                    className="p-1 bg-gray-100 text-gray-500 rounded-md border border-gray-200"
-                    title="Locked"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                  </span>
-                )}
+                  {MOCK_LOAD_DATA.isLocked && (
+                    <span
+                      className="p-1 bg-gray-100 text-gray-500 rounded-md border border-gray-200"
+                      title="Locked"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
+                  BOL / POD <ChevronDown className="w-4 h-4" />
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
+                  Customer Confirmation <ChevronDown className="w-4 h-4" />
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
+                  Load Notes
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
+                  Invoice <ChevronDown className="w-4 h-4" />
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* Right: Actions */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                BOL / POD <ChevronDown className="w-4 h-4" />
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                Customer Confirmation <ChevronDown className="w-4 h-4" />
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                Load Notes
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                Invoice <ChevronDown className="w-4 h-4" />
-              </button>
+          {/* --- TAB NAVIGATION BAR --- */}
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 mt-1">
+            <div className="flex overflow-x-auto hide-scrollbar gap-6 border-b border-gray-200">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 px-1
+                    ${
+                      activeTab === tab.id
+                        ? "border-[#F96176] text-[#F96176]"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {/* --- SUMMARY METRICS BAR --- */}
+        <div className="bg-white border-b border-gray-200 py-3">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
+            <div className="flex overflow-x-auto pb-1 hide-scrollbar items-center">
+              <MetricItem
+                label="Revenue"
+                value={MOCK_LOAD_DATA.revenue}
+                isCurrency
+              />
+              <MetricItem
+                label="Profit"
+                value={MOCK_LOAD_DATA.profit}
+                isCurrency
+              />
+              <MetricItem
+                label="Rate"
+                value={`${MOCK_LOAD_DATA.ratePerMile} per mile`}
+              />
+              <MetricItem
+                label="Flat Rate"
+                value={MOCK_LOAD_DATA.flatRate}
+                isCurrency
+              />
+              <MetricItem
+                label="Loaded Miles"
+                value={MOCK_LOAD_DATA.loadedMiles}
+              />
+              <MetricItem
+                label="Detention Tracked"
+                value={MOCK_LOAD_DATA.detentionTracked}
+              />
+              <MetricItem label="Qty" value={MOCK_LOAD_DATA.quantity} />
+              <MetricItem
+                label="Weight"
+                value={`${MOCK_LOAD_DATA.weight} lbs`}
+              />
             </div>
           </div>
         </div>
 
-        {/* --- TAB NAVIGATION BAR --- */}
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 mt-1">
-          <div className="flex overflow-x-auto hide-scrollbar gap-6 border-b border-gray-200">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 px-1
-                  ${
-                    activeTab === tab.id
-                      ? "border-[#F96176] text-[#F96176]"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </header>
+        {/* --- MAIN CONTENT AREA --- */}
+        <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+          {activeTab === "load-info" && (
+            /* Two Column Grid for Load Info */
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* LEFT COLUMN: LOAD DETAILS (60%) */}
+              <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+                      Load Details
+                    </h2>
+                  </div>
 
-      {/* --- SUMMARY METRICS BAR --- */}
-      <div className="bg-white border-b border-gray-200 py-3">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
-          <div className="flex overflow-x-auto pb-1 hide-scrollbar items-center">
-            <MetricItem
-              label="Revenue"
-              value={MOCK_LOAD_DATA.revenue}
-              isCurrency
-            />
-            <MetricItem
-              label="Profit"
-              value={MOCK_LOAD_DATA.profit}
-              isCurrency
-            />
-            <MetricItem
-              label="Rate"
-              value={`${MOCK_LOAD_DATA.ratePerMile} per mile`}
-            />
-            <MetricItem
-              label="Flat Rate"
-              value={MOCK_LOAD_DATA.flatRate}
-              isCurrency
-            />
-            <MetricItem
-              label="Loaded Miles"
-              value={MOCK_LOAD_DATA.loadedMiles}
-            />
-            <MetricItem
-              label="Detention Tracked"
-              value={MOCK_LOAD_DATA.detentionTracked}
-            />
-            <MetricItem label="Qty" value={MOCK_LOAD_DATA.quantity} />
-            <MetricItem label="Weight" value={`${MOCK_LOAD_DATA.weight} lbs`} />
-          </div>
-        </div>
-      </div>
+                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    {/* Row 1 */}
+                    <div>
+                      <FormLabel>Load #</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.loadNumber} disabled />
+                    </div>
+                    <div>
+                      <FormLabel>Load Status</FormLabel>
+                      <SelectField
+                        value={MOCK_LOAD_DATA.status}
+                        options={[
+                          "Pending",
+                          "Dispatched",
+                          "In Transit",
+                          "Completed",
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Load Type</FormLabel>
+                      <SelectField
+                        value={MOCK_LOAD_DATA.loadType}
+                        options={["Full Truck Load", "LTL", "Partial"]}
+                      />
+                    </div>
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {activeTab === "load-info" && (
-          /* Two Column Grid for Load Info */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* LEFT COLUMN: LOAD DETAILS (60%) */}
-            <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                    {/* Row 2 */}
+                    <div className="md:col-span-2 xl:col-span-3">
+                      <FormLabel required>Customer</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.customer} />
+                    </div>
+
+                    {/* Row 3 */}
+                    <div>
+                      <FormLabel>Primary Fees</FormLabel>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500 text-sm">
+                          $
+                        </span>
+                        <InputField value="3400.00" className="pl-6" />
+                      </div>
+                    </div>
+                    <div>
+                      <FormLabel>Fee Type</FormLabel>
+                      <SelectField
+                        value={MOCK_LOAD_DATA.feeType}
+                        options={["Flat Rate", "Per Mile"]}
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Tendered Miles</FormLabel>
+                      <InputField
+                        value={MOCK_LOAD_DATA.tenderedMiles}
+                        disabled
+                      />
+                    </div>
+
+                    {/* Row 4 */}
+                    <div>
+                      <FormLabel>Fuel Surcharge</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.fuelSurcharge} />
+                    </div>
+                    <div>
+                      <FormLabel>Target Rate</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.targetRate} />
+                    </div>
+                    <div>
+                      <FormLabel>Van Type</FormLabel>
+                      <SelectField
+                        value={MOCK_LOAD_DATA.vanType}
+                        options={["Reefer", "Dry Van", "Flatbed"]}
+                      />
+                    </div>
+
+                    {/* Row 5 */}
+                    <div>
+                      <FormLabel>Length</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.length} />
+                    </div>
+                    <div>
+                      <FormLabel>Weight (Lbs)</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.weight} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <FormLabel>Options</FormLabel>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <ToggleSwitch
+                            label="Hazmat"
+                            checked={MOCK_LOAD_DATA.isHazmat}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <ToggleSwitch
+                            label="Tarp"
+                            checked={MOCK_LOAD_DATA.isTarpRequired}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 6 */}
+                    <div className="md:col-span-2 xl:col-span-3">
+                      <FormLabel>Booking Authority</FormLabel>
+                      <InputField
+                        value={MOCK_LOAD_DATA.bookingAuthority}
+                        disabled
+                      />
+                    </div>
+
+                    {/* Row 7 */}
+                    <div>
+                      <FormLabel>Sales Agent</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.salesAgent} disabled />
+                    </div>
+                    <div>
+                      <FormLabel>Booking Terminal</FormLabel>
+                      <InputField
+                        value={MOCK_LOAD_DATA.bookingTerminal}
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <FormLabel>Commodity</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.commodity} />
+                    </div>
+
+                    {/* Row 8 */}
+                    <div>
+                      <FormLabel>Declared Value</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.declaredValue} />
+                    </div>
+                    <div>
+                      <FormLabel>Agency</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.agency} />
+                    </div>
+                    <div>
+                      <FormLabel>Brokerage Agent</FormLabel>
+                      <InputField value={MOCK_LOAD_DATA.brokerageAgent} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: DISPATCH, ACTIONS, STOPS (40%) */}
+              <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-5">
+                {/* Header: Shipper/Consignee */}
+                <div className="flex items-center justify-between pb-1">
                   <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
-                    Load Details
+                    Shipper / Consignee
                   </h2>
-                  {/* <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                    <Edit className="w-4 h-4" /> Edit
-                  </button> */}
+                  <div className="flex gap-2">
+                    <button className="p-1 rounded hover:bg-gray-200 border border-transparent hover:border-gray-300 transition-colors">
+                      {/* <ChevronLeft className="w-5 h-5 text-gray-600" /> */}
+                    </button>
+                    <button className="p-1 rounded hover:bg-gray-200 border border-transparent hover:border-gray-300 transition-colors">
+                      {/* <ChevronRight className="w-5 h-5 text-gray-600" /> */}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {/* Row 1 */}
-                  <div>
-                    <FormLabel>Load #</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.loadNumber} disabled />
-                  </div>
-                  <div>
-                    <FormLabel>Load Status</FormLabel>
-                    <SelectField
-                      value={MOCK_LOAD_DATA.status}
-                      options={[
-                        "Pending",
-                        "Dispatched",
-                        "In Transit",
-                        "Completed",
-                      ]}
-                    />
-                  </div>
-                  <div>
-                    <FormLabel>Load Type</FormLabel>
-                    <SelectField
-                      value={MOCK_LOAD_DATA.loadType}
-                      options={["Full Truck Load", "LTL", "Partial"]}
-                    />
-                  </div>
-
-                  {/* Row 2 */}
-                  <div className="md:col-span-2 xl:col-span-3">
-                    <FormLabel required>Customer</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.customer} />
-                  </div>
-
-                  {/* Row 3 */}
-                  <div>
-                    <FormLabel>Primary Fees</FormLabel>
-                    <div className="relative">
-                      <span className="absolute left-3 top-2 text-gray-500 text-sm">
-                        $
-                      </span>
-                      <InputField value="3400.00" className="pl-6" />
-                    </div>
-                  </div>
-                  <div>
-                    <FormLabel>Fee Type</FormLabel>
-                    <SelectField
-                      value={MOCK_LOAD_DATA.feeType}
-                      options={["Flat Rate", "Per Mile"]}
-                    />
-                  </div>
-                  <div>
-                    <FormLabel>Tendered Miles</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.tenderedMiles} disabled />
-                  </div>
-
-                  {/* Row 4 */}
-                  <div>
-                    <FormLabel>Fuel Surcharge</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.fuelSurcharge} />
-                  </div>
-                  <div>
-                    <FormLabel>Target Rate</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.targetRate} />
-                  </div>
-                  <div>
-                    <FormLabel>Van Type</FormLabel>
-                    <SelectField
-                      value={MOCK_LOAD_DATA.vanType}
-                      options={["Reefer", "Dry Van", "Flatbed"]}
-                    />
-                  </div>
-
-                  {/* Row 5 */}
-                  <div>
-                    <FormLabel>Length</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.length} />
-                  </div>
-                  <div>
-                    <FormLabel>Weight (Lbs)</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.weight} />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <FormLabel>Options</FormLabel>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <ToggleSwitch
-                          label="Hazmat"
-                          checked={MOCK_LOAD_DATA.isHazmat}
-                        />
+                {/* Dispatch Info Section */}
+                <div>
+                  <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
+                    Dispatch Info
+                  </h3>
+                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
+                          Carrier
+                        </span>
+                        <span
+                          className="font-bold text-[#F96176] block truncate text-xs sm:text-sm"
+                          title={MOCK_LOAD_DATA.carrier}
+                        >
+                          {MOCK_LOAD_DATA.carrier}
+                        </span>
                       </div>
-                      <div className="flex-1">
-                        <ToggleSwitch
-                          label="Tarp"
-                          checked={MOCK_LOAD_DATA.isTarpRequired}
-                        />
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
+                          Vehicle
+                        </span>
+                        <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
+                          {MOCK_LOAD_DATA.truck}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
+                          Trailer
+                        </span>
+                        <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
+                          {MOCK_LOAD_DATA.trailer}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
+                          Driver
+                        </span>
+                        <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm mb-1">
+                          {MOCK_LOAD_DATA.driver}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button className="p-1 hover:bg-blue-50 rounded text-[#F96176]">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
+                          <button className="p-1 hover:bg-green-50 rounded text-green-500">
+                            <Phone className="w-3.5 h-3.5" />
+                          </button>
+                          <button className="p-1 hover:bg-gray-100 rounded text-gray-500">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Row 6 */}
-                  <div className="md:col-span-2 xl:col-span-3">
-                    <FormLabel>Booking Authority</FormLabel>
-                    <InputField
-                      value={MOCK_LOAD_DATA.bookingAuthority}
-                      disabled
-                    />
-                  </div>
+                {/* Action Buttons */}
+                <div className="grid grid-cols-3 gap-3">
+                  <ActionDropdown
+                    type="bol"
+                    onViewBol={() => setShowBolModal(true)}
+                    onViewConfirmation={() => setShowConfirmationModal(true)}
+                    onSendERate={() => {
+                      alert("Sending e-rate confirmation...");
+                      handleViewPdf("rate-confirmation");
+                    }}
+                  />
 
-                  {/* Row 7 */}
-                  <div>
-                    <FormLabel>Sales Agent</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.salesAgent} disabled />
-                  </div>
-                  <div>
-                    <FormLabel>Booking Terminal</FormLabel>
-                    <InputField
-                      value={MOCK_LOAD_DATA.bookingTerminal}
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <FormLabel>Commodity</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.commodity} />
-                  </div>
+                  <ActionDropdown
+                    type="load-sheet"
+                    onViewLoadSheet={() => handleViewPdf("load-sheet")}
+                    onViewSwarnSheet={() => handleViewPdf("swarn-sheet")}
+                    onViewLoadDriverSheet={() =>
+                      handleViewPdf("load-driver-sheet")
+                    }
+                  />
 
-                  {/* Row 8 */}
-                  <div>
-                    <FormLabel>Declared Value</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.declaredValue} />
-                  </div>
-                  <div>
-                    <FormLabel>Agency</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.agency} />
-                  </div>
-                  <div>
-                    <FormLabel>Brokerage Agent</FormLabel>
-                    <InputField value={MOCK_LOAD_DATA.brokerageAgent} />
+                  <button
+                    onClick={() => setShowCheckCallModal(true)}
+                    className="flex items-center justify-center gap-2 px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176] hover:text-white hover:border-[#F96176] transition-all shadow-sm group"
+                  >
+                    <Clock className="w-4 h-4" />
+                    Add Check Call
+                  </button>
+                </div>
+
+                {/* Stops Info Section */}
+                <div className="pt-2">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">
+                    Stops Info
+                  </h3>
+                  <div className="space-y-4">
+                    {MOCK_STOPS.map((stop, index) => {
+                      const isPickup = stop.type === "PICKUP";
+                      const accentColor = isPickup
+                        ? "border-l-[#22c55e]"
+                        : "border-l-[#F96176]";
+                      const headerBg = isPickup
+                        ? "bg-green-50/40"
+                        : "bg-[#F96176]/40";
+                      const textColor = isPickup
+                        ? "text-green-700"
+                        : "text-[#F96176]";
+                      const iconColor = isPickup
+                        ? "text-green-600"
+                        : "text-[#F96176]";
+
+                      return (
+                        <div
+                          key={index}
+                          className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden border-l-4 ${accentColor}`}
+                        >
+                          {/* Compact Header */}
+                          <div
+                            className={`px-4 py-2 border-b border-gray-100 ${headerBg} flex items-center justify-between`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded border bg-white ${
+                                  isPickup
+                                    ? "text-green-700 border-green-200"
+                                    : "text-[#F96176] border-[#F96176]"
+                                }`}
+                              >
+                                {index + 1}
+                              </span>
+                              <span
+                                className={`text-xs font-bold uppercase ${textColor}`}
+                              >
+                                {stop.type}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Calendar className={`w-3 h-3 ${iconColor}`} />
+                              <span className="font-semibold">{stop.date}</span>
+                              <span className="text-gray-300">|</span>
+                              <span>{stop.timeWindow}</span>
+                            </div>
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-4 space-y-3">
+                            {/* Location */}
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <h4 className="text-sm font-bold text-gray-900">
+                                  {stop.locationName}
+                                </h4>
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                  {stop.status}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {stop.address}, {stop.cityStateZip}
+                              </p>
+                            </div>
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-xs border-t border-gray-50 pt-2">
+                              <div>
+                                <span className="text-gray-400 block uppercase text-[9px]">
+                                  Contact
+                                </span>
+                                <span className="font-medium text-gray-800">
+                                  {stop.contact}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-400 block uppercase text-[9px]">
+                                  Ref #
+                                </span>
+                                <span className="font-medium text-gray-800">
+                                  {stop.puNumber || stop.soNumber || "-"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 col-span-2 bg-gray-50 rounded p-1.5 border border-gray-100">
+                                <span className="text-gray-500">
+                                  Qty:{" "}
+                                  <b className="text-gray-900">{stop.qty}</b>
+                                </span>
+                                <span className="text-gray-300">|</span>
+                                <span className="text-gray-500">
+                                  Wgt:{" "}
+                                  <b className="text-gray-900">{stop.weight}</b>
+                                </span>
+                                {stop.temp && (
+                                  <>
+                                    <span className="text-gray-300">|</span>
+                                    <span className="text-[#F96176] font-bold flex items-center gap-0.5">
+                                      <Thermometer className="w-3 h-3" />{" "}
+                                      {stop.temp}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Instructions */}
+                            <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-2">
+                              {stop.instructions}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* RIGHT COLUMN: DISPATCH, ACTIONS, STOPS (40%) */}
-            <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-5">
-              {/* Header: Shipper/Consignee */}
-              <div className="flex items-center justify-between pb-1">
-                <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
-                  Shipper / Consignee
-                </h2>
-                <div className="flex gap-2">
-                  <button className="p-1 rounded hover:bg-gray-200 border border-transparent hover:border-gray-300 transition-colors">
-                    {/* <ChevronLeft className="w-5 h-5 text-gray-600" /> */}
-                  </button>
-                  <button className="p-1 rounded hover:bg-gray-200 border border-transparent hover:border-gray-300 transition-colors">
-                    {/* <ChevronRight className="w-5 h-5 text-gray-600" /> */}
-                  </button>
-                </div>
+          {activeTab === "load-docs" && (
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* Header with Buttons */}
+              <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-end gap-3 bg-gray-50/50">
+                <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
+                  <Plus className="w-4 h-4" /> Create new document
+                </button>
+                <button className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#F96176] text-[#F96176] text-sm font-medium rounded-md hover:bg-gray-50 transition shadow-sm">
+                  <Download className="w-4 h-4" /> Download document
+                </button>
+                <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[#F96176] border border-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
+                  <Mail className="w-4 h-4" /> Email document
+                </button>
               </div>
 
-              {/* Dispatch Info Section */}
-              <div>
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
-                  Dispatch Info
-                </h3>
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                    <div className="min-w-0">
-                      <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
-                        Carrier
-                      </span>
-                      <span
-                        className="font-bold text-[#F96176] block truncate text-xs sm:text-sm"
-                        title={MOCK_LOAD_DATA.carrier}
+              {/* Table */}
+              <div className="relative overflow-x-auto overflow-y-visible">
+                <table className="w-full text-left border-collapse overflow-visible">
+                  <thead>
+                    <tr className="bg-gray-100/70 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                      <th className="px-6 py-4 w-[100px] text-center">
+                        Actions
+                      </th>
+                      <th className="px-6 py-4 w-[80px] text-center">View</th>
+                      <th className="px-6 py-4">Name</th>
+                      <th className="px-6 py-4">Document Type</th>
+                      <th className="px-6 py-4 text-center">
+                        Invoice Requirement
+                      </th>
+                      <th className="px-6 py-4">Expiry Date</th>
+                      <th className="px-6 py-4 text-right">Days Remaining</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-100 bg-white overflow-visible">
+                    {MOCK_DOCUMENTS.map((doc) => (
+                      <tr
+                        key={doc.id}
+                        className="hover:bg-gray-50/80 transition-colors group overflow-visible"
                       >
-                        {MOCK_LOAD_DATA.carrier}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
-                        Vehicle
-                      </span>
-                      <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                        {MOCK_LOAD_DATA.truck}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
-                        Trailer
-                      </span>
-                      <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                        {MOCK_LOAD_DATA.trailer}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] text-gray-400 font-semibold uppercase block mb-0.5">
-                        Driver
-                      </span>
-                      <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm mb-1">
-                        {MOCK_LOAD_DATA.driver}
-                      </span>
-                      <div className="flex gap-1.5">
-                        <button className="p-1 hover:bg-blue-50 rounded text-[#F96176]">
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </button>
-                        <button className="p-1 hover:bg-green-50 rounded text-green-500">
-                          <Phone className="w-3.5 h-3.5" />
-                        </button>
-                        <button className="p-1 hover:bg-gray-100 rounded text-gray-500">
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                        {/* ACTIONS */}
+                        <td className="px-6 py-4 text-center relative overflow-visible">
+                          <DocumentActionsDropdown loadDocument={doc} />
+                        </td>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-3 gap-3">
-                <button className="px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176] hover:text-white hover:border-[#F96176] transition-all flex flex-col items-center justify-center text-center gap-1.5 shadow-sm group">
-                  <Printer className="w-4 h-4 text-white group-hover:text-white" />
-                  BOL / Confg
-                </button>
-                <button className="px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176] hover:text-white hover:border-[#F96176] transition-all flex flex-col items-center justify-center text-center gap-1.5 shadow-sm group">
-                  <FileText className="w-4 h-4 text-white group-hover:text-white" />
-                  Load / Driver Sheet
-                </button>
-                <button className="px-2 py-3 bg-[#F96176] border border-[#F96176] rounded-md text-xs font-bold text-white hover:bg-[#F96176] hover:text-white hover:border-[#F96176] transition-all flex flex-col items-center justify-center text-center gap-1.5 shadow-sm group">
-                  <Clock className="w-4 h-4 text-white group-hover:text-white" />
-                  Add Check Call
-                </button>
-              </div>
+                        {/* VIEW */}
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => {
+                              const pdfMap: Record<string, string> = {
+                                "Rate Confirmation": "/RateConfirmation.pdf",
+                                "Bill of Lading": "/LoadBolPdf.pdf",
+                                "Proof of Delivery": "/ProofOfDelivery.pdf",
+                                Insurance: "/InsuranceCertificate.pdf",
+                                Receipt: "/Receipt.pdf",
+                                default: "/sample.pdf",
+                              };
+                              const pdfPath =
+                                pdfMap[doc.type] || pdfMap.default;
+                              window.open(pdfPath, "_blank");
+                            }}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </td>
 
-              {/* Stops Info Section */}
-              <div className="pt-2">
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">
-                  Stops Info
-                </h3>
-                <div className="space-y-4">
-                  {MOCK_STOPS.map((stop, index) => {
-                    const isPickup = stop.type === "PICKUP";
-                    const accentColor = isPickup
-                      ? "border-l-[#22c55e]"
-                      : "border-l-[#F96176]";
-                    const headerBg = isPickup
-                      ? "bg-green-50/40"
-                      : "bg-[#F96176]/40";
-                    const textColor = isPickup
-                      ? "text-green-700"
-                      : "text-[#F96176]";
-                    const iconColor = isPickup
-                      ? "text-green-600"
-                      : "text-[#F96176]";
+                        {/* NAME */}
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {doc.name}
+                          </span>
+                        </td>
 
-                    return (
-                      <div
-                        key={index}
-                        className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden border-l-4 ${accentColor}`}
-                      >
-                        {/* Compact Header */}
-                        <div
-                          className={`px-4 py-2 border-b border-gray-100 ${headerBg} flex items-center justify-between`}
-                        >
-                          <div className="flex items-center gap-2">
+                        {/* TYPE */}
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                            {doc.type}
+                          </span>
+                        </td>
+
+                        {/* INVOICE */}
+                        <td className="px-6 py-4 text-center">
+                          {doc.invoiceRequirement ? (
+                            <span className="inline-flex items-center justify-center p-1 bg-green-100 text-green-600 rounded-full">
+                              <Check className="w-3.5 h-3.5" />
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+
+                        {/* EXPIRY */}
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {doc.expiryDate ?? "-"}
+                        </td>
+
+                        {/* DAYS */}
+                        <td className="px-6 py-4 text-right">
+                          {doc.daysRemaining !== null ? (
                             <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded border bg-white ${
-                                isPickup
-                                  ? "text-green-700 border-green-200"
-                                  : "text-[#F96176] border-[#F96176]"
+                              className={`text-sm font-bold ${
+                                doc.daysRemaining < 30
+                                  ? "text-red-600"
+                                  : "text-gray-900"
                               }`}
                             >
-                              {index + 1}
+                              {doc.daysRemaining} Days
                             </span>
-                            <span
-                              className={`text-xs font-bold uppercase ${textColor}`}
-                            >
-                              {stop.type}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Calendar className={`w-3 h-3 ${iconColor}`} />
-                            <span className="font-semibold">{stop.date}</span>
-                            <span className="text-gray-300">|</span>
-                            <span>{stop.timeWindow}</span>
-                          </div>
-                        </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
 
-                        {/* Content */}
-                        <div className="p-4 space-y-3">
-                          {/* Location */}
-                          <div>
-                            <div className="flex justify-between items-start">
-                              <h4 className="text-sm font-bold text-gray-900">
-                                {stop.locationName}
-                              </h4>
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                                {stop.status}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {stop.address}, {stop.cityStateZip}
-                            </p>
+                    {/* EMPTY STATE */}
+                    {MOCK_DOCUMENTS.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="px-6 py-12 text-center text-gray-500"
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <FileText className="w-8 h-8 text-gray-300" />
+                            <p>No documents found for this load.</p>
                           </div>
-
-                          {/* Details Grid */}
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-2 text-xs border-t border-gray-50 pt-2">
-                            <div>
-                              <span className="text-gray-400 block uppercase text-[9px]">
-                                Contact
-                              </span>
-                              <span className="font-medium text-gray-800">
-                                {stop.contact}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-400 block uppercase text-[9px]">
-                                Ref #
-                              </span>
-                              <span className="font-medium text-gray-800">
-                                {stop.puNumber || stop.soNumber || "-"}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 col-span-2 bg-gray-50 rounded p-1.5 border border-gray-100">
-                              <span className="text-gray-500">
-                                Qty: <b className="text-gray-900">{stop.qty}</b>
-                              </span>
-                              <span className="text-gray-300">|</span>
-                              <span className="text-gray-500">
-                                Wgt:{" "}
-                                <b className="text-gray-900">{stop.weight}</b>
-                              </span>
-                              {stop.temp && (
-                                <>
-                                  <span className="text-gray-300">|</span>
-                                  <span className="text-[#F96176] font-bold flex items-center gap-0.5">
-                                    <Thermometer className="w-3 h-3" />{" "}
-                                    {stop.temp}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Instructions */}
-                          <div className="text-xs text-gray-500 italic border-l-2 border-gray-200 pl-2">
-                            {stop.instructions}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </main>
+      </div>
 
-        {activeTab === "load-docs" && (
-          // <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-visible animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* Header with Buttons */}
-            <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row justify-end gap-3 bg-gray-50/50">
-              <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                <Plus className="w-4 h-4" /> Create new document
-              </button>
-              <button className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#F96176] text-[#F96176] text-sm font-medium rounded-md hover:bg-gray-50 transition shadow-sm">
-                <Download className="w-4 h-4" /> Download document
-              </button>
-              <button className="flex items-center justify-center gap-2 px-4 py-2 bg-[#F96176] border border-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                <Mail className="w-4 h-4" /> Email document
-              </button>
-            </div>
+      {/* Modals */}
+      <DocumentViewModal
+        title="BOL/Conf"
+        isOpen={showBolModal}
+        onClose={() => setShowBolModal(false)}
+        type="bol"
+        onViewPdf={() => handleViewPdf("bol")}
+      />
 
-            {/* Table */}
-            <div className="relative overflow-x-auto overflow-y-visible">
-              <table className="w-full text-left border-collapse overflow-visible">
-                <thead>
-                  <tr className="bg-gray-100/70 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
-                    <th className="px-6 py-4 w-[100px] text-center">Actions</th>
-                    <th className="px-6 py-4 w-[80px] text-center">View</th>
-                    <th className="px-6 py-4">Name</th>
-                    <th className="px-6 py-4">Document Type</th>
-                    <th className="px-6 py-4 text-center">
-                      Invoice Requirement
-                    </th>
-                    <th className="px-6 py-4">Expiry Date</th>
-                    <th className="px-6 py-4 text-right">Days Remaining</th>
-                  </tr>
-                </thead>
+      <DocumentViewModal
+        title="View Confirmation"
+        isOpen={showConfirmationModal}
+        onClose={() => setShowConfirmationModal(false)}
+        type="confirmation"
+        onViewPdf={() => handleViewPdf("confirmation")}
+      />
 
-                <tbody className="divide-y divide-gray-100 bg-white overflow-visible">
-                  {MOCK_DOCUMENTS.map((doc) => (
-                    <tr
-                      key={doc.id}
-                      className="hover:bg-gray-50/80 transition-colors group overflow-visible"
-                    >
-                      {/* ACTIONS */}
-                      <td className="px-6 py-4 text-center relative overflow-visible">
-                        <DocumentActionsDropdown loadDocument={doc} />
-                      </td>
-
-                      {/* VIEW */}
-                      <td className="px-6 py-4 text-center">
-                        <button className="p-1.5 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
-
-                      {/* NAME */}
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {doc.name}
-                        </span>
-                      </td>
-
-                      {/* TYPE */}
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                          {doc.type}
-                        </span>
-                      </td>
-
-                      {/* INVOICE */}
-                      <td className="px-6 py-4 text-center">
-                        {doc.invoiceRequirement ? (
-                          <span className="inline-flex items-center justify-center p-1 bg-green-100 text-green-600 rounded-full">
-                            <Check className="w-3.5 h-3.5" />
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-
-                      {/* EXPIRY */}
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {doc.expiryDate ?? "-"}
-                      </td>
-
-                      {/* DAYS */}
-                      <td className="px-6 py-4 text-right">
-                        {doc.daysRemaining !== null ? (
-                          <span
-                            className={`text-sm font-bold ${
-                              doc.daysRemaining < 30
-                                ? "text-red-600"
-                                : "text-gray-900"
-                            }`}
-                          >
-                            {doc.daysRemaining} Days
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* EMPTY STATE */}
-                  {MOCK_DOCUMENTS.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="px-6 py-12 text-center text-gray-500"
-                      >
-                        <div className="flex flex-col items-center gap-2">
-                          <FileText className="w-8 h-8 text-gray-300" />
-                          <p>No documents found for this load.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+      <CheckCallModal
+        isOpen={showCheckCallModal}
+        onClose={() => setShowCheckCallModal(false)}
+        onSave={handleSaveCheckCall}
+      />
+    </>
   );
 }
