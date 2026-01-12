@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import Sidebar, { Screen } from "../components/Sidebar";
 import TruckDispatchScreen from "../screens/TruckDispatchScreen";
 import CarriersScreen from "../screens/CarriersScreen";
-import { Menu } from "lucide-react";
 
 const SCREEN_BY_PATH: Record<string, Screen> = {
   "/truck-dispatch": "truck-dispatch",
@@ -42,22 +41,13 @@ export default function DispatchShellLayout({
   return (
     <div className="min-h-screen flex bg-gray-50">
       <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+        // isOpen={sidebarOpen}
+        // onClose={() => setSidebarOpen(false)}
         activeScreen={activeScreen}
         onNavigate={handleNavigate}
       />
 
-      <main className={`flex-1 ${sidebarOpen ? "md:ml-48" : ""}`}>
-        {!sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="m-4 p-2 rounded-lg hover:bg-gray-100"
-          >
-            {/* <Menu /> */}
-          </button>
-        )}
-
+      <main className="flex-1 ml-16">
         {activeScreen === "truck-dispatch" && (
           <TruckDispatchScreen onMenuClick={() => setSidebarOpen(true)} />
         )}

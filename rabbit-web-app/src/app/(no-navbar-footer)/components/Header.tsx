@@ -21,13 +21,13 @@ export default function Header({
       <div className="flex items-center justify-between ">
         {/* Left side: Hamburger + Title */}
         <div className="flex items-center gap-4">
-          <button
+          {/* <button
             onClick={onMenuClick}
             className="p-2 hover:bg-gray-100 rounded-md text-gray-600"
             aria-label="Toggle menu"
           >
             <Menu />
-          </button>
+          </button> */}
 
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">

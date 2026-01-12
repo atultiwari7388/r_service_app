@@ -1,111 +1,72 @@
 "use client";
 
-import React from "react";
-import { Truck, X, Users } from "lucide-react";
-
-/* ---------------- TYPES ---------------- */
+import clsx from "clsx";
+import { Truck, Users, Home } from "lucide-react";
 
 export type Screen = "truck-dispatch" | "carriers";
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
+type SidebarProps = {
   activeScreen: Screen;
   onNavigate: (screen: Screen) => void;
-}
+};
 
-/* ---------------- MENU CONFIG ---------------- */
-
-const menuItems: {
-  id: Screen;
+const NAV_ITEMS: {
+  key: Screen;
   label: string;
   icon: React.ReactNode;
 }[] = [
   {
-    id: "truck-dispatch",
-    label: "Dispatch",
-    icon: <Truck className="w-5 h-5" />,
+    key: "truck-dispatch",
+    label: "Truck Dispatch",
+    icon: <Truck size={20} />,
   },
   {
-    id: "carriers",
+    key: "carriers",
     label: "Carriers",
-    icon: <Users className="w-5 h-5" />,
+    icon: <Users size={20} />,
   },
 ];
 
-/* ---------------- COMPONENT ---------------- */
-
-export default function Sidebar({
-  isOpen,
-  onClose,
-  activeScreen,
-  onNavigate,
-}: SidebarProps) {
+export default function Sidebar({ activeScreen, onNavigate }: SidebarProps) {
   return (
-    <>
-      {/* Overlay (mobile) */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity ${
-          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        }`}
-      />
+    <aside className="fixed left-0 top-0 z-40 h-screen w-16 bg-[#0B132B] flex flex-col items-center py-6">
+      {/* Logo / Home */}
+      <div className="mb-10">
+        <button
+          aria-label="Home"
+          className="h-10 w-10 rounded-xl bg-[#1C2541] flex items-center justify-center text-white hover:bg-[#273469] transition"
+        >
+          <Home size={18} />
+        </button>
+      </div>
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-full w-48 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#F96176] rounded-md flex items-center justify-center">
-              <Truck className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-sm">Dispatch</span>
-          </div>
+      {/* Navigation */}
+      <nav className="flex flex-col gap-4">
+        {NAV_ITEMS.map((item) => {
+          const isActive = activeScreen === item.key;
 
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-md"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Menu */}
-        <nav className="p-3 space-y-1">
-          {menuItems.map((item) => (
+          return (
             <button
-              key={item.id}
-              onClick={() => {
-                onNavigate(item.id);
-                if (window.innerWidth < 768) onClose();
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
-                activeScreen === item.id
-                  ? "bg-[#F96176] text-white"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
+              key={item.key}
+              aria-label={item.label}
+              onClick={() => onNavigate(item.key)}
+              className={clsx(
+                "group relative h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
+                isActive
+                  ? "bg-[#3A86FF] text-white"
+                  : "text-gray-400 hover:bg-[#1C2541] hover:text-white"
+              )}
             >
               {item.icon}
-              <span className="font-medium truncate">{item.label}</span>
-            </button>
-          ))}
-        </nav>
 
-        {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-gray-50">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-300 rounded-full" />
-            <div>
-              <p className="text-xs font-medium">John Doe</p>
-              <p className="text-[10px] text-gray-500">Manager</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </>
+              {/* Tooltip */}
+              <span className="pointer-events-none absolute left-14 whitespace-nowrap rounded-md bg-black px-3 py-1 text-xs text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }
