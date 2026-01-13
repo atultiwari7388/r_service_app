@@ -2,61 +2,102 @@
 
 import React, { useState } from "react";
 import {
+  ArrowLeft,
   Printer,
   Download,
   FileText,
   Clock,
+  Calendar,
   Eye,
+  Thermometer,
+  Lock,
   ChevronDown,
+  MessageSquare,
+  Phone,
+  MessageCircle,
   Plus,
   Mail,
   Check,
   X,
   ExternalLink,
-  Thermometer,
-  ArrowLeft,
-  Calendar,
-  Lock,
-  MessageSquare,
-  Phone,
-  MessageCircle,
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
-import { LoadData, Stop, LoadDocument } from "../../interface/loaddata";
-import {
-  BolPdfTemplate,
-  RateConfirmationPdfTemplate,
-  LoadSheetPdfTemplate,
-  DriverSheetPdfTemplate,
-} from "../../components/PdfTemplate";
 import Link from "next/link";
 
-interface CheckCallFormData {
-  stop: string;
-  location: string;
-  city: string;
-  state: string;
-  temperature: string;
-  source: string;
+// --- Types & Interfaces ---
+
+interface LoadData {
+  loadNumber: string;
+  status: string;
+  isInvoiced: boolean;
+  isLocked: boolean;
+  customer: string;
+  primaryFees: string;
+  feeType: string;
+  tenderedMiles: string;
+  fuelSurcharge: string;
+  targetRate: string;
+  vanType: string;
+  length: string;
+  weight: string;
+  isHazmat: boolean;
+  isTarpRequired: boolean;
+  bookingAuthority: string;
+  salesAgent: string;
+  bookingTerminal: string;
+  commodity: string;
+  declaredValue: string;
+  agency: string;
+  brokerageAgent: string;
+
+  // Financials for Metrics
+  revenue: string;
+  profit: string;
+  ratePerMile: string;
+  flatRate: string;
+  loadedMiles: string;
+  detentionTracked: string;
+  quantity: string;
+  loadType: string;
+
+  // Dispatch
+  carrier: string;
+  truck: string;
+  trailer: string;
   driver: string;
-  notes: string;
+  dispatcher: string;
 }
 
-interface DocumentViewModalProps {
-  title: string;
-  isOpen: boolean;
-  onClose: () => void;
-  type:
-    | "bol"
-    | "confirmation"
-    | "load-sheet"
-    | "driver-sheet"
-    | "pod"
-    | "insurance";
-  onViewPdf: () => void;
+interface Stop {
+  type: "PICKUP" | "DELIVERY";
+  number: number;
+  date: string;
+  timeWindow: string;
+  locationName: string;
+  address: string;
+  cityStateZip: string;
+  contact: string;
+  qty: string;
+  weight: string;
+  instructions: string;
+  puNumber?: string;
+  soNumber?: string;
+  miles: string;
+  status: string;
+  route: string;
+  temp?: string;
 }
 
-// --- Mock Data (now using LoadData type) ---
+interface LoadDocument {
+  id: string;
+  name: string;
+  type: string;
+  invoiceRequirement: boolean;
+  expiryDate: string;
+  daysRemaining: number | null;
+}
+
+// --- Mock Data ---
 
 const MOCK_LOAD_DATA: LoadData = {
   loadNumber: "203783",
@@ -96,31 +137,6 @@ const MOCK_LOAD_DATA: LoadData = {
   trailer: "TRL-5520",
   driver: "Steve Expiry",
   dispatcher: "Alex Morgan",
-
-  // Additional fields from PDF
-  bolNumber: "1495378",
-  poNumbers: ["26420580", "26437650"],
-  pickupDate: "01/17/2025",
-  deliveryDate: "01/17/2025",
-  temperature: "0.00°F",
-  equipmentType: "Reefer - Continuous",
-  pickupInstructions: "Check in at Guard Shack. PU/SO #: 143547, 143597",
-  deliveryInstructions: "Live Unload. Driver must assist with tailgating.",
-  customerContact: {
-    name: "Alex Morgan",
-    phone: "559-824-2380",
-    email: "brokerage@westernert.com",
-  },
-  carrierContact: {
-    name: "Satbir Rai",
-    phone: "661-487-3531",
-    email: "Ssbtransportinc661@yahoo.com",
-  },
-  driverContact: {
-    name: "Steve Expiry",
-    phone: "661-869-7165",
-    email: "",
-  },
 };
 
 const MOCK_STOPS: Stop[] = [
@@ -142,9 +158,6 @@ const MOCK_STOPS: Stop[] = [
     status: "Completed",
     route: "Route A",
     temp: "-10 F",
-    appointmentRef: "PU-143547",
-    bolNumber: "1495378",
-    poNumbers: ["26420580", "26437650"],
   },
   {
     type: "DELIVERY",
@@ -162,9 +175,6 @@ const MOCK_STOPS: Stop[] = [
     status: "Completed",
     route: "Route A",
     temp: "-10 F",
-    appointmentRef: "CHK5551729519NOV25",
-    bolNumber: "1495378",
-    poNumbers: ["26420580", "26437650"],
   },
 ];
 
@@ -216,7 +226,7 @@ const TABS = [
   { id: "load-docs", label: "Load Docs" },
 ];
 
-// --- Helper Components (keep as is) ---
+// --- Helper Components ---
 
 const MetricItem = ({
   label,
@@ -349,6 +359,16 @@ const ToggleSwitch = ({
   </div>
 );
 
+// --- Modal/Dialog Components ---
+
+interface DocumentViewModalProps {
+  title: string;
+  isOpen: boolean;
+  onClose: () => void;
+  type: "bol" | "confirmation";
+  onViewPdf: () => void;
+}
+
 const DocumentViewModal = ({
   title,
   isOpen,
@@ -362,40 +382,50 @@ const DocumentViewModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onViewPdf}
-              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm flex items-center gap-2"
-            >
-              <Printer className="w-4 h-4" />
-              Print
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
 
-        {/* PDF Content - Scrollable */}
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          <div className="p-4">
-            {type === "bol" && <BolPdfTemplate loadData={MOCK_LOAD_DATA} />}
-            {type === "confirmation" && (
-              <RateConfirmationPdfTemplate loadData={MOCK_LOAD_DATA} />
-            )}
-            {type === "load-sheet" && (
-              <LoadSheetPdfTemplate loadData={MOCK_LOAD_DATA} />
-            )}
-            {type === "driver-sheet" && (
-              <DriverSheetPdfTemplate loadData={MOCK_LOAD_DATA} />
-            )}
+        {/* Content */}
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">
+              Show Booking Authority
+            </span>
+            <div
+              className={`w-10 h-5 flex items-center rounded-full p-1 duration-300 ease-in-out ${
+                showBookingAuthority ? "bg-[#22c55e]" : "bg-gray-300"
+              }`}
+            >
+              <div
+                className={`bg-white w-3 h-3 rounded-full shadow-md transform duration-300 ease-in-out ${
+                  showBookingAuthority ? "translate-x-5" : ""
+                }`}
+              ></div>
+            </div>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onViewPdf}
+              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm"
+            >
+              View
+            </button>
           </div>
         </div>
       </div>
@@ -403,15 +433,24 @@ const DocumentViewModal = ({
   );
 };
 
-const CheckCallModal = ({
-  isOpen,
-  onClose,
-  onSave,
-}: {
+interface CheckCallModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: CheckCallFormData) => void;
-}) => {
+}
+
+interface CheckCallFormData {
+  stop: string;
+  location: string;
+  city: string;
+  state: string;
+  temperature: string;
+  source: string;
+  driver: string;
+  notes: string;
+}
+
+const CheckCallModal = ({ isOpen, onClose, onSave }: CheckCallModalProps) => {
   const [formData, setFormData] = useState<CheckCallFormData>({
     stop: "",
     location: "",
@@ -704,38 +743,15 @@ const ActionDropdown = ({
   );
 };
 
+// --- Main Page Component ---
+
 export default function LoadDetailsPage() {
   const [activeTab, setActiveTab] = useState("load-info");
   const [showBolModal, setShowBolModal] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [showLoadSheetModal, setShowLoadSheetModal] = useState(false);
-  const [showDriverSheetModal, setShowDriverSheetModal] = useState(false);
-  const [showPodModal, setShowPodModal] = useState(false);
-  const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const [showCheckCallModal, setShowCheckCallModal] = useState(false);
 
-  // Handle PDF viewing based on document type
-  const handleViewDocument = (docType: string) => {
-    switch (docType) {
-      case "Rate Confirmation":
-        setShowConfirmationModal(true);
-        break;
-      case "Bill of Lading":
-        setShowBolModal(true);
-        break;
-      case "Proof of Delivery":
-        setShowPodModal(true);
-        break;
-      case "Insurance":
-        setShowInsuranceModal(true);
-        break;
-      default:
-        // For other document types, fall back to opening a PDF file
-        handleViewPdf(docType.toLowerCase().replace(" ", "-"));
-    }
-  };
-
-  // Original PDF Mapping Function (for backward compatibility)
+  // PDF Mapping Function
   const handleViewPdf = (pdfType?: string) => {
     const pdfMap: Record<string, string> = {
       bol: "/LoadBolPdf.pdf",
