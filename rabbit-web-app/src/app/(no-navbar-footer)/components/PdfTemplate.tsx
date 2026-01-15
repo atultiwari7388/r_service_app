@@ -1642,6 +1642,277 @@ export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
 // DRIVER SHEET PDF TEMPLATE
 // ============================================================================
 
+// export const DriverSheetPdfTemplate = ({
+//   loadData,
+// }: {
+//   loadData: LoadData;
+// }) => {
+//   return (
+//     <PdfLayout
+//       title="DRIVER SHEET"
+//       footerText="DRIVER COPY - KEEP IN TRUCK"
+//       showPageNumber={false}
+//     >
+//       <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+//         {/* Driver Information Banner */}
+//         <div
+//           style={{
+//             backgroundColor: "#F96176",
+//             color: "#ffffff",
+//             padding: "12px",
+//             borderRadius: "4px",
+//           }}
+//         >
+//           <div
+//             style={{
+//               display: "grid",
+//               gridTemplateColumns: "1fr 1fr",
+//               gap: "20px",
+//             }}
+//           >
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "10px",
+//                   margin: "0 0 3px 0",
+//                   opacity: "0.8",
+//                 }}
+//               >
+//                 DRIVER NAME
+//               </p>
+//               <p style={{ fontSize: "20px", fontWeight: "bold", margin: "0" }}>
+//                 {loadData.driver}
+//               </p>
+//             </div>
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "10px",
+//                   margin: "0 0 3px 0",
+//                   opacity: "0.8",
+//                 }}
+//               >
+//                 LOAD #
+//               </p>
+//               <p style={{ fontSize: "20px", fontWeight: "bold", margin: "0" }}>
+//                 {loadData.loadNumber}
+//               </p>
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* Quick Reference Card */}
+//         <div
+//           style={{
+//             backgroundColor: "#fef3c7",
+//             border: "2px solid #f59e0b",
+//             padding: "12px",
+//             borderRadius: "4px",
+//           }}
+//         >
+//           <h3
+//             style={{
+//               fontSize: "14px",
+//               fontWeight: "bold",
+//               textAlign: "center",
+//               margin: "0 0 10px 0",
+//               color: "#92400e",
+//             }}
+//           >
+//             QUICK REFERENCE
+//           </h3>
+//           <div
+//             style={{
+//               display: "grid",
+//               gridTemplateColumns: "repeat(3, 1fr)",
+//               gap: "10px",
+//               textAlign: "center",
+//             }}
+//           >
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "10px",
+//                   margin: "0 0 3px 0",
+//                   color: "#92400e",
+//                 }}
+//               >
+//                 LOAD #
+//               </p>
+//               <p
+//                 style={{
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   margin: "0",
+//                   color: "#000000",
+//                 }}
+//               >
+//                 {loadData.loadNumber}
+//               </p>
+//             </div>
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "10px",
+//                   margin: "0 0 3px 0",
+//                   color: "#92400e",
+//                 }}
+//               >
+//                 TRAILER #
+//               </p>
+//               <p
+//                 style={{
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   margin: "0",
+//                   color: "#000000",
+//                 }}
+//               >
+//                 {loadData.trailer}
+//               </p>
+//             </div>
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "10px",
+//                   margin: "0 0 3px 0",
+//                   color: "#92400e",
+//                 }}
+//               >
+//                 SEAL #
+//               </p>
+//               <p
+//                 style={{
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   margin: "0",
+//                   color: "#000000",
+//                 }}
+//               >
+//                 {Math.random().toString().slice(2, 10)}
+//               </p>
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* Equipment Details */}
+//         <div
+//           style={{
+//             border: "1px solid #cccccc",
+//             padding: "12px",
+//             borderRadius: "4px",
+//           }}
+//         >
+//           <h3
+//             style={{
+//               fontSize: "14px",
+//               fontWeight: "bold",
+//               borderBottom: "1px solid #cccccc",
+//               paddingBottom: "5px",
+//               margin: "0 0 10px 0",
+//             }}
+//           >
+//             EQUIPMENT DETAILS
+//           </h3>
+//           <div
+//             style={{
+//               display: "grid",
+//               gridTemplateColumns: "repeat(3, 1fr)",
+//               gap: "15px",
+//               fontSize: "12px",
+//             }}
+//           >
+//             <div>
+//               <p style={{ margin: "0 0 5px 0" }}>
+//                 <strong>Truck #:</strong> {loadData.truck}
+//               </p>
+//               <p style={{ margin: "0" }}>
+//                 <strong>Trailer #:</strong> {loadData.trailer}
+//               </p>
+//             </div>
+//             <div>
+//               <p style={{ margin: "0 0 5px 0" }}>
+//                 <strong>Type:</strong> {loadData.vanType}
+//               </p>
+//               <p style={{ margin: "0" }}>
+//                 <strong>Length:</strong> {loadData.length}
+//               </p>
+//             </div>
+//             <div>
+//               <p style={{ margin: "0 0 5px 0" }}>
+//                 <strong>Weight:</strong> {loadData.weight} lbs
+//               </p>
+//               <p style={{ margin: "0" }}>
+//                 <strong>Temperature:</strong> {loadData.temperature || "0.00°F"}
+//               </p>
+//             </div>
+//           </div>
+//         </div>
+
+//         {/* Emergency & Contacts */}
+//         <div
+//           style={{
+//             border: "1px solid #cccccc",
+//             padding: "12px",
+//             borderRadius: "4px",
+//           }}
+//         >
+//           <h3
+//             style={{
+//               fontSize: "14px",
+//               fontWeight: "bold",
+//               borderBottom: "1px solid #cccccc",
+//               paddingBottom: "5px",
+//               margin: "0 0 10px 0",
+//             }}
+//           >
+//             EMERGENCY & CONTACTS
+//           </h3>
+//           <div
+//             style={{
+//               display: "grid",
+//               gridTemplateColumns: "1fr 1fr",
+//               gap: "20px",
+//               fontSize: "12px",
+//             }}
+//           >
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "11px",
+//                   fontWeight: "bold",
+//                   color: "#dc2626",
+//                   margin: "0 0 5px 0",
+//                 }}
+//               >
+//                 DISPATCH
+//               </p>
+//               <p style={{ margin: "0 0 3px 0" }}>{loadData.dispatcher}</p>
+//               <p style={{ margin: "0 0 3px 0" }}>Phone: (XXX) XXX-XXXX</p>
+//               <p style={{ margin: "0" }}>Available: 24/7</p>
+//             </div>
+//             <div>
+//               <p
+//                 style={{
+//                   fontSize: "11px",
+//                   fontWeight: "bold",
+//                   color: "#dc2626",
+//                   margin: "0 0 5px 0",
+//                 }}
+//               >
+//                 CARRIER
+//               </p>
+//               <p style={{ margin: "0 0 3px 0" }}>{loadData.carrier}</p>
+//               <p style={{ margin: "0 0 3px 0" }}>Satbir Rai: 661-487-3531</p>
+//               <p style={{ margin: "0" }}>Emergency: 911</p>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </PdfLayout>
+//   );
+// };
+
 export const DriverSheetPdfTemplate = ({
   loadData,
 }: {
@@ -1657,7 +1928,7 @@ export const DriverSheetPdfTemplate = ({
         {/* Driver Information Banner */}
         <div
           style={{
-            backgroundColor: "#2563eb",
+            backgroundColor: "#F96176",
             color: "#ffffff",
             padding: "12px",
             borderRadius: "4px",
@@ -1704,8 +1975,8 @@ export const DriverSheetPdfTemplate = ({
         {/* Quick Reference Card */}
         <div
           style={{
-            backgroundColor: "#fef3c7",
-            border: "2px solid #f59e0b",
+            backgroundColor: "#ffe4e6", // Light pink background
+            border: "2px solid #F96176", // Pink border instead of yellow
             padding: "12px",
             borderRadius: "4px",
           }}
@@ -1716,7 +1987,7 @@ export const DriverSheetPdfTemplate = ({
               fontWeight: "bold",
               textAlign: "center",
               margin: "0 0 10px 0",
-              color: "#92400e",
+              color: "#be123c", // Dark pink instead of brown
             }}
           >
             QUICK REFERENCE
@@ -1734,7 +2005,7 @@ export const DriverSheetPdfTemplate = ({
                 style={{
                   fontSize: "10px",
                   margin: "0 0 3px 0",
-                  color: "#92400e",
+                  color: "#be123c", // Dark pink instead of brown
                 }}
               >
                 LOAD #
@@ -1755,7 +2026,7 @@ export const DriverSheetPdfTemplate = ({
                 style={{
                   fontSize: "10px",
                   margin: "0 0 3px 0",
-                  color: "#92400e",
+                  color: "#be123c", // Dark pink instead of brown
                 }}
               >
                 TRAILER #
@@ -1776,7 +2047,7 @@ export const DriverSheetPdfTemplate = ({
                 style={{
                   fontSize: "10px",
                   margin: "0 0 3px 0",
-                  color: "#92400e",
+                  color: "#be123c", // Dark pink instead of brown
                 }}
               >
                 SEAL #
@@ -1810,6 +2081,7 @@ export const DriverSheetPdfTemplate = ({
               borderBottom: "1px solid #cccccc",
               paddingBottom: "5px",
               margin: "0 0 10px 0",
+              color: "#F96176", // Pink heading color
             }}
           >
             EQUIPMENT DETAILS
@@ -1864,6 +2136,7 @@ export const DriverSheetPdfTemplate = ({
               borderBottom: "1px solid #cccccc",
               paddingBottom: "5px",
               margin: "0 0 10px 0",
+              color: "#F96176", // Pink heading color
             }}
           >
             EMERGENCY & CONTACTS
@@ -1881,7 +2154,7 @@ export const DriverSheetPdfTemplate = ({
                 style={{
                   fontSize: "11px",
                   fontWeight: "bold",
-                  color: "#dc2626",
+                  color: "#dc2626", // Red color for dispatch
                   margin: "0 0 5px 0",
                 }}
               >
@@ -1896,7 +2169,7 @@ export const DriverSheetPdfTemplate = ({
                 style={{
                   fontSize: "11px",
                   fontWeight: "bold",
-                  color: "#dc2626",
+                  color: "#dc2626", // Red color for carrier
                   margin: "0 0 5px 0",
                 }}
               >
@@ -1912,7 +2185,6 @@ export const DriverSheetPdfTemplate = ({
     </PdfLayout>
   );
 };
-
 // ============================================================================
 // PROOF OF DELIVERY PDF TEMPLATE
 // ============================================================================
