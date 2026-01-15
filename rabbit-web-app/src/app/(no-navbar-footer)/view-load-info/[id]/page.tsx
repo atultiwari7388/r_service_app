@@ -1,36 +1,43 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
+  ArrowLeft,
   Printer,
   Download,
   FileText,
   Clock,
+  Calendar,
   Eye,
+  Thermometer,
+  Lock,
   ChevronDown,
+  MessageSquare,
+  Phone,
+  MessageCircle,
   Plus,
   Mail,
   Check,
   X,
   ExternalLink,
-  Thermometer,
-  ArrowLeft,
-  Calendar,
-  Lock,
-  MessageSquare,
-  Phone,
-  MessageCircle,
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
+import Link from "next/link";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+
 import { LoadData, Stop, LoadDocument } from "../../interface/loaddata";
 import {
+  PdfPrintWrapper,
   BolPdfTemplate,
   RateConfirmationPdfTemplate,
   LoadSheetPdfTemplate,
   DriverSheetPdfTemplate,
+  ProofOfDeliveryPdfTemplate,
+  InsuranceCertificatePdfTemplate,
 } from "../../components/PdfTemplate";
-import Link from "next/link";
 
+// --- Interfaces for this component ---
 interface CheckCallFormData {
   stop: string;
   location: string;
@@ -42,22 +49,7 @@ interface CheckCallFormData {
   notes: string;
 }
 
-interface DocumentViewModalProps {
-  title: string;
-  isOpen: boolean;
-  onClose: () => void;
-  type:
-    | "bol"
-    | "confirmation"
-    | "load-sheet"
-    | "driver-sheet"
-    | "pod"
-    | "insurance";
-  onViewPdf: () => void;
-}
-
-// --- Mock Data (now using LoadData type) ---
-
+// --- Mock Data ---
 const MOCK_LOAD_DATA: LoadData = {
   loadNumber: "203783",
   status: "Completed",
@@ -81,7 +73,6 @@ const MOCK_LOAD_DATA: LoadData = {
   declaredValue: "$10,000.00",
   agency: "Global Logistics",
   brokerageAgent: "Alex Morgan",
-
   revenue: "$3,450.00",
   profit: "$450.00",
   ratePerMile: "$2.57",
@@ -90,18 +81,15 @@ const MOCK_LOAD_DATA: LoadData = {
   detentionTracked: "0.000",
   quantity: "2343 Pallets",
   loadType: "Full Truck Load",
-
   carrier: "S.S. Transport Inc.",
   truck: "TRK-9901",
   trailer: "TRL-5520",
   driver: "Steve Expiry",
   dispatcher: "Alex Morgan",
-
-  // Additional fields from PDF
   bolNumber: "1495378",
   poNumbers: ["26420580", "26437650"],
-  pickupDate: "01/17/2025",
-  deliveryDate: "01/17/2025",
+  pickupDate: "11/15/2025",
+  deliveryDate: "11/17/2025",
   temperature: "0.00°F",
   equipmentType: "Reefer - Continuous",
   pickupInstructions: "Check in at Guard Shack. PU/SO #: 143547, 143597",
@@ -129,19 +117,18 @@ const MOCK_STOPS: Stop[] = [
     number: 1,
     date: "01/17/2025",
     timeWindow: "09:00 AM - 09:00 PM",
-    locationName: "FREEZE #1 STORE",
-    address: "3114 W APACHE",
-    cityStateZip: "SPRINGDALE, AR, 72794",
-    contact: "Warehouse Mgr",
+    locationName: "FREEZE N STORE",
+    address: "311 West Sunset Avenue",
+    cityStateZip: "Springdale, AR 72764",
+    contact: "Warehouse Manager",
     qty: "2343 Pallets",
     weight: "28,975 lbs",
-    instructions: "RJ100 #1:145847, 143897. Check in at Guard Shack.",
-    puNumber: "145847",
-    soNumber: "SO-9928",
+    instructions: "Check in at Guard Shack. PU/SO #: 143547, 143597",
+    puNumber: "1495378",
     miles: "0 Empty",
     status: "Completed",
     route: "Route A",
-    temp: "-10 F",
+    temp: "0.00°F",
     appointmentRef: "PU-143547",
     bolNumber: "1495378",
     poNumbers: ["26420580", "26437650"],
@@ -151,9 +138,9 @@ const MOCK_STOPS: Stop[] = [
     number: 2,
     date: "01/17/2025",
     timeWindow: "09:00 AM - 09:00 AM",
-    locationName: "TECHNOLOGY CENTER",
-    address: "Technology Drive",
-    cityStateZip: "Future Products, CA, 90210",
+    locationName: "Sysco Food Service - Las Vegas",
+    address: "6201 East Centennial Parkway",
+    cityStateZip: "Las Vegas, NV 89115",
     contact: "John Doe",
     qty: "2343 Pallets",
     weight: "28,975 lbs",
@@ -161,7 +148,7 @@ const MOCK_STOPS: Stop[] = [
     miles: "1,342 Loaded",
     status: "Completed",
     route: "Route A",
-    temp: "-10 F",
+    temp: "0.00°F",
     appointmentRef: "CHK5551729519NOV25",
     bolNumber: "1495378",
     poNumbers: ["26420580", "26437650"],
@@ -216,8 +203,7 @@ const TABS = [
   { id: "load-docs", label: "Load Docs" },
 ];
 
-// --- Helper Components (keep as is) ---
-
+// --- Helper Components ---
 const MetricItem = ({
   label,
   value,
@@ -349,30 +335,183 @@ const ToggleSwitch = ({
   </div>
 );
 
+// --- PDF Generation Function ---
+const generatePdf = async (
+  element: HTMLElement,
+  filename: string
+): Promise<void> => {
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      width: element.offsetWidth,
+      height: element.offsetHeight,
+    });
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let position = 0;
+    let heightLeft = imgHeight;
+    let page = 0;
+
+    // Add first page
+    pdf.addImage(
+      canvas,
+      "PNG",
+      0,
+      position,
+      imgWidth,
+      imgHeight,
+      undefined,
+      "FAST"
+    );
+    heightLeft -= pdfHeight;
+
+    // Add additional pages if needed
+    while (heightLeft > 0) {
+      position = -pdfHeight * (page + 1);
+      pdf.addPage();
+      pdf.addImage(
+        canvas,
+        "PNG",
+        0,
+        position,
+        imgWidth,
+        imgHeight,
+        undefined,
+        "FAST"
+      );
+      heightLeft -= pdfHeight;
+      page++;
+    }
+
+    pdf.save(filename);
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    throw new Error("Failed to generate PDF");
+  }
+};
+
+// --- Document View Modal Component ---
+interface DocumentViewModalProps {
+  title: string;
+  isOpen: boolean;
+  onClose: () => void;
+  type:
+    | "rate-confirmation"
+    | "bol"
+    | "load-sheet"
+    | "driver-sheet"
+    | "pod"
+    | "insurance";
+  loadData: LoadData;
+}
+
 const DocumentViewModal = ({
   title,
   isOpen,
   onClose,
   type,
-  onViewPdf,
+  loadData,
 }: DocumentViewModalProps) => {
-  const [showBookingAuthority, setShowBookingAuthority] = useState(true);
+  const pdfRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handlePrintPdf = async () => {
+    if (!pdfRef.current || isGenerating) return;
+
+    setIsGenerating(true);
+    try {
+      let filename = "";
+
+      switch (type) {
+        case "rate-confirmation":
+          filename = `Rate_Confirmation_${loadData.loadNumber}.pdf`;
+          break;
+        case "bol":
+          filename = `Bill_of_Lading_${loadData.loadNumber}.pdf`;
+          break;
+        case "load-sheet":
+          filename = `Load_Sheet_${loadData.loadNumber}.pdf`;
+          break;
+        case "driver-sheet":
+          filename = `Driver_Sheet_${loadData.loadNumber}.pdf`;
+          break;
+        case "pod":
+          filename = `Proof_of_Delivery_${loadData.loadNumber}.pdf`;
+          break;
+        case "insurance":
+          filename = `Insurance_Certificate_${loadData.loadNumber}.pdf`;
+          break;
+        default:
+          filename = `Document_${loadData.loadNumber}.pdf`;
+      }
+
+      await generatePdf(pdfRef.current, filename);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (!isOpen) return null;
 
+  const renderPdfTemplate = () => {
+    switch (type) {
+      case "rate-confirmation":
+        return <RateConfirmationPdfTemplate loadData={loadData} />;
+      case "bol":
+        return <BolPdfTemplate loadData={loadData} />;
+      case "load-sheet":
+        return <LoadSheetPdfTemplate loadData={loadData} />;
+      case "driver-sheet":
+        return <DriverSheetPdfTemplate loadData={loadData} />;
+      case "pod":
+        return <ProofOfDeliveryPdfTemplate loadData={loadData} />;
+      case "insurance":
+        return <InsuranceCertificatePdfTemplate loadData={loadData} />;
+      default:
+        return <RateConfirmationPdfTemplate loadData={loadData} />;
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={onViewPdf}
-              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm flex items-center gap-2"
+              onClick={handlePrintPdf}
+              disabled={isGenerating}
+              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Printer className="w-4 h-4" />
-              Print
+              {isGenerating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Printer className="w-4 h-4" />
+                  Print/Download PDF
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
@@ -383,19 +522,15 @@ const DocumentViewModal = ({
           </div>
         </div>
 
-        {/* PDF Content - Scrollable */}
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          <div className="p-4">
-            {type === "bol" && <BolPdfTemplate loadData={MOCK_LOAD_DATA} />}
-            {type === "confirmation" && (
-              <RateConfirmationPdfTemplate loadData={MOCK_LOAD_DATA} />
-            )}
-            {type === "load-sheet" && (
-              <LoadSheetPdfTemplate loadData={MOCK_LOAD_DATA} />
-            )}
-            {type === "driver-sheet" && (
-              <DriverSheetPdfTemplate loadData={MOCK_LOAD_DATA} />
-            )}
+        {/* Hidden PDF element for generation */}
+        <div className="absolute -left-[9999px]">
+          <PdfPrintWrapper ref={pdfRef}>{renderPdfTemplate()}</PdfPrintWrapper>
+        </div>
+
+        {/* PDF Preview - Scrollable */}
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-4 bg-gray-100">
+          <div className="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto">
+            {renderPdfTemplate()}
           </div>
         </div>
       </div>
@@ -403,6 +538,7 @@ const DocumentViewModal = ({
   );
 };
 
+// --- Check Call Modal Component ---
 const CheckCallModal = ({
   isOpen,
   onClose,
@@ -511,7 +647,7 @@ const CheckCallModal = ({
             <FormLabel>Driver</FormLabel>
             <SelectField
               value={formData.driver}
-              options={["Swam Singh", "Steve Expiry", "John Driver"]}
+              options={["Swarn Singh", "Steve Expiry", "John Driver"]}
               placeholder="Select driver"
               onChange={(e) => handleInputChange("driver", e.target.value)}
             />
@@ -567,7 +703,6 @@ const CheckCallModal = ({
 };
 
 // --- Action Dropdown Component ---
-
 interface ActionDropdownProps {
   type: "bol" | "load-sheet";
   onViewBol?: () => void;
@@ -704,17 +839,22 @@ const ActionDropdown = ({
   );
 };
 
+// --- Main Page Component ---
 export default function LoadDetailsPage() {
   const [activeTab, setActiveTab] = useState("load-info");
-  const [showBolModal, setShowBolModal] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showBolModal, setShowBolModal] = useState(false);
   const [showLoadSheetModal, setShowLoadSheetModal] = useState(false);
   const [showDriverSheetModal, setShowDriverSheetModal] = useState(false);
   const [showPodModal, setShowPodModal] = useState(false);
   const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const [showCheckCallModal, setShowCheckCallModal] = useState(false);
 
-  // Handle PDF viewing based on document type
+  const handleSaveCheckCall = (data: CheckCallFormData) => {
+    console.log("Check call data saved:", data);
+    alert("Check call saved successfully!");
+  };
+
   const handleViewDocument = (docType: string) => {
     switch (docType) {
       case "Rate Confirmation":
@@ -729,37 +869,15 @@ export default function LoadDetailsPage() {
       case "Insurance":
         setShowInsuranceModal(true);
         break;
+      case "Load Sheet":
+        setShowLoadSheetModal(true);
+        break;
+      case "Driver Sheet":
+        setShowDriverSheetModal(true);
+        break;
       default:
-        // For other document types, fall back to opening a PDF file
-        handleViewPdf(docType.toLowerCase().replace(" ", "-"));
+        console.log(`Viewing document type: ${docType}`);
     }
-  };
-
-  // Original PDF Mapping Function (for backward compatibility)
-  const handleViewPdf = (pdfType?: string) => {
-    const pdfMap: Record<string, string> = {
-      bol: "/LoadBolPdf.pdf",
-      confirmation: "/LoadConfirmationPdfV2.pdf",
-      "load-sheet": "/DriverSheetPdfModal.pdf",
-      "swarn-sheet": "/LoadInfoSheet.pdf",
-      "load-driver-sheet": "/DriverSheetPdfModal.pdf",
-      "rate-confirmation": "/RateConfirmation.pdf",
-      "bill-of-lading": "/LoadBolPdf.pdf",
-      "proof-of-delivery": "/ProofOfDelivery.pdf",
-      insurance: "/InsuranceCertificate.pdf",
-      receipt: "/Receipt.pdf",
-      default: "/sample.pdf",
-    };
-
-    const pdfPath = pdfType
-      ? pdfMap[pdfType] || pdfMap.default
-      : pdfMap.default;
-    window.open(pdfPath, "_blank");
-  };
-
-  const handleSaveCheckCall = (data: CheckCallFormData) => {
-    console.log("Check call data saved:", data);
-    alert("Check call saved successfully!");
   };
 
   return (
@@ -1116,21 +1234,19 @@ export default function LoadDetailsPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <ActionDropdown
                     type="bol"
-                    onViewBol={() => setShowBolModal(true)}
                     onViewConfirmation={() => setShowConfirmationModal(true)}
+                    onViewBol={() => setShowBolModal(true)}
                     onSendERate={() => {
                       alert("Sending e-rate confirmation...");
-                      handleViewPdf("rate-confirmation");
+                      // You could implement email functionality here
                     }}
                   />
 
                   <ActionDropdown
                     type="load-sheet"
-                    onViewLoadSheet={() => handleViewPdf("load-sheet")}
-                    onViewSwarnSheet={() => handleViewPdf("swarn-sheet")}
-                    onViewLoadDriverSheet={() =>
-                      handleViewPdf("load-driver-sheet")
-                    }
+                    onViewLoadSheet={() => setShowLoadSheetModal(true)}
+                    onViewSwarnSheet={() => setShowLoadSheetModal(true)}
+                    onViewLoadDriverSheet={() => setShowDriverSheetModal(true)}
                   />
 
                   <button
@@ -1315,19 +1431,7 @@ export default function LoadDetailsPage() {
                         {/* VIEW */}
                         <td className="px-6 py-4 text-center">
                           <button
-                            onClick={() => {
-                              const pdfMap: Record<string, string> = {
-                                "Rate Confirmation": "/RateConfirmation.pdf",
-                                "Bill of Lading": "/LoadBolPdf.pdf",
-                                "Proof of Delivery": "/ProofOfDelivery.pdf",
-                                Insurance: "/InsuranceCertificate.pdf",
-                                Receipt: "/Receipt.pdf",
-                                default: "/sample.pdf",
-                              };
-                              const pdfPath =
-                                pdfMap[doc.type] || pdfMap.default;
-                              window.open(pdfPath, "_blank");
-                            }}
+                            onClick={() => handleViewDocument(doc.type)}
                             className="p-1.5 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition"
                           >
                             <Eye className="w-4 h-4" />
@@ -1405,23 +1509,56 @@ export default function LoadDetailsPage() {
         </main>
       </div>
 
-      {/* Modals */}
+      {/* Document View Modals */}
       <DocumentViewModal
-        title="BOL/Conf"
+        title="Rate Confirmation"
+        isOpen={showConfirmationModal}
+        onClose={() => setShowConfirmationModal(false)}
+        type="rate-confirmation"
+        loadData={MOCK_LOAD_DATA}
+      />
+
+      <DocumentViewModal
+        title="Bill of Lading"
         isOpen={showBolModal}
         onClose={() => setShowBolModal(false)}
         type="bol"
-        onViewPdf={() => handleViewPdf("bol")}
+        loadData={MOCK_LOAD_DATA}
       />
 
       <DocumentViewModal
-        title="View Confirmation"
-        isOpen={showConfirmationModal}
-        onClose={() => setShowConfirmationModal(false)}
-        type="confirmation"
-        onViewPdf={() => handleViewPdf("confirmation")}
+        title="Load Sheet"
+        isOpen={showLoadSheetModal}
+        onClose={() => setShowLoadSheetModal(false)}
+        type="load-sheet"
+        loadData={MOCK_LOAD_DATA}
       />
 
+      <DocumentViewModal
+        title="Driver Sheet"
+        isOpen={showDriverSheetModal}
+        onClose={() => setShowDriverSheetModal(false)}
+        type="driver-sheet"
+        loadData={MOCK_LOAD_DATA}
+      />
+
+      <DocumentViewModal
+        title="Proof of Delivery"
+        isOpen={showPodModal}
+        onClose={() => setShowPodModal(false)}
+        type="pod"
+        loadData={MOCK_LOAD_DATA}
+      />
+
+      <DocumentViewModal
+        title="Insurance Certificate"
+        isOpen={showInsuranceModal}
+        onClose={() => setShowInsuranceModal(false)}
+        type="insurance"
+        loadData={MOCK_LOAD_DATA}
+      />
+
+      {/* Check Call Modal */}
       <CheckCallModal
         isOpen={showCheckCallModal}
         onClose={() => setShowCheckCallModal(false)}
