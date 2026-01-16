@@ -1642,277 +1642,6 @@ export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
 // DRIVER SHEET PDF TEMPLATE
 // ============================================================================
 
-// export const DriverSheetPdfTemplate = ({
-//   loadData,
-// }: {
-//   loadData: LoadData;
-// }) => {
-//   return (
-//     <PdfLayout
-//       title="DRIVER SHEET"
-//       footerText="DRIVER COPY - KEEP IN TRUCK"
-//       showPageNumber={false}
-//     >
-//       <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-//         {/* Driver Information Banner */}
-//         <div
-//           style={{
-//             backgroundColor: "#F96176",
-//             color: "#ffffff",
-//             padding: "12px",
-//             borderRadius: "4px",
-//           }}
-//         >
-//           <div
-//             style={{
-//               display: "grid",
-//               gridTemplateColumns: "1fr 1fr",
-//               gap: "20px",
-//             }}
-//           >
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "10px",
-//                   margin: "0 0 3px 0",
-//                   opacity: "0.8",
-//                 }}
-//               >
-//                 DRIVER NAME
-//               </p>
-//               <p style={{ fontSize: "20px", fontWeight: "bold", margin: "0" }}>
-//                 {loadData.driver}
-//               </p>
-//             </div>
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "10px",
-//                   margin: "0 0 3px 0",
-//                   opacity: "0.8",
-//                 }}
-//               >
-//                 LOAD #
-//               </p>
-//               <p style={{ fontSize: "20px", fontWeight: "bold", margin: "0" }}>
-//                 {loadData.loadNumber}
-//               </p>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Quick Reference Card */}
-//         <div
-//           style={{
-//             backgroundColor: "#fef3c7",
-//             border: "2px solid #f59e0b",
-//             padding: "12px",
-//             borderRadius: "4px",
-//           }}
-//         >
-//           <h3
-//             style={{
-//               fontSize: "14px",
-//               fontWeight: "bold",
-//               textAlign: "center",
-//               margin: "0 0 10px 0",
-//               color: "#92400e",
-//             }}
-//           >
-//             QUICK REFERENCE
-//           </h3>
-//           <div
-//             style={{
-//               display: "grid",
-//               gridTemplateColumns: "repeat(3, 1fr)",
-//               gap: "10px",
-//               textAlign: "center",
-//             }}
-//           >
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "10px",
-//                   margin: "0 0 3px 0",
-//                   color: "#92400e",
-//                 }}
-//               >
-//                 LOAD #
-//               </p>
-//               <p
-//                 style={{
-//                   fontSize: "18px",
-//                   fontWeight: "bold",
-//                   margin: "0",
-//                   color: "#000000",
-//                 }}
-//               >
-//                 {loadData.loadNumber}
-//               </p>
-//             </div>
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "10px",
-//                   margin: "0 0 3px 0",
-//                   color: "#92400e",
-//                 }}
-//               >
-//                 TRAILER #
-//               </p>
-//               <p
-//                 style={{
-//                   fontSize: "18px",
-//                   fontWeight: "bold",
-//                   margin: "0",
-//                   color: "#000000",
-//                 }}
-//               >
-//                 {loadData.trailer}
-//               </p>
-//             </div>
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "10px",
-//                   margin: "0 0 3px 0",
-//                   color: "#92400e",
-//                 }}
-//               >
-//                 SEAL #
-//               </p>
-//               <p
-//                 style={{
-//                   fontSize: "18px",
-//                   fontWeight: "bold",
-//                   margin: "0",
-//                   color: "#000000",
-//                 }}
-//               >
-//                 {Math.random().toString().slice(2, 10)}
-//               </p>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Equipment Details */}
-//         <div
-//           style={{
-//             border: "1px solid #cccccc",
-//             padding: "12px",
-//             borderRadius: "4px",
-//           }}
-//         >
-//           <h3
-//             style={{
-//               fontSize: "14px",
-//               fontWeight: "bold",
-//               borderBottom: "1px solid #cccccc",
-//               paddingBottom: "5px",
-//               margin: "0 0 10px 0",
-//             }}
-//           >
-//             EQUIPMENT DETAILS
-//           </h3>
-//           <div
-//             style={{
-//               display: "grid",
-//               gridTemplateColumns: "repeat(3, 1fr)",
-//               gap: "15px",
-//               fontSize: "12px",
-//             }}
-//           >
-//             <div>
-//               <p style={{ margin: "0 0 5px 0" }}>
-//                 <strong>Truck #:</strong> {loadData.truck}
-//               </p>
-//               <p style={{ margin: "0" }}>
-//                 <strong>Trailer #:</strong> {loadData.trailer}
-//               </p>
-//             </div>
-//             <div>
-//               <p style={{ margin: "0 0 5px 0" }}>
-//                 <strong>Type:</strong> {loadData.vanType}
-//               </p>
-//               <p style={{ margin: "0" }}>
-//                 <strong>Length:</strong> {loadData.length}
-//               </p>
-//             </div>
-//             <div>
-//               <p style={{ margin: "0 0 5px 0" }}>
-//                 <strong>Weight:</strong> {loadData.weight} lbs
-//               </p>
-//               <p style={{ margin: "0" }}>
-//                 <strong>Temperature:</strong> {loadData.temperature || "0.00°F"}
-//               </p>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Emergency & Contacts */}
-//         <div
-//           style={{
-//             border: "1px solid #cccccc",
-//             padding: "12px",
-//             borderRadius: "4px",
-//           }}
-//         >
-//           <h3
-//             style={{
-//               fontSize: "14px",
-//               fontWeight: "bold",
-//               borderBottom: "1px solid #cccccc",
-//               paddingBottom: "5px",
-//               margin: "0 0 10px 0",
-//             }}
-//           >
-//             EMERGENCY & CONTACTS
-//           </h3>
-//           <div
-//             style={{
-//               display: "grid",
-//               gridTemplateColumns: "1fr 1fr",
-//               gap: "20px",
-//               fontSize: "12px",
-//             }}
-//           >
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "11px",
-//                   fontWeight: "bold",
-//                   color: "#dc2626",
-//                   margin: "0 0 5px 0",
-//                 }}
-//               >
-//                 DISPATCH
-//               </p>
-//               <p style={{ margin: "0 0 3px 0" }}>{loadData.dispatcher}</p>
-//               <p style={{ margin: "0 0 3px 0" }}>Phone: (XXX) XXX-XXXX</p>
-//               <p style={{ margin: "0" }}>Available: 24/7</p>
-//             </div>
-//             <div>
-//               <p
-//                 style={{
-//                   fontSize: "11px",
-//                   fontWeight: "bold",
-//                   color: "#dc2626",
-//                   margin: "0 0 5px 0",
-//                 }}
-//               >
-//                 CARRIER
-//               </p>
-//               <p style={{ margin: "0 0 3px 0" }}>{loadData.carrier}</p>
-//               <p style={{ margin: "0 0 3px 0" }}>Satbir Rai: 661-487-3531</p>
-//               <p style={{ margin: "0" }}>Emergency: 911</p>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </PdfLayout>
-//   );
-// };
-
 export const DriverSheetPdfTemplate = ({
   loadData,
 }: {
@@ -2863,6 +2592,257 @@ export const InsuranceCertificatePdfTemplate = ({
             below. The insurance afforded by the policies described herein is
             subject to all the terms, exclusions and conditions of such
             policies.
+          </p>
+        </div>
+      </div>
+    </PdfLayout>
+  );
+};
+
+// ============================================================================
+// View Load Info PDF TEMPLATE
+// ============================================================================
+
+export const ViewLoadInfoPdfTemplate = ({
+  loadData,
+}: {
+  loadData: LoadData;
+}) => {
+  // Mock stops data for the template
+  const mockStops = [
+    {
+      type: "PICKUP",
+      location: "FREEZE N STORE",
+      address: "311 West Sunset Avenue, Springdale, AR, 72764",
+      date: "11/15/2025",
+      timeWindow: "08:00 AM - 01:00 PM",
+      weight: "28975 lbs",
+      stopType: "Live Load",
+      qty: "2343 Pallets",
+      commodity: "Frozen Products",
+      equipment: "Reefer / Continuous / 0.00° F",
+      instructions: "PU/SO #: 143547, 143597",
+      shipmentBol: "1495378",
+      pickupNumber: "1495378",
+    },
+    {
+      type: "DELIVERY",
+      location: "Sysco Food Service - Las Vegas",
+      address: "6201 East Centennial Parkway, Las Vegas, NV, 89115",
+      date: "11/17/2025",
+      timeWindow: "09:00 AM - 09:00 AM",
+      weight: "28975 lbs",
+      stopType: "Live Unload",
+      qty: "2343 Pallets",
+      commodity: "Frozen Products",
+      instructions:
+        "Delivery Conf. #: CHK5551729519nov25 ApptRef# PU/SO #: 143547, 143597",
+    },
+  ];
+
+  return (
+    <PdfLayout
+      title="LOAD DETAILS INFO"
+      footerText="FOR INTERNAL USE ONLY"
+      showPageNumber={false}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
+        {/* Header Section */}
+        <div style={{ textAlign: "center", marginBottom: "10px" }}>
+          <h1
+            style={{
+              fontSize: "24px",
+              fontWeight: "bold",
+              margin: "0 0 5px 0",
+              color: "#1f2937",
+            }}
+          >
+            Load Details Info
+          </h1>
+          <div
+            style={{
+              borderBottom: "2px solid #dc2626",
+              width: "100px",
+              margin: "0 auto",
+            }}
+          ></div>
+        </div>
+
+        {/* Load Information */}
+        <div>
+          <h2
+            style={{
+              fontSize: "18px",
+              fontWeight: "bold",
+              margin: "0 0 10px 0",
+              color: "#dc2626",
+            }}
+          >
+            Load # {loadData.loadNumber}
+          </h2>
+
+          <div style={{ marginBottom: "15px" }}>
+            <p style={{ fontSize: "12px", margin: "0 0 5px 0" }}>
+              <strong>Carrier:</strong> {loadData.carrier}
+            </p>
+            <p style={{ fontSize: "12px", margin: "0 0 5px 0" }}>
+              <strong>Vehicle:</strong> {loadData.truck || "Not Available"}
+            </p>
+            <p style={{ fontSize: "12px", margin: "0 0 5px 0" }}>
+              <strong>Trailer:</strong> {loadData.trailer || "Not Available"}
+            </p>
+          </div>
+
+          <div
+            style={{ borderTop: "1px solid #cccccc", margin: "20px 0" }}
+          ></div>
+
+          {/* Stops Section */}
+          {mockStops.map((stop, index) => (
+            <div key={index} style={{ marginBottom: "30px" }}>
+              {/* Stop Header */}
+              <h3
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  margin: "0 0 10px 0",
+                  backgroundColor:
+                    stop.type === "PICKUP" ? "#dcfce7" : "#fef2f2",
+                  padding: "8px 12px",
+                  borderRadius: "4px",
+                  borderLeft: `4px solid ${
+                    stop.type === "PICKUP" ? "#10b981" : "#dc2626"
+                  }`,
+                }}
+              >
+                Stop {index + 1} - {stop.type}
+              </h3>
+
+              {/* Stop Location */}
+              <div style={{ marginBottom: "10px" }}>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    margin: "0 0 5px 0",
+                  }}
+                >
+                  {stop.location}
+                </p>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    margin: "0 0 5px 0",
+                    color: "#666666",
+                  }}
+                >
+                  {stop.address}
+                </p>
+                <p style={{ fontSize: "12px", margin: "0", color: "#666666" }}>
+                  {stop.date} | {stop.timeWindow}
+                </p>
+              </div>
+
+              {/* Stop Details Grid */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: "10px",
+                  fontSize: "12px",
+                  marginBottom: "10px",
+                }}
+              >
+                <div>
+                  <p style={{ margin: "0 0 3px 0" }}>
+                    <strong>Weight:</strong> {stop.weight}
+                  </p>
+                  <p style={{ margin: "0 0 3px 0" }}>
+                    <strong>Stop {stop.type.toLowerCase()}:</strong>{" "}
+                    {stop.stopType}
+                  </p>
+                  <p style={{ margin: "0 0 3px 0" }}>
+                    <strong>Qty:</strong> {stop.qty}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 3px 0" }}>
+                    <strong>Commodity:</strong> {stop.commodity}
+                  </p>
+                  {stop.equipment && (
+                    <p style={{ margin: "0 0 3px 0" }}>
+                      <strong>Equipment / Reefer Mode / Temperature:</strong>{" "}
+                      {stop.equipment}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div
+                style={{
+                  backgroundColor: "#f8fafc",
+                  padding: "10px",
+                  borderRadius: "4px",
+                  border: "1px solid #e2e8f0",
+                  marginBottom: "10px",
+                }}
+              >
+                <p style={{ fontSize: "12px", margin: "0" }}>
+                  <strong>Instructions:</strong> {stop.instructions}
+                </p>
+              </div>
+
+              {/* Additional Info if available */}
+              {(stop.shipmentBol || stop.pickupNumber) && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: "10px",
+                    fontSize: "12px",
+                  }}
+                >
+                  {stop.shipmentBol && (
+                    <p style={{ margin: "0" }}>
+                      <strong>Shipment BOL:</strong> {stop.shipmentBol}
+                    </p>
+                  )}
+                  {stop.pickupNumber && (
+                    <p style={{ margin: "0" }}>
+                      <strong>Pickup #:</strong> {stop.pickupNumber}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Separator between stops */}
+              {index < mockStops.length - 1 && (
+                <div
+                  style={{
+                    borderTop: "1px dashed #cccccc",
+                    margin: "20px 0",
+                  }}
+                ></div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer Note */}
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: "10px",
+            color: "#666666",
+            marginTop: "20px",
+            paddingTop: "10px",
+            borderTop: "1px solid #e5e7eb",
+          }}
+        >
+          <p style={{ margin: "0" }}>
+            This document contains confidential information. Do not share
+            externally.
           </p>
         </div>
       </div>

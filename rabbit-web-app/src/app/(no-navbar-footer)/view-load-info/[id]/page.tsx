@@ -35,6 +35,7 @@ import {
   DriverSheetPdfTemplate,
   ProofOfDeliveryPdfTemplate,
   InsuranceCertificatePdfTemplate,
+  ViewLoadInfoPdfTemplate,
 } from "../../components/PdfTemplate";
 
 // --- Interfaces for this component ---
@@ -415,7 +416,8 @@ interface DocumentViewModalProps {
     | "load-sheet"
     | "driver-sheet"
     | "pod"
-    | "insurance";
+    | "insurance"
+    | "view-load-info";
   loadData: LoadData;
 }
 
@@ -455,6 +457,8 @@ const DocumentViewModal = ({
         case "insurance":
           filename = `Insurance_Certificate_${loadData.loadNumber}.pdf`;
           break;
+        case "view-load-info":
+          filename = `Load_Information_${loadData.loadNumber}.pdf`;
         default:
           filename = `Document_${loadData.loadNumber}.pdf`;
       }
@@ -484,6 +488,8 @@ const DocumentViewModal = ({
         return <ProofOfDeliveryPdfTemplate loadData={loadData} />;
       case "insurance":
         return <InsuranceCertificatePdfTemplate loadData={loadData} />;
+      case "view-load-info":
+        return <ViewLoadInfoPdfTemplate loadData={loadData} />;
       default:
         return <RateConfirmationPdfTemplate loadData={loadData} />;
     }
@@ -849,6 +855,8 @@ export default function LoadDetailsPage() {
   const [showPodModal, setShowPodModal] = useState(false);
   const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const [showCheckCallModal, setShowCheckCallModal] = useState(false);
+  const [showLoadInfoModal, setShowLoadInfoModal] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleSaveCheckCall = (data: CheckCallFormData) => {
     console.log("Check call data saved:", data);
@@ -874,6 +882,9 @@ export default function LoadDetailsPage() {
         break;
       case "Driver Sheet":
         setShowDriverSheetModal(true);
+        break;
+      case "View Load Info":
+        setShowLoadInfoModal(true);
         break;
       default:
         console.log(`Viewing document type: ${docType}`);
@@ -1221,9 +1232,54 @@ export default function LoadDetailsPage() {
                           <button className="p-1 hover:bg-green-50 rounded text-green-500">
                             <Phone className="w-3.5 h-3.5" />
                           </button>
-                          <button className="p-1 hover:bg-gray-100 rounded text-gray-500">
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="relative">
+                            <button
+                              onClick={() => setIsOpen(!isOpen)}
+                              className="p-1 hover:bg-gray-100 rounded text-gray-500"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                            {isOpen && (
+                              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                                <button
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    alert("Send to driver clicked");
+                                  }}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  Send to driver
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    alert("SMS to driver clicked");
+                                  }}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  SMS to driver
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    alert("SMS load info clicked");
+                                  }}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  SMS load info
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    setShowLoadInfoModal(true);
+                                  }}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  View load info
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1563,6 +1619,13 @@ export default function LoadDetailsPage() {
         isOpen={showCheckCallModal}
         onClose={() => setShowCheckCallModal(false)}
         onSave={handleSaveCheckCall}
+      />
+      <DocumentViewModal
+        title="Load Information"
+        isOpen={showLoadInfoModal}
+        onClose={() => setShowLoadInfoModal(false)}
+        type="view-load-info"
+        loadData={MOCK_LOAD_DATA}
       />
     </>
   );
