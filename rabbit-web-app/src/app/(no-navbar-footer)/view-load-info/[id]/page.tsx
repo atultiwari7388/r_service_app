@@ -545,6 +545,7 @@ const DocumentViewModal = ({
 };
 
 // --- Check Call Modal Component ---
+// --- Check Call Modal Component ---
 const CheckCallModal = ({
   isOpen,
   onClose,
@@ -579,9 +580,9 @@ const CheckCallModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-10 flex-shrink-0">
           <h2 className="text-lg font-bold text-gray-900">Send Check Calls</h2>
           <button
             onClick={onClose}
@@ -591,118 +592,135 @@ const CheckCallModal = ({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <FormLabel>Stop *</FormLabel>
-            <SelectField
-              value={formData.stop}
-              options={["Stop 1", "Stop 2", "Stop 3"]}
-              placeholder="Select Stop"
-              onChange={(e) => handleInputChange("stop", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <FormLabel>Location *</FormLabel>
-            <div className="flex gap-2">
-              <InputField
-                value={formData.location}
-                placeholder="Enter location"
-                onChange={(e) => handleInputChange("location", e.target.value)}
+        {/* Form - Scrollable */}
+        <div className="overflow-y-auto flex-1">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+            {/* Stop */}
+            <div>
+              <FormLabel>Stop *</FormLabel>
+              <SelectField
+                value={formData.stop}
+                options={["Stop 1", "Stop 2", "Stop 3"]}
+                placeholder="Select Stop"
+                onChange={(e) => handleInputChange("stop", e.target.value)}
               />
+            </div>
+
+            {/* Location */}
+            <div>
+              <FormLabel>Location *</FormLabel>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1">
+                  <InputField
+                    value={formData.location}
+                    placeholder="Enter location"
+                    onChange={(e) =>
+                      handleInputChange("location", e.target.value)
+                    }
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border border-gray-300 transition-colors whitespace-nowrap flex-shrink-0"
+                >
+                  Get Latest Location
+                </button>
+              </div>
+            </div>
+
+            {/* City & State Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <FormLabel>City *</FormLabel>
+                <InputField
+                  value={formData.city}
+                  placeholder="Enter city"
+                  onChange={(e) => handleInputChange("city", e.target.value)}
+                />
+              </div>
+              <div>
+                <FormLabel>State *</FormLabel>
+                <SelectField
+                  value={formData.state}
+                  options={["CA", "NY", "TX", "FL", "IL", "AR"]}
+                  placeholder="Select"
+                  onChange={(e) => handleInputChange("state", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Source & Driver Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <FormLabel>Source</FormLabel>
+                <SelectField
+                  value={formData.source}
+                  options={["Driver", "Dispatcher", "Customer", "Carrier"]}
+                  placeholder="Select source"
+                  onChange={(e) => handleInputChange("source", e.target.value)}
+                />
+              </div>
+              <div>
+                <FormLabel>Driver</FormLabel>
+                <SelectField
+                  value={formData.driver}
+                  options={["Swarn Singh", "Steve Expiry", "John Driver"]}
+                  placeholder="Select driver"
+                  onChange={(e) => handleInputChange("driver", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <FormLabel>Notes</FormLabel>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => handleInputChange("notes", e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow min-h-[80px] resize-vertical"
+                placeholder="Enter notes"
+              />
+            </div>
+
+            {/* Temperature */}
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                <FormLabel>Temperature</FormLabel>
+                <button
+                  type="button"
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap self-end sm:self-auto"
+                >
+                  Get Latest Temperature
+                </button>
+              </div>
+              <InputField
+                type="text"
+                value={formData.temperature}
+                placeholder="Enter temperature"
+                onChange={(e) =>
+                  handleInputChange("temperature", e.target.value)
+                }
+              />
+            </div>
+
+            {/* Buttons - Fixed at bottom on mobile */}
+            <div className="pt-4 pb-4 sm:pb-0 flex flex-col sm:flex-row justify-end gap-3 border-t border-gray-100 sticky bottom-0 bg-white sm:static">
               <button
                 type="button"
-                className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border border-gray-300 transition-colors whitespace-nowrap"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors w-full sm:w-auto"
               >
-                Get Latest Location
+                Cancel
               </button>
-            </div>
-          </div>
-
-          <div>
-            <FormLabel>City *</FormLabel>
-            <InputField
-              value={formData.city}
-              placeholder="Enter city"
-              onChange={(e) => handleInputChange("city", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <FormLabel>State *</FormLabel>
-            <SelectField
-              value={formData.state}
-              options={["CA", "NY", "TX", "FL", "IL", "AR"]}
-              placeholder="Select"
-              onChange={(e) => handleInputChange("state", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <FormLabel>Source</FormLabel>
-            <SelectField
-              value={formData.source}
-              options={["Driver", "Dispatcher", "Customer", "Carrier"]}
-              placeholder="Select source"
-              onChange={(e) => handleInputChange("source", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <FormLabel>Driver</FormLabel>
-            <SelectField
-              value={formData.driver}
-              options={["Swarn Singh", "Steve Expiry", "John Driver"]}
-              placeholder="Select driver"
-              onChange={(e) => handleInputChange("driver", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <FormLabel>Notes</FormLabel>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => handleInputChange("notes", e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow min-h-[80px]"
-              placeholder="Enter notes"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <FormLabel>Temperature</FormLabel>
               <button
-                type="button"
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                type="submit"
+                className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm w-full sm:w-auto"
               >
-                Get Latest Temperature
+                Save
               </button>
             </div>
-            <InputField
-              type="text"
-              value={formData.temperature}
-              placeholder="Enter temperature"
-              onChange={(e) => handleInputChange("temperature", e.target.value)}
-            />
-          </div>
-
-          <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm"
-            >
-              Save
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
