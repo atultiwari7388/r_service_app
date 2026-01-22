@@ -111,6 +111,8 @@ interface FormData {
   brokerageAgent: string;
   customerLoadNotes: string;
   dispatchNotes: string;
+  yardLocation: string; // New field
+  internalNotes: string; // New field
 
   // 2. Pickups (Array)
   pickups: Stop[];
@@ -142,13 +144,10 @@ interface FormData {
   autoTrack: boolean;
   autoInvoice: boolean;
 
-  // 7. Internal Notes
-  internalNotes: string;
-
-  // 8. Status
+  // 7. Status
   status: string;
 
-  // 9. Documents
+  // 8. Documents
   documents: DocumentFile[];
 }
 
@@ -544,6 +543,8 @@ export default function CreateNewLoadPage() {
   // --- State Management ---
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+
   const [formData, setFormData] = useState<FormData>({
     // 1. Customer & Load Header
     customerSearch: "",
@@ -567,6 +568,8 @@ export default function CreateNewLoadPage() {
     brokerageAgent: "",
     customerLoadNotes: "",
     dispatchNotes: "",
+    yardLocation: "", // New field
+    internalNotes: "", // New field
 
     // 2. Pickups (Array)
     pickups: [
@@ -678,13 +681,10 @@ export default function CreateNewLoadPage() {
     autoTrack: true,
     autoInvoice: false,
 
-    // 7. Internal Notes
-    internalNotes: "",
-
-    // 8. Status
+    // 7. Status
     status: "Draft",
 
-    // 9. Documents
+    // 8. Documents
     documents: [],
   });
 
@@ -1102,7 +1102,7 @@ export default function CreateNewLoadPage() {
 
         <div className="max-w-auto mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-10 space-y-6">
-            {/* SECTION 1: Customer & Load Header */}
+            {/* SECTION 1: Customer & Load Header - UPDATED */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={User}
@@ -1110,8 +1110,8 @@ export default function CreateNewLoadPage() {
                 colorClass="text-blue-600"
               />
 
-              {/* First Row: Search Customer, Primary Fees, Fee Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              {/* First Row: Search Customer, Fee Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 {/* Search Customer */}
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -1129,17 +1129,6 @@ export default function CreateNewLoadPage() {
                     />
                   </div>
                 </div>
-
-                {/* Primary Fees */}
-                <InputGroup
-                  label="Primary Fees ($)"
-                  name="primaryFees"
-                  type="number"
-                  value={formData.primaryFees}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                  icon={DollarSign}
-                />
 
                 {/* Fee Type */}
                 <SelectGroup
@@ -1180,18 +1169,8 @@ export default function CreateNewLoadPage() {
                 />
               </div>
 
-              {/* Third Row: Target Rate, Van Type, Length */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                {/* <InputGroup
-                  label="Target Rate ($)"
-                  name="targetRate"
-                  type="number"
-                  value={formData.targetRate}
-                  onChange={handleInputChange}
-                  placeholder="Target rate"
-                  icon={Target}
-                /> */}
-
+              {/* Third Row: Van Type, Length */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <SelectGroup
                   label="Van Type"
                   name="vanType"
@@ -1265,35 +1244,95 @@ export default function CreateNewLoadPage() {
                 />
               </div>
 
-              {/* Sixth Row: Booking/Terminal Office, Agency, Brokerage Agent */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <SelectGroup
-                  label="Booking/Terminal Office"
-                  name="bookingTerminalOffice"
-                  value={formData.bookingTerminalOffice}
-                  onChange={handleInputChange}
-                  options={officeOptions}
-                />
-
-                <SelectGroup
-                  label="Agency"
-                  name="agency"
-                  value={formData.agency}
-                  onChange={handleInputChange}
-                  options={agencyOptions}
-                />
-
-                <SelectGroup
-                  label="Brokerage Agent"
-                  name="brokerageAgent"
-                  value={formData.brokerageAgent}
-                  onChange={handleInputChange}
-                  options={brokerageAgentOptions}
-                />
+              {/* Advanced Button */}
+              <div className="mt-4 mb-4">
+                <button
+                  onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${
+                      showAdvancedFields ? "rotate-180" : ""
+                    }`}
+                  />
+                  {showAdvancedFields
+                    ? "Hide Advanced Fields"
+                    : "Show Advanced Fields"}
+                </button>
               </div>
 
-              {/* Two text areas at bottom (2 columns on larger screens) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Advanced Fields Card - Appears when showAdvancedFields is true */}
+              {showAdvancedFields && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3">
+                    Advanced Settings
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {/* Primary Fees */}
+                    <InputGroup
+                      label="Primary Fees ($)"
+                      name="primaryFees"
+                      type="number"
+                      value={formData.primaryFees}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                      icon={DollarSign}
+                    />
+
+                    {/* Booking/Terminal Office */}
+                    <SelectGroup
+                      label="Booking Office"
+                      name="bookingTerminalOffice"
+                      value={formData.bookingTerminalOffice}
+                      onChange={handleInputChange}
+                      options={officeOptions}
+                    />
+
+                    {/* Agency */}
+                    <SelectGroup
+                      label="Agency"
+                      name="agency"
+                      value={formData.agency}
+                      onChange={handleInputChange}
+                      options={agencyOptions}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {/* Brokerage Agent */}
+                    <SelectGroup
+                      label="Brokerage Agent"
+                      name="brokerageAgent"
+                      value={formData.brokerageAgent}
+                      onChange={handleInputChange}
+                      options={brokerageAgentOptions}
+                    />
+
+                    {/* Yard Location */}
+                    <SelectGroup
+                      label="Yard Location"
+                      name="yardLocation"
+                      value={formData.yardLocation}
+                      onChange={handleInputChange}
+                      options={yardLocationOptions}
+                    />
+
+                    {/* Internal Notes */}
+                    <TextAreaGroup
+                      label="Internal Notes"
+                      name="internalNotes"
+                      value={formData.internalNotes}
+                      onChange={handleInputChange}
+                      placeholder="Private internal notes..."
+                      rows={1}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Customer Load Notes and Dispatch Notes (always visible) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
                 <TextAreaGroup
                   label="Customer Load Notes"
                   name="customerLoadNotes"
@@ -2070,7 +2109,7 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 4: Equipment & Driver - Keep as before */}
+            {/* SECTION 4: Equipment & Driver */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={Truck}
@@ -2457,28 +2496,7 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 8: Internal Notes */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-              <SectionHeader
-                icon={MessageSquare}
-                title="Internal Notes"
-                colorClass="text-yellow-600"
-              />
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">
-                    Internal Notes
-                  </label>
-                  <textarea
-                    name="internalNotes"
-                    value={formData.internalNotes}
-                    onChange={handleInputChange}
-                    className="w-full border rounded-md p-2 text-sm h-20 bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Private notes..."
-                  />
-                </div>
-              </div>
-            </div>
+            {/* SECTION 8: Internal Notes - REMOVED (moved to advanced fields) */}
           </div>
         </div>
       </div>
