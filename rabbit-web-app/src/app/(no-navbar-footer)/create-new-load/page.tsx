@@ -8,7 +8,6 @@ import {
   Package,
   DollarSign,
   FileText,
-  MessageSquare,
   Plus,
   Trash2,
   Save,
@@ -20,7 +19,6 @@ import {
   Eye,
   FileImage,
   MapPin,
-  Target,
   Fuel,
   Scale,
   Shield,
@@ -90,6 +88,7 @@ interface DocumentFile {
 
 interface FormData {
   // 1. Customer & Load Header
+  bookingOffice: string;
   customerSearch: string;
   customerName: string;
   primaryFees: number;
@@ -547,6 +546,7 @@ export default function CreateNewLoadPage() {
 
   const [formData, setFormData] = useState<FormData>({
     // 1. Customer & Load Header
+    bookingOffice: "",
     customerSearch: "",
     customerName: "",
     primaryFees: 0,
@@ -1282,7 +1282,7 @@ export default function CreateNewLoadPage() {
 
                     {/* Booking/Terminal Office */}
                     <SelectGroup
-                      label="Booking Office"
+                      label="Booking/Terminal Office"
                       name="bookingTerminalOffice"
                       value={formData.bookingTerminalOffice}
                       onChange={handleInputChange}
@@ -1297,9 +1297,7 @@ export default function CreateNewLoadPage() {
                       onChange={handleInputChange}
                       options={agencyOptions}
                     />
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {/* Brokerage Agent */}
                     <SelectGroup
                       label="Brokerage Agent"
@@ -1307,6 +1305,24 @@ export default function CreateNewLoadPage() {
                       value={formData.brokerageAgent}
                       onChange={handleInputChange}
                       options={brokerageAgentOptions}
+                    />
+
+                    {/* Declared Value - Moved from main section */}
+                    <InputGroup
+                      label="Declared Value ($)"
+                      name="declaredValue"
+                      value={formData.declaredValue}
+                      onChange={handleInputChange}
+                      placeholder="Value of goods"
+                      icon={Shield}
+                    />
+
+                    <SelectGroup
+                      label="Booking Office"
+                      name="bookingOffice"
+                      value={formData.bookingOffice}
+                      onChange={handleInputChange}
+                      options={officeOptions}
                     />
 
                     {/* Yard Location */}
@@ -1317,15 +1333,17 @@ export default function CreateNewLoadPage() {
                       onChange={handleInputChange}
                       options={yardLocationOptions}
                     />
+                  </div>
 
-                    {/* Internal Notes */}
+                  {/* Internal Notes - Full width */}
+                  <div className="mt-4">
                     <TextAreaGroup
                       label="Internal Notes"
                       name="internalNotes"
                       value={formData.internalNotes}
                       onChange={handleInputChange}
-                      placeholder="Private internal notes..."
-                      rows={1}
+                      placeholder="Private internal notes for this load..."
+                      rows={4}
                     />
                   </div>
                 </div>
