@@ -13,11 +13,11 @@ export default function CreateNewLoadTwo() {
   const steps = ["Basics", "Stops", "Pricing", "Assignment", "Docs"];
 
   // Create refs for each section
-  const basicsRef = useRef<HTMLDivElement>(null);
-  const stopsRef = useRef<HTMLDivElement>(null);
-  const pricingRef = useRef<HTMLDivElement>(null);
-  const assignmentRef = useRef<HTMLDivElement>(null);
-  const docsRef = useRef<HTMLDivElement>(null);
+  const basicsRef = useRef<HTMLDivElement | null>(null);
+  const stopsRef = useRef<HTMLDivElement | null>(null);
+  const pricingRef = useRef<HTMLDivElement | null>(null);
+  const assignmentRef = useRef<HTMLDivElement | null>(null);
+  const docsRef = useRef<HTMLDivElement | null>(null);
 
   // Function to scroll to section
   const scrollToSection = (section: SetStateAction<string>) => {
@@ -82,9 +82,10 @@ export default function CreateNewLoadTwo() {
       </header>
 
       <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left Panel - Load Outline */}
-          <div className="lg:col-span-1">
+        <div className="flex gap-4">
+          {/* Left Sidebar - All cards stacked vertically */}
+          <div className="w-30 space-y-4">
+            {/* Load Outline Card */}
             <div className="bg-white border border-gray-200 rounded-xl p-4 sticky top-24">
               <h3 className="font-medium mb-3">Load Outline</h3>
               <div className="space-y-1">
@@ -92,27 +93,27 @@ export default function CreateNewLoadTwo() {
                   <button
                     key={item}
                     onClick={() => scrollToSection(item)}
-                    className={`w-full flex justify-between items-center p-3 rounded-lg hover:bg-gray-50 transition-colors ${
+                    className={`w-full flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 transition-colors ${
                       activeStep === item
                         ? "bg-red-50 border border-red-100"
                         : ""
                     }`}
                   >
                     <span
-                      className={
+                      className={`text-sm ${
                         activeStep === item ? "font-medium text-red-700" : ""
-                      }
+                      }`}
                     >
                       {item}
                     </span>
                     {item === "Basics" ||
                     item === "Stops" ||
                     item === "Pricing" ? (
-                      <span className="text-xs px-3 py-1 border border-gray-300 rounded-full text-amber-700 bg-amber-50 border-amber-200">
+                      <span className="text-xs px-2 py-0.5 border border-gray-300 rounded-full text-amber-700 bg-amber-50 border-amber-200">
                         Missing
                       </span>
                     ) : (
-                      <span className="text-xs px-3 py-1 border border-gray-300 rounded-full text-gray-500">
+                      <span className="text-xs px-2 py-0.5 border border-gray-300 rounded-full text-gray-500">
                         Optional
                       </span>
                     )}
@@ -120,20 +121,78 @@ export default function CreateNewLoadTwo() {
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-3">
-                Click on sections to navigate • Required fields marked with ⚠️
+                Click on sections to navigate
               </p>
+            </div>
+
+            {/* Load Status Card */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <h3 className="font-medium mb-3">Load Status</h3>
+              <div>
+                <label className="block text-sm text-gray-500 mb-1">
+                  Status
+                </label>
+                <select
+                  value={loadStatus}
+                  onChange={(e) => setLoadStatus(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option>Draft</option>
+                  <option>Posted</option>
+                  <option>Assigned</option>
+                  <option>In Transit</option>
+                  <option>Delivered</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                Status changes should be role-based.
+              </p>
+            </div>
+
+            {/* Financial Summary Card */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <h3 className="font-medium mb-4">Financial Summary</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center border-t border-dashed border-gray-300 pt-3">
+                  <span className="text-sm text-gray-500">Total Revenue</span>
+                  <strong className="text-base">$0</strong>
+                </div>
+                <div className="flex justify-between items-center border-t border-dashed border-gray-300 pt-3">
+                  <span className="text-sm text-gray-500">Carrier Pay</span>
+                  <strong className="text-base">$0</strong>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-3 mt-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <strong className="text-sm text-gray-900">Profit</strong>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Margin 0%
+                      </div>
+                    </div>
+                    <strong className="text-base">$0</strong>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button className="flex-1 px-3 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
+                  Save Draft
+                </button>
+                <button className="flex-1 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                  Create & Post
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Center Content */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Basics Section */}
+          {/* Main Content - Takes remaining space */}
+          <div className="flex-1 space-y-4">
+            {/* Basics Section - Now with 3 columns */}
             <section
               ref={basicsRef}
               className="bg-white border border-gray-200 rounded-xl p-5"
             >
               <h3 className="font-medium mb-4">Load Basics</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm text-gray-500 mb-1">
                     Customer
@@ -229,75 +288,76 @@ export default function CreateNewLoadTwo() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
+                <div className="md:col-span-3">
+                  <details className="mt-4 border-t border-gray-200 pt-4">
+                    <summary className="text-gray-500 cursor-pointer hover:text-gray-700">
+                      Advanced options
+                    </summary>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">
+                          Booking/Terminal Office
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Select..."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">
+                          Agency
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Select..."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">
+                          Sales Agent
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Select..."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">
+                          Brokerage Agent
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Select..."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">
+                          Customer Notes (optional)
+                        </label>
+                        <textarea
+                          placeholder="Special instructions, requirements, etc."
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-500 mb-1">
+                          Dispatch Notes (optional)
+                        </label>
+                        <textarea
+                          placeholder="Internal dispatch instructions"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  </details>
+                </div>
               </div>
-
-              <details className="mt-6 border-t border-gray-200 pt-4">
-                <summary className="text-gray-500 cursor-pointer hover:text-gray-700">
-                  Advanced options
-                </summary>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">
-                      Booking/Terminal Office
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Select..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">
-                      Agency
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Select..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">
-                      Sales Agent
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Select..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">
-                      Brokerage Agent
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Select..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">
-                      Customer Notes (optional)
-                    </label>
-                    <textarea
-                      placeholder="Special instructions, requirements, etc."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent min-h-[80px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">
-                      Dispatch Notes (optional)
-                    </label>
-                    <textarea
-                      placeholder="Internal dispatch instructions"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent min-h-[80px]"
-                    />
-                  </div>
-                </div>
-              </details>
             </section>
 
             {/* Stops Section */}
@@ -711,67 +771,6 @@ export default function CreateNewLoadTwo() {
                 ))}
               </div>
             </section>
-          </div>
-
-          {/* Right Panel */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Load Status Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 sticky top-24">
-              <h3 className="font-medium mb-3">Load Status</h3>
-              <div>
-                <label className="block text-sm text-gray-500 mb-1">
-                  Status
-                </label>
-                <select
-                  value={loadStatus}
-                  onChange={(e) => setLoadStatus(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                >
-                  <option>Draft</option>
-                  <option>Posted</option>
-                  <option>Assigned</option>
-                  <option>In Transit</option>
-                  <option>Delivered</option>
-                </select>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">
-                Status changes should be role-based.
-              </p>
-            </div>
-
-            {/* Financial Summary Card */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 sticky top-[calc(24px+300px)]">
-              <h3 className="font-medium mb-4">Financial Summary</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center border-t border-dashed border-gray-300 pt-3">
-                  <span className="text-sm text-gray-500">Total Revenue</span>
-                  <strong className="text-lg">$0</strong>
-                </div>
-                <div className="flex justify-between items-center border-t border-dashed border-gray-300 pt-3">
-                  <span className="text-sm text-gray-500">Carrier Pay</span>
-                  <strong className="text-lg">$0</strong>
-                </div>
-                <div className="bg-green-50 border border-green-200 rounded-xl p-3 mt-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <strong className="text-gray-900">Profit</strong>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Margin 0%
-                      </div>
-                    </div>
-                    <strong className="text-lg">$0</strong>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-4">
-                <button className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors">
-                  Save Draft
-                </button>
-                <button className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
-                  Create & Post
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </main>

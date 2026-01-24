@@ -1101,7 +1101,7 @@ export default function CreateNewLoadPageOne() {
         </div>
 
         <div className="max-w-auto mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-10 space-y-6">
             {/* SECTION 1: Customer & Load Header - UPDATED with 3 fields per row */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
@@ -1359,7 +1359,7 @@ export default function CreateNewLoadPageOne() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-3 lg:grid-cols-2 gap-6">
               {/* Pickups */}
               <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
@@ -1404,35 +1404,40 @@ export default function CreateNewLoadPageOne() {
                     </div>
 
                     <div className="space-y-4">
-                      <SelectGroup
-                        label="Shipper"
-                        value={stop.company}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "pickups",
-                            stop.id,
-                            "company",
-                            e.target.value
-                          )
-                        }
-                        options={shipperOptions}
-                        name={""}
-                      />
-
-                      <InputGroup
-                        label="Customer Load/Ref/Conf"
-                        value={stop.customerLoadRefConf}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "pickups",
-                            stop.id,
-                            "customerLoadRefConf",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Customer reference number"
-                        name={""}
-                      />
+                      <div className="flex flex-wrap gap-4 items-end mb-4">
+                        <div className="flex-1">
+                          <SelectGroup
+                            label="Shipper"
+                            value={stop.company}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "company",
+                                e.target.value
+                              )
+                            }
+                            options={shipperOptions}
+                            name={""}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputGroup
+                            label="Customer Load/Ref/Conf"
+                            value={stop.customerLoadRefConf}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "customerLoadRefConf",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Customer reference number"
+                            name={""}
+                          />
+                        </div>
+                      </div>
 
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -1815,35 +1820,40 @@ export default function CreateNewLoadPageOne() {
                       )}
                     </div>
                     <div className="space-y-4">
-                      <SelectGroup
-                        label="Consignee"
-                        value={stop.company}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "company",
-                            e.target.value
-                          )
-                        }
-                        options={consigneeOptions}
-                        name={""}
-                      />
-
-                      <InputGroup
-                        label="Customer Load/Ref/Conf"
-                        value={stop.customerLoadRefConf}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "customerLoadRefConf",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Customer reference number"
-                        name={""}
-                      />
+                      <div className="flex flex-wrap gap-4 items-end mb-4">
+                        <div className="flex-1">
+                          <SelectGroup
+                            label="Consignee"
+                            value={stop.company}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "company",
+                                e.target.value
+                              )
+                            }
+                            options={consigneeOptions}
+                            name={""}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputGroup
+                            label="Customer Load/Ref/Conf"
+                            value={stop.customerLoadRefConf}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "customerLoadRefConf",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Customer reference number"
+                            name={""}
+                          />
+                        </div>
+                      </div>
 
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -2205,7 +2215,7 @@ export default function CreateNewLoadPageOne() {
           </div>
 
           {/* RIGHT COLUMN (Financials, Status & Documents) */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* SECTION 6: Status */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
@@ -2360,7 +2370,7 @@ export default function CreateNewLoadPageOne() {
                 title="Documents & Compliance"
                 colorClass="text-gray-600"
               />
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
                 <FileUploadBox
                   label="Rate Confirmation"
                   type="rate-confirmation"
