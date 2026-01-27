@@ -543,6 +543,7 @@ export default function CreateNewLoadPage() {
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const [autoFillDeliveries, setAutoFillDeliveries] = useState(true);
 
   const [formData, setFormData] = useState<FormData>({
     // 1. Customer & Load Header
@@ -861,12 +862,33 @@ export default function CreateNewLoadPage() {
     field: keyof Stop,
     value: string | boolean
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: prev[section].map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      ),
-    }));
+    const newFormData = { ...formData };
+    newFormData[section] = newFormData[section].map((item) =>
+      item.id === id ? { ...item, [field]: value } : item
+    );
+
+    // Auto-fill delivery fields when pickup fields are changed (only for the first pickup)
+    if (autoFillDeliveries && section === "pickups" && id === 1) {
+      const fieldsToAutoFill: (keyof Stop)[] = [
+        "totalQty",
+        "qtyType",
+        "totalWeight",
+        "commodity",
+        "poNumber",
+      ];
+
+      if (fieldsToAutoFill.includes(field)) {
+        // Update the first delivery's corresponding field
+        if (newFormData.deliveries.length > 0) {
+          newFormData.deliveries[0] = {
+            ...newFormData.deliveries[0],
+            [field]: value,
+          };
+        }
+      }
+    }
+
+    setFormData(newFormData);
   };
 
   const addStop = (section: "pickups" | "deliveries") => {
@@ -1308,12 +1330,34 @@ export default function CreateNewLoadPage() {
               {/* Pickups */}
               <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
-                      A
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
+                        A
+                      </div>
+                      Pickups
+                    </h3>
+
+                    {/* Auto-fill toggle */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={autoFillDeliveries}
+                        onChange={(e) =>
+                          setAutoFillDeliveries(e.target.checked)
+                        }
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        id="autoFillToggle"
+                      />
+                      <label
+                        htmlFor="autoFillToggle"
+                        className="text-xs text-gray-600 select-none cursor-pointer"
+                      >
+                        Auto-fill deliveries
+                      </label>
                     </div>
-                    Pickups
-                  </h3>
+                  </div>
+
                   <button
                     onClick={() => addStop("pickups")}
                     className="text-xs bg-green-50 text-green-600 px-3 py-2 rounded hover:bg-green-100 font-medium flex items-center justify-center gap-1 w-full sm:w-auto"
