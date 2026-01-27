@@ -792,11 +792,17 @@ export default function CreateNewLoadPage() {
     { value: "consignee-4", label: "Final Destination LLC" },
   ];
 
-  const stopTypeOptions: Option[] = [
+  const pickupTypeOptions: Option[] = [
     { value: "live-load", label: "Live Load" },
     { value: "drop-hook", label: "Drop & Hook" },
-    { value: "drop-only", label: "Drop Only" },
     { value: "pickup-only", label: "Pickup Only" },
+    { value: "cross-dock", label: "Cross Dock" },
+  ];
+
+  const stopTypeOptions: Option[] = [
+    { value: "live-unload", label: "Live Unload" },
+    { value: "drop-hook", label: "Drop & Hook" },
+    { value: "drop-only", label: "Drop Only" },
     { value: "cross-dock", label: "Cross Dock" },
   ];
 
@@ -1102,7 +1108,7 @@ export default function CreateNewLoadPage() {
 
         <div className="max-w-auto mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-10 space-y-6">
-            {/* SECTION 1: Customer & Load Header - UPDATED */}
+            {/* SECTION 1: Customer & Load Header - UPDATED with 3 fields per row */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={User}
@@ -1110,8 +1116,8 @@ export default function CreateNewLoadPage() {
                 colorClass="text-blue-600"
               />
 
-              {/* First Row: Search Customer, Fee Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {/* First Row: Search Customer, Fee Type, Tendered Miles */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 {/* Search Customer */}
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -1129,48 +1135,6 @@ export default function CreateNewLoadPage() {
                     />
                   </div>
                 </div>
-
-                {/* Fee Type */}
-                <SelectGroup
-                  label="Fee Type"
-                  name="feeType"
-                  value={formData.feeType}
-                  onChange={handleInputChange}
-                  options={feeTypeOptions}
-                />
-              </div>
-
-              {/* Second Row: Tendered Miles, Fuel Src Type, Fuel Source */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <InputGroup
-                  label="Tendered Miles"
-                  name="tenderedMiles"
-                  value={formData.tenderedMiles}
-                  onChange={handleInputChange}
-                  placeholder="Enter miles"
-                  icon={MapPin}
-                />
-
-                <SelectGroup
-                  label="Fuel Src Type"
-                  name="fuelSrcType"
-                  value={formData.fuelSrcType}
-                  onChange={handleInputChange}
-                  options={fuelSrcTypeOptions}
-                />
-
-                <InputGroup
-                  label="Fuel Source"
-                  name="fuelSrc"
-                  value={formData.fuelSrc}
-                  onChange={handleInputChange}
-                  placeholder="Fuel source details"
-                  icon={Fuel}
-                />
-              </div>
-
-              {/* Third Row: Van Type, Length */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <SelectGroup
                   label="Van Type"
                   name="vanType"
@@ -1178,7 +1142,6 @@ export default function CreateNewLoadPage() {
                   onChange={handleInputChange}
                   options={vanTypeOptions}
                 />
-
                 <SelectGroup
                   label="Length"
                   name="length"
@@ -1188,16 +1151,16 @@ export default function CreateNewLoadPage() {
                 />
               </div>
 
-              {/* Fourth Row: Weight, Booking Authority, Commodity */}
+              {/* Third Row: Length, Weight, Booking Authority */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <InputGroup
+                {/* <InputGroup
                   label="Weight (lbs)"
                   name="weight"
                   value={formData.weight}
                   onChange={handleInputChange}
                   placeholder="Enter weight"
                   icon={Scale}
-                />
+                /> */}
 
                 <SelectGroup
                   label="Booking Authority"
@@ -1206,41 +1169,12 @@ export default function CreateNewLoadPage() {
                   onChange={handleInputChange}
                   options={bookingAuthorityOptions}
                 />
-
-                <InputGroup
-                  label="Commodity"
-                  name="commodity"
-                  value={formData.commodity}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Electronics, Food, etc."
-                />
-              </div>
-
-              {/* Fifth Row: Type, Declared Value, Sales Agent */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <SelectGroup
                   label="Type"
                   name="type"
                   value={formData.type}
                   onChange={handleInputChange}
                   options={typeOptions}
-                />
-
-                <InputGroup
-                  label="Declared Value ($)"
-                  name="declaredValue"
-                  value={formData.declaredValue}
-                  onChange={handleInputChange}
-                  placeholder="Value of goods"
-                  icon={Shield}
-                />
-
-                <SelectGroup
-                  label="Sales Agent"
-                  name="salesAgent"
-                  value={formData.salesAgent}
-                  onChange={handleInputChange}
-                  options={salesAgentOptions}
                 />
               </div>
 
@@ -1268,7 +1202,7 @@ export default function CreateNewLoadPage() {
                     Advanced Settings
                   </h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     {/* Primary Fees */}
                     <InputGroup
                       label="Primary Fees ($)"
@@ -1279,25 +1213,14 @@ export default function CreateNewLoadPage() {
                       placeholder="0.00"
                       icon={DollarSign}
                     />
-
-                    {/* Booking/Terminal Office */}
+                    {/* Booking Office */}
                     <SelectGroup
-                      label="Booking/Terminal Office"
-                      name="bookingTerminalOffice"
-                      value={formData.bookingTerminalOffice}
+                      label="Booking Office"
+                      name="bookingOffice"
+                      value={formData.bookingOffice}
                       onChange={handleInputChange}
                       options={officeOptions}
                     />
-
-                    {/* Agency */}
-                    <SelectGroup
-                      label="Agency"
-                      name="agency"
-                      value={formData.agency}
-                      onChange={handleInputChange}
-                      options={agencyOptions}
-                    />
-
                     {/* Brokerage Agent */}
                     <SelectGroup
                       label="Brokerage Agent"
@@ -1306,8 +1229,14 @@ export default function CreateNewLoadPage() {
                       onChange={handleInputChange}
                       options={brokerageAgentOptions}
                     />
-
-                    {/* Declared Value - Moved from main section */}
+                    {/* Yard Location */}
+                    <SelectGroup
+                      label="Yard Location"
+                      name="yardLocation"
+                      value={formData.yardLocation}
+                      onChange={handleInputChange}
+                      options={yardLocationOptions}
+                    />
                     <InputGroup
                       label="Declared Value ($)"
                       name="declaredValue"
@@ -1316,22 +1245,28 @@ export default function CreateNewLoadPage() {
                       placeholder="Value of goods"
                       icon={Shield}
                     />
+                    <SelectGroup
+                      label="Sales Agent"
+                      name="salesAgent"
+                      value={formData.salesAgent}
+                      onChange={handleInputChange}
+                      options={salesAgentOptions}
+                    />
 
                     <SelectGroup
-                      label="Booking Office"
-                      name="bookingOffice"
-                      value={formData.bookingOffice}
+                      label="Booking/Terminal Office"
+                      name="bookingTerminalOffice"
+                      value={formData.bookingTerminalOffice}
                       onChange={handleInputChange}
                       options={officeOptions}
                     />
 
-                    {/* Yard Location */}
                     <SelectGroup
-                      label="Yard Location"
-                      name="yardLocation"
-                      value={formData.yardLocation}
+                      label="Agency"
+                      name="agency"
+                      value={formData.agency}
                       onChange={handleInputChange}
-                      options={yardLocationOptions}
+                      options={agencyOptions}
                     />
                   </div>
 
@@ -1369,7 +1304,7 @@ export default function CreateNewLoadPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-3 lg:grid-cols-2 gap-6">
               {/* Pickups */}
               <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
@@ -1414,35 +1349,40 @@ export default function CreateNewLoadPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <SelectGroup
-                        label="Shipper"
-                        value={stop.company}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "pickups",
-                            stop.id,
-                            "company",
-                            e.target.value
-                          )
-                        }
-                        options={shipperOptions}
-                        name={""}
-                      />
-
-                      <InputGroup
-                        label="Customer Load/Ref/Conf"
-                        value={stop.customerLoadRefConf}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "pickups",
-                            stop.id,
-                            "customerLoadRefConf",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Customer reference number"
-                        name={""}
-                      />
+                      <div className="flex flex-wrap gap-4 items-end mb-4">
+                        <div className="flex-1">
+                          <SelectGroup
+                            label="Shipper"
+                            value={stop.company}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "company",
+                                e.target.value
+                              )
+                            }
+                            options={shipperOptions}
+                            name={""}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputGroup
+                            label="Customer Load/Ref/Conf"
+                            value={stop.customerLoadRefConf}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "customerLoadRefConf",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Customer reference number"
+                            name={""}
+                          />
+                        </div>
+                      </div>
 
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -1553,7 +1493,7 @@ export default function CreateNewLoadPage() {
                               e.target.value
                             )
                           }
-                          options={stopTypeOptions}
+                          options={pickupTypeOptions}
                           name={""}
                         />
                       </div>
@@ -1825,35 +1765,40 @@ export default function CreateNewLoadPage() {
                       )}
                     </div>
                     <div className="space-y-4">
-                      <SelectGroup
-                        label="Consignee"
-                        value={stop.company}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "company",
-                            e.target.value
-                          )
-                        }
-                        options={consigneeOptions}
-                        name={""}
-                      />
-
-                      <InputGroup
-                        label="Customer Load/Ref/Conf"
-                        value={stop.customerLoadRefConf}
-                        onChange={(e) =>
-                          handleStopChange(
-                            "deliveries",
-                            stop.id,
-                            "customerLoadRefConf",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Customer reference number"
-                        name={""}
-                      />
+                      <div className="flex flex-wrap gap-4 items-end mb-4">
+                        <div className="flex-1">
+                          <SelectGroup
+                            label="Consignee"
+                            value={stop.company}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "company",
+                                e.target.value
+                              )
+                            }
+                            options={consigneeOptions}
+                            name={""}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <InputGroup
+                            label="Customer Load/Ref/Conf"
+                            value={stop.customerLoadRefConf}
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "customerLoadRefConf",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Customer reference number"
+                            name={""}
+                          />
+                        </div>
+                      </div>
 
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -2212,15 +2157,202 @@ export default function CreateNewLoadPage() {
                 />
               </div>
             </div>
+          </div>
 
-            {/* SECTION 5: Documents */}
+          {/* RIGHT COLUMN (Financials, Status & Documents) */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* SECTION 6: Status */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                <h3 className="font-bold text-gray-700">Load Status</h3>
+                <StatusBadge status={formData.status} />
+              </div>
+              <div className="space-y-3 relative">
+                <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
+                {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
+                  (step) => (
+                    <div
+                      key={step}
+                      className="flex items-center gap-3 relative z-10"
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 ${
+                          step === formData.status
+                            ? "bg-[#F96176] border-[#F96176]"
+                            : "bg-white border-gray-300"
+                        }`}
+                      ></div>
+                      <span
+                        className={`text-sm ${
+                          step === formData.status
+                            ? "font-bold text-[#F96176]"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {step}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="mt-6 pt-4 border-t">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+                  Change Status
+                </label>
+                <select
+                  className="w-full rounded-md border-gray-300 shadow-sm text-sm p-2 bg-gray-50"
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                >
+                  <option value="Draft">Draft</option>
+                  <option value="Posted">Posted (Open)</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="In Transit">In Transit</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            {/* SECTION 7: Rates & Financials */}
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+              <div className="bg-gray-900 px-4 sm:px-6 py-4 border-b border-gray-800">
+                <div className="flex items-center gap-2 text-white">
+                  <DollarSign className="w-5 h-5 text-green-400" />
+                  <h3 className="text-lg font-bold">Financials</h3>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-6 space-y-4">
+                {/* Add new financial fields at the top */}
+                <SelectGroup
+                  label="Fee Type"
+                  name="feeType"
+                  value={formData.feeType}
+                  onChange={handleInputChange}
+                  options={feeTypeOptions}
+                />
+
+                <SelectGroup
+                  label="Fuel Src Type"
+                  name="fuelSrcType"
+                  value={formData.fuelSrcType}
+                  onChange={handleInputChange}
+                  options={fuelSrcTypeOptions}
+                />
+
+                <InputGroup
+                  label="Fuel Source"
+                  name="fuelSrc"
+                  value={formData.fuelSrc}
+                  onChange={handleInputChange}
+                  placeholder="Fuel source details"
+                  icon={Fuel}
+                />
+
+                <InputGroup
+                  label="Tendered Miles"
+                  name="tenderedMiles"
+                  value={formData.tenderedMiles}
+                  onChange={handleInputChange}
+                  placeholder="Enter miles"
+                  icon={MapPin}
+                />
+
+                <div className="border-t border-dashed my-2"></div>
+
+                <InputGroup
+                  label="Line Haul Rate ($)"
+                  name="lineHaul"
+                  type="number"
+                  value={formData.lineHaul}
+                  onChange={handleInputChange}
+                />
+                <InputGroup
+                  label="Fuel Surcharge ($)"
+                  name="fuelSurcharge"
+                  type="number"
+                  value={formData.fuelSurcharge}
+                  onChange={handleInputChange}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <InputGroup
+                    label="Detention"
+                    name="detention"
+                    type="number"
+                    value={formData.detention}
+                    onChange={handleInputChange}
+                  />
+                  <InputGroup
+                    label="Layover"
+                    name="layover"
+                    type="number"
+                    value={formData.layover}
+                    onChange={handleInputChange}
+                  />
+                  <InputGroup
+                    label="TONU"
+                    name="tonu"
+                    type="number"
+                    value={formData.tonu}
+                    onChange={handleInputChange}
+                  />
+                  <InputGroup
+                    label="Accessorials"
+                    name="accessorials"
+                    type="number"
+                    value={formData.accessorials}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="border-t border-dashed my-4"></div>
+
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Total Revenue:</span>
+                    <span className="font-bold text-gray-900">
+                      ${calculations.totalRevenue.toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
+                    <span className="text-gray-600">Carrier Pay:</span>
+                    <input
+                      type="number"
+                      name="totalCarrierPay"
+                      value={formData.totalCarrierPay}
+                      onChange={handleInputChange}
+                      className="w-24 text-right rounded border-gray-300 text-sm p-1"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div
+                    className={`flex justify-between text-sm font-bold pt-2 ${
+                      calculations.estimatedProfit >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    <span>Profit ({calculations.margin}%):</span>
+                    <span>${calculations.estimatedProfit.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 8: Documents & Compliance - MOVED to right sidebar */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={FileText}
                 title="Documents & Compliance"
                 colorClass="text-gray-600"
               />
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
                 <FileUploadBox
                   label="Rate Confirmation"
                   type="rate-confirmation"
@@ -2296,225 +2428,52 @@ export default function CreateNewLoadPage() {
                     </div>
                   </div>
 
-                  {/* Group documents by type */}
-                  {[
-                    "rate-confirmation",
-                    "bol",
-                    "pod",
-                    "damage-photos",
-                    "scale-ticket",
-                    "lumper",
-                  ].map((docType) => {
-                    const typeDocuments = formData.documents.filter(
-                      (doc) => doc.type === docType
-                    );
-                    if (typeDocuments.length === 0) return null;
-
-                    return (
-                      <div key={docType} className="mb-4 last:mb-0">
-                        <h5 className="text-xs font-medium text-gray-600 mb-2 capitalize">
-                          {docType.replace("-", " ")} ({typeDocuments.length})
-                        </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {typeDocuments.map((doc) => (
-                            <div
-                              key={doc.id}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200"
-                            >
-                              <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-700 truncate">
-                                    {doc.name}
-                                  </p>
-                                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                                    <span className="capitalize">
-                                      {doc.type.replace("-", " ")}
-                                    </span>
-                                    {doc.size && (
-                                      <span>
-                                        • {(doc.size / 1024).toFixed(1)} KB
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1 ml-2">
-                                {doc.previewUrl && (
-                                  <button
-                                    onClick={() =>
-                                      handleViewPreview(doc.previewUrl!)
-                                    }
-                                    className="p-1 hover:bg-gray-200 rounded"
-                                    title="View Preview"
-                                  >
-                                    <Eye className="w-4 h-4 text-gray-600" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleFileRemove(doc.id)}
-                                  className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
-                                  title="Remove File"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
+                  <div className="max-h-60 overflow-y-auto pr-2">
+                    {formData.documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 mb-2"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-700 truncate">
+                              {doc.name}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <span className="capitalize">
+                                {doc.type.replace("-", " ")}
+                              </span>
+                              {doc.size && (
+                                <span>• {(doc.size / 1024).toFixed(1)} KB</span>
+                              )}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 ml-2">
+                          {doc.previewUrl && (
+                            <button
+                              onClick={() => handleViewPreview(doc.previewUrl!)}
+                              className="p-1 hover:bg-gray-200 rounded"
+                              title="View Preview"
+                            >
+                              <Eye className="w-4 h-4 text-gray-600" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleFileRemove(doc.id)}
+                            className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
+                            title="Remove File"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-          </div>
-
-          {/* RIGHT COLUMN (Financials & Status) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* SECTION 6: Status */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-                <h3 className="font-bold text-gray-700">Load Status</h3>
-                <StatusBadge status={formData.status} />
-              </div>
-              <div className="space-y-3 relative">
-                <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
-                {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
-                  (step) => (
-                    <div
-                      key={step}
-                      className="flex items-center gap-3 relative z-10"
-                    >
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          step === formData.status
-                            ? "bg-[#F96176] border-[#F96176]"
-                            : "bg-white border-gray-300"
-                        }`}
-                      ></div>
-                      <span
-                        className={`text-sm ${
-                          step === formData.status
-                            ? "font-bold text-[#F96176]"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {step}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div className="mt-6 pt-4 border-t">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
-                  Change Status
-                </label>
-                <select
-                  className="w-full rounded-md border-gray-300 shadow-sm text-sm p-2 bg-gray-50"
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="Posted">Posted (Open)</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="In Transit">In Transit</option>
-                  <option value="Delivered">Delivered</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
-
-            {/* SECTION 7: Rates & Financials */}
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-              <div className="bg-gray-900 px-4 sm:px-6 py-4 border-b border-gray-800">
-                <div className="flex items-center gap-2 text-white">
-                  <DollarSign className="w-5 h-5 text-green-400" />
-                  <h3 className="text-lg font-bold">Financials</h3>
-                </div>
-              </div>
-
-              <div className="p-4 sm:p-6 space-y-4">
-                <InputGroup
-                  label="Line Haul Rate ($)"
-                  name="lineHaul"
-                  type="number"
-                  value={formData.lineHaul}
-                  onChange={handleInputChange}
-                />
-                <InputGroup
-                  label="Fuel Surcharge ($)"
-                  name="fuelSurcharge"
-                  type="number"
-                  value={formData.fuelSurcharge}
-                  onChange={handleInputChange}
-                />
-
-                <div className="grid grid-cols-2 gap-3">
-                  <InputGroup
-                    label="Detention"
-                    name="detention"
-                    type="number"
-                    value={formData.detention}
-                    onChange={handleInputChange}
-                  />
-                  <InputGroup
-                    label="Layover"
-                    name="layover"
-                    type="number"
-                    value={formData.layover}
-                    onChange={handleInputChange}
-                  />
-                  <InputGroup
-                    label="TONU"
-                    name="tonu"
-                    type="number"
-                    value={formData.tonu}
-                    onChange={function (): void {
-                      throw new Error("Function not implemented.");
-                    }}
-                  />
-                </div>
-
-                <div className="border-t border-dashed my-4"></div>
-
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total Revenue:</span>
-                    <span className="font-bold text-gray-900">
-                      ${calculations.totalRevenue.toFixed(2)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
-                    <span className="text-gray-600">Carrier Pay:</span>
-                    <input
-                      type="number"
-                      name="totalCarrierPay"
-                      value={formData.totalCarrierPay}
-                      onChange={handleInputChange}
-                      className="w-24 text-right rounded border-gray-300 text-sm p-1"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div
-                    className={`flex justify-between text-sm font-bold pt-2 ${
-                      calculations.estimatedProfit >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    <span>Profit ({calculations.margin}%):</span>
-                    <span>${calculations.estimatedProfit.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 8: Internal Notes - REMOVED (moved to advanced fields) */}
           </div>
         </div>
       </div>

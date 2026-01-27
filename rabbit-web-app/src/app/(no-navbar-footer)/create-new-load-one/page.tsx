@@ -538,7 +538,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
 // --- Main Component ---
 
-export default function CreateNewLoadPageOne() {
+export default function CreateNewLoadPage() {
   // --- State Management ---
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -1102,7 +1102,7 @@ export default function CreateNewLoadPageOne() {
 
         <div className="max-w-auto mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-10 space-y-6">
-            {/* SECTION 1: Customer & Load Header - UPDATED with 3 fields per row */}
+            {/* SECTION 1: Customer & Load Header - UPDATED */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={User}
@@ -1110,8 +1110,8 @@ export default function CreateNewLoadPageOne() {
                 colorClass="text-blue-600"
               />
 
-              {/* First Row: Search Customer, Fee Type, Tendered Miles */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              {/* First Row: Search Customer, Fee Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 {/* Search Customer */}
                 <div className="flex flex-col">
                   <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -1138,8 +1138,10 @@ export default function CreateNewLoadPageOne() {
                   onChange={handleInputChange}
                   options={feeTypeOptions}
                 />
+              </div>
 
-                {/* Tendered Miles */}
+              {/* Second Row: Tendered Miles, Fuel Src Type, Fuel Source */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <InputGroup
                   label="Tendered Miles"
                   name="tenderedMiles"
@@ -1148,10 +1150,7 @@ export default function CreateNewLoadPageOne() {
                   placeholder="Enter miles"
                   icon={MapPin}
                 />
-              </div>
 
-              {/* Second Row: Fuel Src Type, Fuel Source, Van Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <SelectGroup
                   label="Fuel Src Type"
                   name="fuelSrcType"
@@ -1168,7 +1167,10 @@ export default function CreateNewLoadPageOne() {
                   placeholder="Fuel source details"
                   icon={Fuel}
                 />
+              </div>
 
+              {/* Third Row: Van Type, Length */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <SelectGroup
                   label="Van Type"
                   name="vanType"
@@ -1176,10 +1178,7 @@ export default function CreateNewLoadPageOne() {
                   onChange={handleInputChange}
                   options={vanTypeOptions}
                 />
-              </div>
 
-              {/* Third Row: Length, Weight, Booking Authority */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <SelectGroup
                   label="Length"
                   name="length"
@@ -1187,7 +1186,10 @@ export default function CreateNewLoadPageOne() {
                   onChange={handleInputChange}
                   options={lengthOptions}
                 />
+              </div>
 
+              {/* Fourth Row: Weight, Booking Authority, Commodity */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <InputGroup
                   label="Weight (lbs)"
                   name="weight"
@@ -1204,10 +1206,7 @@ export default function CreateNewLoadPageOne() {
                   onChange={handleInputChange}
                   options={bookingAuthorityOptions}
                 />
-              </div>
 
-              {/* Fourth Row: Commodity, Type, Declared Value */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <InputGroup
                   label="Commodity"
                   name="commodity"
@@ -1215,7 +1214,10 @@ export default function CreateNewLoadPageOne() {
                   onChange={handleInputChange}
                   placeholder="e.g., Electronics, Food, etc."
                 />
+              </div>
 
+              {/* Fifth Row: Type, Declared Value, Sales Agent */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <SelectGroup
                   label="Type"
                   name="type"
@@ -1232,32 +1234,13 @@ export default function CreateNewLoadPageOne() {
                   placeholder="Value of goods"
                   icon={Shield}
                 />
-              </div>
 
-              {/* Fifth Row: Sales Agent, Booking/Terminal Office, Agency */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <SelectGroup
                   label="Sales Agent"
                   name="salesAgent"
                   value={formData.salesAgent}
                   onChange={handleInputChange}
                   options={salesAgentOptions}
-                />
-
-                <SelectGroup
-                  label="Booking/Terminal Office"
-                  name="bookingTerminalOffice"
-                  value={formData.bookingTerminalOffice}
-                  onChange={handleInputChange}
-                  options={officeOptions}
-                />
-
-                <SelectGroup
-                  label="Agency"
-                  name="agency"
-                  value={formData.agency}
-                  onChange={handleInputChange}
-                  options={agencyOptions}
                 />
               </div>
 
@@ -1285,7 +1268,7 @@ export default function CreateNewLoadPageOne() {
                     Advanced Settings
                   </h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {/* Primary Fees */}
                     <InputGroup
                       label="Primary Fees ($)"
@@ -1296,14 +1279,25 @@ export default function CreateNewLoadPageOne() {
                       placeholder="0.00"
                       icon={DollarSign}
                     />
-                    {/* Booking Office */}
+
+                    {/* Booking/Terminal Office */}
                     <SelectGroup
-                      label="Booking Office"
-                      name="bookingOffice"
-                      value={formData.bookingOffice}
+                      label="Booking/Terminal Office"
+                      name="bookingTerminalOffice"
+                      value={formData.bookingTerminalOffice}
                       onChange={handleInputChange}
                       options={officeOptions}
                     />
+
+                    {/* Agency */}
+                    <SelectGroup
+                      label="Agency"
+                      name="agency"
+                      value={formData.agency}
+                      onChange={handleInputChange}
+                      options={agencyOptions}
+                    />
+
                     {/* Brokerage Agent */}
                     <SelectGroup
                       label="Brokerage Agent"
@@ -1312,6 +1306,25 @@ export default function CreateNewLoadPageOne() {
                       onChange={handleInputChange}
                       options={brokerageAgentOptions}
                     />
+
+                    {/* Declared Value - Moved from main section */}
+                    <InputGroup
+                      label="Declared Value ($)"
+                      name="declaredValue"
+                      value={formData.declaredValue}
+                      onChange={handleInputChange}
+                      placeholder="Value of goods"
+                      icon={Shield}
+                    />
+
+                    <SelectGroup
+                      label="Booking Office"
+                      name="bookingOffice"
+                      value={formData.bookingOffice}
+                      onChange={handleInputChange}
+                      options={officeOptions}
+                    />
+
                     {/* Yard Location */}
                     <SelectGroup
                       label="Yard Location"
@@ -1320,9 +1333,6 @@ export default function CreateNewLoadPageOne() {
                       onChange={handleInputChange}
                       options={yardLocationOptions}
                     />
-                    {/* Additional fields can be added here */}
-                    <div></div> {/* Empty div for spacing */}
-                    <div></div> {/* Empty div for spacing */}
                   </div>
 
                   {/* Internal Notes - Full width */}
@@ -1359,7 +1369,7 @@ export default function CreateNewLoadPageOne() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-3 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Pickups */}
               <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
@@ -1404,40 +1414,35 @@ export default function CreateNewLoadPageOne() {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex flex-wrap gap-4 items-end mb-4">
-                        <div className="flex-1">
-                          <SelectGroup
-                            label="Shipper"
-                            value={stop.company}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "company",
-                                e.target.value
-                              )
-                            }
-                            options={shipperOptions}
-                            name={""}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <InputGroup
-                            label="Customer Load/Ref/Conf"
-                            value={stop.customerLoadRefConf}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "customerLoadRefConf",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Customer reference number"
-                            name={""}
-                          />
-                        </div>
-                      </div>
+                      <SelectGroup
+                        label="Shipper"
+                        value={stop.company}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "company",
+                            e.target.value
+                          )
+                        }
+                        options={shipperOptions}
+                        name={""}
+                      />
+
+                      <InputGroup
+                        label="Customer Load/Ref/Conf"
+                        value={stop.customerLoadRefConf}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "pickups",
+                            stop.id,
+                            "customerLoadRefConf",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Customer reference number"
+                        name={""}
+                      />
 
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -1820,40 +1825,35 @@ export default function CreateNewLoadPageOne() {
                       )}
                     </div>
                     <div className="space-y-4">
-                      <div className="flex flex-wrap gap-4 items-end mb-4">
-                        <div className="flex-1">
-                          <SelectGroup
-                            label="Consignee"
-                            value={stop.company}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "company",
-                                e.target.value
-                              )
-                            }
-                            options={consigneeOptions}
-                            name={""}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <InputGroup
-                            label="Customer Load/Ref/Conf"
-                            value={stop.customerLoadRefConf}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "customerLoadRefConf",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Customer reference number"
-                            name={""}
-                          />
-                        </div>
-                      </div>
+                      <SelectGroup
+                        label="Consignee"
+                        value={stop.company}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "company",
+                            e.target.value
+                          )
+                        }
+                        options={consigneeOptions}
+                        name={""}
+                      />
+
+                      <InputGroup
+                        label="Customer Load/Ref/Conf"
+                        value={stop.customerLoadRefConf}
+                        onChange={(e) =>
+                          handleStopChange(
+                            "deliveries",
+                            stop.id,
+                            "customerLoadRefConf",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Customer reference number"
+                        name={""}
+                      />
 
                       <div className="mt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -2212,9 +2212,165 @@ export default function CreateNewLoadPageOne() {
                 />
               </div>
             </div>
+
+            {/* SECTION 5: Documents */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+              <SectionHeader
+                icon={FileText}
+                title="Documents & Compliance"
+                colorClass="text-gray-600"
+              />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <FileUploadBox
+                  label="Rate Confirmation"
+                  type="rate-confirmation"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Bill of Lading (BOL)"
+                  type="bol"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Proof of Delivery (POD)"
+                  type="pod"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Damage Photos"
+                  type="damage-photos"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Scale Ticket"
+                  type="scale-ticket"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+                <FileUploadBox
+                  label="Lumper"
+                  type="lumper"
+                  documents={formData.documents}
+                  onFileUpload={handleFileUpload}
+                  onFileRemove={handleFileRemove}
+                  onViewPreview={handleViewPreview}
+                />
+              </div>
+
+              {/* Uploaded Documents Section - Show ALL documents */}
+              {formData.documents.length > 0 && (
+                <div className="mt-6 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700">
+                      All Uploaded Documents
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">
+                        Total: {formData.documents.length} file(s)
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Remove all documents
+                          formData.documents.forEach((doc) =>
+                            handleFileRemove(doc.id)
+                          );
+                        }}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Group documents by type */}
+                  {[
+                    "rate-confirmation",
+                    "bol",
+                    "pod",
+                    "damage-photos",
+                    "scale-ticket",
+                    "lumper",
+                  ].map((docType) => {
+                    const typeDocuments = formData.documents.filter(
+                      (doc) => doc.type === docType
+                    );
+                    if (typeDocuments.length === 0) return null;
+
+                    return (
+                      <div key={docType} className="mb-4 last:mb-0">
+                        <h5 className="text-xs font-medium text-gray-600 mb-2 capitalize">
+                          {docType.replace("-", " ")} ({typeDocuments.length})
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {typeDocuments.map((doc) => (
+                            <div
+                              key={doc.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200"
+                            >
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-700 truncate">
+                                    {doc.name}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <span className="capitalize">
+                                      {doc.type.replace("-", " ")}
+                                    </span>
+                                    {doc.size && (
+                                      <span>
+                                        • {(doc.size / 1024).toFixed(1)} KB
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 ml-2">
+                                {doc.previewUrl && (
+                                  <button
+                                    onClick={() =>
+                                      handleViewPreview(doc.previewUrl!)
+                                    }
+                                    className="p-1 hover:bg-gray-200 rounded"
+                                    title="View Preview"
+                                  >
+                                    <Eye className="w-4 h-4 text-gray-600" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleFileRemove(doc.id)}
+                                  className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
+                                  title="Remove File"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* RIGHT COLUMN (Financials, Status & Documents) */}
+          {/* RIGHT COLUMN (Financials & Status) */}
           <div className="lg:col-span-2 space-y-6">
             {/* SECTION 6: Status */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
@@ -2316,14 +2472,9 @@ export default function CreateNewLoadPageOne() {
                     name="tonu"
                     type="number"
                     value={formData.tonu}
-                    onChange={handleInputChange}
-                  />
-                  <InputGroup
-                    label="Accessorials"
-                    name="accessorials"
-                    type="number"
-                    value={formData.accessorials}
-                    onChange={handleInputChange}
+                    onChange={function (): void {
+                      throw new Error("Function not implemented.");
+                    }}
                   />
                 </div>
 
@@ -2363,135 +2514,7 @@ export default function CreateNewLoadPageOne() {
               </div>
             </div>
 
-            {/* SECTION 8: Documents & Compliance - MOVED to right sidebar */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-              <SectionHeader
-                icon={FileText}
-                title="Documents & Compliance"
-                colorClass="text-gray-600"
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
-                <FileUploadBox
-                  label="Rate Confirmation"
-                  type="rate-confirmation"
-                  documents={formData.documents}
-                  onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
-                />
-                <FileUploadBox
-                  label="Bill of Lading (BOL)"
-                  type="bol"
-                  documents={formData.documents}
-                  onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
-                />
-                <FileUploadBox
-                  label="Proof of Delivery (POD)"
-                  type="pod"
-                  documents={formData.documents}
-                  onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
-                />
-                <FileUploadBox
-                  label="Damage Photos"
-                  type="damage-photos"
-                  documents={formData.documents}
-                  onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
-                />
-                <FileUploadBox
-                  label="Scale Ticket"
-                  type="scale-ticket"
-                  documents={formData.documents}
-                  onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
-                />
-                <FileUploadBox
-                  label="Lumper"
-                  type="lumper"
-                  documents={formData.documents}
-                  onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
-                />
-              </div>
-
-              {/* Uploaded Documents Section - Show ALL documents */}
-              {formData.documents.length > 0 && (
-                <div className="mt-6 pt-4 border-t">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-700">
-                      All Uploaded Documents
-                    </h4>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">
-                        Total: {formData.documents.length} file(s)
-                      </span>
-                      <button
-                        onClick={() => {
-                          // Remove all documents
-                          formData.documents.forEach((doc) =>
-                            handleFileRemove(doc.id)
-                          );
-                        }}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="max-h-60 overflow-y-auto pr-2">
-                    {formData.documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 mb-2"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-700 truncate">
-                              {doc.name}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <span className="capitalize">
-                                {doc.type.replace("-", " ")}
-                              </span>
-                              {doc.size && (
-                                <span>• {(doc.size / 1024).toFixed(1)} KB</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 ml-2">
-                          {doc.previewUrl && (
-                            <button
-                              onClick={() => handleViewPreview(doc.previewUrl!)}
-                              className="p-1 hover:bg-gray-200 rounded"
-                              title="View Preview"
-                            >
-                              <Eye className="w-4 h-4 text-gray-600" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleFileRemove(doc.id)}
-                            className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
-                            title="Remove File"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* SECTION 8: Internal Notes - REMOVED (moved to advanced fields) */}
           </div>
         </div>
       </div>
