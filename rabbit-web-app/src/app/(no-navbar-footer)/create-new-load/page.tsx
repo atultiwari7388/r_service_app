@@ -146,6 +146,9 @@ interface FormData {
   // 7. Status
   status: string;
 
+  assignmentType: "carrier" | "driver" | "";
+  carrierPay: number;
+
   // 8. Documents
   documents: DocumentFile[];
 }
@@ -556,7 +559,7 @@ export default function CreateNewLoadPage() {
     fuelSrcType: "Included",
     fuelSrc: "",
     targetRate: 0,
-    vanType: "Dry Van",
+    vanType: "Van Or Reefer",
     length: "53",
     weight: "",
     bookingAuthority: "Direct",
@@ -684,6 +687,8 @@ export default function CreateNewLoadPage() {
 
     // 7. Status
     status: "Draft",
+    assignmentType: "",
+    carrierPay: 0,
 
     // 8. Documents
     documents: [],
@@ -712,6 +717,7 @@ export default function CreateNewLoadPage() {
   ];
 
   const vanTypeOptions: Option[] = [
+    { value: "Van Or Reefer", label: "Van Or Reefer" },
     { value: "Dry Van", label: "Dry Van" },
     { value: "Reefer", label: "Reefer" },
     { value: "Flatbed", label: "Flatbed" },
@@ -1184,6 +1190,24 @@ export default function CreateNewLoadPage() {
                   icon={Scale}
                 /> */}
 
+                <InputGroup
+                  label="Tendered Miles"
+                  name="tenderedMiles"
+                  value={formData.tenderedMiles}
+                  onChange={handleInputChange}
+                  placeholder="Enter miles"
+                  icon={MapPin}
+                />
+                {/* Primary Fees */}
+                <InputGroup
+                  label="Primary Fees ($)"
+                  name="primaryFees"
+                  type="number"
+                  value={formData.primaryFees}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                  icon={DollarSign}
+                />
                 <SelectGroup
                   label="Booking Authority"
                   name="bookingAuthority"
@@ -1225,24 +1249,14 @@ export default function CreateNewLoadPage() {
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                    {/* Primary Fees */}
-                    <InputGroup
-                      label="Primary Fees ($)"
-                      name="primaryFees"
-                      type="number"
-                      value={formData.primaryFees}
-                      onChange={handleInputChange}
-                      placeholder="0.00"
-                      icon={DollarSign}
-                    />
                     {/* Booking Office */}
-                    <SelectGroup
+                    {/* <SelectGroup
                       label="Booking Office"
                       name="bookingOffice"
                       value={formData.bookingOffice}
                       onChange={handleInputChange}
                       options={officeOptions}
-                    />
+                    /> */}
                     {/* Brokerage Agent */}
                     <SelectGroup
                       label="Brokerage Agent"
@@ -2116,90 +2130,176 @@ export default function CreateNewLoadPage() {
               </div>
             </div>
 
-            {/* SECTION 4: Equipment & Driver */}
+            {/* SECTION 4: Equipment & Driver Assignment */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <SectionHeader
                 icon={Truck}
                 title="Equipment & Driver Assignment"
                 colorClass="text-orange-600"
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+              {/* Assignment Type Selector */}
+              <div className="mb-6">
                 <SelectGroup
-                  label="Select Carrier"
-                  name="carrierId"
-                  value={formData.carrierId}
+                  label="Assignment Type"
+                  name="assignmentType"
+                  value={formData.assignmentType}
                   onChange={handleInputChange}
                   options={[
-                    { value: "CAR-101", label: "3 Arrows INC." },
-                    { value: "CAR-102", label: "7 Days Carrier" },
-                    { value: "CAR-103", label: "A & D Trucklines" },
+                    { value: "carrier", label: "Carrier" },
+                    { value: "driver", label: "Driver" },
                   ]}
-                />
-                <SelectGroup
-                  label="Select Driver"
-                  name="driverId"
-                  value={formData.driverId}
-                  onChange={handleInputChange}
-                  options={[
-                    { value: "DRV-101", label: "Delmo (Available)" },
-                    { value: "DRV-102", label: "Jimmy (In Transit)" },
-                    { value: "DRV-103", label: "Rahul (Available)" },
-                  ]}
-                />
-                <SelectGroup
-                  label="Assigned Truck"
-                  name="truckId"
-                  value={formData.truckId}
-                  onChange={handleInputChange}
-                  options={[
-                    { value: "TRK-001", label: "FREIGHTLINER (A01DET)" },
-                    { value: "TRK-002", label: "INTERNATIONAL (A04INT)" },
-                    { value: "TRK-003", label: "ISUZU MOTORS (A07ISU)" },
-                    { value: "TRK-004", label: "KENWORTH (A08MAX)" },
-                    { value: "TRK-005", label: "MACK (A11CUM)" },
-                  ]}
-                />
-                <SelectGroup
-                  label="Assigned Trailer"
-                  name="trailerId"
-                  value={formData.trailerId}
-                  onChange={handleInputChange}
-                  options={[
-                    { value: "TRL-5501", label: "HYUNDAI (SMR2233)" },
-                    { value: "TRL-9902", label: "DRY VAN (BXXZDFF566)" },
-                  ]}
-                />
-                <InputGroup
-                  label="Co-Driver (Team)"
-                  name="secondDriverId"
-                  value={formData.secondDriverId}
-                  onChange={handleInputChange}
-                  placeholder="Optional"
-                  className="sm:col-span-2 lg:col-span-1"
-                />
-                <InputGroup
-                  label="Dispatcher"
-                  name="dispatcherId"
-                  value={formData.dispatcherId}
-                  onChange={handleInputChange}
-                  disabled
-                  className="sm:col-span-2 lg:col-span-1"
                 />
               </div>
-              <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                <CheckboxGroup
-                  label="Notify Driver via App"
-                  name="autoSendDriver"
-                  checked={formData.autoSendDriver}
-                  onChange={handleInputChange}
-                />
-                <CheckboxGroup
-                  label="Enable GPS Tracking"
-                  name="autoTrack"
-                  checked={formData.autoTrack}
-                  onChange={handleInputChange}
-                />
-              </div>
+
+              {/* Carrier Fields - Only shown when carrier is selected */}
+              {formData.assignmentType === "carrier" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <SelectGroup
+                      label="Select Carrier"
+                      name="carrierId"
+                      value={formData.carrierId}
+                      onChange={handleInputChange}
+                      options={[
+                        { value: "CAR-101", label: "3 Arrows INC." },
+                        { value: "CAR-102", label: "7 Days Carrier" },
+                        { value: "CAR-103", label: "A & D Trucklines" },
+                      ]}
+                    />
+
+                    <InputGroup
+                      label="Carrier Pay ($)"
+                      name="totalCarrierPay"
+                      type="number"
+                      value={formData.totalCarrierPay || ""}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                      icon={DollarSign}
+                    />
+                  </div>
+
+                  {/* Common Options for Carrier */}
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <CheckboxGroup
+                        label="Notify via App"
+                        name="autoSendDriver"
+                        checked={formData.autoSendDriver}
+                        onChange={handleInputChange}
+                      />
+                      <CheckboxGroup
+                        label="Enable GPS Tracking"
+                        name="autoTrack"
+                        checked={formData.autoTrack}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Driver Fields - Only shown when driver is selected */}
+              {formData.assignmentType === "driver" && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <SelectGroup
+                      label="Select Driver"
+                      name="driverId"
+                      value={formData.driverId}
+                      onChange={handleInputChange}
+                      options={[
+                        { value: "DRV-101", label: "Delmo (Available)" },
+                        { value: "DRV-102", label: "Jimmy (In Transit)" },
+                        { value: "DRV-103", label: "Rahul (Available)" },
+                      ]}
+                    />
+
+                    <InputGroup
+                      label="Co-Driver (Team)"
+                      name="secondDriverId"
+                      value={formData.secondDriverId}
+                      onChange={handleInputChange}
+                      placeholder="Optional"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <SelectGroup
+                      label="Assigned Truck"
+                      name="truckId"
+                      value={formData.truckId}
+                      onChange={handleInputChange}
+                      options={[
+                        { value: "TRK-001", label: "FREIGHTLINER (A01DET)" },
+                        { value: "TRK-002", label: "INTERNATIONAL (A04INT)" },
+                        { value: "TRK-003", label: "ISUZU MOTORS (A07ISU)" },
+                        { value: "TRK-004", label: "KENWORTH (A08MAX)" },
+                        { value: "TRK-005", label: "MACK (A11CUM)" },
+                      ]}
+                    />
+
+                    <SelectGroup
+                      label="Assigned Trailer"
+                      name="trailerId"
+                      value={formData.trailerId}
+                      onChange={handleInputChange}
+                      options={[
+                        { value: "TRL-5501", label: "HYUNDAI (SMR2233)" },
+                        { value: "TRL-9902", label: "DRY VAN (BXXZDFF566)" },
+                      ]}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <InputGroup
+                      label="Dispatcher"
+                      name="dispatcherId"
+                      value={formData.dispatcherId}
+                      onChange={handleInputChange}
+                      disabled
+                    />
+
+                    {/* Empty div to maintain grid layout */}
+                    <div></div>
+                  </div>
+
+                  {/* Common Options for Driver */}
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <CheckboxGroup
+                        label="Notify Driver via App"
+                        name="autoSendDriver"
+                        checked={formData.autoSendDriver}
+                        onChange={handleInputChange}
+                      />
+                      <CheckboxGroup
+                        label="Enable GPS Tracking"
+                        name="autoTrack"
+                        checked={formData.autoTrack}
+                        onChange={handleInputChange}
+                      />
+                      <CheckboxGroup
+                        label="Auto Invoice"
+                        name="autoInvoice"
+                        checked={formData.autoInvoice}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Show message when no assignment type is selected */}
+              {!formData.assignmentType && (
+                <div className="text-center py-8 text-gray-500 border border-dashed rounded-lg">
+                  <Truck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-sm">
+                    Select an assignment type above to configure equipment and
+                    driver details.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2296,14 +2396,14 @@ export default function CreateNewLoadPage() {
                   icon={Fuel}
                 />
 
-                <InputGroup
+                {/* <InputGroup
                   label="Tendered Miles"
                   name="tenderedMiles"
                   value={formData.tenderedMiles}
                   onChange={handleInputChange}
                   placeholder="Enter miles"
                   icon={MapPin}
-                />
+                /> */}
 
                 <div className="border-t border-dashed my-2"></div>
 
