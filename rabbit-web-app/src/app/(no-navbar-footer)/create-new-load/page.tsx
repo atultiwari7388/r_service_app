@@ -1460,13 +1460,13 @@ export default function CreateNewLoadPage() {
                       options={brokerageAgentOptions}
                     />
                     {/* Yard Location */}
-                    <SelectGroup
+                    {/* <SelectGroup
                       label="Yard Location"
                       name="yardLocation"
                       value={formData.yardLocation}
                       onChange={handleInputChange}
                       options={yardLocationOptions}
-                    />
+                    /> */}
                     <InputGroup
                       label="Declared Value ($)"
                       name="declaredValue"
