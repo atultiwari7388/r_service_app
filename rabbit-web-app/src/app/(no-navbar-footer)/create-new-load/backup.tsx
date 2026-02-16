@@ -8,7 +8,6 @@
 //   Package,
 //   DollarSign,
 //   FileText,
-//   MessageSquare,
 //   Plus,
 //   Trash2,
 //   Save,
@@ -20,7 +19,6 @@
 //   Eye,
 //   FileImage,
 //   MapPin,
-//   Target,
 //   Fuel,
 //   Scale,
 //   Shield,
@@ -90,6 +88,7 @@
 
 // interface FormData {
 //   // 1. Customer & Load Header
+//   bookingOffice: string;
 //   customerSearch: string;
 //   customerName: string;
 //   primaryFees: number;
@@ -111,6 +110,8 @@
 //   brokerageAgent: string;
 //   customerLoadNotes: string;
 //   dispatchNotes: string;
+//   yardLocation: string; // New field
+//   internalNotes: string; // New field
 
 //   // 2. Pickups (Array)
 //   pickups: Stop[];
@@ -142,13 +143,13 @@
 //   autoTrack: boolean;
 //   autoInvoice: boolean;
 
-//   // 7. Internal Notes
-//   internalNotes: string;
-
-//   // 8. Status
+//   // 7. Status
 //   status: string;
 
-//   // 9. Documents
+//   assignmentType: "carrier" | "driver" | "";
+//   carrierPay: number;
+
+//   // 8. Documents
 //   documents: DocumentFile[];
 // }
 
@@ -544,8 +545,12 @@
 //   // --- State Management ---
 //   const [isCancelled, setIsCancelled] = useState(false);
 //   const [previewImage, setPreviewImage] = useState<string | null>(null);
+//   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+//   const [autoFillDeliveries, setAutoFillDeliveries] = useState(true);
+
 //   const [formData, setFormData] = useState<FormData>({
 //     // 1. Customer & Load Header
+//     bookingOffice: "",
 //     customerSearch: "",
 //     customerName: "",
 //     primaryFees: 0,
@@ -554,7 +559,7 @@
 //     fuelSrcType: "Included",
 //     fuelSrc: "",
 //     targetRate: 0,
-//     vanType: "Dry Van",
+//     vanType: "Van Or Reefer",
 //     length: "53",
 //     weight: "",
 //     bookingAuthority: "Direct",
@@ -567,6 +572,8 @@
 //     brokerageAgent: "",
 //     customerLoadNotes: "",
 //     dispatchNotes: "",
+//     yardLocation: "", // New field
+//     internalNotes: "", // New field
 
 //     // 2. Pickups (Array)
 //     pickups: [
@@ -678,13 +685,12 @@
 //     autoTrack: true,
 //     autoInvoice: false,
 
-//     // 7. Internal Notes
-//     internalNotes: "",
-
-//     // 8. Status
+//     // 7. Status
 //     status: "Draft",
+//     assignmentType: "carrier",
+//     carrierPay: 0,
 
-//     // 9. Documents
+//     // 8. Documents
 //     documents: [],
 //   });
 
@@ -711,6 +717,7 @@
 //   ];
 
 //   const vanTypeOptions: Option[] = [
+//     { value: "Van Or Reefer", label: "Van Or Reefer" },
 //     { value: "Dry Van", label: "Dry Van" },
 //     { value: "Reefer", label: "Reefer" },
 //     { value: "Flatbed", label: "Flatbed" },
@@ -792,11 +799,17 @@
 //     { value: "consignee-4", label: "Final Destination LLC" },
 //   ];
 
-//   const stopTypeOptions: Option[] = [
+//   const pickupTypeOptions: Option[] = [
 //     { value: "live-load", label: "Live Load" },
 //     { value: "drop-hook", label: "Drop & Hook" },
-//     { value: "drop-only", label: "Drop Only" },
 //     { value: "pickup-only", label: "Pickup Only" },
+//     { value: "cross-dock", label: "Cross Dock" },
+//   ];
+
+//   const stopTypeOptions: Option[] = [
+//     { value: "live-unload", label: "Live Unload" },
+//     { value: "drop-hook", label: "Drop & Hook" },
+//     { value: "drop-only", label: "Drop Only" },
 //     { value: "cross-dock", label: "Cross Dock" },
 //   ];
 
@@ -855,12 +868,33 @@
 //     field: keyof Stop,
 //     value: string | boolean
 //   ) => {
-//     setFormData((prev) => ({
-//       ...prev,
-//       [section]: prev[section].map((item) =>
-//         item.id === id ? { ...item, [field]: value } : item
-//       ),
-//     }));
+//     const newFormData = { ...formData };
+//     newFormData[section] = newFormData[section].map((item) =>
+//       item.id === id ? { ...item, [field]: value } : item
+//     );
+
+//     // Auto-fill delivery fields when pickup fields are changed (only for the first pickup)
+//     if (autoFillDeliveries && section === "pickups" && id === 1) {
+//       const fieldsToAutoFill: (keyof Stop)[] = [
+//         "totalQty",
+//         "qtyType",
+//         "totalWeight",
+//         "commodity",
+//         "poNumber",
+//       ];
+
+//       if (fieldsToAutoFill.includes(field)) {
+//         // Update the first delivery's corresponding field
+//         if (newFormData.deliveries.length > 0) {
+//           newFormData.deliveries[0] = {
+//             ...newFormData.deliveries[0],
+//             [field]: value,
+//           };
+//         }
+//       }
+//     }
+
+//     setFormData(newFormData);
 //   };
 
 //   const addStop = (section: "pickups" | "deliveries") => {
@@ -1102,7 +1136,7 @@
 
 //         <div className="max-w-auto mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
 //           <div className="lg:col-span-10 space-y-6">
-//             {/* SECTION 1: Customer & Load Header */}
+//             {/* SECTION 1: Customer & Load Header - UPDATED with 3 fields per row */}
 //             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
 //               <SectionHeader
 //                 icon={User}
@@ -1110,7 +1144,7 @@
 //                 colorClass="text-blue-600"
 //               />
 
-//               {/* First Row: Search Customer, Primary Fees, Fee Type */}
+//               {/* First Row: Search Customer, Fee Type, */}
 //               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 //                 {/* Search Customer */}
 //                 <div className="flex flex-col">
@@ -1129,6 +1163,32 @@
 //                     />
 //                   </div>
 //                 </div>
+//                 <SelectGroup
+//                   label="Van Type"
+//                   name="vanType"
+//                   value={formData.vanType}
+//                   onChange={handleInputChange}
+//                   options={vanTypeOptions}
+//                 />
+//                 <SelectGroup
+//                   label="Length"
+//                   name="length"
+//                   value={formData.length}
+//                   onChange={handleInputChange}
+//                   options={lengthOptions}
+//                 />
+//               </div>
+
+//               {/* Third Row: Length, Weight, Booking Authority */}
+//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+//                 {/* <InputGroup
+//                   label="Weight (lbs)"
+//                   name="weight"
+//                   value={formData.weight}
+//                   onChange={handleInputChange}
+//                   placeholder="Enter weight"
+//                   icon={Scale}
+//                 /> */}
 
 //                 {/* Primary Fees */}
 //                 <InputGroup
@@ -1140,86 +1200,6 @@
 //                   placeholder="0.00"
 //                   icon={DollarSign}
 //                 />
-
-//                 {/* Fee Type */}
-//                 <SelectGroup
-//                   label="Fee Type"
-//                   name="feeType"
-//                   value={formData.feeType}
-//                   onChange={handleInputChange}
-//                   options={feeTypeOptions}
-//                 />
-//               </div>
-
-//               {/* Second Row: Tendered Miles, Fuel Src Type, Fuel Source */}
-//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-//                 <InputGroup
-//                   label="Tendered Miles"
-//                   name="tenderedMiles"
-//                   value={formData.tenderedMiles}
-//                   onChange={handleInputChange}
-//                   placeholder="Enter miles"
-//                   icon={MapPin}
-//                 />
-
-//                 <SelectGroup
-//                   label="Fuel Src Type"
-//                   name="fuelSrcType"
-//                   value={formData.fuelSrcType}
-//                   onChange={handleInputChange}
-//                   options={fuelSrcTypeOptions}
-//                 />
-
-//                 <InputGroup
-//                   label="Fuel Source"
-//                   name="fuelSrc"
-//                   value={formData.fuelSrc}
-//                   onChange={handleInputChange}
-//                   placeholder="Fuel source details"
-//                   icon={Fuel}
-//                 />
-//               </div>
-
-//               {/* Third Row: Target Rate, Van Type, Length */}
-//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-//                 {/* <InputGroup
-//                   label="Target Rate ($)"
-//                   name="targetRate"
-//                   type="number"
-//                   value={formData.targetRate}
-//                   onChange={handleInputChange}
-//                   placeholder="Target rate"
-//                   icon={Target}
-//                 /> */}
-
-//                 <SelectGroup
-//                   label="Van Type"
-//                   name="vanType"
-//                   value={formData.vanType}
-//                   onChange={handleInputChange}
-//                   options={vanTypeOptions}
-//                 />
-
-//                 <SelectGroup
-//                   label="Length"
-//                   name="length"
-//                   value={formData.length}
-//                   onChange={handleInputChange}
-//                   options={lengthOptions}
-//                 />
-//               </div>
-
-//               {/* Fourth Row: Weight, Booking Authority, Commodity */}
-//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-//                 <InputGroup
-//                   label="Weight (lbs)"
-//                   name="weight"
-//                   value={formData.weight}
-//                   onChange={handleInputChange}
-//                   placeholder="Enter weight"
-//                   icon={Scale}
-//                 />
-
 //                 <SelectGroup
 //                   label="Booking Authority"
 //                   name="bookingAuthority"
@@ -1227,18 +1207,6 @@
 //                   onChange={handleInputChange}
 //                   options={bookingAuthorityOptions}
 //                 />
-
-//                 <InputGroup
-//                   label="Commodity"
-//                   name="commodity"
-//                   value={formData.commodity}
-//                   onChange={handleInputChange}
-//                   placeholder="e.g., Electronics, Food, etc."
-//                 />
-//               </div>
-
-//               {/* Fifth Row: Type, Declared Value, Sales Agent */}
-//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 //                 <SelectGroup
 //                   label="Type"
 //                   name="type"
@@ -1246,54 +1214,316 @@
 //                   onChange={handleInputChange}
 //                   options={typeOptions}
 //                 />
-
-//                 <InputGroup
-//                   label="Declared Value ($)"
-//                   name="declaredValue"
-//                   value={formData.declaredValue}
-//                   onChange={handleInputChange}
-//                   placeholder="Value of goods"
-//                   icon={Shield}
-//                 />
-
-//                 <SelectGroup
-//                   label="Sales Agent"
-//                   name="salesAgent"
-//                   value={formData.salesAgent}
-//                   onChange={handleInputChange}
-//                   options={salesAgentOptions}
-//                 />
 //               </div>
 
-//               {/* Sixth Row: Booking/Terminal Office, Agency, Brokerage Agent */}
-//               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-//                 <SelectGroup
-//                   label="Booking/Terminal Office"
-//                   name="bookingTerminalOffice"
-//                   value={formData.bookingTerminalOffice}
-//                   onChange={handleInputChange}
-//                   options={officeOptions}
+//               {/* SECTION 4: Equipment & Driver Assignment */}
+//               <div>
+//                 <SectionHeader
+//                   icon={Truck}
+//                   title="Equipment & Driver Assignment"
+//                   colorClass="text-orange-600"
 //                 />
 
-//                 <SelectGroup
-//                   label="Agency"
-//                   name="agency"
-//                   value={formData.agency}
-//                   onChange={handleInputChange}
-//                   options={agencyOptions}
-//                 />
+//                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+//                   {/* Assignment Type Selector - Takes 1/3 width */}
+//                   <div className="col-span-1">
+//                     <SelectGroup
+//                       label="Assignment Type"
+//                       name="assignmentType"
+//                       value={formData.assignmentType}
+//                       onChange={handleInputChange}
+//                       options={[
+//                         { value: "carrier", label: "Carrier" },
+//                         { value: "driver", label: "Driver" },
+//                       ]}
+//                     />
+//                   </div>
 
-//                 <SelectGroup
-//                   label="Brokerage Agent"
-//                   name="brokerageAgent"
-//                   value={formData.brokerageAgent}
-//                   onChange={handleInputChange}
-//                   options={brokerageAgentOptions}
-//                 />
+//                   {/* Carrier-specific fields - Shown when carrier is selected */}
+//                   {formData.assignmentType === "carrier" && (
+//                     <>
+//                       <div className="col-span-1">
+//                         <SelectGroup
+//                           label="Select Carrier"
+//                           name="carrierId"
+//                           value={formData.carrierId}
+//                           onChange={handleInputChange}
+//                           options={[
+//                             { value: "CAR-101", label: "3 Arrows INC." },
+//                             { value: "CAR-102", label: "7 Days Carrier" },
+//                             { value: "CAR-103", label: "A & D Trucklines" },
+//                           ]}
+//                         />
+//                       </div>
+
+//                       <div className="col-span-1">
+//                         <InputGroup
+//                           label="Carrier Pay ($)"
+//                           name="totalCarrierPay"
+//                           type="number"
+//                           value={formData.totalCarrierPay || ""}
+//                           onChange={handleInputChange}
+//                           placeholder="0.00"
+//                           icon={DollarSign}
+//                         />
+//                       </div>
+//                     </>
+//                   )}
+
+//                   {/* Driver-specific fields - Shown when driver is selected */}
+//                   {formData.assignmentType === "driver" && (
+//                     <>
+//                       <div className="col-span-1">
+//                         <SelectGroup
+//                           label="Select Driver"
+//                           name="driverId"
+//                           value={formData.driverId}
+//                           onChange={handleInputChange}
+//                           options={[
+//                             { value: "DRV-101", label: "Delmo (Available)" },
+//                             { value: "DRV-102", label: "Jimmy (In Transit)" },
+//                             { value: "DRV-103", label: "Rahul (Available)" },
+//                           ]}
+//                         />
+//                       </div>
+
+//                       <div className="col-span-1">
+//                         <SelectGroup
+//                           label="Assigned Truck"
+//                           name="truckId"
+//                           value={formData.truckId}
+//                           onChange={handleInputChange}
+//                           options={[
+//                             {
+//                               value: "TRK-001",
+//                               label: "FREIGHTLINER (A01DET)",
+//                             },
+//                             {
+//                               value: "TRK-002",
+//                               label: "INTERNATIONAL (A04INT)",
+//                             },
+//                             {
+//                               value: "TRK-003",
+//                               label: "ISUZU MOTORS (A07ISU)",
+//                             },
+//                             { value: "TRK-004", label: "KENWORTH (A08MAX)" },
+//                             { value: "TRK-005", label: "MACK (A11CUM)" },
+//                           ]}
+//                         />
+//                       </div>
+
+//                       <div className="col-span-1">
+//                         <SelectGroup
+//                           label="Assigned Trailer"
+//                           name="trailerId"
+//                           value={formData.trailerId}
+//                           onChange={handleInputChange}
+//                           options={[
+//                             { value: "TRL-5501", label: "HYUNDAI (SMR2233)" },
+//                             {
+//                               value: "TRL-9902",
+//                               label: "DRY VAN (BXXZDFF566)",
+//                             },
+//                           ]}
+//                         />
+//                       </div>
+//                       <div className="col-span-1">
+//                         <InputGroup
+//                           label="Co-Driver (Team)"
+//                           name="secondDriverId"
+//                           value={formData.secondDriverId}
+//                           onChange={handleInputChange}
+//                           placeholder="Optional"
+//                         />
+//                       </div>
+
+//                       <div className="col-span-1">
+//                         <InputGroup
+//                           label="Dispatcher"
+//                           name="dispatcherId"
+//                           value={formData.dispatcherId}
+//                           onChange={handleInputChange}
+//                           disabled
+//                         />
+//                       </div>
+//                     </>
+//                   )}
+//                 </div>
+
+//                 {/* Additional Driver fields - Shown in a second row when driver is selected */}
+//                 {formData.assignmentType === "driver" &&
+//                   // <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+//                   //   <div className="col-span-1">
+//                   //     <InputGroup
+//                   //       label="Co-Driver (Team)"
+//                   //       name="secondDriverId"
+//                   //       value={formData.secondDriverId}
+//                   //       onChange={handleInputChange}
+//                   //       placeholder="Optional"
+//                   //     />
+//                   //   </div>
+
+//                   //   <div className="col-span-1">
+//                   //     <InputGroup
+//                   //       label="Dispatcher"
+//                   //       name="dispatcherId"
+//                   //       value={formData.dispatcherId}
+//                   //       onChange={handleInputChange}
+//                   //       disabled
+//                   //     />
+//                   //   </div>
+
+//                   //   {/* Empty column to maintain layout */}
+//                   //   <div className="col-span-1"></div>
+//                   // </div>
+//                   null}
+
+//                 {/* Common Options for both Carrier and Driver */}
+//                 {formData.assignmentType &&
+//                   // <div className="mt-4 pt-4 border-t">
+//                   //   <div className="flex flex-col sm:flex-row gap-3">
+//                   //     <CheckboxGroup
+//                   //       label="Notify via App"
+//                   //       name="autoSendDriver"
+//                   //       checked={formData.autoSendDriver}
+//                   //       onChange={handleInputChange}
+//                   //     />
+//                   //     <CheckboxGroup
+//                   //       label="Enable GPS Tracking"
+//                   //       name="autoTrack"
+//                   //       checked={formData.autoTrack}
+//                   //       onChange={handleInputChange}
+//                   //     />
+//                   //     {formData.assignmentType === "driver" && (
+//                   //       <CheckboxGroup
+//                   //         label="Auto Invoice"
+//                   //         name="autoInvoice"
+//                   //         checked={formData.autoInvoice}
+//                   //         onChange={handleInputChange}
+//                   //       />
+//                   //     )}
+//                   //   </div>
+//                   // </div>
+//                   null}
+
+//                 {/* Show message when no assignment type is selected */}
+//                 {!formData.assignmentType && (
+//                   <div className="text-center py-8 text-gray-500 border border-dashed rounded-lg">
+//                     <Truck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+//                     <p className="text-sm">
+//                       Select an assignment type above to configure equipment and
+//                       driver details.
+//                     </p>
+//                   </div>
+//                 )}
 //               </div>
 
-//               {/* Two text areas at bottom (2 columns on larger screens) */}
-//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+//               {/* Advanced Button */}
+//               <div className="mt-4 mb-4">
+//                 <button
+//                   onClick={() => setShowAdvancedFields(!showAdvancedFields)}
+//                   className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
+//                 >
+//                   <ChevronDown
+//                     className={`w-4 h-4 transition-transform ${
+//                       showAdvancedFields ? "rotate-180" : ""
+//                     }`}
+//                   />
+//                   {showAdvancedFields
+//                     ? "Hide Advanced Fields"
+//                     : "Show Advanced Fields"}
+//                 </button>
+//               </div>
+
+//               {/* Advanced Fields Card - Appears when showAdvancedFields is true */}
+//               {showAdvancedFields && (
+//                 <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+//                   <h4 className="text-sm font-semibold text-blue-800 mb-3">
+//                     Advanced Settings
+//                   </h4>
+
+//                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+//                     {/* Booking Office */}
+//                     {/* <SelectGroup
+//                       label="Booking Office"
+//                       name="bookingOffice"
+//                       value={formData.bookingOffice}
+//                       onChange={handleInputChange}
+//                       options={officeOptions}
+//                     /> */}
+//                     {/* Brokerage Agent */}
+//                     <SelectGroup
+//                       label="Brokerage Agent"
+//                       name="brokerageAgent"
+//                       value={formData.brokerageAgent}
+//                       onChange={handleInputChange}
+//                       options={brokerageAgentOptions}
+//                     />
+//                     {/* Yard Location */}
+//                     {/* <SelectGroup
+//                       label="Yard Location"
+//                       name="yardLocation"
+//                       value={formData.yardLocation}
+//                       onChange={handleInputChange}
+//                       options={yardLocationOptions}
+//                     /> */}
+//                     <InputGroup
+//                       label="Declared Value ($)"
+//                       name="declaredValue"
+//                       value={formData.declaredValue}
+//                       onChange={handleInputChange}
+//                       placeholder="Value of goods"
+//                       icon={Shield}
+//                     />
+//                     <SelectGroup
+//                       label="Sales Agent"
+//                       name="salesAgent"
+//                       value={formData.salesAgent}
+//                       onChange={handleInputChange}
+//                       options={salesAgentOptions}
+//                     />
+
+//                     <SelectGroup
+//                       label="Booking/Terminal Office"
+//                       name="bookingTerminalOffice"
+//                       value={formData.bookingTerminalOffice}
+//                       onChange={handleInputChange}
+//                       options={officeOptions}
+//                     />
+
+//                     <SelectGroup
+//                       label="Agency"
+//                       name="agency"
+//                       value={formData.agency}
+//                       onChange={handleInputChange}
+//                       options={agencyOptions}
+//                     />
+//                     <InputGroup
+//                       label="Tendered Miles"
+//                       name="tenderedMiles"
+//                       value={formData.tenderedMiles}
+//                       onChange={handleInputChange}
+//                       placeholder="Enter miles"
+//                       icon={MapPin}
+//                     />
+//                   </div>
+
+//                   {/* Internal Notes - Full width */}
+//                   <div className="mt-4">
+//                     <TextAreaGroup
+//                       label="Internal Notes"
+//                       name="internalNotes"
+//                       value={formData.internalNotes}
+//                       onChange={handleInputChange}
+//                       placeholder="Private internal notes for this load..."
+//                       rows={4}
+//                     />
+//                   </div>
+//                 </div>
+//               )}
+
+//               {/* Customer Load Notes and Dispatch Notes (always visible) */}
+//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
 //                 <TextAreaGroup
 //                   label="Customer Load Notes"
 //                   name="customerLoadNotes"
@@ -1312,16 +1542,38 @@
 //                 />
 //               </div>
 //             </div>
-//             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+//             <div className="grid grid-cols-3 lg:grid-cols-2 gap-6">
 //               {/* Pickups */}
 //               <div className="bg-white rounded-lg shadow-sm border-l-4 border-green-500 p-4 sm:p-6">
 //                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-//                   <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-//                     <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
-//                       A
+//                   <div className="flex items-center gap-3">
+//                     <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+//                       <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
+//                         A
+//                       </div>
+//                       Pickups
+//                     </h3>
+
+//                     {/* Auto-fill toggle */}
+//                     <div className="flex items-center gap-2">
+//                       <input
+//                         type="checkbox"
+//                         checked={autoFillDeliveries}
+//                         onChange={(e) =>
+//                           setAutoFillDeliveries(e.target.checked)
+//                         }
+//                         className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+//                         id="autoFillToggle"
+//                       />
+//                       <label
+//                         htmlFor="autoFillToggle"
+//                         className="text-xs text-gray-600 select-none cursor-pointer"
+//                       >
+//                         Auto-fill deliveries
+//                       </label>
 //                     </div>
-//                     Pickups
-//                   </h3>
+//                   </div>
+
 //                   <button
 //                     onClick={() => addStop("pickups")}
 //                     className="text-xs bg-green-50 text-green-600 px-3 py-2 rounded hover:bg-green-100 font-medium flex items-center justify-center gap-1 w-full sm:w-auto"
@@ -1357,35 +1609,40 @@
 //                     </div>
 
 //                     <div className="space-y-4">
-//                       <SelectGroup
-//                         label="Shipper"
-//                         value={stop.company}
-//                         onChange={(e) =>
-//                           handleStopChange(
-//                             "pickups",
-//                             stop.id,
-//                             "company",
-//                             e.target.value
-//                           )
-//                         }
-//                         options={shipperOptions}
-//                         name={""}
-//                       />
-
-//                       <InputGroup
-//                         label="Customer Load/Ref/Conf"
-//                         value={stop.customerLoadRefConf}
-//                         onChange={(e) =>
-//                           handleStopChange(
-//                             "pickups",
-//                             stop.id,
-//                             "customerLoadRefConf",
-//                             e.target.value
-//                           )
-//                         }
-//                         placeholder="Customer reference number"
-//                         name={""}
-//                       />
+//                       <div className="flex flex-wrap gap-4 items-end mb-4">
+//                         <div className="flex-1">
+//                           <SelectGroup
+//                             label="Shipper"
+//                             value={stop.company}
+//                             onChange={(e) =>
+//                               handleStopChange(
+//                                 "pickups",
+//                                 stop.id,
+//                                 "company",
+//                                 e.target.value
+//                               )
+//                             }
+//                             options={shipperOptions}
+//                             name={""}
+//                           />
+//                         </div>
+//                         <div className="flex-1">
+//                           <InputGroup
+//                             label="Customer Load/Ref/Conf"
+//                             value={stop.customerLoadRefConf}
+//                             onChange={(e) =>
+//                               handleStopChange(
+//                                 "pickups",
+//                                 stop.id,
+//                                 "customerLoadRefConf",
+//                                 e.target.value
+//                               )
+//                             }
+//                             placeholder="Customer reference number"
+//                             name={""}
+//                           />
+//                         </div>
+//                       </div>
 
 //                       <div className="mt-4">
 //                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -1496,7 +1753,7 @@
 //                               e.target.value
 //                             )
 //                           }
-//                           options={stopTypeOptions}
+//                           options={pickupTypeOptions}
 //                           name={""}
 //                         />
 //                       </div>
@@ -1768,35 +2025,40 @@
 //                       )}
 //                     </div>
 //                     <div className="space-y-4">
-//                       <SelectGroup
-//                         label="Consignee"
-//                         value={stop.company}
-//                         onChange={(e) =>
-//                           handleStopChange(
-//                             "deliveries",
-//                             stop.id,
-//                             "company",
-//                             e.target.value
-//                           )
-//                         }
-//                         options={consigneeOptions}
-//                         name={""}
-//                       />
-
-//                       <InputGroup
-//                         label="Customer Load/Ref/Conf"
-//                         value={stop.customerLoadRefConf}
-//                         onChange={(e) =>
-//                           handleStopChange(
-//                             "deliveries",
-//                             stop.id,
-//                             "customerLoadRefConf",
-//                             e.target.value
-//                           )
-//                         }
-//                         placeholder="Customer reference number"
-//                         name={""}
-//                       />
+//                       <div className="flex flex-wrap gap-4 items-end mb-4">
+//                         <div className="flex-1">
+//                           <SelectGroup
+//                             label="Consignee"
+//                             value={stop.company}
+//                             onChange={(e) =>
+//                               handleStopChange(
+//                                 "deliveries",
+//                                 stop.id,
+//                                 "company",
+//                                 e.target.value
+//                               )
+//                             }
+//                             options={consigneeOptions}
+//                             name={""}
+//                           />
+//                         </div>
+//                         <div className="flex-1">
+//                           <InputGroup
+//                             label="Customer Load/Ref/Conf"
+//                             value={stop.customerLoadRefConf}
+//                             onChange={(e) =>
+//                               handleStopChange(
+//                                 "pickups",
+//                                 stop.id,
+//                                 "customerLoadRefConf",
+//                                 e.target.value
+//                               )
+//                             }
+//                             placeholder="Customer reference number"
+//                             name={""}
+//                           />
+//                         </div>
+//                       </div>
 
 //                       <div className="mt-4">
 //                         <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -2069,101 +2331,202 @@
 //                 ))}
 //               </div>
 //             </div>
+//           </div>
 
-//             {/* SECTION 4: Equipment & Driver - Keep as before */}
+//           {/* RIGHT COLUMN (Financials, Status & Documents) */}
+//           <div className="lg:col-span-2 space-y-6">
+//             {/* SECTION 6: Status */}
 //             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-//               <SectionHeader
-//                 icon={Truck}
-//                 title="Equipment & Driver Assignment"
-//                 colorClass="text-orange-600"
-//               />
-//               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-//                 <SelectGroup
-//                   label="Select Carrier"
-//                   name="carrierId"
-//                   value={formData.carrierId}
-//                   onChange={handleInputChange}
-//                   options={[
-//                     { value: "CAR-101", label: "3 Arrows INC." },
-//                     { value: "CAR-102", label: "7 Days Carrier" },
-//                     { value: "CAR-103", label: "A & D Trucklines" },
-//                   ]}
-//                 />
-//                 <SelectGroup
-//                   label="Select Driver"
-//                   name="driverId"
-//                   value={formData.driverId}
-//                   onChange={handleInputChange}
-//                   options={[
-//                     { value: "DRV-101", label: "Delmo (Available)" },
-//                     { value: "DRV-102", label: "Jimmy (In Transit)" },
-//                     { value: "DRV-103", label: "Rahul (Available)" },
-//                   ]}
-//                 />
-//                 <SelectGroup
-//                   label="Assigned Truck"
-//                   name="truckId"
-//                   value={formData.truckId}
-//                   onChange={handleInputChange}
-//                   options={[
-//                     { value: "TRK-001", label: "FREIGHTLINER (A01DET)" },
-//                     { value: "TRK-002", label: "INTERNATIONAL (A04INT)" },
-//                     { value: "TRK-003", label: "ISUZU MOTORS (A07ISU)" },
-//                     { value: "TRK-004", label: "KENWORTH (A08MAX)" },
-//                     { value: "TRK-005", label: "MACK (A11CUM)" },
-//                   ]}
-//                 />
-//                 <SelectGroup
-//                   label="Assigned Trailer"
-//                   name="trailerId"
-//                   value={formData.trailerId}
-//                   onChange={handleInputChange}
-//                   options={[
-//                     { value: "TRL-5501", label: "HYUNDAI (SMR2233)" },
-//                     { value: "TRL-9902", label: "DRY VAN (BXXZDFF566)" },
-//                   ]}
-//                 />
-//                 <InputGroup
-//                   label="Co-Driver (Team)"
-//                   name="secondDriverId"
-//                   value={formData.secondDriverId}
-//                   onChange={handleInputChange}
-//                   placeholder="Optional"
-//                   className="sm:col-span-2 lg:col-span-1"
-//                 />
-//                 <InputGroup
-//                   label="Dispatcher"
-//                   name="dispatcherId"
-//                   value={formData.dispatcherId}
-//                   onChange={handleInputChange}
-//                   disabled
-//                   className="sm:col-span-2 lg:col-span-1"
-//                 />
+//               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+//                 <h3 className="font-bold text-gray-700">Load Status</h3>
+//                 <StatusBadge status={formData.status} />
 //               </div>
-//               <div className="mt-4 flex flex-col sm:flex-row gap-3">
-//                 <CheckboxGroup
-//                   label="Notify Driver via App"
-//                   name="autoSendDriver"
-//                   checked={formData.autoSendDriver}
+//               <div className="space-y-3 relative">
+//                 <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
+//                 {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
+//                   (step) => (
+//                     <div
+//                       key={step}
+//                       className="flex items-center gap-3 relative z-10"
+//                     >
+//                       <div
+//                         className={`w-4 h-4 rounded-full border-2 ${
+//                           step === formData.status
+//                             ? "bg-[#F96176] border-[#F96176]"
+//                             : "bg-white border-gray-300"
+//                         }`}
+//                       ></div>
+//                       <span
+//                         className={`text-sm ${
+//                           step === formData.status
+//                             ? "font-bold text-[#F96176]"
+//                             : "text-gray-500"
+//                         }`}
+//                       >
+//                         {step}
+//                       </span>
+//                     </div>
+//                   )
+//                 )}
+//               </div>
+
+//               <div className="mt-6 pt-4 border-t">
+//                 <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+//                   Change Status
+//                 </label>
+//                 <select
+//                   className="w-full rounded-md border-gray-300 shadow-sm text-sm p-2 bg-gray-50"
+//                   name="status"
+//                   value={formData.status}
 //                   onChange={handleInputChange}
-//                 />
-//                 <CheckboxGroup
-//                   label="Enable GPS Tracking"
-//                   name="autoTrack"
-//                   checked={formData.autoTrack}
-//                   onChange={handleInputChange}
-//                 />
+//                 >
+//                   <option value="Draft">Draft</option>
+//                   <option value="Posted">Posted (Open)</option>
+//                   <option value="Assigned">Assigned</option>
+//                   <option value="In Transit">In Transit</option>
+//                   <option value="Delivered">Delivered</option>
+//                   <option value="Cancelled">Cancelled</option>
+//                 </select>
 //               </div>
 //             </div>
 
-//             {/* SECTION 5: Documents */}
+//             {/* SECTION 7: Rates & Financials */}
+//             <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+//               <div className="bg-gray-900 px-4 sm:px-6 py-4 border-b border-gray-800">
+//                 <div className="flex items-center gap-2 text-white">
+//                   <DollarSign className="w-5 h-5 text-green-400" />
+//                   <h3 className="text-lg font-bold">Financials</h3>
+//                 </div>
+//               </div>
+
+//               <div className="p-4 sm:p-6 space-y-4">
+//                 {/* Add new financial fields at the top */}
+//                 <SelectGroup
+//                   label="Fee Type"
+//                   name="feeType"
+//                   value={formData.feeType}
+//                   onChange={handleInputChange}
+//                   options={feeTypeOptions}
+//                 />
+
+//                 <SelectGroup
+//                   label="Fuel Src Type"
+//                   name="fuelSrcType"
+//                   value={formData.fuelSrcType}
+//                   onChange={handleInputChange}
+//                   options={fuelSrcTypeOptions}
+//                 />
+
+//                 <InputGroup
+//                   label="Fuel Source"
+//                   name="fuelSrc"
+//                   value={formData.fuelSrc}
+//                   onChange={handleInputChange}
+//                   placeholder="Fuel source details"
+//                   icon={Fuel}
+//                 />
+
+//                 {/* <InputGroup
+//                   label="Tendered Miles"
+//                   name="tenderedMiles"
+//                   value={formData.tenderedMiles}
+//                   onChange={handleInputChange}
+//                   placeholder="Enter miles"
+//                   icon={MapPin}
+//                 /> */}
+
+//                 <div className="border-t border-dashed my-2"></div>
+
+//                 <InputGroup
+//                   label="Line Haul Rate ($)"
+//                   name="lineHaul"
+//                   type="number"
+//                   value={formData.lineHaul}
+//                   onChange={handleInputChange}
+//                 />
+//                 <InputGroup
+//                   label="Fuel Surcharge ($)"
+//                   name="fuelSurcharge"
+//                   type="number"
+//                   value={formData.fuelSurcharge}
+//                   onChange={handleInputChange}
+//                 />
+
+//                 <div className="grid grid-cols-2 gap-3">
+//                   <InputGroup
+//                     label="Detention"
+//                     name="detention"
+//                     type="number"
+//                     value={formData.detention}
+//                     onChange={handleInputChange}
+//                   />
+//                   <InputGroup
+//                     label="Layover"
+//                     name="layover"
+//                     type="number"
+//                     value={formData.layover}
+//                     onChange={handleInputChange}
+//                   />
+//                   <InputGroup
+//                     label="TONU"
+//                     name="tonu"
+//                     type="number"
+//                     value={formData.tonu}
+//                     onChange={handleInputChange}
+//                   />
+//                   <InputGroup
+//                     label="Accessorials"
+//                     name="accessorials"
+//                     type="number"
+//                     value={formData.accessorials}
+//                     onChange={handleInputChange}
+//                   />
+//                 </div>
+
+//                 <div className="border-t border-dashed my-4"></div>
+
+//                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+//                   <div className="flex justify-between text-sm">
+//                     <span className="text-gray-600">Total Revenue:</span>
+//                     <span className="font-bold text-gray-900">
+//                       ${calculations.totalRevenue.toFixed(2)}
+//                     </span>
+//                   </div>
+
+//                   <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
+//                     <span className="text-gray-600">Carrier Pay:</span>
+//                     <input
+//                       type="number"
+//                       name="totalCarrierPay"
+//                       value={formData.totalCarrierPay}
+//                       onChange={handleInputChange}
+//                       className="w-24 text-right rounded border-gray-300 text-sm p-1"
+//                       placeholder="0.00"
+//                     />
+//                   </div>
+
+//                   <div
+//                     className={`flex justify-between text-sm font-bold pt-2 ${
+//                       calculations.estimatedProfit >= 0
+//                         ? "text-green-600"
+//                         : "text-red-600"
+//                     }`}
+//                   >
+//                     <span>Profit ({calculations.margin}%):</span>
+//                     <span>${calculations.estimatedProfit.toFixed(2)}</span>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+
+//             {/* SECTION 8: Documents & Compliance - MOVED to right sidebar */}
 //             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
 //               <SectionHeader
 //                 icon={FileText}
 //                 title="Documents & Compliance"
 //                 colorClass="text-gray-600"
 //               />
-//               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+//               <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
 //                 <FileUploadBox
 //                   label="Rate Confirmation"
 //                   type="rate-confirmation"
@@ -2239,245 +2602,51 @@
 //                     </div>
 //                   </div>
 
-//                   {/* Group documents by type */}
-//                   {[
-//                     "rate-confirmation",
-//                     "bol",
-//                     "pod",
-//                     "damage-photos",
-//                     "scale-ticket",
-//                     "lumper",
-//                   ].map((docType) => {
-//                     const typeDocuments = formData.documents.filter(
-//                       (doc) => doc.type === docType
-//                     );
-//                     if (typeDocuments.length === 0) return null;
-
-//                     return (
-//                       <div key={docType} className="mb-4 last:mb-0">
-//                         <h5 className="text-xs font-medium text-gray-600 mb-2 capitalize">
-//                           {docType.replace("-", " ")} ({typeDocuments.length})
-//                         </h5>
-//                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-//                           {typeDocuments.map((doc) => (
-//                             <div
-//                               key={doc.id}
-//                               className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200"
-//                             >
-//                               <div className="flex items-center gap-3 flex-1 min-w-0">
-//                                 <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
-//                                 <div className="flex-1 min-w-0">
-//                                   <p className="text-sm font-medium text-gray-700 truncate">
-//                                     {doc.name}
-//                                   </p>
-//                                   <div className="flex items-center gap-2 text-xs text-gray-500">
-//                                     <span className="capitalize">
-//                                       {doc.type.replace("-", " ")}
-//                                     </span>
-//                                     {doc.size && (
-//                                       <span>
-//                                         • {(doc.size / 1024).toFixed(1)} KB
-//                                       </span>
-//                                     )}
-//                                   </div>
-//                                 </div>
-//                               </div>
-//                               <div className="flex items-center gap-1 ml-2">
-//                                 {doc.previewUrl && (
-//                                   <button
-//                                     onClick={() =>
-//                                       handleViewPreview(doc.previewUrl!)
-//                                     }
-//                                     className="p-1 hover:bg-gray-200 rounded"
-//                                     title="View Preview"
-//                                   >
-//                                     <Eye className="w-4 h-4 text-gray-600" />
-//                                   </button>
-//                                 )}
-//                                 <button
-//                                   onClick={() => handleFileRemove(doc.id)}
-//                                   className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
-//                                   title="Remove File"
-//                                 >
-//                                   <Trash2 className="w-4 h-4" />
-//                                 </button>
-//                               </div>
+//                   <div className="max-h-60 overflow-y-auto pr-2">
+//                     {formData.documents.map((doc) => (
+//                       <div
+//                         key={doc.id}
+//                         className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-200 mb-2"
+//                       >
+//                         <div className="flex items-center gap-3 flex-1 min-w-0">
+//                           <FileImage className="w-5 h-5 text-gray-400 flex-shrink-0" />
+//                           <div className="flex-1 min-w-0">
+//                             <p className="text-sm font-medium text-gray-700 truncate">
+//                               {doc.name}
+//                             </p>
+//                             <div className="flex items-center gap-2 text-xs text-gray-500">
+//                               <span className="capitalize">
+//                                 {doc.type.replace("-", " ")}
+//                               </span>
+//                               {doc.size && (
+//                                 <span>• {(doc.size / 1024).toFixed(1)} KB</span>
+//                               )}
 //                             </div>
-//                           ))}
+//                           </div>
+//                         </div>
+//                         <div className="flex items-center gap-1 ml-2">
+//                           {doc.previewUrl && (
+//                             <button
+//                               onClick={() => handleViewPreview(doc.previewUrl!)}
+//                               className="p-1 hover:bg-gray-200 rounded"
+//                               title="View Preview"
+//                             >
+//                               <Eye className="w-4 h-4 text-gray-600" />
+//                             </button>
+//                           )}
+//                           <button
+//                             onClick={() => handleFileRemove(doc.id)}
+//                             className="p-1 hover:bg-red-100 hover:text-red-600 rounded"
+//                             title="Remove File"
+//                           >
+//                             <Trash2 className="w-4 h-4" />
+//                           </button>
 //                         </div>
 //                       </div>
-//                     );
-//                   })}
+//                     ))}
+//                   </div>
 //                 </div>
 //               )}
-//             </div>
-//           </div>
-
-//           {/* RIGHT COLUMN (Financials & Status) */}
-//           <div className="lg:col-span-2 space-y-6">
-//             {/* SECTION 6: Status */}
-//             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-//               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-//                 <h3 className="font-bold text-gray-700">Load Status</h3>
-//                 <StatusBadge status={formData.status} />
-//               </div>
-//               <div className="space-y-3 relative">
-//                 <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
-//                 {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
-//                   (step) => (
-//                     <div
-//                       key={step}
-//                       className="flex items-center gap-3 relative z-10"
-//                     >
-//                       <div
-//                         className={`w-4 h-4 rounded-full border-2 ${
-//                           step === formData.status
-//                             ? "bg-[#F96176] border-[#F96176]"
-//                             : "bg-white border-gray-300"
-//                         }`}
-//                       ></div>
-//                       <span
-//                         className={`text-sm ${
-//                           step === formData.status
-//                             ? "font-bold text-[#F96176]"
-//                             : "text-gray-500"
-//                         }`}
-//                       >
-//                         {step}
-//                       </span>
-//                     </div>
-//                   )
-//                 )}
-//               </div>
-
-//               <div className="mt-6 pt-4 border-t">
-//                 <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
-//                   Change Status
-//                 </label>
-//                 <select
-//                   className="w-full rounded-md border-gray-300 shadow-sm text-sm p-2 bg-gray-50"
-//                   name="status"
-//                   value={formData.status}
-//                   onChange={handleInputChange}
-//                 >
-//                   <option value="Draft">Draft</option>
-//                   <option value="Posted">Posted (Open)</option>
-//                   <option value="Assigned">Assigned</option>
-//                   <option value="In Transit">In Transit</option>
-//                   <option value="Delivered">Delivered</option>
-//                   <option value="Cancelled">Cancelled</option>
-//                 </select>
-//               </div>
-//             </div>
-
-//             {/* SECTION 7: Rates & Financials */}
-//             <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-//               <div className="bg-gray-900 px-4 sm:px-6 py-4 border-b border-gray-800">
-//                 <div className="flex items-center gap-2 text-white">
-//                   <DollarSign className="w-5 h-5 text-green-400" />
-//                   <h3 className="text-lg font-bold">Financials</h3>
-//                 </div>
-//               </div>
-
-//               <div className="p-4 sm:p-6 space-y-4">
-//                 <InputGroup
-//                   label="Line Haul Rate ($)"
-//                   name="lineHaul"
-//                   type="number"
-//                   value={formData.lineHaul}
-//                   onChange={handleInputChange}
-//                 />
-//                 <InputGroup
-//                   label="Fuel Surcharge ($)"
-//                   name="fuelSurcharge"
-//                   type="number"
-//                   value={formData.fuelSurcharge}
-//                   onChange={handleInputChange}
-//                 />
-
-//                 <div className="grid grid-cols-2 gap-3">
-//                   <InputGroup
-//                     label="Detention"
-//                     name="detention"
-//                     type="number"
-//                     value={formData.detention}
-//                     onChange={handleInputChange}
-//                   />
-//                   <InputGroup
-//                     label="Layover"
-//                     name="layover"
-//                     type="number"
-//                     value={formData.layover}
-//                     onChange={handleInputChange}
-//                   />
-//                   <InputGroup
-//                     label="TONU"
-//                     name="tonu"
-//                     type="number"
-//                     value={formData.tonu}
-//                     onChange={function (): void {
-//                       throw new Error("Function not implemented.");
-//                     }}
-//                   />
-//                 </div>
-
-//                 <div className="border-t border-dashed my-4"></div>
-
-//                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-//                   <div className="flex justify-between text-sm">
-//                     <span className="text-gray-600">Total Revenue:</span>
-//                     <span className="font-bold text-gray-900">
-//                       ${calculations.totalRevenue.toFixed(2)}
-//                     </span>
-//                   </div>
-
-//                   <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
-//                     <span className="text-gray-600">Carrier Pay:</span>
-//                     <input
-//                       type="number"
-//                       name="totalCarrierPay"
-//                       value={formData.totalCarrierPay}
-//                       onChange={handleInputChange}
-//                       className="w-24 text-right rounded border-gray-300 text-sm p-1"
-//                       placeholder="0.00"
-//                     />
-//                   </div>
-
-//                   <div
-//                     className={`flex justify-between text-sm font-bold pt-2 ${
-//                       calculations.estimatedProfit >= 0
-//                         ? "text-green-600"
-//                         : "text-red-600"
-//                     }`}
-//                   >
-//                     <span>Profit ({calculations.margin}%):</span>
-//                     <span>${calculations.estimatedProfit.toFixed(2)}</span>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-
-//             {/* SECTION 8: Internal Notes */}
-//             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-//               <SectionHeader
-//                 icon={MessageSquare}
-//                 title="Internal Notes"
-//                 colorClass="text-yellow-600"
-//               />
-//               <div className="space-y-3">
-//                 <div>
-//                   <label className="text-xs font-semibold text-gray-500 uppercase">
-//                     Internal Notes
-//                   </label>
-//                   <textarea
-//                     name="internalNotes"
-//                     value={formData.internalNotes}
-//                     onChange={handleInputChange}
-//                     className="w-full border rounded-md p-2 text-sm h-20 bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-//                     placeholder="Private notes..."
-//                   />
-//                 </div>
-//               </div>
 //             </div>
 //           </div>
 //         </div>
