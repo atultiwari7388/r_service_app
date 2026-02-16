@@ -478,9 +478,9 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     "In Transit": "bg-yellow-100 text-yellow-800",
     Delivered: "bg-green-100 text-green-700",
     Completed: "bg-emerald-100 text-emerald-800",
+    "Completed Toun": "bg-teal-100 text-teal-800",
     Cancelled: "bg-red-100 text-red-700",
   };
-
   return (
     <span
       className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
@@ -2343,31 +2343,36 @@ export default function CreateNewLoadPage() {
               </div>
               <div className="space-y-3 relative">
                 <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200"></div>
-                {["Draft", "Posted", "Assigned", "In Transit", "Delivered"].map(
-                  (step) => (
+                {[
+                  "Draft",
+                  "Posted",
+                  "Assigned",
+                  "In Transit",
+                  "Delivered",
+                  "Completed Toun",
+                ].map((step) => (
+                  <div
+                    key={step}
+                    className="flex items-center gap-3 relative z-10"
+                  >
                     <div
-                      key={step}
-                      className="flex items-center gap-3 relative z-10"
+                      className={`w-4 h-4 rounded-full border-2 ${
+                        step === formData.status
+                          ? "bg-[#F96176] border-[#F96176]"
+                          : "bg-white border-gray-300"
+                      }`}
+                    ></div>
+                    <span
+                      className={`text-sm ${
+                        step === formData.status
+                          ? "font-bold text-[#F96176]"
+                          : "text-gray-500"
+                      }`}
                     >
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          step === formData.status
-                            ? "bg-[#F96176] border-[#F96176]"
-                            : "bg-white border-gray-300"
-                        }`}
-                      ></div>
-                      <span
-                        className={`text-sm ${
-                          step === formData.status
-                            ? "font-bold text-[#F96176]"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {step}
-                      </span>
-                    </div>
-                  )
-                )}
+                      {step}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-6 pt-4 border-t">
@@ -2385,6 +2390,7 @@ export default function CreateNewLoadPage() {
                   <option value="Assigned">Assigned</option>
                   <option value="In Transit">In Transit</option>
                   <option value="Delivered">Delivered</option>
+                  <option value="Completed Toun">Completed Toun</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
