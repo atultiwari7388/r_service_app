@@ -1338,13 +1338,13 @@ export default function CreateNewLoadPage() {
                       </div>
 
                       <div className="col-span-1">
-                        <InputGroup
+                        {/* <InputGroup
                           label="Dispatcher"
                           name="dispatcherId"
                           value={formData.dispatcherId}
                           onChange={handleInputChange}
                           disabled
-                        />
+                        /> */}
                       </div>
                     </>
                   )}
