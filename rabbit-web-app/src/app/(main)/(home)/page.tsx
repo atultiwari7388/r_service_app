@@ -5,26 +5,26 @@ import TestimonialsList from "./components/TestimonalList";
 import CustomCarousel from "./components/CustomCarosuel";
 
 export const metadata = {
-  title: "Home - Rabbit Mechanic",
+  title: "Home - Trenoops",
   description:
-    "Welcome to Rabbit Mechanic, your trusted partner for automotive services. Explore our services, book an appointment, and read testimonials from satisfied customers.",
+    "Welcome to Treenoops, your trusted partner for automotive services. Explore our services, book an appointment, and read testimonials from satisfied customers.",
   keywords:
-    "Home, Rabbit Mechanic, Automotive Services, Car Repair, Truck Services, Customer Testimonials, Book Service",
+    "Home, Treenoops, Automotive Services, Car Repair, Truck Services, Customer Testimonials, Book Service",
   robots: "index, follow",
   openGraph: {
-    title: "Home - Rabbit Mechanic",
+    title: "Home - Treenoops",
     description:
-      "Discover Rabbit Mechanic, your go-to destination for reliable automotive services. Book your service today!",
-    url: "https://www.rabbitmechanic.com",
-    image: "https://www.rabbitmechanic.com/images/home.jpg",
+      "Discover Treenoops, your go-to destination for reliable automotive services. Book your service today!",
+    url: "https://www.trenoops.com",
+    image: "https://www.trenoops.com/images/home.jpg",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Home - Rabbit Mechanic",
+    title: "Home - Treenoops",
     description:
-      "Welcome to Rabbit Mechanic, your trusted partner for automotive services. Explore our services and book an appointment today!",
-    image: "https://www.rabbitmechanic.com/images/home.jpg",
+      "Welcome to Treenoops, your trusted partner for automotive services. Explore our services and book an appointment today!",
+    image: "https://www.trenoops.com/images/home.jpg",
   },
 };
 

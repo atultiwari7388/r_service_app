@@ -13,12 +13,7 @@ import {
   FaFacebookF,
   FaYoutube,
   FaLinkedinIn,
-  // FaTruck,
-  // FaTools,
-  // FaShieldAlt,
 } from "react-icons/fa";
-// import { motion } from "framer-motion";
-// import Image from "next/image";
 
 const Footer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -27,8 +22,6 @@ const Footer: React.FC = () => {
     contactNumber?: string;
     address?: string;
   }>({});
-
-  // const { user } = useAuth() || { user: null };
 
   const fetchContactUs = async () => {
     setIsLoading(true);
@@ -78,7 +71,7 @@ const Footer: React.FC = () => {
               )}
             <p className="mb-2 flex items-center">
               <FaEnvelope className="mr-2 text-[#F96176]" />
-              info@rabbitmechanic.com
+              info@trenoops.com
             </p>
           </div>
           {/* Quick links Section */}

@@ -2,10 +2,8 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
-// import { GlobalToastError } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
-// import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   FaPhoneAlt,
@@ -15,7 +13,6 @@ import {
   FaTwitter,
   FaInstagram,
 } from "react-icons/fa";
-// import { IoMdNotificationsOutline } from "react-icons/io";
 
 export default function TopBar() {
   const { user } = useAuth() || { user: null };
@@ -74,7 +71,7 @@ export default function TopBar() {
             <FaEnvelope />
             <a href="">
               {user === null ? (
-                <span>info@rabbitmechanicservices.com</span>
+                <span>info@trenoops.com</span>
               ) : (
                 <span>{contactInfo.contactMail}</span>
               )}

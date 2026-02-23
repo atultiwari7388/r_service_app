@@ -46,7 +46,7 @@ export default function ContactUsComp() {
       }
     } catch (error) {
       console.error("Error fetching contact info:", error);
-      toast.error("Failed to load contact information");
+      // toast.error("Failed to load contact information");
     } finally {
       setIsLoading(false);
     }
@@ -169,9 +169,7 @@ export default function ContactUsComp() {
                   <FaEnvelope className="text-[#F96176] text-xl" />
                   <div>
                     <p className="font-semibold">Email</p>
-                    <p>
-                      {contactInfo.contactMail || "info@rabbitmechanic.com"}
-                    </p>
+                    <p>{contactInfo.contactMail || "info@trenoops.com"}</p>
                   </div>
                 </div>
 

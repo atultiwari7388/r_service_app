@@ -56,36 +56,36 @@ export default function AboutUsComponent() {
                   </div>
                 ) : (
                   <div className="text-gray-700 leading-relaxed space-y-6">
-                    Rabbit Mechanic was founded by logistics professionals and
-                    built with real truckers in mind. Rabbit Mechanic is a
-                    smart, all-in-one service application and website built
-                    exclusively for Semi Trucks and Trailers, featuring an
-                    intelligent Automatic Service Alert System that keeps your
-                    fleet fully maintained and always road-ready. With Rabbit
-                    Mechanic, you can effortlessly track detailed service
-                    records for every vehicle, ensuring you stay updated on all
-                    past maintenance and upcoming tasks. The system sends
-                    real-time service reminders so you never miss critical
-                    upkeep—including engine oil changes, wheel alignment (truck
-                    and trailer), filter replacements (air, fuel, DEF, cabin),
-                    tire rotations/replacements, tune-ups, transmission fluid,
-                    and differential oil changes. It also delivers scheduled
-                    alerts for full inspections, including brake checks and DOT
-                    compliance, helping prevent breakdowns and costly regulatory
-                    issues. Designed for both owner-operators and fleet
-                    managers, Rabbit offers a powerful suite of tools like
-                    maintenance history tracking, service scheduling, a fleet
-                    dashboard, and access to on-site or mobile mechanics.
-                    Whether you’re managing a single truck or an entire fleet,
-                    Rabbit helps maximize uptime, reduce unexpected repairs, and
-                    extend the life of your rigs—all from one easy-to-use
-                    platform. Need a mechanic fast? Use Rabbit to find and
-                    connect with nearby verified mechanics, perfect for both
-                    emergency fixes and scheduled work. You can also track
-                    trips, monitor mileage, and manage your driver team for full
-                    operational visibility. Rabbit Mechanic is your trusted
-                    digital co-pilot, making predictive maintenance and smart
-                    fleet management simple, efficient, and stress-free.
+                    TrenOops was founded by logistics professionals and built
+                    with real truckers in mind. TrenOops is a smart, all-in-one
+                    service application and website built exclusively for Semi
+                    Trucks and Trailers, featuring an intelligent Automatic
+                    Service Alert System that keeps your fleet fully maintained
+                    and always road-ready. With TrenOops , you can effortlessly
+                    track detailed service records for every vehicle, ensuring
+                    you stay updated on all past maintenance and upcoming tasks.
+                    The system sends real-time service reminders so you never
+                    miss critical upkeep—including engine oil changes, wheel
+                    alignment (truck and trailer), filter replacements (air,
+                    fuel, DEF, cabin), tire rotations/replacements, tune-ups,
+                    transmission fluid, and differential oil changes. It also
+                    delivers scheduled alerts for full inspections, including
+                    brake checks and DOT compliance, helping prevent breakdowns
+                    and costly regulatory issues. Designed for both
+                    owner-operators and fleet managers, TrenOops offers a
+                    powerful suite of tools like maintenance history tracking,
+                    service scheduling, a fleet dashboard, and access to on-site
+                    or mobile mechanics. Whether you’re managing a single truck
+                    or an entire fleet, TrenOops helps maximize uptime, reduce
+                    unexpected repairs, and extend the life of your rigs—all
+                    from one easy-to-use platform. Need a mechanic fast? Use
+                    TrenOops to find and connect with nearby verified mechanics,
+                    perfect for both emergency fixes and scheduled work. You can
+                    also track trips, monitor mileage, and manage your driver
+                    team for full operational visibility. TrenOops Mechanic is
+                    your trusted digital co-pilot, making predictive maintenance
+                    and smart fleet management simple, efficient, and
+                    stress-free.
                   </div>
                 )}
               </div>
