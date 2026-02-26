@@ -15,7 +15,7 @@ const testimonialsData = [
     name: "Jack T.",
     role: "Fleet Owner, Texas",
     message:
-      "Saved me thousands in emergency repairs! I manage a fleet of 12 trucks, and TrenOops has completely changed the way we handle maintenance. The alerts are accurate, and now we never miss a service. My team loves it!",
+      "Saved me thousands in emergency repairs! I manage a fleet of 12 trucks, and TrenoOps has completely changed the way we handle maintenance. The alerts are accurate, and now we never miss a service. My team loves it!",
     rating: 5,
     avatar: "/jack-t.png",
   },
@@ -31,7 +31,7 @@ const testimonialsData = [
     name: "Maria L.",
     role: "Dispatcher, Florida",
     message:
-      "Affordable and super easy to use. We track 7 trucks and TrenOops Mechanic is so simple, even our drivers who aren't tech-savvy use it daily.",
+      "Affordable and super easy to use. We track 7 trucks and TrenoOps Mechanic is so simple, even our drivers who aren't tech-savvy use it daily.",
     rating: 4,
     avatar: "/maria.png",
   },
@@ -115,7 +115,7 @@ const TestimonialsList = () => {
             variants={fadeIn}
             className="text-xl text-gray-600 max-w-3xl mx-auto"
           >
-            Hear from truckers, fleet managers, and mechanics who use TrenOops
+            Hear from truckers, fleet managers, and mechanics who use TrenoOps
             Mechanic daily
           </motion.p>
         </motion.div>

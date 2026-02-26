@@ -12,7 +12,7 @@ const sliderData = [
     imageSrc: "/boost_business.png",
     title: "Boost Your Business",
     description:
-      "Join TrenOops as a roadside service provider and unlock new income streams. Get connected with truckers in need of urgent repairs across the USA & Canada. Whether you're a solo mechanic or run a mobile service team, our platform helps you grow your customer base, increase visibility, and earn more.",
+      "Join TrenoOps as a roadside service provider and unlock new income streams. Get connected with truckers in need of urgent repairs across the USA & Canada. Whether you're a solo mechanic or run a mobile service team, our platform helps you grow your customer base, increase visibility, and earn more.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
@@ -20,7 +20,7 @@ const sliderData = [
     imageSrc: "/effortless_manage.png",
     title: "Effortless Management",
     description:
-      "Easily assign trucks to drivers, track who drove which vehicle and when, and maintain accurate records — all in one place. TrenOops simplifies driver tracking, saving time and improving accountability for fleet owners.",
+      "Easily assign trucks to drivers, track who drove which vehicle and when, and maintain accurate records — all in one place. TrenoOps simplifies driver tracking, saving time and improving accountability for fleet owners.",
     buttonText: "Book Now",
     buttonLink: "#",
   },
@@ -36,7 +36,7 @@ const sliderData = [
     imageSrc: "/more_truck.png",
     title: "More trucks! More Easy",
     description:
-      "From tracking maintenance schedules to assigning drivers and monitoring service history, TrenOops Mechanic puts every detail at your fingertips. The intuitive dashboard lets you view, manage, and update information for all your vehicles in just a few clicks — whether you have 1 truck or 500.",
+      "From tracking maintenance schedules to assigning drivers and monitoring service history, TrenoOps Mechanic puts every detail at your fingertips. The intuitive dashboard lets you view, manage, and update information for all your vehicles in just a few clicks — whether you have 1 truck or 500.",
     buttonText: "Book Now",
     buttonLink: "#",
   },

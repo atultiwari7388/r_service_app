@@ -121,13 +121,13 @@ const AboutSection = () => {
             >
               DOT compliance isn&apos;t just a requirement — it&apos;s
               protection against costly fines, unexpected breakdowns, and
-              delivery delays. That&apos;s why TrenOops is designed to help you
+              delivery delays. That&apos;s why TrenoOps is designed to help you
               stay ahead of every service deadline.
             </motion.p>
 
             <motion.div variants={fadeIn}>
               <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-                TrenOops helps you:
+                TrenoOps helps you:
               </h1>
             </motion.div>
 

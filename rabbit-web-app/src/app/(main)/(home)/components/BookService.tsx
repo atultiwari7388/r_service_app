@@ -458,7 +458,7 @@ const BookingSection: React.FC = () => {
                   className="text-lg sm:text-xl text-gray-200 font-bold leading-relaxed"
                   variants={itemVariants}
                 >
-                  TrenOops is a smart service platform built specifically for
+                  TrenoOps is a smart service platform built specifically for
                   semi trucks and trailers across USA, Canada & Mexico. Whether
                   you&apos;re a fleet owner, single truck driver, or roadside
                   mechanic, we help you manage, maintain, and move with
