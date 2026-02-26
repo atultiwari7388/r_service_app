@@ -440,7 +440,8 @@ const BookingSection: React.FC = () => {
                   className="text-4xl sm:text-4xl font-bold leading-tight"
                   variants={itemVariants}
                 >
-                  <span>Drive Smart,</span> Maintain Smarter
+                  {/* <span>Drive Smart,</span> Maintain Smarter */}
+                  <span>The Modern Fleet Operations Platform</span>
                 </motion.h6>
               </motion.div>
               <motion.div className="space-y-2 " variants={itemVariants}>

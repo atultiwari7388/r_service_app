@@ -108,7 +108,7 @@ const AboutSection = () => {
                 ABOUT US
               </span>
               <h2 className="text-lg font-normal mt-2 mb-6 text-gray-600">
-                <span className="text-[#F96176] font-bold">TrenOops</span> was
+                <span className="text-[#F96176] font-bold">TrenoOps</span> was
                 founded by logistics professionals and built with real truckers
                 in mind. We understand the daily challenges of managing
                 semi-truck and trailer maintenance.
