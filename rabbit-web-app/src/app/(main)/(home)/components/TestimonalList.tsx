@@ -14,16 +14,14 @@ const testimonialsData = [
   {
     name: "Jack T.",
     role: "Fleet Owner, Texas",
-    message:
-      "Saved me thousands in emergency repairs! I manage a fleet of 12 trucks, and TrenoOps has completely changed the way we handle maintenance. The alerts are accurate, and now we never miss a service. My team loves it!",
+    message: "Saved me thousands in emergency repairs!",
     rating: 5,
     avatar: "/jack-t.png",
   },
   {
     name: "Carlos M.",
     role: "Owner-Operator, California",
-    message:
-      "Feels like a personal assistant for my truck. I used to forget oil changes or filter replacements. Now the app reminds me in time. No more guesswork. 10/10!",
+    message: "Feels like a personal assistant for my truck.",
     rating: 5,
     avatar: "/thomas.png",
   },
