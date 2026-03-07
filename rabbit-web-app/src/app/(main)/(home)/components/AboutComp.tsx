@@ -108,10 +108,10 @@ const AboutSection = () => {
                 ABOUT US
               </span>
               <h2 className="text-lg font-normal mt-2 mb-6 text-gray-600">
-                <span className="text-[#F96176] font-bold">TrenoOps</span> was
-                founded by logistics professionals and built with real truckers
-                in mind. We understand the daily challenges of managing
-                semi-truck and trailer maintenance.
+                <span className="text-[#F96176] font-bold">
+                  Built by Logistics Experts{" "}
+                </span>{" "}
+                — Trusted by Trucking Professionals
               </h2>
             </motion.div>
 
@@ -119,10 +119,9 @@ const AboutSection = () => {
               variants={fadeIn}
               className="text-lg text-gray-600 mb-8 leading-relaxed"
             >
-              DOT compliance isn&apos;t just a requirement — it&apos;s
-              protection against costly fines, unexpected breakdowns, and
-              delivery delays. That&apos;s why TrenoOps is designed to help you
-              stay ahead of every service deadline.
+              “We know dispatch delays cost money. We know missed services mean
+              breakdowns. That’s why we built a platform that helps fleets stay
+              efficient and compliant every day.”
             </motion.p>
 
             <motion.div variants={fadeIn}>
