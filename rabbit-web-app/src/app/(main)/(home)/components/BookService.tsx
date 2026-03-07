@@ -11,7 +11,15 @@ import {
   ProfileValues,
 } from "@/types/types";
 import { db, storage } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Link from "next/link";
 import { generateOrderId } from "@/utils/generateOrderId";
@@ -51,6 +59,16 @@ const BookingSection: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
   const [showPopup, setShowPopup] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoSubmitting, setDemoSubmitting] = useState(false);
+  const [demoForm, setDemoForm] = useState({
+    name: "",
+    companyName: "",
+    email: "",
+    phone: "",
+    truckCount: "",
+    message: "",
+  });
 
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [role, setRole] = useState("");
@@ -93,6 +111,17 @@ const BookingSection: React.FC = () => {
     fetchUserDataAndDetermineEffectiveUserId();
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (!userData) return;
+    setDemoForm((prev) => ({
+      ...prev,
+      name: prev.name || userData.userName || "",
+      email: prev.email || userData.email || "",
+      phone: prev.phone || userData.phoneNumber || "",
+      companyName: prev.companyName || "",
+    }));
+  }, [userData]);
+
   // Handle selection changes
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const service = e.target.value;
@@ -112,6 +141,71 @@ const BookingSection: React.FC = () => {
     const location = e.target.value;
     setSelectedLocation(location);
     console.log("Selected Location:", location);
+  };
+
+  const handleDemoInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setDemoForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDemoSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const trimmedData = {
+      name: demoForm.name.trim(),
+      companyName: demoForm.companyName.trim(),
+      email: demoForm.email.trim(),
+      phone: demoForm.phone.trim(),
+      truckCount: demoForm.truckCount.trim(),
+      message: demoForm.message.trim(),
+    };
+
+    if (
+      !trimmedData.name ||
+      !trimmedData.companyName ||
+      !trimmedData.email ||
+      !trimmedData.phone ||
+      !trimmedData.truckCount ||
+      !trimmedData.message
+    ) {
+      toast.error("Please fill all fields");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedData.email)) {
+      toast.error("Please enter a valid email");
+      return;
+    }
+
+    try {
+      setDemoSubmitting(true);
+      await addDoc(collection(db, "demoRequests"), {
+        ...trimmedData,
+        userId: user?.uid || "",
+        ownerId: effectiveUserId || "",
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Demo request sent successfully!");
+      setShowDemoModal(false);
+      setDemoForm({
+        name: "",
+        companyName: "",
+        email: "",
+        phone: "",
+        truckCount: "",
+        message: "",
+      });
+    } catch (error) {
+      console.error("Error submitting demo request:", error);
+      toast.error("Failed to submit demo request");
+    } finally {
+      setDemoSubmitting(false);
+    }
   };
 
   // Fetch data using effectiveUserId
@@ -389,13 +483,15 @@ const BookingSection: React.FC = () => {
         icon: null,
         text: "Book a Demo",
         color: "bg-[#58BB87] hover:bg-[#4ca877]",
-        link: "/book-demo",
+        link: "",
+        isBookDemo: true,
       },
       {
         icon: <FaChrome className="text-2xl" />,
         text: "Access Web Dashboard",
         color: "bg-[#F96176] hover:bg-[#e95067]",
         link: "https://www.rabbitmechanic.com/",
+        isBookDemo: false,
       },
     ],
     [
@@ -404,12 +500,14 @@ const BookingSection: React.FC = () => {
         text: "Download iOS App",
         color: "bg-[#F96176] hover:bg-[#e95067]",
         link: "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003",
+        isBookDemo: false,
       },
       {
         icon: <FaAndroid className="text-2xl" />,
         text: "Download Android App",
         color: "bg-[#58BB87] hover:bg-[#4ca877]",
         link: "https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app",
+        isBookDemo: false,
       },
     ],
   ];
@@ -476,19 +574,34 @@ const BookingSection: React.FC = () => {
                     key={rowIndex}
                     className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
-                    {row.map((button, index) => (
-                      <motion.a
-                        key={`${rowIndex}-${index}`}
-                        href={button.link}
-                        className={`${button.color} text-white px-4 py-3 rounded-lg flex items-center gap-2 justify-center font-medium shadow-md hover:shadow-xl transition-all duration-300`}
-                        variants={buttonVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                      >
-                        {button.icon}
-                        {button.text}
-                      </motion.a>
-                    ))}
+                    {row.map((button, index) =>
+                      button.isBookDemo ? (
+                        <motion.button
+                          key={`${rowIndex}-${index}`}
+                          type="button"
+                          onClick={() => setShowDemoModal(true)}
+                          className={`${button.color} text-white px-4 py-3 rounded-lg flex items-center gap-2 justify-center font-medium shadow-md hover:shadow-xl transition-all duration-300`}
+                          variants={buttonVariants}
+                          whileHover="hover"
+                          whileTap="tap"
+                        >
+                          {button.icon}
+                          {button.text}
+                        </motion.button>
+                      ) : (
+                        <motion.a
+                          key={`${rowIndex}-${index}`}
+                          href={button.link}
+                          className={`${button.color} text-white px-4 py-3 rounded-lg flex items-center gap-2 justify-center font-medium shadow-md hover:shadow-xl transition-all duration-300`}
+                          variants={buttonVariants}
+                          whileHover="hover"
+                          whileTap="tap"
+                        >
+                          {button.icon}
+                          {button.text}
+                        </motion.a>
+                      )
+                    )}
                   </div>
                 ))}
               </motion.div>
@@ -658,6 +771,85 @@ const BookingSection: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {showDemoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Book a Demo
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowDemoModal(false)}
+                className="rounded-md px-2 py-1 text-gray-500 hover:bg-gray-100"
+              >
+                X
+              </button>
+            </div>
+
+            <form className="space-y-3" onSubmit={handleDemoSubmit}>
+              <input
+                name="name"
+                value={demoForm.name}
+                onChange={handleDemoInputChange}
+                placeholder="Name"
+                className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+              />
+              <input
+                name="companyName"
+                value={demoForm.companyName}
+                onChange={handleDemoInputChange}
+                placeholder="Company Name"
+                className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+              />
+              <input
+                name="email"
+                type="email"
+                value={demoForm.email}
+                onChange={handleDemoInputChange}
+                placeholder="Email"
+                className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+              />
+              <input
+                name="phone"
+                value={demoForm.phone}
+                onChange={handleDemoInputChange}
+                placeholder="Phone"
+                className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+              />
+              <select
+                name="truckCount"
+                value={demoForm.truckCount}
+                onChange={handleDemoInputChange}
+                className="w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+              >
+                <option value="">Number of Truck</option>
+                <option value="1-5">1-5</option>
+                <option value="5-10">5-10</option>
+                <option value="10-20">10-20</option>
+                <option value="20-30">20-30</option>
+                <option value="30+">30+</option>
+              </select>
+              <textarea
+                name="message"
+                value={demoForm.message}
+                onChange={handleDemoInputChange}
+                placeholder="Message"
+                className="h-28 w-full rounded-lg border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-[#F96176]"
+              />
+
+              <button
+                type="submit"
+                disabled={demoSubmitting}
+                className="w-full rounded-lg bg-[#58BB87] px-6 py-3 text-white transition hover:bg-[#4ca877] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {demoSubmitting ? "Sending..." : "Send"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
