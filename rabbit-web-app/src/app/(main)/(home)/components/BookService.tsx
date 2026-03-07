@@ -386,19 +386,19 @@ const BookingSection: React.FC = () => {
   const downloadButtons = [
     {
       icon: <FaApple className="text-2xl" />,
-      text: "iOS App",
+      text: "Download iOS App",
       color: "bg-[#F96176] hover:bg-[#F96176]",
       link: "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003",
     },
     {
       icon: <FaAndroid className="text-2xl" />,
-      text: "Android",
+      text: "Download Android App",
       color: "bg-green-600 hover:bg-green-700",
       link: "https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app",
     },
     {
       icon: <FaChrome className="text-2xl" />,
-      text: "Web App",
+      text: "Access Web Dashboard",
       color: "bg-[#F96176] hover:bg-[#F96176]",
       link: "https://www.rabbitmechanic.com/",
     },
@@ -440,32 +440,34 @@ const BookingSection: React.FC = () => {
                   className="text-4xl sm:text-4xl font-bold leading-tight"
                   variants={itemVariants}
                 >
-                  {/* <span>Drive Smart,</span> Maintain Smarter */}
-                  <span>The Modern Fleet Operations Platform</span>
+                  <span>
+                    TrenoOps – The Operating System for Trucking Companies
+                  </span>
                 </motion.h6>
               </motion.div>
-              <motion.div className="space-y-2 " variants={itemVariants}>
-                <motion.h1
-                  className="text-1xl sm:text-2xl font-bold text-gray-200 gap-1"
-                  variants={itemVariants}
-                >
-                  The Ultimate App for Semi Trucks & Trailers
-                </motion.h1>
-              </motion.div>
 
-              <div className="max-w-[500px] ">
+              <div className="max-w-[500px] mb-10 ">
                 <motion.p
                   className="text-lg sm:text-xl text-gray-200 font-bold leading-relaxed"
                   variants={itemVariants}
                 >
-                  TrenoOps is a smart service platform built specifically for
-                  semi trucks and trailers across USA, Canada & Mexico. Whether
-                  you&apos;re a fleet owner, single truck driver, or roadside
-                  mechanic, we help you manage, maintain, and move with
-                  confidence.
+                  TrenoOps is a smart service platform for Dispatch loads, track
+                  maintenance, manage compliance, and find roadside mechanics —
+                  all from one unified platform built for semi-truck fleets.
                 </motion.p>
               </div>
-              <motion.div className="mb-24"></motion.div>
+              <motion.div className="mb-5">
+                {/** Book Demo CTA Button */}
+                <motion.a
+                  href="/book-demo"
+                  className="inline-block bg-[#58BB87] text-white px-8 py-4 rounded-lg font-medium shadow-md hover:bg-[#4ca877] transition-all duration-300"
+                  variants={buttonVariants}
+                  whileHover="hover"
+                  whileTap="tap"
+                >
+                  Book a Demo
+                </motion.a>
+              </motion.div>
               {/* Download Buttons */}
               <motion.div
                 className="flex flex-col sm:flex-row gap-4 pt-4"

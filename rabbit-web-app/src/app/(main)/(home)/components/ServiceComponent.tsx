@@ -37,9 +37,9 @@ const ServiceComponent = () => {
     },
     {
       icon: <FaTruck className="text-4xl" />,
-      title: "Fleet Operations Management Tools",
+      title: "Dispatch &amp; Load Management Tools",
       description:
-        "Utilize interactive software tools designed to help fleet operators configure repair workflows, coordinate driver activities, and manage service operations within a customizable online environment.",
+        "Utilize powerful dispatch tools designed to help fleet operators create loads, assign drivers and trucks, track pickup and delivery schedules, and manage freight operations through an organized dispatch board in a customizable online environment.",
       color: "bg-[#58BB87]",
     },
     {
@@ -72,6 +72,33 @@ const ServiceComponent = () => {
     },
   ];
 
+  const keyHighlights = [
+    {
+      icon: <FaTruck className="text-2xl" />,
+      title: "Dispatch & Load Management",
+      description: "Schedule trucks and drivers with clarity",
+      color: "from-[#58BB87] to-[#3D9D6D]",
+    },
+    {
+      icon: <FaBell className="text-2xl" />,
+      title: "Maintenance & Alerts",
+      description: "Never miss service, inspection, or tune-ups",
+      color: "from-[#F59E0B] to-[#D97706]",
+    },
+    {
+      icon: <FaChartLine className="text-2xl" />,
+      title: "DOT Compliance",
+      description: "Automatic tracking & reminders",
+      color: "from-[#8B5CF6] to-[#6D28D9]",
+    },
+    {
+      icon: <FaTools className="text-2xl" />,
+      title: "Roadside Mechanic Access",
+      description: "Find help wherever you are",
+      color: "from-[#F96176] to-[#E11D48]",
+    },
+  ];
+
   return (
     <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-6">
@@ -86,8 +113,8 @@ const ServiceComponent = () => {
             variants={fadeIn}
             className="text-4xl font-bold text-gray-800 mb-4"
           >
-            <span className="text-[#F96176]">A New Era </span>
-            of Smart Trucking.
+            <span className="text-[#F96176]">Run Your Fleet Smarter — </span>
+            Dispatch, Maintenance, and Compliance in One Place.
           </motion.h2>
           <motion.p
             variants={fadeIn}
@@ -96,6 +123,34 @@ const ServiceComponent = () => {
             Everything you need to keep your fleet moving efficiently across
             America, Canada & Mexico
           </motion.p>
+
+          <motion.div
+            variants={staggerContainer}
+            className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-5xl mx-auto text-left"
+          >
+            {keyHighlights.map((item, index) => (
+              <motion.div
+                key={index}
+                variants={fadeIn}
+                whileHover={{ y: -6 }}
+                className="rounded-2xl bg-white border border-gray-100 shadow-md hover:shadow-xl transition-all duration-300 p-5"
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-r ${item.color} text-white flex items-center justify-center shrink-0 shadow-sm`}
+                  >
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 leading-snug">
+                      {item.title}
+                    </h3>
+                    <p className="text-gray-600 mt-1">{item.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </motion.div>
 
         <motion.div
