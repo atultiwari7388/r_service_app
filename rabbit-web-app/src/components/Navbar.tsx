@@ -535,7 +535,7 @@ export default function NavBar() {
             {/* Logo */}
             <Link href="/" className="flex-shrink-0 flex items-center">
               <Image
-                src="/logo-treenoops.png"
+                src="/logo-new.png"
                 alt="logo"
                 className="h-10 w-auto"
                 height={40}

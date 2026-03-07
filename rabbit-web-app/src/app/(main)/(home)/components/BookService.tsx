@@ -383,25 +383,35 @@ const BookingSection: React.FC = () => {
     },
   };
 
-  const downloadButtons = [
-    {
-      icon: <FaApple className="text-2xl" />,
-      text: "Download iOS App",
-      color: "bg-[#F96176] hover:bg-[#F96176]",
-      link: "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003",
-    },
-    {
-      icon: <FaAndroid className="text-2xl" />,
-      text: "Download Android App",
-      color: "bg-green-600 hover:bg-green-700",
-      link: "https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app",
-    },
-    {
-      icon: <FaChrome className="text-2xl" />,
-      text: "Access Web Dashboard",
-      color: "bg-[#F96176] hover:bg-[#F96176]",
-      link: "https://www.rabbitmechanic.com/",
-    },
+  const ctaRows = [
+    [
+      {
+        icon: null,
+        text: "Book a Demo",
+        color: "bg-[#58BB87] hover:bg-[#4ca877]",
+        link: "/book-demo",
+      },
+      {
+        icon: <FaChrome className="text-2xl" />,
+        text: "Access Web Dashboard",
+        color: "bg-[#F96176] hover:bg-[#e95067]",
+        link: "https://www.rabbitmechanic.com/",
+      },
+    ],
+    [
+      {
+        icon: <FaApple className="text-2xl" />,
+        text: "Download iOS App",
+        color: "bg-[#F96176] hover:bg-[#e95067]",
+        link: "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003",
+      },
+      {
+        icon: <FaAndroid className="text-2xl" />,
+        text: "Download Android App",
+        color: "bg-[#58BB87] hover:bg-[#4ca877]",
+        link: "https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app",
+      },
+    ],
   ];
 
   if (loading) {
@@ -456,35 +466,30 @@ const BookingSection: React.FC = () => {
                   all from one unified platform built for semi-truck fleets.
                 </motion.p>
               </div>
-              <motion.div className="mb-5">
-                {/** Book Demo CTA Button */}
-                <motion.a
-                  href="/book-demo"
-                  className="inline-block bg-[#58BB87] text-white px-8 py-4 rounded-lg font-medium shadow-md hover:bg-[#4ca877] transition-all duration-300"
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
-                >
-                  Book a Demo
-                </motion.a>
-              </motion.div>
-              {/* Download Buttons */}
+              {/* Action Buttons: 2 in first row, 2 in second row */}
               <motion.div
-                className="flex flex-col sm:flex-row gap-4 pt-4"
+                className="pt-4 space-y-4 max-w-[560px]"
                 variants={itemVariants}
               >
-                {downloadButtons.map((button, index) => (
-                  <motion.a
-                    key={index}
-                    href={button.link}
-                    className={`${button.color} text-white px-6 py-3 rounded-lg flex items-center gap-2 justify-center font-medium shadow-md hover:shadow-xl transition-all duration-300`}
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
+                {ctaRows.map((row, rowIndex) => (
+                  <div
+                    key={rowIndex}
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3"
                   >
-                    {button.icon}
-                    {button.text}
-                  </motion.a>
+                    {row.map((button, index) => (
+                      <motion.a
+                        key={`${rowIndex}-${index}`}
+                        href={button.link}
+                        className={`${button.color} text-white px-4 py-3 rounded-lg flex items-center gap-2 justify-center font-medium shadow-md hover:shadow-xl transition-all duration-300`}
+                        variants={buttonVariants}
+                        whileHover="hover"
+                        whileTap="tap"
+                      >
+                        {button.icon}
+                        {button.text}
+                      </motion.a>
+                    ))}
+                  </div>
                 ))}
               </motion.div>
 

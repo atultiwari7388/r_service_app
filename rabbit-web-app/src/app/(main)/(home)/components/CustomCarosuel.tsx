@@ -9,7 +9,7 @@ import "slick-carousel/slick/slick-theme.css";
 // Slider data
 const sliderData = [
   {
-    imageSrc: "/boost_business.png",
+    imageSrc: "/boost_your_business_new.png",
     title: "Boost Your Business",
     description:
       "Join TrenoOps as a roadside service provider and unlock new income streams. Get connected with truckers in need of urgent repairs across the USA & Canada. Whether you're a solo mechanic or run a mobile service team, our platform helps you grow your customer base, increase visibility, and earn more.",
@@ -17,7 +17,7 @@ const sliderData = [
     buttonLink: "#",
   },
   {
-    imageSrc: "/effortless_manage.png",
+    imageSrc: "/effortless_management_new.png",
     title: "Effortless Management",
     description:
       "Easily assign trucks to drivers, track who drove which vehicle and when, and maintain accurate records — all in one place. TrenoOps simplifies driver tracking, saving time and improving accountability for fleet owners.",
@@ -25,7 +25,7 @@ const sliderData = [
     buttonLink: "#",
   },
   {
-    imageSrc: "/automatic_alert.png",
+    imageSrc: "/automatic_alerts_new.png",
     title: "Automatic Alerts",
     description:
       "Get Timely Notifications for oil changes, inspections, filter replacements, tire rotations, transmission service, and more.",

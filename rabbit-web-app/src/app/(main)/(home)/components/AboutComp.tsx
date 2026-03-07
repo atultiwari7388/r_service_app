@@ -48,7 +48,7 @@ const AboutSection = () => {
             }}
           >
             <Image
-              src="/about-new.jpg"
+              src="/about_us_new.png"
               alt="Mechanic working on truck"
               fill
               quality={90}
