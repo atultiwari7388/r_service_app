@@ -37,7 +37,7 @@ const ServiceComponent = () => {
     },
     {
       icon: <FaTruck className="text-4xl" />,
-      title: "Dispatch &amp; Load Management Tools",
+      title: "Dispatch & Load Management Tools",
       description:
         "Utilize powerful dispatch tools designed to help fleet operators create loads, assign drivers and trucks, track pickup and delivery schedules, and manage freight operations through an organized dispatch board in a customizable online environment.",
       color: "bg-[#58BB87]",
@@ -109,13 +109,13 @@ const ServiceComponent = () => {
           variants={staggerContainer}
           className="text-center mb-16"
         >
-          <motion.h2
+          <motion.h4
             variants={fadeIn}
             className="text-4xl font-bold text-gray-800 mb-4"
           >
             <span className="text-[#F96176]">Run Your Fleet Smarter — </span>
             Dispatch, Maintenance, and Compliance in One Place.
-          </motion.h2>
+          </motion.h4>
           <motion.p
             variants={fadeIn}
             className="text-xl text-gray-600 max-w-3xl mx-auto"

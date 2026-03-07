@@ -109,18 +109,26 @@ const Footer: React.FC = () => {
             <ul className="space-y-2">
               <li>
                 <Link
-                  href="/terms-condition"
-                  className="text-black hover:text-[#F96176]"
-                >
-                  Terms & Conditions
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/privacy-policy"
                   className="text-black hover:text-[#F96176]"
                 >
                   Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/terms-condition"
+                  className="text-black hover:text-[#F96176]"
+                >
+                  Terms
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact-us"
+                  className="text-black hover:text-[#F96176]"
+                >
+                  Support/Help Center
                 </Link>
               </li>
               <li>

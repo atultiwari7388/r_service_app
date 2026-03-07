@@ -51,10 +51,10 @@ const AboutSection = () => {
               src="/about_us_new.png"
               alt="Mechanic working on truck"
               fill
-              quality={90}
+              quality={100}
               priority
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
-              className="object-cover"
+              className="object-fit"
               style={{
                 objectPosition: "center center",
               }}
