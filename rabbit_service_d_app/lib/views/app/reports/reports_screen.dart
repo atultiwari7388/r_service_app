@@ -53,7 +53,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               elevation: 1,
               centerTitle: true,
               title: Image.asset(
-                'assets/new_rabbit_logo.png',
+                'assets/logo-vertical.png',
                 height: 50.h,
               ),
               actions: [

@@ -33,11 +33,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
             return const Center(child: Text('No description available'));
           } else {
             // Show the description from Firestore
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                snapshot.data!,
-                style: const TextStyle(fontSize: 16.0),
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  snapshot.data!,
+                  style: const TextStyle(fontSize: 16.0),
+                ),
               ),
             );
           }

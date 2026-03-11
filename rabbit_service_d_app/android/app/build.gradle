@@ -30,7 +30,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.rabbit_u_d_app.rabbit_services_app"
+    namespace "com.trenoops.customer_app"
     compileSdkVersion 35
     ndkVersion "27.0.12077973"
 
@@ -50,7 +50,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.rabbit_u_d_app.rabbit_services_app"
+        applicationId "com.trenoops.customer_app"
         minSdkVersion 23
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
