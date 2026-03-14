@@ -55,6 +55,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               title: Image.asset(
                 'assets/logo-vertical.png',
                 height: 50.h,
+                width: 120.w,
               ),
               actions: [
                 if (reController.currentUser != null)

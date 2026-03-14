@@ -44,6 +44,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 // 'assets/h_n_logo-removebg.png',
                 'assets/logo-vertical.png',
                 height: 50.h,
+                width: 120.w,
               ),
               actions: [
                 StreamBuilder<QuerySnapshot>(
