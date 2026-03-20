@@ -559,9 +559,9 @@ const BookingSection: React.FC = () => {
                   className="text-lg sm:text-xl text-gray-200 font-bold leading-relaxed"
                   variants={itemVariants}
                 >
-                  TrenoOps is a smart service platform for Dispatch loads, track
-                  maintenance, manage compliance, and find roadside mechanics —
-                  all from one unified platform built for semi-truck fleets.
+                  TrenoOps is a unified platform that helps trucking companies
+                  dispatch loads, track maintenance, manage compliance, and find
+                  roadside mechanics — all in one place.
                 </motion.p>
               </div>
               {/* Action Buttons: 2 in first row, 2 in second row */}

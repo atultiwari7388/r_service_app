@@ -3,6 +3,7 @@ import AboutSection from "./components/AboutComp";
 import BookingSection from "./components/BookService";
 import TestimonialsList from "./components/TestimonalList";
 import CustomCarousel from "./components/CustomCarosuel";
+import WhyTrenoops from "./components/WhyTrenoops";
 
 export const metadata = {
   title: "Home - Trenoops",
@@ -36,6 +37,7 @@ export default function Home() {
       </main>
       <TestimonialsList />
       <ServiceComponent />
+      <WhyTrenoops />
       <AboutSection />
       {/* <TestimonialsList /> */}
       <CustomCarousel />

@@ -76,25 +76,29 @@ const ServiceComponent = () => {
     {
       icon: <FaTruck className="text-2xl" />,
       title: "Dispatch & Load Management",
-      description: "Schedule trucks and drivers with clarity",
+      description:
+        "Assign loads, drivers, and trucks from a single dashboard and track delivery progress in realtime.",
       color: "from-[#58BB87] to-[#3D9D6D]",
     },
     {
       icon: <FaBell className="text-2xl" />,
-      title: "Maintenance & Alerts",
-      description: "Never miss service, inspection, or tune-ups",
+      title: "Fleet Maintenance Tracking",
+      description:
+        "Receive automatic alerts for oil changes, inspections, filters, and service intervals.",
       color: "from-[#F59E0B] to-[#D97706]",
     },
     {
       icon: <FaChartLine className="text-2xl" />,
-      title: "DOT Compliance",
-      description: "Automatic tracking & reminders",
+      title: "DOT Compliance Alerts",
+      description:
+        "Stay compliant with reminders for inspections and required maintenance.",
       color: "from-[#8B5CF6] to-[#6D28D9]",
     },
     {
       icon: <FaTools className="text-2xl" />,
-      title: "Roadside Mechanic Access",
-      description: "Find help wherever you are",
+      title: "Roadside Mechanic Network",
+      description:
+        "Quickly find nearby truck and trailer mechanics when drivers need service on the road.",
       color: "from-[#F96176] to-[#E11D48]",
     },
   ];
