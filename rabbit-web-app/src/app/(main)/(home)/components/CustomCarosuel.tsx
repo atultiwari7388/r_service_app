@@ -9,7 +9,7 @@ import "slick-carousel/slick/slick-theme.css";
 // Slider data
 const sliderData = [
   {
-    imageSrc: "/boost_your_business_new.png",
+    imageSrc: "/boost_ur_business_n.png",
     title: "Boost Your Business",
     description:
       "Join TrenoOps as a roadside service provider and unlock new income streams. Get connected with truckers in need of urgent repairs across the USA & Canada. Whether you're a solo mechanic or run a mobile service team, our platform helps you grow your customer base, increase visibility, and earn more.",
