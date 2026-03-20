@@ -108,10 +108,8 @@ const AboutSection = () => {
                 ABOUT US
               </span>
               <h2 className="text-lg font-normal mt-2 mb-6 text-gray-600">
-                <span className="text-[#F96176] font-bold">
-                  Built by Logistics Experts{" "}
-                </span>{" "}
-                — Trusted by Trucking Professionals
+                <span className="text-[#F96176] font-bold">TrenoOps</span> — The
+                Operating System for Modern Trucking Operations
               </h2>
             </motion.div>
 
@@ -119,18 +117,51 @@ const AboutSection = () => {
               variants={fadeIn}
               className="text-lg text-gray-600 mb-8 leading-relaxed"
             >
-              “We know dispatch delays cost money. We know missed services mean
-              breakdowns. That’s why we built a platform that helps fleets stay
-              efficient and compliant every day.”
+              “TrenoOps was founded by logistics professionals and built with
+              real truckers in mind. It is an all- in-one platform designed
+              specifically for Semi Trucks and Trailers to simplify fleet
+              operations and keep trucks running efficiently.”
             </motion.p>
 
-            <motion.div variants={fadeIn}>
+            <motion.p
+              variants={fadeIn}
+              className="text-lg text-gray-600 mb-8 leading-relaxed"
+            >
+              “With TrenoOps, fleet owners, dispatchers, and owner-operators can
+              manage dispatch operations, track vehicle maintenance, monitor
+              compliance, and connect with nearby mechanics — all from one
+              easy-to-use system. The platform includes a centralized dispatch
+              board to create loads, assign drivers and trucks, and track trips
+              in real time.”
+            </motion.p>
+
+            <motion.p
+              variants={fadeIn}
+              className="text-lg text-gray-600 mb-8 leading-relaxed"
+            >
+              “TrenoOps also features an intelligent Automatic Service Alert
+              System that helps fleets stay on top of maintenance such as oil
+              changes, filter replacements, tire service, inspections, and DOT
+              compliance requirements.”
+            </motion.p>
+
+            <motion.p
+              variants={fadeIn}
+              className="text-lg text-gray-600 mb-8 leading-relaxed"
+            >
+              “By combining dispatch management, maintenance tracking, and
+              mechanic access into one platform, TrenoOps helps trucking
+              businesses reduce downtime, stay organized, and keep their fleet
+              road-ready every day.”
+            </motion.p>
+
+            {/* <motion.div variants={fadeIn}>
               <h1 className="text-2xl font-semibold text-gray-800 mb-6">
                 TrenoOps helps you:
               </h1>
-            </motion.div>
+            </motion.div> */}
 
-            <motion.div variants={fadeIn} className="mb-8">
+            {/* <motion.div variants={fadeIn} className="mb-8">
               {[
                 "Track every dollar spent on parts and labor",
                 "Generate downloadable maintenance reports",
@@ -144,7 +175,7 @@ const AboutSection = () => {
                   <p className="text-gray-600 flex-1">{item}</p>
                 </div>
               ))}
-            </motion.div>
+            </motion.div> */}
 
             {/* Features Grid */}
             <motion.div

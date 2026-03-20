@@ -35,11 +35,11 @@ export default function Home() {
       <main className="flex-grow">
         <BookingSection />
       </main>
-      <TestimonialsList />
+      {/* <TestimonialsList /> */}
       <ServiceComponent />
       <WhyTrenoops />
       <AboutSection />
-      {/* <TestimonialsList /> */}
+      <TestimonialsList />
       <CustomCarousel />
     </div>
   );
