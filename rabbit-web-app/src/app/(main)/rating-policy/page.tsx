@@ -6,18 +6,17 @@ export default function RatingPolicy() {
 
       <div className="mb-8">
         <p className="mb-4">
-          Rabbit Mechanic Service employs a dual-rating system that allows both
-          Vendors and Users (Customers) to rate each other based on the service
-          experience. This system is governed by a dedicated policy developed
-          specifically by Rabbit Mechanic Service to ensure fairness and
-          transparency.
+          TrenoOps employs a dual-rating system that allows both Vendors and
+          Users (Customers) to rate each other based on the service experience.
+          This system is governed by a dedicated policy developed specifically
+          by TrenoOps to ensure fairness and transparency.
         </p>
         <p className="mb-4">
           Ratings are user-driven and are intended to benefit both parties by
           promoting accountability and service excellence. Vendor ratings
-          submitted by Users help Rabbit Mechanic Service generate Quality
-          Rating Scores, which are used to highlight top-performing Vendors and
-          guide Users in selecting reliable service providers.
+          submitted by Users help TrenoOps generate Quality Rating Scores, which
+          are used to highlight top-performing Vendors and guide Users in
+          selecting reliable service providers.
         </p>
         <p className="mb-4">
           At the same time, Vendors can also rate Users, helping maintain a
@@ -37,10 +36,10 @@ export default function RatingPolicy() {
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Rating Sharing</h2>
         <p>
-          Rabbit Mechanic Service will share the ratings exchanged between the
-          Vendor and the User with both parties. This allows each party to
-          provide direct feedback to the other, and ensures that the owner of
-          the listing is informed of any relevant issues.
+          TrenoOps will share the ratings exchanged between the Vendor and the
+          User with both parties. This allows each party to provide direct
+          feedback to the other, and ensures that the owner of the listing is
+          informed of any relevant issues.
         </p>
       </div>
 
@@ -57,18 +56,18 @@ export default function RatingPolicy() {
             assigned.
           </li>
           <li>
-            Only the Users & Vendors with an active Rabbit Mechanic Service
-            account (i.e. the registered User) can provide Ratings and must be
-            logged in to provide Ratings.
+            Only the Users & Vendors with an active TrenoOps account (i.e. the
+            registered User) can provide Ratings and must be logged in to
+            provide Ratings.
           </li>
           <li>
             The Ratings and their underneath Feedback shall be sent directly to
             Vendor & User and/or its duly authorized recipients.
           </li>
           <li>
-            Rabbit Mechanic Service reserves its right to screen all the Ratings
-            as well as underneath Feedback, as part of our superiority
-            declaration processes.
+            TrenoOps reserves its right to screen all the Ratings as well as
+            underneath Feedback, as part of our superiority declaration
+            processes.
           </li>
           <li>
             Rating feedback is only visible online to the User & Vendor who
@@ -76,33 +75,33 @@ export default function RatingPolicy() {
             pertains to.
           </li>
           <li>
-            Rabbit Mechanic Service does NOT endorse any of the Vendors & Users,
-            either through its Quality Rating Scores. The Scores and status are
-            to be calculated based on User provided Ratings and the same are
-            subject to make any changes without prior notice.
+            TrenoOps does NOT endorse any of the Vendors & Users, either through
+            its Quality Rating Scores. The Scores and status are to be
+            calculated based on User provided Ratings and the same are subject
+            to make any changes without prior notice.
           </li>
           <li>
             In case the Users & Vendors are found to be abusing their accounts
             through inappropriate use of the Rating system may have their
-            account access terminated by Rabbit Mechanic Service.
+            account access terminated by TrenoOps.
           </li>
           <li>
             Attempt of the Vendors & Users to improve their Quality Rating
             Scores through fake or artificial Ratings may have their listings
-            removed by Rabbit Mechanic Service.
+            removed by TrenoOps.
           </li>
           <li>
             Users and Vendors may change the Rating and associated Feedback as
             often as they choose to do so.
           </li>
           <li>
-            Rabbit Mechanic Service strongly encourages both Vendors and Users
-            to address any concerns or issues related to ratings and associated
-            incidents directly with each other. However, in the event of a
-            dispute regarding a rating, either party may request its removal by
+            TrenoOps strongly encourages both Vendors and Users to address any
+            concerns or issues related to ratings and associated incidents
+            directly with each other. However, in the event of a dispute
+            regarding a rating, either party may request its removal by
             submitting a dispute form available online. This form will be
-            reviewed by Rabbit Mechanic Service. A rating may be removed if one
-            or more of the following conditions are met:
+            reviewed by TrenoOps. A rating may be removed if one or more of the
+            following conditions are met:
             <ol className="list-disc pl-8 mt-2 space-y-2">
               <li>
                 No underneath Feedback was provided with the Shared Rating.
@@ -113,10 +112,9 @@ export default function RatingPolicy() {
               <li>
                 Ratings assigned in cases where no actual transaction between
                 the User and the Vendor took place within the past 12 months,
-                unless Rabbit Mechanic Service is made aware of other
-                information that explains why not this is the case and is
-                satisfied that, in such circumstances, the Rating should be
-                removed.
+                unless TrenoOps is made aware of other information that explains
+                why not this is the case and is satisfied that, in such
+                circumstances, the Rating should be removed.
               </li>
               <li>
                 Vendor self rates its listing(s) or rates other Vendor listings.
@@ -149,9 +147,9 @@ export default function RatingPolicy() {
             </ol>
           </li>
           <li>
-            Notwithstanding Item 11, Rabbit Mechanic Service reserves the right
-            to remove any rating at any time, at its sole discretion, if it
-            deems such removal appropriate.
+            Notwithstanding Item 11, TrenoOps reserves the right to remove any
+            rating at any time, at its sole discretion, if it deems such removal
+            appropriate.
           </li>
         </ol>
       </div>
