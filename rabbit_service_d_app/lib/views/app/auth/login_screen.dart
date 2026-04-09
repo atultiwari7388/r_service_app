@@ -192,12 +192,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     children: [
                       Image.asset(
-                        'assets/logo_new.png',
+                        "assets/logo-vertical.png",
                         height: 270.h,
-                        width: double.maxFinite,
+                        width: 250.w,
                         fit: BoxFit.contain,
                       ),
-                      SizedBox(height: 20.h),
+                      // SizedBox(height: 20.h),
                       ReusableText(
                         text: "Login",
                         style: appStyle(24, kPrimary, FontWeight.w500),

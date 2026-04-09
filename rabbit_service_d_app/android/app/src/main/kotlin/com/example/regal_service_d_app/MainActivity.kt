@@ -1,4 +1,4 @@
-package com.trenoops.customer_app
+package com.trenoops.app
 
 import io.flutter.embedding.android.FlutterActivity
 

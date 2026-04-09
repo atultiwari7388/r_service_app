@@ -241,7 +241,7 @@ class _EntryScreenState extends State<EntryScreen>
                     // Platform-specific app store URLs
                     final appStoreUrl = Platform.isIOS
                         ? "https://apps.apple.com/in/app/rabbit-mechanic-service/id6739995003"
-                        : "https://play.google.com/store/apps/details?id=com.trenoops.customer_app";
+                        : "https://play.google.com/store/apps/details?id=com.trenoops.app";
 
                     launchUrl(Uri.parse(appStoreUrl));
                   },
