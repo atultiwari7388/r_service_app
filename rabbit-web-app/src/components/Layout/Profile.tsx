@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { FaSignOutAlt } from "react-icons/fa";
 import { CgProfile } from "react-icons/cg";
-import { CiStar } from "react-icons/ci";
+import { CiDatabase, CiStar } from "react-icons/ci";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -39,6 +39,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       icon: <CiStar className="mr-2" />,
       label: "Ratings",
       path: "/account/ratings",
+    },
+    {
+      icon: <CiDatabase className="mr-2" />,
+      label: "History",
+      path: "/history",
     },
 
     {

@@ -190,7 +190,7 @@ export default function NavBar() {
                 <NavLink href="/account/manage-check">Write Check</NavLink>
                 <NavLink href="/find-mechanic">Find Mechanic</NavLink>
                 <NavLink href="/my-jobs">My Jobs</NavLink>
-                <NavLink href="/history">History</NavLink>
+                {/* <NavLink href="/history">History</NavLink> */}
                 {(userData?.role === "Owner" ||
                   userData?.role === "SubOwner") && (
                   <div className="relative group">
@@ -353,9 +353,9 @@ export default function NavBar() {
                     <MobileNavLink href="/my-jobs" onClick={toggleMenu}>
                       My Jobs
                     </MobileNavLink>
-                    <MobileNavLink href="/history" onClick={toggleMenu}>
+                    {/* <MobileNavLink href="/history" onClick={toggleMenu}>
                       History
-                    </MobileNavLink>
+                    </MobileNavLink> */}
                     {(userData?.role === "Owner" ||
                       userData?.role === "SubOwner") && (
                       <>
