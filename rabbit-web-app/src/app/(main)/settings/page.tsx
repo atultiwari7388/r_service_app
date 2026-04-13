@@ -1,7 +1,19 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import { FaEdit, FaEllipsisV, FaPlus, FaTrash } from "react-icons/fa";
+import React, { useCallback, useEffect, useState, useRef } from "react";
+import {
+  FaEdit,
+  FaEllipsisV,
+  FaPlus,
+  FaTrash,
+  FaMapMarkerAlt,
+} from "react-icons/fa";
+import {
+  GoogleMap,
+  LoadScript,
+  Marker,
+  Autocomplete,
+} from "@react-google-maps/api";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import {
@@ -21,7 +33,6 @@ import { GlobalToastError } from "@/utils/globalErrorToast";
 
 type TabId =
   | "shippers"
-  | "consignee"
   | "carrier"
   | "bookingAuthority"
   | "bookingAgent"
@@ -63,15 +74,9 @@ const PAGE_SIZE = 5;
 const tabs: TabConfig[] = [
   {
     id: "shippers",
-    label: "Shippers",
-    buttonText: "Add Shipper",
+    label: "Shipper/Consignee",
+    buttonText: "Add Shipper/Consignee",
     collectionName: "settings_shippers",
-  },
-  {
-    id: "consignee",
-    label: "Consignee",
-    buttonText: "Add Consignee",
-    collectionName: "settings_consignees",
   },
   {
     id: "carrier",
@@ -114,7 +119,6 @@ const getFormFields = (tabId: TabId): FormField[] => {
 
   switch (tabId) {
     case "shippers":
-    case "consignee":
       return [
         ...baseFields,
         { name: "zipCode", label: "Zip Code", type: "text", required: true },
@@ -154,7 +158,6 @@ const getFormFields = (tabId: TabId): FormField[] => {
 const getExtraColumns = (tabId: TabId) => {
   switch (tabId) {
     case "shippers":
-    case "consignee":
       return [
         { key: "zipCode", label: "Zip Code" },
         { key: "timings", label: "Working Hours" },
@@ -180,6 +183,11 @@ export default function SettingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
+
+  // Map related states
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [mapCenter, setMapCenter] = useState({ lat: 41.8781, lng: -87.6298 }); // Chicago, US center
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const currentTab = tabs.find((tab) => tab.id === activeTab) || tabs[0];
   const formFields = getFormFields(activeTab);
@@ -331,6 +339,44 @@ export default function SettingPage() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const openMapModal = () => {
+    setIsMapModalOpen(true);
+  };
+
+  const closeMapModal = () => {
+    setIsMapModalOpen(false);
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.formatted_address) {
+        setFormData((prev) => ({
+          ...prev,
+          address: place.formatted_address!,
+        }));
+        toast.success("Address selected!");
+        closeMapModal();
+      }
+    }
+  };
+
+  const onMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ location: e.latLng }, (results, status) => {
+        if (status === "OK" && results && results[0]) {
+          setFormData((prev) => ({
+            ...prev,
+            address: results[0].formatted_address!,
+          }));
+          toast.success("Address selected!");
+          closeMapModal();
+        }
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -683,6 +729,61 @@ export default function SettingPage() {
                 {editingItem ? "Edit" : "New"} {currentTab.label}
               </h3>
             </div>
+            {/* Map Modal */}
+            {isMapModalOpen && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+                <div className="bg-white w-full max-w-4xl h-[80vh] rounded-3xl shadow-2xl flex flex-col">
+                  <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      Select Location on Map
+                    </h3>
+                    <button
+                      onClick={closeMapModal}
+                      className="text-gray-500 hover:text-gray-700 p-2 -m-2 rounded-xl hover:bg-gray-100"
+                    >
+                      <FaTrash className="w-6 h-6" />
+                    </button>
+                  </div>
+                  <div className="flex-1 relative overflow-hidden">
+                    {/* IMPORTANT: Add your Google Maps API key to .env.local: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_key_here */}
+                    <LoadScript
+                      googleMapsApiKey={
+                        process.env.NEXT_PUBLIC_GOOGLE_API_KEY || ""
+                      }
+                      libraries={["places"]}
+                    >
+                      <GoogleMap
+                        mapContainerStyle={{ width: "100%", height: "100%" }}
+                        center={mapCenter}
+                        zoom={4}
+                        onClick={onMapClick}
+                        options={{
+                          zoomControl: true,
+                          streetViewControl: false,
+                          mapTypeControl: false,
+                          fullscreenControl: true,
+                        }}
+                      >
+                        <Autocomplete
+                          onLoad={(autocomplete) => {
+                            autocompleteRef.current = autocomplete;
+                          }}
+                          onPlaceChanged={onPlaceChanged}
+                        >
+                          <input
+                            type="text"
+                            placeholder="Search for location..."
+                            className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4/5 z-10 p-3 rounded-2xl shadow-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] bg-white text-lg"
+                          />
+                        </Autocomplete>
+                        <Marker position={mapCenter} />
+                      </GoogleMap>
+                    </LoadScript>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Main Modal Content */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {formFields.map((field) => (
                 <div key={field.name} className="space-y-2">
@@ -693,18 +794,43 @@ export default function SettingPage() {
                     {field.label}
                     {field.required && <span className="text-red-500">*</span>}
                   </label>
-                  <input
-                    id={field.name}
-                    name={field.name}
-                    type={field.type}
-                    value={formData[field.name] || ""}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
-                    placeholder={
-                      field.type === "time" ? undefined : `Enter ${field.label}`
-                    }
-                    required={field.required}
-                  />
+                  {field.name === "address" && activeTab === "shippers" ? (
+                    <div className="flex gap-2">
+                      <input
+                        id={field.name}
+                        name={field.name}
+                        type={field.type}
+                        value={formData[field.name] || ""}
+                        onChange={handleInputChange}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
+                        placeholder={`Enter ${field.label}`}
+                        required={field.required}
+                      />
+                      <button
+                        type="button"
+                        onClick={openMapModal}
+                        className="px-4 py-3 bg-[#F96176] text-white rounded-xl hover:bg-[#F96176]/90 transition-all flex items-center shadow-sm"
+                        title="Select on Map"
+                      >
+                        <FaMapMarkerAlt className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      id={field.name}
+                      name={field.name}
+                      type={field.type}
+                      value={formData[field.name] || ""}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
+                      placeholder={
+                        field.type === "time"
+                          ? undefined
+                          : `Enter ${field.label}`
+                      }
+                      required={field.required}
+                    />
+                  )}
                 </div>
               ))}
               <div className="flex space-x-3 pt-6">

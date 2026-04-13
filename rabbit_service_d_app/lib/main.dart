@@ -59,13 +59,13 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final PushNotification pushNotification;
-  late final StreamSubscription<InternetConnectionStatus> _internetSubscription;
+// late final StreamSubscription<InternetConnectionStatus> _internetSubscription;
 
   @override
   void initState() {
     super.initState();
     _setupServices();
-    _listenToInternet();
+    // _listenToInternet();
   }
 
   Future<void> _setupServices() async {
@@ -106,25 +106,25 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void _listenToInternet() {
-    _internetSubscription = InternetConnectionCheckerPlus()
-        .onStatusChange
-        .listen((InternetConnectionStatus status) {
-      if (status == InternetConnectionStatus.disconnected) {
-        // No internet → show screen
-        Get.to(() => const NoInternetScreen(), transition: Transition.fadeIn);
-      } else {
-        // Internet restored → close screen if open
-        if (Get.isOverlaysOpen) {
-          Get.back();
-        }
-      }
-    });
-  }
+  // void _listenToInternet() {
+  //   _internetSubscription = InternetConnectionCheckerPlus()
+  //       .onStatusChange
+  //       .listen((InternetConnectionStatus status) {
+  //     if (status == InternetConnectionStatus.disconnected) {
+  //       // No internet → show screen
+  //       Get.to(() => const NoInternetScreen(), transition: Transition.fadeIn);
+  //     } else {
+  //       // Internet restored → close screen if open
+  //       if (Get.isOverlaysOpen) {
+  //         Get.back();
+  //       }
+  //     }
+  //   });
+  // }
 
   @override
   void dispose() {
-    _internetSubscription.cancel();
+    // _internetSubscription.cancel();
     super.dispose();
   }
 
