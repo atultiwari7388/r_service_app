@@ -126,7 +126,7 @@ const getFormFields = (tabId: TabId): FormField[] => {
     case "shippers":
       return [
         ...baseFields,
-        { name: "zipCode", label: "Zip Code", type: "text", required: true },
+        // { name: "zipCode", label: "Zip Code", type: "text", required: true },
         {
           name: "startTime",
           label: "Start Time",
@@ -165,7 +165,7 @@ const getExtraColumns = (tabId: TabId) => {
     case "shippers":
       return [
         { key: "pinCode", label: "Pin Code" },
-        { key: "zipCode", label: "Zip Code" },
+        // { key: "zipCode", label: "Zip Code" },
         { key: "timings", label: "Working Hours" },
       ];
     case "carrier":
@@ -842,10 +842,10 @@ export default function SettingPage() {
           <>
             {/* Backdrop to close menu */}
             <div
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-[49]"
               onClick={() => setIsOpen(false)}
             />
-            <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl ring-1 ring-black ring-opacity-5 py-1 z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl ring-1 ring-black/10 py-2 z-[60] border border-gray-100 max-w-xs origin-top-right">
               <button
                 type="button"
                 onClick={() => {
