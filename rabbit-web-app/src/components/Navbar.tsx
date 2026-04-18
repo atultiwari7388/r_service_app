@@ -162,7 +162,7 @@ export default function NavBar() {
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="relative flex justify-between h-16">
           {/* Logo and main nav */}
           <div className="flex items-center">
             {/* Logo */}
@@ -179,18 +179,61 @@ export default function NavBar() {
 
             {/* Desktop Navigation - Logged In and Email Verified */}
             {isLoggedIn && isEmailVerified && (
-              <div className="hidden md:ml-8 md:flex md:space-x-8">
-                <NavLink href="/records">Records</NavLink>
-                <NavLink href="/account/my-vehicles">Vehicles</NavLink>
-                <NavLink href="/account/manage-team">Manage Team</NavLink>
-                <NavLink href="/account/manage-trip">My Trip</NavLink>
-                <NavLink href="/account/trip-wise-vehicle">
-                  Tripwise Vehicle
-                </NavLink>
-                <NavLink href="/account/manage-check">Write Check</NavLink>
-                <NavLink href="/find-mechanic">Find Mechanic</NavLink>
-                <NavLink href="/my-jobs">My Jobs</NavLink>
-                {/* <NavLink href="/history">History</NavLink> */}
+              <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
+                {/* Maintenance */}
+                <div className="relative group">
+                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                    Maintenance
+                  </span>
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                    <Link
+                      href="/records"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Records
+                    </Link>
+                    <Link
+                      href="/account/my-vehicles"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Vehicles
+                    </Link>
+                    <Link
+                      href="/account/manage-trip"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      My Trip
+                    </Link>
+                    <Link
+                      href="/account/trip-wise-vehicle"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Tripwise Vehicle
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Mechanic */}
+                <div className="relative group">
+                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                    Mechanic
+                  </span>
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                    <Link
+                      href="/find-mechanic"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Find Mechanic
+                    </Link>
+                    <Link
+                      href="/my-jobs"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      My Jobs
+                    </Link>
+                  </div>
+                </div>
+
                 {(userData?.role === "Owner" ||
                   userData?.role === "SubOwner") && (
                   <div className="relative group">
@@ -199,26 +242,62 @@ export default function NavBar() {
                     </span>
                     <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
                       <Link
-                        href="/create-new-load"
+                        href="/dispatch/create-load"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
                       >
                         Create Load
                       </Link>
                       <Link
-                        href="/truck-dispatch"
+                        href="/dispatch/view-load"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
                       >
                         View Load
                       </Link>
-                      <Link
-                        href="/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                      >
-                        Settings
-                      </Link>
                     </div>
                   </div>
                 )}
+
+                {/* Financial */}
+                <div className="relative group">
+                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                    Financial
+                  </span>
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                    <Link
+                      href="/account/manage-check"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Write Check
+                    </Link>
+                    <Link
+                      href=""
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Payments
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Settings */}
+                <div className="relative group">
+                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                    Settings
+                  </span>
+                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                    <Link
+                      href="/account/manage-team"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Manage Team
+                    </Link>
+                    <Link
+                      href="/dispatch-settings"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      Dispatch
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -314,48 +393,71 @@ export default function NavBar() {
               <>
                 {isEmailVerified ? (
                   <>
+                    {/* Maintenance */}
+                    <div className="pl-3 py-2 text-base font-medium text-gray-900 font-semibold">
+                      Maintenance
+                    </div>
                     <MobileNavLink href="/records" onClick={toggleMenu}>
-                      Records
+                      ↳ Records
                     </MobileNavLink>
                     <MobileNavLink
                       href="/account/my-vehicles"
                       onClick={toggleMenu}
                     >
-                      Vehicles
-                    </MobileNavLink>
-                    <MobileNavLink
-                      href="/account/manage-team"
-                      onClick={toggleMenu}
-                    >
-                      Manage Team
+                      ↳ Vehicles
                     </MobileNavLink>
                     <MobileNavLink
                       href="/account/manage-trip"
                       onClick={toggleMenu}
                     >
-                      My Trip
+                      ↳ My Trip
                     </MobileNavLink>
                     <MobileNavLink
                       href="/account/trip-wise-vehicle"
                       onClick={toggleMenu}
                     >
-                      Tripwise Vehicle
+                      ↳ Tripwise Vehicle
                     </MobileNavLink>
+
+                    {/* Mechanic */}
+                    <div className="pl-3 py-2 text-base font-medium text-gray-900 font-semibold">
+                      Mechanic
+                    </div>
+                    <MobileNavLink href="/find-mechanic" onClick={toggleMenu}>
+                      ↳ Find Mechanic
+                    </MobileNavLink>
+                    <MobileNavLink href="/my-jobs" onClick={toggleMenu}>
+                      ↳ My Jobs
+                    </MobileNavLink>
+
+                    {/* Financial */}
+                    <div className="pl-3 py-2 text-base font-medium text-gray-900 font-semibold">
+                      Financial
+                    </div>
                     <MobileNavLink
                       href="/account/manage-check"
                       onClick={toggleMenu}
                     >
-                      Write Check
+                      ↳ Write Check
                     </MobileNavLink>
-                    <MobileNavLink href="/find-mechanic" onClick={toggleMenu}>
-                      Find Mechanic
+                    <MobileNavLink
+                      href="/account/payments"
+                      onClick={toggleMenu}
+                    >
+                      ↳ Payments
                     </MobileNavLink>
-                    <MobileNavLink href="/my-jobs" onClick={toggleMenu}>
-                      My Jobs
+
+                    {/* Settings */}
+                    <div className="pl-3 py-2 text-base font-medium text-gray-900 font-semibold">
+                      Settings
+                    </div>
+                    <MobileNavLink
+                      href="/account/manage-team"
+                      onClick={toggleMenu}
+                    >
+                      ↳ Manage Team
                     </MobileNavLink>
-                    {/* <MobileNavLink href="/history" onClick={toggleMenu}>
-                      History
-                    </MobileNavLink> */}
+
                     {(userData?.role === "Owner" ||
                       userData?.role === "SubOwner") && (
                       <>
@@ -388,6 +490,7 @@ export default function NavBar() {
                     >
                       Notifications {unreadCount > 0 && `(${unreadCount})`}
                     </MobileNavLink>
+
                     <button
                       onClick={() => {
                         handleLogout();
