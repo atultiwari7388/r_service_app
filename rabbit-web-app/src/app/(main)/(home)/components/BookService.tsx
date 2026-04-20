@@ -628,9 +628,10 @@ const BookingSection: React.FC = () => {
           </div>
 
           {/* Right Section: Form */}
+          {/* Right Section: Form */}
           <div className="lg:w-[420px] bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl shadow-xl p-4 sm:p-8 space-y-1">
             <h1 className="text-3xl font-semibold text-center text-gray-800">
-              Find Mechanic
+              Find Nearby Mechanics in Seconds
             </h1>
 
             <form className="space-y-6">
@@ -730,9 +731,9 @@ const BookingSection: React.FC = () => {
                 <input
                   type="file"
                   className="file-input w-full rounded-lg bg-[#F96176]/20 text-[#F96176] border border-[#F96176]
-                  file:bg-[#F96176] file:text-white file:border-0
-                  file:rounded-lg file:mr-2 file:font-medium
-                  hover:file:bg-[#F96176]/90 transition-all"
+        file:bg-[#F96176] file:text-white file:border-0
+        file:rounded-lg file:mr-2 file:font-medium
+        hover:file:bg-[#F96176]/90 transition-all"
                   accept="image/*"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
@@ -767,6 +768,11 @@ const BookingSection: React.FC = () => {
                   Find Mechanic
                 </button>
               </div>
+
+              {/* Subtitle Text */}
+              <p className="text-center text-sm text-gray-600 mt-2">
+                Get Roadside Help Fast — Anytime, Anywhere
+              </p>
             </form>
           </div>
         </div>
