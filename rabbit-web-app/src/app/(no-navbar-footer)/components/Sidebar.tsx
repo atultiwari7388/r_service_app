@@ -2,8 +2,9 @@
 
 import clsx from "clsx";
 import { Truck, Users, Home } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-export type Screen = "truck-dispatch" | "carriers";
+export type Screen = "truck-dispatch" | "carriers" | "create-new-load";
 
 type SidebarProps = {
   activeScreen: Screen;
@@ -25,14 +26,22 @@ const NAV_ITEMS: {
     label: "Carriers",
     icon: <Users size={20} />,
   },
+  {
+    key: "create-new-load",
+    label: "Create New Load",
+    icon: <Truck size={20} />,
+  },
 ];
 
 export default function Sidebar({ activeScreen, onNavigate }: SidebarProps) {
+  const router = useRouter();
+
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 bg-[#0B132B] flex flex-col items-center py-6">
       {/* Logo / Home */}
       <div className="mb-10">
         <button
+          onClick={() => router.push("/")}
           aria-label="Home"
           className="h-10 w-10 rounded-xl bg-[#1C2541] flex items-center justify-center text-white hover:bg-[#273469] transition"
         >

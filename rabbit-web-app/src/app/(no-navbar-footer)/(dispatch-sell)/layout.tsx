@@ -9,11 +9,13 @@ import CarriersScreen from "../screens/CarriersScreen";
 const SCREEN_BY_PATH: Record<string, Screen> = {
   "/truck-dispatch": "truck-dispatch",
   "/carriers": "carriers",
+  "/create-new-load": "create-new-load",
 };
 
 const PATH_BY_SCREEN: Record<Screen, string> = {
   "truck-dispatch": "/truck-dispatch",
   carriers: "/carriers",
+  "create-new-load": "/create-new-load",
 };
 
 export default function DispatchShellLayout({

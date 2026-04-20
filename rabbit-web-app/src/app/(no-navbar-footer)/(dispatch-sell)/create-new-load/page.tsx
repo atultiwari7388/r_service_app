@@ -23,6 +23,7 @@ import {
   Scale,
   Shield,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 // --- Type Definitions ---
 
@@ -1009,8 +1010,11 @@ export default function CreateNewLoadPage() {
     }));
   };
 
+  const router = useRouter();
+
   const handleCancel = () => {
-    setIsCancelled(true);
+    // setIsCancelled(true);
+    router.push("/truck-dispatch");
   };
 
   const handleViewPreview = (previewUrl: string) => {
