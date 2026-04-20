@@ -629,8 +629,8 @@ const BookingSection: React.FC = () => {
 
           {/* Right Section: Form */}
           {/* Right Section: Form */}
-          <div className="lg:w-[420px] bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl shadow-xl p-4 sm:p-8 space-y-1">
-            <h1 className="text-3xl font-semibold text-center text-gray-800">
+          <div className="lg:w-[420px] bg-white/90 backdrop-blur-md border border-gray-300 rounded-xl shadow-xl p-4 sm:p-8 space-y-1 mt-5">
+            <h1 className="text-xl font-semibold text-center text-gray-800 mb-5">
               Find Nearby Mechanics in Seconds
             </h1>
 
