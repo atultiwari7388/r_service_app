@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Truck,
   Package,
@@ -30,339 +30,224 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Header from "../components/Header";
+import { useAuth } from "@/contexts/AuthContexts";
+import { db } from "@/lib/firebase";
+import { GlobalToastError } from "@/utils/globalErrorToast";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+
+interface DispatchStop {
+  company?: string;
+  date?: string;
+}
+
+interface DispatchLoadRecord {
+  id: string;
+  loadNumber?: string;
+  customerName?: string;
+  type?: string;
+  status?: string;
+  truckId?: string;
+  trailerId?: string;
+  driverId?: string;
+  weight?: string;
+  totalCustomerRate?: number;
+  totalCarrierPay?: number;
+  documents?: { id: string }[];
+  pickups?: DispatchStop[];
+  deliveries?: DispatchStop[];
+  dispatchNotes?: string;
+  lineHaul?: number;
+  fuelSurcharge?: number;
+  detention?: number;
+  layover?: number;
+  tonu?: number;
+  accessorials?: number;
+  createdAt?: { seconds?: number };
+}
 
 export default function TruckDispatchScreen({
   onMenuClick,
 }: {
   onMenuClick: () => void;
 }) {
+  const { user } = useAuth() || { user: null };
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [isResolvingUser, setIsResolvingUser] = useState(true);
+  const [isFetchingLoads, setIsFetchingLoads] = useState(false);
+  const [loads, setLoads] = useState<LoadData[]>([]);
   // const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const itemsPerPage = 10;
 
-  // --- Tabs Data ---
-  const tabs: Tab[] = [
-    {
-      id: "all",
-      label: "All",
-      count: 30,
-      color: "",
-      bgColor: "",
-    },
-    {
-      id: "booked",
-      label: "Booked",
-      count: 10,
-      color: "",
-      bgColor: "",
-    },
-    {
-      id: "pre-planned",
-      label: "Pre-Planned",
-      count: 5,
-      color: "",
-      bgColor: "",
-    },
-    {
-      id: "active",
-      label: "Active",
-      count: 25,
-      color: "",
-      bgColor: "",
-    },
-    {
-      id: "completed",
-      label: "Completed",
-      count: 15,
-      color: "",
-      bgColor: "",
-    },
+  const resolveEffectiveUserId = async (userId: string) => {
+    setIsResolvingUser(true);
+    try {
+      const userDoc = await getDoc(doc(db, "Users", userId));
+      if (!userDoc.exists()) {
+        setEffectiveUserId(userId);
+        return;
+      }
+
+      const userData = userDoc.data() as { role?: string; createdBy?: string };
+      if (userData.role === "SubOwner" && userData.createdBy) {
+        setEffectiveUserId(userData.createdBy);
+      } else {
+        setEffectiveUserId(userId);
+      }
+    } catch (error) {
+      GlobalToastError(error);
+      setEffectiveUserId(userId);
+    } finally {
+      setIsResolvingUser(false);
+    }
+  };
+
+  const toDateLabel = (value?: string) => {
+    if (!value) return "-";
+    return value;
+  };
+
+  const normalizeLoadForTable = useCallback((record: DispatchLoadRecord): LoadData => {
+    const pickups = record.pickups || [];
+    const deliveries = record.deliveries || [];
+    const pickup = pickups[0] || {};
+    const delivery = deliveries[0] || {};
+
+    const revenue =
+      Number(record.lineHaul || 0) +
+      Number(record.fuelSurcharge || 0) +
+      Number(record.detention || 0) +
+      Number(record.layover || 0) +
+      Number(record.tonu || 0) +
+      Number(record.accessorials || 0);
+    const carrierPay = Number(record.totalCarrierPay || 0);
+
+    const mappedStatus =
+      record.status === "Posted"
+        ? "Booked"
+        : record.status === "Draft"
+        ? "Pre-Planned"
+        : record.status || "Booked";
+
+    return {
+      id: record.id,
+      loadNumber: record.loadNumber || "LD-DRAFT",
+      customer: record.customerName || "-",
+      type: (record.type as LoadData["type"]) || "FTL",
+      status: mappedStatus as LoadData["status"],
+      truck: record.truckId || "-",
+      trailer: record.trailerId || "-",
+      driver: record.driverId || "-",
+      pickupLocation: pickup.company || "-",
+      pickupDate: toDateLabel(pickup.date),
+      dropLocation: delivery.company || "-",
+      dropDate: toDateLabel(delivery.date),
+      distance: "-",
+      weight: record.weight ? `${record.weight} lbs` : "-",
+      rate: Number(record.totalCustomerRate || revenue || 0),
+      profit: Number((record.totalCustomerRate || revenue || 0) - carrierPay),
+      progress: mappedStatus === "Completed" ? 100 : 0,
+      quantity: Math.max(pickups.length, deliveries.length, 1),
+      specialInstructions: record.dispatchNotes || "",
+      documents: record.documents?.length || 0,
+    };
+  }, []);
+
+  const tabDefinitions = [
+    { id: "all", label: "All" },
+    { id: "booked", label: "Booked" },
+    { id: "pre-planned", label: "Pre-Planned" },
+    { id: "active", label: "Active" },
+    { id: "completed", label: "Completed" },
   ];
 
-  // --- Dummy Load Data ---
-  const dummyLoads: LoadData[] = [
-    {
-      id: "1",
-      loadNumber: "LD-2024-001",
-      customer: "Amazon Logistics",
-      type: "FTL",
-      status: "Active",
-      truck: "FREIGHTLINER (A01DET)",
-      trailer: "HYUNDAI (SMR2233)",
-      driver: "Delmo",
-      pickupLocation: "Seattle, WA",
-      pickupDate: "2024-01-15",
-      dropLocation: "Los Angeles, CA",
-      dropDate: "2024-01-18",
-      distance: "1,135 mi",
-      weight: "45,000 lbs",
-      rate: 2850,
-      profit: 850,
-      progress: 65,
-      quantity: 1,
-      specialInstructions: "Temperature control required",
-      documents: 3,
-    },
-    {
-      id: "2",
-      loadNumber: "LD-2024-002",
-      customer: "Walmart Distribution",
-      type: "LTL",
-      status: "Ready",
-      truck: "INTERNATIONAL (A04INT)",
-      trailer: "DRY VAN (BXXZDFF566)",
-      driver: "Jimmy",
-      pickupLocation: "Chicago, IL",
-      pickupDate: "2024-01-16",
-      dropLocation: "New York, NY",
-      dropDate: "2024-01-19",
-      distance: "790 mi",
-      weight: "18,500 lbs",
-      rate: 1950,
-      profit: 620,
-      progress: 100,
-      quantity: 4,
-      specialInstructions: "Hazmat Class 3",
-      documents: 2,
-    },
-    {
-      id: "3",
-      loadNumber: "LD-2024-003",
-      customer: "FedEx Freight",
-      type: "Reefer",
-      status: "Booked",
-      truck: "ISUZU MOTORS (A07ISU)",
-      trailer: "REEFER (TRL-5501)",
-      driver: "Rahul",
-      pickupLocation: "Miami, FL",
-      pickupDate: "2024-01-20",
-      dropLocation: "Atlanta, GA",
-      dropDate: "2024-01-22",
-      distance: "660 mi",
-      weight: "42,000 lbs",
-      rate: 3200,
-      profit: 950,
-      progress: 0,
-      quantity: 1,
-      specialInstructions: "Keep at -10°F",
-      documents: 4,
-    },
-    {
-      id: "4",
-      loadNumber: "LD-2024-004",
-      customer: "Home Depot",
-      type: "Flatbed",
-      status: "Completed",
-      truck: "KENWORTH (A08MAX)",
-      trailer: "FLATBED (FB-001)",
-      driver: "John",
-      pickupLocation: "Dallas, TX",
-      pickupDate: "2024-01-10",
-      dropLocation: "Denver, CO",
-      dropDate: "2024-01-12",
-      distance: "880 mi",
-      weight: "38,000 lbs",
-      rate: 2750,
-      profit: 780,
-      progress: 100,
-      quantity: 1,
-      specialInstructions: "Oversize load - escort required",
-      documents: 5,
-    },
-    {
-      id: "5",
-      loadNumber: "LD-2024-005",
-      customer: "Target Corporation",
-      type: "Dry Van",
-      status: "Pre-Planned",
-      truck: "MACK (A11CUM)",
-      trailer: "DRY VAN (DV-002)",
-      driver: "Sarah",
-      pickupLocation: "Phoenix, AZ",
-      pickupDate: "2024-01-25",
-      dropLocation: "San Diego, CA",
-      dropDate: "2024-01-27",
-      distance: "355 mi",
-      weight: "44,000 lbs",
-      rate: 1850,
-      profit: 550,
-      progress: 0,
-      quantity: 1,
-      specialInstructions: "Lumper service at delivery",
-      documents: 2,
-    },
-    {
-      id: "6",
-      loadNumber: "LD-2024-006",
-      customer: "Costco Wholesale",
-      type: "FTL",
-      status: "Active",
-      truck: "VOLVO (V12-001)",
-      trailer: "REEFER (RR-005)",
-      driver: "Mike",
-      pickupLocation: "Portland, OR",
-      pickupDate: "2024-01-14",
-      dropLocation: "Boise, ID",
-      dropDate: "2024-01-16",
-      distance: "430 mi",
-      weight: "46,000 lbs",
-      rate: 2450,
-      profit: 720,
-      progress: 40,
-      quantity: 1,
-      specialInstructions: "Temperature sensitive",
-      documents: 3,
-    },
-    {
-      id: "7",
-      loadNumber: "LD-2024-007",
-      customer: "UPS Supply Chain",
-      type: "LTL",
-      status: "Ready",
-      truck: "FREIGHTLINER (FL-002)",
-      trailer: "DRY VAN (DV-003)",
-      driver: "Robert",
-      pickupLocation: "Boston, MA",
-      pickupDate: "2024-01-17",
-      dropLocation: "Washington, DC",
-      dropDate: "2024-01-19",
-      distance: "440 mi",
-      weight: "22,000 lbs",
-      rate: 1650,
-      profit: 480,
-      progress: 100,
-      quantity: 3,
-      specialInstructions: "Multiple stops",
-      documents: 2,
-    },
-    {
-      id: "8",
-      loadNumber: "LD-2024-008",
-      customer: "Lowe's Companies",
-      type: "Flatbed",
-      status: "Missing BOL",
-      truck: "PETERBILT (PB-001)",
-      trailer: "FLATBED (FB-002)",
-      driver: "David",
-      pickupLocation: "Houston, TX",
-      pickupDate: "2024-01-13",
-      dropLocation: "San Antonio, TX",
-      dropDate: "2024-01-15",
-      distance: "200 mi",
-      weight: "36,000 lbs",
-      rate: 1550,
-      profit: 420,
-      progress: 100,
-      quantity: 1,
-      specialInstructions: "Construction materials",
-      documents: 0,
-    },
-    {
-      id: "9",
-      loadNumber: "LD-2024-009",
-      customer: "Best Buy",
-      type: "Reefer",
-      status: "Active",
-      truck: "INTERNATIONAL (INT-003)",
-      trailer: "REEFER (RR-008)",
-      driver: "Emily",
-      pickupLocation: "Minneapolis, MN",
-      pickupDate: "2024-01-16",
-      dropLocation: "Milwaukee, WI",
-      dropDate: "2024-01-18",
-      distance: "340 mi",
-      weight: "41,000 lbs",
-      rate: 2950,
-      profit: 880,
-      progress: 75,
-      quantity: 1,
-      specialInstructions: "Electronics - fragile",
-      documents: 4,
-    },
-    {
-      id: "10",
-      loadNumber: "LD-2024-010",
-      customer: "The Kroger Co",
-      type: "Dry Van",
-      status: "Completed",
-      truck: "KENWORTH (KW-002)",
-      trailer: "DRY VAN (DV-004)",
-      driver: "James",
-      pickupLocation: "Las Vegas, NV",
-      pickupDate: "2024-01-11",
-      dropLocation: "Salt Lake City, UT",
-      dropDate: "2024-01-13",
-      distance: "420 mi",
-      weight: "43,000 lbs",
-      rate: 2050,
-      profit: 610,
-      progress: 100,
-      quantity: 1,
-      specialInstructions: "Grocery items - no stacking",
-      documents: 5,
-    },
-    {
-      id: "11",
-      loadNumber: "LD-2024-011",
-      customer: "Sysco Corporation",
-      type: "Reefer",
-      status: "Booked",
-      truck: "MACK (MACK-003)",
-      trailer: "REEFER (RR-009)",
-      driver: "Lisa",
-      pickupLocation: "Orlando, FL",
-      pickupDate: "2024-01-22",
-      dropLocation: "Tampa, FL",
-      dropDate: "2024-01-24",
-      distance: "85 mi",
-      weight: "40,000 lbs",
-      rate: 1850,
-      profit: 520,
-      progress: 0,
-      quantity: 1,
-      specialInstructions: "Food products",
-      documents: 3,
-    },
-    {
-      id: "12",
-      loadNumber: "LD-2024-012",
-      customer: "PepsiCo",
-      type: "FTL",
-      status: "Active",
-      truck: "VOLVO (V12-003)",
-      trailer: "DRY VAN (DV-005)",
-      driver: "Thomas",
-      pickupLocation: "Philadelphia, PA",
-      pickupDate: "2024-01-15",
-      dropLocation: "Baltimore, MD",
-      dropDate: "2024-01-17",
-      distance: "100 mi",
-      weight: "45,500 lbs",
-      rate: 1650,
-      profit: 450,
-      progress: 50,
-      quantity: 1,
-      specialInstructions: "Beverages - handle with care",
-      documents: 2,
-    },
-  ];
+  useEffect(() => {
+    if (!user?.uid) {
+      setEffectiveUserId("");
+      setIsResolvingUser(false);
+      return;
+    }
+
+    resolveEffectiveUserId(user.uid);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    const fetchLoads = async () => {
+      if (!effectiveUserId) return;
+
+      setIsFetchingLoads(true);
+      try {
+        const loadsSnap = await getDocs(
+          query(
+            collection(db, "dispatch_loads"),
+            where("effectiveUserId", "==", effectiveUserId)
+          )
+        );
+
+        const normalized = loadsSnap.docs
+          .map(
+            (item) =>
+              ({
+                id: item.id,
+                ...(item.data() as Omit<DispatchLoadRecord, "id">),
+              }) as DispatchLoadRecord
+          )
+          .sort(
+            (a, b) =>
+              (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+          )
+          .map(normalizeLoadForTable);
+
+        setLoads(normalized);
+      } catch (error) {
+        GlobalToastError(error);
+        setLoads([]);
+      } finally {
+        setIsFetchingLoads(false);
+      }
+    };
+
+    fetchLoads();
+  }, [effectiveUserId, normalizeLoadForTable]);
+
+  const allLoads = loads;
+  const tabStatusMap: Record<string, string> = {
+    booked: "Booked",
+    "pre-planned": "Pre-Planned",
+    ready: "Ready",
+    active: "Active",
+    completed: "Completed",
+    "missing-bol": "Missing BOL",
+  };
+  const tabs: Tab[] = tabDefinitions.map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+    count:
+      tab.id === "all"
+        ? allLoads.length
+        : allLoads.filter((item) => item.status === tabStatusMap[tab.id]).length,
+    color: "",
+    bgColor: "",
+  }));
+  const activeLoadsCount = allLoads.filter(
+    (item) => item.status === "Active"
+  ).length;
+  const readyLoadsCount = allLoads.filter((item) =>
+    ["Ready", "Booked", "Posted", "Draft"].includes(item.status)
+  ).length;
+  const totalRateAmount = allLoads.reduce(
+    (sum, item) => sum + Number(item.rate || 0),
+    0
+  );
 
   // --- Filter Loads ---
-  const filteredLoads = dummyLoads.filter((load) => {
+  const filteredLoads = allLoads.filter((load) => {
     if (activeTab !== "all") {
-      const tabStatusMap: Record<string, string> = {
-        booked: "Booked",
-        "pre-planned": "Pre-Planned",
-        ready: "Ready",
-        active: "Active",
-        completed: "Completed",
-        "missing-bol": "Missing BOL",
-      };
       if (load.status !== tabStatusMap[activeTab]) return false;
     }
 
@@ -379,6 +264,10 @@ export default function TruckDispatchScreen({
 
     return true;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
 
   // --- Pagination ---
   const totalPages = Math.ceil(filteredLoads.length / itemsPerPage);
@@ -427,6 +316,22 @@ export default function TruckDispatchScreen({
     // Your action handlers
   };
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        Please log in to view dispatch loads.
+      </div>
+    );
+  }
+
+  if (isResolvingUser || isFetchingLoads) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        Loading dispatch loads...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* TOP HEADER ROW - Hamburger, Title, and Action Buttons */}
@@ -451,7 +356,9 @@ export default function TruckDispatchScreen({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Loads</p>
-                <p className="text-2xl font-bold text-gray-900">30</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {allLoads.length}
+                </p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <Package className="w-5 h-5 text-blue-600" />
@@ -462,7 +369,9 @@ export default function TruckDispatchScreen({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Active Loads</p>
-                <p className="text-2xl font-bold text-gray-900">25</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {activeLoadsCount}
+                </p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                 <Truck className="w-5 h-5 text-green-600" />
@@ -473,7 +382,9 @@ export default function TruckDispatchScreen({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Ready for Dispatch</p>
-                <p className="text-2xl font-bold text-gray-900">10</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {readyLoadsCount}
+                </p>
               </div>
               <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
                 <Clock className="w-5 h-5 text-yellow-600" />
@@ -484,7 +395,9 @@ export default function TruckDispatchScreen({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total</p>
-                <p className="text-2xl font-bold text-gray-900">$685</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  ${totalRateAmount.toLocaleString()}
+                </p>
               </div>
               <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-emerald-600" />

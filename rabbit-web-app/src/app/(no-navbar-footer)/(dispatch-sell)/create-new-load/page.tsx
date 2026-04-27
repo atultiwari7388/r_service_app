@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useState, useEffect, ChangeEvent, useRef } from "react";
+import React, { useState, useEffect, ChangeEvent, useRef, useCallback } from "react";
 import {
   Truck,
   User,
@@ -24,6 +24,20 @@ import {
   Shield,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContexts";
+import { db } from "@/lib/firebase";
+import { GlobalToastError } from "@/utils/globalErrorToast";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import toast from "react-hot-toast";
 
 // --- Type Definitions ---
 
@@ -157,6 +171,13 @@ interface FormData {
 interface Option {
   value: string;
   label: string;
+}
+
+interface SettingsEntity {
+  id: string;
+  name?: string;
+  companyName?: string;
+  yardLocation?: string;
 }
 
 interface Calculations {
@@ -544,10 +565,31 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
 export default function CreateNewLoadPage() {
   // --- State Management ---
+  const { user, isLoading } = useAuth() || { user: null, isLoading: false };
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showAdvancedFields, setShowAdvancedFields] = useState(false);
   const [autoFillDeliveries, setAutoFillDeliveries] = useState(true);
+  const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [isResolvingUser, setIsResolvingUser] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [dynamicBookingAuthorityOptions, setDynamicBookingAuthorityOptions] =
+    useState<Option[]>([]);
+  const [dynamicSalesAgentOptions, setDynamicSalesAgentOptions] = useState<
+    Option[]
+  >([]);
+  const [dynamicOfficeOptions, setDynamicOfficeOptions] = useState<Option[]>(
+    []
+  );
+  const [dynamicAgentOptions, setDynamicAgentOptions] = useState<Option[]>([]);
+  const [dynamicCarrierOptions, setDynamicCarrierOptions] = useState<Option[]>(
+    []
+  );
+  const [dynamicShipperConsigneeOptions, setDynamicShipperConsigneeOptions] =
+    useState<Option[]>([]);
+  const [dynamicYardLocationOptions, setDynamicYardLocationOptions] = useState<
+    Option[]
+  >([]);
 
   const [formData, setFormData] = useState<FormData>({
     // 1. Customer & Load Header
@@ -842,6 +884,239 @@ export default function CreateNewLoadPage() {
     { value: "lot-2", label: "Parking Lot 2" },
   ];
 
+  const bookingAuthorityOptionsFinal =
+    dynamicBookingAuthorityOptions.length > 0
+      ? dynamicBookingAuthorityOptions
+      : bookingAuthorityOptions;
+  const salesAgentOptionsFinal =
+    dynamicSalesAgentOptions.length > 0
+      ? dynamicSalesAgentOptions
+      : salesAgentOptions;
+  const officeOptionsFinal =
+    dynamicOfficeOptions.length > 0 ? dynamicOfficeOptions : officeOptions;
+  const agencyOptionsFinal =
+    dynamicAgentOptions.length > 0 ? dynamicAgentOptions : agencyOptions;
+  const brokerageAgentOptionsFinal =
+    dynamicAgentOptions.length > 0
+      ? dynamicAgentOptions
+      : brokerageAgentOptions;
+  const shipperOptionsFinal =
+    dynamicShipperConsigneeOptions.length > 0
+      ? dynamicShipperConsigneeOptions
+      : shipperOptions;
+  const consigneeOptionsFinal =
+    dynamicShipperConsigneeOptions.length > 0
+      ? dynamicShipperConsigneeOptions
+      : consigneeOptions;
+  const yardLocationOptionsFinal =
+    dynamicYardLocationOptions.length > 0
+      ? dynamicYardLocationOptions
+      : yardLocationOptions;
+  const carrierOptionsFinal =
+    dynamicCarrierOptions.length > 0
+      ? dynamicCarrierOptions
+      : [
+          { value: "CAR-101", label: "3 Arrows INC." },
+          { value: "CAR-102", label: "7 Days Carrier" },
+          { value: "CAR-103", label: "A & D Trucklines" },
+        ];
+
+  const mapSettingsToOptions = (entities: SettingsEntity[]) =>
+    entities
+      .map((item) => ({
+        value: (item.companyName || item.name || "").trim(),
+        label: (item.companyName || item.name || "").trim(),
+      }))
+      .filter((item) => item.value.length > 0);
+
+  const loadSettingsOptions = useCallback(async (ownerId: string) => {
+    try {
+      const [
+        shippersSnap,
+        carriersSnap,
+        bookingAuthoritiesSnap,
+        bookingAgentsSnap,
+        salesAgentsSnap,
+        bookingOfficesSnap,
+      ] = await Promise.all([
+        getDocs(
+          query(
+            collection(db, "settings_shippers"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, "settings_carriers"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, "settings_booking_authorities"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, "settings_booking_agents"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, "settings_sales_agents"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
+        getDocs(
+          query(
+            collection(db, "settings_booking_offices"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
+      ]);
+
+      const shippers = shippersSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          }) as SettingsEntity
+      );
+      const carriers = carriersSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          }) as SettingsEntity
+      );
+      const bookingAuthorities = bookingAuthoritiesSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          }) as SettingsEntity
+      );
+      const bookingAgents = bookingAgentsSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          }) as SettingsEntity
+      );
+      const salesAgents = salesAgentsSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          }) as SettingsEntity
+      );
+      const bookingOffices = bookingOfficesSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          }) as SettingsEntity
+      );
+
+      setDynamicShipperConsigneeOptions(mapSettingsToOptions(shippers));
+      setDynamicCarrierOptions(mapSettingsToOptions(carriers));
+      setDynamicBookingAuthorityOptions(mapSettingsToOptions(bookingAuthorities));
+      setDynamicSalesAgentOptions(mapSettingsToOptions(salesAgents));
+      setDynamicOfficeOptions(mapSettingsToOptions(bookingOffices));
+      setDynamicAgentOptions(mapSettingsToOptions(bookingAgents));
+
+      const uniqueYards = Array.from(
+        new Set(
+          carriers
+            .map((item) => (item.yardLocation || "").trim())
+            .filter((yard) => yard.length > 0)
+        )
+      );
+      setDynamicYardLocationOptions(
+        uniqueYards.map((yard) => ({ value: yard, label: yard }))
+      );
+    } catch (error) {
+      GlobalToastError(error);
+    }
+  }, []);
+
+  const resolveEffectiveUserId = async (userId: string) => {
+    setIsResolvingUser(true);
+    try {
+      const userDoc = await getDoc(doc(db, "Users", userId));
+      if (!userDoc.exists()) {
+        setEffectiveUserId(userId);
+        return;
+      }
+
+      const userData = userDoc.data() as { role?: string; createdBy?: string };
+      if (userData.role === "SubOwner" && userData.createdBy) {
+        setEffectiveUserId(userData.createdBy);
+      } else {
+        setEffectiveUserId(userId);
+      }
+    } catch (error) {
+      GlobalToastError(error);
+      setEffectiveUserId(userId);
+    } finally {
+      setIsResolvingUser(false);
+    }
+  };
+
+  const buildLoadNumber = (docId: string) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const suffix = docId.slice(-5).toUpperCase();
+    return `LD-${y}${m}${d}-${suffix}`;
+  };
+
+  const handleSaveLoad = async (status: "Draft" | "Posted") => {
+    if (!user?.uid || !effectiveUserId) {
+      toast.error("Please login to save this load.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const loadsRef = collection(db, "dispatch_loads");
+      const newLoadRef = doc(loadsRef);
+
+      const documents = formData.documents.map((item) => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        size: item.size || 0,
+      }));
+
+      await setDoc(newLoadRef, {
+        ...formData,
+        loadNumber: buildLoadNumber(newLoadRef.id),
+        status,
+        documents,
+        currentUserId: user.uid,
+        effectiveUserId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      toast.success(
+        status === "Draft"
+          ? "Load saved as draft successfully."
+          : "Load created successfully."
+      );
+      router.push("/truck-dispatch");
+    } catch (error) {
+      GlobalToastError(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // --- Handlers ---
 
   const handleInputChange = (
@@ -1027,6 +1302,21 @@ export default function CreateNewLoadPage() {
 
   // --- Effects ---
 
+  useEffect(() => {
+    if (!user?.uid) {
+      setEffectiveUserId("");
+      setIsResolvingUser(false);
+      return;
+    }
+
+    resolveEffectiveUserId(user.uid);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    loadSettingsOptions(effectiveUserId);
+  }, [effectiveUserId, loadSettingsOptions]);
+
   // Auto-calculate Totals & Profit
   useEffect(() => {
     const revenue =
@@ -1112,7 +1402,7 @@ export default function CreateNewLoadPage() {
                   </h1>
                   <span className="hidden sm:inline text-gray-400">|</span>
                   <div className="text-sm text-gray-500 font-mono">
-                    ID: TLO-2025-DRAFT
+                    ID: Auto-generated on save
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -1123,15 +1413,26 @@ export default function CreateNewLoadPage() {
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={handleCancel}
+                  disabled={isSaving}
                   className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2 font-medium text-sm"
                 >
                   <X className="w-4 h-4" /> Cancel
                 </button>
-                <button className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm">
-                  <Save className="w-4 h-4" /> Save Draft
+                <button
+                  onClick={() => handleSaveLoad("Draft")}
+                  disabled={isSaving || isLoading || isResolvingUser}
+                  className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" />{" "}
+                  {isSaving ? "Saving..." : "Save Draft"}
                 </button>
-                <button className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] shadow-md flex items-center justify-center gap-2 font-bold text-sm">
-                  <Package className="w-4 h-4" /> Create & Post
+                <button
+                  onClick={() => handleSaveLoad("Posted")}
+                  disabled={isSaving || isLoading || isResolvingUser}
+                  className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] shadow-md flex items-center justify-center gap-2 font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <Package className="w-4 h-4" />{" "}
+                  {isSaving ? "Saving..." : "Create & Post"}
                 </button>
               </div>
             </div>
@@ -1209,7 +1510,7 @@ export default function CreateNewLoadPage() {
                   name="bookingAuthority"
                   value={formData.bookingAuthority}
                   onChange={handleInputChange}
-                  options={bookingAuthorityOptions}
+                  options={bookingAuthorityOptionsFinal}
                 />
                 <SelectGroup
                   label="Type"
@@ -1252,11 +1553,7 @@ export default function CreateNewLoadPage() {
                           name="carrierId"
                           value={formData.carrierId}
                           onChange={handleInputChange}
-                          options={[
-                            { value: "CAR-101", label: "3 Arrows INC." },
-                            { value: "CAR-102", label: "7 Days Carrier" },
-                            { value: "CAR-103", label: "A & D Trucklines" },
-                          ]}
+                          options={carrierOptionsFinal}
                         />
                       </div>
 
@@ -1461,7 +1758,7 @@ export default function CreateNewLoadPage() {
                       name="brokerageAgent"
                       value={formData.brokerageAgent}
                       onChange={handleInputChange}
-                      options={brokerageAgentOptions}
+                      options={brokerageAgentOptionsFinal}
                     />
                     {/* Yard Location */}
                     {/* <SelectGroup
@@ -1484,7 +1781,7 @@ export default function CreateNewLoadPage() {
                       name="salesAgent"
                       value={formData.salesAgent}
                       onChange={handleInputChange}
-                      options={salesAgentOptions}
+                      options={salesAgentOptionsFinal}
                     />
 
                     <SelectGroup
@@ -1492,7 +1789,7 @@ export default function CreateNewLoadPage() {
                       name="bookingTerminalOffice"
                       value={formData.bookingTerminalOffice}
                       onChange={handleInputChange}
-                      options={officeOptions}
+                      options={officeOptionsFinal}
                     />
 
                     <SelectGroup
@@ -1500,7 +1797,7 @@ export default function CreateNewLoadPage() {
                       name="agency"
                       value={formData.agency}
                       onChange={handleInputChange}
-                      options={agencyOptions}
+                      options={agencyOptionsFinal}
                     />
                     <InputGroup
                       label="Tendered Miles"
@@ -1626,7 +1923,7 @@ export default function CreateNewLoadPage() {
                                 e.target.value
                               )
                             }
-                            options={shipperOptions}
+                            options={shipperOptionsFinal}
                             name={""}
                           />
                         </div>
@@ -1969,17 +2266,17 @@ export default function CreateNewLoadPage() {
                         <SelectGroup
                           label="Yard Location"
                           value={stop.yardLocation}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "pickups",
-                              stop.id,
-                              "yardLocation",
-                              e.target.value
-                            )
-                          }
-                          options={yardLocationOptions}
-                          name={""}
-                        />
+                            onChange={(e) =>
+                              handleStopChange(
+                                "pickups",
+                                stop.id,
+                                "yardLocation",
+                                e.target.value
+                              )
+                            }
+                            options={yardLocationOptionsFinal}
+                            name={""}
+                          />
                       </div>
                     </div>
                   </div>
@@ -2042,7 +2339,7 @@ export default function CreateNewLoadPage() {
                                 e.target.value
                               )
                             }
-                            options={consigneeOptions}
+                            options={consigneeOptionsFinal}
                             name={""}
                           />
                         </div>
@@ -2052,7 +2349,7 @@ export default function CreateNewLoadPage() {
                             value={stop.customerLoadRefConf}
                             onChange={(e) =>
                               handleStopChange(
-                                "pickups",
+                                "deliveries",
                                 stop.id,
                                 "customerLoadRefConf",
                                 e.target.value
@@ -2318,17 +2615,17 @@ export default function CreateNewLoadPage() {
                         <SelectGroup
                           label="Yard Location"
                           value={stop.yardLocation}
-                          onChange={(e) =>
-                            handleStopChange(
-                              "deliveries",
-                              stop.id,
-                              "yardLocation",
-                              e.target.value
-                            )
-                          }
-                          options={yardLocationOptions}
-                          name={""}
-                        />
+                            onChange={(e) =>
+                              handleStopChange(
+                                "deliveries",
+                                stop.id,
+                                "yardLocation",
+                                e.target.value
+                              )
+                            }
+                            options={yardLocationOptionsFinal}
+                            name={""}
+                          />
                       </div>
                     </div>
                   </div>
