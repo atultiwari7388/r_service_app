@@ -1,7 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useState, useEffect, ChangeEvent, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  ChangeEvent,
+  useRef,
+  useCallback,
+} from "react";
 import {
   Truck,
   User,
@@ -113,6 +119,7 @@ interface FormData {
   fuelSrc: string;
   targetRate: number;
   vanType: string;
+  temperature: string;
   length: string;
   weight: string;
   bookingAuthority: string;
@@ -177,6 +184,7 @@ interface SettingsEntity {
   id: string;
   name?: string;
   companyName?: string;
+  address?: string;
   yardLocation?: string;
 }
 
@@ -290,6 +298,51 @@ const SelectGroup: React.FC<SelectGroupProps> = ({
     </div>
   </div>
 );
+
+interface SearchableSelectGroupProps {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  options: Option[];
+  placeholder?: string;
+  className?: string;
+}
+
+const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
+  label,
+  name,
+  value,
+  onChange,
+  options,
+  placeholder,
+  className = "",
+}) => {
+  const listId = `${name}-options`;
+
+  return (
+    <div className={`flex flex-col ${className}`}>
+      <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
+        {label}
+      </label>
+      <input
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder || "Type to search or select..."}
+        list={listId}
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+      <datalist id={listId}>
+        {options.map((opt) => (
+          <option key={`${name}-${opt.value}`} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </datalist>
+    </div>
+  );
+};
 
 interface TextAreaGroupProps {
   label: string;
@@ -573,6 +626,9 @@ export default function CreateNewLoadPage() {
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [isResolvingUser, setIsResolvingUser] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [dynamicCustomerOptions, setDynamicCustomerOptions] = useState<
+    Option[]
+  >([]);
   const [dynamicBookingAuthorityOptions, setDynamicBookingAuthorityOptions] =
     useState<Option[]>([]);
   const [dynamicSalesAgentOptions, setDynamicSalesAgentOptions] = useState<
@@ -603,6 +659,7 @@ export default function CreateNewLoadPage() {
     fuelSrc: "",
     targetRate: 0,
     vanType: "Van Or Reefer",
+    temperature: "",
     length: "53",
     weight: "",
     bookingAuthority: "Direct",
@@ -888,6 +945,10 @@ export default function CreateNewLoadPage() {
     dynamicBookingAuthorityOptions.length > 0
       ? dynamicBookingAuthorityOptions
       : bookingAuthorityOptions;
+  const customerOptionsFinal =
+    dynamicCustomerOptions.length > 0
+      ? dynamicCustomerOptions
+      : [{ value: "", label: "No customers found" }];
   const salesAgentOptionsFinal =
     dynamicSalesAgentOptions.length > 0
       ? dynamicSalesAgentOptions
@@ -921,17 +982,28 @@ export default function CreateNewLoadPage() {
           { value: "CAR-103", label: "A & D Trucklines" },
         ];
 
-  const mapSettingsToOptions = (entities: SettingsEntity[]) =>
+  const mapSettingsToOptions = (
+    entities: SettingsEntity[],
+    includeAddressInLabel = false
+  ) =>
     entities
-      .map((item) => ({
-        value: (item.companyName || item.name || "").trim(),
-        label: (item.companyName || item.name || "").trim(),
-      }))
-      .filter((item) => item.value.length > 0);
+      .map((item) => {
+        const name = (item.companyName || item.name || "").trim();
+        const address = (item.address || "").trim();
+        if (!name) return null;
+
+        return {
+          value: name,
+          label:
+            includeAddressInLabel && address ? `${name} (${address})` : name,
+        };
+      })
+      .filter((item): item is Option => !!item);
 
   const loadSettingsOptions = useCallback(async (ownerId: string) => {
     try {
       const [
+        customersSnap,
         shippersSnap,
         carriersSnap,
         bookingAuthoritiesSnap,
@@ -939,6 +1011,12 @@ export default function CreateNewLoadPage() {
         salesAgentsSnap,
         bookingOfficesSnap,
       ] = await Promise.all([
+        getDocs(
+          query(
+            collection(db, "settings_customers"),
+            where("effectiveUserId", "==", ownerId)
+          )
+        ),
         getDocs(
           query(
             collection(db, "settings_shippers"),
@@ -977,52 +1055,62 @@ export default function CreateNewLoadPage() {
         ),
       ]);
 
+      const customers = customersSnap.docs.map(
+        (d) =>
+          ({
+            id: d.id,
+            ...(d.data() as Omit<SettingsEntity, "id">),
+          } as SettingsEntity)
+      );
       const shippers = shippersSnap.docs.map(
         (d) =>
           ({
             id: d.id,
             ...(d.data() as Omit<SettingsEntity, "id">),
-          }) as SettingsEntity
+          } as SettingsEntity)
       );
       const carriers = carriersSnap.docs.map(
         (d) =>
           ({
             id: d.id,
             ...(d.data() as Omit<SettingsEntity, "id">),
-          }) as SettingsEntity
+          } as SettingsEntity)
       );
       const bookingAuthorities = bookingAuthoritiesSnap.docs.map(
         (d) =>
           ({
             id: d.id,
             ...(d.data() as Omit<SettingsEntity, "id">),
-          }) as SettingsEntity
+          } as SettingsEntity)
       );
       const bookingAgents = bookingAgentsSnap.docs.map(
         (d) =>
           ({
             id: d.id,
             ...(d.data() as Omit<SettingsEntity, "id">),
-          }) as SettingsEntity
+          } as SettingsEntity)
       );
       const salesAgents = salesAgentsSnap.docs.map(
         (d) =>
           ({
             id: d.id,
             ...(d.data() as Omit<SettingsEntity, "id">),
-          }) as SettingsEntity
+          } as SettingsEntity)
       );
       const bookingOffices = bookingOfficesSnap.docs.map(
         (d) =>
           ({
             id: d.id,
             ...(d.data() as Omit<SettingsEntity, "id">),
-          }) as SettingsEntity
+          } as SettingsEntity)
       );
 
-      setDynamicShipperConsigneeOptions(mapSettingsToOptions(shippers));
+      setDynamicCustomerOptions(mapSettingsToOptions(customers, true));
+      setDynamicShipperConsigneeOptions(mapSettingsToOptions(shippers, true));
       setDynamicCarrierOptions(mapSettingsToOptions(carriers));
-      setDynamicBookingAuthorityOptions(mapSettingsToOptions(bookingAuthorities));
+      setDynamicBookingAuthorityOptions(
+        mapSettingsToOptions(bookingAuthorities)
+      );
       setDynamicSalesAgentOptions(mapSettingsToOptions(salesAgents));
       setDynamicOfficeOptions(mapSettingsToOptions(bookingOffices));
       setDynamicAgentOptions(mapSettingsToOptions(bookingAgents));
@@ -1452,23 +1540,15 @@ export default function CreateNewLoadPage() {
               {/* First Row: Search Customer, Fee Type, */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 {/* Search Customer */}
-                <div className="flex flex-col">
-                  <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                    Search Customer
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      name="customerSearch"
-                      value={formData.customerSearch}
-                      onChange={handleInputChange}
-                      placeholder="Search by Name, MC#, Phone, or Reference..."
-                      className="w-full pl-9 rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <SelectGroup
+                <SearchableSelectGroup
+                  label="Search Customer"
+                  name="customerSearch"
+                  value={formData.customerSearch}
+                  onChange={handleInputChange}
+                  options={customerOptionsFinal}
+                  placeholder="Type to search or select customer..."
+                />
+                <SearchableSelectGroup
                   label="Van Type"
                   name="vanType"
                   value={formData.vanType}
@@ -1483,6 +1563,20 @@ export default function CreateNewLoadPage() {
                   options={lengthOptions}
                 />
               </div>
+
+              {/* Temperature - Show when Van Or Reefer is selected */}
+              {(formData.vanType === "Van Or Reefer" ||
+                formData.vanType === "Reefer") && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <InputGroup
+                    label="Temperature (°F)"
+                    name="temperature"
+                    value={formData.temperature}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 34"
+                  />
+                </div>
+              )}
 
               {/* Third Row: Length, Weight, Booking Authority */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -1505,7 +1599,7 @@ export default function CreateNewLoadPage() {
                   placeholder="0.00"
                   icon={DollarSign}
                 />
-                <SelectGroup
+                <SearchableSelectGroup
                   label="Booking Authority"
                   name="bookingAuthority"
                   value={formData.bookingAuthority}
@@ -1548,7 +1642,7 @@ export default function CreateNewLoadPage() {
                   {formData.assignmentType === "carrier" && (
                     <>
                       <div className="col-span-1">
-                        <SelectGroup
+                        <SearchableSelectGroup
                           label="Select Carrier"
                           name="carrierId"
                           value={formData.carrierId}
@@ -1575,7 +1669,7 @@ export default function CreateNewLoadPage() {
                   {formData.assignmentType === "driver" && (
                     <>
                       <div className="col-span-1">
-                        <SelectGroup
+                        <SearchableSelectGroup
                           label="Select Driver"
                           name="driverId"
                           value={formData.driverId}
@@ -1753,7 +1847,7 @@ export default function CreateNewLoadPage() {
                       options={officeOptions}
                     /> */}
                     {/* Brokerage Agent */}
-                    <SelectGroup
+                    <SearchableSelectGroup
                       label="Brokerage Agent"
                       name="brokerageAgent"
                       value={formData.brokerageAgent}
@@ -1776,7 +1870,7 @@ export default function CreateNewLoadPage() {
                       placeholder="Value of goods"
                       icon={Shield}
                     />
-                    <SelectGroup
+                    <SearchableSelectGroup
                       label="Sales Agent"
                       name="salesAgent"
                       value={formData.salesAgent}
@@ -1784,7 +1878,7 @@ export default function CreateNewLoadPage() {
                       options={salesAgentOptionsFinal}
                     />
 
-                    <SelectGroup
+                    <SearchableSelectGroup
                       label="Booking/Terminal Office"
                       name="bookingTerminalOffice"
                       value={formData.bookingTerminalOffice}
@@ -1792,7 +1886,7 @@ export default function CreateNewLoadPage() {
                       options={officeOptionsFinal}
                     />
 
-                    <SelectGroup
+                    <SearchableSelectGroup
                       label="Agency"
                       name="agency"
                       value={formData.agency}
@@ -1912,8 +2006,9 @@ export default function CreateNewLoadPage() {
                     <div className="space-y-4">
                       <div className="flex flex-wrap gap-4 items-end mb-4">
                         <div className="flex-1">
-                          <SelectGroup
+                          <SearchableSelectGroup
                             label="Shipper"
+                            name={`pickup-company-${stop.id}`}
                             value={stop.company}
                             onChange={(e) =>
                               handleStopChange(
@@ -1924,7 +2019,6 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             options={shipperOptionsFinal}
-                            name={""}
                           />
                         </div>
                         <div className="flex-1">
@@ -2263,20 +2357,20 @@ export default function CreateNewLoadPage() {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <SelectGroup
+                        <InputGroup
                           label="Yard Location"
                           value={stop.yardLocation}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "pickups",
-                                stop.id,
-                                "yardLocation",
-                                e.target.value
-                              )
-                            }
-                            options={yardLocationOptionsFinal}
-                            name={""}
-                          />
+                          onChange={(e) =>
+                            handleStopChange(
+                              "pickups",
+                              stop.id,
+                              "yardLocation",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter yard location"
+                          name={""}
+                        />
                       </div>
                     </div>
                   </div>
@@ -2328,8 +2422,9 @@ export default function CreateNewLoadPage() {
                     <div className="space-y-4">
                       <div className="flex flex-wrap gap-4 items-end mb-4">
                         <div className="flex-1">
-                          <SelectGroup
+                          <SearchableSelectGroup
                             label="Consignee"
+                            name={`delivery-company-${stop.id}`}
                             value={stop.company}
                             onChange={(e) =>
                               handleStopChange(
@@ -2340,7 +2435,6 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             options={consigneeOptionsFinal}
-                            name={""}
                           />
                         </div>
                         <div className="flex-1">
@@ -2612,20 +2706,20 @@ export default function CreateNewLoadPage() {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <SelectGroup
+                        <InputGroup
                           label="Yard Location"
                           value={stop.yardLocation}
-                            onChange={(e) =>
-                              handleStopChange(
-                                "deliveries",
-                                stop.id,
-                                "yardLocation",
-                                e.target.value
-                              )
-                            }
-                            options={yardLocationOptionsFinal}
-                            name={""}
-                          />
+                          onChange={(e) =>
+                            handleStopChange(
+                              "deliveries",
+                              stop.id,
+                              "yardLocation",
+                              e.target.value
+                            )
+                          }
+                          placeholder="Enter yard location"
+                          name={""}
+                        />
                       </div>
                     </div>
                   </div>
