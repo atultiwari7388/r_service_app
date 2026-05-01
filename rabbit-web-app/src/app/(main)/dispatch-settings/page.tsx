@@ -41,7 +41,7 @@ type TabId =
   | "bookingOffice"
   | "customers";
 
-type FieldType = "text" | "tel" | "time";
+type FieldType = "text" | "tel" | "time" | "email";
 
 interface FormField {
   name: string;
@@ -56,6 +56,10 @@ interface SettingsEntity {
   email?: string;
   address: string;
   phone: string;
+  mcNumber?: string;
+  dotNumber?: string;
+  primaryContact?: string;
+  cellPhone?: string;
   zipCode?: string;
   pinCode?: string;
   startTime?: string;
@@ -145,11 +149,27 @@ const getFormFields = (tabId: TabId): FormField[] => {
       ];
     case "carrier":
       return [
-        ...baseFields,
+        { name: "name", label: "Name", type: "text", required: true },
+        { name: "address", label: "Address", type: "text", required: true },
+        { name: "mcNumber", label: "MC Number", type: "text", required: true },
         {
-          name: "yardLocation",
-          label: "Yard Location",
+          name: "dotNumber",
+          label: "DOT Number",
           type: "text",
+          required: true,
+        },
+        {
+          name: "primaryContact",
+          label: "Primary Contact",
+          type: "text",
+          required: true,
+        },
+        { name: "email", label: "Email", type: "email", required: true },
+        { name: "phone", label: "Phone", type: "tel", required: true },
+        {
+          name: "cellPhone",
+          label: "Cell Phone",
+          type: "tel",
           required: true,
         },
       ];
@@ -186,8 +206,11 @@ const getExtraColumns = (tabId: TabId) => {
       ];
     case "carrier":
       return [
-        { key: "pinCode", label: "Pin Code" },
-        { key: "yardLocation", label: "Yard Location" },
+        { key: "mcNumber", label: "MC Number" },
+        { key: "dotNumber", label: "DOT Number" },
+        { key: "primaryContact", label: "Primary Contact" },
+        { key: "email", label: "Email" },
+        { key: "cellPhone", label: "Cell Phone" },
       ];
     case "customers":
       return [

@@ -194,6 +194,19 @@ interface Calculations {
   margin: number;
 }
 
+interface DriverOption {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+interface AssignedVehicle {
+  id: string;
+  companyName: string;
+  vehicleNumber: string;
+  vehicleType: string;
+}
+
 interface SectionHeaderProps {
   icon: LucideIcon;
   title: string;
@@ -646,6 +659,10 @@ export default function CreateNewLoadPage() {
   const [dynamicYardLocationOptions, setDynamicYardLocationOptions] = useState<
     Option[]
   >([]);
+  const [driverOptions, setDriverOptions] = useState<Option[]>([]);
+  const [driverVehiclesById, setDriverVehiclesById] = useState<
+    Record<string, AssignedVehicle[]>
+  >({});
 
   const [formData, setFormData] = useState<FormData>({
     // 1. Customer & Load Header
@@ -981,6 +998,21 @@ export default function CreateNewLoadPage() {
           { value: "CAR-102", label: "7 Days Carrier" },
           { value: "CAR-103", label: "A & D Trucklines" },
         ];
+  const selectedDriverVehicles = formData.driverId
+    ? driverVehiclesById[formData.driverId] || []
+    : [];
+  const assignedTruckOptions: Option[] = selectedDriverVehicles
+    .filter((vehicle) => vehicle.vehicleType.toLowerCase() === "truck")
+    .map((vehicle) => ({
+      value: vehicle.id,
+      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
+    }));
+  const assignedTrailerOptions: Option[] = selectedDriverVehicles
+    .filter((vehicle) => vehicle.vehicleType.toLowerCase() === "trailer")
+    .map((vehicle) => ({
+      value: vehicle.id,
+      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
+    }));
 
   const mapSettingsToOptions = (
     entities: SettingsEntity[],
@@ -1130,6 +1162,74 @@ export default function CreateNewLoadPage() {
     }
   }, []);
 
+  const loadDriverAssignments = useCallback(async (ownerId: string) => {
+    try {
+      const driversSnap = await getDocs(
+        query(
+          collection(db, "Users"),
+          where("createdBy", "==", ownerId),
+          where("role", "==", "Driver")
+        )
+      );
+
+      const drivers: DriverOption[] = driversSnap.docs.map((driverDoc) => {
+        const driverData = driverDoc.data() as {
+          userName?: string;
+          email?: string;
+          active?: boolean;
+        };
+
+        return {
+          id: driverDoc.id,
+          name: (driverData.userName || driverData.email || "Unknown").trim(),
+          active: driverData.active !== false,
+        };
+      });
+
+      drivers.sort((a, b) => a.name.localeCompare(b.name));
+
+      const driverOptionsMapped: Option[] = drivers.map((driver) => ({
+        value: driver.id,
+        label: driver.active ? driver.name : `${driver.name} (Inactive)`,
+      }));
+      setDriverOptions(driverOptionsMapped);
+
+      const vehiclesByDriver: Record<string, AssignedVehicle[]> = {};
+
+      await Promise.all(
+        drivers.map(async (driver) => {
+          const vehiclesSnap = await getDocs(
+            collection(db, "Users", driver.id, "Vehicles")
+          );
+
+          const vehicles = vehiclesSnap.docs.map((vehicleDoc) => {
+            const vehicleData = vehicleDoc.data() as {
+              companyName?: string;
+              vehicleNumber?: string;
+              vehicleType?: string;
+              type?: string;
+            };
+
+            return {
+              id: vehicleDoc.id,
+              companyName: vehicleData.companyName || "Unknown Company",
+              vehicleNumber: vehicleData.vehicleNumber || "Unknown Vehicle",
+              vehicleType: vehicleData.vehicleType || vehicleData.type || "",
+            };
+          });
+
+          vehiclesByDriver[driver.id] = vehicles;
+        })
+      );
+
+      setDriverVehiclesById(vehiclesByDriver);
+    } catch (error) {
+      GlobalToastError(error);
+      setDriverOptions([]);
+      setDriverVehiclesById({});
+    }
+  }, []);
+
   const resolveEffectiveUserId = async (userId: string) => {
     setIsResolvingUser(true);
     try {
@@ -1219,10 +1319,21 @@ export default function CreateNewLoadPage() {
         [name]: checked,
       }));
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFormData((prev) => {
+        if (name === "driverId") {
+          return {
+            ...prev,
+            driverId: value,
+            truckId: "",
+            trailerId: "",
+          };
+        }
+
+        return {
+          ...prev,
+          [name]: value,
+        };
+      });
     }
   };
 
@@ -1403,7 +1514,8 @@ export default function CreateNewLoadPage() {
   useEffect(() => {
     if (!effectiveUserId) return;
     loadSettingsOptions(effectiveUserId);
-  }, [effectiveUserId, loadSettingsOptions]);
+    loadDriverAssignments(effectiveUserId);
+  }, [effectiveUserId, loadSettingsOptions, loadDriverAssignments]);
 
   // Auto-calculate Totals & Profit
   useEffect(() => {
@@ -1669,16 +1781,16 @@ export default function CreateNewLoadPage() {
                   {formData.assignmentType === "driver" && (
                     <>
                       <div className="col-span-1">
-                        <SearchableSelectGroup
+                        <SelectGroup
                           label="Select Driver"
                           name="driverId"
                           value={formData.driverId}
                           onChange={handleInputChange}
-                          options={[
-                            { value: "DRV-101", label: "Delmo (Available)" },
-                            { value: "DRV-102", label: "Jimmy (In Transit)" },
-                            { value: "DRV-103", label: "Rahul (Available)" },
-                          ]}
+                          options={
+                            driverOptions.length > 0
+                              ? driverOptions
+                              : [{ value: "", label: "No drivers found" }]
+                          }
                         />
                       </div>
 
@@ -1688,22 +1800,11 @@ export default function CreateNewLoadPage() {
                           name="truckId"
                           value={formData.truckId}
                           onChange={handleInputChange}
-                          options={[
-                            {
-                              value: "TRK-001",
-                              label: "FREIGHTLINER (A01DET)",
-                            },
-                            {
-                              value: "TRK-002",
-                              label: "INTERNATIONAL (A04INT)",
-                            },
-                            {
-                              value: "TRK-003",
-                              label: "ISUZU MOTORS (A07ISU)",
-                            },
-                            { value: "TRK-004", label: "KENWORTH (A08MAX)" },
-                            { value: "TRK-005", label: "MACK (A11CUM)" },
-                          ]}
+                          options={
+                            assignedTruckOptions.length > 0
+                              ? assignedTruckOptions
+                              : [{ value: "", label: "No assigned trucks" }]
+                          }
                         />
                       </div>
 
@@ -1713,13 +1814,11 @@ export default function CreateNewLoadPage() {
                           name="trailerId"
                           value={formData.trailerId}
                           onChange={handleInputChange}
-                          options={[
-                            { value: "TRL-5501", label: "HYUNDAI (SMR2233)" },
-                            {
-                              value: "TRL-9902",
-                              label: "DRY VAN (BXXZDFF566)",
-                            },
-                          ]}
+                          options={
+                            assignedTrailerOptions.length > 0
+                              ? assignedTrailerOptions
+                              : [{ value: "", label: "No assigned trailers" }]
+                          }
                         />
                       </div>
                       <div className="col-span-1">
