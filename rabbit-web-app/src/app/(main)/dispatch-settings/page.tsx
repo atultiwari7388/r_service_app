@@ -38,7 +38,8 @@ type TabId =
   | "bookingAuthority"
   | "bookingAgent"
   | "salesAgent"
-  | "bookingOffice";
+  | "bookingOffice"
+  | "customers";
 
 type FieldType = "text" | "tel" | "time";
 
@@ -52,6 +53,7 @@ interface FormField {
 interface SettingsEntity {
   id: string;
   name: string;
+  email?: string;
   address: string;
   phone: string;
   zipCode?: string;
@@ -112,6 +114,12 @@ const tabs: TabConfig[] = [
     buttonText: "Add Office",
     collectionName: "settings_booking_offices",
   },
+  {
+    id: "customers",
+    label: "Customers",
+    buttonText: "Add Customer",
+    collectionName: "settings_customers",
+  },
 ];
 
 const getFormFields = (tabId: TabId): FormField[] => {
@@ -155,6 +163,14 @@ const getFormFields = (tabId: TabId): FormField[] => {
         },
         ...baseFields.slice(1),
       ];
+    case "customers":
+      return [
+        { name: "name", label: "Name", type: "text", required: true },
+        { name: "email", label: "Email", type: "text", required: true },
+        { name: "phone", label: "Phone", type: "tel", required: true },
+        { name: "address", label: "Address", type: "text", required: true },
+        { name: "pinCode", label: "Pin Code", type: "text", required: true },
+      ];
     default:
       return baseFields;
   }
@@ -172,6 +188,11 @@ const getExtraColumns = (tabId: TabId) => {
       return [
         { key: "pinCode", label: "Pin Code" },
         { key: "yardLocation", label: "Yard Location" },
+      ];
+    case "customers":
+      return [
+        { key: "email", label: "Email" },
+        { key: "pinCode", label: "Pin Code" },
       ];
     default:
       return [{ key: "pinCode", label: "Pin Code" }];
@@ -1131,7 +1152,10 @@ export default function SettingPage() {
                               address: val,
                             }))
                           }
-                          showMapButton={activeTab === "shippers"}
+                          showMapButton={
+                            activeTab === "shippers" ||
+                            activeTab === "customers"
+                          }
                           onOpenMap={openMapModal}
                         />
                       );
