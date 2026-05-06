@@ -26,7 +26,6 @@ import {
   FileImage,
   MapPin,
   Fuel,
-  Scale,
   Shield,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -332,27 +331,100 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
   className = "",
 }) => {
   const listId = `${name}-options`;
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const normalizedValue = value.toLowerCase().trim();
+  const filteredOptions = options
+    .filter((opt) => {
+      const optionValue = opt.value.toLowerCase();
+      const optionLabel = opt.label.toLowerCase();
+      return (
+        !normalizedValue ||
+        optionValue.includes(normalizedValue) ||
+        optionLabel.includes(normalizedValue)
+      );
+    })
+    .slice(0, 12);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const selectOption = (selectedValue: string) => {
+    onChange({
+      target: { name, value: selectedValue },
+    } as ChangeEvent<HTMLInputElement>);
+    setIsOpen(false);
+  };
 
   return (
-    <div className={`flex flex-col ${className}`}>
+    <div className={`flex flex-col ${className}`} ref={wrapperRef}>
       <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
         {label}
       </label>
-      <input
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder || "Type to search or select..."}
-        list={listId}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-      <datalist id={listId}>
-        {options.map((opt) => (
-          <option key={`${name}-${opt.value}`} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </datalist>
+      <div className="relative">
+        <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          name={name}
+          value={value}
+          onChange={(e) => {
+            onChange(e);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder || "Type to search or select..."}
+          autoComplete="off"
+          className="w-full rounded-md border border-gray-300 pl-9 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+        />
+        <ChevronDown
+          className={`absolute right-3 top-2.5 w-4 h-4 text-gray-400 transition-transform pointer-events-none ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+
+        {isOpen && (
+          <div
+            id={listId}
+            className="absolute z-40 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+          >
+            <div className="max-h-56 overflow-y-auto py-1">
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((opt) => (
+                  <button
+                    key={`${name}-${opt.value}`}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectOption(opt.value)}
+                    className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                      opt.value === value
+                        ? "bg-blue-50 text-blue-700 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                    title={opt.label}
+                  >
+                    {opt.label}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-gray-500">
+                  No results found
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -1667,19 +1739,8 @@ export default function CreateNewLoadPage() {
                   onChange={handleInputChange}
                   options={vanTypeOptions}
                 />
-                <SelectGroup
-                  label="Length"
-                  name="length"
-                  value={formData.length}
-                  onChange={handleInputChange}
-                  options={lengthOptions}
-                />
-              </div>
-
-              {/* Temperature - Show when Van Or Reefer is selected */}
-              {(formData.vanType === "Van Or Reefer" ||
-                formData.vanType === "Reefer") && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                {(formData.vanType === "Van Or Reefer" ||
+                  formData.vanType === "Reefer") && (
                   <InputGroup
                     label="Temperature (°F)"
                     name="temperature"
@@ -1687,19 +1748,20 @@ export default function CreateNewLoadPage() {
                     onChange={handleInputChange}
                     placeholder="e.g., 34"
                   />
-                </div>
-              )}
+                )}
+                {!(formData.vanType === "Van Or Reefer" ||
+                  formData.vanType === "Reefer") && <div />}
+              </div>
 
-              {/* Third Row: Length, Weight, Booking Authority */}
+              {/* Third Row: Length, Booking Authority, Type */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                {/* <InputGroup
-                  label="Weight (lbs)"
-                  name="weight"
-                  value={formData.weight}
+                <SelectGroup
+                  label="Length"
+                  name="length"
+                  value={formData.length}
                   onChange={handleInputChange}
-                  placeholder="Enter weight"
-                  icon={Scale}
-                /> */}
+                  options={lengthOptions}
+                />
 
                 {/* Primary Fees */}
                 <InputGroup

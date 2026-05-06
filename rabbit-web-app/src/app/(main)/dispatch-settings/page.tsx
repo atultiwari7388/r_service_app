@@ -1118,12 +1118,7 @@ export default function SettingPage() {
 
         {/* ─── FORM MODAL (Scrollable) ─── */}
         {isModalOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) closeModal();
-            }}
-          >
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden mx-4">
               {/* Modal Header — fixed at top */}
               <div className="px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
