@@ -1119,7 +1119,7 @@ export default function SettingPage() {
         {/* ─── FORM MODAL (Scrollable) ─── */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden mx-4">
+            <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden mx-4">
               {/* Modal Header — fixed at top */}
               <div className="px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
                 <h3 className="text-2xl font-bold text-gray-900">
@@ -1137,73 +1137,80 @@ export default function SettingPage() {
               {/* Modal Body — scrollable */}
               <div className="flex-1 overflow-y-auto overscroll-contain">
                 <form onSubmit={handleSubmit} className="p-6 space-y-7">
-                  {formFields.map((field) => {
-                    // ─── Time fields: Manual type input with AM/PM ───
-                    if (field.type === "time") {
-                      return (
-                        <ManualTimePicker
-                          key={field.name}
-                          label={field.label}
-                          required={field.required}
-                          value={formData[field.name] || ""}
-                          onChange={(val) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              [field.name]: val,
-                            }))
-                          }
-                        />
-                      );
-                    }
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {formFields.map((field) => {
+                      // ─── Time fields: Manual type input with AM/PM ───
+                      if (field.type === "time") {
+                        return (
+                          <div key={field.name} className="xl:col-span-1">
+                            <ManualTimePicker
+                              label={field.label}
+                              required={field.required}
+                              value={formData[field.name] || ""}
+                              onChange={(val) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  [field.name]: val,
+                                }))
+                              }
+                            />
+                          </div>
+                        );
+                      }
 
-                    // ─── Address fields: Autocomplete with suggestions ───
-                    if (field.name === "address") {
-                      return (
-                        <AddressAutocompleteInput
-                          key={field.name}
-                          label={field.label}
-                          required={field.required}
-                          value={formData[field.name] || ""}
-                          onChange={(val) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              address: val,
-                            }))
-                          }
-                          showMapButton={
-                            activeTab === "shippers" ||
-                            activeTab === "customers"
-                          }
-                          onOpenMap={openMapModal}
-                        />
-                      );
-                    }
+                      // ─── Address fields: Autocomplete with suggestions ───
+                      if (field.name === "address") {
+                        return (
+                          <div
+                            key={field.name}
+                            className="md:col-span-2 xl:col-span-2"
+                          >
+                            <AddressAutocompleteInput
+                              label={field.label}
+                              required={field.required}
+                              value={formData[field.name] || ""}
+                              onChange={(val) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  address: val,
+                                }))
+                              }
+                              showMapButton={
+                                activeTab === "shippers" ||
+                                activeTab === "customers"
+                              }
+                              onOpenMap={openMapModal}
+                            />
+                          </div>
+                        );
+                      }
 
-                    // ─── Default text/tel fields ───
-                    return (
-                      <div key={field.name} className="space-y-2">
-                        <label
-                          htmlFor={field.name}
-                          className="block text-sm font-semibold text-gray-700"
-                        >
-                          {field.label}
-                          {field.required && (
-                            <span className="text-red-500 ml-1">*</span>
-                          )}
-                        </label>
-                        <input
-                          id={field.name}
-                          name={field.name}
-                          type={field.type}
-                          value={formData[field.name] || ""}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
-                          placeholder={`Enter ${field.label}`}
-                          required={field.required}
-                        />
-                      </div>
-                    );
-                  })}
+                      // ─── Default text/tel fields ───
+                      return (
+                        <div key={field.name} className="space-y-2">
+                          <label
+                            htmlFor={field.name}
+                            className="block text-sm font-semibold text-gray-700"
+                          >
+                            {field.label}
+                            {field.required && (
+                              <span className="text-red-500 ml-1">*</span>
+                            )}
+                          </label>
+                          <input
+                            id={field.name}
+                            name={field.name}
+                            type={field.type}
+                            value={formData[field.name] || ""}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
+                            placeholder={`Enter ${field.label}`}
+                            required={field.required}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {/* Action Buttons */}
                   <div className="flex space-x-3 pt-4 pb-2">
