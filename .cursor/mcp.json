@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "jetro": {
+      "type": "stdio",
+      "command": "/Users/kaju/.jetro/runtime/node-darwin-x64",
+      "args": [
+        "/Users/kaju/.jetro/mcp-server/index.js"
+      ],
+      "env": {
+        "JET_WORKSPACE": "/Users/kaju/Mylex2025/r_service_app",
+        "JET_API_URL": "https://api.jetro.ai",
+        "PATH": "/Users/kaju/.jetro/runtime:/Users/kaju/.antigravity/antigravity/bin:/Users/kaju/.npm-global/bin:/Users/kaju/.bun/bin:/usr/local/opt/openjdk@21/bin:/usr/local/opt/openjdk@17/bin:/usr/local/opt/ruby/bin:/usr/local/bin:/usr/local/sbin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pkg/env/active/bin:/opt/pmk/env/global/bin:/Library/Apple/usr/bin:/usr/local/go/bin:/Users/kaju/Development/flutter/bin:/Users/kaju/Development/flutter/bin"
+      }
+    }
+  }
+}

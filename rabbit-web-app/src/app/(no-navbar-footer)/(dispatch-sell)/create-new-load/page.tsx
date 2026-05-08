@@ -100,7 +100,13 @@ interface Stop {
 interface DocumentFile {
   id: string;
   name: string;
-  type: "rate-confirmation" | "bol" | "pod" | "damage-photos";
+  type:
+    | "rate-confirmation"
+    | "bol"
+    | "pod"
+    | "damage-photos"
+    | "scale-ticket"
+    | "lumper";
   file?: File;
   previewUrl?: string;
   size?: number;
@@ -319,6 +325,9 @@ interface SearchableSelectGroupProps {
   options: Option[];
   placeholder?: string;
   className?: string;
+  showCreateButton?: boolean;
+  createTooltip?: string;
+  onCreateClick?: () => void;
 }
 
 const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
@@ -329,23 +338,29 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
   options,
   placeholder,
   className = "",
+  showCreateButton = false,
+  createTooltip = "Create",
+  onCreateClick,
 }) => {
   const listId = `${name}-options`;
   const [isOpen, setIsOpen] = useState(false);
+  const [showAllOptions, setShowAllOptions] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const normalizedValue = value.toLowerCase().trim();
-  const filteredOptions = options
-    .filter((opt) => {
-      const optionValue = opt.value.toLowerCase();
-      const optionLabel = opt.label.toLowerCase();
-      return (
-        !normalizedValue ||
-        optionValue.includes(normalizedValue) ||
-        optionLabel.includes(normalizedValue)
-      );
-    })
-    .slice(0, 12);
+  const filteredOptions = (
+    showAllOptions
+      ? options
+      : options.filter((opt) => {
+          const optionValue = opt.value.toLowerCase();
+          const optionLabel = opt.label.toLowerCase();
+          return (
+            !normalizedValue ||
+            optionValue.includes(normalizedValue) ||
+            optionLabel.includes(normalizedValue)
+          );
+        })
+  ).slice(0, 12);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -354,6 +369,7 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
         !wrapperRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
+        setShowAllOptions(false);
       }
     };
 
@@ -366,13 +382,26 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
       target: { name, value: selectedValue },
     } as ChangeEvent<HTMLInputElement>);
     setIsOpen(false);
+    setShowAllOptions(false);
   };
 
   return (
     <div className={`flex flex-col ${className}`} ref={wrapperRef}>
-      <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
-        {label}
-      </label>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-xs font-semibold text-gray-500 uppercase">
+          {label}
+        </label>
+        {showCreateButton && (
+          <button
+            type="button"
+            onClick={onCreateClick}
+            title={createTooltip}
+            className="h-5 w-5 rounded-full bg-[#F96176] hover:bg-[#f74f67] text-white flex items-center justify-center transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        )}
+      </div>
       <div className="relative">
         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
         <input
@@ -381,17 +410,29 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
           onChange={(e) => {
             onChange(e);
             setIsOpen(true);
+            setShowAllOptions(false);
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder || "Type to search or select..."}
           autoComplete="off"
           className="w-full rounded-md border border-gray-300 pl-9 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
         />
-        <ChevronDown
-          className={`absolute right-3 top-2.5 w-4 h-4 text-gray-400 transition-transform pointer-events-none ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setShowAllOptions(true);
+            setIsOpen((prev) => !prev);
+          }}
+          className="absolute right-2 top-1.5 p-1 rounded hover:bg-gray-100"
+          aria-label={`Toggle ${label} options`}
+        >
+          <ChevronDown
+            className={`w-4 h-4 text-gray-400 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
 
         {isOpen && (
           <div
@@ -503,19 +544,13 @@ interface FileUploadBoxProps {
     | "damage-photos"
     | "scale-ticket"
     | "lumper";
-  documents: DocumentFile[];
   onFileUpload: (type: string, file: File) => void;
-  onFileRemove: (id: string) => void;
-  onViewPreview: (previewUrl: string) => void;
 }
 
 const FileUploadBox: React.FC<FileUploadBoxProps> = ({
   label,
   type,
-  documents,
   onFileUpload,
-  onFileRemove,
-  onViewPreview,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -558,9 +593,6 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
     }
   };
 
-  const typeDocuments = documents.filter((doc) => doc.type === type);
-  const hasFiles = typeDocuments.length > 0;
-
   return (
     <div className="relative">
       <div
@@ -597,31 +629,6 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({
           multiple // Add multiple attribute
         />
       </div>
-
-      {/* Show count for this document type */}
-      {hasFiles && (
-        <div className="mt-2">
-          <div className="flex items-center justify-between p-1.5 bg-gray-50 rounded border border-gray-200">
-            <div className="flex items-center gap-1.5">
-              <FileImage className="w-3 h-3 text-gray-400" />
-              <span className="text-[10px] font-medium text-gray-700">
-                {typeDocuments.length} file(s)
-              </span>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // Remove all files of this type
-                typeDocuments.forEach((doc) => onFileRemove(doc.id));
-              }}
-              className="text-[10px] text-red-500 hover:text-red-700"
-              title="Remove all"
-            >
-              Clear All
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -731,6 +738,8 @@ export default function CreateNewLoadPage() {
   const [dynamicYardLocationOptions, setDynamicYardLocationOptions] = useState<
     Option[]
   >([]);
+  const [shipperConsigneeAddressByName, setShipperConsigneeAddressByName] =
+    useState<Record<string, string>>({});
   const [driverOptions, setDriverOptions] = useState<Option[]>([]);
   const [driverVehiclesById, setDriverVehiclesById] = useState<
     Record<string, AssignedVehicle[]>
@@ -1218,6 +1227,14 @@ export default function CreateNewLoadPage() {
       setDynamicSalesAgentOptions(mapSettingsToOptions(salesAgents));
       setDynamicOfficeOptions(mapSettingsToOptions(bookingOffices));
       setDynamicAgentOptions(mapSettingsToOptions(bookingAgents));
+      setShipperConsigneeAddressByName(
+        shippers.reduce<Record<string, string>>((acc, item) => {
+          const name = (item.companyName || item.name || "").trim();
+          const address = (item.address || "").trim();
+          if (name && address) acc[name] = address;
+          return acc;
+        }, {})
+      );
 
       const uniqueYards = Array.from(
         new Set(
@@ -1571,6 +1588,10 @@ export default function CreateNewLoadPage() {
     setPreviewImage(null);
   };
 
+  const navigateToDispatchSettings = () => {
+    router.push("/dispatch-settings");
+  };
+
   // --- Effects ---
 
   useEffect(() => {
@@ -1731,6 +1752,9 @@ export default function CreateNewLoadPage() {
                   onChange={handleInputChange}
                   options={customerOptionsFinal}
                   placeholder="Type to search or select customer..."
+                  showCreateButton
+                  createTooltip="Add Customer"
+                  onCreateClick={navigateToDispatchSettings}
                 />
                 <SearchableSelectGroup
                   label="Van Type"
@@ -1749,8 +1773,10 @@ export default function CreateNewLoadPage() {
                     placeholder="e.g., 34"
                   />
                 )}
-                {!(formData.vanType === "Van Or Reefer" ||
-                  formData.vanType === "Reefer") && <div />}
+                {!(
+                  formData.vanType === "Van Or Reefer" ||
+                  formData.vanType === "Reefer"
+                ) && <div />}
               </div>
 
               {/* Third Row: Length, Booking Authority, Type */}
@@ -1779,6 +1805,9 @@ export default function CreateNewLoadPage() {
                   value={formData.bookingAuthority}
                   onChange={handleInputChange}
                   options={bookingAuthorityOptionsFinal}
+                  showCreateButton
+                  createTooltip="Add Booking Authority"
+                  onCreateClick={navigateToDispatchSettings}
                 />
                 <SelectGroup
                   label="Type"
@@ -1822,6 +1851,9 @@ export default function CreateNewLoadPage() {
                           value={formData.carrierId}
                           onChange={handleInputChange}
                           options={carrierOptionsFinal}
+                          showCreateButton
+                          createTooltip="Add Carrier"
+                          onCreateClick={navigateToDispatchSettings}
                         />
                       </div>
 
@@ -2014,6 +2046,9 @@ export default function CreateNewLoadPage() {
                       value={formData.brokerageAgent}
                       onChange={handleInputChange}
                       options={brokerageAgentOptionsFinal}
+                      showCreateButton
+                      createTooltip="Add Booking Agent"
+                      onCreateClick={navigateToDispatchSettings}
                     />
                     {/* Yard Location */}
                     {/* <SelectGroup
@@ -2037,6 +2072,9 @@ export default function CreateNewLoadPage() {
                       value={formData.salesAgent}
                       onChange={handleInputChange}
                       options={salesAgentOptionsFinal}
+                      showCreateButton
+                      createTooltip="Add Sales Agent"
+                      onCreateClick={navigateToDispatchSettings}
                     />
 
                     <SearchableSelectGroup
@@ -2045,6 +2083,9 @@ export default function CreateNewLoadPage() {
                       value={formData.bookingTerminalOffice}
                       onChange={handleInputChange}
                       options={officeOptionsFinal}
+                      showCreateButton
+                      createTooltip="Add Booking Office"
+                      onCreateClick={navigateToDispatchSettings}
                     />
 
                     <SearchableSelectGroup
@@ -2053,6 +2094,9 @@ export default function CreateNewLoadPage() {
                       value={formData.agency}
                       onChange={handleInputChange}
                       options={agencyOptionsFinal}
+                      showCreateButton
+                      createTooltip="Add Booking Agent"
+                      onCreateClick={navigateToDispatchSettings}
                     />
                     <InputGroup
                       label="Tendered Miles"
@@ -2165,8 +2209,8 @@ export default function CreateNewLoadPage() {
                     </div>
 
                     <div className="space-y-4">
-                      <div className="flex flex-wrap gap-4 items-end mb-4">
-                        <div className="flex-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-10 gap-4 items-end mb-4">
+                        <div className="sm:col-span-7">
                           <SearchableSelectGroup
                             label="Shipper"
                             name={`pickup-company-${stop.id}`}
@@ -2180,9 +2224,18 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             options={shipperOptionsFinal}
+                            showCreateButton
+                            createTooltip="Add Shipper"
+                            onCreateClick={navigateToDispatchSettings}
                           />
+                          {shipperConsigneeAddressByName[stop.company] && (
+                            <p className="mt-1 text-xs text-gray-600">
+                              Address:{" "}
+                              {shipperConsigneeAddressByName[stop.company]}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex-1">
+                        <div className="sm:col-span-3">
                           <InputGroup
                             label="Customer Load/Ref/Conf"
                             value={stop.customerLoadRefConf}
@@ -2581,8 +2634,8 @@ export default function CreateNewLoadPage() {
                       )}
                     </div>
                     <div className="space-y-4">
-                      <div className="flex flex-wrap gap-4 items-end mb-4">
-                        <div className="flex-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-10 gap-4 items-end mb-4">
+                        <div className="sm:col-span-7">
                           <SearchableSelectGroup
                             label="Consignee"
                             name={`delivery-company-${stop.id}`}
@@ -2596,9 +2649,18 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             options={consigneeOptionsFinal}
+                            showCreateButton
+                            createTooltip="Add Consignee"
+                            onCreateClick={navigateToDispatchSettings}
                           />
+                          {shipperConsigneeAddressByName[stop.company] && (
+                            <p className="mt-1 text-xs text-gray-600">
+                              Address:{" "}
+                              {shipperConsigneeAddressByName[stop.company]}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex-1">
+                        <div className="sm:col-span-3">
                           <InputGroup
                             label="Customer Load/Ref/Conf"
                             value={stop.customerLoadRefConf}
@@ -2963,50 +3025,32 @@ export default function CreateNewLoadPage() {
                 <FileUploadBox
                   label="Rate Confirmation"
                   type="rate-confirmation"
-                  documents={formData.documents}
                   onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
                 />
                 <FileUploadBox
                   label="Bill of Lading (BOL)"
                   type="bol"
-                  documents={formData.documents}
                   onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
                 />
                 <FileUploadBox
                   label="Proof of Delivery (POD)"
                   type="pod"
-                  documents={formData.documents}
                   onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
                 />
                 <FileUploadBox
                   label="Damage Photos"
                   type="damage-photos"
-                  documents={formData.documents}
                   onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
                 />
                 <FileUploadBox
                   label="Scale Ticket"
                   type="scale-ticket"
-                  documents={formData.documents}
                   onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
                 />
                 <FileUploadBox
                   label="Lumper"
                   type="lumper"
-                  documents={formData.documents}
                   onFileUpload={handleFileUpload}
-                  onFileRemove={handleFileRemove}
-                  onViewPreview={handleViewPreview}
                 />
               </div>
 
