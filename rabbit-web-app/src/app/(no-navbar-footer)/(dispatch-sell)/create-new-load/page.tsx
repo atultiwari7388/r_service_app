@@ -325,8 +325,7 @@ interface SearchableSelectGroupProps {
   options: Option[];
   placeholder?: string;
   className?: string;
-  showCreateButton?: boolean;
-  createTooltip?: string;
+  createActionLabel?: string;
   onCreateClick?: () => void;
 }
 
@@ -338,8 +337,7 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
   options,
   placeholder,
   className = "",
-  showCreateButton = false,
-  createTooltip = "Create",
+  createActionLabel,
   onCreateClick,
 }) => {
   const listId = `${name}-options`;
@@ -391,14 +389,13 @@ const SearchableSelectGroup: React.FC<SearchableSelectGroupProps> = ({
         <label className="text-xs font-semibold text-gray-500 uppercase">
           {label}
         </label>
-        {showCreateButton && (
+        {createActionLabel && onCreateClick && (
           <button
             type="button"
             onClick={onCreateClick}
-            title={createTooltip}
-            className="h-5 w-5 rounded-full bg-[#F96176] hover:bg-[#f74f67] text-white flex items-center justify-center transition-colors"
+            className="text-[11px] font-semibold text-[#F96176] hover:text-[#f74f67] transition-colors"
           >
-            <Plus className="w-3 h-3" />
+            {createActionLabel}
           </button>
         )}
       </div>
@@ -1588,8 +1585,8 @@ export default function CreateNewLoadPage() {
     setPreviewImage(null);
   };
 
-  const navigateToDispatchSettings = () => {
-    router.push("/dispatch-settings");
+  const navigateToDispatchSettings = (tabId: string) => {
+    router.push(`/dispatch-settings?tab=${tabId}`);
   };
 
   // --- Effects ---
@@ -1752,9 +1749,8 @@ export default function CreateNewLoadPage() {
                   onChange={handleInputChange}
                   options={customerOptionsFinal}
                   placeholder="Type to search or select customer..."
-                  showCreateButton
-                  createTooltip="Add Customer"
-                  onCreateClick={navigateToDispatchSettings}
+                  createActionLabel="Add Customer"
+                  onCreateClick={() => navigateToDispatchSettings("customers")}
                 />
                 <SearchableSelectGroup
                   label="Van Type"
@@ -1805,9 +1801,10 @@ export default function CreateNewLoadPage() {
                   value={formData.bookingAuthority}
                   onChange={handleInputChange}
                   options={bookingAuthorityOptionsFinal}
-                  showCreateButton
-                  createTooltip="Add Booking Authority"
-                  onCreateClick={navigateToDispatchSettings}
+                  createActionLabel="Add Booking Authority"
+                  onCreateClick={() =>
+                    navigateToDispatchSettings("bookingAuthority")
+                  }
                 />
                 <SelectGroup
                   label="Type"
@@ -1851,9 +1848,10 @@ export default function CreateNewLoadPage() {
                           value={formData.carrierId}
                           onChange={handleInputChange}
                           options={carrierOptionsFinal}
-                          showCreateButton
-                          createTooltip="Add Carrier"
-                          onCreateClick={navigateToDispatchSettings}
+                          createActionLabel="Add Carrier"
+                          onCreateClick={() =>
+                            navigateToDispatchSettings("carrier")
+                          }
                         />
                       </div>
 
@@ -2046,9 +2044,10 @@ export default function CreateNewLoadPage() {
                       value={formData.brokerageAgent}
                       onChange={handleInputChange}
                       options={brokerageAgentOptionsFinal}
-                      showCreateButton
-                      createTooltip="Add Booking Agent"
-                      onCreateClick={navigateToDispatchSettings}
+                      createActionLabel="Add Booking Agent"
+                      onCreateClick={() =>
+                        navigateToDispatchSettings("bookingAgent")
+                      }
                     />
                     {/* Yard Location */}
                     {/* <SelectGroup
@@ -2072,9 +2071,10 @@ export default function CreateNewLoadPage() {
                       value={formData.salesAgent}
                       onChange={handleInputChange}
                       options={salesAgentOptionsFinal}
-                      showCreateButton
-                      createTooltip="Add Sales Agent"
-                      onCreateClick={navigateToDispatchSettings}
+                      createActionLabel="Add Sales Agent"
+                      onCreateClick={() =>
+                        navigateToDispatchSettings("salesAgent")
+                      }
                     />
 
                     <SearchableSelectGroup
@@ -2083,9 +2083,10 @@ export default function CreateNewLoadPage() {
                       value={formData.bookingTerminalOffice}
                       onChange={handleInputChange}
                       options={officeOptionsFinal}
-                      showCreateButton
-                      createTooltip="Add Booking Office"
-                      onCreateClick={navigateToDispatchSettings}
+                      createActionLabel="Add Booking Office"
+                      onCreateClick={() =>
+                        navigateToDispatchSettings("bookingOffice")
+                      }
                     />
 
                     <SearchableSelectGroup
@@ -2094,9 +2095,10 @@ export default function CreateNewLoadPage() {
                       value={formData.agency}
                       onChange={handleInputChange}
                       options={agencyOptionsFinal}
-                      showCreateButton
-                      createTooltip="Add Booking Agent"
-                      onCreateClick={navigateToDispatchSettings}
+                      createActionLabel="Add Booking Agent"
+                      onCreateClick={() =>
+                        navigateToDispatchSettings("bookingAgent")
+                      }
                     />
                     <InputGroup
                       label="Tendered Miles"
@@ -2224,9 +2226,10 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             options={shipperOptionsFinal}
-                            showCreateButton
-                            createTooltip="Add Shipper"
-                            onCreateClick={navigateToDispatchSettings}
+                            createActionLabel="Add Shipper"
+                            onCreateClick={() =>
+                              navigateToDispatchSettings("shippers")
+                            }
                           />
                           {shipperConsigneeAddressByName[stop.company] && (
                             <p className="mt-1 text-xs text-gray-600">
@@ -2649,9 +2652,10 @@ export default function CreateNewLoadPage() {
                               )
                             }
                             options={consigneeOptionsFinal}
-                            showCreateButton
-                            createTooltip="Add Consignee"
-                            onCreateClick={navigateToDispatchSettings}
+                            createActionLabel="Add Consignee"
+                            onCreateClick={() =>
+                              navigateToDispatchSettings("shippers")
+                            }
                           />
                           {shipperConsigneeAddressByName[stop.company] && (
                             <p className="mt-1 text-xs text-gray-600">

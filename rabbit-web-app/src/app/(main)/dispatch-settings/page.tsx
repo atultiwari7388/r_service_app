@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   FaEdit,
   FaEllipsisV,
@@ -11,9 +12,9 @@ import {
 } from "react-icons/fa";
 import {
   GoogleMap,
-  LoadScript,
   Marker,
   Autocomplete,
+  useJsApiLoader,
 } from "@react-google-maps/api";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
@@ -125,6 +126,9 @@ const tabs: TabConfig[] = [
     collectionName: "settings_customers",
   },
 ];
+
+const isTabId = (value: string): value is TabId =>
+  tabs.some((tab) => tab.id === value);
 
 const getFormFields = (tabId: TabId): FormField[] => {
   const baseFields: FormField[] = [
@@ -547,7 +551,13 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteProps> = ({
 };
 
 export default function SettingPage() {
+  const searchParams = useSearchParams();
   const { user, isLoading } = useAuth() || { user: null, isLoading: false };
+  const { isLoaded: isGoogleLoaded, loadError: googleLoadError } =
+    useJsApiLoader({
+      googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "",
+      libraries: GOOGLE_LIBRARIES,
+    });
   const [activeTab, setActiveTab] = useState<TabId>("shippers");
   const [entities, setEntities] = useState<SettingsEntity[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -560,6 +570,7 @@ export default function SettingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const lastAppliedQueryTabRef = useRef<string | null>(null);
 
   // Map related states
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -672,6 +683,20 @@ export default function SettingPage() {
 
     await fetchEntities(targetPage);
   };
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (!requestedTab || !isTabId(requestedTab)) {
+      return;
+    }
+
+    // Apply deep-link tab only when query param changes,
+    // so manual tab switching in UI is not overridden.
+    if (lastAppliedQueryTabRef.current !== requestedTab) {
+      lastAppliedQueryTabRef.current = requestedTab;
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -936,10 +961,6 @@ export default function SettingPage() {
   }
 
   return (
-    <LoadScript
-      googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_API_KEY || ""}
-      libraries={GOOGLE_LIBRARIES}
-    >
       <div className="min-h-screen bg-gray-50">
         {/* ─── FULL WIDTH CONTAINER ─── */}
         <div className="w-full py-8 px-4 sm:px-6 lg:px-10 xl:px-16">
@@ -1256,37 +1277,46 @@ export default function SettingPage() {
                 </button>
               </div>
               <div className="flex-1 relative overflow-hidden rounded-b-3xl">
-                <GoogleMap
-                  mapContainerStyle={{ width: "100%", height: "100%" }}
-                  center={mapCenter}
-                  zoom={4}
-                  onClick={onMapClick}
-                  options={{
-                    zoomControl: true,
-                    streetViewControl: false,
-                    mapTypeControl: false,
-                    fullscreenControl: true,
-                  }}
-                >
-                  <Autocomplete
-                    onLoad={(autocomplete) => {
-                      autocompleteRef.current = autocomplete;
+                {googleLoadError ? (
+                  <div className="h-full w-full flex items-center justify-center text-red-600">
+                    Failed to load Google Maps.
+                  </div>
+                ) : !isGoogleLoaded ? (
+                  <div className="h-full w-full flex items-center justify-center text-gray-500">
+                    Loading map...
+                  </div>
+                ) : (
+                  <GoogleMap
+                    mapContainerStyle={{ width: "100%", height: "100%" }}
+                    center={mapCenter}
+                    zoom={4}
+                    onClick={onMapClick}
+                    options={{
+                      zoomControl: true,
+                      streetViewControl: false,
+                      mapTypeControl: false,
+                      fullscreenControl: true,
                     }}
-                    onPlaceChanged={onPlaceChanged}
                   >
-                    <input
-                      type="text"
-                      placeholder="Search for location..."
-                      className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4/5 z-10 p-3 rounded-2xl shadow-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] bg-white text-lg"
-                    />
-                  </Autocomplete>
-                  <Marker position={mapCenter} />
-                </GoogleMap>
+                    <Autocomplete
+                      onLoad={(autocomplete) => {
+                        autocompleteRef.current = autocomplete;
+                      }}
+                      onPlaceChanged={onPlaceChanged}
+                    >
+                      <input
+                        type="text"
+                        placeholder="Search for location..."
+                        className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4/5 z-10 p-3 rounded-2xl shadow-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] bg-white text-lg"
+                      />
+                    </Autocomplete>
+                    <Marker position={mapCenter} />
+                  </GoogleMap>
+                )}
               </div>
             </div>
           </div>
         )}
       </div>
-    </LoadScript>
   );
 }
