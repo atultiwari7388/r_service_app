@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   FaEdit,
   FaEllipsisV,
@@ -551,7 +550,6 @@ const AddressAutocompleteInput: React.FC<AddressAutocompleteProps> = ({
 };
 
 export default function SettingPage() {
-  const searchParams = useSearchParams();
   const { user, isLoading } = useAuth() || { user: null, isLoading: false };
   const { isLoaded: isGoogleLoaded, loadError: googleLoadError } =
     useJsApiLoader({
@@ -685,7 +683,11 @@ export default function SettingPage() {
   };
 
   useEffect(() => {
-    const requestedTab = searchParams.get("tab");
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
     if (!requestedTab || !isTabId(requestedTab)) {
       return;
     }
@@ -696,7 +698,7 @@ export default function SettingPage() {
       lastAppliedQueryTabRef.current = requestedTab;
       setActiveTab(requestedTab);
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) {
