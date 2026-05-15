@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Printer,
@@ -23,8 +23,12 @@ import {
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { GlobalToastError } from "@/utils/globalErrorToast";
 
 import { LoadData, Stop, LoadDocument } from "../../interface/loaddata";
 import {
@@ -48,6 +52,69 @@ interface CheckCallFormData {
   source: string;
   driver: string;
   notes: string;
+}
+
+interface DispatchStopRecord {
+  company?: string;
+  date?: string;
+  timeStart?: string;
+  timeEnd?: string;
+  totalQty?: string;
+  qtyType?: string;
+  totalWeight?: string;
+  instructions?: string;
+  pickup?: string;
+  customerLoadRefConf?: string;
+  shipmentBol?: string;
+  poNumber?: string;
+  reeferMode?: string;
+}
+
+interface DispatchDocumentRecord {
+  id: string;
+  name?: string;
+  type?: string;
+  size?: number;
+}
+
+interface DispatchLoadRecord {
+  loadNumber?: string;
+  status?: string;
+  customerSearch?: string;
+  customerName?: string;
+  primaryFees?: number;
+  feeType?: string;
+  tenderedMiles?: string;
+  fuelSurcharge?: number;
+  targetRate?: number;
+  vanType?: string;
+  length?: string;
+  weight?: string;
+  bookingAuthority?: string;
+  salesAgent?: string;
+  bookingTerminalOffice?: string;
+  commodity?: string;
+  declaredValue?: string;
+  agency?: string;
+  brokerageAgent?: string;
+  type?: string;
+  lineHaul?: number;
+  detention?: number;
+  layover?: number;
+  tonu?: number;
+  accessorials?: number;
+  totalCustomerRate?: number;
+  totalCarrierPay?: number;
+  carrierId?: string;
+  truckId?: string;
+  trailerId?: string;
+  driverId?: string;
+  dispatcherId?: string;
+  temperature?: string;
+  dispatchNotes?: string;
+  pickups?: DispatchStopRecord[];
+  deliveries?: DispatchStopRecord[];
+  documents?: DispatchDocumentRecord[];
 }
 
 // --- Mock Data ---
@@ -259,7 +326,7 @@ const InputField = ({
     type={type}
     value={value}
     disabled={disabled}
-    readOnly={disabled && !onChange}
+    readOnly={!onChange || disabled}
     onChange={onChange}
     placeholder={placeholder}
     className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow
@@ -287,7 +354,7 @@ const SelectField = ({
   <div className="relative">
     <select
       value={value}
-      disabled={disabled}
+      disabled={disabled || !onChange}
       onChange={onChange}
       className={`w-full px-3 py-2 text-sm border rounded-md appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500
         ${
@@ -865,6 +932,8 @@ const ActionDropdown = ({
 
 // --- Main Page Component ---
 export default function LoadDetailsPage() {
+  const params = useParams<{ id: string }>();
+  const loadDocId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const [activeTab, setActiveTab] = useState("load-info");
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showBolModal, setShowBolModal] = useState(false);
@@ -875,6 +944,244 @@ export default function LoadDetailsPage() {
   const [showCheckCallModal, setShowCheckCallModal] = useState(false);
   const [showLoadInfoModal, setShowLoadInfoModal] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [dbLoad, setDbLoad] = useState<DispatchLoadRecord | null>(null);
+  const [driverLabel, setDriverLabel] = useState("-");
+  const [truckLabel, setTruckLabel] = useState("-");
+  const [trailerLabel, setTrailerLabel] = useState("-");
+
+  useEffect(() => {
+    const fetchLoad = async () => {
+      if (!loadDocId) return;
+      try {
+        const loadSnap = await getDoc(doc(db, "dispatch_loads", loadDocId));
+        if (!loadSnap.exists()) {
+          setDbLoad(null);
+          return;
+        }
+
+        const data = loadSnap.data() as DispatchLoadRecord;
+        setDbLoad(data);
+
+        if (data.driverId) {
+          const driverSnap = await getDoc(doc(db, "Users", data.driverId));
+          if (driverSnap.exists()) {
+            const driverData = driverSnap.data() as {
+              userName?: string;
+              email?: string;
+            };
+            setDriverLabel(
+              (driverData.userName || driverData.email || data.driverId).trim()
+            );
+          } else {
+            setDriverLabel(data.driverId);
+          }
+
+          if (data.truckId) {
+            const truckSnap = await getDoc(
+              doc(db, "Users", data.driverId, "Vehicles", data.truckId)
+            );
+            if (truckSnap.exists()) {
+              const truckData = truckSnap.data() as {
+                vehicleNumber?: string;
+                companyName?: string;
+              };
+              const vehicleNumber = (truckData.vehicleNumber || "").trim();
+              const companyName = (truckData.companyName || "").trim();
+              setTruckLabel(
+                vehicleNumber && companyName
+                  ? `${vehicleNumber} (${companyName})`
+                  : vehicleNumber || companyName || data.truckId
+              );
+            } else {
+              setTruckLabel(data.truckId);
+            }
+          } else {
+            setTruckLabel("-");
+          }
+
+          if (data.trailerId) {
+            const trailerSnap = await getDoc(
+              doc(db, "Users", data.driverId, "Vehicles", data.trailerId)
+            );
+            if (trailerSnap.exists()) {
+              const trailerData = trailerSnap.data() as {
+                vehicleNumber?: string;
+                companyName?: string;
+              };
+              const vehicleNumber = (trailerData.vehicleNumber || "").trim();
+              const companyName = (trailerData.companyName || "").trim();
+              setTrailerLabel(
+                vehicleNumber && companyName
+                  ? `${vehicleNumber} (${companyName})`
+                  : vehicleNumber || companyName || data.trailerId
+              );
+            } else {
+              setTrailerLabel(data.trailerId);
+            }
+          } else {
+            setTrailerLabel("-");
+          }
+        } else {
+          setDriverLabel("-");
+          setTruckLabel(data.truckId || "-");
+          setTrailerLabel(data.trailerId || "-");
+        }
+      } catch (error) {
+        GlobalToastError(error);
+        setDbLoad(null);
+      }
+    };
+
+    fetchLoad();
+  }, [loadDocId]);
+
+  const loadData = useMemo<LoadData>(() => {
+    if (!dbLoad) return MOCK_LOAD_DATA;
+
+    const revenue =
+      Number(dbLoad.totalCustomerRate || 0) ||
+      Number(dbLoad.lineHaul || 0) +
+        Number(dbLoad.fuelSurcharge || 0) +
+        Number(dbLoad.detention || 0) +
+        Number(dbLoad.layover || 0) +
+        Number(dbLoad.tonu || 0) +
+        Number(dbLoad.accessorials || 0);
+    const carrierPay = Number(dbLoad.totalCarrierPay || 0);
+    const profit = revenue - carrierPay;
+    const miles = Number(dbLoad.tenderedMiles || 0);
+    const ratePerMile = miles > 0 ? revenue / miles : 0;
+    const firstPickup = dbLoad.pickups?.[0];
+    const firstDelivery = dbLoad.deliveries?.[0];
+
+    return {
+      loadNumber: dbLoad.loadNumber || loadDocId || "-",
+      status: dbLoad.status || "Draft",
+      isInvoiced: false,
+      isLocked: false,
+      customer: dbLoad.customerSearch || dbLoad.customerName || "-",
+      primaryFees: `$${Number(dbLoad.primaryFees || 0).toFixed(2)}`,
+      feeType: dbLoad.feeType || "-",
+      tenderedMiles: dbLoad.tenderedMiles ? `${dbLoad.tenderedMiles} Miles` : "-",
+      fuelSurcharge: `$${Number(dbLoad.fuelSurcharge || 0).toFixed(2)}`,
+      targetRate: `$${Number(dbLoad.targetRate || 0).toFixed(2)}`,
+      vanType: dbLoad.vanType || "-",
+      length: dbLoad.length ? `${dbLoad.length} ft` : "-",
+      weight: dbLoad.weight || "-",
+      isHazmat: false,
+      isTarpRequired: false,
+      bookingAuthority: dbLoad.bookingAuthority || "-",
+      salesAgent: dbLoad.salesAgent || "-",
+      bookingTerminal: dbLoad.bookingTerminalOffice || "-",
+      commodity: dbLoad.commodity || "-",
+      declaredValue: dbLoad.declaredValue || "-",
+      agency: dbLoad.agency || "-",
+      brokerageAgent: dbLoad.brokerageAgent || "-",
+      revenue: `$${revenue.toFixed(2)}`,
+      profit: `$${profit.toFixed(2)}`,
+      ratePerMile: `$${ratePerMile.toFixed(2)}`,
+      flatRate: `$${revenue.toFixed(2)}`,
+      loadedMiles: dbLoad.tenderedMiles || "-",
+      detentionTracked: `${Number(dbLoad.detention || 0).toFixed(2)}`,
+      quantity:
+        firstPickup?.totalQty && firstPickup?.qtyType
+          ? `${firstPickup.totalQty} ${firstPickup.qtyType}`
+          : "-",
+      loadType: dbLoad.type || "-",
+      carrier: dbLoad.carrierId || "-",
+      truck: truckLabel,
+      trailer: trailerLabel,
+      driver: driverLabel,
+      dispatcher: dbLoad.dispatcherId || "-",
+      bolNumber: firstPickup?.shipmentBol || "",
+      poNumbers: [firstPickup?.poNumber, firstDelivery?.poNumber].filter(
+        (item): item is string => Boolean(item)
+      ),
+      pickupDate: firstPickup?.date || "-",
+      deliveryDate: firstDelivery?.date || "-",
+      temperature: dbLoad.temperature || "",
+      equipmentType: dbLoad.vanType || "-",
+      pickupInstructions: firstPickup?.instructions || "-",
+      deliveryInstructions: firstDelivery?.instructions || "-",
+      customerContact: { name: "-", phone: "-", email: "" },
+      carrierContact: { name: "-", phone: "-", email: "" },
+      driverContact: { name: driverLabel || "-", phone: "-", email: "" },
+    };
+  }, [dbLoad, driverLabel, truckLabel, trailerLabel, loadDocId]);
+
+  const stops = useMemo<Stop[]>(() => {
+    if (!dbLoad) return MOCK_STOPS;
+    const mappedPickups = (dbLoad.pickups || []).map((stop, index) => ({
+      type: "PICKUP" as const,
+      number: index + 1,
+      date: stop.date || "-",
+      timeWindow:
+        stop.timeStart || stop.timeEnd
+          ? `${stop.timeStart || "-"} - ${stop.timeEnd || "-"}`
+          : "-",
+      locationName: stop.company || "-",
+      address: "-",
+      cityStateZip: "-",
+      contact: "-",
+      qty:
+        stop.totalQty && stop.qtyType ? `${stop.totalQty} ${stop.qtyType}` : "-",
+      weight: stop.totalWeight ? `${stop.totalWeight} lbs` : "-",
+      instructions: stop.instructions || dbLoad.dispatchNotes || "-",
+      puNumber: stop.pickup || stop.customerLoadRefConf || "-",
+      miles: "0 Empty",
+      status: dbLoad.status || "Draft",
+      route: "-",
+      temp: dbLoad.temperature || "",
+      appointmentRef: stop.customerLoadRefConf || "-",
+      bolNumber: stop.shipmentBol || "",
+      poNumbers: stop.poNumber ? [stop.poNumber] : [],
+    }));
+    const mappedDeliveries = (dbLoad.deliveries || []).map((stop, index) => ({
+      type: "DELIVERY" as const,
+      number: mappedPickups.length + index + 1,
+      date: stop.date || "-",
+      timeWindow:
+        stop.timeStart || stop.timeEnd
+          ? `${stop.timeStart || "-"} - ${stop.timeEnd || "-"}`
+          : "-",
+      locationName: stop.company || "-",
+      address: "-",
+      cityStateZip: "-",
+      contact: "-",
+      qty:
+        stop.totalQty && stop.qtyType ? `${stop.totalQty} ${stop.qtyType}` : "-",
+      weight: stop.totalWeight ? `${stop.totalWeight} lbs` : "-",
+      instructions: stop.instructions || dbLoad.dispatchNotes || "-",
+      soNumber: stop.pickup || stop.customerLoadRefConf || "-",
+      miles: "Loaded",
+      status: dbLoad.status || "Draft",
+      route: "-",
+      temp: dbLoad.temperature || "",
+      appointmentRef: stop.customerLoadRefConf || "-",
+      bolNumber: stop.shipmentBol || "",
+      poNumbers: stop.poNumber ? [stop.poNumber] : [],
+    }));
+    return [...mappedPickups, ...mappedDeliveries];
+  }, [dbLoad]);
+
+  const documents = useMemo<LoadDocument[]>(() => {
+    if (!dbLoad) return MOCK_DOCUMENTS;
+    const formatType = (type?: string) => {
+      if (!type) return "Document";
+      return type
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    };
+
+    return (dbLoad.documents || []).map((item) => ({
+      id: item.id,
+      name: item.name || `${formatType(item.type)} ${item.id}`,
+      type: formatType(item.type),
+      invoiceRequirement: false,
+      expiryDate: "-",
+      daysRemaining: null,
+    }));
+  }, [dbLoad]);
 
   const handleSaveCheckCall = (data: CheckCallFormData) => {
     console.log("Check call data saved:", data);
@@ -918,26 +1225,24 @@ export default function LoadDetailsPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               {/* Left: Title & Badges */}
               <div className="flex items-center gap-4">
-                <a
-                  href="#"
+                <Link
+                  href={"/truck-dispatch"}
                   className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500"
                 >
-                  <Link href={"/truck-dispatch"}>
-                    <ArrowLeft className="w-5 h-5" />
-                  </Link>
-                </a>
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
                 <div className="flex items-center gap-3">
                   <h1 className="text-xl font-bold text-gray-900">
-                    Load #{MOCK_LOAD_DATA.loadNumber}
+                    Load #{loadData.loadNumber}
                   </h1>
 
-                  {MOCK_LOAD_DATA.isInvoiced && (
+                  {loadData.isInvoiced && (
                     <span className="px-3 py-1 bg-[#22c55e]/10 text-[#22c55e] text-xs font-bold uppercase rounded-full border border-[#22c55e]/20 tracking-wide">
                       Invoiced
                     </span>
                   )}
 
-                  {MOCK_LOAD_DATA.isLocked && (
+                  {loadData.isLocked && (
                     <span
                       className="p-1 bg-gray-100 text-gray-500 rounded-md border border-gray-200"
                       title="Locked"
@@ -993,35 +1298,35 @@ export default function LoadDetailsPage() {
             <div className="flex overflow-x-auto pb-1 hide-scrollbar items-center">
               <MetricItem
                 label="Revenue"
-                value={MOCK_LOAD_DATA.revenue}
+                value={loadData.revenue}
                 isCurrency
               />
               <MetricItem
                 label="Profit"
-                value={MOCK_LOAD_DATA.profit}
+                value={loadData.profit}
                 isCurrency
               />
               <MetricItem
                 label="Rate"
-                value={`${MOCK_LOAD_DATA.ratePerMile} per mile`}
+                value={`${loadData.ratePerMile} per mile`}
               />
               <MetricItem
                 label="Flat Rate"
-                value={MOCK_LOAD_DATA.flatRate}
+                value={loadData.flatRate}
                 isCurrency
               />
               <MetricItem
                 label="Loaded Miles"
-                value={MOCK_LOAD_DATA.loadedMiles}
+                value={loadData.loadedMiles}
               />
               <MetricItem
                 label="Detention Tracked"
-                value={MOCK_LOAD_DATA.detentionTracked}
+                value={loadData.detentionTracked}
               />
-              <MetricItem label="Qty" value={MOCK_LOAD_DATA.quantity} />
+              <MetricItem label="Qty" value={loadData.quantity} />
               <MetricItem
                 label="Weight"
-                value={`${MOCK_LOAD_DATA.weight} lbs`}
+                value={`${loadData.weight} lbs`}
               />
             </div>
           </div>
@@ -1045,12 +1350,12 @@ export default function LoadDetailsPage() {
                     {/* Row 1 */}
                     <div>
                       <FormLabel>Load #</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.loadNumber} disabled />
+                      <InputField value={loadData.loadNumber} disabled />
                     </div>
                     <div>
                       <FormLabel>Load Status</FormLabel>
                       <SelectField
-                        value={MOCK_LOAD_DATA.status}
+                        value={loadData.status}
                         options={[
                           "Pending",
                           "Dispatched",
@@ -1062,7 +1367,7 @@ export default function LoadDetailsPage() {
                     <div>
                       <FormLabel>Load Type</FormLabel>
                       <SelectField
-                        value={MOCK_LOAD_DATA.loadType}
+                        value={loadData.loadType}
                         options={["Full Truck Load", "LTL", "Partial"]}
                       />
                     </div>
@@ -1070,7 +1375,7 @@ export default function LoadDetailsPage() {
                     {/* Row 2 */}
                     <div className="md:col-span-2 xl:col-span-3">
                       <FormLabel required>Customer</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.customer} />
+                      <InputField value={loadData.customer} />
                     </div>
 
                     {/* Row 3 */}
@@ -1086,14 +1391,14 @@ export default function LoadDetailsPage() {
                     <div>
                       <FormLabel>Fee Type</FormLabel>
                       <SelectField
-                        value={MOCK_LOAD_DATA.feeType}
+                        value={loadData.feeType}
                         options={["Flat Rate", "Per Mile"]}
                       />
                     </div>
                     <div>
                       <FormLabel>Tendered Miles</FormLabel>
                       <InputField
-                        value={MOCK_LOAD_DATA.tenderedMiles}
+                        value={loadData.tenderedMiles}
                         disabled
                       />
                     </div>
@@ -1101,16 +1406,16 @@ export default function LoadDetailsPage() {
                     {/* Row 4 */}
                     <div>
                       <FormLabel>Fuel Surcharge</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.fuelSurcharge} />
+                      <InputField value={loadData.fuelSurcharge} />
                     </div>
                     <div>
                       <FormLabel>Target Rate</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.targetRate} />
+                      <InputField value={loadData.targetRate} />
                     </div>
                     <div>
                       <FormLabel>Van Type</FormLabel>
                       <SelectField
-                        value={MOCK_LOAD_DATA.vanType}
+                        value={loadData.vanType}
                         options={["Reefer", "Dry Van", "Flatbed"]}
                       />
                     </div>
@@ -1118,11 +1423,11 @@ export default function LoadDetailsPage() {
                     {/* Row 5 */}
                     <div>
                       <FormLabel>Length</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.length} />
+                      <InputField value={loadData.length} />
                     </div>
                     <div>
                       <FormLabel>Weight (Lbs)</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.weight} />
+                      <InputField value={loadData.weight} />
                     </div>
                     <div className="flex flex-col gap-2">
                       <FormLabel>Options</FormLabel>
@@ -1130,13 +1435,13 @@ export default function LoadDetailsPage() {
                         <div className="flex-1">
                           <ToggleSwitch
                             label="Hazmat"
-                            checked={MOCK_LOAD_DATA.isHazmat}
+                            checked={loadData.isHazmat}
                           />
                         </div>
                         <div className="flex-1">
                           <ToggleSwitch
                             label="Tarp"
-                            checked={MOCK_LOAD_DATA.isTarpRequired}
+                            checked={loadData.isTarpRequired}
                           />
                         </div>
                       </div>
@@ -1146,7 +1451,7 @@ export default function LoadDetailsPage() {
                     <div className="md:col-span-2 xl:col-span-3">
                       <FormLabel>Booking Authority</FormLabel>
                       <InputField
-                        value={MOCK_LOAD_DATA.bookingAuthority}
+                        value={loadData.bookingAuthority}
                         disabled
                       />
                     </div>
@@ -1154,32 +1459,32 @@ export default function LoadDetailsPage() {
                     {/* Row 7 */}
                     <div>
                       <FormLabel>Sales Agent</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.salesAgent} disabled />
+                      <InputField value={loadData.salesAgent} disabled />
                     </div>
                     <div>
                       <FormLabel>Booking Terminal</FormLabel>
                       <InputField
-                        value={MOCK_LOAD_DATA.bookingTerminal}
+                        value={loadData.bookingTerminal}
                         disabled
                       />
                     </div>
                     <div>
                       <FormLabel>Commodity</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.commodity} />
+                      <InputField value={loadData.commodity} />
                     </div>
 
                     {/* Row 8 */}
                     <div>
                       <FormLabel>Declared Value</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.declaredValue} />
+                      <InputField value={loadData.declaredValue} />
                     </div>
                     <div>
                       <FormLabel>Agency</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.agency} />
+                      <InputField value={loadData.agency} />
                     </div>
                     <div>
                       <FormLabel>Brokerage Agent</FormLabel>
-                      <InputField value={MOCK_LOAD_DATA.brokerageAgent} />
+                      <InputField value={loadData.brokerageAgent} />
                     </div>
                   </div>
                 </div>
@@ -1215,9 +1520,9 @@ export default function LoadDetailsPage() {
                         </span>
                         <span
                           className="font-bold text-[#F96176] block truncate text-xs sm:text-sm"
-                          title={MOCK_LOAD_DATA.carrier}
+                          title={loadData.carrier}
                         >
-                          {MOCK_LOAD_DATA.carrier}
+                          {loadData.carrier}
                         </span>
                       </div>
                       <div className="min-w-0">
@@ -1225,7 +1530,7 @@ export default function LoadDetailsPage() {
                           Vehicle
                         </span>
                         <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                          {MOCK_LOAD_DATA.truck}
+                          {loadData.truck}
                         </span>
                       </div>
                       <div className="min-w-0">
@@ -1233,7 +1538,7 @@ export default function LoadDetailsPage() {
                           Trailer
                         </span>
                         <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm">
-                          {MOCK_LOAD_DATA.trailer}
+                          {loadData.trailer}
                         </span>
                       </div>
                       <div className="min-w-0">
@@ -1241,7 +1546,7 @@ export default function LoadDetailsPage() {
                           Driver
                         </span>
                         <span className="font-bold text-gray-900 block truncate text-xs sm:text-sm mb-1">
-                          {MOCK_LOAD_DATA.driver}
+                          {loadData.driver}
                         </span>
                         <div className="flex gap-1.5">
                           <button className="p-1 hover:bg-blue-50 rounded text-[#F96176]">
@@ -1338,7 +1643,7 @@ export default function LoadDetailsPage() {
                     Stops Info
                   </h3>
                   <div className="space-y-4">
-                    {MOCK_STOPS.map((stop, index) => {
+                    {stops.map((stop, index) => {
                       const isPickup = stop.type === "PICKUP";
                       const accentColor = isPickup
                         ? "border-l-[#22c55e]"
@@ -1492,7 +1797,7 @@ export default function LoadDetailsPage() {
                   </thead>
 
                   <tbody className="divide-y divide-gray-100 bg-white overflow-visible">
-                    {MOCK_DOCUMENTS.map((doc) => (
+                    {documents.map((doc) => (
                       <tr
                         key={doc.id}
                         className="hover:bg-gray-50/80 transition-colors group overflow-visible"
@@ -1562,7 +1867,7 @@ export default function LoadDetailsPage() {
                     ))}
 
                     {/* EMPTY STATE */}
-                    {MOCK_DOCUMENTS.length === 0 && (
+                    {documents.length === 0 && (
                       <tr>
                         <td
                           colSpan={7}
@@ -1589,7 +1894,7 @@ export default function LoadDetailsPage() {
         isOpen={showConfirmationModal}
         onClose={() => setShowConfirmationModal(false)}
         type="rate-confirmation"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
 
       <DocumentViewModal
@@ -1597,7 +1902,7 @@ export default function LoadDetailsPage() {
         isOpen={showBolModal}
         onClose={() => setShowBolModal(false)}
         type="bol"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
 
       <DocumentViewModal
@@ -1605,7 +1910,7 @@ export default function LoadDetailsPage() {
         isOpen={showLoadSheetModal}
         onClose={() => setShowLoadSheetModal(false)}
         type="load-sheet"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
 
       <DocumentViewModal
@@ -1613,7 +1918,7 @@ export default function LoadDetailsPage() {
         isOpen={showDriverSheetModal}
         onClose={() => setShowDriverSheetModal(false)}
         type="driver-sheet"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
 
       <DocumentViewModal
@@ -1621,7 +1926,7 @@ export default function LoadDetailsPage() {
         isOpen={showPodModal}
         onClose={() => setShowPodModal(false)}
         type="pod"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
 
       <DocumentViewModal
@@ -1629,7 +1934,7 @@ export default function LoadDetailsPage() {
         isOpen={showInsuranceModal}
         onClose={() => setShowInsuranceModal(false)}
         type="insurance"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
 
       {/* Check Call Modal */}
@@ -1643,7 +1948,7 @@ export default function LoadDetailsPage() {
         isOpen={showLoadInfoModal}
         onClose={() => setShowLoadInfoModal(false)}
         type="view-load-info"
-        loadData={MOCK_LOAD_DATA}
+        loadData={loadData}
       />
     </>
   );

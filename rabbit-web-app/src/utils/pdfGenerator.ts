@@ -15,7 +15,6 @@ export async function generatePdfFromElement(
   options: PdfGenerationOptions
 ): Promise<void> {
   const {
-    title,
     filename = "document.pdf",
     format = "a4",
     orientation = "portrait",

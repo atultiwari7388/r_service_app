@@ -47,7 +47,6 @@ export default function NavBar() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
 
   const router = useRouter();
@@ -138,13 +137,7 @@ export default function NavBar() {
           ...doc.data(),
         } as Notification);
       });
-      setNotifications(notificationsData);
-      console.log(
-        "Notifications:",
-        notificationsData,
-        "notifications:",
-        notifications
-      );
+      console.log("Notifications:", notificationsData);
       setUnreadCount(notificationsData.length);
     });
 

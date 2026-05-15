@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Truck,
   Package,
@@ -35,6 +35,43 @@ import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 
+interface LoadData {
+  id: string;
+  loadNumber: string;
+  customer: string;
+  type: "FTL" | "LTL" | "Reefer" | "Flatbed" | "Dry Van";
+  status:
+    | "Booked"
+    | "Pre-Planned"
+    | "Ready"
+    | "Active"
+    | "Completed"
+    | "Missing BOL";
+  truck: string;
+  trailer: string;
+  driver: string;
+  pickupLocation: string;
+  pickupDate: string;
+  dropLocation: string;
+  dropDate: string;
+  distance: string;
+  weight: string;
+  rate: number;
+  profit: number;
+  progress: number;
+  quantity: number;
+  specialInstructions: string;
+  documents: number;
+}
+
+interface Tab {
+  id: string;
+  label: string;
+  count: number;
+  color: string;
+  bgColor: string;
+}
+
 interface DispatchStop {
   company?: string;
   date?: string;
@@ -63,6 +100,16 @@ interface DispatchLoadRecord {
   tonu?: number;
   accessorials?: number;
   createdAt?: { seconds?: number };
+}
+
+interface DriverRecord {
+  userName?: string;
+  email?: string;
+}
+
+interface VehicleRecord {
+  vehicleNumber?: string;
+  companyName?: string;
 }
 
 export default function TruckDispatchScreen({
@@ -112,52 +159,6 @@ export default function TruckDispatchScreen({
     return value;
   };
 
-  const normalizeLoadForTable = useCallback((record: DispatchLoadRecord): LoadData => {
-    const pickups = record.pickups || [];
-    const deliveries = record.deliveries || [];
-    const pickup = pickups[0] || {};
-    const delivery = deliveries[0] || {};
-
-    const revenue =
-      Number(record.lineHaul || 0) +
-      Number(record.fuelSurcharge || 0) +
-      Number(record.detention || 0) +
-      Number(record.layover || 0) +
-      Number(record.tonu || 0) +
-      Number(record.accessorials || 0);
-    const carrierPay = Number(record.totalCarrierPay || 0);
-
-    const mappedStatus =
-      record.status === "Posted"
-        ? "Booked"
-        : record.status === "Draft"
-        ? "Pre-Planned"
-        : record.status || "Booked";
-
-    return {
-      id: record.id,
-      loadNumber: record.loadNumber || "LD-DRAFT",
-      customer: record.customerName || "-",
-      type: (record.type as LoadData["type"]) || "FTL",
-      status: mappedStatus as LoadData["status"],
-      truck: record.truckId || "-",
-      trailer: record.trailerId || "-",
-      driver: record.driverId || "-",
-      pickupLocation: pickup.company || "-",
-      pickupDate: toDateLabel(pickup.date),
-      dropLocation: delivery.company || "-",
-      dropDate: toDateLabel(delivery.date),
-      distance: "-",
-      weight: record.weight ? `${record.weight} lbs` : "-",
-      rate: Number(record.totalCustomerRate || revenue || 0),
-      profit: Number((record.totalCustomerRate || revenue || 0) - carrierPay),
-      progress: mappedStatus === "Completed" ? 100 : 0,
-      quantity: Math.max(pickups.length, deliveries.length, 1),
-      specialInstructions: record.dispatchNotes || "",
-      documents: record.documents?.length || 0,
-    };
-  }, []);
-
   const tabDefinitions = [
     { id: "all", label: "All" },
     { id: "booked", label: "Booked" },
@@ -189,7 +190,7 @@ export default function TruckDispatchScreen({
           )
         );
 
-        const normalized = loadsSnap.docs
+        const rawRecords = loadsSnap.docs
           .map(
             (item) =>
               ({
@@ -200,8 +201,105 @@ export default function TruckDispatchScreen({
           .sort(
             (a, b) =>
               (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+          );
+
+        const uniqueDriverIds = Array.from(
+          new Set(
+            rawRecords
+              .map((record) => record.driverId || "")
+              .filter((id) => id.length > 0)
           )
-          .map(normalizeLoadForTable);
+        );
+
+        const driverMap: Record<string, string> = {};
+        const vehicleMap: Record<string, string> = {};
+
+        await Promise.all(
+          uniqueDriverIds.map(async (driverId) => {
+            const driverSnap = await getDoc(doc(db, "Users", driverId));
+            if (driverSnap.exists()) {
+              const driverData = driverSnap.data() as DriverRecord;
+              const driverName = (
+                driverData.userName ||
+                driverData.email ||
+                driverId
+              ).trim();
+              driverMap[driverId] = driverName || driverId;
+            } else {
+              driverMap[driverId] = driverId;
+            }
+
+            const vehiclesSnap = await getDocs(
+              collection(db, "Users", driverId, "Vehicles")
+            );
+
+            vehiclesSnap.docs.forEach((vehicleDoc) => {
+              const vehicleData = vehicleDoc.data() as VehicleRecord;
+              const vehicleNumber = (vehicleData.vehicleNumber || "").trim();
+              const companyName = (vehicleData.companyName || "").trim();
+
+              if (vehicleNumber && companyName) {
+                vehicleMap[vehicleDoc.id] = `${vehicleNumber} (${companyName})`;
+              } else if (vehicleNumber) {
+                vehicleMap[vehicleDoc.id] = vehicleNumber;
+              } else if (companyName) {
+                vehicleMap[vehicleDoc.id] = companyName;
+              }
+            });
+          })
+        );
+
+        const normalized = rawRecords.map((record) => {
+          const pickups = record.pickups || [];
+          const deliveries = record.deliveries || [];
+          const pickup = pickups[0] || {};
+          const delivery = deliveries[0] || {};
+          const revenue =
+            Number(record.lineHaul || 0) +
+            Number(record.fuelSurcharge || 0) +
+            Number(record.detention || 0) +
+            Number(record.layover || 0) +
+            Number(record.tonu || 0) +
+            Number(record.accessorials || 0);
+          const carrierPay = Number(record.totalCarrierPay || 0);
+          const mappedStatus =
+            record.status === "Posted"
+              ? "Booked"
+              : record.status === "Draft"
+              ? "Pre-Planned"
+              : record.status || "Booked";
+          return {
+            id: record.id,
+            loadNumber: record.loadNumber || "LD-DRAFT",
+            customer: record.customerName || "-",
+            type: (record.type as LoadData["type"]) || "FTL",
+            status: mappedStatus as LoadData["status"],
+            truck:
+              (record.truckId && vehicleMap[record.truckId]) ||
+              record.truckId ||
+              "-",
+            trailer:
+              (record.trailerId && vehicleMap[record.trailerId]) ||
+              record.trailerId ||
+              "-",
+            driver:
+              (record.driverId && driverMap[record.driverId]) ||
+              record.driverId ||
+              "-",
+            pickupLocation: pickup.company || "-",
+            pickupDate: toDateLabel(pickup.date),
+            dropLocation: delivery.company || "-",
+            dropDate: toDateLabel(delivery.date),
+            distance: "-",
+            weight: record.weight ? `${record.weight} lbs` : "-",
+            rate: Number(record.totalCustomerRate || revenue || 0),
+            profit: Number((record.totalCustomerRate || revenue || 0) - carrierPay),
+            progress: mappedStatus === "Completed" ? 100 : 0,
+            quantity: Math.max(pickups.length, deliveries.length, 1),
+            specialInstructions: record.dispatchNotes || "",
+            documents: record.documents?.length || 0,
+          } as LoadData;
+        });
 
         setLoads(normalized);
       } catch (error) {
@@ -213,7 +311,7 @@ export default function TruckDispatchScreen({
     };
 
     fetchLoads();
-  }, [effectiveUserId, normalizeLoadForTable]);
+  }, [effectiveUserId]);
 
   const allLoads = loads;
   const tabStatusMap: Record<string, string> = {
@@ -276,11 +374,6 @@ export default function TruckDispatchScreen({
   const paginatedLoads = filteredLoads.slice(startIndex, endIndex);
 
   // --- Action Handlers ---
-  const handleViewLoad = (loadId: string) => {
-    // Using Link component in the JSX instead
-    console.log("View load:", loadId);
-  };
-
   const handleEditLoad = (loadId: string) => {
     console.log("Edit load:", loadId);
   };

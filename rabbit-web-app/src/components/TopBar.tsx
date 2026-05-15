@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import { doc, getDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   FaPhoneAlt,
   FaEnvelope,
@@ -23,7 +23,7 @@ export default function TopBar() {
     address?: string;
   }>({});
 
-  const fetchContactUs = async () => {
+  const fetchContactUs = useCallback(async () => {
     if (user) {
       setIsLoading(true);
       try {
@@ -43,11 +43,11 @@ export default function TopBar() {
         setIsLoading(false);
       }
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchContactUs();
-  }, [user]);
+  }, [fetchContactUs]);
 
   if (isLoading) {
     return <LoadingIndicator />;
