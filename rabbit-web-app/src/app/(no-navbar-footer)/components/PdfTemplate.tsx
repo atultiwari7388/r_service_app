@@ -50,6 +50,7 @@ interface PdfLayoutProps {
   footerText?: string;
   className?: string;
   showPageNumber?: boolean;
+  loadData?: LoadData;
 }
 
 export const PdfLayout = ({
@@ -59,7 +60,14 @@ export const PdfLayout = ({
   footerText,
   className = "",
   showPageNumber = true,
+  loadData,
 }: PdfLayoutProps) => {
+  const brokerInfo = loadData?.brokerInfo;
+  const displayCompany = brokerInfo?.companyName || "BROKERAGE COMPANY";
+  const displayAddressLine1 = brokerInfo?.addressLine1 || "";
+  const displayAddressLine2 = brokerInfo?.addressLine2 || "";
+  const displayPhone = brokerInfo?.phone || "";
+  const displayEmail = brokerInfo?.email || "";
   const currentDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "2-digit",
@@ -137,7 +145,7 @@ export const PdfLayout = ({
                   color: "#000000",
                 }}
               >
-                WESTERN ENTERPRISES
+                {displayCompany}
               </p>
               <p
                 style={{
@@ -146,7 +154,7 @@ export const PdfLayout = ({
                   color: "#666666",
                 }}
               >
-                BROKERAGE INC
+                {displayAddressLine2 || "Brokerage"}
               </p>
             </div>
           )}
@@ -183,19 +191,23 @@ export const PdfLayout = ({
         >
           <div>
             <p style={{ margin: "0 0 2px 0" }}>
-              <strong>Western Enterprises Brokerage Inc</strong>
+              <strong>{displayCompany}</strong>
             </p>
-            <p style={{ margin: "0 0 2px 0" }}>
-              5374 North Barcus Avenue, Fresno, CA 93722
-            </p>
-            <p style={{ margin: "0" }}>
-              Phone: 559-824-2380 | Email: brokerage@westernert.com
-            </p>
+            {displayAddressLine1 ? (
+              <p style={{ margin: "0 0 2px 0" }}>{displayAddressLine1}</p>
+            ) : null}
+            {displayAddressLine2 ? (
+              <p style={{ margin: "0 0 2px 0" }}>{displayAddressLine2}</p>
+            ) : null}
+            {displayPhone || displayEmail ? (
+              <p style={{ margin: "0" }}>
+                {displayPhone ? `Phone: ${displayPhone}` : ""}
+                {displayPhone && displayEmail ? " | " : ""}
+                {displayEmail ? `Email: ${displayEmail}` : ""}
+              </p>
+            ) : null}
           </div>
           <div style={{ textAlign: "right" }}>
-            <p style={{ margin: "0 0 2px 0" }}>
-              MC#: 1417403 | DOT Number: 3871269
-            </p>
             <p style={{ margin: "0 0 2px 0" }}>
               {footerText || "© 2025 Western Enterprises. All rights reserved."}
             </p>
@@ -218,7 +230,9 @@ const getDeliveryStop = (loadData: LoadData) =>
   loadData.stops?.find((stop) => stop.type === "DELIVERY");
 
 const getStopAddress = (stop?: Stop) =>
-  stop ? [stop.address, stop.cityStateZip].filter(Boolean).join(", ") || "-" : "-";
+  stop
+    ? [stop.address, stop.cityStateZip].filter(Boolean).join(", ") || "-"
+    : "-";
 
 const formatStopType = (stop?: Stop) => {
   if (!stop) return "-";
@@ -241,6 +255,7 @@ export const RateConfirmationPdfTemplate = ({
     <PdfLayout
       title="RATE CONFIRMATION"
       footerText={`RATE CONFIRMATION #${loadData.loadNumber}`}
+      loadData={loadData}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Company and Carrier Information */}
@@ -261,27 +276,29 @@ export const RateConfirmationPdfTemplate = ({
                 color: "#000000",
               }}
             >
-              Western Enterprises Brokerage Inc
+              {loadData.brokerInfo?.companyName || "-"}
             </h3>
-            <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-              5374 North Barcus Avenue
-            </p>
-            <p style={{ fontSize: "12px", margin: "0 0 10px 0" }}>
-              Fresno CA 93722
-            </p>
+            {loadData.brokerInfo?.addressLine1 ? (
+              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
+                {loadData.brokerInfo.addressLine1}
+              </p>
+            ) : null}
+            {loadData.brokerInfo?.addressLine2 ? (
+              <p style={{ fontSize: "12px", margin: "0 0 10px 0" }}>
+                {loadData.brokerInfo.addressLine2}
+              </p>
+            ) : null}
             <div>
-              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>MC#:</strong> 1417403
-              </p>
-              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>DOT Number:</strong> 3871269
-              </p>
-              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Phone:</strong> 559-824-2380
-              </p>
-              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Email:</strong> brokerage@westernert.com
-              </p>
+              {loadData.brokerInfo?.phone ? (
+                <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
+                  <strong>Phone:</strong> {loadData.brokerInfo.phone}
+                </p>
+              ) : null}
+              {loadData.brokerInfo?.email ? (
+                <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
+                  <strong>Email:</strong> {loadData.brokerInfo.email}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -308,37 +325,49 @@ export const RateConfirmationPdfTemplate = ({
                 margin: "0 0 2px 0",
               }}
             >
-              {loadData.carrier || "S. S. B TRANSPORT INC."}
+              {loadData.carrierContact?.company || loadData.carrier || "-"}
             </p>
-            <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-              4203 WATERFALL CANYON DR
-            </p>
-            <p style={{ fontSize: "12px", margin: "0 0 10px 0" }}>
-              BAKERSFIELD CA 93313
-            </p>
+            {loadData.carrierContact?.addressLine1 ? (
+              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
+                {loadData.carrierContact.addressLine1}
+              </p>
+            ) : null}
+            {loadData.carrierContact?.addressLine2 ? (
+              <p style={{ fontSize: "12px", margin: "0 0 10px 0" }}>
+                {loadData.carrierContact.addressLine2}
+              </p>
+            ) : null}
             <div>
+              {loadData.carrierContact?.mcNumber ? (
+                <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
+                  <strong>MC Number:</strong> {loadData.carrierContact.mcNumber}
+                </p>
+              ) : null}
+              {loadData.carrierContact?.dotNumber ? (
+                <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
+                  <strong>DOT Number:</strong>{" "}
+                  {loadData.carrierContact.dotNumber}
+                </p>
+              ) : null}
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>MC Number:</strong> MC464064
+                <strong>Primary Contact:</strong>{" "}
+                {loadData.carrierContact?.name || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>DOT Number:</strong> 1145681
+                <strong>Email:</strong> {loadData.carrierContact?.email || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Primary Contact:</strong> Satbir Rai
-              </p>
-              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Email:</strong> Ssbtransportinc661@yahoo.com
-              </p>
-              <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Phone:</strong> 661-487-3531
+                <strong>Phone:</strong> {loadData.carrierContact?.phone || "-"}
               </p>
             </div>
             <div style={{ marginTop: "8px" }}>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Driver:</strong> Swarn Singh
+                <strong>Driver:</strong>{" "}
+                {loadData.driverContact?.name || loadData.driver || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0" }}>
-                <strong>Cell phone:</strong> 661-869-7165
+                <strong>Cell phone:</strong>{" "}
+                {loadData.driverContact?.phone || "-"}
               </p>
             </div>
           </div>
@@ -852,7 +881,11 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
   const deliveryStop = getDeliveryStop(loadData);
 
   return (
-    <PdfLayout title="BILL OF LADING" footerText="ORIGINAL - NOT NEGOTIABLE">
+    <PdfLayout
+      title="BILL OF LADING"
+      footerText="ORIGINAL - NOT NEGOTIABLE"
+      loadData={loadData}
+    >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Shipper and Consignee Information */}
         <div
@@ -969,18 +1002,15 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
                 <strong>Load #:</strong> {loadData.loadNumber}
               </p>
               <p style={{ margin: "0" }}>
-                <strong>PO #:</strong>{" "}
-                {loadData.poNumbers?.join(", ") || "-"}
+                <strong>PO #:</strong> {loadData.poNumbers?.join(", ") || "-"}
               </p>
             </div>
             <div>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Pickup Date:</strong>{" "}
-                {loadData.pickupDate || "-"}
+                <strong>Pickup Date:</strong> {loadData.pickupDate || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Delivery Date:</strong>{" "}
-                {loadData.deliveryDate || "-"}
+                <strong>Delivery Date:</strong> {loadData.deliveryDate || "-"}
               </p>
               <p style={{ margin: "0" }}>
                 <strong>Trailer #:</strong> {loadData.trailer}
@@ -994,8 +1024,7 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
                 <strong>Temperature:</strong> {loadData.temperature || "-"}
               </p>
               <p style={{ margin: "0" }}>
-                <strong>Equipment:</strong>{" "}
-                {loadData.equipmentType || "-"}
+                <strong>Equipment:</strong> {loadData.equipmentType || "-"}
               </p>
             </div>
           </div>
@@ -1265,6 +1294,7 @@ export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
       title="LOAD SHEET"
       footerText="FOR INTERNAL USE ONLY"
       showPageNumber={false}
+      loadData={loadData}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Quick Info Banner */}
@@ -1634,7 +1664,9 @@ export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
                           Date/Time:
                         </p>
                         <p style={{ fontWeight: "bold", margin: "0" }}>
-                          {[stop.date, stop.timeWindow].filter(Boolean).join(" ")}
+                          {[stop.date, stop.timeWindow]
+                            .filter(Boolean)
+                            .join(" ")}
                         </p>
                       </div>
                       <div>
@@ -1690,7 +1722,10 @@ export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
                           Ref #:
                         </p>
                         <p style={{ fontWeight: "bold", margin: "0" }}>
-                          {stop.puNumber || stop.soNumber || stop.appointmentRef || "-"}
+                          {stop.puNumber ||
+                            stop.soNumber ||
+                            stop.appointmentRef ||
+                            "-"}
                         </p>
                       </div>
                     </div>
@@ -1743,6 +1778,7 @@ export const DriverSheetPdfTemplate = ({
       title="DRIVER SHEET"
       footerText="DRIVER COPY - KEEP IN TRUCK"
       showPageNumber={false}
+      loadData={loadData}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
         {/* Driver Information Banner */}
@@ -2020,9 +2056,7 @@ export const DriverSheetPdfTemplate = ({
               <p style={{ margin: "0 0 3px 0" }}>
                 Qty: {loadData.quantity || "-"}
               </p>
-              <p style={{ margin: "0" }}>
-                Weight: {loadData.weight || "-"}
-              </p>
+              <p style={{ margin: "0" }}>Weight: {loadData.weight || "-"}</p>
             </div>
           </div>
         </div>
@@ -2062,24 +2096,32 @@ export const DriverSheetPdfTemplate = ({
                 backgroundColor: "#f8fafc",
               }}
             >
-              <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#065f46" }}>
+              <p
+                style={{
+                  margin: "0 0 6px 0",
+                  fontWeight: "bold",
+                  color: "#065f46",
+                }}
+              >
                 PICKUP
               </p>
-              <p style={{ margin: "0 0 4px 0" }}>{pickupStop?.locationName || "-"}</p>
+              <p style={{ margin: "0 0 4px 0" }}>
+                {pickupStop?.locationName || "-"}
+              </p>
               <p style={{ margin: "0 0 4px 0", color: "#666666" }}>
                 {getStopAddress(pickupStop)}
               </p>
               <p style={{ margin: "0 0 4px 0" }}>
                 {pickupStop
-                  ? [pickupStop.date, pickupStop.timeWindow].filter(Boolean).join(" ")
+                  ? [pickupStop.date, pickupStop.timeWindow]
+                      .filter(Boolean)
+                      .join(" ")
                   : "-"}
               </p>
               <p style={{ margin: "0 0 4px 0" }}>
                 Ref: {pickupStop?.puNumber || pickupStop?.appointmentRef || "-"}
               </p>
-              <p style={{ margin: "0" }}>
-                {pickupStop?.instructions || "-"}
-              </p>
+              <p style={{ margin: "0" }}>{pickupStop?.instructions || "-"}</p>
             </div>
             <div
               style={{
@@ -2089,10 +2131,18 @@ export const DriverSheetPdfTemplate = ({
                 backgroundColor: "#fff7ed",
               }}
             >
-              <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#9a3412" }}>
+              <p
+                style={{
+                  margin: "0 0 6px 0",
+                  fontWeight: "bold",
+                  color: "#9a3412",
+                }}
+              >
                 DELIVERY
               </p>
-              <p style={{ margin: "0 0 4px 0" }}>{deliveryStop?.locationName || "-"}</p>
+              <p style={{ margin: "0 0 4px 0" }}>
+                {deliveryStop?.locationName || "-"}
+              </p>
               <p style={{ margin: "0 0 4px 0", color: "#666666" }}>
                 {getStopAddress(deliveryStop)}
               </p>
@@ -2104,11 +2154,10 @@ export const DriverSheetPdfTemplate = ({
                   : "-"}
               </p>
               <p style={{ margin: "0 0 4px 0" }}>
-                Ref: {deliveryStop?.soNumber || deliveryStop?.appointmentRef || "-"}
+                Ref:{" "}
+                {deliveryStop?.soNumber || deliveryStop?.appointmentRef || "-"}
               </p>
-              <p style={{ margin: "0" }}>
-                {deliveryStop?.instructions || "-"}
-              </p>
+              <p style={{ margin: "0" }}>{deliveryStop?.instructions || "-"}</p>
             </div>
           </div>
         </div>
@@ -2131,6 +2180,7 @@ export const ProofOfDeliveryPdfTemplate = ({
     <PdfLayout
       title="PROOF OF DELIVERY"
       footerText={`POD #${loadData.loadNumber}`}
+      loadData={loadData}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* Delivery Confirmation */}
@@ -2204,7 +2254,8 @@ export const ProofOfDeliveryPdfTemplate = ({
                 <strong>Date Received:</strong> {deliveryStop?.date || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Time Received:</strong> {deliveryStop?.timeWindow || "-"}
+                <strong>Time Received:</strong>{" "}
+                {deliveryStop?.timeWindow || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
                 <strong>Received By:</strong> {deliveryStop?.contact || "-"}
@@ -2818,6 +2869,7 @@ export const ViewLoadInfoPdfTemplate = ({
       title="LOAD DETAILS INFO"
       footerText="FOR INTERNAL USE ONLY"
       showPageNumber={false}
+      loadData={loadData}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
         {/* Header Section */}

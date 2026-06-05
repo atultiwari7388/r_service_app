@@ -1,10 +1,15 @@
 "use client";
 
 import clsx from "clsx";
-import { Truck, Users, Home } from "lucide-react";
+import { Truck, Users, Home, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export type Screen = "truck-dispatch" | "carriers" | "create-new-load";
+export type Screen =
+  | "truck-dispatch"
+  | "carriers"
+  | "create-new-load"
+  | "manage-team"
+  | "settings";
 
 type SidebarProps = {
   activeScreen: Screen;
@@ -30,6 +35,16 @@ const NAV_ITEMS: {
     key: "create-new-load",
     label: "Create New Load",
     icon: <Truck size={20} />,
+  },
+  {
+    key: "manage-team",
+    label: "Manage Team",
+    icon: <Users size={20} />,
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    icon: <Settings size={20} />,
   },
 ];
 

@@ -121,6 +121,36 @@ interface DispatchLoadRecord {
   deliveries?: DispatchStopRecord[];
   documents?: DispatchDocumentRecord[];
   updatedAt?: { seconds?: number };
+  effectiveUserId?: string;
+  currentUserId?: string;
+}
+
+interface UserProfileRecord {
+  isOwner?: boolean;
+  createdBy?: string;
+  companyName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  email?: string;
+  phoneNumber?: string;
+  userName?: string;
+}
+
+interface CarrierSettingsRecord {
+  companyName?: string;
+  name?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  email?: string;
+  phoneNumber?: string;
+  contactPerson?: string;
+  primaryContact?: string;
+  mcNumber?: string;
+  dotNumber?: string;
 }
 
 // --- Mock Data ---
@@ -1156,6 +1186,14 @@ export default function LoadDetailsPage() {
   const [driverLabel, setDriverLabel] = useState("-");
   const [truckLabel, setTruckLabel] = useState("-");
   const [trailerLabel, setTrailerLabel] = useState("-");
+  const [ownerProfile, setOwnerProfile] = useState<UserProfileRecord | null>(
+    null
+  );
+  const [carrierProfile, setCarrierProfile] =
+    useState<CarrierSettingsRecord | null>(null);
+  const [driverProfile, setDriverProfile] = useState<UserProfileRecord | null>(
+    null
+  );
   const [autoAction, setAutoAction] = useState<"print" | "download" | null>(
     null
   );
@@ -1176,13 +1214,19 @@ export default function LoadDetailsPage() {
         const data = loadSnap.data() as DispatchLoadRecord;
         setDbLoad(data);
 
+        const ownerUserId = data.effectiveUserId || data.currentUserId || "";
+        if (ownerUserId) {
+          const ownerSnap = await getDoc(doc(db, "Users", ownerUserId));
+          if (ownerSnap.exists()) {
+            setOwnerProfile(ownerSnap.data() as UserProfileRecord);
+          }
+        }
+
         if (data.driverId) {
           const driverSnap = await getDoc(doc(db, "Users", data.driverId));
           if (driverSnap.exists()) {
-            const driverData = driverSnap.data() as {
-              userName?: string;
-              email?: string;
-            };
+            const driverData = driverSnap.data() as UserProfileRecord;
+            setDriverProfile(driverData);
             setDriverLabel(
               (driverData.userName || driverData.email || data.driverId).trim()
             );
@@ -1240,9 +1284,25 @@ export default function LoadDetailsPage() {
           setTruckLabel(data.truckId || "-");
           setTrailerLabel(data.trailerId || "-");
         }
+
+        if (data.carrierId) {
+          const carrierSnap = await getDoc(
+            doc(db, "settings_carriers", data.carrierId)
+          );
+          if (carrierSnap.exists()) {
+            setCarrierProfile(carrierSnap.data() as CarrierSettingsRecord);
+          } else {
+            setCarrierProfile(null);
+          }
+        } else {
+          setCarrierProfile(null);
+        }
       } catch (error) {
         GlobalToastError(error);
         setDbLoad(null);
+        setOwnerProfile(null);
+        setCarrierProfile(null);
+        setDriverProfile(null);
       }
     };
 
@@ -1266,6 +1326,23 @@ export default function LoadDetailsPage() {
     const ratePerMile = miles > 0 ? revenue / miles : 0;
     const firstPickup = dbLoad.pickups?.[0];
     const firstDelivery = dbLoad.deliveries?.[0];
+
+    const brokerAddressLine2 = [
+      ownerProfile?.city,
+      ownerProfile?.state,
+      ownerProfile?.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const carrierCompany =
+      carrierProfile?.companyName || carrierProfile?.name || dbLoad.carrierId || "-";
+    const carrierAddressLine2 = [
+      carrierProfile?.city,
+      carrierProfile?.state,
+      carrierProfile?.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     return {
       loadNumber: dbLoad.loadNumber || loadDocId || "-",
@@ -1301,7 +1378,7 @@ export default function LoadDetailsPage() {
           ? `${firstPickup.totalQty} ${firstPickup.qtyType}`
           : "-",
       loadType: dbLoad.type || "-",
-      carrier: dbLoad.carrierId || "-",
+      carrier: carrierCompany,
       truck: truckLabel,
       trailer: trailerLabel,
       driver: driverLabel,
@@ -1317,12 +1394,45 @@ export default function LoadDetailsPage() {
       pickupInstructions: firstPickup?.instructions || "-",
       deliveryInstructions: firstDelivery?.instructions || "-",
       customerContact: { name: "-", phone: "-", email: "" },
-      carrierContact: { name: "-", phone: "-", email: "" },
-      driverContact: { name: driverLabel || "-", phone: "-", email: "" },
+      brokerInfo: {
+        companyName:
+          ownerProfile?.companyName || "Brokerage Company",
+        addressLine1: ownerProfile?.address || "",
+        addressLine2: brokerAddressLine2,
+        email: ownerProfile?.email || "",
+        phone: ownerProfile?.phoneNumber || "",
+      },
+      carrierContact: {
+        name:
+          carrierProfile?.primaryContact ||
+          carrierProfile?.contactPerson ||
+          "-",
+        phone: carrierProfile?.phoneNumber || "",
+        email: carrierProfile?.email || "",
+        company: carrierCompany,
+        addressLine1: carrierProfile?.address || "",
+        addressLine2: carrierAddressLine2,
+        mcNumber: carrierProfile?.mcNumber || "",
+        dotNumber: carrierProfile?.dotNumber || "",
+      },
+      driverContact: {
+        name: driverProfile?.userName || driverLabel || "-",
+        phone: driverProfile?.phoneNumber || "",
+        email: driverProfile?.email || "",
+      },
       dispatchNotes: dbLoad.dispatchNotes || "",
       customerLoadNotes: dbLoad.customerName || "",
     };
-  }, [dbLoad, driverLabel, truckLabel, trailerLabel, loadDocId]);
+  }, [
+    carrierProfile,
+    dbLoad,
+    driverLabel,
+    driverProfile,
+    ownerProfile,
+    truckLabel,
+    trailerLabel,
+    loadDocId,
+  ]);
 
   const stops = useMemo<Stop[]>(() => {
     if (!dbLoad) return MOCK_STOPS;

@@ -62,10 +62,24 @@ export interface LoadData {
     phone: string;
     email: string;
   };
+  brokerInfo?: {
+    companyName: string;
+    addressLine1: string;
+    addressLine2: string;
+    email: string;
+    phone: string;
+    mcNumber?: string;
+    dotNumber?: string;
+  };
   carrierContact?: {
     name: string;
     phone: string;
     email: string;
+    company?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    mcNumber?: string;
+    dotNumber?: string;
   };
   driverContact?: {
     name: string;
