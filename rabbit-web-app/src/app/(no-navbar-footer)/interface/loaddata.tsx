@@ -72,6 +72,9 @@ export interface LoadData {
     phone: string;
     email: string;
   };
+  stops?: Stop[];
+  dispatchNotes?: string;
+  customerLoadNotes?: string;
 }
 
 export interface Stop {

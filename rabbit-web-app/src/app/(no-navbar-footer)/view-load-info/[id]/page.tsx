@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { doc, getDoc } from "firebase/firestore";
@@ -472,6 +472,63 @@ const generatePdf = async (
   }
 };
 
+const printElementContent = (element: HTMLElement, title: string) => {
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
+
+  const printDocument =
+    iframe.contentDocument || iframe.contentWindow?.document;
+
+  if (!printDocument || !iframe.contentWindow) {
+    document.body.removeChild(iframe);
+    throw new Error("Unable to prepare print preview");
+  }
+
+  printDocument.open();
+  printDocument.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title}</title>
+        <meta charset="utf-8" />
+        <style>
+          body { margin: 0; padding: 24px; background: #ffffff; }
+          @page { size: A4; margin: 12mm; }
+        </style>
+      </head>
+      <body>${element.innerHTML}</body>
+    </html>
+  `);
+  printDocument.close();
+
+  const cleanup = () => {
+    window.setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+    }, 1000);
+  };
+
+  iframe.onload = () => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    cleanup();
+  };
+
+  window.setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    cleanup();
+  }, 350);
+};
+
 // --- Document View Modal Component ---
 interface DocumentViewModalProps {
   title: string;
@@ -486,6 +543,8 @@ interface DocumentViewModalProps {
     | "insurance"
     | "view-load-info";
   loadData: LoadData;
+  autoAction?: "print" | "download" | null;
+  onAutoActionComplete?: () => void;
 }
 
 const DocumentViewModal = ({
@@ -494,42 +553,39 @@ const DocumentViewModal = ({
   onClose,
   type,
   loadData,
+  autoAction = null,
+  onAutoActionComplete,
 }: DocumentViewModalProps) => {
   const pdfRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const handlePrintPdf = async () => {
+  const filename = useMemo(() => {
+    switch (type) {
+      case "rate-confirmation":
+        return `Rate_Confirmation_${loadData.loadNumber}.pdf`;
+      case "bol":
+        return `Bill_of_Lading_${loadData.loadNumber}.pdf`;
+      case "load-sheet":
+        return `Load_Sheet_${loadData.loadNumber}.pdf`;
+      case "driver-sheet":
+        return `Driver_Sheet_${loadData.loadNumber}.pdf`;
+      case "pod":
+        return `Proof_of_Delivery_${loadData.loadNumber}.pdf`;
+      case "insurance":
+        return `Insurance_Certificate_${loadData.loadNumber}.pdf`;
+      case "view-load-info":
+        return `Load_Information_${loadData.loadNumber}.pdf`;
+      default:
+        return `Document_${loadData.loadNumber}.pdf`;
+    }
+  }, [loadData.loadNumber, type]);
+
+  const handleDownloadPdf = React.useCallback(async () => {
     if (!pdfRef.current || isGenerating) return;
 
     setIsGenerating(true);
     try {
-      let filename = "";
-
-      switch (type) {
-        case "rate-confirmation":
-          filename = `Rate_Confirmation_${loadData.loadNumber}.pdf`;
-          break;
-        case "bol":
-          filename = `Bill_of_Lading_${loadData.loadNumber}.pdf`;
-          break;
-        case "load-sheet":
-          filename = `Load_Sheet_${loadData.loadNumber}.pdf`;
-          break;
-        case "driver-sheet":
-          filename = `Driver_Sheet_${loadData.loadNumber}.pdf`;
-          break;
-        case "pod":
-          filename = `Proof_of_Delivery_${loadData.loadNumber}.pdf`;
-          break;
-        case "insurance":
-          filename = `Insurance_Certificate_${loadData.loadNumber}.pdf`;
-          break;
-        case "view-load-info":
-          filename = `Load_Information_${loadData.loadNumber}.pdf`;
-        default:
-          filename = `Document_${loadData.loadNumber}.pdf`;
-      }
-
       await generatePdf(pdfRef.current, filename);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -537,7 +593,42 @@ const DocumentViewModal = ({
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [filename, isGenerating]);
+
+  const handleBrowserPrint = React.useCallback(() => {
+    if (!previewRef.current || isGenerating) return;
+
+    setIsGenerating(true);
+    try {
+      printElementContent(previewRef.current, filename.replace(".pdf", ""));
+    } catch (error) {
+      console.error("Error printing document:", error);
+      alert("Failed to open print preview. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [filename, isGenerating]);
+
+  useEffect(() => {
+    if (!isOpen || !autoAction) return;
+
+    const timer = window.setTimeout(async () => {
+      if (autoAction === "download") {
+        await handleDownloadPdf();
+      } else {
+        handleBrowserPrint();
+      }
+      onAutoActionComplete?.();
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    autoAction,
+    handleBrowserPrint,
+    handleDownloadPdf,
+    isOpen,
+    onAutoActionComplete,
+  ]);
 
   if (!isOpen) return null;
 
@@ -570,19 +661,36 @@ const DocumentViewModal = ({
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrintPdf}
+              onClick={handleBrowserPrint}
               disabled={isGenerating}
               className="px-4 py-2 text-sm font-medium bg-[#F96176] text-white rounded-md hover:bg-[#F96176] transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isGenerating ? (
+              {isGenerating && autoAction === "print" ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Generating...
+                  Printing...
                 </>
               ) : (
                 <>
                   <Printer className="w-4 h-4" />
-                  Print/Download PDF
+                  Print
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isGenerating}
+              className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGenerating && autoAction === "download" ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download PDF
                 </>
               )}
             </button>
@@ -602,7 +710,10 @@ const DocumentViewModal = ({
 
         {/* PDF Preview - Scrollable */}
         <div className="overflow-y-auto max-h-[calc(90vh-80px)] p-4 bg-gray-100">
-          <div className="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto">
+          <div
+            ref={previewRef}
+            className="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto"
+          >
             {renderPdfTemplate()}
           </div>
         </div>
@@ -933,7 +1044,9 @@ const ActionDropdown = ({
 // --- Main Page Component ---
 export default function LoadDetailsPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const loadDocId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const requestedAction = searchParams.get("action");
   const [activeTab, setActiveTab] = useState("load-info");
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showBolModal, setShowBolModal] = useState(false);
@@ -948,6 +1061,12 @@ export default function LoadDetailsPage() {
   const [driverLabel, setDriverLabel] = useState("-");
   const [truckLabel, setTruckLabel] = useState("-");
   const [trailerLabel, setTrailerLabel] = useState("-");
+  const [autoAction, setAutoAction] = useState<"print" | "download" | null>(
+    null
+  );
+  const handleAutoActionComplete = React.useCallback(() => {
+    setAutoAction(null);
+  }, []);
 
   useEffect(() => {
     const fetchLoad = async () => {
@@ -1105,6 +1224,8 @@ export default function LoadDetailsPage() {
       customerContact: { name: "-", phone: "-", email: "" },
       carrierContact: { name: "-", phone: "-", email: "" },
       driverContact: { name: driverLabel || "-", phone: "-", email: "" },
+      dispatchNotes: dbLoad.dispatchNotes || "",
+      customerLoadNotes: dbLoad.customerName || "",
     };
   }, [dbLoad, driverLabel, truckLabel, trailerLabel, loadDocId]);
 
@@ -1162,6 +1283,23 @@ export default function LoadDetailsPage() {
     }));
     return [...mappedPickups, ...mappedDeliveries];
   }, [dbLoad]);
+
+  const loadDataWithStops = useMemo<LoadData>(
+    () => ({
+      ...loadData,
+      stops,
+    }),
+    [loadData, stops]
+  );
+
+  useEffect(() => {
+    if (!dbLoad || !loadDocId) return;
+
+    if (requestedAction === "print" || requestedAction === "download") {
+      setAutoAction(requestedAction);
+      setShowLoadInfoModal(true);
+    }
+  }, [dbLoad, loadDocId, requestedAction]);
 
   const documents = useMemo<LoadDocument[]>(() => {
     if (!dbLoad) return MOCK_DOCUMENTS;
@@ -1894,7 +2032,9 @@ export default function LoadDetailsPage() {
         isOpen={showConfirmationModal}
         onClose={() => setShowConfirmationModal(false)}
         type="rate-confirmation"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
 
       <DocumentViewModal
@@ -1902,7 +2042,9 @@ export default function LoadDetailsPage() {
         isOpen={showBolModal}
         onClose={() => setShowBolModal(false)}
         type="bol"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
 
       <DocumentViewModal
@@ -1910,7 +2052,9 @@ export default function LoadDetailsPage() {
         isOpen={showLoadSheetModal}
         onClose={() => setShowLoadSheetModal(false)}
         type="load-sheet"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
 
       <DocumentViewModal
@@ -1918,7 +2062,9 @@ export default function LoadDetailsPage() {
         isOpen={showDriverSheetModal}
         onClose={() => setShowDriverSheetModal(false)}
         type="driver-sheet"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
 
       <DocumentViewModal
@@ -1926,7 +2072,9 @@ export default function LoadDetailsPage() {
         isOpen={showPodModal}
         onClose={() => setShowPodModal(false)}
         type="pod"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
 
       <DocumentViewModal
@@ -1934,7 +2082,9 @@ export default function LoadDetailsPage() {
         isOpen={showInsuranceModal}
         onClose={() => setShowInsuranceModal(false)}
         type="insurance"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
 
       {/* Check Call Modal */}
@@ -1948,7 +2098,9 @@ export default function LoadDetailsPage() {
         isOpen={showLoadInfoModal}
         onClose={() => setShowLoadInfoModal(false)}
         type="view-load-info"
-        loadData={loadData}
+        loadData={loadDataWithStops}
+        autoAction={autoAction}
+        onAutoActionComplete={handleAutoActionComplete}
       />
     </>
   );

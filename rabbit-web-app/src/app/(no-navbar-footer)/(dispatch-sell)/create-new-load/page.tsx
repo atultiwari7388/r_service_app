@@ -28,7 +28,7 @@ import {
   Fuel,
   Shield,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
@@ -198,6 +198,144 @@ interface Calculations {
   estimatedProfit: number;
   margin: number;
 }
+
+const createEmptyStop = (id: number): Stop => ({
+  id,
+  company: "",
+  customerLoadRefConf: "",
+  locationNotes: "",
+  date: "",
+  timeStart: "",
+  timeEnd: "",
+  stopType: "live-load",
+  hasAppointment: false,
+  totalQty: "",
+  qtyType: "pallets",
+  totalWeight: "",
+  commodity: "",
+  length: "",
+  width: "",
+  height: "",
+  pickup: "",
+  shipmentBol: "",
+  poNumber: "",
+  reeferMode: "",
+  routeName: "",
+  instructions: "",
+  seal: "",
+  container: "",
+  chassis: "",
+  customerTrailer: "",
+  pro: "",
+  reeferFuelLevel: "",
+  splitLoad: "",
+  yardLocation: "",
+  contactPerson: "",
+  phone: "",
+  address: "",
+  type: "FCFS",
+  pickupNumber: "",
+  loadNumber: "",
+  notes: "",
+});
+
+const createInitialFormData = (): FormData => ({
+  bookingOffice: "",
+  customerSearch: "",
+  customerName: "",
+  primaryFees: 0,
+  feeType: "Line Haul",
+  tenderedMiles: "",
+  fuelSrcType: "Included",
+  fuelSrc: "",
+  targetRate: 0,
+  vanType: "Van Or Reefer",
+  temperature: "",
+  length: "53",
+  weight: "",
+  bookingAuthority: "Direct",
+  commodity: "",
+  type: "FTL",
+  declaredValue: "",
+  salesAgent: "",
+  bookingTerminalOffice: "",
+  agency: "",
+  brokerageAgent: "",
+  customerLoadNotes: "",
+  dispatchNotes: "",
+  yardLocation: "",
+  internalNotes: "",
+  pickups: [createEmptyStop(1)],
+  deliveries: [createEmptyStop(1)],
+  driverId: "",
+  secondDriverId: "",
+  truckId: "",
+  trailerId: "",
+  trailerType: "Dry Van",
+  dispatcherId: "DISP-001",
+  carrierId: "",
+  lineHaul: 0,
+  fuelSurcharge: 0,
+  detention: 0,
+  layover: 0,
+  tonu: 0,
+  accessorials: 0,
+  totalCustomerRate: 0,
+  totalCarrierPay: 0,
+  autoSendDriver: false,
+  autoTrack: true,
+  autoInvoice: false,
+  status: "Draft",
+  assignmentType: "carrier",
+  carrierPay: 0,
+  documents: [],
+});
+
+const normalizeStops = (
+  stops: Partial<Stop>[] | undefined,
+  section: "pickups" | "deliveries"
+): Stop[] => {
+  if (!stops?.length) return [createEmptyStop(1)];
+
+  return stops.map((stop, index) => ({
+    ...createEmptyStop(index + 1),
+    ...stop,
+    id:
+      typeof stop.id === "number" && Number.isFinite(stop.id)
+        ? stop.id
+        : index + 1,
+    qtyType:
+      typeof stop.qtyType === "string" && stop.qtyType.length > 0
+        ? stop.qtyType
+        : "pallets",
+    type:
+      stop.type === "Appt" || stop.type === "Window" ? stop.type : "FCFS",
+    hasAppointment:
+      typeof stop.hasAppointment === "boolean"
+        ? stop.hasAppointment
+        : false,
+    pickupNumber:
+      stop.pickupNumber || stop.pickup || stop.customerLoadRefConf || "",
+    loadNumber: stop.loadNumber || "",
+    pickup:
+      stop.pickup || stop.pickupNumber || stop.customerLoadRefConf || "",
+    company: stop.company || "",
+    address: stop.address || "",
+    notes: stop.notes || "",
+    instructions: stop.instructions || "",
+    yardLocation: stop.yardLocation || "",
+    reeferMode: stop.reeferMode || "",
+    shipmentBol: stop.shipmentBol || "",
+    poNumber: stop.poNumber || "",
+    customerLoadRefConf: stop.customerLoadRefConf || "",
+    stopType:
+      typeof stop.stopType === "string" && stop.stopType.length > 0
+        ? stop.stopType
+        : section === "pickups"
+        ? "live-load"
+        : "live-unload",
+  }));
+};
 
 interface DriverOption {
   id: string;
@@ -707,6 +845,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
 export default function CreateNewLoadPage() {
   // --- State Management ---
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("editId");
   const { user, isLoading } = useAuth() || { user: null, isLoading: false };
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -715,6 +856,10 @@ export default function CreateNewLoadPage() {
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [isResolvingUser, setIsResolvingUser] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditLoadLoading, setIsEditLoadLoading] = useState(false);
+  const [editingLoadId, setEditingLoadId] = useState<string | null>(null);
+  const [existingLoadNumber, setExistingLoadNumber] = useState("");
+  const [existingCreatedAt, setExistingCreatedAt] = useState<unknown>(null);
   const [dynamicCustomerOptions, setDynamicCustomerOptions] = useState<
     Option[]
   >([]);
@@ -742,152 +887,7 @@ export default function CreateNewLoadPage() {
     Record<string, AssignedVehicle[]>
   >({});
 
-  const [formData, setFormData] = useState<FormData>({
-    // 1. Customer & Load Header
-    bookingOffice: "",
-    customerSearch: "",
-    customerName: "",
-    primaryFees: 0,
-    feeType: "Line Haul",
-    tenderedMiles: "",
-    fuelSrcType: "Included",
-    fuelSrc: "",
-    targetRate: 0,
-    vanType: "Van Or Reefer",
-    temperature: "",
-    length: "53",
-    weight: "",
-    bookingAuthority: "Direct",
-    commodity: "",
-    type: "FTL",
-    declaredValue: "",
-    salesAgent: "",
-    bookingTerminalOffice: "",
-    agency: "",
-    brokerageAgent: "",
-    customerLoadNotes: "",
-    dispatchNotes: "",
-    yardLocation: "", // New field
-    internalNotes: "", // New field
-
-    // 2. Pickups (Array)
-    pickups: [
-      {
-        id: 1,
-        company: "",
-        customerLoadRefConf: "",
-        locationNotes: "",
-        date: "",
-        timeStart: "",
-        timeEnd: "",
-        stopType: "live-load",
-        hasAppointment: false,
-        totalQty: "",
-        qtyType: "pallets",
-        totalWeight: "",
-        commodity: "",
-        length: "",
-        width: "",
-        height: "",
-        pickup: "",
-        shipmentBol: "",
-        poNumber: "",
-        reeferMode: "",
-        routeName: "",
-        instructions: "",
-        seal: "",
-        container: "",
-        chassis: "",
-        customerTrailer: "",
-        pro: "",
-        reeferFuelLevel: "",
-        splitLoad: "",
-        yardLocation: "",
-        contactPerson: "",
-        phone: "",
-        address: "",
-        type: "FCFS",
-        pickupNumber: "",
-        loadNumber: "",
-        notes: "",
-      },
-    ],
-
-    // 3. Deliveries (Array)
-    deliveries: [
-      {
-        id: 1,
-        company: "",
-        customerLoadRefConf: "",
-        locationNotes: "",
-        date: "",
-        timeStart: "",
-        timeEnd: "",
-        stopType: "live-load",
-        hasAppointment: false,
-        totalQty: "",
-        qtyType: "pallets",
-        totalWeight: "",
-        commodity: "",
-        length: "",
-        width: "",
-        height: "",
-        pickup: "",
-        shipmentBol: "",
-        poNumber: "",
-        reeferMode: "",
-        routeName: "",
-        instructions: "",
-        seal: "",
-        container: "",
-        chassis: "",
-        customerTrailer: "",
-        pro: "",
-        reeferFuelLevel: "",
-        splitLoad: "",
-        yardLocation: "",
-        contactPerson: "",
-        phone: "",
-        address: "",
-        type: "FCFS",
-        pickupNumber: "",
-        loadNumber: "",
-        notes: "",
-      },
-    ],
-
-    // 4. Equipment
-    driverId: "",
-    secondDriverId: "",
-    truckId: "",
-    trailerId: "",
-    trailerType: "Dry Van",
-    dispatcherId: "DISP-001",
-    carrierId: "",
-
-    // 5. Rates
-    lineHaul: 0,
-    fuelSurcharge: 0,
-    detention: 0,
-    layover: 0,
-    tonu: 0,
-    accessorials: 0,
-    totalCustomerRate: 0,
-    totalCarrierPay: 0,
-
-    // 6. Automation
-    autoSendDriver: false,
-    autoTrack: true,
-    autoInvoice: false,
-
-    // 7. Status
-    status: "Draft",
-    assignmentType: "carrier",
-    carrierPay: 0,
-
-    // 8. Documents
-    documents: [],
-  });
+  const [formData, setFormData] = useState<FormData>(createInitialFormData);
 
   const [calculations, setCalculations] = useState<Calculations>({
     totalRevenue: 0,
@@ -1348,6 +1348,86 @@ export default function CreateNewLoadPage() {
     return `LD-${y}${m}${d}-${suffix}`;
   };
 
+  useEffect(() => {
+    const fetchEditableLoad = async () => {
+      if (!editId) {
+        setEditingLoadId(null);
+        setExistingLoadNumber("");
+        setExistingCreatedAt(null);
+        return;
+      }
+
+      setIsEditLoadLoading(true);
+      try {
+        const loadSnap = await getDoc(doc(db, "dispatch_loads", editId));
+
+        if (!loadSnap.exists()) {
+          toast.error("Load not found for editing.");
+          router.push("/truck-dispatch");
+          return;
+        }
+
+        const data = loadSnap.data() as Partial<FormData> & {
+          loadNumber?: string;
+          createdAt?: unknown;
+        };
+
+        setEditingLoadId(loadSnap.id);
+        setExistingLoadNumber(data.loadNumber || "");
+        setExistingCreatedAt(data.createdAt ?? null);
+
+        setFormData({
+          ...createInitialFormData(),
+          ...data,
+          primaryFees: Number(data.primaryFees || 0),
+          targetRate: Number(data.targetRate || 0),
+          lineHaul: Number(data.lineHaul || 0),
+          fuelSurcharge: Number(data.fuelSurcharge || 0),
+          detention: Number(data.detention || 0),
+          layover: Number(data.layover || 0),
+          tonu: Number(data.tonu || 0),
+          accessorials: Number(data.accessorials || 0),
+          totalCustomerRate: Number(data.totalCustomerRate || 0),
+          totalCarrierPay: Number(data.totalCarrierPay || 0),
+          carrierPay: Number(data.carrierPay || 0),
+          pickups: normalizeStops(data.pickups as Partial<Stop>[] | undefined, "pickups"),
+          deliveries: normalizeStops(
+            data.deliveries as Partial<Stop>[] | undefined,
+            "deliveries"
+          ),
+          documents: Array.isArray(data.documents)
+            ? data.documents.map((item, index) => ({
+                id:
+                  typeof item?.id === "string" && item.id.length > 0
+                    ? item.id
+                    : `doc-${index + 1}`,
+                name:
+                  typeof item?.name === "string" && item.name.length > 0
+                    ? item.name
+                    : `Document ${index + 1}`,
+                type:
+                  item?.type === "rate-confirmation" ||
+                  item?.type === "bol" ||
+                  item?.type === "pod" ||
+                  item?.type === "damage-photos" ||
+                  item?.type === "scale-ticket" ||
+                  item?.type === "lumper"
+                    ? item.type
+                    : "rate-confirmation",
+                size: Number(item?.size || 0),
+              }))
+            : [],
+        });
+      } catch (error) {
+        GlobalToastError(error);
+      } finally {
+        setIsEditLoadLoading(false);
+      }
+    };
+
+    fetchEditableLoad();
+  }, [editId, router]);
+
   const handleSaveLoad = async (status: "Draft" | "Posted") => {
     if (!user?.uid || !effectiveUserId) {
       toast.error("Please login to save this load.");
@@ -1358,7 +1438,11 @@ export default function CreateNewLoadPage() {
 
     try {
       const loadsRef = collection(db, "dispatch_loads");
-      const newLoadRef = doc(loadsRef);
+      const loadRef = editingLoadId ? doc(db, "dispatch_loads", editingLoadId) : doc(loadsRef);
+      const resolvedLoadNumber =
+        editingLoadId && existingLoadNumber
+          ? existingLoadNumber
+          : buildLoadNumber(loadRef.id);
 
       const documents = formData.documents.map((item) => ({
         id: item.id,
@@ -1367,19 +1451,23 @@ export default function CreateNewLoadPage() {
         size: item.size || 0,
       }));
 
-      await setDoc(newLoadRef, {
+      await setDoc(loadRef, {
         ...formData,
-        loadNumber: buildLoadNumber(newLoadRef.id),
+        loadNumber: resolvedLoadNumber,
         status,
         documents,
         currentUserId: user.uid,
         effectiveUserId,
-        createdAt: serverTimestamp(),
+        createdAt: editingLoadId ? existingCreatedAt || serverTimestamp() : serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
       toast.success(
-        status === "Draft"
+        editingLoadId
+          ? status === "Draft"
+            ? "Load draft updated successfully."
+            : "Load updated successfully."
+          : status === "Draft"
           ? "Load saved as draft successfully."
           : "Load created successfully."
       );
@@ -1570,8 +1658,6 @@ export default function CreateNewLoadPage() {
     }));
   };
 
-  const router = useRouter();
-
   const handleCancel = () => {
     // setIsCancelled(true);
     router.push("/truck-dispatch");
@@ -1710,19 +1796,31 @@ export default function CreateNewLoadPage() {
                 </button>
                 <button
                   onClick={() => handleSaveLoad("Draft")}
-                  disabled={isSaving || isLoading || isResolvingUser}
+                  disabled={
+                    isSaving || isLoading || isResolvingUser || isEditLoadLoading
+                  }
                   className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Save className="w-4 h-4" />{" "}
-                  {isSaving ? "Saving..." : "Save Draft"}
+                  {isSaving
+                    ? "Saving..."
+                    : editingLoadId
+                    ? "Update Draft"
+                    : "Save Draft"}
                 </button>
                 <button
                   onClick={() => handleSaveLoad("Posted")}
-                  disabled={isSaving || isLoading || isResolvingUser}
+                  disabled={
+                    isSaving || isLoading || isResolvingUser || isEditLoadLoading
+                  }
                   className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] shadow-md flex items-center justify-center gap-2 font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Package className="w-4 h-4" />{" "}
-                  {isSaving ? "Saving..." : "Create & Post"}
+                  {isSaving
+                    ? "Saving..."
+                    : editingLoadId
+                    ? "Update & Post"
+                    : "Create & Post"}
                 </button>
               </div>
             </div>

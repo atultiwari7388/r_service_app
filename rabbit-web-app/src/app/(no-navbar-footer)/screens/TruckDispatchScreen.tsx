@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
@@ -118,6 +119,7 @@ export default function TruckDispatchScreen({
   onMenuClick: () => void;
 }) {
   const { user } = useAuth() || { user: null };
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -375,15 +377,19 @@ export default function TruckDispatchScreen({
 
   // --- Action Handlers ---
   const handleEditLoad = (loadId: string) => {
-    console.log("Edit load:", loadId);
+    router.push(`/create-new-load?editId=${loadId}`);
   };
 
   const handlePrintLoad = (loadId: string) => {
-    console.log("Print load:", loadId);
+    window.open(`/view-load-info/${loadId}?action=print`, "_blank", "noopener,noreferrer");
   };
 
   const handleDownloadDocs = (loadId: string) => {
-    console.log("Download docs for load:", loadId);
+    window.open(
+      `/view-load-info/${loadId}?action=download`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   // --- Dropdown Handlers ---

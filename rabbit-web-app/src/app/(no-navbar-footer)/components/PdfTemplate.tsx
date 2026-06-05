@@ -2608,37 +2608,7 @@ export const ViewLoadInfoPdfTemplate = ({
 }: {
   loadData: LoadData;
 }) => {
-  // Mock stops data for the template
-  const mockStops = [
-    {
-      type: "PICKUP",
-      location: "FREEZE N STORE",
-      address: "311 West Sunset Avenue, Springdale, AR, 72764",
-      date: "11/15/2025",
-      timeWindow: "08:00 AM - 01:00 PM",
-      weight: "28975 lbs",
-      stopType: "Live Load",
-      qty: "2343 Pallets",
-      commodity: "Frozen Products",
-      equipment: "Reefer / Continuous / 0.00° F",
-      instructions: "PU/SO #: 143547, 143597",
-      shipmentBol: "1495378",
-      pickupNumber: "1495378",
-    },
-    {
-      type: "DELIVERY",
-      location: "Sysco Food Service - Las Vegas",
-      address: "6201 East Centennial Parkway, Las Vegas, NV, 89115",
-      date: "11/17/2025",
-      timeWindow: "09:00 AM - 09:00 AM",
-      weight: "28975 lbs",
-      stopType: "Live Unload",
-      qty: "2343 Pallets",
-      commodity: "Frozen Products",
-      instructions:
-        "Delivery Conf. #: CHK5551729519nov25 ApptRef# PU/SO #: 143547, 143597",
-    },
-  ];
+  const stops = loadData.stops || [];
 
   return (
     <PdfLayout
@@ -2698,7 +2668,22 @@ export const ViewLoadInfoPdfTemplate = ({
           ></div>
 
           {/* Stops Section */}
-          {mockStops.map((stop, index) => (
+          {stops.length === 0 && (
+            <div
+              style={{
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                padding: "12px",
+              }}
+            >
+              <p style={{ margin: "0", fontSize: "12px", color: "#475569" }}>
+                Stop details are not available for this load.
+              </p>
+            </div>
+          )}
+
+          {stops.map((stop, index) => (
             <div key={index} style={{ marginBottom: "30px" }}>
               {/* Stop Header */}
               <h3
@@ -2727,7 +2712,7 @@ export const ViewLoadInfoPdfTemplate = ({
                     margin: "0 0 5px 0",
                   }}
                 >
-                  {stop.location}
+                  {stop.locationName}
                 </p>
                 <p
                   style={{
@@ -2736,7 +2721,9 @@ export const ViewLoadInfoPdfTemplate = ({
                     color: "#666666",
                   }}
                 >
-                  {stop.address}
+                  {[stop.address, stop.cityStateZip]
+                    .filter(Boolean)
+                    .join(", ") || "-"}
                 </p>
                 <p style={{ fontSize: "12px", margin: "0", color: "#666666" }}>
                   {stop.date} | {stop.timeWindow}
@@ -2759,7 +2746,7 @@ export const ViewLoadInfoPdfTemplate = ({
                   </p>
                   <p style={{ margin: "0 0 3px 0" }}>
                     <strong>Stop {stop.type.toLowerCase()}:</strong>{" "}
-                    {stop.stopType}
+                    {stop.type === "PICKUP" ? "Pickup" : "Delivery"}
                   </p>
                   <p style={{ margin: "0 0 3px 0" }}>
                     <strong>Qty:</strong> {stop.qty}
@@ -2767,12 +2754,14 @@ export const ViewLoadInfoPdfTemplate = ({
                 </div>
                 <div>
                   <p style={{ margin: "0 0 3px 0" }}>
-                    <strong>Commodity:</strong> {stop.commodity}
+                    <strong>Commodity:</strong> {loadData.commodity || "-"}
                   </p>
-                  {stop.equipment && (
+                  {(loadData.equipmentType || loadData.temperature) && (
                     <p style={{ margin: "0 0 3px 0" }}>
                       <strong>Equipment / Reefer Mode / Temperature:</strong>{" "}
-                      {stop.equipment}
+                      {[loadData.equipmentType, loadData.temperature]
+                        .filter(Boolean)
+                        .join(" / ")}
                     </p>
                   )}
                 </div>
@@ -2794,7 +2783,7 @@ export const ViewLoadInfoPdfTemplate = ({
               </div>
 
               {/* Additional Info if available */}
-              {(stop.shipmentBol || stop.pickupNumber) && (
+              {(stop.bolNumber || stop.puNumber || stop.soNumber) && (
                 <div
                   style={{
                     display: "grid",
@@ -2803,21 +2792,24 @@ export const ViewLoadInfoPdfTemplate = ({
                     fontSize: "12px",
                   }}
                 >
-                  {stop.shipmentBol && (
+                  {stop.bolNumber && (
                     <p style={{ margin: "0" }}>
-                      <strong>Shipment BOL:</strong> {stop.shipmentBol}
+                      <strong>Shipment BOL:</strong> {stop.bolNumber}
                     </p>
                   )}
-                  {stop.pickupNumber && (
+                  {(stop.puNumber || stop.soNumber) && (
                     <p style={{ margin: "0" }}>
-                      <strong>Pickup #:</strong> {stop.pickupNumber}
+                      <strong>
+                        {stop.type === "PICKUP" ? "Pickup #" : "Reference #"}:
+                      </strong>{" "}
+                      {stop.puNumber || stop.soNumber}
                     </p>
                   )}
                 </div>
               )}
 
               {/* Separator between stops */}
-              {index < mockStops.length - 1 && (
+              {index < stops.length - 1 && (
                 <div
                   style={{
                     borderTop: "1px dashed #cccccc",
