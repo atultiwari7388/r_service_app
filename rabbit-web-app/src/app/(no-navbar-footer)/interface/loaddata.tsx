@@ -108,6 +108,11 @@ export interface LoadDocument {
   expiryDate: string;
   daysRemaining: number | null;
   url?: string;
+  source?: "generated" | "uploaded";
+  fileType?: string;
+  storagePath?: string;
+  uploadedAt?: string;
+  documentKey?: string;
 }
 
 export interface ContactInfo {

@@ -2,6 +2,7 @@
 "use client";
 
 import React, {
+  Suspense,
   useState,
   useEffect,
   ChangeEvent,
@@ -843,7 +844,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
 // --- Main Component ---
 
-export default function CreateNewLoadPage() {
+function CreateNewLoadPageContent() {
   // --- State Management ---
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -3231,5 +3232,19 @@ export default function CreateNewLoadPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function CreateNewLoadPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+          Loading load form...
+        </div>
+      }
+    >
+      <CreateNewLoadPageContent />
+    </Suspense>
   );
 }

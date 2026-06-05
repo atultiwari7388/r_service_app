@@ -4,11 +4,9 @@ import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   MoreVertical,
-  Trash2,
   Mail,
   FolderUp,
   X,
-  Edit as EditIcon,
   Download as DownloadIcon,
   Eye as EyeIcon,
 } from "lucide-react";
@@ -24,8 +22,12 @@ type LoadDocument = {
 
 export const DocumentActionsDropdown = ({
   loadDocument,
+  onDownload,
+  onView,
 }: {
   loadDocument: LoadDocument;
+  onDownload?: (loadDocument: LoadDocument) => void;
+  onView?: (loadDocument: LoadDocument) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(
@@ -34,10 +36,12 @@ export const DocumentActionsDropdown = ({
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const menuItems = [
-    { label: "Edit", icon: EditIcon, color: "text-blue-600" },
-    { label: "Delete", icon: Trash2, color: "text-red-600" },
-    { label: "Download", icon: DownloadIcon, color: "text-gray-600" },
-    { label: "View", icon: EyeIcon, color: "text-gray-600" },
+    ...(onDownload
+      ? [{ label: "Download", icon: DownloadIcon, color: "text-gray-600" }]
+      : []),
+    ...(onView
+      ? [{ label: "View", icon: EyeIcon, color: "text-gray-600" }]
+      : []),
     { label: "Email", icon: Mail, color: "text-gray-600" },
     { label: "Send via FTP", icon: FolderUp, color: "text-gray-600" },
   ];
@@ -115,9 +119,15 @@ export const DocumentActionsDropdown = ({
                     key={index}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 ${item.color}`}
                     onClick={() => {
-                      console.log(
-                        `${item.label} clicked for ${loadDocument.name}`
-                      );
+                      if (item.label === "Download") {
+                        onDownload?.(loadDocument);
+                      } else if (item.label === "View") {
+                        onView?.(loadDocument);
+                      } else {
+                        console.log(
+                          `${item.label} clicked for ${loadDocument.name}`
+                        );
+                      }
                       setIsOpen(false);
                     }}
                   >

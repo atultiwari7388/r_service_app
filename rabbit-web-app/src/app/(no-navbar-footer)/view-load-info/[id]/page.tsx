@@ -75,6 +75,11 @@ interface DispatchDocumentRecord {
   name?: string;
   type?: string;
   size?: number;
+  url?: string;
+  mimeType?: string;
+  source?: "uploaded" | "generated";
+  storagePath?: string;
+  createdAt?: { seconds?: number };
 }
 
 interface DispatchLoadRecord {
@@ -115,6 +120,7 @@ interface DispatchLoadRecord {
   pickups?: DispatchStopRecord[];
   deliveries?: DispatchStopRecord[];
   documents?: DispatchDocumentRecord[];
+  updatedAt?: { seconds?: number };
 }
 
 // --- Mock Data ---
@@ -269,6 +275,63 @@ const MOCK_DOCUMENTS: LoadDocument[] = [
 const TABS = [
   { id: "load-info", label: "Load Information" },
   { id: "load-docs", label: "Load Docs" },
+];
+
+const GENERATED_DOCUMENTS: LoadDocument[] = [
+  {
+    id: "generated-rate-confirmation",
+    name: "Rate Confirmation",
+    type: "Rate Confirmation",
+    invoiceRequirement: true,
+    expiryDate: "-",
+    daysRemaining: null,
+    source: "generated",
+  },
+  {
+    id: "generated-bol",
+    name: "Bill of Lading",
+    type: "Bill of Lading",
+    invoiceRequirement: true,
+    expiryDate: "-",
+    daysRemaining: null,
+    source: "generated",
+  },
+  {
+    id: "generated-load-sheet",
+    name: "Load Sheet",
+    type: "Load Sheet",
+    invoiceRequirement: false,
+    expiryDate: "-",
+    daysRemaining: null,
+    source: "generated",
+  },
+  {
+    id: "generated-driver-sheet",
+    name: "Driver Sheet",
+    type: "Driver Sheet",
+    invoiceRequirement: false,
+    expiryDate: "-",
+    daysRemaining: null,
+    source: "generated",
+  },
+  {
+    id: "generated-pod",
+    name: "Proof of Delivery",
+    type: "Proof of Delivery",
+    invoiceRequirement: true,
+    expiryDate: "-",
+    daysRemaining: null,
+    source: "generated",
+  },
+  {
+    id: "generated-load-info",
+    name: "View Load Info",
+    type: "View Load Info",
+    invoiceRequirement: false,
+    expiryDate: "-",
+    daysRemaining: null,
+    source: "generated",
+  },
 ];
 
 // --- Helper Components ---
@@ -913,6 +976,9 @@ interface ActionDropdownProps {
   onViewLoadSheet?: () => void;
   onViewSwarnSheet?: () => void;
   onViewLoadDriverSheet?: () => void;
+  uploadedBolDocument?: LoadDocument;
+  uploadedPodDocument?: LoadDocument;
+  onViewUploadedDocument?: (document: LoadDocument) => void;
 }
 
 const ActionDropdown = ({
@@ -923,6 +989,9 @@ const ActionDropdown = ({
   onViewLoadSheet,
   onViewSwarnSheet,
   onViewLoadDriverSheet,
+  uploadedBolDocument,
+  uploadedPodDocument,
+  onViewUploadedDocument,
 }: ActionDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -986,6 +1055,32 @@ const ActionDropdown = ({
                 <FileText className="w-4 h-4" />
                 View BOL
               </button>
+              {uploadedBolDocument && (
+                <button
+                  onClick={() => {
+                    onViewUploadedDocument?.(uploadedBolDocument);
+                    setIsOpen(false);
+                    setIsHovered(false);
+                  }}
+                  className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Uploaded BOL
+                </button>
+              )}
+              {uploadedPodDocument && (
+                <button
+                  onClick={() => {
+                    onViewUploadedDocument?.(uploadedPodDocument);
+                    setIsOpen(false);
+                    setIsHovered(false);
+                  }}
+                  className="w-full px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Uploaded POD
+                </button>
+              )}
               <button
                 onClick={() => {
                   onSendERate?.();
@@ -1311,14 +1406,24 @@ export default function LoadDetailsPage() {
         .join(" ");
     };
 
-    return (dbLoad.documents || []).map((item) => ({
+    const uploadedDocuments = (dbLoad.documents || []).map((item) => ({
       id: item.id,
       name: item.name || `${formatType(item.type)} ${item.id}`,
       type: formatType(item.type),
       invoiceRequirement: false,
       expiryDate: "-",
       daysRemaining: null,
+      url: item.url,
+      source: item.source || "uploaded",
+      fileType: item.mimeType,
+      storagePath: item.storagePath,
+      uploadedAt: item.createdAt?.seconds
+        ? new Date(item.createdAt.seconds * 1000).toLocaleString()
+        : undefined,
+      documentKey: item.type,
     }));
+
+    return [...GENERATED_DOCUMENTS, ...uploadedDocuments];
   }, [dbLoad]);
 
   const handleSaveCheckCall = (data: CheckCallFormData) => {
@@ -1326,8 +1431,13 @@ export default function LoadDetailsPage() {
     alert("Check call saved successfully!");
   };
 
-  const handleViewDocument = (docType: string) => {
-    switch (docType) {
+  const handleViewDocument = (document: LoadDocument) => {
+    if (document.url) {
+      window.open(document.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    switch (document.type) {
       case "Rate Confirmation":
         setShowConfirmationModal(true);
         break;
@@ -1350,9 +1460,39 @@ export default function LoadDetailsPage() {
         setShowLoadInfoModal(true);
         break;
       default:
-        console.log(`Viewing document type: ${docType}`);
+        console.log(`Viewing document type: ${document.type}`);
     }
   };
+
+  const handleDownloadDocument = (document: LoadDocument) => {
+    if (document.url) {
+      const link = window.document.createElement("a");
+      link.href = document.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.download = document.name;
+      link.click();
+      return;
+    }
+
+    handleViewDocument(document);
+  };
+
+  const latestUploadedBol = useMemo(
+    () =>
+      [...documents]
+        .reverse()
+        .find((item) => item.documentKey === "bill-of-lading" && item.url),
+    [documents]
+  );
+
+  const latestUploadedPod = useMemo(
+    () =>
+      [...documents]
+        .reverse()
+        .find((item) => item.documentKey === "proof-of-delivery" && item.url),
+    [documents]
+  );
 
   return (
     <>
@@ -1393,11 +1533,24 @@ export default function LoadDetailsPage() {
 
               {/* Right: Actions */}
               <div className="flex flex-wrap items-center gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                  BOL / POD <ChevronDown className="w-4 h-4" />
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
-                  Customer Confirmation <ChevronDown className="w-4 h-4" />
+                <div className="min-w-[185px]">
+                  <ActionDropdown
+                    type="bol"
+                    onViewConfirmation={() => setShowConfirmationModal(true)}
+                    onViewBol={() => setShowBolModal(true)}
+                    onSendERate={() => {
+                      alert("Sending e-rate confirmation...");
+                    }}
+                    uploadedBolDocument={latestUploadedBol}
+                    uploadedPodDocument={latestUploadedPod}
+                    onViewUploadedDocument={handleViewDocument}
+                  />
+                </div>
+                <button
+                  onClick={() => setShowConfirmationModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm"
+                >
+                  Customer Confirmation
                 </button>
                 <button className="flex items-center gap-2 px-4 py-2 bg-[#F96176] text-white text-sm font-medium rounded-md hover:bg-[#F96176] transition shadow-sm">
                   Load Notes
@@ -1757,6 +1910,9 @@ export default function LoadDetailsPage() {
                       alert("Sending e-rate confirmation...");
                       // You could implement email functionality here
                     }}
+                    uploadedBolDocument={latestUploadedBol}
+                    uploadedPodDocument={latestUploadedPod}
+                    onViewUploadedDocument={handleViewDocument}
                   />
 
                   <ActionDropdown
@@ -1942,13 +2098,17 @@ export default function LoadDetailsPage() {
                       >
                         {/* ACTIONS */}
                         <td className="px-6 py-4 text-center relative overflow-visible">
-                          <DocumentActionsDropdown loadDocument={doc} />
+                          <DocumentActionsDropdown
+                            loadDocument={doc}
+                            onDownload={handleDownloadDocument}
+                            onView={handleViewDocument}
+                          />
                         </td>
 
                         {/* VIEW */}
                         <td className="px-6 py-4 text-center">
                           <button
-                            onClick={() => handleViewDocument(doc.type)}
+                            onClick={() => handleViewDocument(doc)}
                             className="p-1.5 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50 transition"
                           >
                             <Eye className="w-4 h-4" />

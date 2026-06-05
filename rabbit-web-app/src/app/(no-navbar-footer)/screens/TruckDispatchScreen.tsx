@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Truck,
   Package,
@@ -32,13 +32,28 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import { useAuth } from "@/contexts/AuthContexts";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import toast from "react-hot-toast";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 interface LoadData {
   id: string;
   loadNumber: string;
+  isDuplicate?: boolean;
+  duplicateOfLoadNumber?: string;
   customer: string;
   type: "FTL" | "LTL" | "Reefer" | "Flatbed" | "Dry Van";
   status:
@@ -90,7 +105,7 @@ interface DispatchLoadRecord {
   weight?: string;
   totalCustomerRate?: number;
   totalCarrierPay?: number;
-  documents?: { id: string }[];
+  documents?: DispatchDocumentRecord[];
   pickups?: DispatchStop[];
   deliveries?: DispatchStop[];
   dispatchNotes?: string;
@@ -101,6 +116,31 @@ interface DispatchLoadRecord {
   tonu?: number;
   accessorials?: number;
   createdAt?: { seconds?: number };
+  effectiveUserId?: string;
+  currentUserId?: string;
+  isDuplicate?: boolean;
+  duplicateOfLoadNumber?: string;
+}
+
+interface DispatchDocumentRecord {
+  id: string;
+  name?: string;
+  type?: string;
+  size?: number;
+  url?: string;
+  mimeType?: string;
+  source?: "uploaded" | "generated";
+  storagePath?: string;
+  createdAt?: { seconds?: number };
+}
+
+interface DispatchHistoryRecord {
+  id: string;
+  action: string;
+  message: string;
+  createdAt?: { seconds?: number };
+  createdBy?: string;
+  metadata?: Record<string, string>;
 }
 
 interface DriverRecord {
@@ -129,9 +169,19 @@ export default function TruckDispatchScreen({
   const [isResolvingUser, setIsResolvingUser] = useState(true);
   const [isFetchingLoads, setIsFetchingLoads] = useState(false);
   const [loads, setLoads] = useState<LoadData[]>([]);
-  // const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [activeLoadId, setActiveLoadId] = useState<string | null>(null);
+  const [uploadType, setUploadType] = useState<"bol" | "pod" | null>(null);
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(
+    null
+  );
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyItems, setHistoryItems] = useState<DispatchHistoryRecord[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const itemsPerPage = 10;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resolveEffectiveUserId = async (userId: string) => {
     setIsResolvingUser(true);
@@ -161,6 +211,35 @@ export default function TruckDispatchScreen({
     return value;
   };
 
+  const buildLoadNumber = (docId: string) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const suffix = docId.slice(-5).toUpperCase();
+    return `LD-${y}${m}${d}-${suffix}`;
+  };
+
+  const formatHistoryDate = (seconds?: number) => {
+    if (!seconds) return "Just now";
+    return new Date(seconds * 1000).toLocaleString();
+  };
+
+  const createHistoryEntry = async (
+    loadId: string,
+    action: string,
+    message: string,
+    metadata?: Record<string, string>
+  ) => {
+    await addDoc(collection(db, "dispatch_loads", loadId, "history"), {
+      action,
+      message,
+      metadata: metadata || {},
+      createdBy: user?.uid || "",
+      createdAt: serverTimestamp(),
+    });
+  };
+
   const tabDefinitions = [
     { id: "all", label: "All" },
     { id: "booked", label: "Booked" },
@@ -168,6 +247,141 @@ export default function TruckDispatchScreen({
     { id: "active", label: "Active" },
     { id: "completed", label: "Completed" },
   ];
+
+  const fetchLoads = useCallback(async () => {
+    if (!effectiveUserId) return;
+
+    setIsFetchingLoads(true);
+    try {
+      const loadsSnap = await getDocs(
+        query(
+          collection(db, "dispatch_loads"),
+          where("effectiveUserId", "==", effectiveUserId)
+        )
+      );
+
+      const rawRecords = loadsSnap.docs
+        .map(
+          (item) =>
+            ({
+              id: item.id,
+              ...(item.data() as Omit<DispatchLoadRecord, "id">),
+            } as DispatchLoadRecord)
+        )
+        .sort(
+          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+        );
+
+      const uniqueDriverIds = Array.from(
+        new Set(
+          rawRecords
+            .map((record) => record.driverId || "")
+            .filter((id) => id.length > 0)
+        )
+      );
+
+      const driverMap: Record<string, string> = {};
+      const vehicleMap: Record<string, string> = {};
+
+      await Promise.all(
+        uniqueDriverIds.map(async (driverId) => {
+          const driverSnap = await getDoc(doc(db, "Users", driverId));
+          if (driverSnap.exists()) {
+            const driverData = driverSnap.data() as DriverRecord;
+            const driverName = (
+              driverData.userName ||
+              driverData.email ||
+              driverId
+            ).trim();
+            driverMap[driverId] = driverName || driverId;
+          } else {
+            driverMap[driverId] = driverId;
+          }
+
+          const vehiclesSnap = await getDocs(
+            collection(db, "Users", driverId, "Vehicles")
+          );
+
+          vehiclesSnap.docs.forEach((vehicleDoc) => {
+            const vehicleData = vehicleDoc.data() as VehicleRecord;
+            const vehicleNumber = (vehicleData.vehicleNumber || "").trim();
+            const companyName = (vehicleData.companyName || "").trim();
+
+            if (vehicleNumber && companyName) {
+              vehicleMap[vehicleDoc.id] = `${vehicleNumber} (${companyName})`;
+            } else if (vehicleNumber) {
+              vehicleMap[vehicleDoc.id] = vehicleNumber;
+            } else if (companyName) {
+              vehicleMap[vehicleDoc.id] = companyName;
+            }
+          });
+        })
+      );
+
+      const normalized = rawRecords.map((record) => {
+        const pickups = record.pickups || [];
+        const deliveries = record.deliveries || [];
+        const pickup = pickups[0] || {};
+        const delivery = deliveries[0] || {};
+        const revenue =
+          Number(record.lineHaul || 0) +
+          Number(record.fuelSurcharge || 0) +
+          Number(record.detention || 0) +
+          Number(record.layover || 0) +
+          Number(record.tonu || 0) +
+          Number(record.accessorials || 0);
+        const carrierPay = Number(record.totalCarrierPay || 0);
+        const mappedStatus =
+          record.status === "Posted"
+            ? "Booked"
+            : record.status === "Draft"
+            ? "Pre-Planned"
+            : record.status || "Booked";
+        return {
+          id: record.id,
+          loadNumber: record.loadNumber || "LD-DRAFT",
+          isDuplicate: record.isDuplicate || false,
+          duplicateOfLoadNumber: record.duplicateOfLoadNumber || "",
+          customer: record.customerName || "-",
+          type: (record.type as LoadData["type"]) || "FTL",
+          status: mappedStatus as LoadData["status"],
+          truck:
+            (record.truckId && vehicleMap[record.truckId]) ||
+            record.truckId ||
+            "-",
+          trailer:
+            (record.trailerId && vehicleMap[record.trailerId]) ||
+            record.trailerId ||
+            "-",
+          driver:
+            (record.driverId && driverMap[record.driverId]) ||
+            record.driverId ||
+            "-",
+          pickupLocation: pickup.company || "-",
+          pickupDate: toDateLabel(pickup.date),
+          dropLocation: delivery.company || "-",
+          dropDate: toDateLabel(delivery.date),
+          distance: "-",
+          weight: record.weight ? `${record.weight} lbs` : "-",
+          rate: Number(record.totalCustomerRate || revenue || 0),
+          profit: Number(
+            (record.totalCustomerRate || revenue || 0) - carrierPay
+          ),
+          progress: mappedStatus === "Completed" ? 100 : 0,
+          quantity: Math.max(pickups.length, deliveries.length, 1),
+          specialInstructions: record.dispatchNotes || "",
+          documents: record.documents?.length || 0,
+        } as LoadData;
+      });
+
+      setLoads(normalized);
+    } catch (error) {
+      GlobalToastError(error);
+      setLoads([]);
+    } finally {
+      setIsFetchingLoads(false);
+    }
+  }, [effectiveUserId]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -180,140 +394,8 @@ export default function TruckDispatchScreen({
   }, [user?.uid]);
 
   useEffect(() => {
-    const fetchLoads = async () => {
-      if (!effectiveUserId) return;
-
-      setIsFetchingLoads(true);
-      try {
-        const loadsSnap = await getDocs(
-          query(
-            collection(db, "dispatch_loads"),
-            where("effectiveUserId", "==", effectiveUserId)
-          )
-        );
-
-        const rawRecords = loadsSnap.docs
-          .map(
-            (item) =>
-              ({
-                id: item.id,
-                ...(item.data() as Omit<DispatchLoadRecord, "id">),
-              }) as DispatchLoadRecord
-          )
-          .sort(
-            (a, b) =>
-              (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-          );
-
-        const uniqueDriverIds = Array.from(
-          new Set(
-            rawRecords
-              .map((record) => record.driverId || "")
-              .filter((id) => id.length > 0)
-          )
-        );
-
-        const driverMap: Record<string, string> = {};
-        const vehicleMap: Record<string, string> = {};
-
-        await Promise.all(
-          uniqueDriverIds.map(async (driverId) => {
-            const driverSnap = await getDoc(doc(db, "Users", driverId));
-            if (driverSnap.exists()) {
-              const driverData = driverSnap.data() as DriverRecord;
-              const driverName = (
-                driverData.userName ||
-                driverData.email ||
-                driverId
-              ).trim();
-              driverMap[driverId] = driverName || driverId;
-            } else {
-              driverMap[driverId] = driverId;
-            }
-
-            const vehiclesSnap = await getDocs(
-              collection(db, "Users", driverId, "Vehicles")
-            );
-
-            vehiclesSnap.docs.forEach((vehicleDoc) => {
-              const vehicleData = vehicleDoc.data() as VehicleRecord;
-              const vehicleNumber = (vehicleData.vehicleNumber || "").trim();
-              const companyName = (vehicleData.companyName || "").trim();
-
-              if (vehicleNumber && companyName) {
-                vehicleMap[vehicleDoc.id] = `${vehicleNumber} (${companyName})`;
-              } else if (vehicleNumber) {
-                vehicleMap[vehicleDoc.id] = vehicleNumber;
-              } else if (companyName) {
-                vehicleMap[vehicleDoc.id] = companyName;
-              }
-            });
-          })
-        );
-
-        const normalized = rawRecords.map((record) => {
-          const pickups = record.pickups || [];
-          const deliveries = record.deliveries || [];
-          const pickup = pickups[0] || {};
-          const delivery = deliveries[0] || {};
-          const revenue =
-            Number(record.lineHaul || 0) +
-            Number(record.fuelSurcharge || 0) +
-            Number(record.detention || 0) +
-            Number(record.layover || 0) +
-            Number(record.tonu || 0) +
-            Number(record.accessorials || 0);
-          const carrierPay = Number(record.totalCarrierPay || 0);
-          const mappedStatus =
-            record.status === "Posted"
-              ? "Booked"
-              : record.status === "Draft"
-              ? "Pre-Planned"
-              : record.status || "Booked";
-          return {
-            id: record.id,
-            loadNumber: record.loadNumber || "LD-DRAFT",
-            customer: record.customerName || "-",
-            type: (record.type as LoadData["type"]) || "FTL",
-            status: mappedStatus as LoadData["status"],
-            truck:
-              (record.truckId && vehicleMap[record.truckId]) ||
-              record.truckId ||
-              "-",
-            trailer:
-              (record.trailerId && vehicleMap[record.trailerId]) ||
-              record.trailerId ||
-              "-",
-            driver:
-              (record.driverId && driverMap[record.driverId]) ||
-              record.driverId ||
-              "-",
-            pickupLocation: pickup.company || "-",
-            pickupDate: toDateLabel(pickup.date),
-            dropLocation: delivery.company || "-",
-            dropDate: toDateLabel(delivery.date),
-            distance: "-",
-            weight: record.weight ? `${record.weight} lbs` : "-",
-            rate: Number(record.totalCustomerRate || revenue || 0),
-            profit: Number((record.totalCustomerRate || revenue || 0) - carrierPay),
-            progress: mappedStatus === "Completed" ? 100 : 0,
-            quantity: Math.max(pickups.length, deliveries.length, 1),
-            specialInstructions: record.dispatchNotes || "",
-            documents: record.documents?.length || 0,
-          } as LoadData;
-        });
-
-        setLoads(normalized);
-      } catch (error) {
-        GlobalToastError(error);
-        setLoads([]);
-      } finally {
-        setIsFetchingLoads(false);
-      }
-    };
-
     fetchLoads();
-  }, [effectiveUserId]);
+  }, [fetchLoads]);
 
   const allLoads = loads;
   const tabStatusMap: Record<string, string> = {
@@ -330,7 +412,8 @@ export default function TruckDispatchScreen({
     count:
       tab.id === "all"
         ? allLoads.length
-        : allLoads.filter((item) => item.status === tabStatusMap[tab.id]).length,
+        : allLoads.filter((item) => item.status === tabStatusMap[tab.id])
+            .length,
     color: "",
     bgColor: "",
   }));
@@ -381,7 +464,11 @@ export default function TruckDispatchScreen({
   };
 
   const handlePrintLoad = (loadId: string) => {
-    window.open(`/view-load-info/${loadId}?action=print`, "_blank", "noopener,noreferrer");
+    window.open(
+      `/view-load-info/${loadId}?action=print`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   const handleDownloadDocs = (loadId: string) => {
@@ -390,6 +477,186 @@ export default function TruckDispatchScreen({
       "_blank",
       "noopener,noreferrer"
     );
+  };
+
+  const openUploadModal = (loadId: string, type: "bol" | "pod") => {
+    setActiveLoadId(loadId);
+    setUploadType(type);
+    setSelectedUploadFile(null);
+  };
+
+  const closeUploadModal = () => {
+    setActiveLoadId(null);
+    setUploadType(null);
+    setSelectedUploadFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!activeLoadId || !uploadType || !selectedUploadFile) {
+      toast.error("Please choose a file to upload.");
+      return;
+    }
+
+    setIsUploadingDocument(true);
+    try {
+      const loadRef = doc(db, "dispatch_loads", activeLoadId);
+      const loadSnap = await getDoc(loadRef);
+
+      if (!loadSnap.exists()) {
+        toast.error("Load not found.");
+        return;
+      }
+
+      const loadData = loadSnap.data() as DispatchLoadRecord;
+      const sanitizedName = selectedUploadFile.name.replace(/\s+/g, "_");
+      const storagePath = `dispatch-loads/${activeLoadId}/${uploadType}/${Date.now()}-${sanitizedName}`;
+      const storageRef = ref(storage, storagePath);
+
+      await uploadBytes(storageRef, selectedUploadFile);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      const documentType =
+        uploadType === "bol" ? "bill-of-lading" : "proof-of-delivery";
+      const documentName =
+        uploadType === "bol"
+          ? `Uploaded BOL - ${selectedUploadFile.name}`
+          : `Uploaded POD - ${selectedUploadFile.name}`;
+
+      const nextDocuments: DispatchDocumentRecord[] = [
+        ...(loadData.documents || []),
+        {
+          id: `${uploadType}-${Date.now()}`,
+          name: documentName,
+          type: documentType,
+          size: selectedUploadFile.size,
+          url: downloadURL,
+          mimeType: selectedUploadFile.type,
+          source: "uploaded",
+          storagePath,
+          createdAt: { seconds: Math.floor(Date.now() / 1000) },
+        },
+      ];
+
+      await updateDoc(loadRef, {
+        documents: nextDocuments,
+        updatedAt: serverTimestamp(),
+      });
+
+      await createHistoryEntry(
+        activeLoadId,
+        uploadType === "bol" ? "upload-bol" : "upload-pod",
+        `${uploadType.toUpperCase()} uploaded`,
+        {
+          fileName: selectedUploadFile.name,
+          documentType,
+        }
+      );
+
+      toast.success(`${uploadType.toUpperCase()} uploaded successfully.`);
+      closeUploadModal();
+      setLoads((prev) =>
+        prev.map((item) =>
+          item.id === activeLoadId
+            ? { ...item, documents: item.documents + 1 }
+            : item
+        )
+      );
+    } catch (error) {
+      GlobalToastError(error);
+    } finally {
+      setIsUploadingDocument(false);
+    }
+  };
+
+  const handleShowHistory = async (loadId: string) => {
+    setActiveLoadId(loadId);
+    setShowHistoryModal(true);
+    setIsLoadingHistory(true);
+    try {
+      const historySnap = await getDocs(
+        collection(db, "dispatch_loads", loadId, "history")
+      );
+      const items = historySnap.docs
+        .map(
+          (item) =>
+            ({
+              id: item.id,
+              ...(item.data() as Omit<DispatchHistoryRecord, "id">),
+            } as DispatchHistoryRecord)
+        )
+        .sort(
+          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+        );
+      setHistoryItems(items);
+    } catch (error) {
+      GlobalToastError(error);
+      setHistoryItems([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleDuplicateLoad = async (loadId: string) => {
+    try {
+      const sourceRef = doc(db, "dispatch_loads", loadId);
+      const sourceSnap = await getDoc(sourceRef);
+
+      if (!sourceSnap.exists()) {
+        toast.error("Load not found.");
+        return;
+      }
+
+      const sourceData = sourceSnap.data() as DispatchLoadRecord;
+      const duplicateRef = doc(collection(db, "dispatch_loads"));
+      const duplicateLoadNumber = buildLoadNumber(duplicateRef.id);
+      const duplicatedDocuments = (sourceData.documents || []).map((item) => ({
+        ...item,
+        id: `${item.id || "doc"}-${Date.now()}`,
+      }));
+      const duplicateNote = `Duplicate of ${sourceData.loadNumber || loadId}`;
+      const mergedDispatchNotes = sourceData.dispatchNotes
+        ? `${duplicateNote}. ${sourceData.dispatchNotes}`
+        : duplicateNote;
+
+      await setDoc(duplicateRef, {
+        ...sourceData,
+        loadNumber: duplicateLoadNumber,
+        status: "Draft",
+        isDuplicate: true,
+        duplicateOfLoadNumber: sourceData.loadNumber || loadId,
+        dispatchNotes: mergedDispatchNotes,
+        documents: duplicatedDocuments,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      await createHistoryEntry(
+        duplicateRef.id,
+        "duplicate-load",
+        `Load duplicated from ${sourceData.loadNumber || loadId}`,
+        {
+          sourceLoadId: loadId,
+          sourceLoadNumber: sourceData.loadNumber || loadId,
+        }
+      );
+
+      await createHistoryEntry(
+        loadId,
+        "duplicate-load",
+        `Duplicated as ${duplicateLoadNumber}`,
+        {
+          duplicateLoadId: duplicateRef.id,
+        }
+      );
+
+      toast.success("Load duplicated successfully.");
+      await fetchLoads();
+    } catch (error) {
+      GlobalToastError(error);
+    }
   };
 
   // --- Dropdown Handlers ---
@@ -411,8 +678,27 @@ export default function TruckDispatchScreen({
   };
 
   const handleAction = (action: string, loadId: string) => {
-    console.log(`${action} for load:`, loadId);
-    // Your action handlers
+    switch (action) {
+      case "upload-bol":
+        openUploadModal(loadId, "bol");
+        break;
+      case "upload-pod":
+        openUploadModal(loadId, "pod");
+        break;
+      case "history":
+        handleShowHistory(loadId);
+        break;
+      case "duplicate-load":
+        handleDuplicateLoad(loadId);
+        break;
+      case "email-log":
+      case "load-notes":
+        toast("This action will be connected later.");
+        break;
+      default:
+        toast("This action is not available yet.");
+        break;
+    }
   };
 
   if (!user) {
@@ -588,6 +874,11 @@ export default function TruckDispatchScreen({
                           <span className="text-sm font-semibold text-[#F96176]">
                             {load.loadNumber}
                           </span>
+                          {load.isDuplicate && (
+                            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700 border border-indigo-200">
+                              Duplicate
+                            </span>
+                          )}
                           <span className="text-xs text-gray-500">•</span>
                           <span className="text-sm text-gray-900">
                             {load.customer}
@@ -817,6 +1108,139 @@ export default function TruckDispatchScreen({
           )}
         </div>
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+        className="hidden"
+        onChange={(event) =>
+          setSelectedUploadFile(event.target.files?.[0] || null)
+        }
+      />
+
+      {uploadType && activeLoadId && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl border border-gray-200">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Upload {uploadType.toUpperCase()}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Upload image, PDF, Word, or Excel files.
+                </p>
+              </div>
+              <button
+                onClick={closeUploadModal}
+                className="p-2 rounded-md hover:bg-gray-100 text-gray-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full border border-dashed border-gray-300 rounded-lg px-4 py-8 text-center hover:border-[#F96176] hover:bg-rose-50/50 transition"
+              >
+                <FileUp className="w-8 h-8 mx-auto mb-2 text-[#F96176]" />
+                <div className="font-medium text-gray-900">Choose a file</div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {selectedUploadFile
+                    ? selectedUploadFile.name
+                    : "PNG, JPG, PDF, DOC, DOCX, XLS, XLSX"}
+                </div>
+              </button>
+
+              {selectedUploadFile && (
+                <div className="rounded-md bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                  <div className="font-medium">{selectedUploadFile.name}</div>
+                  <div className="text-gray-500">
+                    {(selectedUploadFile.size / 1024 / 1024).toFixed(2)} MB
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 p-5 border-t border-gray-200">
+              <button
+                onClick={closeUploadModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadDocument}
+                disabled={!selectedUploadFile || isUploadingDocument}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#F96176] rounded-md hover:bg-[#f74e66] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploadingDocument
+                  ? "Uploading..."
+                  : `Upload ${uploadType.toUpperCase()}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl border border-gray-200 max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Load History
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Recent actions for this load.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowHistoryModal(false);
+                  setHistoryItems([]);
+                }}
+                className="p-2 rounded-md hover:bg-gray-100 text-gray-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto max-h-[60vh]">
+              {isLoadingHistory ? (
+                <div className="text-sm text-gray-500">Loading history...</div>
+              ) : historyItems.length === 0 ? (
+                <div className="text-sm text-gray-500">
+                  No history available yet.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {historyItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-medium text-gray-900">
+                          {item.message}
+                        </div>
+                        <div className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatHistoryDate(item.createdAt?.seconds)}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
+                        {item.action}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

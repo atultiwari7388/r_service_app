@@ -2,7 +2,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { LoadData } from "../interface/loaddata";
+import { LoadData, Stop } from "../interface/loaddata";
 
 // ============================================================================
 // PDF PRINT WRAPPER COMPONENT
@@ -211,6 +211,20 @@ export const PdfLayout = ({
   );
 };
 
+const getPickupStop = (loadData: LoadData) =>
+  loadData.stops?.find((stop) => stop.type === "PICKUP");
+
+const getDeliveryStop = (loadData: LoadData) =>
+  loadData.stops?.find((stop) => stop.type === "DELIVERY");
+
+const getStopAddress = (stop?: Stop) =>
+  stop ? [stop.address, stop.cityStateZip].filter(Boolean).join(", ") || "-" : "-";
+
+const formatStopType = (stop?: Stop) => {
+  if (!stop) return "-";
+  return stop.type === "PICKUP" ? "Live Load" : "Live Unload";
+};
+
 // ============================================================================
 // RATE CONFIRMATION PDF TEMPLATE
 // ============================================================================
@@ -220,6 +234,9 @@ export const RateConfirmationPdfTemplate = ({
 }: {
   loadData: LoadData;
 }) => {
+  const pickupStop = getPickupStop(loadData);
+  const deliveryStop = getDeliveryStop(loadData);
+
   return (
     <PdfLayout
       title="RATE CONFIRMATION"
@@ -345,7 +362,7 @@ export const RateConfirmationPdfTemplate = ({
             Comments
           </h3>
           <p style={{ fontSize: "12px", margin: "0" }}>
-            Contact Information: Akash Gill
+            {loadData.dispatchNotes || loadData.customerLoadNotes || "-"}
           </p>
         </div>
 
@@ -367,7 +384,9 @@ export const RateConfirmationPdfTemplate = ({
             Equipment / Temperature
           </h3>
           <p style={{ fontSize: "12px", margin: "0" }}>
-            Reefer - Continuous - Temp: 0.00
+            {[loadData.equipmentType, loadData.temperature]
+              .filter(Boolean)
+              .join(" - ") || "-"}
           </p>
         </div>
 
@@ -400,11 +419,13 @@ export const RateConfirmationPdfTemplate = ({
             >
               <div>
                 <p style={{ fontSize: "12px", margin: "0 0 3px 0" }}>
-                  <strong>Date/Time:</strong> 11/15/2025 08:00 - 11/15/2025
-                  13:00
+                  <strong>Date/Time:</strong>{" "}
+                  {[pickupStop?.date, pickupStop?.timeWindow]
+                    .filter(Boolean)
+                    .join(" ") || "-"}
                 </p>
                 <p style={{ fontSize: "12px", margin: "0" }}>
-                  <strong>Pickup Type:</strong> Live Load
+                  <strong>Pickup Type:</strong> {formatStopType(pickupStop)}
                 </p>
               </div>
               <div>
@@ -415,10 +436,10 @@ export const RateConfirmationPdfTemplate = ({
                     margin: "0 0 3px 0",
                   }}
                 >
-                  FREEZE N STORE
+                  {pickupStop?.locationName || "-"}
                 </p>
                 <p style={{ fontSize: "12px", margin: "0" }}>
-                  311 West Sunset Avenue, Springdale, AR, 72764
+                  {getStopAddress(pickupStop)}
                 </p>
               </div>
             </div>
@@ -444,19 +465,20 @@ export const RateConfirmationPdfTemplate = ({
                 <strong>Pickup #:</strong> 1495378
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Qty:</strong> 2343 Pallets
+                <strong>Qty:</strong> {pickupStop?.qty || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Weight:</strong> 28975 lbs
+                <strong>Weight:</strong> {pickupStop?.weight || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Shipment BOL:</strong> 1495378
+                <strong>Shipment BOL:</strong> {pickupStop?.bolNumber || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>PO Number:</strong> 26420580, 26437650
+                <strong>PO Number:</strong>{" "}
+                {pickupStop?.poNumbers?.join(", ") || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0" }}>
-                <strong>Instructions:</strong> PU/SO #: 143547, 143597
+                <strong>Instructions:</strong> {pickupStop?.instructions || "-"}
               </p>
             </div>
           </div>
@@ -488,11 +510,13 @@ export const RateConfirmationPdfTemplate = ({
             >
               <div>
                 <p style={{ fontSize: "12px", margin: "0 0 3px 0" }}>
-                  <strong>Date/Time:</strong> 11/17/2025 09:00 - 11/17/2025
-                  09:00
+                  <strong>Date/Time:</strong>{" "}
+                  {[deliveryStop?.date, deliveryStop?.timeWindow]
+                    .filter(Boolean)
+                    .join(" ") || "-"}
                 </p>
                 <p style={{ fontSize: "12px", margin: "0" }}>
-                  <strong>Delivery Type:</strong> Live Unload
+                  <strong>Delivery Type:</strong> {formatStopType(deliveryStop)}
                 </p>
               </div>
               <div>
@@ -503,10 +527,10 @@ export const RateConfirmationPdfTemplate = ({
                     margin: "0 0 3px 0",
                   }}
                 >
-                  Sysco Food Service - Las Vegas
+                  {deliveryStop?.locationName || "-"}
                 </p>
                 <p style={{ fontSize: "12px", margin: "0" }}>
-                  6201 East Centennial Parkway, Las Vegas, NV, 89115
+                  {getStopAddress(deliveryStop)}
                 </p>
               </div>
             </div>
@@ -529,20 +553,21 @@ export const RateConfirmationPdfTemplate = ({
                 Location Notes:
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Qty:</strong> 2343 Pallets
+                <strong>Qty:</strong> {deliveryStop?.qty || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Weight:</strong> 28975 lbs
+                <strong>Weight:</strong> {deliveryStop?.weight || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>Shipment BOL:</strong> 1495378
+                <strong>Shipment BOL:</strong> {deliveryStop?.bolNumber || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0 0 2px 0" }}>
-                <strong>PO Number:</strong> 26420580, 26437650
+                <strong>PO Number:</strong>{" "}
+                {deliveryStop?.poNumbers?.join(", ") || "-"}
               </p>
               <p style={{ fontSize: "12px", margin: "0" }}>
-                <strong>Instructions:</strong> Delivery Conf. #:
-                CHK5551729519nov25 ApptRef# PU/SO #: 143547, 143597
+                <strong>Instructions:</strong>{" "}
+                {deliveryStop?.instructions || "-"}
               </p>
             </div>
           </div>
@@ -823,6 +848,9 @@ export const RateConfirmationPdfTemplate = ({
 // ============================================================================
 
 export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
+  const pickupStop = getPickupStop(loadData);
+  const deliveryStop = getDeliveryStop(loadData);
+
   return (
     <PdfLayout title="BILL OF LADING" footerText="ORIGINAL - NOT NEGOTIABLE">
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -855,16 +883,17 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
             </h3>
             <div style={{ fontSize: "12px", lineHeight: "1.6" }}>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Name:</strong> FREEZE N STORE
+                <strong>Name:</strong> {pickupStop?.locationName || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Address:</strong> 311 West Sunset Avenue
+                <strong>Address:</strong> {pickupStop?.address || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>City, State, ZIP:</strong> Springdale, AR 72764
+                <strong>City, State, ZIP:</strong>{" "}
+                {pickupStop?.cityStateZip || "-"}
               </p>
               <p style={{ margin: "0" }}>
-                <strong>Contact:</strong> Warehouse Manager
+                <strong>Contact:</strong> {pickupStop?.contact || "-"}
               </p>
             </div>
           </div>
@@ -889,16 +918,17 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
             </h3>
             <div style={{ fontSize: "12px", lineHeight: "1.6" }}>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Name:</strong> Sysco Food Service - Las Vegas
+                <strong>Name:</strong> {deliveryStop?.locationName || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Address:</strong> 6201 East Centennial Parkway
+                <strong>Address:</strong> {deliveryStop?.address || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>City, State, ZIP:</strong> Las Vegas, NV 89115
+                <strong>City, State, ZIP:</strong>{" "}
+                {deliveryStop?.cityStateZip || "-"}
               </p>
               <p style={{ margin: "0" }}>
-                <strong>Contact:</strong> Receiving Department
+                <strong>Contact:</strong> {deliveryStop?.contact || "-"}
               </p>
             </div>
           </div>
@@ -933,24 +963,24 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
           >
             <div>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>BOL #:</strong> {loadData.bolNumber || "1495378"}
+                <strong>BOL #:</strong> {loadData.bolNumber || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
                 <strong>Load #:</strong> {loadData.loadNumber}
               </p>
               <p style={{ margin: "0" }}>
                 <strong>PO #:</strong>{" "}
-                {loadData.poNumbers?.join(", ") || "26420580, 26437650"}
+                {loadData.poNumbers?.join(", ") || "-"}
               </p>
             </div>
             <div>
               <p style={{ margin: "0 0 5px 0" }}>
                 <strong>Pickup Date:</strong>{" "}
-                {loadData.pickupDate || "11/15/2025"}
+                {loadData.pickupDate || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
                 <strong>Delivery Date:</strong>{" "}
-                {loadData.deliveryDate || "11/17/2025"}
+                {loadData.deliveryDate || "-"}
               </p>
               <p style={{ margin: "0" }}>
                 <strong>Trailer #:</strong> {loadData.trailer}
@@ -958,14 +988,14 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
             </div>
             <div>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Seal #:</strong> {Math.random().toString().slice(2, 10)}
+                <strong>Seal #:</strong> {pickupStop?.appointmentRef || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Temperature:</strong> {loadData.temperature || "0.00°F"}
+                <strong>Temperature:</strong> {loadData.temperature || "-"}
               </p>
               <p style={{ margin: "0" }}>
                 <strong>Equipment:</strong>{" "}
-                {loadData.equipmentType || "Reefer - Continuous"}
+                {loadData.equipmentType || "-"}
               </p>
             </div>
           </div>
@@ -1228,6 +1258,8 @@ export const BolPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
 // ============================================================================
 
 export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
+  const stops = loadData.stops || [];
+
   return (
     <PdfLayout
       title="LOAD SHEET"
@@ -1483,154 +1515,210 @@ export const LoadSheetPdfTemplate = ({ loadData }: { loadData: LoadData }) => {
                 zIndex: "1",
               }}
             ></div>
+            {stops.map((stop, index) => {
+              const isPickup = stop.type === "PICKUP";
+              const accent = isPickup
+                ? {
+                    badgeBg: "#d1fae5",
+                    badgeText: "#065f46",
+                    cardBg: "#f0fdf4",
+                    title: "#065f46",
+                    circle: "#10b981",
+                  }
+                : {
+                    badgeBg: "#fee2e2",
+                    badgeText: "#991b1b",
+                    cardBg: "#fef2f2",
+                    title: "#991b1b",
+                    circle: "#dc2626",
+                  };
 
-            {/* Stop 1 - Pickup */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                marginBottom: "20px",
-                position: "relative",
-              }}
-            >
-              <div
-                style={{
-                  width: "50px",
-                  height: "50px",
-                  backgroundColor: "#10b981",
-                  color: "#ffffff",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: "10",
-                  flexShrink: "0",
-                }}
-              >
-                <span style={{ fontSize: "14px", fontWeight: "bold" }}>1</span>
-              </div>
-              <div
-                style={{
-                  marginLeft: "15px",
-                  flex: "1",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "4px",
-                  padding: "12px",
-                  backgroundColor: "#f0fdf4",
-                }}
-              >
+              return (
                 <div
+                  key={`${stop.type}-${stop.number}-${index}`}
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
+                    alignItems: "flex-start",
+                    marginBottom: index === stops.length - 1 ? "0" : "20px",
+                    position: "relative",
                   }}
                 >
-                  <h4
+                  <div
                     style={{
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                      color: "#065f46",
-                      margin: "0",
+                      width: "50px",
+                      height: "50px",
+                      backgroundColor: accent.circle,
+                      color: "#ffffff",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: "10",
+                      flexShrink: "0",
                     }}
                   >
-                    PICKUP
-                  </h4>
-                  <span
+                    <span style={{ fontSize: "14px", fontWeight: "bold" }}>
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div
                     style={{
-                      backgroundColor: "#d1fae5",
-                      color: "#065f46",
-                      fontSize: "10px",
-                      fontWeight: "bold",
-                      padding: "3px 8px",
-                      borderRadius: "12px",
+                      marginLeft: "15px",
+                      flex: "1",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "4px",
+                      padding: "12px",
+                      backgroundColor: accent.cardBg,
                     }}
                   >
-                    COMPLETED
-                  </span>
-                </div>
-                <p
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    margin: "0 0 5px 0",
-                  }}
-                >
-                  FREEZE N STORE
-                </p>
-                <p
-                  style={{
-                    fontSize: "11px",
-                    margin: "0 0 10px 0",
-                    color: "#666666",
-                  }}
-                >
-                  311 West Sunset Avenue, Springdale, AR 72764
-                </p>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "10px",
-                    fontSize: "10px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  <div>
-                    <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
-                      Date/Time:
-                    </p>
-                    <p style={{ fontWeight: "bold", margin: "0" }}>
-                      01/17/2025 09:00-21:00
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
-                      Contact:
-                    </p>
-                    <p style={{ fontWeight: "bold", margin: "0" }}>
-                      Warehouse Manager
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
-                      Temperature:
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <h4
+                        style={{
+                          fontSize: "14px",
+                          fontWeight: "bold",
+                          color: accent.title,
+                          margin: "0",
+                        }}
+                      >
+                        {stop.type}
+                      </h4>
+                      <span
+                        style={{
+                          backgroundColor: accent.badgeBg,
+                          color: accent.badgeText,
+                          fontSize: "10px",
+                          fontWeight: "bold",
+                          padding: "3px 8px",
+                          borderRadius: "12px",
+                        }}
+                      >
+                        {stop.status}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        margin: "0 0 5px 0",
+                      }}
+                    >
+                      {stop.locationName}
                     </p>
                     <p
                       style={{
-                        fontWeight: "bold",
-                        margin: "0",
-                        color: "#dc2626",
+                        fontSize: "11px",
+                        margin: "0 0 10px 0",
+                        color: "#666666",
                       }}
                     >
-                      -10°F
+                      {getStopAddress(stop)}
                     </p>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3, 1fr)",
+                        gap: "10px",
+                        fontSize: "10px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <div>
+                        <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
+                          Date/Time:
+                        </p>
+                        <p style={{ fontWeight: "bold", margin: "0" }}>
+                          {[stop.date, stop.timeWindow].filter(Boolean).join(" ")}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
+                          Contact:
+                        </p>
+                        <p style={{ fontWeight: "bold", margin: "0" }}>
+                          {stop.contact || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
+                          Temperature:
+                        </p>
+                        <p
+                          style={{
+                            fontWeight: "bold",
+                            margin: "0",
+                            color: "#dc2626",
+                          }}
+                        >
+                          {stop.temp || loadData.temperature || "-"}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(3, 1fr)",
+                        gap: "10px",
+                        fontSize: "10px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <div>
+                        <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
+                          Qty:
+                        </p>
+                        <p style={{ fontWeight: "bold", margin: "0" }}>
+                          {stop.qty || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
+                          Weight:
+                        </p>
+                        <p style={{ fontWeight: "bold", margin: "0" }}>
+                          {stop.weight || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ color: "#666666", margin: "0 0 2px 0" }}>
+                          Ref #:
+                        </p>
+                        <p style={{ fontWeight: "bold", margin: "0" }}>
+                          {stop.puNumber || stop.soNumber || stop.appointmentRef || "-"}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        backgroundColor: "#ffffff",
+                        padding: "8px",
+                        borderRadius: "4px",
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: "bold",
+                          margin: "0 0 3px 0",
+                        }}
+                      >
+                        Instructions:
+                      </p>
+                      <p style={{ fontSize: "10px", margin: "0" }}>
+                        {stop.instructions || "-"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div
-                  style={{
-                    backgroundColor: "#ffffff",
-                    padding: "8px",
-                    borderRadius: "4px",
-                    border: "1px solid #e5e7eb",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: "bold",
-                      margin: "0 0 3px 0",
-                    }}
-                  >
-                    Instructions:
-                  </p>
-                  <p style={{ fontSize: "10px", margin: "0" }}>
-                    Check in at Guard Shack. PU/SO #: 143547, 143597
-                  </p>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1647,6 +1735,9 @@ export const DriverSheetPdfTemplate = ({
 }: {
   loadData: LoadData;
 }) => {
+  const pickupStop = getPickupStop(loadData);
+  const deliveryStop = getDeliveryStop(loadData);
+
   return (
     <PdfLayout
       title="DRIVER SHEET"
@@ -1789,7 +1880,7 @@ export const DriverSheetPdfTemplate = ({
                   color: "#000000",
                 }}
               >
-                {Math.random().toString().slice(2, 10)}
+                {pickupStop?.appointmentRef || pickupStop?.puNumber || "-"}
               </p>
             </div>
           </div>
@@ -1844,13 +1935,13 @@ export const DriverSheetPdfTemplate = ({
                 <strong>Weight:</strong> {loadData.weight} lbs
               </p>
               <p style={{ margin: "0" }}>
-                <strong>Temperature:</strong> {loadData.temperature || "0.00°F"}
+                <strong>Temperature:</strong> {loadData.temperature || "-"}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Emergency & Contacts */}
+        {/* Dispatch / Load Summary */}
         <div
           style={{
             border: "1px solid #cccccc",
@@ -1868,12 +1959,12 @@ export const DriverSheetPdfTemplate = ({
               color: "#F96176", // Pink heading color
             }}
           >
-            EMERGENCY & CONTACTS
+            DISPATCH / LOAD SUMMARY
           </h3>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "1fr 1fr 1fr",
               gap: "20px",
               fontSize: "12px",
             }}
@@ -1890,8 +1981,10 @@ export const DriverSheetPdfTemplate = ({
                 DISPATCH
               </p>
               <p style={{ margin: "0 0 3px 0" }}>{loadData.dispatcher}</p>
-              <p style={{ margin: "0 0 3px 0" }}>Phone: (XXX) XXX-XXXX</p>
-              <p style={{ margin: "0" }}>Available: 24/7</p>
+              <p style={{ margin: "0 0 3px 0" }}>
+                Driver: {loadData.driver || "-"}
+              </p>
+              <p style={{ margin: "0" }}>Status: {loadData.status}</p>
             </div>
             <div>
               <p
@@ -1905,8 +1998,117 @@ export const DriverSheetPdfTemplate = ({
                 CARRIER
               </p>
               <p style={{ margin: "0 0 3px 0" }}>{loadData.carrier}</p>
-              <p style={{ margin: "0 0 3px 0" }}>Satbir Rai: 661-487-3531</p>
-              <p style={{ margin: "0" }}>Emergency: 911</p>
+              <p style={{ margin: "0 0 3px 0" }}>
+                Rate: {loadData.primaryFees}
+              </p>
+              <p style={{ margin: "0" }}>Miles: {loadData.tenderedMiles}</p>
+            </div>
+            <div>
+              <p
+                style={{
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  color: "#dc2626",
+                  margin: "0 0 5px 0",
+                }}
+              >
+                LOAD DETAILS
+              </p>
+              <p style={{ margin: "0 0 3px 0" }}>
+                Commodity: {loadData.commodity || "-"}
+              </p>
+              <p style={{ margin: "0 0 3px 0" }}>
+                Qty: {loadData.quantity || "-"}
+              </p>
+              <p style={{ margin: "0" }}>
+                Weight: {loadData.weight || "-"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            border: "1px solid #cccccc",
+            padding: "12px",
+            borderRadius: "4px",
+          }}
+        >
+          <h3
+            style={{
+              fontSize: "14px",
+              fontWeight: "bold",
+              borderBottom: "1px solid #cccccc",
+              paddingBottom: "5px",
+              margin: "0 0 10px 0",
+              color: "#F96176",
+            }}
+          >
+            PICKUP / DELIVERY
+          </h3>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "16px",
+              fontSize: "12px",
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "4px",
+                padding: "10px",
+                backgroundColor: "#f8fafc",
+              }}
+            >
+              <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#065f46" }}>
+                PICKUP
+              </p>
+              <p style={{ margin: "0 0 4px 0" }}>{pickupStop?.locationName || "-"}</p>
+              <p style={{ margin: "0 0 4px 0", color: "#666666" }}>
+                {getStopAddress(pickupStop)}
+              </p>
+              <p style={{ margin: "0 0 4px 0" }}>
+                {pickupStop
+                  ? [pickupStop.date, pickupStop.timeWindow].filter(Boolean).join(" ")
+                  : "-"}
+              </p>
+              <p style={{ margin: "0 0 4px 0" }}>
+                Ref: {pickupStop?.puNumber || pickupStop?.appointmentRef || "-"}
+              </p>
+              <p style={{ margin: "0" }}>
+                {pickupStop?.instructions || "-"}
+              </p>
+            </div>
+            <div
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "4px",
+                padding: "10px",
+                backgroundColor: "#fff7ed",
+              }}
+            >
+              <p style={{ margin: "0 0 6px 0", fontWeight: "bold", color: "#9a3412" }}>
+                DELIVERY
+              </p>
+              <p style={{ margin: "0 0 4px 0" }}>{deliveryStop?.locationName || "-"}</p>
+              <p style={{ margin: "0 0 4px 0", color: "#666666" }}>
+                {getStopAddress(deliveryStop)}
+              </p>
+              <p style={{ margin: "0 0 4px 0" }}>
+                {deliveryStop
+                  ? [deliveryStop.date, deliveryStop.timeWindow]
+                      .filter(Boolean)
+                      .join(" ")
+                  : "-"}
+              </p>
+              <p style={{ margin: "0 0 4px 0" }}>
+                Ref: {deliveryStop?.soNumber || deliveryStop?.appointmentRef || "-"}
+              </p>
+              <p style={{ margin: "0" }}>
+                {deliveryStop?.instructions || "-"}
+              </p>
             </div>
           </div>
         </div>
@@ -1923,6 +2125,8 @@ export const ProofOfDeliveryPdfTemplate = ({
 }: {
   loadData: LoadData;
 }) => {
+  const deliveryStop = getDeliveryStop(loadData);
+
   return (
     <PdfLayout
       title="PROOF OF DELIVERY"
@@ -1991,23 +2195,22 @@ export const ProofOfDeliveryPdfTemplate = ({
             </h3>
             <div style={{ fontSize: "12px", lineHeight: "1.6" }}>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Receiver:</strong> Technology Center
+                <strong>Receiver:</strong> {deliveryStop?.locationName || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Address:</strong> Technology Drive, Future Products, CA
-                90210
+                <strong>Address:</strong> {getStopAddress(deliveryStop)}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Date Received:</strong> 01/17/2025
+                <strong>Date Received:</strong> {deliveryStop?.date || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Time Received:</strong> 09:15 AM
+                <strong>Time Received:</strong> {deliveryStop?.timeWindow || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Received By:</strong> John Doe
+                <strong>Received By:</strong> {deliveryStop?.contact || "-"}
               </p>
               <p style={{ margin: "0" }}>
-                <strong>Receiver Title:</strong> Warehouse Supervisor
+                <strong>Receiver Title:</strong> Receiver
               </p>
             </div>
           </div>
@@ -2035,7 +2238,7 @@ export const ProofOfDeliveryPdfTemplate = ({
                 <strong>Load #:</strong> {loadData.loadNumber}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
-                <strong>BOL #:</strong> {loadData.bolNumber || "1495378"}
+                <strong>BOL #:</strong> {loadData.bolNumber || "-"}
               </p>
               <p style={{ margin: "0 0 5px 0" }}>
                 <strong>Carrier:</strong> {loadData.carrier}
@@ -2047,7 +2250,7 @@ export const ProofOfDeliveryPdfTemplate = ({
                 <strong>Trailer #:</strong> {loadData.trailer}
               </p>
               <p style={{ margin: "0" }}>
-                <strong>Seal #:</strong> {Math.random().toString().slice(2, 10)}
+                <strong>Seal #:</strong> {deliveryStop?.appointmentRef || "-"}
               </p>
             </div>
           </div>
