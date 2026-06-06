@@ -29,6 +29,7 @@ import {
   Fuel,
   Shield,
 } from "lucide-react";
+import { useJsApiLoader } from "@react-google-maps/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
@@ -200,6 +201,8 @@ interface Calculations {
   margin: number;
 }
 
+const GOOGLE_LIBRARIES: "places"[] = ["places"];
+
 const createEmptyStop = (id: number): Stop => ({
   id,
   company: "",
@@ -309,17 +312,13 @@ const normalizeStops = (
       typeof stop.qtyType === "string" && stop.qtyType.length > 0
         ? stop.qtyType
         : "pallets",
-    type:
-      stop.type === "Appt" || stop.type === "Window" ? stop.type : "FCFS",
+    type: stop.type === "Appt" || stop.type === "Window" ? stop.type : "FCFS",
     hasAppointment:
-      typeof stop.hasAppointment === "boolean"
-        ? stop.hasAppointment
-        : false,
+      typeof stop.hasAppointment === "boolean" ? stop.hasAppointment : false,
     pickupNumber:
       stop.pickupNumber || stop.pickup || stop.customerLoadRefConf || "",
     loadNumber: stop.loadNumber || "",
-    pickup:
-      stop.pickup || stop.pickupNumber || stop.customerLoadRefConf || "",
+    pickup: stop.pickup || stop.pickupNumber || stop.customerLoadRefConf || "",
     company: stop.company || "",
     address: stop.address || "",
     notes: stop.notes || "",
@@ -858,6 +857,7 @@ function CreateNewLoadPageContent() {
   const [isResolvingUser, setIsResolvingUser] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditLoadLoading, setIsEditLoadLoading] = useState(false);
+  const [isCalculatingMiles, setIsCalculatingMiles] = useState(false);
   const [editingLoadId, setEditingLoadId] = useState<string | null>(null);
   const [existingLoadNumber, setExistingLoadNumber] = useState("");
   const [existingCreatedAt, setExistingCreatedAt] = useState<unknown>(null);
@@ -887,6 +887,13 @@ function CreateNewLoadPageContent() {
   const [driverVehiclesById, setDriverVehiclesById] = useState<
     Record<string, AssignedVehicle[]>
   >({});
+  const lastCalculatedRouteRef = useRef("");
+  const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || "";
+  const { isLoaded: isGoogleMapsLoaded } = useJsApiLoader({
+    id: "script-loader",
+    googleMapsApiKey: googleApiKey,
+    libraries: GOOGLE_LIBRARIES,
+  });
 
   const [formData, setFormData] = useState<FormData>(createInitialFormData);
 
@@ -1391,7 +1398,10 @@ function CreateNewLoadPageContent() {
           totalCustomerRate: Number(data.totalCustomerRate || 0),
           totalCarrierPay: Number(data.totalCarrierPay || 0),
           carrierPay: Number(data.carrierPay || 0),
-          pickups: normalizeStops(data.pickups as Partial<Stop>[] | undefined, "pickups"),
+          pickups: normalizeStops(
+            data.pickups as Partial<Stop>[] | undefined,
+            "pickups"
+          ),
           deliveries: normalizeStops(
             data.deliveries as Partial<Stop>[] | undefined,
             "deliveries"
@@ -1442,7 +1452,9 @@ function CreateNewLoadPageContent() {
         ? formData.status || "Draft"
         : overrideStatus || formData.status || "Draft";
       const loadsRef = collection(db, "dispatch_loads");
-      const loadRef = editingLoadId ? doc(db, "dispatch_loads", editingLoadId) : doc(loadsRef);
+      const loadRef = editingLoadId
+        ? doc(db, "dispatch_loads", editingLoadId)
+        : doc(loadsRef);
       const resolvedLoadNumber =
         editingLoadId && existingLoadNumber
           ? existingLoadNumber
@@ -1462,7 +1474,9 @@ function CreateNewLoadPageContent() {
         documents,
         currentUserId: user.uid,
         effectiveUserId,
-        createdAt: editingLoadId ? existingCreatedAt || serverTimestamp() : serverTimestamp(),
+        createdAt: editingLoadId
+          ? existingCreatedAt || serverTimestamp()
+          : serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
@@ -1521,7 +1535,17 @@ function CreateNewLoadPageContent() {
   ) => {
     const newFormData = { ...formData };
     newFormData[section] = newFormData[section].map((item) =>
-      item.id === id ? { ...item, [field]: value } : item
+      item.id === id
+        ? {
+            ...item,
+            [field]: value,
+            ...(field === "company" && typeof value === "string"
+              ? {
+                  address: shipperConsigneeAddressByName[value] || item.address,
+                }
+              : {}),
+          }
+        : item
     );
 
     // Auto-fill delivery fields when pickup fields are changed (only for the first pickup)
@@ -1547,6 +1571,117 @@ function CreateNewLoadPageContent() {
 
     setFormData(newFormData);
   };
+
+  const getResolvedStopAddress = useCallback(
+    (stop?: Stop) => {
+      if (!stop) return "";
+
+      const directAddress = (stop.address || "").trim();
+      if (directAddress) return directAddress;
+
+      return shipperConsigneeAddressByName[stop.company]?.trim() || "";
+    },
+    [shipperConsigneeAddressByName]
+  );
+
+  const calculateTenderedMiles = useCallback(
+    async (originAddress: string, destinationAddress: string) => {
+      if (!googleApiKey || !isGoogleMapsLoaded || !window.google?.maps) {
+        return null;
+      }
+
+      const service = new window.google.maps.DistanceMatrixService();
+
+      return new Promise<string | null>((resolve, reject) => {
+        service.getDistanceMatrix(
+          {
+            origins: [originAddress],
+            destinations: [destinationAddress],
+            travelMode: window.google.maps.TravelMode.DRIVING,
+            unitSystem: window.google.maps.UnitSystem.IMPERIAL,
+          },
+          (result, status) => {
+            if (status !== "OK") {
+              reject(new Error("Distance service is unavailable."));
+              return;
+            }
+
+            const distanceValue =
+              result?.rows?.[0]?.elements?.[0]?.distance?.value;
+
+            if (typeof distanceValue !== "number") {
+              resolve(null);
+              return;
+            }
+
+            const miles = distanceValue * 0.000621371;
+            resolve(String(Math.round(miles)));
+          }
+        );
+      });
+    },
+    [googleApiKey, isGoogleMapsLoaded]
+  );
+
+  useEffect(() => {
+    const firstPickup = formData.pickups[0];
+    const lastDelivery = formData.deliveries[formData.deliveries.length - 1];
+    const originAddress = getResolvedStopAddress(firstPickup);
+    const destinationAddress = getResolvedStopAddress(lastDelivery);
+
+    if (!originAddress || !destinationAddress) {
+      lastCalculatedRouteRef.current = "";
+      setIsCalculatingMiles(false);
+      return;
+    }
+
+    const routeKey = `${originAddress}__${destinationAddress}`;
+    if (lastCalculatedRouteRef.current === routeKey) return;
+
+    let isActive = true;
+
+    const run = async () => {
+      setIsCalculatingMiles(true);
+
+      try {
+        const miles = await calculateTenderedMiles(
+          originAddress,
+          destinationAddress
+        );
+
+        if (!isActive) return;
+
+        lastCalculatedRouteRef.current = routeKey;
+
+        if (miles) {
+          setFormData((prev) => ({
+            ...prev,
+            tenderedMiles: miles,
+          }));
+        }
+      } catch (error) {
+        if (isActive) {
+          lastCalculatedRouteRef.current = "";
+          console.error("Failed to auto-calculate tendered miles:", error);
+        }
+      } finally {
+        if (isActive) {
+          setIsCalculatingMiles(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    calculateTenderedMiles,
+    formData.deliveries,
+    formData.pickups,
+    getResolvedStopAddress,
+  ]);
 
   const addStop = (section: "pickups" | "deliveries") => {
     const newId =
@@ -1800,7 +1935,10 @@ function CreateNewLoadPageContent() {
                   <button
                     onClick={() => handleSaveLoad("Draft")}
                     disabled={
-                      isSaving || isLoading || isResolvingUser || isEditLoadLoading
+                      isSaving ||
+                      isLoading ||
+                      isResolvingUser ||
+                      isEditLoadLoading
                     }
                     className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   >
@@ -1813,7 +1951,10 @@ function CreateNewLoadPageContent() {
                     editingLoadId ? handleSaveLoad() : handleSaveLoad("Posted")
                   }
                   disabled={
-                    isSaving || isLoading || isResolvingUser || isEditLoadLoading
+                    isSaving ||
+                    isLoading ||
+                    isResolvingUser ||
+                    isEditLoadLoading
                   }
                   className="px-4 py-2 bg-[#F96176] text-white rounded-md hover:bg-[#F96176] shadow-md flex items-center justify-center gap-2 font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
@@ -2205,9 +2346,17 @@ function CreateNewLoadPageContent() {
                       name="tenderedMiles"
                       value={formData.tenderedMiles}
                       onChange={handleInputChange}
-                      placeholder="Enter miles"
+                      placeholder={
+                        isCalculatingMiles
+                          ? "Calculating miles..."
+                          : "Enter miles"
+                      }
                       icon={MapPin}
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Auto-calculated from the first pickup and last delivery
+                      address.
+                    </p>
                   </div>
 
                   {/* Internal Notes - Full width */}
