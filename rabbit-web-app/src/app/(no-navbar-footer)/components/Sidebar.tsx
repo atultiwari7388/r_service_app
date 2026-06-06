@@ -27,11 +27,6 @@ const NAV_ITEMS: {
     icon: <Truck size={20} />,
   },
   {
-    key: "carriers",
-    label: "Carriers",
-    icon: <Users size={20} />,
-  },
-  {
     key: "create-new-load",
     label: "Create New Load",
     icon: <Truck size={20} />,
