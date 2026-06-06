@@ -56,7 +56,8 @@ interface LoadData {
   duplicateOfLoadNumber?: string;
   customer: string;
   type: "FTL" | "LTL" | "Reefer" | "Flatbed" | "Dry Van";
-  status:
+  status: string;
+  statusGroup:
     | "Booked"
     | "Pre-Planned"
     | "Ready"
@@ -152,6 +153,33 @@ interface VehicleRecord {
   vehicleNumber?: string;
   companyName?: string;
 }
+
+const resolveStatusGroup = (
+  status?: string
+): LoadData["statusGroup"] => {
+  switch (status) {
+    case "Draft":
+      return "Pre-Planned";
+    case "Posted":
+      return "Booked";
+    case "Assigned":
+      return "Ready";
+    case "In Transit":
+      return "Active";
+    case "Delivered":
+    case "Completed Toun":
+      return "Completed";
+    case "Booked":
+    case "Pre-Planned":
+    case "Ready":
+    case "Active":
+    case "Completed":
+    case "Missing BOL":
+      return status;
+    default:
+      return "Booked";
+  }
+};
 
 export default function TruckDispatchScreen({
   onMenuClick,
@@ -331,12 +359,8 @@ export default function TruckDispatchScreen({
           Number(record.tonu || 0) +
           Number(record.accessorials || 0);
         const carrierPay = Number(record.totalCarrierPay || 0);
-        const mappedStatus =
-          record.status === "Posted"
-            ? "Booked"
-            : record.status === "Draft"
-            ? "Pre-Planned"
-            : record.status || "Booked";
+        const status = record.status || "Draft";
+        const statusGroup = resolveStatusGroup(status);
         return {
           id: record.id,
           loadNumber: record.loadNumber || "LD-DRAFT",
@@ -344,7 +368,8 @@ export default function TruckDispatchScreen({
           duplicateOfLoadNumber: record.duplicateOfLoadNumber || "",
           customer: record.customerName || "-",
           type: (record.type as LoadData["type"]) || "FTL",
-          status: mappedStatus as LoadData["status"],
+          status,
+          statusGroup,
           truck:
             (record.truckId && vehicleMap[record.truckId]) ||
             record.truckId ||
@@ -367,7 +392,7 @@ export default function TruckDispatchScreen({
           profit: Number(
             (record.totalCustomerRate || revenue || 0) - carrierPay
           ),
-          progress: mappedStatus === "Completed" ? 100 : 0,
+          progress: statusGroup === "Completed" ? 100 : 0,
           quantity: Math.max(pickups.length, deliveries.length, 1),
           specialInstructions: record.dispatchNotes || "",
           documents: record.documents?.length || 0,
@@ -412,16 +437,16 @@ export default function TruckDispatchScreen({
     count:
       tab.id === "all"
         ? allLoads.length
-        : allLoads.filter((item) => item.status === tabStatusMap[tab.id])
+        : allLoads.filter((item) => item.statusGroup === tabStatusMap[tab.id])
             .length,
     color: "",
     bgColor: "",
   }));
   const activeLoadsCount = allLoads.filter(
-    (item) => item.status === "Active"
+    (item) => item.statusGroup === "Active"
   ).length;
   const readyLoadsCount = allLoads.filter((item) =>
-    ["Ready", "Booked", "Posted", "Draft"].includes(item.status)
+    ["Ready", "Booked", "Pre-Planned"].includes(item.statusGroup)
   ).length;
   const totalRateAmount = allLoads.reduce(
     (sum, item) => sum + Number(item.rate || 0),
@@ -431,7 +456,7 @@ export default function TruckDispatchScreen({
   // --- Filter Loads ---
   const filteredLoads = allLoads.filter((load) => {
     if (activeTab !== "all") {
-      if (load.status !== tabStatusMap[activeTab]) return false;
+      if (load.statusGroup !== tabStatusMap[activeTab]) return false;
     }
 
     if (searchQuery) {
@@ -1477,6 +1502,14 @@ const TabNavigation: React.FC<{
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const getStatusConfig = (status: string) => {
     switch (status) {
+      case "Draft":
+        return {
+          bg: "bg-violet-50",
+          text: "text-violet-700",
+          border: "border-violet-200",
+          icon: <Clock className="w-3 h-3" />,
+        };
+      case "Posted":
       case "Booked":
         return {
           bg: "bg-amber-50",
@@ -1492,12 +1525,14 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
           icon: <Clock className="w-3 h-3" />,
         };
       case "Ready":
+      case "Assigned":
         return {
           bg: "bg-emerald-50",
           text: "text-emerald-700",
           border: "border-emerald-200",
           icon: <CheckCircle className="w-3 h-3" />,
         };
+      case "In Transit":
       case "Active":
         return {
           bg: "bg-[#F96176]/10",
@@ -1505,12 +1540,21 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
           border: "border-[#F96176]/20",
           icon: <Truck className="w-3 h-3" />,
         };
+      case "Delivered":
+      case "Completed Toun":
       case "Completed":
         return {
           bg: "bg-green-50",
           text: "text-green-700",
           border: "border-green-200",
           icon: <CheckCircle className="w-3 h-3" />,
+        };
+      case "Cancelled":
+        return {
+          bg: "bg-slate-100",
+          text: "text-slate-700",
+          border: "border-slate-200",
+          icon: <PauseCircle className="w-3 h-3" />,
         };
       case "Missing BOL":
         return {

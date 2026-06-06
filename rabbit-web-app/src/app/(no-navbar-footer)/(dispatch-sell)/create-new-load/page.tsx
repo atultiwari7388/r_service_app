@@ -1429,7 +1429,7 @@ function CreateNewLoadPageContent() {
     fetchEditableLoad();
   }, [editId, router]);
 
-  const handleSaveLoad = async (status: "Draft" | "Posted") => {
+  const handleSaveLoad = async (overrideStatus?: "Draft" | "Posted") => {
     if (!user?.uid || !effectiveUserId) {
       toast.error("Please login to save this load.");
       return;
@@ -1438,6 +1438,9 @@ function CreateNewLoadPageContent() {
     setIsSaving(true);
 
     try {
+      const statusToSave = editingLoadId
+        ? formData.status || "Draft"
+        : overrideStatus || formData.status || "Draft";
       const loadsRef = collection(db, "dispatch_loads");
       const loadRef = editingLoadId ? doc(db, "dispatch_loads", editingLoadId) : doc(loadsRef);
       const resolvedLoadNumber =
@@ -1455,7 +1458,7 @@ function CreateNewLoadPageContent() {
       await setDoc(loadRef, {
         ...formData,
         loadNumber: resolvedLoadNumber,
-        status,
+        status: statusToSave,
         documents,
         currentUserId: user.uid,
         effectiveUserId,
@@ -1465,10 +1468,8 @@ function CreateNewLoadPageContent() {
 
       toast.success(
         editingLoadId
-          ? status === "Draft"
-            ? "Load draft updated successfully."
-            : "Load updated successfully."
-          : status === "Draft"
+          ? "Load updated successfully."
+          : statusToSave === "Draft"
           ? "Load saved as draft successfully."
           : "Load created successfully."
       );
@@ -1795,22 +1796,22 @@ function CreateNewLoadPageContent() {
                 >
                   <X className="w-4 h-4" /> Cancel
                 </button>
+                {!editingLoadId && (
+                  <button
+                    onClick={() => handleSaveLoad("Draft")}
+                    disabled={
+                      isSaving || isLoading || isResolvingUser || isEditLoadLoading
+                    }
+                    className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <Save className="w-4 h-4" />{" "}
+                    {isSaving ? "Saving..." : "Save Draft"}
+                  </button>
+                )}
                 <button
-                  onClick={() => handleSaveLoad("Draft")}
-                  disabled={
-                    isSaving || isLoading || isResolvingUser || isEditLoadLoading
+                  onClick={() =>
+                    editingLoadId ? handleSaveLoad() : handleSaveLoad("Posted")
                   }
-                  className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center gap-2 font-medium text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <Save className="w-4 h-4" />{" "}
-                  {isSaving
-                    ? "Saving..."
-                    : editingLoadId
-                    ? "Update Draft"
-                    : "Save Draft"}
-                </button>
-                <button
-                  onClick={() => handleSaveLoad("Posted")}
                   disabled={
                     isSaving || isLoading || isResolvingUser || isEditLoadLoading
                   }
@@ -1820,7 +1821,7 @@ function CreateNewLoadPageContent() {
                   {isSaving
                     ? "Saving..."
                     : editingLoadId
-                    ? "Update & Post"
+                    ? "Update Load"
                     : "Create & Post"}
                 </button>
               </div>
