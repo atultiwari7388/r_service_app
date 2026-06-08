@@ -6,9 +6,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:printing/printing.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/truck_disptach_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -217,18 +220,73 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     return (_loadData?['status'] ?? widget.load.rawStatus).toString();
   }
 
+  int _timestampSeconds(dynamic value) {
+    if (value is Timestamp) return value.seconds;
+    if (value is Map) {
+      final seconds = value['seconds'];
+      if (seconds is int) return seconds;
+      if (seconds is num) return seconds.toInt();
+    }
+    return 0;
+  }
+
+  String _createdAtLabel(dynamic value) {
+    final seconds = _timestampSeconds(value);
+    if (seconds <= 0) return '';
+    return DateFormat('MMM d, y • h:mm a').format(
+      DateTime.fromMillisecondsSinceEpoch(seconds * 1000),
+    );
+  }
+
+  bool _isPdfDocument(Map<String, dynamic> doc) {
+    final type = (doc['type'] ?? '').toString().toLowerCase();
+    final mimeType = (doc['mimeType'] ?? '').toString().toLowerCase();
+    final name = (doc['name'] ?? '').toString().toLowerCase();
+    return type.contains('pdf') ||
+        mimeType.contains('pdf') ||
+        name.endsWith('.pdf');
+  }
+
+  bool _isImageDocument(Map<String, dynamic> doc) {
+    final type = (doc['type'] ?? '').toString().toLowerCase();
+    final mimeType = (doc['mimeType'] ?? '').toString().toLowerCase();
+    final name = (doc['name'] ?? '').toString().toLowerCase();
+    return mimeType.startsWith('image/') ||
+        type.contains('image') ||
+        name.endsWith('.png') ||
+        name.endsWith('.jpg') ||
+        name.endsWith('.jpeg') ||
+        name.endsWith('.webp');
+  }
+
+  String _shortDocumentName(String value, {int maxLength = 24}) {
+    final trimmed = value.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return '${trimmed.substring(0, maxLength)}...';
+  }
+
   List<Map<String, dynamic>> _documents() {
     final docs = (_loadData?['documents'] as List<dynamic>? ?? []);
     return docs.map((item) => Map<String, dynamic>.from(item as Map)).toList()
       ..sort((a, b) {
-        final aSeconds = (a['createdAt'] as Timestamp?)?.seconds ?? 0;
-        final bSeconds = (b['createdAt'] as Timestamp?)?.seconds ?? 0;
+        final aSeconds = _timestampSeconds(a['createdAt']);
+        final bSeconds = _timestampSeconds(b['createdAt']);
         return bSeconds.compareTo(aSeconds);
       });
   }
 
   List<Map<String, String>> _notes() {
     final notes = <Map<String, String>>[];
+    final customerLoadNotes =
+        (_loadData?['customerLoadNotes'] ?? '').toString().trim();
+    if (customerLoadNotes.isNotEmpty) {
+      notes.add({
+        'title': 'Customer Load Notes',
+        'content': customerLoadNotes,
+        'time': _dateTimeLabel(_loadData?['updatedAt']),
+      });
+    }
+
     final dispatchNotes = (_loadData?['dispatchNotes'] ?? '').toString().trim();
     if (dispatchNotes.isNotEmpty) {
       notes.add({
@@ -384,6 +442,121 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _viewDocument(Map<String, dynamic> doc) async {
+    final url = (doc['url'] ?? '').toString().trim();
+    if (url.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preview is not available for this document.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.8,
+            color: Colors.white,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          (doc['name'] ?? 'Document Preview').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: kDark,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: kDark),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: _isImageDocument(doc)
+                      ? Container(
+                          color: Colors.black,
+                          child: PhotoView(
+                            imageProvider: NetworkImage(url),
+                            backgroundDecoration:
+                                const BoxDecoration(color: Colors.black),
+                          ),
+                        )
+                      : _isPdfDocument(doc)
+                          ? PdfPreview(
+                              build: (format) async {
+                                final data = await NetworkAssetBundle(
+                                  Uri.parse(url),
+                                ).load(url);
+                                return data.buffer.asUint8List();
+                              },
+                              canChangePageFormat: false,
+                              canChangeOrientation: false,
+                              canDebug: false,
+                              allowPrinting: false,
+                              allowSharing: false,
+                            )
+                          : Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.insert_drive_file_outlined,
+                                      size: 56,
+                                      color: kPrimary,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'Preview is only available for PDF and image files.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: kDark,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: () => _downloadDocument(doc),
+                                      icon: const Icon(Icons.download_rounded),
+                                      label: const Text('Open File'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: kPrimary,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -821,9 +994,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 uploaderRole == 'driver' ? 'Driver Upload' : 'Admin Upload';
             final createdAt = doc['createdAt'];
             final fileSize = (doc['size'] as num?)?.toInt() ?? 0;
-            final createdAtLabel = createdAt is Timestamp
-                ? DateFormat('MMM d, y • h:mm a').format(createdAt.toDate())
-                : '';
+            final createdAtLabel = _createdAtLabel(createdAt);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -831,58 +1002,72 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _getFileTypeColor((doc['type'] ?? '').toString()),
-                    borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _getFileTypeColor((doc['type'] ?? '').toString()),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: _getFileTypeIcon((doc['type'] ?? '').toString()),
                   ),
-                  child: _getFileTypeIcon((doc['type'] ?? '').toString()),
-                ),
-                title: Text(
-                  (doc['name'] ?? 'Document').toString(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  '${(doc['type'] ?? 'Document').toString()} • ${_formatFileSize(fileSize)}${createdAtLabel.isNotEmpty ? '\n$createdAtLabel' : ''}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
+                  title: Text(
+                    _shortDocumentName(
+                      (doc['name'] ?? 'Document').toString(),
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: uploaderRole == 'driver'
-                              ? Colors.green.withOpacity(0.1)
-                              : kPrimary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          uploaderLabel,
-                          style: TextStyle(
+                  // subtitle: Text(
+                  //   '${(doc['type'] ?? 'Document').toString()} • ${_formatFileSize(fileSize)}${createdAtLabel.isNotEmpty ? '\n$createdAtLabel' : ''}',
+                  //   style: TextStyle(
+                  //     color: Colors.grey[600],
+                  //   ),
+                  // ),
+                  trailing: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 2,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
                             color: uploaderRole == 'driver'
-                                ? Colors.green
-                                : kPrimary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                                ? Colors.green.withOpacity(0.1)
+                                : kPrimary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            uploaderLabel,
+                            style: TextStyle(
+                              color: uploaderRole == 'driver'
+                                  ? Colors.green
+                                  : kPrimary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.download_rounded, color: kPrimary),
-                      onPressed: () => _downloadDocument(doc),
-                    ),
-                  ],
+                      IconButton(
+                        icon: const Icon(Icons.remove_red_eye_outlined,
+                            color: kDark),
+                        tooltip: 'Preview',
+                        onPressed: () => _viewDocument(doc),
+                      ),
+                      IconButton(
+                        icon:
+                            const Icon(Icons.download_rounded, color: kPrimary),
+                        tooltip: 'Download',
+                        onPressed: () => _downloadDocument(doc),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -892,17 +1077,28 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
   }
 
   Widget _buildLoadInfoTab() {
+    final pickup = _pickupStop(_loadData ?? {});
+    final delivery = _deliveryStop(_loadData ?? {});
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         _buildInfoSection('Load Specs', [
           {
             'label': 'Weight',
-            'value': (_loadData?['weight'] ?? '-').toString()
+            'value': (pickup['totalWeight'] ??
+                    delivery['totalWeight'] ??
+                    _loadData?['weight'] ??
+                    '-')
+                .toString()
           },
           {
             'label': 'Commodity',
-            'value': (_loadData?['commodity'] ?? '-').toString(),
+            'value': (pickup['commodity'] ??
+                    delivery['commodity'] ??
+                    _loadData?['commodity'] ??
+                    '-')
+                .toString(),
           },
           {'label': 'Type', 'value': (_loadData?['type'] ?? '-').toString()},
           {
