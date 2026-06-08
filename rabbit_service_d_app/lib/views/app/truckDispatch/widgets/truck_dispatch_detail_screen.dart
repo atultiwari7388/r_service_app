@@ -1,10 +1,17 @@
+import 'dart:async';
 import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/truck_disptach_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:file_picker/file_picker.dart'; // Add this to pubspec.yaml
 
 class DispatchDetailsScreen extends StatefulWidget {
   final LoadData load;
@@ -18,277 +25,392 @@ class DispatchDetailsScreen extends StatefulWidget {
 class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, String>> _documents = [];
-  List<Map<String, dynamic>> _notes = [];
+  final String currentUId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _loadSubscription;
+
+  Map<String, dynamic>? _loadData;
+  Map<String, dynamic>? _brokerProfile;
+  bool _isLoading = true;
+  bool _isUploading = false;
+  LatLng? _pickupLatLng;
+  LatLng? _dropLatLng;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-
-    // Initialize with default documents
-    _documents = [
-      {
-        'name': 'Rate Confirmation',
-        'type': 'PDF',
-        'size': '1.2 MB',
-        'path': ''
-      },
-      {'name': 'Bill of Lading', 'type': 'PDF', 'size': '2.4 MB', 'path': ''},
-      {'name': 'Insurance Cert', 'type': 'JPG', 'size': '3.1 MB', 'path': ''},
-    ];
-
-    // Initialize with default notes
-    _notes = [
-      {
-        'title': 'Gate Code',
-        'content':
-            'The gate code for entry is #9921. Please call security if it does not work.',
-        'time': 'Today, 9:00 AM',
-        'date': DateTime.now(),
-      },
-      {
-        'title': 'Handling Inst.',
-        'content': 'Fragile contents. Do not double stack pallets.',
-        'time': 'Yesterday',
-        'date': DateTime.now().subtract(const Duration(days: 1)),
-      },
-    ];
+    _listenToLoad();
   }
 
   @override
   void dispose() {
+    _loadSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  /// Opens the external map application (Google Maps or Apple Maps)
+  void _listenToLoad() {
+    _loadSubscription = FirebaseFirestore.instance
+        .collection('dispatch_loads')
+        .doc(widget.load.id)
+        .snapshots()
+        .listen((snapshot) async {
+      if (!snapshot.exists) {
+        if (mounted) {
+          setState(() {
+            _loadData = null;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      final data = snapshot.data() ?? <String, dynamic>{};
+
+      if (mounted) {
+        setState(() {
+          _loadData = {
+            'id': snapshot.id,
+            ...data,
+          };
+          _isLoading = false;
+        });
+      }
+
+      await Future.wait([
+        _loadBrokerProfile(data),
+        _resolveRouteMarkers(data),
+      ]);
+    });
+  }
+
+  Future<void> _loadBrokerProfile(Map<String, dynamic> data) async {
+    final ownerId = (data['effectiveUserId'] ?? data['currentUserId'] ?? '')
+        .toString()
+        .trim();
+    if (ownerId.isEmpty) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(ownerId)
+          .get();
+      if (!snapshot.exists || !mounted) return;
+
+      setState(() {
+        _brokerProfile = snapshot.data();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _resolveRouteMarkers(Map<String, dynamic> data) async {
+    final pickupAddress = _fullAddressForStop(_pickupStop(data));
+    final dropAddress = _fullAddressForStop(_deliveryStop(data));
+
+    try {
+      LatLng? pickup;
+      LatLng? drop;
+
+      if (pickupAddress.isNotEmpty) {
+        final locations = await locationFromAddress(pickupAddress);
+        if (locations.isNotEmpty) {
+          pickup = LatLng(locations.first.latitude, locations.first.longitude);
+        }
+      }
+
+      if (dropAddress.isNotEmpty) {
+        final locations = await locationFromAddress(dropAddress);
+        if (locations.isNotEmpty) {
+          drop = LatLng(locations.first.latitude, locations.first.longitude);
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _pickupLatLng = pickup;
+        _dropLatLng = drop;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pickupLatLng ??= const LatLng(36.7378, -119.7871);
+        _dropLatLng ??= const LatLng(34.0522, -118.2437);
+      });
+    }
+  }
+
+  Map<String, dynamic> _pickupStop(Map<String, dynamic> data) {
+    final pickups = (data['pickups'] as List<dynamic>? ?? []);
+    if (pickups.isEmpty) return <String, dynamic>{};
+    return Map<String, dynamic>.from(pickups.first as Map);
+  }
+
+  Map<String, dynamic> _deliveryStop(Map<String, dynamic> data) {
+    final deliveries = (data['deliveries'] as List<dynamic>? ?? []);
+    if (deliveries.isEmpty) return <String, dynamic>{};
+    return Map<String, dynamic>.from(deliveries.last as Map);
+  }
+
+  String _fullAddressForStop(Map<String, dynamic> stop) {
+    return (stop['address'] ?? '').toString().trim();
+  }
+
+  String _dateLabel(dynamic value) {
+    if (value == null) return '-';
+    if (value is Timestamp) {
+      return DateFormat('MMM d, y').format(value.toDate());
+    }
+
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return '-';
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) return DateFormat('MMM d, y').format(parsed);
+    return raw;
+  }
+
+  String _dateTimeLabel(dynamic value) {
+    if (value is Timestamp) {
+      return DateFormat('MMM d, y • h:mm a').format(value.toDate());
+    }
+    return '-';
+  }
+
+  String _currency(dynamic value) {
+    final amount = double.tryParse(value?.toString() ?? '') ?? 0;
+    return NumberFormat.currency(symbol: '\$').format(amount);
+  }
+
+  String _milesLabel(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty) return '-';
+    return text.toLowerCase().contains('mile') ? text : '$text Miles';
+  }
+
+  (String, String) _addressParts(String address) {
+    if (address.trim().isEmpty) return ('-', '-');
+    final parts = address
+        .split(',')
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+    if (parts.length <= 1) return (address, '-');
+    return (parts.first, parts.sublist(1).join(', '));
+  }
+
+  String _brokerName() {
+    return (_brokerProfile?['companyName'] ??
+            _brokerProfile?['userName'] ??
+            'Broker Team')
+        .toString();
+  }
+
+  String _brokerPhone() {
+    return (_brokerProfile?['phoneNumber'] ?? '-').toString();
+  }
+
+  String _brokerEmail() {
+    return (_brokerProfile?['email'] ?? '-').toString();
+  }
+
+  String _loadStatus() {
+    return (_loadData?['status'] ?? widget.load.rawStatus).toString();
+  }
+
+  List<Map<String, dynamic>> _documents() {
+    final docs = (_loadData?['documents'] as List<dynamic>? ?? []);
+    return docs.map((item) => Map<String, dynamic>.from(item as Map)).toList()
+      ..sort((a, b) {
+        final aSeconds = (a['createdAt'] as Timestamp?)?.seconds ?? 0;
+        final bSeconds = (b['createdAt'] as Timestamp?)?.seconds ?? 0;
+        return bSeconds.compareTo(aSeconds);
+      });
+  }
+
+  List<Map<String, String>> _notes() {
+    final notes = <Map<String, String>>[];
+    final dispatchNotes = (_loadData?['dispatchNotes'] ?? '').toString().trim();
+    if (dispatchNotes.isNotEmpty) {
+      notes.add({
+        'title': 'Dispatch Notes',
+        'content': dispatchNotes,
+        'time': _dateTimeLabel(_loadData?['updatedAt']),
+      });
+    }
+
+    final pickup = _pickupStop(_loadData ?? {});
+    final delivery = _deliveryStop(_loadData ?? {});
+
+    void addStopNote(String title, Map<String, dynamic> stop) {
+      final instructions = (stop['instructions'] ?? '').toString().trim();
+      final stopNotes = (stop['notes'] ?? '').toString().trim();
+      final body = [instructions, stopNotes]
+          .where((item) => item.isNotEmpty)
+          .join('\n\n');
+      if (body.isEmpty) return;
+      notes.add({
+        'title': title,
+        'content': body,
+        'time': _dateLabel(stop['date']),
+      });
+    }
+
+    addStopNote('Pickup Instructions', pickup);
+    addStopNote('Delivery Instructions', delivery);
+    return notes;
+  }
+
   Future<void> _openMap(String address) async {
+    if (address.trim().isEmpty) return;
     final query = Uri.encodeComponent(address);
     final googleMapsUrl =
         Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
     final appleMapsUrl = Uri.parse("https://maps.apple.com/?q=$query");
 
-    try {
-      if (await canLaunchUrl(googleMapsUrl)) {
-        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(appleMapsUrl)) {
-        await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open maps application')),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error launching map: $e');
+    if (await canLaunchUrl(googleMapsUrl)) {
+      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (await canLaunchUrl(appleMapsUrl)) {
+      await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
     }
   }
 
-  /// Helper to decide which address to navigate to based on load status
-  void _handleNavigationPress() {
-    final fullAddress =
-        "${widget.load.pickupAddress}, ${widget.load.pickupLocation}";
-    _openMap(fullAddress);
-  }
-
-  /// Handle file selection
   Future<void> _browseFiles() async {
+    if (_loadData == null || _isUploading) return;
+
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+        allowedExtensions: [
+          'pdf',
+          'jpg',
+          'jpeg',
+          'png',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx'
+        ],
         allowMultiple: true,
       );
 
-      if (result != null) {
-        List<File> files = result.paths.map((path) => File(path!)).toList();
+      if (result == null || result.files.isEmpty) return;
 
-        // Convert files to document format
-        List<Map<String, String>> newDocs = files.map((file) {
-          String fileName = file.path.split('/').last;
-          String fileExtension = fileName.split('.').last.toUpperCase();
-          String fileSize = _formatFileSize(file.lengthSync());
+      setState(() => _isUploading = true);
 
-          return {
-            'name': fileName,
-            'type': fileExtension,
-            'size': fileSize,
-            'path': file.path,
-          };
-        }).toList();
+      final loadRef = FirebaseFirestore.instance
+          .collection('dispatch_loads')
+          .doc(widget.load.id);
+      final existingDocuments = _documents();
+      final nextDocuments = <Map<String, dynamic>>[...existingDocuments];
 
-        setState(() {
-          _documents.addAll(newDocs);
+      for (final file in result.files) {
+        if (file.path == null) continue;
+        final ioFile = File(file.path!);
+        final safeName = file.name.replaceAll(' ', '_');
+        final storagePath =
+            'dispatch-loads/${widget.load.id}/driver-uploads/${DateTime.now().millisecondsSinceEpoch}-$safeName';
+        final storageRef = FirebaseStorage.instance.ref().child(storagePath);
+
+        await storageRef.putFile(ioFile);
+        final downloadUrl = await storageRef.getDownloadURL();
+
+        nextDocuments.add({
+          'id': 'driver-${DateTime.now().microsecondsSinceEpoch}',
+          'name': file.name,
+          'type': 'proof-of-delivery',
+          'size': file.size,
+          'url': downloadUrl,
+          'mimeType': file.extension ?? '',
+          'source': 'uploaded',
+          'storagePath': storagePath,
+          'createdAt': Timestamp.now(),
+          'uploadedByRole': 'driver',
+          'uploadedById': currentUId,
+          'uploadedByName': widget.load.driverName,
         });
-
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${files.length} file(s) added successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
       }
-    } catch (e) {
-      debugPrint('Error picking files: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error selecting files'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
-  /// Format file size
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1048576) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / 1048576).toStringAsFixed(1)} MB';
-  }
-
-  /// Show dialog to add new note
-  Future<void> _showAddNoteDialog() async {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
-
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add New Note'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLength: 50,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: contentController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
-                  maxLines: 5,
-                  maxLength: 500,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (titleController.text.trim().isNotEmpty &&
-                    contentController.text.trim().isNotEmpty) {
-                  _addNote(
-                    titleController.text.trim(),
-                    contentController.text.trim(),
-                  );
-                  Navigator.of(context).pop();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill in all fields'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Add new note
-  void _addNote(String title, String content) {
-    final now = DateTime.now();
-    final formattedTime = _formatDateTime(now);
-
-    setState(() {
-      _notes.insert(0, {
-        'title': title,
-        'content': content,
-        'time': formattedTime,
-        'date': now,
+      await loadRef.update({
+        'documents': nextDocuments,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-    });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Note added successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
+      await loadRef.collection('history').add({
+        'action': 'driver-uploaded-documents',
+        'message': 'Driver uploaded documents',
+        'createdBy': currentUId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'metadata': {
+          'files': result.files.length.toString(),
+          'driverId': currentUId,
+        },
+      });
 
-  /// Format date time for display
-  String _formatDateTime(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final noteDate = DateTime(date.year, date.month, date.day);
-
-    if (noteDate == today) {
-      return 'Today, ${_formatTime(date)}';
-    } else if (noteDate == yesterday) {
-      return 'Yesterday';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${result.files.length} file(s) uploaded successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload files: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
-  String _formatTime(DateTime date) {
-    final hour = date.hour % 12;
-    final minute = date.minute.toString().padLeft(2, '0');
-    final period = date.hour < 12 ? 'AM' : 'PM';
-    return '$hour:$minute $period';
-  }
-
-  /// Handle document download
-  void _downloadDocument(Map<String, String> doc) {
-    if (doc['path']?.isEmpty ?? true) {
-      // For demo purposes - simulate download
+  Future<void> _downloadDocument(Map<String, dynamic> doc) async {
+    final url = (doc['url'] ?? '').toString().trim();
+    if (url.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Downloading ${doc['name']}...'),
-          backgroundColor: kPrimary,
+        const SnackBar(
+          content: Text('Document link is not available.'),
+          backgroundColor: Colors.orange,
         ),
       );
-    } else {
-      // In real app, you would implement actual file handling here
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Opening ${doc['name']}...'),
-          backgroundColor: kPrimary,
-        ),
-      );
+      return;
     }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadData == null) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: Text('Load not found.')),
+      );
+    }
+
+    final pickup = _pickupStop(_loadData!);
+    final delivery = _deliveryStop(_loadData!);
+    final pickupAddress = _fullAddressForStop(pickup);
+    final deliveryAddress = _fullAddressForStop(delivery);
+    final pickupParts = _addressParts(pickupAddress);
+    final deliveryParts = _addressParts(deliveryAddress);
+    final documents = _documents();
+    final notes = _notes();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -342,24 +464,29 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildDetailsTab(),
-          _buildDocumentsTab(),
+          _buildDetailsTab(pickup, delivery, pickupParts, deliveryParts),
+          _buildDocumentsTab(documents),
           _buildLoadInfoTab(),
-          _buildNotesTab(),
+          _buildNotesTab(notes),
         ],
       ),
     );
   }
 
-  // --- TABS ---
+  Widget _buildDetailsTab(
+    Map<String, dynamic> pickup,
+    Map<String, dynamic> delivery,
+    (String, String) pickupParts,
+    (String, String) deliveryParts,
+  ) {
+    final pickupTarget = _pickupLatLng ?? const LatLng(36.7378, -119.7871);
+    final dropTarget = _dropLatLng ?? const LatLng(34.0522, -118.2437);
 
-  Widget _buildDetailsTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Card
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -376,9 +503,10 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.load.loadNumber,
+                          (_loadData?['loadNumber'] ?? widget.load.loadNumber)
+                              .toString(),
                           style: const TextStyle(
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: kDark,
                           ),
@@ -390,7 +518,10 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                                 size: 16, color: Colors.grey),
                             const SizedBox(width: 6),
                             Text(
-                              widget.load.company,
+                              (_loadData?['customerName'] ??
+                                      _loadData?['customerSearch'] ??
+                                      widget.load.company)
+                                  .toString(),
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontWeight: FontWeight.w600,
@@ -400,14 +531,13 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                         ),
                       ],
                     ),
-                    _buildStatusChip(widget.load.status),
+                    _buildStatusChip(_loadStatus()),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-
           Container(
             height: 180,
             width: double.infinity,
@@ -419,31 +549,22 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
             child: Stack(
               children: [
                 GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(
-                      34.0522,
-                      -118.2437,
-                    ),
-                    zoom: 6,
-                  ),
+                  initialCameraPosition:
+                      CameraPosition(target: pickupTarget, zoom: 6),
                   markers: {
                     Marker(
                       markerId: const MarkerId('pickup'),
-                      position: LatLng(
-                        34.0522,
-                        -118.2437,
-                      ),
+                      position: pickupTarget,
                       icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueRed),
+                        BitmapDescriptor.hueRed,
+                      ),
                     ),
                     Marker(
                       markerId: const MarkerId('drop'),
-                      position: LatLng(
-                        34.0522,
-                        -118.2437,
-                      ),
+                      position: dropTarget,
                       icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueBlue),
+                        BitmapDescriptor.hueBlue,
+                      ),
                     ),
                   },
                   zoomGesturesEnabled: false,
@@ -455,11 +576,9 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                   mapToolbarEnabled: false,
                   compassEnabled: false,
                 ),
-
-                // 🔘 Open Navigation Button
                 Center(
                   child: ElevatedButton.icon(
-                    onPressed: _handleNavigationPress,
+                    onPressed: () => _openMap(_fullAddressForStop(delivery)),
                     icon: const Icon(Icons.map, size: 18),
                     label: const Text('Open Navigation'),
                     style: ElevatedButton.styleFrom(
@@ -474,8 +593,6 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                     ),
                   ),
                 ),
-
-                // 🚗 Distance / Time chip
                 Positioned(
                   bottom: 16,
                   right: 16,
@@ -497,7 +614,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                         const Icon(Icons.speed, size: 16, color: kPrimary),
                         const SizedBox(width: 6),
                         Text(
-                          '${widget.load.miles} • ~14h 20m',
+                          _milesLabel(_loadData?['tenderedMiles']),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -510,8 +627,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
               ],
             ),
           ),
-
-          // Route Timeline
+          const SizedBox(height: 24),
           const Text(
             'Routes',
             style: TextStyle(
@@ -545,24 +661,22 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                     children: [
                       _buildTimelineItem(
                         title: 'PICKUP',
-                        building: widget.load.pickupBuilding,
-                        address: widget.load.pickupAddress,
-                        location: widget.load.pickupLocation,
-                        date: widget.load.pickupDate,
+                        building: (pickup['company'] ?? '-').toString(),
+                        address: pickupParts.$1,
+                        location: pickupParts.$2,
+                        date: _dateLabel(pickup['date']),
                         isStart: true,
-                        onTap: () => _openMap(
-                            "${widget.load.pickupAddress}, ${widget.load.pickupLocation}"),
+                        onTap: () => _openMap(_fullAddressForStop(pickup)),
                       ),
                       const SizedBox(height: 30),
                       _buildTimelineItem(
                         title: 'DROP-OFF',
-                        building: widget.load.dropBuilding,
-                        address: widget.load.dropAddress,
-                        location: widget.load.dropLocation,
-                        date: widget.load.dropDate,
+                        building: (delivery['company'] ?? '-').toString(),
+                        address: deliveryParts.$1,
+                        location: deliveryParts.$2,
+                        date: _dateLabel(delivery['date']),
                         isStart: false,
-                        onTap: () => _openMap(
-                            "${widget.load.dropAddress}, ${widget.load.dropLocation}"),
+                        onTap: () => _openMap(_fullAddressForStop(delivery)),
                       ),
                     ],
                   ),
@@ -570,12 +684,9 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
               ],
             ),
           ),
-
           const SizedBox(height: 30),
           const Divider(),
           const SizedBox(height: 20),
-
-          // Contact
           const Text(
             'Contact Information',
             style: TextStyle(
@@ -586,34 +697,38 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
           ),
           const SizedBox(height: 16),
           _buildContactTile(
-              Icons.person_outline, 'Broker Contact', 'Michael Scott'),
+              Icons.person_outline, 'Broker Contact', _brokerName()),
           const SizedBox(height: 12),
           _buildContactTile(
-              Icons.phone_outlined, 'Phone Number', '+1 (555) 019-2834'),
+              Icons.phone_outlined, 'Phone Number', _brokerPhone()),
+          const SizedBox(height: 12),
+          _buildContactTile(Icons.email_outlined, 'Email', _brokerEmail()),
         ],
       ),
     );
   }
 
-  Widget _buildDocumentsTab() {
+  Widget _buildDocumentsTab(List<Map<String, dynamic>> documents) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // Upload Card
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-              color: kLightWhite,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Colors.grey.shade200, style: BorderStyle.none),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ]),
+            color: kLightWhite,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.grey.shade200,
+              style: BorderStyle.none,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
           child: Column(
             children: [
               const Icon(Icons.cloud_upload_outlined,
@@ -625,12 +740,12 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Supports PDF, JPG, PNG, DOC',
+                'Supports PDF, JPG, PNG, DOC, DOCX, XLS, XLSX',
                 style: TextStyle(color: Colors.grey[500], fontSize: 12),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _browseFiles,
+                onPressed: _isUploading ? null : _browseFiles,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimary,
                   foregroundColor: Colors.white,
@@ -640,14 +755,12 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text('Browse Files'),
+                child: Text(_isUploading ? 'Uploading...' : 'Browse Files'),
               ),
             ],
           ),
         ),
         const SizedBox(height: 24),
-
-        // Attached Files Section
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -656,9 +769,9 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
               style: TextStyle(
                   fontSize: 18, fontWeight: FontWeight.bold, color: kDark),
             ),
-            if (_documents.isNotEmpty)
+            if (documents.isNotEmpty)
               Text(
-                '${_documents.length} files',
+                '${documents.length} files',
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 12,
@@ -667,8 +780,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
           ],
         ),
         const SizedBox(height: 16),
-
-        if (_documents.isEmpty)
+        if (documents.isEmpty)
           Container(
             padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
@@ -693,7 +805,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Click "Browse Files" to add documents',
+                  'Admin and driver uploads will appear here together.',
                   style: TextStyle(
                     color: Colors.grey.shade500,
                     fontSize: 12,
@@ -703,10 +815,15 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
             ),
           )
         else
-          ..._documents.asMap().entries.map((entry) {
-            final doc = entry.value;
-            final index = entry.key;
-            final isUploadedByUser = doc['path']?.isNotEmpty ?? false;
+          ...documents.map((doc) {
+            final uploaderRole = (doc['uploadedByRole'] ?? 'admin').toString();
+            final uploaderLabel =
+                uploaderRole == 'driver' ? 'Driver Upload' : 'Admin Upload';
+            final createdAt = doc['createdAt'];
+            final fileSize = (doc['size'] as num?)?.toInt() ?? 0;
+            final createdAtLabel = createdAt is Timestamp
+                ? DateFormat('MMM d, y • h:mm a').format(createdAt.toDate())
+                : '';
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -718,19 +835,19 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _getFileTypeColor(doc['type'] ?? ''),
+                    color: _getFileTypeColor((doc['type'] ?? '').toString()),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: _getFileTypeIcon(doc['type'] ?? ''),
+                  child: _getFileTypeIcon((doc['type'] ?? '').toString()),
                 ),
                 title: Text(
-                  doc['name']!,
+                  (doc['name'] ?? 'Document').toString(),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 subtitle: Text(
-                  '${doc['type']} • ${doc['size']}',
+                  '${(doc['type'] ?? 'Document').toString()} • ${_formatFileSize(fileSize)}${createdAtLabel.isNotEmpty ? '\n$createdAtLabel' : ''}',
                   style: TextStyle(
                     color: Colors.grey[600],
                   ),
@@ -738,26 +855,29 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isUploadedByUser)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'NEW',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: uploaderRole == 'driver'
+                              ? Colors.green.withOpacity(0.1)
+                              : kPrimary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          uploaderLabel,
+                          style: TextStyle(
+                            color: uploaderRole == 'driver'
+                                ? Colors.green
+                                : kPrimary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.download_rounded, color: kPrimary),
                       onPressed: () => _downloadDocument(doc),
@@ -776,123 +896,141 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
       padding: const EdgeInsets.all(20),
       children: [
         _buildInfoSection('Load Specs', [
-          {'label': 'Weight', 'value': '42,500 lbs'},
-          {'label': 'Commodity', 'value': 'General Freight'},
-          {'label': 'Type', 'value': 'Full Truckload (FTL)'},
-          {'label': 'Temp', 'value': 'Dry Van'},
+          {
+            'label': 'Weight',
+            'value': (_loadData?['weight'] ?? '-').toString()
+          },
+          {
+            'label': 'Commodity',
+            'value': (_loadData?['commodity'] ?? '-').toString(),
+          },
+          {'label': 'Type', 'value': (_loadData?['type'] ?? '-').toString()},
+          {
+            'label': 'Equipment',
+            'value': (_loadData?['vanType'] ?? _loadData?['trailerType'] ?? '-')
+                .toString(),
+          },
+          {
+            'label': 'Temp',
+            'value': (_loadData?['temperature'] ?? '-').toString(),
+          },
+          {
+            'label': 'Miles',
+            'value': _milesLabel(_loadData?['tenderedMiles']),
+          },
         ]),
         const SizedBox(height: 20),
         _buildInfoSection('Equipment', [
-          {'label': 'Truck ID', 'value': 'TRK-8821'},
-          {'label': 'Trailer ID', 'value': 'TRL-5502'},
-          {'label': 'Driver', 'value': 'James Anderson'},
+          {
+            'label': 'Truck ID',
+            'value': (_loadData?['truckId'] ?? '-').toString()
+          },
+          {
+            'label': 'Trailer ID',
+            'value': (_loadData?['trailerId'] ?? '-').toString(),
+          },
+          {
+            'label': 'Driver',
+            'value':
+                (_loadData?['driverName'] ?? widget.load.driverName).toString(),
+          },
+          {
+            'label': 'Dispatcher',
+            'value': (_loadData?['dispatcherId'] ?? '-').toString(),
+          },
         ]),
         const SizedBox(height: 20),
         _buildInfoSection('Financials', [
-          {'label': 'Rate', 'value': '\$2,450.00'},
-          {'label': 'Detention', 'value': '\$50/hr'},
-          {'label': 'Lumper', 'value': 'Reimbursed'},
+          {
+            'label': 'Customer Rate',
+            'value': _currency(_loadData?['totalCustomerRate']),
+          },
+          {
+            'label': 'Carrier Pay',
+            'value': _currency(_loadData?['totalCarrierPay']),
+          },
+          {'label': 'Line Haul', 'value': _currency(_loadData?['lineHaul'])},
+          {
+            'label': 'Fuel Surcharge',
+            'value': _currency(_loadData?['fuelSurcharge']),
+          },
+          {'label': 'Detention', 'value': _currency(_loadData?['detention'])},
         ]),
       ],
     );
   }
 
-  Widget _buildNotesTab() {
-    return Stack(
+  Widget _buildNotesTab(List<Map<String, String>> notes) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
       children: [
-        ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            if (_notes.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200, width: 1.5),
-                  color: Colors.grey.shade50,
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.note_add,
-                      size: 48,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No notes yet',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Click "Add New Note" to create your first note',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              ..._notes.map((note) => _buildNoteItem(
-                    note['title'] as String,
-                    note['content'] as String,
-                    note['time'] as String,
-                  )),
-            const SizedBox(height: 80), // Space for the FAB
-          ],
-        ),
-        Positioned(
-          bottom: 20,
-          left: 20,
-          right: 20,
-          child: ElevatedButton(
-            onPressed: _showAddNoteDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kDark,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+        if (notes.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200, width: 1.5),
+              color: Colors.grey.shade50,
             ),
-            child: const Text('Add New Note'),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.note_alt_outlined,
+                  size: 48,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No admin notes yet',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...notes.map(
+            (note) => _buildNoteItem(
+              note['title'] ?? 'Note',
+              note['content'] ?? '-',
+              note['time'] ?? '-',
+            ),
           ),
-        ),
       ],
     );
   }
-
-  // --- HELPERS ---
 
   Widget _buildStatusChip(String status) {
     Color color;
     switch (status.toLowerCase()) {
-      case 'active':
+      case 'assigned':
+        color = Colors.orange;
+        break;
+      case 'in transit':
         color = kPrimary;
         break;
       case 'completed':
+      case 'completed toun':
+      case 'delivered':
         color = Colors.green;
         break;
       default:
-        color = Colors.orange;
+        color = Colors.grey;
     }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(30),
       ),
       child: Text(
-        status.toUpperCase(),
+        status,
         style: TextStyle(
           color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -910,27 +1048,21 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const Spacer(),
-                const Icon(Icons.navigation, size: 14, color: kPrimary),
-              ],
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
+                color: isStart ? kPrimary : Colors.red,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               building,
               style: const TextStyle(
@@ -939,30 +1071,28 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 color: kDark,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               address,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
             Text(
               location,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: isStart
-                    ? kPrimary.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                color: (isStart ? kPrimary : Colors.red).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 date,
                 style: TextStyle(
-                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: isStart ? kPrimary : Colors.red,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -972,7 +1102,7 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     );
   }
 
-  Widget _buildContactTile(IconData icon, String title, String subtitle) {
+  Widget _buildContactTile(IconData icon, String label, String value) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -985,90 +1115,105 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: kLightWhite,
-              borderRadius: BorderRadius.circular(10),
+              color: kPrimary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: kDark, size: 20),
+            child: Icon(icon, color: kPrimary, size: 18),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                Text(subtitle,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: kDark)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: kDark,
+                  ),
+                ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.phone, color: Colors.green, size: 18),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoSection(String title, List<Map<String, String>> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
+  Widget _buildInfoSection(String title, List<Map<String, String>> infoItems) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: kDark,
+            ),
           ),
-          child: Column(
-            children: items.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final item = entry.value;
-              return Column(
+          const SizedBox(height: 16),
+          ...infoItems.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(item['label']!,
-                            style: TextStyle(color: Colors.grey[600])),
-                        Text(item['value']!,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
+                  Expanded(
+                    child: Text(
+                      item['label'] ?? '-',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  if (idx != items.length - 1)
-                    Divider(height: 1, color: Colors.grey.shade100),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item['value'] ?? '-',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: kDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ],
-              );
-            }).toList(),
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildNoteItem(String title, String content, String time) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFEF3C7)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1080,56 +1225,28 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Color(0xFF92400E),
+                    fontWeight: FontWeight.w800,
+                    color: kDark,
+                    fontSize: 15,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Text(
                 time,
-                style: const TextStyle(fontSize: 12, color: Color(0xFFB45309)),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             content,
-            style: const TextStyle(color: Color(0xFF92400E), height: 1.5),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {
-                // Show full content in dialog
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(title),
-                    content: SingleChildScrollView(
-                      child: Text(content),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              child: const Text(
-                'Read More',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFFB45309),
-                ),
-              ),
+            style: TextStyle(
+              color: Colors.grey[700],
+              height: 1.5,
             ),
           ),
         ],
@@ -1137,38 +1254,42 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
     );
   }
 
-  // Helper for file type icons
-  Icon _getFileTypeIcon(String fileType) {
-    switch (fileType.toLowerCase()) {
-      case 'pdf':
-        return const Icon(Icons.picture_as_pdf, color: Colors.red, size: 20);
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return const Icon(Icons.image, color: Colors.green, size: 20);
-      case 'doc':
-      case 'docx':
-        return const Icon(Icons.description, color: Colors.blue, size: 20);
-      default:
-        return const Icon(Icons.insert_drive_file,
-            color: Colors.grey, size: 20);
+  Color _getFileTypeColor(String type) {
+    final normalized = type.toLowerCase();
+    if (normalized.contains('pdf')) return Colors.red.withOpacity(0.1);
+    if (normalized.contains('jpg') ||
+        normalized.contains('jpeg') ||
+        normalized.contains('png')) {
+      return Colors.green.withOpacity(0.1);
     }
+    if (normalized.contains('doc')) return Colors.blue.withOpacity(0.1);
+    if (normalized.contains('xls')) return Colors.teal.withOpacity(0.1);
+    return kPrimary.withOpacity(0.1);
   }
 
-  // Helper for file type colors
-  Color _getFileTypeColor(String fileType) {
-    switch (fileType.toLowerCase()) {
-      case 'pdf':
-        return Colors.red.withOpacity(0.1);
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        return Colors.green.withOpacity(0.1);
-      case 'doc':
-      case 'docx':
-        return Colors.blue.withOpacity(0.1);
-      default:
-        return Colors.grey.withOpacity(0.1);
+  Widget _getFileTypeIcon(String type) {
+    final normalized = type.toLowerCase();
+    if (normalized.contains('pdf')) {
+      return const Icon(Icons.picture_as_pdf, color: Colors.red);
     }
+    if (normalized.contains('jpg') ||
+        normalized.contains('jpeg') ||
+        normalized.contains('png')) {
+      return const Icon(Icons.image_outlined, color: Colors.green);
+    }
+    if (normalized.contains('doc')) {
+      return const Icon(Icons.description_outlined, color: Colors.blue);
+    }
+    if (normalized.contains('xls')) {
+      return const Icon(Icons.table_chart_outlined, color: Colors.teal);
+    }
+    return const Icon(Icons.insert_drive_file_outlined, color: kPrimary);
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes <= 0) return '0 B';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1048576) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / 1048576).toStringAsFixed(1)} MB';
   }
 }

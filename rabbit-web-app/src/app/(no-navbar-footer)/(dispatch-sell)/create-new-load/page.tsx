@@ -36,6 +36,7 @@ import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -102,16 +103,18 @@ interface Stop {
 interface DocumentFile {
   id: string;
   name: string;
-  type:
-    | "rate-confirmation"
-    | "bol"
-    | "pod"
-    | "damage-photos"
-    | "scale-ticket"
-    | "lumper";
+  type: string;
   file?: File;
   previewUrl?: string;
   size?: number;
+  url?: string;
+  mimeType?: string;
+  source?: "uploaded" | "generated";
+  storagePath?: string;
+  createdAt?: { seconds?: number } | Date | unknown;
+  uploadedByRole?: string;
+  uploadedById?: string;
+  uploadedByName?: string;
 }
 
 interface FormData {
@@ -861,6 +864,7 @@ function CreateNewLoadPageContent() {
   const [editingLoadId, setEditingLoadId] = useState<string | null>(null);
   const [existingLoadNumber, setExistingLoadNumber] = useState("");
   const [existingCreatedAt, setExistingCreatedAt] = useState<unknown>(null);
+  const [existingAssignedDriverId, setExistingAssignedDriverId] = useState("");
   const [dynamicCustomerOptions, setDynamicCustomerOptions] = useState<
     Option[]
   >([]);
@@ -1362,6 +1366,7 @@ function CreateNewLoadPageContent() {
         setEditingLoadId(null);
         setExistingLoadNumber("");
         setExistingCreatedAt(null);
+        setExistingAssignedDriverId("");
         return;
       }
 
@@ -1383,6 +1388,7 @@ function CreateNewLoadPageContent() {
         setEditingLoadId(loadSnap.id);
         setExistingLoadNumber(data.loadNumber || "");
         setExistingCreatedAt(data.createdAt ?? null);
+        setExistingAssignedDriverId(data.driverId || "");
 
         setFormData({
           ...createInitialFormData(),
@@ -1417,15 +1423,34 @@ function CreateNewLoadPageContent() {
                     ? item.name
                     : `Document ${index + 1}`,
                 type:
-                  item?.type === "rate-confirmation" ||
-                  item?.type === "bol" ||
-                  item?.type === "pod" ||
-                  item?.type === "damage-photos" ||
-                  item?.type === "scale-ticket" ||
-                  item?.type === "lumper"
+                  typeof item?.type === "string" && item.type.length > 0
                     ? item.type
                     : "rate-confirmation",
                 size: Number(item?.size || 0),
+                url: typeof item?.url === "string" ? item.url : undefined,
+                mimeType:
+                  typeof item?.mimeType === "string"
+                    ? item.mimeType
+                    : undefined,
+                source:
+                  item?.source === "generated" ? "generated" : "uploaded",
+                storagePath:
+                  typeof item?.storagePath === "string"
+                    ? item.storagePath
+                    : undefined,
+                createdAt: item?.createdAt,
+                uploadedByRole:
+                  typeof item?.uploadedByRole === "string"
+                    ? item.uploadedByRole
+                    : undefined,
+                uploadedById:
+                  typeof item?.uploadedById === "string"
+                    ? item.uploadedById
+                    : undefined,
+                uploadedByName:
+                  typeof item?.uploadedByName === "string"
+                    ? item.uploadedByName
+                    : undefined,
               }))
             : [],
         });
@@ -1451,6 +1476,12 @@ function CreateNewLoadPageContent() {
       const statusToSave = editingLoadId
         ? formData.status || "Draft"
         : overrideStatus || formData.status || "Draft";
+      const selectedDriverName =
+        driverOptions.find((option) => option.value === formData.driverId)
+          ?.label
+          .replace(/\s+\(Inactive\)$/i, "") || "";
+      const driverChanged =
+        editingLoadId && existingAssignedDriverId !== formData.driverId;
       const loadsRef = collection(db, "dispatch_loads");
       const loadRef = editingLoadId
         ? doc(db, "dispatch_loads", editingLoadId)
@@ -1465,20 +1496,45 @@ function CreateNewLoadPageContent() {
         name: item.name,
         type: item.type,
         size: item.size || 0,
+        url: item.url || "",
+        mimeType: item.mimeType || "",
+        source: item.source || "uploaded",
+        storagePath: item.storagePath || "",
+        createdAt: item.createdAt || null,
+        uploadedByRole: item.uploadedByRole || "",
+        uploadedById: item.uploadedById || "",
+        uploadedByName: item.uploadedByName || "",
       }));
 
-      await setDoc(loadRef, {
+      const loadPayload: Record<string, unknown> = {
         ...formData,
         loadNumber: resolvedLoadNumber,
         status: statusToSave,
         documents,
+        driverName: selectedDriverName,
         currentUserId: user.uid,
         effectiveUserId,
         createdAt: editingLoadId
           ? existingCreatedAt || serverTimestamp()
           : serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      if (!formData.driverId) {
+        loadPayload.driverAcceptanceStatus = deleteField();
+        loadPayload.driverAcceptedAt = deleteField();
+        loadPayload.driverAcceptedById = deleteField();
+      } else if (driverChanged || !editingLoadId) {
+        loadPayload.driverAcceptanceStatus = "pending";
+        loadPayload.driverAcceptedAt = deleteField();
+        loadPayload.driverAcceptedById = deleteField();
+      }
+
+      await setDoc(
+        loadRef,
+        loadPayload,
+        { merge: true }
+      );
 
       toast.success(
         editingLoadId

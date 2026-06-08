@@ -133,6 +133,9 @@ interface DispatchDocumentRecord {
   source?: "uploaded" | "generated";
   storagePath?: string;
   createdAt?: { seconds?: number };
+  uploadedByRole?: string;
+  uploadedById?: string;
+  uploadedByName?: string;
 }
 
 interface DispatchHistoryRecord {
@@ -562,6 +565,9 @@ export default function TruckDispatchScreen({
           source: "uploaded",
           storagePath,
           createdAt: { seconds: Math.floor(Date.now() / 1000) },
+          uploadedByRole: "admin",
+          uploadedById: user?.uid || "",
+          uploadedByName: "Admin",
         },
       ];
 

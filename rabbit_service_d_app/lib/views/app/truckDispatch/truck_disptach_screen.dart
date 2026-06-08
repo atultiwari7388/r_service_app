@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/widgets/truck_dispatch_detail_screen.dart';
 
@@ -13,91 +16,20 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-
-  // Data Lists with Detailed Address Info
-  final List<LoadData> pendingLoads = [
-    LoadData(
-      id: 'LD-2024-001',
-      loadNumber: 'LD-2024-001',
-      company: 'Amazon Logistics',
-      pickupBuilding: 'Western Enterprises Yard',
-      pickupAddress: '5250 North Bacus Avenue',
-      pickupLocation: 'Fresno, CA, 93722',
-      pickupDate: 'Jan 15, 2025',
-      dropBuilding: 'Mylex Infotech Pvt Ltd',
-      dropAddress: '8890 South West Avenue',
-      dropLocation: 'Los Angeles, CA, 90001',
-      dropDate: 'Jan 18, 2025',
-      miles: '1,135 mi',
-      status: 'pending',
-      price: '\$2,450',
-    ),
-    LoadData(
-      id: 'LD-2024-002',
-      loadNumber: 'LD-2024-002',
-      company: 'Walmart Distribution',
-      pickupBuilding: 'Chicago Central Hub',
-      pickupAddress: '1200 Industrial Parkway',
-      pickupLocation: 'Chicago, IL, 60601',
-      pickupDate: 'Jan 16, 2025',
-      dropBuilding: 'East Coast Center',
-      dropAddress: '4500 Commerce Blvd',
-      dropLocation: 'New York, NY, 10001',
-      dropDate: 'Jan 19, 2025',
-      miles: '790 mi',
-      status: 'pending',
-      price: '\$1,850',
-    ),
-  ];
-
-  final List<LoadData> activeLoads = [
-    LoadData(
-      id: 'LD-2024-004',
-      loadNumber: 'LD-2024-004',
-      company: 'Home Depot',
-      pickupBuilding: 'Dallas Supply Depot',
-      pickupAddress: '7780 Logistics Way',
-      pickupLocation: 'Dallas, TX, 75201',
-      pickupDate: 'Jan 10, 2025',
-      dropBuilding: 'Mountain View Store',
-      dropAddress: '2300 Rocky Road',
-      dropLocation: 'Denver, CO, 80201',
-      dropDate: 'Jan 12, 2025',
-      miles: '880 mi',
-      status: 'active',
-      progress: 65,
-      price: '\$1,900',
-    ),
-  ];
-
-  final List<LoadData> historyLoads = [
-    LoadData(
-      id: 'LD-2024-006',
-      loadNumber: 'LD-2024-006',
-      company: 'Costco Wholesale',
-      pickupBuilding: 'Portland Warehouse',
-      pickupAddress: '9900 River Road',
-      pickupLocation: 'Portland, OR, 97201',
-      pickupDate: 'Jan 14, 2025',
-      dropBuilding: 'Boise Outlet',
-      dropAddress: '1100 Potato Lane',
-      dropLocation: 'Boise, ID, 83701',
-      dropDate: 'Jan 16, 2025',
-      miles: '430 mi',
-      status: 'completed',
-      price: '\$1,100',
-    ),
-  ];
+  final String currentUId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabSelection);
+    _searchController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   void _handleTabSelection() {
-    if (_tabController.indexIsChanging) {
+    if (_tabController.indexIsChanging && mounted) {
       setState(() {});
     }
   }
@@ -110,44 +42,150 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
     super.dispose();
   }
 
-  void _onAccept(LoadData load) {
-    setState(() {
-      pendingLoads.remove(load);
-      activeLoads.insert(0, load.copyWith(status: 'active', progress: 0));
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${load.loadNumber} accepted successfully!'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.green,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+  Future<void> _onAccept(LoadData load) async {
+    try {
+      final loadRef =
+          FirebaseFirestore.instance.collection('dispatch_loads').doc(load.id);
+      final nextStatus = load.isTerminalStatus
+          ? load.rawStatus
+          : (load.rawStatus == 'Draft' ||
+                  load.rawStatus == 'Posted' ||
+                  load.rawStatus == 'Booked' ||
+                  load.rawStatus == 'Pre-Planned')
+              ? 'Assigned'
+              : load.rawStatus;
+
+      await loadRef.update({
+        'driverAcceptanceStatus': 'accepted',
+        'driverAcceptedAt': FieldValue.serverTimestamp(),
+        'driverAcceptedById': currentUId,
+        'status': nextStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await loadRef.collection('history').add({
+        'action': 'driver-accepted',
+        'message': 'Driver accepted the load',
+        'createdBy': currentUId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'metadata': {
+          'driverId': currentUId,
+          'driverName': load.driverName,
+          'loadNumber': load.loadNumber,
+        },
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${load.loadNumber} accepted successfully!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.green,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to accept load: $e'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  List<LoadData> _applySearch(List<LoadData> loads) {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return loads;
+
+    return loads.where((load) {
+      return load.loadNumber.toLowerCase().contains(query) ||
+          load.company.toLowerCase().contains(query) ||
+          load.pickupBuilding.toLowerCase().contains(query) ||
+          load.pickupAddress.toLowerCase().contains(query) ||
+          load.pickupLocation.toLowerCase().contains(query) ||
+          load.dropBuilding.toLowerCase().contains(query) ||
+          load.dropAddress.toLowerCase().contains(query) ||
+          load.dropLocation.toLowerCase().contains(query);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kLightWhite,
-      body: Column(
-        children: [
-          _buildModernHeader(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildLoadList(pendingLoads, showAcceptButton: true),
-                _buildLoadList(activeLoads, showProgress: true),
-                _buildLoadList(historyLoads, showCompleted: true),
-              ],
+    if (currentUId.isEmpty) {
+      return const Scaffold(
+        backgroundColor: kLightWhite,
+        body: Center(child: Text('Please sign in to view dispatch loads.')),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('dispatch_loads')
+          .where('driverId', isEqualTo: currentUId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: kLightWhite,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Failed to load dispatch data.\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
+          );
+        }
+
+        final allLoads = (snapshot.data?.docs ?? [])
+            .map((doc) => LoadData.fromFirestore(doc))
+            .toList()
+          ..sort((a, b) => b.sortTimestamp.compareTo(a.sortTimestamp));
+
+        final pendingLoads = _applySearch(
+            allLoads.where((load) => load.tabKey == 'pending').toList());
+        final activeLoads = _applySearch(
+            allLoads.where((load) => load.tabKey == 'active').toList());
+        final historyLoads = _applySearch(
+            allLoads.where((load) => load.tabKey == 'history').toList());
+
+        return Scaffold(
+          backgroundColor: kLightWhite,
+          body: Column(
+            children: [
+              _buildModernHeader(
+                pendingCount: pendingLoads.length,
+                activeCount: activeLoads.length,
+                historyCount: historyLoads.length,
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildLoadList(pendingLoads, showAcceptButton: true),
+                    _buildLoadList(activeLoads, showProgress: true),
+                    _buildLoadList(historyLoads, showCompleted: true),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildModernHeader() {
+  Widget _buildModernHeader({
+    required int pendingCount,
+    required int activeCount,
+    required int historyCount,
+  }) {
     return Container(
       padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
       decoration: BoxDecoration(
@@ -167,10 +205,8 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title Row with Back Button
           Row(
             children: [
-              // Back Button
               Container(
                 decoration: BoxDecoration(
                   color: kLightWhite,
@@ -187,12 +223,11 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                 ),
               ),
               const SizedBox(width: 16),
-              // Title
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Truck Dispatch',
                       style: TextStyle(
                         fontSize: 24,
@@ -212,7 +247,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                   ],
                 ),
               ),
-              // Notification Icon
               CircleAvatar(
                 radius: 22,
                 backgroundColor: kPrimary.withOpacity(0.1),
@@ -221,8 +255,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
             ],
           ),
           const SizedBox(height: 25),
-
-          // Custom Tab Bar with colored backgrounds
           Container(
             height: 45,
             decoration: BoxDecoration(
@@ -231,12 +263,12 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
             ),
             child: Row(
               children: [
-                _buildCustomTab('Pending', 0, pendingLoads.length,
-                    kPrimaryLight.withOpacity(0.8)),
-                _buildCustomTab('Active', 1, activeLoads.length,
-                    Colors.orange.withOpacity(0.8)),
-                _buildCustomTab('History', 2, historyLoads.length,
-                    kSecondary.withOpacity(0.8)),
+                _buildCustomTab(
+                    'Pending', 0, pendingCount, kPrimaryLight.withOpacity(0.8)),
+                _buildCustomTab(
+                    'Active', 1, activeCount, Colors.orange.withOpacity(0.8)),
+                _buildCustomTab(
+                    'History', 2, historyCount, kSecondary.withOpacity(0.8)),
               ],
             ),
           ),
@@ -260,7 +292,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
             height: 45,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(25),
-              color: isSelected ? kPrimary : Color(0xFFE5E7EB),
+              color: isSelected ? kPrimary : const Color(0xFFE5E7EB),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
@@ -364,9 +396,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
             ),
             child: IconButton(
               icon: const Icon(Icons.tune, color: Colors.white),
-              onPressed: () {
-                // Filter Logic
-              },
+              onPressed: () {},
             ),
           ),
         ],
@@ -378,20 +408,59 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
       {bool showAcceptButton = false,
       bool showProgress = false,
       bool showCompleted = false}) {
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
       physics: const BouncingScrollPhysics(),
-      itemCount: loads.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildSearchBar();
-        }
-        final loadIndex = index - 1;
-        return _buildModernCard(loads[loadIndex],
-            showAcceptButton: showAcceptButton,
-            showProgress: showProgress,
-            showCompleted: showCompleted);
-      },
+      children: [
+        _buildSearchBar(),
+        if (loads.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF64748B).withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.local_shipping_outlined,
+                    size: 48, color: Colors.grey.shade400),
+                const SizedBox(height: 16),
+                Text(
+                  'No loads found',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade700,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _searchController.text.trim().isEmpty
+                      ? 'Assigned loads will appear here automatically.'
+                      : 'Try a different search term.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          )
+        else
+          ...loads.map(
+            (load) => _buildModernCard(
+              load,
+              showAcceptButton: showAcceptButton,
+              showProgress: showProgress,
+              showCompleted: showCompleted,
+            ),
+          ),
+      ],
     );
   }
 
@@ -414,7 +483,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
       ),
       child: Column(
         children: [
-          // 1. Header Section
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -426,7 +494,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
             ),
             child: Row(
               children: [
-                // Icon Box
                 Container(
                   height: 48,
                   width: 48,
@@ -437,7 +504,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                   ),
                   child: Center(
                     child: Text(
-                      load.company.substring(0, 1),
+                      load.company.isEmpty ? 'L' : load.company.substring(0, 1),
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -447,7 +514,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Load Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +540,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                     ],
                   ),
                 ),
-                // Price Badge
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -490,7 +555,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                     ],
                   ),
                   child: Text(
-                    load.price ?? '\$0',
+                    load.price ?? '\$0.00',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -501,15 +566,12 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
               ],
             ),
           ),
-
-          // 2. Locations Section
           Padding(
             padding: const EdgeInsets.all(24),
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Timeline Visual
                   Column(
                     children: [
                       const Icon(Icons.radio_button_checked,
@@ -525,12 +587,10 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                     ],
                   ),
                   const SizedBox(width: 16),
-                  // Details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Pickup
                         _buildDetailedLocationBlock(
                           title: 'PICKUP',
                           building: load.pickupBuilding,
@@ -540,7 +600,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                           dateColor: kPrimary,
                         ),
                         const SizedBox(height: 24),
-                        // Drop
                         _buildDetailedLocationBlock(
                           title: 'DROP-OFF',
                           building: load.dropBuilding,
@@ -556,33 +615,32 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
               ),
             ),
           ),
-
-          // 3. Divider
           Divider(height: 1, color: Colors.grey.shade100),
-
-          // 4. Action Footer
           Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                // Progress Bar if Active
                 if (showProgress) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'In Transit',
+                        load.rawStatus == 'Assigned'
+                            ? 'Assigned'
+                            : 'In Transit',
                         style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[600]),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
+                        ),
                       ),
                       Text(
                         '${load.progress}%',
                         style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: kPrimary),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: kPrimary,
+                        ),
                       ),
                     ],
                   ),
@@ -590,7 +648,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
-                      value: load.progress! / 100,
+                      value: load.progress / 100,
                       backgroundColor: kLightWhite,
                       color: kPrimary,
                       minHeight: 6,
@@ -598,11 +656,8 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Action Buttons Row
                 Row(
                   children: [
-                    // View Button (Expanded)
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () {
@@ -626,8 +681,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                         ),
                       ),
                     ),
-
-                    // Accept Button (if Pending)
                     if (showAcceptButton) ...[
                       const SizedBox(width: 12),
                       Expanded(
@@ -670,7 +723,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Building Name
         Text(
           building,
           style: const TextStyle(
@@ -680,7 +732,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
           ),
         ),
         const SizedBox(height: 4),
-        // Street Address
         Text(
           address,
           style: TextStyle(
@@ -689,7 +740,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
             fontWeight: FontWeight.w400,
           ),
         ),
-        // City State Zip
         Text(
           location,
           style: TextStyle(
@@ -699,7 +749,6 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
           ),
         ),
         const SizedBox(height: 6),
-        // Date Badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -726,19 +775,20 @@ class LoadData {
   final String company;
   final String miles;
   final String status;
+  final String rawStatus;
+  final String tabKey;
+  final String driverName;
   final String? price;
-  final int? progress;
-
-  // Pickup Details
+  final int progress;
+  final bool isTerminalStatus;
+  final DateTime sortTimestamp;
   final String pickupBuilding;
   final String pickupAddress;
-  final String pickupLocation; // City, State, Zip
+  final String pickupLocation;
   final String pickupDate;
-
-  // Drop Details
   final String dropBuilding;
   final String dropAddress;
-  final String dropLocation; // City, State, Zip
+  final String dropLocation;
   final String dropDate;
 
   LoadData({
@@ -755,30 +805,132 @@ class LoadData {
     required this.dropDate,
     required this.miles,
     required this.status,
-    this.progress,
+    required this.rawStatus,
+    required this.tabKey,
+    required this.driverName,
+    required this.progress,
+    required this.isTerminalStatus,
+    required this.sortTimestamp,
     this.price,
   });
 
-  LoadData copyWith({
-    String? status,
-    int? progress,
-  }) {
+  factory LoadData.fromFirestore(
+      QueryDocumentSnapshot<Map<String, dynamic>> docSnapshot) {
+    final data = docSnapshot.data();
+    final pickups =
+        (data['pickups'] as List<dynamic>? ?? []).cast<Map<dynamic, dynamic>>();
+    final deliveries = (data['deliveries'] as List<dynamic>? ?? [])
+        .cast<Map<dynamic, dynamic>>();
+    final pickup = pickups.isNotEmpty ? pickups.first : <dynamic, dynamic>{};
+    final delivery =
+        deliveries.isNotEmpty ? deliveries.last : <dynamic, dynamic>{};
+    final pickupAddress = (pickup['address'] ?? '').toString().trim();
+    final deliveryAddress = (delivery['address'] ?? '').toString().trim();
+    final pickupParts = _splitAddress(pickupAddress);
+    final deliveryParts = _splitAddress(deliveryAddress);
+    final rawStatus = (data['status'] ?? 'Draft').toString();
+    final acceptanceStatus =
+        (data['driverAcceptanceStatus'] ?? '').toString().toLowerCase();
+    final isTerminalStatus = [
+      'delivered',
+      'completed toun',
+      'completed',
+      'cancelled'
+    ].contains(rawStatus.toLowerCase());
+    final isAccepted = acceptanceStatus == 'accepted' ||
+        rawStatus == 'Assigned' ||
+        rawStatus == 'In Transit' ||
+        rawStatus == 'Delivered' ||
+        rawStatus == 'Completed Toun' ||
+        rawStatus == 'Completed';
+    final tabKey = isTerminalStatus
+        ? 'history'
+        : isAccepted
+            ? 'active'
+            : 'pending';
+
     return LoadData(
-      id: id,
-      loadNumber: loadNumber,
-      company: company,
-      pickupBuilding: pickupBuilding,
-      pickupAddress: pickupAddress,
-      pickupLocation: pickupLocation,
-      pickupDate: pickupDate,
-      dropBuilding: dropBuilding,
-      dropAddress: dropAddress,
-      dropLocation: dropLocation,
-      dropDate: dropDate,
-      miles: miles,
-      status: status ?? this.status,
-      progress: progress ?? this.progress,
-      price: price,
+      id: docSnapshot.id,
+      loadNumber: (data['loadNumber'] ?? docSnapshot.id).toString(),
+      company:
+          (data['customerName'] ?? data['customerSearch'] ?? '-').toString(),
+      pickupBuilding: (pickup['company'] ?? '-').toString(),
+      pickupAddress: pickupParts.$1,
+      pickupLocation: pickupParts.$2,
+      pickupDate: _formatDate(pickup['date']),
+      dropBuilding: (delivery['company'] ?? '-').toString(),
+      dropAddress: deliveryParts.$1,
+      dropLocation: deliveryParts.$2,
+      dropDate: _formatDate(delivery['date']),
+      miles: _formatMiles(data['tenderedMiles']),
+      status: rawStatus,
+      rawStatus: rawStatus,
+      tabKey: tabKey,
+      driverName: (data['driverName'] ?? '').toString(),
+      progress: _progressForStatus(rawStatus, acceptanceStatus),
+      isTerminalStatus: isTerminalStatus,
+      sortTimestamp: _resolveSortTimestamp(
+        data['updatedAt'],
+        data['createdAt'],
+      ),
+      price: _formatCurrency(
+        (data['totalCarrierPay'] ?? data['totalCustomerRate'] ?? 0) as dynamic,
+      ),
     );
+  }
+
+  static (String, String) _splitAddress(String address) {
+    if (address.isEmpty) return ('-', '-');
+    final parts = address
+        .split(',')
+        .map((part) => part.trim())
+        .where((p) => p.isNotEmpty);
+    final list = parts.toList();
+    if (list.length <= 1) return (address, '-');
+    return (list.first, list.sublist(1).join(', '));
+  }
+
+  static String _formatDate(dynamic rawValue) {
+    if (rawValue == null) return '-';
+    if (rawValue is Timestamp) {
+      return DateFormat('MMM d, y').format(rawValue.toDate());
+    }
+
+    final value = rawValue.toString().trim();
+    if (value.isEmpty) return '-';
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      return DateFormat('MMM d, y').format(parsed);
+    }
+    return value;
+  }
+
+  static String _formatMiles(dynamic rawValue) {
+    final value = rawValue?.toString().trim() ?? '';
+    if (value.isEmpty || value == '0') return '-';
+    return value.toLowerCase().contains('mi') ? value : '$value mi';
+  }
+
+  static String _formatCurrency(dynamic rawValue) {
+    final amount = double.tryParse(rawValue.toString()) ?? 0;
+    return NumberFormat.currency(symbol: '\$').format(amount);
+  }
+
+  static int _progressForStatus(String rawStatus, String acceptanceStatus) {
+    if (rawStatus == 'Completed Toun' ||
+        rawStatus == 'Completed' ||
+        rawStatus == 'Delivered') {
+      return 100;
+    }
+    if (rawStatus == 'In Transit') return 65;
+    if (rawStatus == 'Assigned') return 25;
+    if (acceptanceStatus == 'accepted') return 15;
+    return 0;
+  }
+
+  static DateTime _resolveSortTimestamp(dynamic updatedAt, dynamic createdAt) {
+    if (updatedAt is Timestamp) return updatedAt.toDate();
+    if (createdAt is Timestamp) return createdAt.toDate();
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 }

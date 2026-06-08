@@ -80,6 +80,9 @@ interface DispatchDocumentRecord {
   source?: "uploaded" | "generated";
   storagePath?: string;
   createdAt?: { seconds?: number };
+  uploadedByRole?: string;
+  uploadedById?: string;
+  uploadedByName?: string;
 }
 
 interface DispatchLoadRecord {
