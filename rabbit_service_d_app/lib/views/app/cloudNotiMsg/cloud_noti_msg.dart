@@ -12,6 +12,13 @@ class CloudNotificationMessageCenter extends StatelessWidget {
   // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
   final String currentUId;
 
+  bool isDispatchLoadNotification(Map<String, dynamic> notification) {
+    return (notification['type'] ?? notification['category'] ?? '')
+            .toString()
+            .toLowerCase() ==
+        'dispatch_load';
+  }
+
   Future<Map<String, dynamic>> getVehicleDetails(String vehicleId) async {
     DocumentSnapshot vehicleDoc = await FirebaseFirestore.instance
         .collection('Users')
@@ -96,6 +103,36 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                   SizedBox(height: 8),
                   ...dateNotifications.map((doc) {
                     var notification = doc.data() as Map<String, dynamic>;
+                    if (isDispatchLoadNotification(notification)) {
+                      return Padding(
+                        padding: const EdgeInsets.all(5.0),
+                        child: NotificationCard(
+                          dayMonth: dayMonth,
+                          year: year,
+                          title: (notification['title'] ?? 'New Load Assigned')
+                              .toString(),
+                          message: (notification['message'] ?? '').toString(),
+                          subjectPrimary:
+                              (notification['loadNumber'] ?? 'Load').toString(),
+                          subjectSecondary: [
+                            (notification['pickupCompany'] ?? '').toString(),
+                            (notification['deliveryCompany'] ?? '').toString(),
+                          ]
+                              .where((item) => item.trim().isNotEmpty)
+                              .join(' -> '),
+                          onView: () async {
+                            Get.to(() => NotificationDetailsScreen(
+                                  notification: notification,
+                                  vehicleData: const {},
+                                ));
+                          },
+                          onReadVehicle: () async {
+                            await markAsRead(doc.id);
+                          },
+                        ),
+                      );
+                    }
+
                     return FutureBuilder<Map<String, dynamic>>(
                       future: getVehicleDetails(notification['vehicleId']),
                       builder: (context, vehicleSnapshot) {
@@ -110,9 +147,11 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                           child: NotificationCard(
                             dayMonth: dayMonth,
                             year: year,
+                            title: "Service Reminder",
                             message: notification['message'],
-                            vehicleName: vehicleData['companyName'],
-                            vehicleNumber: vehicleData['vehicleNumber'],
+                            subjectPrimary:
+                                '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
+                            subjectSecondary: '',
                             onView: () async {
                               Get.to(() => NotificationDetailsScreen(
                                     notification: notification,
@@ -139,9 +178,10 @@ class CloudNotificationMessageCenter extends StatelessWidget {
 }
 
 class NotificationCard extends StatelessWidget {
+  final String title;
   final String message;
-  final String vehicleName;
-  final String vehicleNumber;
+  final String subjectPrimary;
+  final String subjectSecondary;
   final VoidCallback onView;
   final VoidCallback onReadVehicle;
   final String dayMonth;
@@ -149,9 +189,10 @@ class NotificationCard extends StatelessWidget {
 
   const NotificationCard({
     super.key,
+    required this.title,
     required this.message,
-    required this.vehicleName,
-    required this.vehicleNumber,
+    required this.subjectPrimary,
+    required this.subjectSecondary,
     required this.onView,
     required this.onReadVehicle,
     required this.dayMonth,
@@ -184,13 +225,13 @@ class NotificationCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "Service Reminder",
+                        title,
                         style: appStyle(15, kDark, FontWeight.bold),
                       ),
                       Container(
                         padding: EdgeInsets.all(5),
                         decoration: BoxDecoration(
-                            color: kPrimary.withOpacity(0.1),
+                            color: kPrimary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12.r)),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -211,9 +252,16 @@ class NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4.0),
                   Text(
-                    "$vehicleNumber ($vehicleName)",
+                    subjectPrimary,
                     style: appStyle(14, kDark, FontWeight.normal),
                   ),
+                  if (subjectSecondary.trim().isNotEmpty) ...[
+                    const SizedBox(height: 4.0),
+                    Text(
+                      subjectSecondary,
+                      style: appStyle(13, kDarkGray, FontWeight.normal),
+                    ),
+                  ],
                   const SizedBox(height: 4.0),
                   Text(
                     message,

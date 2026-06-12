@@ -6,6 +6,57 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+const getDisplayAddress = (stop = {}) => {
+  if (!stop || typeof stop !== "object") return "";
+  return (stop.address || stop.locationNotes || stop.company || "")
+    .toString()
+    .trim();
+};
+
+const buildDispatchLoadMessage = (
+  driverName,
+  loadNumber,
+  pickupStop,
+  deliveryStop
+) => {
+  const pickupLabel = (pickupStop?.company || "Pickup").toString().trim();
+  const deliveryLabel = (deliveryStop?.company || "Delivery").toString().trim();
+  const safeDriverName = (driverName || "Driver").toString().trim();
+  return `Hey ${safeDriverName}, a new load ${loadNumber} has been assigned to you from ${pickupLabel} to ${deliveryLabel}.`;
+};
+
+const createDispatchLoadNotificationDoc = ({ loadId, loadData, message }) => {
+  const pickups = Array.isArray(loadData.pickups) ? loadData.pickups : [];
+  const deliveries = Array.isArray(loadData.deliveries)
+    ? loadData.deliveries
+    : [];
+  const pickupStop = pickups[0] || {};
+  const deliveryStop = deliveries[deliveries.length - 1] || {};
+
+  return {
+    type: "dispatch_load",
+    category: "dispatch_load",
+    title: "New Load Assigned",
+    loadId,
+    loadNumber: loadData.loadNumber || loadId,
+    customerName: loadData.customerName || loadData.customerSearch || "",
+    driverId: loadData.driverId || "",
+    driverName: loadData.driverName || "",
+    pickupCompany: pickupStop.company || "",
+    pickupAddress: getDisplayAddress(pickupStop),
+    pickupDate: pickupStop.date || "",
+    deliveryCompany: deliveryStop.company || "",
+    deliveryAddress: getDisplayAddress(deliveryStop),
+    deliveryDate: deliveryStop.date || "",
+    status: loadData.status || "",
+    tenderedMiles: loadData.tenderedMiles || "",
+    message,
+    date: admin.firestore.FieldValue.serverTimestamp(),
+    isRead: false,
+    notifications: [],
+  };
+};
+
 // Initialize Nodemailer transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -919,249 +970,6 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
   }
 );
 
-// // ======================================================
-// // START DAILY DAY CHECK (Triggered when vehicle added)
-// // ======================================================
-// exports.startDailyDayCheckForUser = functions.https.onCall(
-//   async (data, context) => {
-//     const ownerId = data.ownerId;
-//     const vehicleId = data.vehicleId;
-
-//     try {
-//       await admin.firestore().collection("UserDailyChecks").doc(vehicleId).set({
-//         ownerId,
-//         vehicleId,
-//         services: [], // Will be populated by CRON after 6 hrs
-//         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-//         lastRunAt: null,
-//         status: "active",
-//       });
-
-//       return { success: true };
-//     } catch (err) {
-//       console.error("Error starting daily check:", err);
-//       throw new functions.https.HttpsError(
-//         "internal",
-//         "Error starting daily check"
-//       );
-//     }
-//   }
-// );
-
-// // ======================================================
-// // CRON JOB — RUNS EVERY 1440  minutes (24 hours)
-// // ======================================================
-// exports.runDailyDayCronJob = functions.pubsub
-//   .schedule("every 1440 minutes")
-//   .timeZone("Asia/Kolkata")
-//   .onRun(async () => {
-//     console.log("Running Daily Day Cron Job...");
-
-//     const snap = await admin.firestore().collection("UserDailyChecks").get();
-
-//     if (snap.empty) {
-//       console.log("No daily checks found.");
-//       return null;
-//     }
-
-//     for (const doc of snap.docs) {
-//       try {
-//         await processVehicleDailyCheck(doc.data(), doc.id);
-//       } catch (err) {
-//         console.error("Cron error:", err);
-//       }
-//     }
-
-//     return null;
-//   });
-
-// async function processVehicleDailyCheck(entry, entryId) {
-//   const ownerId = entry.ownerId;
-//   const vehicleId = entry.vehicleId;
-
-//   const ref = admin
-//     .firestore()
-//     .collection("Users")
-//     .doc(ownerId)
-//     .collection("Vehicles")
-//     .doc(vehicleId);
-
-//   const vDoc = await ref.get();
-//   if (!vDoc.exists) return;
-
-//   const vehicle = vDoc.data();
-//   if (!vehicle.services) return;
-
-//   const today = new Date();
-//   today.setHours(0, 0, 0, 0);
-
-//   const dueServices = [];
-
-//   // ============================================
-//   // SCAN ALL SERVICES INSIDE VEHICLE
-//   // ============================================
-//   for (const s of vehicle.services) {
-//     if ((s.type || "").toLowerCase() !== "day") continue;
-//     if (!s.nextNotificationValue) continue;
-
-//     let value = s.nextNotificationValue;
-
-//     // Skip non-string values like 350, 3, 390 etc.
-//     if (typeof value !== "string") continue;
-
-//     value = value.trim();
-
-//     // Skip invalid date formats
-//     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(value)) continue;
-
-//     // ✅ Correct: parse dd/MM/YYYY
-//     const [dd, mm, yyyy] = value.split("/").map(Number);
-//     const dueDate = new Date(yyyy, mm - 1, dd); // month is zero-indexed
-
-//     // Calculate daysRemaining
-//     const diffMs = dueDate - today;
-//     const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-//     dueServices.push({
-//       serviceId: s.serviceId || null,
-//       serviceName: s.serviceName,
-//       dueDate: value,
-//       daysRemaining,
-//     });
-//   }
-
-//   // Update Firestore with latest services list
-//   await admin.firestore().collection("UserDailyChecks").doc(entryId).update({
-//     services: dueServices,
-//     lastRunAt: admin.firestore.FieldValue.serverTimestamp(),
-//   });
-
-//   if (dueServices.length === 0) return;
-
-//   // Filter services that must trigger notifications
-//   const mustNotify = dueServices.filter(
-//     (s) => s.daysRemaining <= 10 && s.daysRemaining >= 0
-//   );
-
-//   if (mustNotify.length === 0) return;
-
-//   // Send to owner + team
-//   const recipients = await getAllRecipients(ownerId, vehicleId);
-
-//   for (const uid of recipients) {
-//     await sendDailyReminder(uid, vehicleId, mustNotify, vehicle);
-//   }
-
-//   // Store global log
-//   await admin
-//     .firestore()
-//     .collection("ServiceNotifications")
-//     .add({
-//       vehicleId,
-//       services: mustNotify,
-//       triggeredBy: ownerId,
-//       recipients: Array.from(recipients),
-//       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-//     });
-// }
-
-// // ======================================================
-// // GET OWNER + TEAM MEMBERS WHO HAVE THE VEHICLE
-// // ======================================================
-// async function getAllRecipients(ownerId, vehicleId) {
-//   const set = new Set([ownerId]);
-
-//   const teamSnap = await admin
-//     .firestore()
-//     .collection("Users")
-//     .where("createdBy", "==", ownerId)
-//     .where("isTeamMember", "==", true)
-//     .get();
-
-//   for (const tm of teamSnap.docs) {
-//     const memberId = tm.id;
-
-//     const veh = await admin
-//       .firestore()
-//       .collection("Users")
-//       .doc(memberId)
-//       .collection("Vehicles")
-//       .doc(vehicleId)
-//       .get();
-
-//     if (veh.exists) set.add(memberId);
-//   }
-
-//   return set;
-// }
-
-// // ======================================================
-// // SEND NOTIFICATION TO USER
-// // ======================================================
-// async function sendDailyReminder(userId, vehicleId, services, vehicleData) {
-//   const userDoc = await admin.firestore().collection("Users").doc(userId).get();
-//   const user = userDoc.data();
-//   if (!user || user.isNotificationOn === false) return;
-
-//   const fcmToken = user.fcmToken;
-//   const name = user.userName || "User";
-
-//   // Prepare notifications array exactly like before
-//   const notifications = services.map((s) => ({
-//     message:
-//       s.daysRemaining === 0
-//         ? `${s.serviceName} is due today!`
-//         : `${s.serviceName} is due in ${s.daysRemaining} days.`,
-//     nextNotificationValue: s.dueDate,
-//     serviceName: s.serviceName,
-//     type: "day",
-//   }));
-
-//   // Save to UserNotifications
-//   await admin
-//     .firestore()
-//     .collection("Users")
-//     .doc(userId)
-//     .collection("UserNotifications")
-//     .add({
-//       vehicleId,
-//       notifications,
-//       date: admin.firestore.FieldValue.serverTimestamp(),
-//       isRead: false,
-//       message: `Hey ${name}, some of your vehicle services need attention.`,
-//       currentMiles: vehicleData.currentMiles || null,
-//       hoursReading: vehicleData.hoursReading || null,
-//     });
-
-//   // Send FCM
-//   if (fcmToken) {
-//     try {
-//       await admin.messaging().send({
-//         token: fcmToken,
-//         notification: {
-//           title: "Service Reminder 🚛",
-//           body: notifications[0].message,
-//         },
-//         data: {
-//           type: "daily_day_service",
-//           userId,
-//           vehicleId,
-//         },
-//       });
-//     } catch (err) {
-//       console.error("FCM error:", err.code, err.message);
-//       if (
-//         err.code === "messaging/invalid-argument" ||
-//         err.code === "messaging/registration-token-not-registered"
-//       ) {
-//         await userDoc.ref.update({
-//           fcmToken: admin.firestore.FieldValue.delete(),
-//         });
-//       }
-//     }
-//   }
-// }
-
 // Function to send a new notification to the nearby Mechanics when a job is created
 exports.sendNewMechanicNotification = functions.firestore
   .document("jobs/{jobId}")
@@ -1783,4 +1591,119 @@ exports.userAcceptMechanicOfferNotification = functions.firestore
     }
 
     return null;
+  });
+
+exports.notifyDriverOnDispatchLoadAssignment = functions.firestore
+  .document("dispatch_loads/{loadId}")
+  .onWrite(async (change, context) => {
+    const loadId = context.params.loadId;
+    const afterExists = change.after.exists;
+    if (!afterExists) {
+      return null;
+    }
+
+    const afterData = change.after.data() || {};
+    const beforeData = change.before.exists ? change.before.data() || {} : {};
+
+    const nextDriverId = (afterData.driverId || "").toString().trim();
+    const previousDriverId = (beforeData.driverId || "").toString().trim();
+
+    if (!nextDriverId) {
+      return null;
+    }
+
+    const isNewAssignment =
+      !change.before.exists || previousDriverId !== nextDriverId;
+
+    if (!isNewAssignment) {
+      return null;
+    }
+
+    try {
+      const driverDoc = await db.collection("Users").doc(nextDriverId).get();
+      if (!driverDoc.exists) {
+        console.log(
+          `Driver not found for dispatch load notification: ${nextDriverId}`
+        );
+        return null;
+      }
+
+      const driverData = driverDoc.data() || {};
+      const isNotificationOn = driverData.isNotificationOn !== false;
+      if (!isNotificationOn) {
+        console.log(
+          `Skipping dispatch load notification for ${nextDriverId} - notifications disabled`
+        );
+        return null;
+      }
+
+      const driverName = (
+        afterData.driverName ||
+        driverData.userName ||
+        "Driver"
+      )
+        .toString()
+        .trim();
+      const pickups = Array.isArray(afterData.pickups) ? afterData.pickups : [];
+      const deliveries = Array.isArray(afterData.deliveries)
+        ? afterData.deliveries
+        : [];
+      const pickupStop = pickups[0] || {};
+      const deliveryStop = deliveries[deliveries.length - 1] || {};
+      const loadNumber = (afterData.loadNumber || loadId).toString();
+      const message = buildDispatchLoadMessage(
+        driverName,
+        loadNumber,
+        pickupStop,
+        deliveryStop
+      );
+
+      const notificationDoc = createDispatchLoadNotificationDoc({
+        loadId,
+        loadData: afterData,
+        message,
+      });
+
+      await db
+        .collection("Users")
+        .doc(nextDriverId)
+        .collection("UserNotifications")
+        .doc()
+        .set(notificationDoc);
+
+      const fcmToken = driverData.fcmToken;
+      if (fcmToken) {
+        try {
+          await admin.messaging().send({
+            token: fcmToken,
+            notification: {
+              title: "New Load Assigned",
+              body: message,
+            },
+            data: {
+              type: "dispatch_load",
+              loadId,
+              loadNumber,
+              driverId: nextDriverId,
+            },
+          });
+        } catch (fcmError) {
+          console.error(
+            `Failed to send dispatch load FCM to ${nextDriverId}:`,
+            fcmError
+          );
+        }
+      }
+
+      console.log(
+        `Dispatch load assignment notification stored for driver ${nextDriverId} on load ${loadId}`
+      );
+      return null;
+    } catch (error) {
+      console.error(
+        "Error sending dispatch load assignment notification:",
+        error
+      );
+      return null;
+    }
   });

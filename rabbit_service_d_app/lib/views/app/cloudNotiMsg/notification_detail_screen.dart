@@ -14,9 +14,15 @@ class NotificationDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> notification;
   final Map<String, dynamic> vehicleData;
 
+  bool get isDispatchLoadNotification =>
+      (notification['type'] ?? notification['category'] ?? '')
+          .toString()
+          .toLowerCase() ==
+      'dispatch_load';
+
   @override
   Widget build(BuildContext context) {
-    final services = notification['notifications'] as List;
+    final services = (notification['notifications'] as List?) ?? [];
 
     // Sort and filter services
     final sortedServices = List.from(services)
@@ -31,7 +37,8 @@ class NotificationDetailsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Service Reminder"),
+        title: Text(
+            isDispatchLoadNotification ? "Dispatch Load" : "Service Reminder"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -42,7 +49,7 @@ class NotificationDetailsScreen extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15.r),
               side: BorderSide(
-                color: kPrimary.withOpacity(0.2),
+                color: kPrimary.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -55,101 +62,141 @@ class NotificationDetailsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    buildInfoRow(
-                      Icons.directions_car_outlined,
-                      '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
-                    ),
-                    Divider(height: 24.h),
-                    notification['currentMiles'] == null
-                        ? buildInfoRow(
-                            Icons.gas_meter,
-                            "${notification['hoursReading']} (current Hours)",
-                          )
-                        : buildInfoRow(
-                            Icons.gas_meter,
-                            "${notification['currentMiles']} (current miles)",
-                          ),
-                    Divider(height: 24.h),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Services:",
-                          style: appStyleUniverse(18, kDark, FontWeight.bold),
-                        ),
-                        SizedBox(height: 8.h),
-                        if (filteredServices.isEmpty)
+                    if (isDispatchLoadNotification) ...[
+                      buildInfoRow(
+                        Icons.local_shipping_outlined,
+                        (notification['loadNumber'] ?? 'Load').toString(),
+                      ),
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.business_outlined,
+                        (notification['customerName'] ?? '-').toString(),
+                      ),
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.upload_file_outlined,
+                        '${(notification['pickupCompany'] ?? '-').toString()} -> ${(notification['deliveryCompany'] ?? '-').toString()}',
+                      ),
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.pin_drop_outlined,
+                        (notification['pickupAddress'] ?? '-').toString(),
+                      ),
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.location_on_outlined,
+                        (notification['deliveryAddress'] ?? '-').toString(),
+                      ),
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.route_outlined,
+                        (notification['tenderedMiles'] ?? '-').toString(),
+                      ),
+                      Divider(height: 24.h),
+                      buildInfoRow(
+                        Icons.message_outlined,
+                        (notification['message'] ?? '-').toString(),
+                      ),
+                    ] else ...[
+                      buildInfoRow(
+                        Icons.directions_car_outlined,
+                        '${vehicleData['vehicleNumber']} (${vehicleData['companyName']})',
+                      ),
+                      Divider(height: 24.h),
+                      notification['currentMiles'] == null
+                          ? buildInfoRow(
+                              Icons.gas_meter,
+                              "${notification['hoursReading']} (current Hours)",
+                            )
+                          : buildInfoRow(
+                              Icons.gas_meter,
+                              "${notification['currentMiles']} (current miles)",
+                            ),
+                      Divider(height: 24.h),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            "No services due.",
-                            style: appStyleUniverse(
-                                16, kDarkGray, FontWeight.w400),
-                          )
-                        else
-                          ListView.separated(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: filteredServices.length,
-                            separatorBuilder: (context, index) =>
-                                Divider(height: 24.h),
-                            itemBuilder: (context, index) {
-                              final service = filteredServices[index];
-                              final serviceName = service['serviceName'] ?? '';
-                              final nextNotificationValue =
-                                  service['nextNotificationValue'] ?? 0;
-                              final serviceType = service['type'];
-                              final formattedNotificationValue =
-                                  serviceType == "day"
-                                      ? convertDateFormat(nextNotificationValue)
-                                      : nextNotificationValue.toString();
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.build_outlined,
-                                          size: 20, color: kSecondary),
-                                      SizedBox(width: 8.w),
-                                      Expanded(
-                                        child: Text(
-                                          serviceName,
-                                          style: appStyleUniverse(
-                                              16, kDark, FontWeight.w500),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 6.w),
-                                        decoration: BoxDecoration(
-                                          color: kPrimary.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(12.r),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons
-                                                  .notifications_active_outlined,
-                                              size: 20,
-                                              color: kPrimary,
-                                            ),
-                                            SizedBox(width: 2.w),
-                                            Text(
-                                              "$formattedNotificationValue",
-                                              style: appStyleUniverse(
-                                                  16, kDark, FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
+                            "Services:",
+                            style: appStyleUniverse(18, kDark, FontWeight.bold),
                           ),
-                      ],
-                    ),
+                          SizedBox(height: 8.h),
+                          if (filteredServices.isEmpty)
+                            Text(
+                              "No services due.",
+                              style: appStyleUniverse(
+                                  16, kDarkGray, FontWeight.w400),
+                            )
+                          else
+                            ListView.separated(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              itemCount: filteredServices.length,
+                              separatorBuilder: (context, index) =>
+                                  Divider(height: 24.h),
+                              itemBuilder: (context, index) {
+                                final service = filteredServices[index];
+                                final serviceName =
+                                    service['serviceName'] ?? '';
+                                final nextNotificationValue =
+                                    service['nextNotificationValue'] ?? 0;
+                                final serviceType = service['type'];
+                                final formattedNotificationValue =
+                                    serviceType == "day"
+                                        ? convertDateFormat(
+                                            nextNotificationValue)
+                                        : nextNotificationValue.toString();
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.build_outlined,
+                                            size: 20, color: kSecondary),
+                                        SizedBox(width: 8.w),
+                                        Expanded(
+                                          child: Text(
+                                            serviceName,
+                                            style: appStyleUniverse(
+                                                16, kDark, FontWeight.w500),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 6.w),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                kPrimary.withValues(alpha: 0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(12.r),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons
+                                                    .notifications_active_outlined,
+                                                size: 20,
+                                                color: kPrimary,
+                                              ),
+                                              SizedBox(width: 2.w),
+                                              Text(
+                                                "$formattedNotificationValue",
+                                                style: appStyleUniverse(
+                                                    16, kDark, FontWeight.w500),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
