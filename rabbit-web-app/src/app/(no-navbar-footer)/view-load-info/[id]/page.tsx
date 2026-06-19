@@ -26,7 +26,14 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
 
@@ -56,18 +63,40 @@ interface CheckCallFormData {
 
 interface DispatchStopRecord {
   company?: string;
+  address?: string;
+  contactPerson?: string;
+  phone?: string;
   date?: string;
   timeStart?: string;
   timeEnd?: string;
+  stopType?: string;
+  hasAppointment?: boolean;
   totalQty?: string;
   qtyType?: string;
   totalWeight?: string;
+  commodity?: string;
+  length?: string;
+  width?: string;
+  height?: string;
   instructions?: string;
   pickup?: string;
+  pickupNumber?: string;
+  loadNumber?: string;
+  locationNotes?: string;
+  notes?: string;
   customerLoadRefConf?: string;
   shipmentBol?: string;
   poNumber?: string;
   reeferMode?: string;
+  routeName?: string;
+  seal?: string;
+  container?: string;
+  chassis?: string;
+  customerTrailer?: string;
+  pro?: string;
+  reeferFuelLevel?: string;
+  splitLoad?: string;
+  yardLocation?: string;
 }
 
 interface DispatchDocumentRecord {
@@ -90,9 +119,12 @@ interface DispatchLoadRecord {
   status?: string;
   customerSearch?: string;
   customerName?: string;
+  bookingOffice?: string;
   primaryFees?: number;
   feeType?: string;
   tenderedMiles?: string;
+  fuelSrcType?: string;
+  fuelSrc?: string;
   fuelSurcharge?: number;
   targetRate?: number;
   vanType?: string;
@@ -105,6 +137,8 @@ interface DispatchLoadRecord {
   declaredValue?: string;
   agency?: string;
   brokerageAgent?: string;
+  customerLoadNotes?: string;
+  internalNotes?: string;
   type?: string;
   lineHaul?: number;
   detention?: number;
@@ -113,13 +147,20 @@ interface DispatchLoadRecord {
   accessorials?: number;
   totalCustomerRate?: number;
   totalCarrierPay?: number;
+  assignmentType?: "carrier" | "driver" | "";
   carrierId?: string;
   truckId?: string;
   trailerId?: string;
+  trailerType?: string;
   driverId?: string;
+  secondDriverId?: string;
+  driverName?: string;
   dispatcherId?: string;
   temperature?: string;
   dispatchNotes?: string;
+  autoSendDriver?: boolean;
+  autoTrack?: boolean;
+  autoInvoice?: boolean;
   pickups?: DispatchStopRecord[];
   deliveries?: DispatchStopRecord[];
   documents?: DispatchDocumentRecord[];
@@ -498,6 +539,51 @@ const ToggleSwitch = ({
     </button>
   </div>
 );
+
+const DetailCard = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
+        {title}
+      </h2>
+    </div>
+    <div className="p-6">{children}</div>
+  </div>
+);
+
+const DetailItem = ({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value?: string | number | boolean | null;
+  className?: string;
+}) => {
+  const resolved =
+    typeof value === "boolean"
+      ? value
+        ? "Yes"
+        : "No"
+      : typeof value === "number"
+      ? value.toString()
+      : (value || "").toString().trim() || "-";
+
+  return (
+    <div className={className}>
+      <FormLabel>{label}</FormLabel>
+      <div className="min-h-[42px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 whitespace-pre-wrap break-words">
+        {resolved}
+      </div>
+    </div>
+  );
+};
 
 // --- PDF Generation Function ---
 const generatePdf = async (
@@ -1187,6 +1273,7 @@ export default function LoadDetailsPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [dbLoad, setDbLoad] = useState<DispatchLoadRecord | null>(null);
   const [driverLabel, setDriverLabel] = useState("-");
+  const [secondDriverLabel, setSecondDriverLabel] = useState("-");
   const [truckLabel, setTruckLabel] = useState("-");
   const [trailerLabel, setTrailerLabel] = useState("-");
   const [ownerProfile, setOwnerProfile] = useState<UserProfileRecord | null>(
@@ -1288,6 +1375,27 @@ export default function LoadDetailsPage() {
           setTrailerLabel(data.trailerId || "-");
         }
 
+        if (data.secondDriverId) {
+          const secondDriverSnap = await getDoc(
+            doc(db, "Users", data.secondDriverId)
+          );
+          if (secondDriverSnap.exists()) {
+            const secondDriverData =
+              secondDriverSnap.data() as UserProfileRecord;
+            setSecondDriverLabel(
+              (
+                secondDriverData.userName ||
+                secondDriverData.email ||
+                data.secondDriverId
+              ).trim()
+            );
+          } else {
+            setSecondDriverLabel(data.secondDriverId);
+          }
+        } else {
+          setSecondDriverLabel("-");
+        }
+
         if (data.carrierId) {
           const carrierSnap = await getDoc(
             doc(db, "settings_carriers", data.carrierId)
@@ -1295,7 +1403,20 @@ export default function LoadDetailsPage() {
           if (carrierSnap.exists()) {
             setCarrierProfile(carrierSnap.data() as CarrierSettingsRecord);
           } else {
-            setCarrierProfile(null);
+            const fallbackCarrierSnap = await getDocs(
+              query(
+                collection(db, "settings_carriers"),
+                where("companyName", "==", data.carrierId)
+              )
+            );
+
+            if (!fallbackCarrierSnap.empty) {
+              setCarrierProfile(
+                fallbackCarrierSnap.docs[0].data() as CarrierSettingsRecord
+              );
+            } else {
+              setCarrierProfile(null);
+            }
           }
         } else {
           setCarrierProfile(null);
@@ -1306,6 +1427,7 @@ export default function LoadDetailsPage() {
         setOwnerProfile(null);
         setCarrierProfile(null);
         setDriverProfile(null);
+        setSecondDriverLabel("-");
       }
     };
 
@@ -1329,6 +1451,16 @@ export default function LoadDetailsPage() {
     const ratePerMile = miles > 0 ? revenue / miles : 0;
     const firstPickup = dbLoad.pickups?.[0];
     const firstDelivery = dbLoad.deliveries?.[0];
+    const fallbackWeight =
+      dbLoad.weight ||
+      firstPickup?.totalWeight ||
+      firstDelivery?.totalWeight ||
+      "-";
+    const fallbackCommodity =
+      dbLoad.commodity ||
+      firstPickup?.commodity ||
+      firstDelivery?.commodity ||
+      "-";
 
     const brokerAddressLine2 = [
       ownerProfile?.city,
@@ -1338,7 +1470,10 @@ export default function LoadDetailsPage() {
       .filter(Boolean)
       .join(", ");
     const carrierCompany =
-      carrierProfile?.companyName || carrierProfile?.name || dbLoad.carrierId || "-";
+      carrierProfile?.companyName ||
+      carrierProfile?.name ||
+      dbLoad.carrierId ||
+      "-";
     const carrierAddressLine2 = [
       carrierProfile?.city,
       carrierProfile?.state,
@@ -1355,18 +1490,20 @@ export default function LoadDetailsPage() {
       customer: dbLoad.customerSearch || dbLoad.customerName || "-",
       primaryFees: `$${Number(dbLoad.primaryFees || 0).toFixed(2)}`,
       feeType: dbLoad.feeType || "-",
-      tenderedMiles: dbLoad.tenderedMiles ? `${dbLoad.tenderedMiles} Miles` : "-",
+      tenderedMiles: dbLoad.tenderedMiles
+        ? `${dbLoad.tenderedMiles} Miles`
+        : "-",
       fuelSurcharge: `$${Number(dbLoad.fuelSurcharge || 0).toFixed(2)}`,
       targetRate: `$${Number(dbLoad.targetRate || 0).toFixed(2)}`,
       vanType: dbLoad.vanType || "-",
       length: dbLoad.length ? `${dbLoad.length} ft` : "-",
-      weight: dbLoad.weight || "-",
+      weight: fallbackWeight,
       isHazmat: false,
       isTarpRequired: false,
       bookingAuthority: dbLoad.bookingAuthority || "-",
       salesAgent: dbLoad.salesAgent || "-",
       bookingTerminal: dbLoad.bookingTerminalOffice || "-",
-      commodity: dbLoad.commodity || "-",
+      commodity: fallbackCommodity,
       declaredValue: dbLoad.declaredValue || "-",
       agency: dbLoad.agency || "-",
       brokerageAgent: dbLoad.brokerageAgent || "-",
@@ -1398,8 +1535,7 @@ export default function LoadDetailsPage() {
       deliveryInstructions: firstDelivery?.instructions || "-",
       customerContact: { name: "-", phone: "-", email: "" },
       brokerInfo: {
-        companyName:
-          ownerProfile?.companyName || "Brokerage Company",
+        companyName: ownerProfile?.companyName || "Brokerage Company",
         addressLine1: ownerProfile?.address || "",
         addressLine2: brokerAddressLine2,
         email: ownerProfile?.email || "",
@@ -1424,7 +1560,7 @@ export default function LoadDetailsPage() {
         email: driverProfile?.email || "",
       },
       dispatchNotes: dbLoad.dispatchNotes || "",
-      customerLoadNotes: dbLoad.customerName || "",
+      customerLoadNotes: dbLoad.customerLoadNotes || "",
     };
   }, [
     carrierProfile,
@@ -1448,17 +1584,19 @@ export default function LoadDetailsPage() {
           ? `${stop.timeStart || "-"} - ${stop.timeEnd || "-"}`
           : "-",
       locationName: stop.company || "-",
-      address: "-",
-      cityStateZip: "-",
-      contact: "-",
+      address: stop.address || "-",
+      cityStateZip: stop.locationNotes || "-",
+      contact: stop.contactPerson || stop.phone || "-",
       qty:
-        stop.totalQty && stop.qtyType ? `${stop.totalQty} ${stop.qtyType}` : "-",
+        stop.totalQty && stop.qtyType
+          ? `${stop.totalQty} ${stop.qtyType}`
+          : "-",
       weight: stop.totalWeight ? `${stop.totalWeight} lbs` : "-",
       instructions: stop.instructions || dbLoad.dispatchNotes || "-",
       puNumber: stop.pickup || stop.customerLoadRefConf || "-",
       miles: "0 Empty",
       status: dbLoad.status || "Draft",
-      route: "-",
+      route: stop.routeName || "-",
       temp: dbLoad.temperature || "",
       appointmentRef: stop.customerLoadRefConf || "-",
       bolNumber: stop.shipmentBol || "",
@@ -1473,17 +1611,19 @@ export default function LoadDetailsPage() {
           ? `${stop.timeStart || "-"} - ${stop.timeEnd || "-"}`
           : "-",
       locationName: stop.company || "-",
-      address: "-",
-      cityStateZip: "-",
-      contact: "-",
+      address: stop.address || "-",
+      cityStateZip: stop.locationNotes || "-",
+      contact: stop.contactPerson || stop.phone || "-",
       qty:
-        stop.totalQty && stop.qtyType ? `${stop.totalQty} ${stop.qtyType}` : "-",
+        stop.totalQty && stop.qtyType
+          ? `${stop.totalQty} ${stop.qtyType}`
+          : "-",
       weight: stop.totalWeight ? `${stop.totalWeight} lbs` : "-",
       instructions: stop.instructions || dbLoad.dispatchNotes || "-",
       soNumber: stop.pickup || stop.customerLoadRefConf || "-",
       miles: "Loaded",
       status: dbLoad.status || "Draft",
-      route: "-",
+      route: stop.routeName || "-",
       temp: dbLoad.temperature || "",
       appointmentRef: stop.customerLoadRefConf || "-",
       bolNumber: stop.shipmentBol || "",
@@ -1607,6 +1747,62 @@ export default function LoadDetailsPage() {
     [documents]
   );
 
+  const formatCurrency = (value?: number | string) =>
+    `$${Number(value || 0).toFixed(2)}`;
+
+  const loadStatusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            loadData.status,
+            "Draft",
+            "Posted",
+            "Assigned",
+            "Pending",
+            "Dispatched",
+            "In Transit",
+            "Delivered",
+            "Completed",
+            "Completed Toun",
+          ].filter(Boolean)
+        )
+      ),
+    [loadData.status]
+  );
+
+  const loadTypeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            loadData.loadType,
+            "FTL",
+            "LTL",
+            "Partial",
+            "Full Truck Load",
+          ].filter(Boolean)
+        )
+      ),
+    [loadData.loadType]
+  );
+
+  const allStops = useMemo(
+    () => [
+      ...(dbLoad?.pickups?.map((stop, index) => ({
+        ...stop,
+        stopCategory: "Pickup",
+        stopNumber: index + 1,
+      })) || []),
+      ...(dbLoad?.deliveries?.map((stop, index) => ({
+        ...stop,
+        stopCategory: "Delivery",
+        stopNumber: index + 1,
+      })) || []),
+    ],
+    [dbLoad]
+  );
+
   return (
     <>
       <div className="min-h-screen bg-gray-100/50 font-sans text-gray-900 pb-20">
@@ -1700,16 +1896,8 @@ export default function LoadDetailsPage() {
         <div className="bg-white border-b border-gray-200 py-3">
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
             <div className="flex overflow-x-auto pb-1 hide-scrollbar items-center">
-              <MetricItem
-                label="Revenue"
-                value={loadData.revenue}
-                isCurrency
-              />
-              <MetricItem
-                label="Profit"
-                value={loadData.profit}
-                isCurrency
-              />
+              <MetricItem label="Revenue" value={loadData.revenue} isCurrency />
+              <MetricItem label="Profit" value={loadData.profit} isCurrency />
               <MetricItem
                 label="Rate"
                 value={`${loadData.ratePerMile} per mile`}
@@ -1719,19 +1907,13 @@ export default function LoadDetailsPage() {
                 value={loadData.flatRate}
                 isCurrency
               />
-              <MetricItem
-                label="Loaded Miles"
-                value={loadData.loadedMiles}
-              />
+              <MetricItem label="Loaded Miles" value={loadData.loadedMiles} />
               <MetricItem
                 label="Detention Tracked"
                 value={loadData.detentionTracked}
               />
               <MetricItem label="Qty" value={loadData.quantity} />
-              <MetricItem
-                label="Weight"
-                value={`${loadData.weight} lbs`}
-              />
+              <MetricItem label="Weight" value={`${loadData.weight} lbs`} />
             </div>
           </div>
         </div>
@@ -1743,14 +1925,8 @@ export default function LoadDetailsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* LEFT COLUMN: LOAD DETAILS (60%) */}
               <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                    <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide">
-                      Load Details
-                    </h2>
-                  </div>
-
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <DetailCard title="Load Details">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {/* Row 1 */}
                     <div>
                       <FormLabel>Load #</FormLabel>
@@ -1760,19 +1936,14 @@ export default function LoadDetailsPage() {
                       <FormLabel>Load Status</FormLabel>
                       <SelectField
                         value={loadData.status}
-                        options={[
-                          "Pending",
-                          "Dispatched",
-                          "In Transit",
-                          "Completed",
-                        ]}
+                        options={loadStatusOptions}
                       />
                     </div>
                     <div>
                       <FormLabel>Load Type</FormLabel>
                       <SelectField
                         value={loadData.loadType}
-                        options={["Full Truck Load", "LTL", "Partial"]}
+                        options={loadTypeOptions}
                       />
                     </div>
 
@@ -1789,7 +1960,10 @@ export default function LoadDetailsPage() {
                         <span className="absolute left-3 top-2 text-gray-500 text-sm">
                           $
                         </span>
-                        <InputField value="3400.00" className="pl-6" />
+                        <InputField
+                          value={Number(dbLoad?.primaryFees || 0).toFixed(2)}
+                          className="pl-6"
+                        />
                       </div>
                     </div>
                     <div>
@@ -1801,10 +1975,7 @@ export default function LoadDetailsPage() {
                     </div>
                     <div>
                       <FormLabel>Tendered Miles</FormLabel>
-                      <InputField
-                        value={loadData.tenderedMiles}
-                        disabled
-                      />
+                      <InputField value={loadData.tenderedMiles} disabled />
                     </div>
 
                     {/* Row 4 */}
@@ -1854,23 +2025,24 @@ export default function LoadDetailsPage() {
                     {/* Row 6 */}
                     <div className="md:col-span-2 xl:col-span-3">
                       <FormLabel>Booking Authority</FormLabel>
-                      <InputField
-                        value={loadData.bookingAuthority}
-                        disabled
-                      />
+                      <InputField value={loadData.bookingAuthority} disabled />
                     </div>
 
                     {/* Row 7 */}
+                    <div>
+                      <FormLabel>Booking Office</FormLabel>
+                      <InputField
+                        value={dbLoad?.bookingOffice || "-"}
+                        disabled
+                      />
+                    </div>
                     <div>
                       <FormLabel>Sales Agent</FormLabel>
                       <InputField value={loadData.salesAgent} disabled />
                     </div>
                     <div>
                       <FormLabel>Booking Terminal</FormLabel>
-                      <InputField
-                        value={loadData.bookingTerminal}
-                        disabled
-                      />
+                      <InputField value={loadData.bookingTerminal} disabled />
                     </div>
                     <div>
                       <FormLabel>Commodity</FormLabel>
@@ -1891,7 +2063,225 @@ export default function LoadDetailsPage() {
                       <InputField value={loadData.brokerageAgent} />
                     </div>
                   </div>
-                </div>
+                </DetailCard>
+
+                <DetailCard title="Assignment & Advanced Settings">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    <DetailItem
+                      label="Assignment Type"
+                      value={dbLoad?.assignmentType}
+                    />
+                    <DetailItem label="Carrier" value={loadData.carrier} />
+                    <DetailItem
+                      label="Carrier Pay"
+                      value={formatCurrency(dbLoad?.totalCarrierPay)}
+                    />
+                    <DetailItem label="Driver" value={loadData.driver} />
+                    <DetailItem label="Co-Driver" value={secondDriverLabel} />
+                    <DetailItem
+                      label="Dispatcher"
+                      value={dbLoad?.dispatcherId}
+                    />
+                    <DetailItem label="Truck" value={loadData.truck} />
+                    <DetailItem label="Trailer" value={loadData.trailer} />
+                    <DetailItem
+                      label="Trailer Type"
+                      value={dbLoad?.trailerType}
+                    />
+                    <DetailItem
+                      label="Fuel Source Type"
+                      value={dbLoad?.fuelSrcType}
+                    />
+                    <DetailItem label="Fuel Source" value={dbLoad?.fuelSrc} />
+                    <DetailItem
+                      label="Temperature"
+                      value={dbLoad?.temperature}
+                    />
+                    <DetailItem
+                      label="Line Haul"
+                      value={formatCurrency(dbLoad?.lineHaul)}
+                    />
+                    <DetailItem
+                      label="Fuel Surcharge"
+                      value={formatCurrency(dbLoad?.fuelSurcharge)}
+                    />
+                    <DetailItem
+                      label="Detention"
+                      value={formatCurrency(dbLoad?.detention)}
+                    />
+                    <DetailItem
+                      label="Layover"
+                      value={formatCurrency(dbLoad?.layover)}
+                    />
+                    <DetailItem
+                      label="TONU"
+                      value={formatCurrency(dbLoad?.tonu)}
+                    />
+                    <DetailItem
+                      label="Accessorials"
+                      value={formatCurrency(dbLoad?.accessorials)}
+                    />
+                    <DetailItem
+                      label="Total Customer Rate"
+                      value={formatCurrency(dbLoad?.totalCustomerRate)}
+                    />
+                    <DetailItem
+                      label="Tendered Miles"
+                      value={dbLoad?.tenderedMiles}
+                    />
+                    <DetailItem
+                      label="Auto Send Driver"
+                      value={dbLoad?.autoSendDriver}
+                    />
+                    <DetailItem label="Auto Track" value={dbLoad?.autoTrack} />
+                    <DetailItem
+                      label="Auto Invoice"
+                      value={dbLoad?.autoInvoice}
+                    />
+                  </div>
+                </DetailCard>
+
+                <DetailCard title="Notes">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <DetailItem
+                      label="Customer Load Notes"
+                      value={dbLoad?.customerLoadNotes}
+                    />
+                    <DetailItem
+                      label="Dispatch Notes"
+                      value={dbLoad?.dispatchNotes}
+                    />
+                    <DetailItem
+                      label="Internal Notes"
+                      value={dbLoad?.internalNotes}
+                      className="xl:col-span-2"
+                    />
+                  </div>
+                </DetailCard>
+
+                <DetailCard title="All Stop Details">
+                  <div className="space-y-6">
+                    {allStops.length === 0 && (
+                      <div className="text-sm text-gray-500">
+                        No stops available.
+                      </div>
+                    )}
+                    {allStops.map((stop) => (
+                      <div
+                        key={`${stop.stopCategory}-${stop.stopNumber}-${
+                          stop.company || "stop"
+                        }`}
+                        className="rounded-lg border border-gray-200 p-4"
+                      >
+                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
+                            {stop.stopCategory} {stop.stopNumber}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {stop.company || "-"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                          <DetailItem label="Address" value={stop.address} />
+                          <DetailItem
+                            label="Location Notes"
+                            value={stop.locationNotes}
+                          />
+                          <DetailItem label="Date" value={stop.date} />
+                          <DetailItem
+                            label="Start Time"
+                            value={stop.timeStart}
+                          />
+                          <DetailItem label="End Time" value={stop.timeEnd} />
+                          <DetailItem
+                            label="Has Appointment"
+                            value={stop.hasAppointment}
+                          />
+                          <DetailItem label="Stop Type" value={stop.stopType} />
+                          <DetailItem
+                            label="Customer Load/Ref/Conf"
+                            value={stop.customerLoadRefConf}
+                          />
+                          <DetailItem
+                            label="Pickup / Delivery Instruction"
+                            value={stop.pickup}
+                          />
+                          <DetailItem
+                            label="Contact Person"
+                            value={stop.contactPerson}
+                          />
+                          <DetailItem label="Phone" value={stop.phone} />
+                          <DetailItem label="PO Number" value={stop.poNumber} />
+                          <DetailItem
+                            label="Shipment BOL"
+                            value={stop.shipmentBol}
+                          />
+                          <DetailItem
+                            label="Pickup Number"
+                            value={stop.pickupNumber}
+                          />
+                          <DetailItem
+                            label="Stop Load Number"
+                            value={stop.loadNumber}
+                          />
+                          <DetailItem label="Total Qty" value={stop.totalQty} />
+                          <DetailItem label="Qty Type" value={stop.qtyType} />
+                          <DetailItem
+                            label="Total Weight"
+                            value={stop.totalWeight}
+                          />
+                          <DetailItem
+                            label="Commodity"
+                            value={stop.commodity}
+                          />
+                          <DetailItem label="Length" value={stop.length} />
+                          <DetailItem label="Width" value={stop.width} />
+                          <DetailItem label="Height" value={stop.height} />
+                          <DetailItem
+                            label="Instructions"
+                            value={stop.instructions}
+                          />
+                          <DetailItem
+                            label="Route Name"
+                            value={stop.routeName}
+                          />
+                          <DetailItem
+                            label="Reefer Mode"
+                            value={stop.reeferMode}
+                          />
+                          <DetailItem
+                            label="Reefer Fuel Level"
+                            value={stop.reeferFuelLevel}
+                          />
+                          <DetailItem label="Seal" value={stop.seal} />
+                          <DetailItem
+                            label="Container"
+                            value={stop.container}
+                          />
+                          <DetailItem label="Chassis" value={stop.chassis} />
+                          <DetailItem
+                            label="Customer Trailer"
+                            value={stop.customerTrailer}
+                          />
+                          <DetailItem label="PRO" value={stop.pro} />
+                          <DetailItem
+                            label="Split Load"
+                            value={stop.splitLoad}
+                          />
+                          <DetailItem
+                            label="Yard Location"
+                            value={stop.yardLocation}
+                          />
+                          <DetailItem
+                            label="Notes"
+                            value={stop.notes}
+                            className="xl:col-span-3"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DetailCard>
               </div>
 
               {/* RIGHT COLUMN: DISPATCH, ACTIONS, STOPS (40%) */}
