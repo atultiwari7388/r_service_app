@@ -164,6 +164,7 @@ const Signup: React.FC = () => {
         updated_at: new Date(),
         createdBy: uid,
         isTeamMember: false,
+        isMultiDeEnable: false,
         lastAddress: "",
         isNotificationOn: true,
         role: "Owner",
