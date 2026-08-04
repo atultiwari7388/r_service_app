@@ -29,6 +29,14 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def releaseSigningKeys = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+def missingReleaseSigningKeys = releaseSigningKeys.findAll { !keystoreProperties[it] }
+def releaseStoreFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+def hasReleaseSigning = keystorePropertiesFile.exists() &&
+        missingReleaseSigningKeys.isEmpty() &&
+        releaseStoreFile != null &&
+        releaseStoreFile.exists()
+
 android {
     namespace "com.rabbit_mechanic_app.rabbit_services_app"
     compileSdkVersion 35
@@ -59,15 +67,22 @@ android {
     }
     signingConfigs {
         release {
+            if (!hasReleaseSigning) {
+                def reason = !keystorePropertiesFile.exists()
+                        ? "Missing android/key.properties."
+                        : !missingReleaseSigningKeys.isEmpty()
+                        ? "Missing keys in android/key.properties: ${missingReleaseSigningKeys.join(', ')}."
+                        : "Keystore file not found: ${releaseStoreFile}."
+                throw new GradleException("${reason} Create android/key.properties from android/key.properties.example and point storeFile to your release/upload keystore.")
+            }
             keyAlias = keystoreProperties['keyAlias']
             keyPassword = keystoreProperties['keyPassword']
-            storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storeFile = releaseStoreFile
             storePassword = keystoreProperties['storePassword']
         }
     }
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
             signingConfig = signingConfigs.release
         }
     }
@@ -84,4 +99,3 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
     
 }
-

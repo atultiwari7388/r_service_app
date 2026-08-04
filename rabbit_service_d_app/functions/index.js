@@ -265,6 +265,7 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
           : selectedChequeAccess.includes("Cheque"),
       isOwner: false,
       isTeamMember: true,
+      isMultiDeEnable: false,
       status: "active",
       currentDeviceId: currentDeviceId || null,
       createdFrom: createdFrom,

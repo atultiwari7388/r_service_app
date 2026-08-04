@@ -82,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userDoc.exists) {
         final data = userDoc.data();
         final authorizedDeviceId = data?['currentDeviceId'];
+        final bool isMultiDeEnable = data?['isMultiDeEnable'] == true;
 
         // If no device is registered yet, update with current device and allow login
         if (authorizedDeviceId == null) {
@@ -93,6 +94,11 @@ class _LoginScreenState extends State<LoginScreen> {
             'currentDeviceId': deviceId,
             'lastLogin': FieldValue.serverTimestamp(),
           });
+          return true;
+        }
+
+        // If multi-device access is enabled, allow login
+        if (isMultiDeEnable) {
           return true;
         }
 
@@ -344,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ReusableText(
-              text: "New to Rabbit Mechanic Service?",
+              text: "New to TrenoOps?",
               style: appStyle(13, kDark, FontWeight.w500),
             ),
             SizedBox(width: 5.w),

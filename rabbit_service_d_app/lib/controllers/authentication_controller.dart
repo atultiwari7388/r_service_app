@@ -312,20 +312,26 @@ class AuthController extends GetxController {
         }
 
         if (userDoc.exists && userDoc['uid'] == user.uid) {
-          // Check device authorization before proceeding
-          final authorizedDeviceId = userDoc['currentDeviceId'];
+          final Map<String, dynamic>? userData =
+              userDoc.data() as Map<String, dynamic>?;
+          final authorizedDeviceId = userData?['currentDeviceId'];
+          final bool isMultiDeEnable = userData?['isMultiDeEnable'] == true;
 
-          // If user is already logged in on another device
-          if (authorizedDeviceId != null && authorizedDeviceId != deviceId) {
-            showToastMessage(
-                "Device Not Authorized",
-                "You are already logged in on another device. Please logout from the other device first or contact support.",
-                Colors.red);
+          // If user is already logged in on another device and multi-device is disabled
+          if (authorizedDeviceId != null &&
+              authorizedDeviceId.toString().isNotEmpty &&
+              authorizedDeviceId != deviceId) {
+            if (!isMultiDeEnable) {
+              showToastMessage(
+                  "Multi-Device Access Restricted",
+                  "Multi-device login is disabled for your account. Please contact your administrator to authorize access.",
+                  Colors.red);
 
-            await _auth.signOut();
-            isUserSign = false;
-            update();
-            return user;
+              await _auth.signOut();
+              isUserSign = false;
+              update();
+              return user;
+            }
           }
 
           // Update device info for authorized login

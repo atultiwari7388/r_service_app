@@ -111,6 +111,21 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         return null;
                       },
                     ),
+
+                    SizedBox(height: 15.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter Company name*",
+                      TextInputType.text,
+                      controller.companyNameController,
+                      MaterialCommunityIcons.account,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Please enter your company name";
+                        }
+                        return null;
+                      },
+                    ),
                     SizedBox(height: 15.h),
                     buildTextFieldInputWidget(
                       "Enter your email*",
@@ -177,19 +192,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       },
                     ),
                     SizedBox(height: 15.h),
-                    buildTextFieldInputWidget(
-                      "Enter Company name*",
-                      TextInputType.text,
-                      controller.companyNameController,
-                      MaterialCommunityIcons.account,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your company name";
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15.h),
+
                     buildTextFieldInputWidget(
                       "Enter your phone number",
                       TextInputType.number,

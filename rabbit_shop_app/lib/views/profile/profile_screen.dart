@@ -1,4 +1,7 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -7,6 +10,7 @@ import 'package:regal_shop_app/views/adminContact/admin_contact_screen.dart';
 import 'package:regal_shop_app/views/helpContact/help_center.dart';
 import 'package:regal_shop_app/views/privacyPolicy/privacy_policy.dart';
 import 'package:regal_shop_app/views/profile/profile_detail_screen.dart';
+import 'package:regal_shop_app/views/splash/splash_screen.dart';
 import 'package:regal_shop_app/views/termsCondition/terms_conditions.dart';
 import 'package:regal_shop_app/views/yourServices/add_your_service.dart';
 import '../../services/collection_references.dart';
@@ -19,8 +23,15 @@ import '../auth/login_screen.dart';
 import '../history/completed_history_screen.dart';
 import '../ratings/ratings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _firebaseAuth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +130,57 @@ class ProfileScreen extends StatelessWidget {
                         () => Get.to(() => PrivacyPolicyScreen())),
                     buildListTile(
                         "assets/out_bw.png", "Logout", () => signOut(context)),
+
+                    buildListTile(
+                      "assets/delete.png",
+                      "Delete Account",
+                      () {
+                        showDialog(
+                          context: context,
+                          builder: (_) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              title: const Text(
+                                'Delete Your Account',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              content: const Text(
+                                'Do you want to permanently delete your account or temporarily deactivate it?\n\n'
+                                '• Permanent deletion will remove all your data forever.\n'
+                                '• Temporary deactivation will hide your account but you can reactivate later.',
+                                style: TextStyle(height: 1.4),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text("CANCEL",
+                                      style: TextStyle(color: Colors.grey)),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(
+                                        context); // Close first dialog
+                                    _showTemporaryDeleteConfirmation(context);
+                                  },
+                                  child: const Text("TEMPORARY",
+                                      style: TextStyle(color: Colors.blue)),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(
+                                        context); // Close first dialog
+                                    _showPermanentDeleteConfirmation();
+                                  },
+                                  child: const Text("PERMANENT",
+                                      style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
                     SizedBox(height: 50.h),
                   ],
                 ),
@@ -128,6 +190,188 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showPermanentDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text(
+            'Permanent Account Deletion',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Are you sure you want to permanently delete your account?\n\n'
+            '⚠️ This action is permanent and cannot be recovered.\n\n'
+            '• All your personal data will be permanently deleted from our database.\n'
+            '• Your linked team members and their data associated with your account will also be removed.\n'
+            '• You will lose access to any saved progress, records, jobs, history, or preferences.\n\n',
+            style: TextStyle(height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  // Archive data
+                  await _archiveUserData(currentUId);
+
+                  // Delete Firestore data
+                  await _deleteUserData(currentUId);
+
+                  // Delete Firebase Auth user (current user only)
+                  await _firebaseAuth.currentUser?.delete();
+
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    Get.offAll(() => const SplashScreen());
+                    showToastMessage(
+                        "Success", "Account deleted permanently", Colors.green);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    showToastMessage(
+                        "Error", "Failed to delete account: $e", Colors.red);
+                  }
+                  log("Error deleting account: $e");
+                }
+              },
+              child: const Text("DELETE", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showTemporaryDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text(
+            'Temporarily Deactivate Account',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Your account will be deactivated but not deleted.\n\n'
+            '• Your team members will also be deactivated.\n'
+            '• All your data will be preserved but hidden.\n\n'
+            'We hope to see you again soon!',
+            style: TextStyle(height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("CANCEL", style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  // Deactivate owner
+                  await FirebaseFirestore.instance
+                      .collection('Mechanics')
+                      .doc(currentUId)
+                      .update({
+                    'status': 'deactivated',
+                    'deactivatedAt': FieldValue.serverTimestamp(),
+                  });
+
+                  // Sign out
+                  await auth.signOut();
+
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    Get.offAll(() => const SplashScreen());
+                    showToastMessage("Success",
+                        "Account deactivated temporarily", Colors.green);
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.pop(context); // Close loading
+                    showToastMessage("Error",
+                        "Failed to deactivate account: $e", Colors.red);
+                  }
+                  log("Error deactivating account: $e");
+                }
+              },
+              child: const Text("DEACTIVATE",
+                  style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _archiveUserData(String userId) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('Mechanics')
+        .doc(userId)
+        .get();
+
+    if (userDoc.exists) {
+      // Archive the main user data
+      final userData = userDoc.data() as Map<String, dynamic>;
+      await FirebaseFirestore.instance
+          .collection('deletedMembers')
+          .doc(userId)
+          .set({
+        ...userData,
+        'deletedAt': FieldValue.serverTimestamp(),
+        'originalId': userId,
+      });
+    }
+  }
+
+  Future<void> _deleteUserData(String userId) async {
+    final firestore = FirebaseFirestore.instance;
+
+    // Fetch user doc
+    final userDoc = await firestore.collection('Mechanics').doc(userId).get();
+
+    if (userDoc.exists) {
+      final userData = userDoc.data() as Map<String, dynamic>;
+
+      _deleteUserFromAuth(userId); // Delete owner last
+      await firestore.collection('Mechanics').doc(userId).delete();
+    }
+  }
+
+  Future<void> _deleteUserFromAuth(String uid) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null && user.uid == uid) {
+        await user.delete();
+      }
+    } catch (e) {
+      log('Error deleting Firebase Auth user: $e');
+    }
   }
 
   Widget buildListTile(String iconName, String title, void Function() onTap) {

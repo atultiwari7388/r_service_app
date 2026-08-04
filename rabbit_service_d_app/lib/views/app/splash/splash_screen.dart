@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:android_id/android_id.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -92,6 +95,42 @@ class _SplashScreenState extends State<SplashScreen> {
         }
 
         if (userDoc.exists && userDoc['uid'] == user!.uid) {
+          final Map<String, dynamic>? userData =
+              userDoc.data() as Map<String, dynamic>?;
+          final authorizedDeviceId = userData?['currentDeviceId'];
+          final bool isMultiDeEnable = userData?['isMultiDeEnable'] == true;
+
+          // Get device ID for current device
+          final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+          String? currentDeviceId;
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            final androidIdPlugin = AndroidId();
+            currentDeviceId = await androidIdPlugin.getId();
+          } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+            final iosInfo = await deviceInfoPlugin.iosInfo;
+            currentDeviceId = iosInfo.identifierForVendor;
+          }
+
+          if (authorizedDeviceId != null &&
+              authorizedDeviceId.toString().isNotEmpty &&
+              currentDeviceId != null &&
+              authorizedDeviceId != currentDeviceId) {
+            if (!isMultiDeEnable) {
+              showToastMessage(
+                  "Multi-Device Access Restricted",
+                  "Multi-device login is disabled for your account. Please contact your administrator to authorize access.",
+                  Colors.red);
+
+              await FirebaseAuth.instance.signOut();
+              log("Device mismatch & multi-device disabled, signing out");
+
+              Get.offAll(() => const LoginScreen(),
+                  transition: Transition.cupertino,
+                  duration: const Duration(milliseconds: 900));
+              return;
+            }
+          }
+
           if (userDoc['active'] == true && userDoc['status'] == "active") {
             log("User is active and exists in Users collection, navigating to EntryScreen");
 
