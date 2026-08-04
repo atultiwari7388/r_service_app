@@ -106,11 +106,35 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.shopName,
-                            style: kIsWeb
-                                ? TextStyle(color: kDark)
-                                : appStyle(16.sp, kDark, FontWeight.w500),
+                          FutureBuilder<DocumentSnapshot>(
+                            future: widget.mId.isNotEmpty
+                                ? FirebaseFirestore.instance
+                                    .collection('Mechanics')
+                                    .doc(widget.mId)
+                                    .get()
+                                : null,
+                            builder: (context, snapshot) {
+                              String displayName = widget.shopName;
+                              if (snapshot.hasData &&
+                                  snapshot.data != null &&
+                                  snapshot.data!.exists) {
+                                final mechanicData = snapshot.data!.data()
+                                    as Map<String, dynamic>?;
+                                final workshopName = mechanicData?['workshopName']
+                                        ?.toString()
+                                        .trim() ??
+                                    '';
+                                if (workshopName.isNotEmpty) {
+                                  displayName = workshopName;
+                                }
+                              }
+                              return Text(
+                                displayName,
+                                style: kIsWeb
+                                    ? TextStyle(color: kDark)
+                                    : appStyle(16.sp, kDark, FontWeight.w500),
+                              );
+                            },
                           ),
                           SizedBox(height: 4.h),
                           Row(
