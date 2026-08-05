@@ -214,6 +214,8 @@ export default function TruckDispatchScreen({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [companyOrUserName, setCompanyOrUserName] = useState("");
+
   const resolveEffectiveUserId = async (userId: string) => {
     setIsResolvingUser(true);
     try {
@@ -223,12 +225,31 @@ export default function TruckDispatchScreen({
         return;
       }
 
-      const userData = userDoc.data() as { role?: string; createdBy?: string };
+      const userData = userDoc.data() as {
+        role?: string;
+        createdBy?: string;
+        companyName?: string;
+        userName?: string;
+      };
+
+      let targetUserId = userId;
+      let targetName = (userData.companyName || userData.userName || "").trim();
+
       if (userData.role === "SubOwner" && userData.createdBy) {
-        setEffectiveUserId(userData.createdBy);
-      } else {
-        setEffectiveUserId(userId);
+        targetUserId = userData.createdBy;
+        const ownerDoc = await getDoc(doc(db, "Users", userData.createdBy));
+        if (ownerDoc.exists()) {
+          const ownerData = ownerDoc.data() as {
+            companyName?: string;
+            userName?: string;
+          };
+          const ownerName = (ownerData.companyName || ownerData.userName || "").trim();
+          if (ownerName) targetName = ownerName;
+        }
       }
+
+      setEffectiveUserId(targetUserId);
+      setCompanyOrUserName(targetName);
     } catch (error) {
       GlobalToastError(error);
       setEffectiveUserId(userId);
@@ -242,13 +263,55 @@ export default function TruckDispatchScreen({
     return value;
   };
 
-  const buildLoadNumber = (docId: string) => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const suffix = docId.slice(-5).toUpperCase();
-    return `LD-${y}${m}${d}-${suffix}`;
+  const generateLoadPrefix = (name: string): string => {
+    const trimmed = (name || "").trim();
+    if (!trimmed) return "LOAD";
+    const formatted = trimmed
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return formatted || "LOAD";
+  };
+
+  const generateNextLoadNumber = async (
+    ownerId: string,
+    rawName: string
+  ): Promise<string> => {
+    const prefix = generateLoadPrefix(rawName);
+
+    try {
+      const loadsSnap = await getDocs(
+        query(
+          collection(db, "dispatch_loads"),
+          where("effectiveUserId", "==", ownerId)
+        )
+      );
+
+      let maxNum = 0;
+      const escapedPrefix = prefix.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const pattern = new RegExp(`^${escapedPrefix}-(\\d+)$`, "i");
+
+      loadsSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const loadNum = data.loadNumber;
+        if (typeof loadNum === "string") {
+          const match = loadNum.match(pattern);
+          if (match && match[1]) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxNum) {
+              maxNum = num;
+            }
+          }
+        }
+      });
+
+      const nextNum = maxNum + 1;
+      const paddedNum = String(nextNum).padStart(4, "0");
+      return `${prefix}-${paddedNum}`;
+    } catch (error) {
+      console.error("Error generating load number:", error);
+      return `${prefix}-0001`;
+    }
   };
 
   const formatHistoryDate = (seconds?: number) => {
@@ -425,7 +488,7 @@ export default function TruckDispatchScreen({
     fetchLoads();
   }, [fetchLoads]);
 
-  const allLoads = loads;
+  const allLoads = loads.filter((load) => !load.isDuplicate);
   const tabStatusMap: Record<string, string> = {
     booked: "Booked",
     "pre-planned": "Pre-Planned",
@@ -642,7 +705,10 @@ export default function TruckDispatchScreen({
 
       const sourceData = sourceSnap.data() as DispatchLoadRecord;
       const duplicateRef = doc(collection(db, "dispatch_loads"));
-      const duplicateLoadNumber = buildLoadNumber(duplicateRef.id);
+      const duplicateLoadNumber = await generateNextLoadNumber(
+        effectiveUserId,
+        companyOrUserName
+      );
       const duplicatedDocuments = (sourceData.documents || []).map((item) => ({
         ...item,
         id: `${item.id || "doc"}-${Date.now()}`,

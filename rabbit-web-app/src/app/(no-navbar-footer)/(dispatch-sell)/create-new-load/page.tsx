@@ -1328,6 +1328,9 @@ function CreateNewLoadPageContent() {
     }
   }, []);
 
+  const [companyOrUserName, setCompanyOrUserName] = useState("");
+  const [previewLoadNumber, setPreviewLoadNumber] = useState("");
+
   const resolveEffectiveUserId = async (userId: string) => {
     setIsResolvingUser(true);
     try {
@@ -1337,12 +1340,33 @@ function CreateNewLoadPageContent() {
         return;
       }
 
-      const userData = userDoc.data() as { role?: string; createdBy?: string };
+      const userData = userDoc.data() as {
+        role?: string;
+        createdBy?: string;
+        companyName?: string;
+        userName?: string;
+      };
+
+      let targetUserId = userId;
+      let targetName = (userData.companyName || userData.userName || "").trim();
+
       if (userData.role === "SubOwner" && userData.createdBy) {
-        setEffectiveUserId(userData.createdBy);
-      } else {
-        setEffectiveUserId(userId);
+        targetUserId = userData.createdBy;
+        const ownerDoc = await getDoc(doc(db, "Users", userData.createdBy));
+        if (ownerDoc.exists()) {
+          const ownerData = ownerDoc.data() as {
+            companyName?: string;
+            userName?: string;
+          };
+          const ownerName = (ownerData.companyName || ownerData.userName || "").trim();
+          if (ownerName) {
+            targetName = ownerName;
+          }
+        }
       }
+
+      setEffectiveUserId(targetUserId);
+      setCompanyOrUserName(targetName);
     } catch (error) {
       GlobalToastError(error);
       setEffectiveUserId(userId);
@@ -1351,13 +1375,55 @@ function CreateNewLoadPageContent() {
     }
   };
 
-  const buildLoadNumber = (docId: string) => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const suffix = docId.slice(-5).toUpperCase();
-    return `LD-${y}${m}${d}-${suffix}`;
+  const generateLoadPrefix = (name: string): string => {
+    const trimmed = (name || "").trim();
+    if (!trimmed) return "LOAD";
+    const formatted = trimmed
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return formatted || "LOAD";
+  };
+
+  const generateNextLoadNumber = async (
+    ownerId: string,
+    rawName: string
+  ): Promise<string> => {
+    const prefix = generateLoadPrefix(rawName);
+
+    try {
+      const loadsSnap = await getDocs(
+        query(
+          collection(db, "dispatch_loads"),
+          where("effectiveUserId", "==", ownerId)
+        )
+      );
+
+      let maxNum = 0;
+      const escapedPrefix = prefix.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const pattern = new RegExp(`^${escapedPrefix}-(\\d+)$`, "i");
+
+      loadsSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const loadNum = data.loadNumber;
+        if (typeof loadNum === "string") {
+          const match = loadNum.match(pattern);
+          if (match && match[1]) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxNum) {
+              maxNum = num;
+            }
+          }
+        }
+      });
+
+      const nextNum = maxNum + 1;
+      const paddedNum = String(nextNum).padStart(4, "0");
+      return `${prefix}-${paddedNum}`;
+    } catch (error) {
+      console.error("Error generating load number:", error);
+      return `${prefix}-0001`;
+    }
   };
 
   useEffect(() => {
@@ -1464,6 +1530,20 @@ function CreateNewLoadPageContent() {
     fetchEditableLoad();
   }, [editId, router]);
 
+  useEffect(() => {
+    if (!effectiveUserId || editId) return;
+
+    const fetchPreview = async () => {
+      const num = await generateNextLoadNumber(
+        effectiveUserId,
+        companyOrUserName
+      );
+      setPreviewLoadNumber(num);
+    };
+
+    fetchPreview();
+  }, [effectiveUserId, companyOrUserName, editId]);
+
   const handleSaveLoad = async (overrideStatus?: "Draft" | "Posted") => {
     if (!user?.uid || !effectiveUserId) {
       toast.error("Please login to save this load.");
@@ -1489,7 +1569,7 @@ function CreateNewLoadPageContent() {
       const resolvedLoadNumber =
         editingLoadId && existingLoadNumber
           ? existingLoadNumber
-          : buildLoadNumber(loadRef.id);
+          : await generateNextLoadNumber(effectiveUserId, companyOrUserName);
 
       const documents = formData.documents.map((item) => ({
         id: item.id,
@@ -1971,7 +2051,7 @@ function CreateNewLoadPageContent() {
                   </h1>
                   <span className="hidden sm:inline text-gray-400">|</span>
                   <div className="text-sm text-gray-500 font-mono">
-                    ID: Auto-generated on save
+                    ID: {editingLoadId && existingLoadNumber ? existingLoadNumber : previewLoadNumber || "Auto-generated on save"}
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
