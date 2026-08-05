@@ -266,11 +266,9 @@ export default function TruckDispatchScreen({
   const generateLoadPrefix = (name: string): string => {
     const trimmed = (name || "").trim();
     if (!trimmed) return "LOAD";
-    const formatted = trimmed
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    return formatted || "LOAD";
+    const clean = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!clean) return "LOAD";
+    return clean.slice(0, 3);
   };
 
   const generateNextLoadNumber = async (

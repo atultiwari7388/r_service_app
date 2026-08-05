@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/notification_detail_screen.dart';
+import 'package:regal_service_d_app/views/app/truckDispatch/truck_disptach_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
@@ -121,10 +122,7 @@ class CloudNotificationMessageCenter extends StatelessWidget {
                               .where((item) => item.trim().isNotEmpty)
                               .join(' -> '),
                           onView: () async {
-                            Get.to(() => NotificationDetailsScreen(
-                                  notification: notification,
-                                  vehicleData: const {},
-                                ));
+                            Get.to(() => const TruckDispatchDashboard());
                           },
                           onReadVehicle: () async {
                             await markAsRead(doc.id);

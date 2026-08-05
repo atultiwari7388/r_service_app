@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/widgets/truck_dispatch_detail_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TruckDispatchDashboard extends StatefulWidget {
   const TruckDispatchDashboard({super.key});
@@ -40,6 +41,23 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openMap(String address) async {
+    final cleanAddress = address.replaceAll('-', '').trim();
+    if (cleanAddress.isEmpty) return;
+    final query = Uri.encodeComponent(address);
+    final googleMapsUrl =
+        Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
+    final appleMapsUrl = Uri.parse("https://maps.apple.com/?q=$query");
+
+    if (await canLaunchUrl(googleMapsUrl)) {
+      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (await canLaunchUrl(appleMapsUrl)) {
+      await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _onAccept(LoadData load) async {
@@ -598,6 +616,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                           location: load.pickupLocation,
                           date: load.pickupDate,
                           dateColor: kPrimary,
+                          onNavigate: () => _openMap(load.fullPickupAddress),
                         ),
                         const SizedBox(height: 24),
                         _buildDetailedLocationBlock(
@@ -607,6 +626,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                           location: load.dropLocation,
                           date: load.dropDate,
                           dateColor: Colors.red[400]!,
+                          onNavigate: () => _openMap(load.fullDropAddress),
                         ),
                       ],
                     ),
@@ -719,33 +739,94 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
     required String location,
     required String date,
     required Color dateColor,
+    required VoidCallback onNavigate,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          building,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: kDark,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                building,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: kDark,
+                ),
+              ),
+            ),
+            InkWell(
+              onTap: onNavigate,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: dateColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.near_me_rounded,
+                      size: 14,
+                      color: dateColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Map',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: dateColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
-        Text(
-          address,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        Text(
-          location,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w400,
+        InkWell(
+          onTap: onNavigate,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2.0, right: 6.0),
+                child: Icon(
+                  Icons.navigation_outlined,
+                  size: 15,
+                  color: dateColor,
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      address,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    Text(
+                      location,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 6),
@@ -790,6 +871,20 @@ class LoadData {
   final String dropAddress;
   final String dropLocation;
   final String dropDate;
+
+  String get fullPickupAddress {
+    final list = [pickupBuilding, pickupAddress, pickupLocation]
+        .where((s) => s.trim().isNotEmpty && s.trim() != '-')
+        .toList();
+    return list.join(', ');
+  }
+
+  String get fullDropAddress {
+    final list = [dropBuilding, dropAddress, dropLocation]
+        .where((s) => s.trim().isNotEmpty && s.trim() != '-')
+        .toList();
+    return list.join(', ');
+  }
 
   LoadData({
     required this.id,
