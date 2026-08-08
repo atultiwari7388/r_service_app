@@ -568,12 +568,14 @@ class DashboardController extends GetxController {
         imageUrls.add(imageUrl);
       }
 
+      final actualUserId = FirebaseAuth.instance.currentUser?.uid ?? userId;
+
       // Prepare data for the job document
       var data = {
         'orderId': orderId.toString(),
         "cancelReason": "",
         "cancelBy": "",
-        'userId': userId,
+        'userId': actualUserId,
         "userPhoto": userPhoto,
         'userName': name,
         'selectedService': selectedService,
@@ -602,13 +604,23 @@ class DashboardController extends GetxController {
         'mechanicsOffer': [],
       };
 
-      // Save order details to user's history subcollection
+      // Save order details to fleet owner's history subcollection
       await FirebaseFirestore.instance
           .collection("Users")
-          .doc(_effectiveUserId) // Always save under current user's history
+          .doc(_effectiveUserId)
           .collection("history")
           .doc(orderId.toString())
           .set(data);
+
+      // If creator is a team member/driver (actualUserId != _effectiveUserId), also save under driver's history
+      if (actualUserId.isNotEmpty && actualUserId != _effectiveUserId) {
+        await FirebaseFirestore.instance
+            .collection("Users")
+            .doc(actualUserId)
+            .collection("history")
+            .doc(orderId.toString())
+            .set(data);
+      }
 
       // Save order details to admin-accessible collection
       await FirebaseFirestore.instance

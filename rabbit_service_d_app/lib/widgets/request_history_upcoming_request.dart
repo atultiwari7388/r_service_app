@@ -687,6 +687,26 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
           print("Mechanic with mId: $mechanicId not found in userHistoryRef.");
         }
       }
+
+      // Sync with secondary history document (e.g. driver or owner history)
+      final ownerId = jobData?['ownerId']?.toString();
+      final creatorId = jobData?['userId']?.toString();
+      final otherIds = {ownerId, creatorId}..removeWhere((id) => id == null || id.isEmpty || id == widget.userId);
+      for (final otherId in otherIds) {
+        final otherHistoryRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(otherId)
+            .collection('history')
+            .doc(widget.jobId);
+        final snap = await otherHistoryRef.get();
+        if (snap.exists) {
+          await otherHistoryRef.update({
+            'status': status,
+            if (jobData?['mechanicsOffer'] != null)
+              'mechanicsOffer': jobData!['mechanicsOffer'],
+          });
+        }
+      }
     } catch (e) {
       setState(() {
         isStatusUpdating = false;
@@ -771,6 +791,27 @@ class _RequestAcceptHistoryCardState extends State<RequestAcceptHistoryCard> {
         await userHistoryRef.update({
           'mechanicsOffer': updatedHistoryMechanicsOffer,
         });
+      }
+
+      // Sync with secondary history document
+      final ownerId = jobData?['ownerId']?.toString();
+      final creatorId = jobData?['userId']?.toString();
+      final otherIds = {ownerId, creatorId}..removeWhere((id) => id == null || id.isEmpty || id == widget.userId);
+      for (final otherId in otherIds) {
+        final otherHistoryRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(otherId)
+            .collection('history')
+            .doc(widget.jobId);
+        final snap = await otherHistoryRef.get();
+        if (snap.exists) {
+          await otherHistoryRef.update({
+            'status': status,
+            'payMode': _selectedPaymentMode.toString(),
+            if (jobData?['mechanicsOffer'] != null)
+              'mechanicsOffer': jobData!['mechanicsOffer'],
+          });
+        }
       }
     } catch (e) {
       print('Error updating status: $e');

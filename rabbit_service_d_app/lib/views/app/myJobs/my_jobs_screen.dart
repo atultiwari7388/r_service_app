@@ -322,6 +322,20 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
         await historyDoc.set(data);
       }
 
+      final jobSnap = await FirebaseFirestore.instance.collection('jobs').doc(jobId).get();
+      final creatorId = jobSnap.data()?['userId']?.toString();
+      if (creatorId != null && creatorId.isNotEmpty && creatorId != _effectiveUserId) {
+        DocumentReference creatorHistoryDoc = FirebaseFirestore.instance
+            .collection("Users")
+            .doc(creatorId)
+            .collection("history")
+            .doc(jobId);
+        DocumentSnapshot creatorSnap = await creatorHistoryDoc.get();
+        if (creatorSnap.exists) {
+          await creatorHistoryDoc.update(data);
+        }
+      }
+
       setState(() {
         nearByDistance = newDistance;
       });
@@ -417,6 +431,19 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           .collection('history')
           .doc(orderId)
           .update(data);
+
+      final creatorId = jobData?['userId']?.toString();
+      if (creatorId != null && creatorId.isNotEmpty && creatorId != _effectiveUserId) {
+        final creatorHistoryRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(creatorId)
+            .collection('history')
+            .doc(orderId);
+        final creatorSnap = await creatorHistoryRef.get();
+        if (creatorSnap.exists) {
+          await creatorHistoryRef.update(data);
+        }
+      }
 
       print("Updated mechanicsOffer: $mechanicsOffer");
 
