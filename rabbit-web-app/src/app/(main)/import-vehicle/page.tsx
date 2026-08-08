@@ -348,14 +348,10 @@ export default function ImportVehicle() {
 
       // 2. Vehicle type specific validation and default values
       if (vehicleType === "Truck") {
-        if (!data.currentMiles?.toString().trim()) {
-          throw new Error("Truck requires current miles");
-        }
+        // Current miles is optional for Truck
       } else if (vehicleType === "Trailer") {
         // Set default values for trailer if not provided
         data.hoursReading = data.hoursReading?.toString() || "1000";
-        data.dot = data.dot?.toString() || "RB123";
-        data.iccms = data.iccms?.toString() || "RB123";
 
         // Set oil change date to current date if not provided
         const currentDate = format(new Date(), "yyyy-MM-dd");
@@ -397,14 +393,10 @@ export default function ImportVehicle() {
         engineName,
         vehicleNumber,
         vin: data.vin?.toString().trim() || "",
-        dot:
-          data.dot?.toString().trim() ||
-          (vehicleType === "Trailer" ? "RB123" : ""),
-        iccms:
-          data.iccms?.toString().trim() ||
-          (vehicleType === "Trailer" ? "RB123" : ""),
+        dot: "",
+        iccms: "",
         licensePlate: data.licensePlate?.toString().trim() || "",
-        year: data.year?.toString(),
+        year: "",
         isSet: true,
         uploadedDocuments: [],
         createdAt: serverTimestamp() as FieldValue,

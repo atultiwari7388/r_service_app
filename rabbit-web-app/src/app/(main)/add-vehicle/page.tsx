@@ -215,17 +215,30 @@ export default function AddVehiclePage() {
       !selectedVehicleType ||
       !selectedCompany ||
       !selectedEngineName ||
-      !vehicleNumber ||
-      !vin ||
-      !licensePlate ||
-      !year
+      !vehicleNumber
     ) {
       toast.error("Please fill all required fields");
       return false;
     }
 
-    if (selectedVehicleType === "Truck" && !currentReading) {
-      toast.error("Please enter current reading for Truck");
+    const isVinRequired =
+      selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer";
+    if (isVinRequired && !vin) {
+      toast.error("Please enter VIN");
+      return false;
+    }
+
+    const isYearRequired =
+      selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer";
+    if (isYearRequired && !year) {
+      toast.error("Please enter year");
+      return false;
+    }
+
+    const isLicensePlateRequired =
+      selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer";
+    if (isLicensePlateRequired && !licensePlate) {
+      toast.error("Please enter license plate");
       return false;
     }
 
@@ -343,10 +356,10 @@ export default function AddVehiclePage() {
         engineName: selectedEngineName.toUpperCase(),
         vehicleNumber,
         vin,
-        dot: dot || "",
-        iccms: iccms || "",
+        // dot: dot || "",
+        // iccms: iccms || "",
         licensePlate,
-        year,
+        // year,
         isSet: true,
         uploadedDocuments: [],
         createdAt: serverTimestamp(),
@@ -550,7 +563,7 @@ export default function AddVehiclePage() {
                 htmlFor="currentReading"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Current Miles *
+                Current Miles (Optional)
               </label>
               <input
                 type="number"
@@ -587,7 +600,9 @@ export default function AddVehiclePage() {
               htmlFor="vin"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              VIN *
+              {selectedVehicleType === "Truck" || selectedVehicleType === "Trailer"
+                ? "VIN (Optional)"
+                : "VIN *"}
             </label>
             <input
               type="text"
@@ -599,9 +614,9 @@ export default function AddVehiclePage() {
             />
           </div>
 
-          {selectedVehicleType === "Truck" && (
+          {/* Commented out DOT & ICCMS */}
+          {/* {selectedVehicleType === "Truck" && (
             <div>
-              {/* DOT */}
               <div>
                 <label
                   htmlFor="dot"
@@ -619,7 +634,6 @@ export default function AddVehiclePage() {
                 />
               </div>
 
-              {/* ICCMS */}
               <div>
                 <label
                   htmlFor="iccms"
@@ -637,7 +651,7 @@ export default function AddVehiclePage() {
                 />
               </div>
             </div>
-          )}
+          )} */}
 
           {/* License Plate */}
           <div>
@@ -645,7 +659,9 @@ export default function AddVehiclePage() {
               htmlFor="licensePlate"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              License Plate *
+              {selectedVehicleType === "Truck" || selectedVehicleType === "Trailer"
+                ? "License Plate (Optional)"
+                : "License Plate *"}
             </label>
             <input
               type="text"
@@ -658,21 +674,23 @@ export default function AddVehiclePage() {
           </div>
 
           {/* Year */}
-          <div>
-            <label
-              htmlFor="year"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Year *
-            </label>
-            <input
-              type="date"
-              id="year"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-            />
-          </div>
+          {selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer" && (
+            <div>
+              <label
+                htmlFor="year"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Year *
+              </label>
+              <input
+                type="date"
+                id="year"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+              />
+            </div>
+          )}
 
           <div className="flex justify-between">
             <Link

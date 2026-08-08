@@ -269,25 +269,30 @@ export default function EditVehicleScreen() {
       !selectedVehicleType ||
       !selectedCompany ||
       !selectedEngineName ||
-      !vehicleNumber ||
-      !vin ||
-      !licensePlate ||
-      !year
+      !vehicleNumber
     ) {
       toast.error("Please fill all required fields");
       return false;
     }
 
-    if (selectedVehicleType === "Truck" && !currentReading) {
-      toast.error("Please enter current reading for Truck");
+    const isVinRequired =
+      selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer";
+    if (isVinRequired && !vin) {
+      toast.error("Please enter VIN");
       return false;
     }
 
-    if (
-      selectedVehicleType === "Trailer" &&
-      (!oilChangeDate || !hoursReading)
-    ) {
-      toast.error("Please enter oil change date and hours reading for Trailer");
+    const isYearRequired =
+      selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer";
+    if (isYearRequired && !year) {
+      toast.error("Please enter year");
+      return false;
+    }
+
+    const isLicensePlateRequired =
+      selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer";
+    if (isLicensePlateRequired && !licensePlate) {
+      toast.error("Please enter license plate");
       return false;
     }
 
@@ -537,7 +542,9 @@ export default function EditVehicleScreen() {
               htmlFor="vin"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              VIN *
+              {selectedVehicleType === "Truck" || selectedVehicleType === "Trailer"
+                ? "VIN (Optional)"
+                : "VIN *"}
             </label>
             <input
               type="text"
@@ -550,9 +557,9 @@ export default function EditVehicleScreen() {
             />
           </div>
 
-          {selectedVehicleType === "Truck" && (
+          {/* Commented out DOT & ICCMS */}
+          {/* {selectedVehicleType === "Truck" && (
             <div>
-              {/* DOT */}
               <div>
                 <label
                   htmlFor="dot"
@@ -571,7 +578,6 @@ export default function EditVehicleScreen() {
                 />
               </div>
 
-              {/* ICCMS */}
               <div>
                 <label
                   htmlFor="iccms"
@@ -590,7 +596,7 @@ export default function EditVehicleScreen() {
                 />
               </div>
             </div>
-          )}
+          )} */}
 
           {/* License Plate */}
           <div>
@@ -598,7 +604,9 @@ export default function EditVehicleScreen() {
               htmlFor="licensePlate"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              License Plate *
+              {selectedVehicleType === "Truck" || selectedVehicleType === "Trailer"
+                ? "License Plate (Optional)"
+                : "License Plate *"}
             </label>
             <input
               type="text"
@@ -612,22 +620,24 @@ export default function EditVehicleScreen() {
           </div>
 
           {/* Year */}
-          <div>
-            <label
-              htmlFor="year"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Year *
-            </label>
-            <input
-              type="date"
-              id="year"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-              disabled={loading}
-            />
-          </div>
+          {selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer" && (
+            <div>
+              <label
+                htmlFor="year"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Year *
+              </label>
+              <input
+                type="date"
+                id="year"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
+                disabled={loading}
+              />
+            </div>
+          )}
 
           <div className="flex justify-between">
             <Link
