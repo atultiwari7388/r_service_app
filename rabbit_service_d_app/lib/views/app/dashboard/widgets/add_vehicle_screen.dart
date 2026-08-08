@@ -931,7 +931,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                   );
                                 },
                                 decoration: InputDecoration(
-                                  labelText: 'License Plate *',
+                                  labelText: 'License Plate (Optional)',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12.0),
                                     borderSide: BorderSide(
@@ -1043,7 +1043,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     _vehicleNumberController.text.isNotEmpty &&
                                     (!isVinRequired ||
                                         _vinController.text.isNotEmpty) &&
-                                    _licensePlateController.text.isNotEmpty &&
                                     (!isYearRequired ||
                                         _selectedYear != null)) {
                                   _saveVehicleData();

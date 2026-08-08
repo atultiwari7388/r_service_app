@@ -7,7 +7,6 @@ import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
-import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'dart:developer';
 import '../../../../widgets/dashboard_search_text_field.dart';
