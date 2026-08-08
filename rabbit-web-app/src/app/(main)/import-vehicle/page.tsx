@@ -41,10 +41,10 @@ export interface Vehicle {
   engineName: string;
   vehicleNumber: string;
   vin: string;
-  dot: string;
-  iccms: string;
+  dot?: string | null;
+  iccms?: string | null;
   licensePlate: string;
-  year?: string;
+  year?: string | null;
   isSet: boolean;
   uploadedDocuments: string[];
   createdAt: Timestamp | FieldValue | Date;

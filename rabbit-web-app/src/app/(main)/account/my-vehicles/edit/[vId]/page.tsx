@@ -45,10 +45,10 @@ interface VehicleData {
   engineName: string;
   vehicleNumber: string;
   vin: string;
-  dot: string | null;
-  iccms: string | null;
+  dot?: string | null;
+  iccms?: string | null;
   licensePlate: string;
-  year: string;
+  year?: string | null;
   isSet: boolean;
   uploadedDocuments: [];
   createdAt: unknown;
