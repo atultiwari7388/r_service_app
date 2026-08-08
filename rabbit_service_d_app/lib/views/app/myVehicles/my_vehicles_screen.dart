@@ -176,50 +176,55 @@ class _MyVehiclesScreenState extends State<MyVehiclesScreen>
   }
 
   void _showAddVehicleOptions() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Choose an option"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.directions_car),
-                title: Text("Add Vehicle"),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddVehicleScreen(
-                          currentUId:
-                              _effectiveUserId), // Use effective user ID
-                    ),
-                  );
-                },
-              ),
-              // if (role == "Owner") // Only show import for Owners
-              ListTile(
-                leading: Icon(Icons.upload_file),
-                title: Text("Import Vehicle"),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddVehicleViaExcelScreen(
-                          currentUId:
-                              _effectiveUserId), // Use effective user ID
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) =>
+                AddVehicleScreen(currentUId: _effectiveUserId)));
+    // showDialog(
+    //   context: context,
+    //   builder: (BuildContext context) {
+    //     return AlertDialog(
+    //       title: Text("Choose an option"),
+    //       content: Column(
+    //         mainAxisSize: MainAxisSize.min,
+    //         children: [
+    //           ListTile(
+    //             leading: Icon(Icons.directions_car),
+    //             title: Text("Add Vehicle"),
+    //             onTap: () {
+    //               Navigator.pop(context);
+    //               Navigator.push(
+    //                 context,
+    //                 MaterialPageRoute(
+    //                   builder: (context) => AddVehicleScreen(
+    //                       currentUId:
+    //                           _effectiveUserId), // Use effective user ID
+    //                 ),
+    //               );
+    //             },
+    //           ),
+    //           // if (role == "Owner") // Only show import for Owners
+    //           ListTile(
+    //             leading: Icon(Icons.upload_file),
+    //             title: Text("Import Vehicle"),
+    //             onTap: () {
+    //               Navigator.pop(context);
+    //               Navigator.push(
+    //                 context,
+    //                 MaterialPageRoute(
+    //                   builder: (context) => AddVehicleViaExcelScreen(
+    //                       currentUId:
+    //                           _effectiveUserId), // Use effective user ID
+    //                 ),
+    //               );
+    //             },
+    //           ),
+    //         ],
+    //       ),
+    //     );
+    //   },
+    // );
   }
 
   @override

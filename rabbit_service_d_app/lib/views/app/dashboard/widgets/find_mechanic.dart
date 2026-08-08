@@ -103,66 +103,70 @@ class _FindMechanicState extends State<FindMechanic> {
                                   "Please Create an account to add vehicle",
                                   kRed);
                             } else {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: Text("Choose an option"),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        ListTile(
-                                          leading: Icon(Icons.directions_car),
-                                          title: Text("Add Vehicle"),
-                                          onTap: () async {
-                                            Navigator.pop(
-                                                context); // Close the dialog
-                                            var result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    AddVehicleScreen(
-                                                        currentUId:
-                                                            widget.currentUId),
-                                              ),
-                                            );
-                                            if (result != null) {
-                                              String? company =
-                                                  result['company'];
-                                              String? vehicleNumber =
-                                                  result['vehicleNumber'];
-                                              log("Company: $company, Vehicle Number: $vehicleNumber");
+                              Get.to(() => AddVehicleScreen(
+                                  currentUId: widget.currentUId));
 
-                                              setState(() {
-                                                widget.controller
-                                                        .selectedCompanyAndVehcileName =
-                                                    company;
-                                              });
-                                            }
-                                          },
-                                        ),
-                                        ListTile(
-                                          leading: Icon(Icons.upload_file),
-                                          title: Text("Import Vehicle"),
-                                          onTap: () {
-                                            Navigator.pop(
-                                                context); // Close the dialog
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    AddVehicleViaExcelScreen(
-                                                        currentUId:
-                                                            widget.currentUId),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
+                              // showDialog(
+                              //   context: context,
+                              //   builder: (BuildContext context) {
+                              //     return AlertDialog(
+                              //       title: Text("Choose an option"),
+                              //       content: Column(
+                              //         mainAxisSize: MainAxisSize.min,
+                              //         children: [
+                              //           ListTile(
+                              //             leading: Icon(Icons.directions_car),
+                              //             title: Text("Add Vehicle"),
+                              //             onTap: () async {
+                              //               Navigator.pop(
+                              //                   context); // Close the dialog
+                              //               var result = await Navigator.push(
+                              //                 context,
+                              //                 MaterialPageRoute(
+                              //                   builder: (context) =>
+                              //                       AddVehicleScreen(
+                              //                           currentUId:
+                              //                               widget.currentUId),
+                              //                 ),
+                              //               );
+                              //               if (result != null) {
+                              //                 String? company =
+                              //                     result['company'];
+                              //                 String? vehicleNumber =
+                              //                     result['vehicleNumber'];
+                              //                 log("Company: $company, Vehicle Number: $vehicleNumber");
+
+                              //                 setState(() {
+                              //                   widget.controller
+                              //                           .selectedCompanyAndVehcileName =
+                              //                       company;
+                              //                 });
+                              //               }
+                              //             },
+                              //           ),
+
+                              //           // ListTile(
+                              //           //   leading: Icon(Icons.upload_file),
+                              //           //   title: Text("Import Vehicle"),
+                              //           //   onTap: () {
+                              //           //     Navigator.pop(
+                              //           //         context); // Close the dialog
+                              //           //     Navigator.push(
+                              //           //       context,
+                              //           //       MaterialPageRoute(
+                              //           //         builder: (context) =>
+                              //           //             AddVehicleViaExcelScreen(
+                              //           //                 currentUId:
+                              //           //                     widget.currentUId),
+                              //           //       ),
+                              //           //     );
+                              //           //   },
+                              //           // ),
+                              //         ],
+                              //       ),
+                              //     );
+                              //   },
+                              // );
                             }
                           },
                           child: CircleAvatar(
