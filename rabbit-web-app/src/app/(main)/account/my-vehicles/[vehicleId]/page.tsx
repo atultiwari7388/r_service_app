@@ -43,7 +43,9 @@ interface ServiceData {
 interface VehicleData {
   companyName: string;
   vehicleNumber: string;
-  year: string;
+  year?: string | null;
+  dot?: string | null;
+  iccms?: string | null;
   currentMiles: string;
   hoursReading: string;
   licensePlate: string;
@@ -711,9 +713,11 @@ export default function MyVehicleDetailsScreen() {
               <p className="text-gray-600">
                 Year:{" "}
                 <span className="font-semibold">
-                  {new Date(
-                    vehicleData?.year.toString() ?? ""
-                  ).toLocaleDateString()}
+                  {vehicleData?.year
+                    ? !isNaN(new Date(vehicleData.year).getTime())
+                      ? new Date(vehicleData.year).toLocaleDateString()
+                      : vehicleData.year
+                    : "N/A"}
                 </span>
               </p>
               {vehicleData?.vehicleType === "Trailer" ? (

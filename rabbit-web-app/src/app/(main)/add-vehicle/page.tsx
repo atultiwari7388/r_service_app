@@ -359,7 +359,7 @@ export default function AddVehiclePage() {
         // dot: dot || "",
         // iccms: iccms || "",
         licensePlate,
-        // year,
+        year: year || "",
         isSet: true,
         uploadedDocuments: [],
         createdAt: serverTimestamp(),
@@ -674,21 +674,29 @@ export default function AddVehiclePage() {
           </div>
 
           {/* Year */}
-          {selectedVehicleType !== "Truck" && selectedVehicleType !== "Trailer" && (
+          {(selectedVehicleType === "Truck" || selectedVehicleType === "Trailer") && (
             <div>
               <label
                 htmlFor="year"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Year *
+                Year (Optional)
               </label>
-              <input
-                type="date"
+              <select
                 id="year"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
-              />
+              >
+                <option value="">Select year</option>
+                {Array.from({ length: 50 }, (_, i) =>
+                  (new Date().getFullYear() + 1 - i).toString()
+                ).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
