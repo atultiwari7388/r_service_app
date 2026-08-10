@@ -126,14 +126,10 @@ export default function ImportVehicle() {
   const router = useRouter();
 
   const sampleFiles = {
-    truck:
-      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_vehicle_data_rabbit_vehicle_type_truck.xlsx?alt=media&token=01e2f94e-6f57-45c4-a32c-64b9c8856a3f",
-    trailer:
-      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/sample_trailer_vehicle_data_rabbit.xlsx?alt=media&token=e76d4dce-31fa-4051-9f3a-7bf851ce8d9c",
-    truckCompanies:
-      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/truck_company_name_and_engine_name_29_april.xlsx?alt=media&token=a163409a-a60f-4bbe-b2ac-882b97bd60b3",
-    trailerCompanies:
-      "https://firebasestorage.googleapis.com/v0/b/rabbit-service-d3d90.appspot.com/o/trailer_company_name_and_engine_name_29_april.xlsx?alt=media&token=63e5fb03-1dce-4ec0-bf91-2aed82ddabb1",
+    truck: "/sample_excels/trenoops_truck_sample_file.xlsx",
+    trailer: "/sample_excels/trenoops_trailer_sample_file.xlsx",
+    truckCompanies: "/sample_excels/truck_company_nd_engine_name.xlsx",
+    trailerCompanies: "/sample_excels/trailer_companies.xlsx",
   };
 
   // Fetch user data and determine effectiveUserId

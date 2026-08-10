@@ -746,7 +746,7 @@ export default function MyVehicleDetailsScreen() {
             <table className="min-w-full table-auto">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="px-4 py-2 text-left">Sr. No.</th>{" "}
+                  <th className="px-4 py-2 text-left">Sr. No.</th>
                   {/* Serial number header */}
                   <th className="px-4 py-2 text-left">Service Name</th>
                   <th className="px-4 py-2 text-left">Default Value</th>
@@ -763,7 +763,7 @@ export default function MyVehicleDetailsScreen() {
                   .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
                   .map((service, index) => (
                     <tr key={service.serviceId} className="border-b">
-                      <td className="px-4 py-2">{index + 1}</td>{" "}
+                      <td className="px-4 py-2">{index + 1}</td>
                       {/* Serial number */}
                       <td className="px-4 py-2">{service.serviceName}</td>
                       <td className="px-4 py-2">
