@@ -559,20 +559,20 @@ export default function AddVehiclePage() {
 
           {selectedVehicleType === "Truck" && (
             <div>
-              <label
-                htmlFor="currentReading"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Current Miles (Optional)
-              </label>
-              <input
+              {/* <label
+                  htmlFor="currentReading"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Current Miles (Optional)
+                </label> */}
+              {/* <input
                 type="number"
                 id="currentReading"
                 value={currentReading}
                 onChange={(e) => setCurrentReading(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent"
                 placeholder="Enter current reading"
-              />
+              /> */}
             </div>
           )}
 
@@ -600,7 +600,8 @@ export default function AddVehiclePage() {
               htmlFor="vin"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              {selectedVehicleType === "Truck" || selectedVehicleType === "Trailer"
+              {selectedVehicleType === "Truck" ||
+              selectedVehicleType === "Trailer"
                 ? "VIN (Optional)"
                 : "VIN *"}
             </label>
@@ -659,7 +660,8 @@ export default function AddVehiclePage() {
               htmlFor="licensePlate"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              {selectedVehicleType === "Truck" || selectedVehicleType === "Trailer"
+              {selectedVehicleType === "Truck" ||
+              selectedVehicleType === "Trailer"
                 ? "License Plate (Optional)"
                 : "License Plate *"}
             </label>
@@ -674,7 +676,8 @@ export default function AddVehiclePage() {
           </div>
 
           {/* Year */}
-          {(selectedVehicleType === "Truck" || selectedVehicleType === "Trailer") && (
+          {(selectedVehicleType === "Truck" ||
+            selectedVehicleType === "Trailer") && (
             <div>
               <label
                 htmlFor="year"

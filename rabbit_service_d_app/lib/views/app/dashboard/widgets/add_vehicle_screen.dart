@@ -43,17 +43,29 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   StreamSubscription<DocumentSnapshot>? _engineNameSubscription;
 
   Future<void> _selectYear(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+    showDialog(
       context: context,
-      initialDate: _selectedYear ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Select Year"),
+          content: Container(
+            width: 300.w,
+            height: 300.h,
+            child: YearPicker(
+              firstDate: DateTime(1980),
+              lastDate: DateTime(DateTime.now().year + 1),
+              selectedDate: _selectedYear ?? DateTime.now(),
+              onChanged: (DateTime dateTime) {
+                setState(() {
+                  _selectedYear = dateTime;
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ),
+        );
+      },
     );
-    if (picked != null && picked != _selectedYear) {
-      setState(() {
-        _selectedYear = picked;
-      });
-    }
   }
 
   final CollectionReference metadataCollection =
@@ -308,9 +320,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         // 'dot': _dotController.text.toString(),
         // 'iccms': _iccmsController.text.toString(),
         'licensePlate': _licensePlateController.text.toString(),
-        // 'year': _selectedYear != null
-        //     ? DateFormat('yyyy-MM-dd').format(_selectedYear!)
-        //     : null,
+        'year': _selectedYear != null
+            ? DateFormat('yyyy').format(_selectedYear!)
+            : '',
         'isSet': true,
         "uploadedDocuments": [],
         'createdAt': FieldValue.serverTimestamp(),
@@ -965,66 +977,70 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               ),
                             ),
                             SizedBox(height: 16.h),
-                            // GestureDetector(
-                            //   onTap: () => _selectYear(context),
-                            //   child: AbsorbPointer(
-                            //     child: Container(
-                            //       margin: kIsWeb
-                            //           ? EdgeInsets.symmetric(vertical: 4.0.h)
-                            //           : EdgeInsets.symmetric(vertical: 4.0.h),
-                            //       decoration: BoxDecoration(
-                            //         color: Colors.white,
-                            //         borderRadius: kIsWeb
-                            //             ? BorderRadius.circular(12.r)
-                            //             : BorderRadius.circular(12.0.r),
-                            //       ),
-                            //       child: TextField(
-                            //         decoration: InputDecoration(
-                            //           labelText: 'Your Vehicle Year *',
-                            //           border: OutlineInputBorder(
-                            //             borderRadius:
-                            //                 BorderRadius.circular(12.0),
-                            //             borderSide: BorderSide(
-                            //               color: Colors.grey.shade300,
-                            //               width: 1.0,
-                            //             ),
-                            //           ),
-                            //           focusedBorder: OutlineInputBorder(
-                            //             borderRadius:
-                            //                 BorderRadius.circular(12.0),
-                            //             borderSide: BorderSide(
-                            //               color: Colors.grey.shade300,
-                            //               width: 1.0,
-                            //             ),
-                            //           ),
-                            //           enabledBorder: OutlineInputBorder(
-                            //             borderRadius:
-                            //                 BorderRadius.circular(12.0),
-                            //             borderSide: BorderSide(
-                            //               color: Colors.grey.shade300,
-                            //               width: 1.0,
-                            //             ),
-                            //           ),
-                            //           filled: true,
-                            //           fillColor: Colors.white,
-                            //           contentPadding: kIsWeb
-                            //               ? EdgeInsets.all(2)
-                            //               : const EdgeInsets.all(8),
-                            //           labelStyle: kIsWeb
-                            //               ? TextStyle()
-                            //               : appStyle(
-                            //                   14, kPrimary, FontWeight.bold),
-                            //         ),
-                            //         controller: TextEditingController(
-                            //           text: _selectedYear == null
-                            //               ? ''
-                            //               : DateFormat('yyyy')
-                            //                   .format(_selectedYear!),
-                            //         ),
-                            //       ),
-                            //     ),
-                            //   ),
-                            // ),
+                            if (_selectedVehicleType == 'Truck' ||
+                                _selectedVehicleType == 'Trailer') ...[
+                              SizedBox(height: 16.h),
+                              GestureDetector(
+                                onTap: () => _selectYear(context),
+                                child: AbsorbPointer(
+                                  child: Container(
+                                    margin: kIsWeb
+                                        ? EdgeInsets.symmetric(vertical: 4.0.h)
+                                        : EdgeInsets.symmetric(vertical: 4.0.h),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: kIsWeb
+                                          ? BorderRadius.circular(12.r)
+                                          : BorderRadius.circular(12.0.r),
+                                    ),
+                                    child: TextField(
+                                      decoration: InputDecoration(
+                                        labelText: 'Your Vehicle Year (Optional)',
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                          borderSide: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.white,
+                                        contentPadding: kIsWeb
+                                            ? EdgeInsets.all(2)
+                                            : const EdgeInsets.all(8),
+                                        labelStyle: kIsWeb
+                                            ? TextStyle()
+                                            : appStyle(
+                                                14, kPrimary, FontWeight.bold),
+                                      ),
+                                      controller: TextEditingController(
+                                        text: _selectedYear == null
+                                            ? ''
+                                            : DateFormat('yyyy')
+                                                .format(_selectedYear!),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
 
                             SizedBox(height: 24.h),
                             CustomButton(
