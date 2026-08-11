@@ -636,63 +636,63 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               ),
                             ),
                             if (_selectedVehicleType == 'Truck') ...[
-                              SizedBox(height: 16.h),
-                              Container(
-                                margin: kIsWeb
-                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                    : EdgeInsets.symmetric(vertical: 4.0.h),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: kIsWeb
-                                      ? BorderRadius.circular(12.r)
-                                      : BorderRadius.circular(12.0.r),
-                                ),
-                                child: TextField(
-                                  controller: _currentMilesController,
-                                  onChanged: (value) {
-                                    _currentMilesController.value =
-                                        TextEditingValue(
-                                      text: value.toUpperCase(),
-                                      selection:
-                                          _currentMilesController.selection,
-                                    );
-                                  },
-                                  decoration: InputDecoration(
-                                    labelText: 'Current Miles (Optional)',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: kIsWeb
-                                        ? EdgeInsets.all(2)
-                                        : const EdgeInsets.all(8),
-                                    labelStyle: kIsWeb
-                                        ? TextStyle()
-                                        : appStyle(
-                                            14, kPrimary, FontWeight.bold),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
+                              // SizedBox(height: 16.h),
+                              // Container(
+                              //   margin: kIsWeb
+                              //       ? EdgeInsets.symmetric(vertical: 4.0.h)
+                              //       : EdgeInsets.symmetric(vertical: 4.0.h),
+                              //   decoration: BoxDecoration(
+                              //     color: Colors.white,
+                              //     borderRadius: kIsWeb
+                              //         ? BorderRadius.circular(12.r)
+                              //         : BorderRadius.circular(12.0.r),
+                              //   ),
+                              //   child: TextField(
+                              //     controller: _currentMilesController,
+                              //     onChanged: (value) {
+                              //       _currentMilesController.value =
+                              //           TextEditingValue(
+                              //         text: value.toUpperCase(),
+                              //         selection:
+                              //             _currentMilesController.selection,
+                              //       );
+                              //     },
+                              //     decoration: InputDecoration(
+                              //       labelText: 'Current Miles (Optional)',
+                              //       border: OutlineInputBorder(
+                              //         borderRadius: BorderRadius.circular(12.0),
+                              //         borderSide: BorderSide(
+                              //           color: Colors.grey.shade300,
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       focusedBorder: OutlineInputBorder(
+                              //         borderRadius: BorderRadius.circular(12.0),
+                              //         borderSide: BorderSide(
+                              //           color: Colors.grey.shade300,
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       enabledBorder: OutlineInputBorder(
+                              //         borderRadius: BorderRadius.circular(12.0),
+                              //         borderSide: BorderSide(
+                              //           color: Colors.grey.shade300,
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       filled: true,
+                              //       fillColor: Colors.white,
+                              //       contentPadding: kIsWeb
+                              //           ? EdgeInsets.all(2)
+                              //           : const EdgeInsets.all(8),
+                              //       labelStyle: kIsWeb
+                              //           ? TextStyle()
+                              //           : appStyle(
+                              //               14, kPrimary, FontWeight.bold),
+                              //     ),
+                              //     keyboardType: TextInputType.number,
+                              //   ),
+                              // ),
                             ],
                             if (_selectedVehicleType == 'Trailer') ...[
                               SizedBox(height: 16.h),
@@ -777,7 +777,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                   labelText: (_selectedVehicleType == 'Truck' ||
                                           _selectedVehicleType == 'Trailer')
                                       ? 'VIN (Optional)'
-                                      : 'VIN *',
+                                      : 'VIN (Optional)',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12.0),
                                     borderSide: BorderSide(
@@ -995,7 +995,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     ),
                                     child: TextField(
                                       decoration: InputDecoration(
-                                        labelText: 'Your Vehicle Year (Optional)',
+                                        labelText:
+                                            'Your Vehicle Year (Optional)',
                                         border: OutlineInputBorder(
                                           borderRadius:
                                               BorderRadius.circular(12.0),

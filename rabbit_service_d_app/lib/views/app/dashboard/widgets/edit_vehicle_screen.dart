@@ -69,7 +69,12 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
 
       if (data['year'] != null) {
         try {
-          _selectedYear = DateTime.parse(data['year']);
+          final yearStr = data['year'].toString();
+          if (yearStr.length == 4 && int.tryParse(yearStr) != null) {
+            _selectedYear = DateTime(int.parse(yearStr));
+          } else {
+            _selectedYear = DateTime.parse(yearStr);
+          }
         } catch (e) {
           print('Error parsing year: $e');
         }
@@ -113,17 +118,29 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
   }
 
   Future<void> _selectYear(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+    showDialog(
       context: context,
-      initialDate: _selectedYear ?? DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Select Year"),
+          content: Container(
+            width: 300.w,
+            height: 300.h,
+            child: YearPicker(
+              firstDate: DateTime(1980),
+              lastDate: DateTime(DateTime.now().year + 1),
+              selectedDate: _selectedYear ?? DateTime.now(),
+              onChanged: (DateTime dateTime) {
+                setState(() {
+                  _selectedYear = dateTime;
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ),
+        );
+      },
     );
-    if (picked != null && picked != _selectedYear) {
-      setState(() {
-        _selectedYear = picked;
-      });
-    }
   }
 
   Future<void> _selectOilChangeDate(BuildContext context) async {
@@ -280,8 +297,8 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         'iccms': _iccmsController.text.toString(),
         'licensePlate': _licensePlateController.text.toString(),
         'year': _selectedYear != null
-            ? DateFormat('yyyy-MM-dd').format(_selectedYear!)
-            : null,
+            ? DateFormat('yyyy').format(_selectedYear!)
+            : '',
         'updatedAt': FieldValue.serverTimestamp(),
       };
 

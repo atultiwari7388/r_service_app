@@ -283,10 +283,34 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     vehicleData['currentMilesArray'] ?? [];
 
                 final rawDate = vehicleData['year'] ?? '';
-
-                final formattedDate =
-                    DateFormat('MM-dd-yyyy').format(DateTime.parse(rawDate));
-                final vehicleType = vehicleData['vehicleType'];
+                String formattedDate = '';
+                if (rawDate != null && rawDate.toString().isNotEmpty) {
+                  if (rawDate.toString().length == 4 &&
+                      int.tryParse(rawDate.toString()) != null) {
+                    formattedDate = rawDate.toString();
+                  } else {
+                    try {
+                      formattedDate = DateFormat('MM-dd-yyyy')
+                          .format(DateTime.parse(rawDate.toString()));
+                    } catch (_) {
+                      formattedDate = rawDate.toString();
+                    }
+                  }
+                }
+                final vehicleType =
+                    vehicleData['vehicleType']?.toString() ?? '';
+                final vehicleNumber =
+                    vehicleData['vehicleNumber']?.toString() ?? '';
+                final licensePlate =
+                    vehicleData['licensePlate']?.toString() ?? '';
+                final companyName =
+                    vehicleData['companyName']?.toString() ?? '';
+                final engineName = vehicleData['engineName']?.toString() ?? '';
+                final currentMiles =
+                    vehicleData['currentMiles']?.toString() ?? '';
+                final vin = vehicleData['vin']?.toString() ?? '';
+                final dot = vehicleData['dot']?.toString() ?? '';
+                final iccms = vehicleData['iccms']?.toString() ?? '';
 
                 return SingleChildScrollView(
                   child: Padding(
@@ -304,36 +328,30 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
                               children: [
-                                _buildInfoRow('Vehicle Number:',
-                                    vehicleData['vehicleNumber']),
-                                _buildInfoRow('Year:', formattedDate),
-                                vehicleType == "Trailer"
+                                _buildInfoRow('Vehicle Number:', vehicleNumber),
+                                formattedDate.isEmpty
                                     ? SizedBox()
-                                    : _buildInfoRow('Current Miles:',
-                                        vehicleData['currentMiles'].toString()),
-                                _buildInfoRow('License Plate:',
-                                    vehicleData['licensePlate']),
-                                _buildInfoRow('Company Name:',
-                                    vehicleData['companyName']),
-                                vehicleType == "Trailer"
+                                    : _buildInfoRow('Year:', formattedDate),
+                                vehicleType == "Trailer" || currentMiles.isEmpty
                                     ? SizedBox()
-                                    : vehicleData['dot'].isEmpty
-                                        ? SizedBox()
-                                        : _buildInfoRow(
-                                            'DOT:', vehicleData['dot']),
-                                vehicleType == "Trailer"
+                                    : _buildInfoRow(
+                                        'Current Miles:', currentMiles),
+                                licensePlate.isEmpty
                                     ? SizedBox()
-                                    : vehicleData['iccms'].isEmpty
-                                        ? SizedBox()
-                                        : _buildInfoRow(
-                                            'ICCMS:', vehicleData['iccms']),
-                                vehicleData['vin'].isEmpty
+                                    : _buildInfoRow(
+                                        'License Plate:', licensePlate),
+                                _buildInfoRow('Company Name:', companyName),
+                                vehicleType == "Trailer" || dot.isEmpty
                                     ? SizedBox()
-                                    : _buildInfoRow('VIN:', vehicleData['vin']),
-                                _buildInfoRow(
-                                    "Engine Name:", vehicleData['engineName']),
-                                _buildInfoRow("Vehicle Type:",
-                                    vehicleData['vehicleType']),
+                                    : _buildInfoRow('DOT:', dot),
+                                vehicleType == "Trailer" || iccms.isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow('ICCMS:', iccms),
+                                vin.isEmpty
+                                    ? SizedBox()
+                                    : _buildInfoRow('VIN:', vin),
+                                _buildInfoRow("Engine Name:", engineName),
+                                _buildInfoRow("Vehicle Type:", vehicleType),
                                 SizedBox(height: 10.h),
                                 widget.role == "Owner" ||
                                         widget.role == "SubOwner"
