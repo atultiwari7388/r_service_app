@@ -416,9 +416,9 @@ export default function ImportVehicle() {
         })),
         ...(vehicleType === "Truck"
           ? {
-              currentMiles: data.currentMiles?.toString(),
-              prevMilesValue: data.currentMiles?.toString(),
-              firstTimeMiles: data.currentMiles?.toString(),
+              currentMiles: data.currentMiles?.toString() || "",
+              prevMilesValue: data.currentMiles?.toString() || "",
+              firstTimeMiles: data.currentMiles?.toString() || "",
               oilChangeDate: "2025-04-12", // Default value as in mobile
               hoursReading: "",
               prevHoursReadingValue: "",

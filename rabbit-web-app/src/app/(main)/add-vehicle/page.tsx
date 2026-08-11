@@ -603,7 +603,7 @@ export default function AddVehiclePage() {
               {selectedVehicleType === "Truck" ||
               selectedVehicleType === "Trailer"
                 ? "VIN (Optional)"
-                : "VIN *"}
+                : "VIN (Optional)"}
             </label>
             <input
               type="text"
@@ -663,7 +663,7 @@ export default function AddVehiclePage() {
               {selectedVehicleType === "Truck" ||
               selectedVehicleType === "Trailer"
                 ? "License Plate (Optional)"
-                : "License Plate *"}
+                : "License Plate (Optional)"}
             </label>
             <input
               type="text"
