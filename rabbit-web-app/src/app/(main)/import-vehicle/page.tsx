@@ -277,21 +277,22 @@ export default function ImportVehicle() {
 
         // Process dates to ensure proper format
         const processedData = jsonData.map((item) => {
-          // Handle year field
+          // Handle year field - extract only the year (e.g. "2026"), not a full date
           if (item.year) {
-            if (typeof item.year === "number") {
-              item.year = convertExcelDate(item.year);
-            } else if (typeof item.year === "string") {
+            const yearStr = item.year.toString().trim();
+            // If it's already a plain 4-digit year, keep it as is
+            const plainYearMatch = yearStr.match(/^(\d{4})$/);
+            if (plainYearMatch) {
+              item.year = plainYearMatch[1];
+            } else {
+              // It might be a date string like "2026-01-01" — extract just the year
               try {
-                // Try to parse the string date
-                const parsedDate = new Date(item.year);
+                const parsedDate = new Date(yearStr);
                 if (!isNaN(parsedDate.getTime())) {
-                  item.year = format(parsedDate, "yyyy-MM-dd");
+                  item.year = parsedDate.getFullYear().toString();
                 }
-              } catch (eroor) {
-                console.warn(
-                  `Could not parse year date: ${item.year} - ${eroor}`
-                );
+              } catch (error) {
+                console.warn(`Could not parse year: ${item.year} - ${error}`);
               }
             }
           }
@@ -346,8 +347,12 @@ export default function ImportVehicle() {
       if (vehicleType === "Truck") {
         // Current miles is optional for Truck
       } else if (vehicleType === "Trailer") {
-        // Set default values for trailer if not provided
-        data.hoursReading = data.hoursReading?.toString() || "1000";
+        // Set default hoursReading for trailer if not provided (only for save, not preview)
+        if (!data.hoursReading || data.hoursReading.toString().trim() === "") {
+          data.hoursReading = "1000";
+        } else {
+          data.hoursReading = data.hoursReading.toString();
+        }
 
         // Set oil change date to current date if not provided
         const currentDate = format(new Date(), "yyyy-MM-dd");
@@ -392,7 +397,7 @@ export default function ImportVehicle() {
         dot: "",
         iccms: "",
         licensePlate: data.licensePlate?.toString().trim() || "",
-        year: "",
+        year: data.year?.toString().trim() || "",
         isSet: true,
         uploadedDocuments: [],
         createdAt: serverTimestamp() as FieldValue,
@@ -590,6 +595,7 @@ export default function ImportVehicle() {
                             "dot",
                             "iccms",
                             "oilChangeDate",
+                            "hoursReading",
                           ].includes(key);
                         }
 
@@ -630,6 +636,7 @@ export default function ImportVehicle() {
                               "dot",
                               "iccms",
                               "oilChangeDate",
+                              "hoursReading",
                             ].includes(key);
                           }
 
