@@ -706,35 +706,31 @@ export default function MyVehicleDetailsScreen() {
               {vehicleData?.vehicleType || ""}
             </span>
           </p>
-          {vehicleData?.companyName == "DRY VAN" ? (
-            ""
-          ) : (
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
+            <p className="text-gray-600">
+              Year:{" "}
+              <span className="font-semibold">
+                {vehicleData?.year
+                  ? !isNaN(new Date(vehicleData.year).getTime()) &&
+                    vehicleData.year.length > 4
+                    ? new Date(vehicleData.year).toLocaleDateString()
+                    : vehicleData.year
+                  : ""}
+              </span>
+            </p>
+            {vehicleData?.vehicleType === "Trailer" ? (
+              ""
+            ) : (
               <p className="text-gray-600">
-                Year:{" "}
+                Miles/Hours :{" "}
                 <span className="font-semibold">
-                  {vehicleData?.year
-                    ? !isNaN(new Date(vehicleData.year).getTime()) &&
-                      vehicleData.year.length > 4
-                      ? new Date(vehicleData.year).toLocaleDateString()
-                      : vehicleData.year
-                    : ""}
+                  {vehicleData?.vehicleType == "Truck"
+                    ? vehicleData?.currentMiles || ""
+                    : vehicleData?.hoursReading || ""}
                 </span>
               </p>
-              {vehicleData?.vehicleType === "Trailer" ? (
-                ""
-              ) : (
-                <p className="text-gray-600">
-                  Miles/Hours :{" "}
-                  <span className="font-semibold">
-                    {vehicleData?.vehicleType == "Truck"
-                      ? vehicleData?.currentMiles || ""
-                      : vehicleData?.hoursReading || ""}
-                  </span>
-                </p>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
