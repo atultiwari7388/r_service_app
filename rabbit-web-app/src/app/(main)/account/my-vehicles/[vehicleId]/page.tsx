@@ -160,12 +160,14 @@ export default function MyVehicleDetailsScreen() {
               vehicleData?.vehicleType || "N/A"
             }</td>
           </tr>
-          <tr>
+          ${
+            vehicleData?.year
+              ? `<tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Year</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.year || "N/A"
-            }</td>
-          </tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${vehicleData.year}</td>
+          </tr>`
+              : ""
+          }
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Current Miles</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
@@ -710,16 +712,17 @@ export default function MyVehicleDetailsScreen() {
             ""
           ) : (
             <div className="flex flex-col gap-2">
-              <p className="text-gray-600">
-                Year:{" "}
-                <span className="font-semibold">
-                  {vehicleData?.year
-                    ? !isNaN(new Date(vehicleData.year).getTime())
+              {vehicleData?.year ? (
+                <p className="text-gray-600">
+                  Year:{" "}
+                  <span className="font-semibold">
+                    {!isNaN(new Date(vehicleData.year).getTime()) &&
+                    vehicleData.year.length > 4
                       ? new Date(vehicleData.year).toLocaleDateString()
-                      : vehicleData.year
-                    : "N/A"}
-                </span>
-              </p>
+                      : vehicleData.year}
+                  </span>
+                </p>
+              ) : null}
               {vehicleData?.vehicleType === "Trailer" ? (
                 ""
               ) : (
