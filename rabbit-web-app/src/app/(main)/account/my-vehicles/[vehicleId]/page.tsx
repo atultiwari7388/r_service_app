@@ -127,51 +127,49 @@ export default function MyVehicleDetailsScreen() {
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Company Name</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.companyName || "N/A"
+              vehicleData?.companyName || ""
             }</td>
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Vehicle Number</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.vehicleNumber || "N/A"
+              vehicleData?.vehicleNumber || ""
             }</td>
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">License Plate</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.licensePlate || "N/A"
+              vehicleData?.licensePlate || ""
             }</td>
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">VIN</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.vin || "N/A"
+              vehicleData?.vin || ""
             }</td>
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Engine Name</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.engineName || "N/A"
+              vehicleData?.engineName || ""
             }</td>
           </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Vehicle Type</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.vehicleType || "N/A"
+              vehicleData?.vehicleType || ""
             }</td>
           </tr>
-          ${
-            vehicleData?.year
-              ? `<tr>
+          <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Year</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${vehicleData.year}</td>
-          </tr>`
-              : ""
-          }
+            <td style="padding: 8px; border: 1px solid #ddd;">${
+              vehicleData?.year || ""
+            }</td>
+          </tr>
           <tr>
             <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Current Miles</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${
-              vehicleData?.currentMiles || "N/A"
+              vehicleData?.currentMiles || ""
             }</td>
           </tr>
         </table>
@@ -677,62 +675,61 @@ export default function MyVehicleDetailsScreen() {
           <p className="text-gray-600">
             Company Name:{" "}
             <span className="font-semibold">
-              {vehicleData?.companyName || "N/A"}
+              {vehicleData?.companyName || ""}
             </span>
           </p>
           <p className="text-gray-600">
             Vehicle Number:{" "}
             <span className="font-semibold">
-              {vehicleData?.vehicleNumber || "N/A"}
+              {vehicleData?.vehicleNumber || ""}
             </span>
           </p>
           <p className="text-gray-600">
             License Plate:{" "}
             <span className="font-semibold">
-              {vehicleData?.licensePlate || "N/A"}
+              {vehicleData?.licensePlate || ""}
             </span>
           </p>
           <p className="text-gray-600">
             VIN:{" "}
-            <span className="font-semibold">{vehicleData?.vin || "N/A"}</span>
+            <span className="font-semibold">{vehicleData?.vin || ""}</span>
           </p>
           <p className="text-gray-600">
             Engine Name:{" "}
             <span className="font-semibold">
-              {vehicleData?.engineName || "N/A"}
+              {vehicleData?.engineName || ""}
             </span>
           </p>
           <p className="text-gray-600">
             Vehicle Type:{" "}
             <span className="font-semibold">
-              {vehicleData?.vehicleType || "N/A"}
+              {vehicleData?.vehicleType || ""}
             </span>
           </p>
           {vehicleData?.companyName == "DRY VAN" ? (
             ""
           ) : (
             <div className="flex flex-col gap-2">
-              {vehicleData?.year ? (
-                <p className="text-gray-600">
-                  Year:{" "}
-                  <span className="font-semibold">
-                    {!isNaN(new Date(vehicleData.year).getTime()) &&
-                    vehicleData.year.length > 4
+              <p className="text-gray-600">
+                Year:{" "}
+                <span className="font-semibold">
+                  {vehicleData?.year
+                    ? !isNaN(new Date(vehicleData.year).getTime()) &&
+                      vehicleData.year.length > 4
                       ? new Date(vehicleData.year).toLocaleDateString()
-                      : vehicleData.year}
-                  </span>
-                </p>
-              ) : null}
+                      : vehicleData.year
+                    : ""}
+                </span>
+              </p>
               {vehicleData?.vehicleType === "Trailer" ? (
                 ""
               ) : (
                 <p className="text-gray-600">
                   Miles/Hours :{" "}
                   <span className="font-semibold">
-                    {/* {vehicleData?.currentMiles || "N/A"} */}
                     {vehicleData?.vehicleType == "Truck"
-                      ? vehicleData?.currentMiles
-                      : vehicleData?.hoursReading}
+                      ? vehicleData?.currentMiles || ""
+                      : vehicleData?.hoursReading || ""}
                   </span>
                 </p>
               )}
