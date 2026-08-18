@@ -528,13 +528,22 @@ export default function ImportVehicle() {
       <Card className="p-4 mb-6">
         <div className="space-y-4">
           <div>
-            <Label htmlFor="excelFile">Upload Excel File</Label>
-            <Input
+            <Label htmlFor="excelFile" className="text-base font-semibold mb-2 block">
+              Upload Excel File (.xlsx)
+            </Label>
+            <input
               id="excelFile"
               type="file"
               accept=".xlsx"
               onChange={handleFileUpload}
               disabled={isParsing || isSaving}
+              className="block w-full text-sm text-gray-600
+                file:mr-4 file:py-2.5 file:px-5
+                file:rounded-lg file:border-0
+                file:text-sm file:font-semibold
+                file:bg-rose-500 file:text-white
+                hover:file:bg-rose-600 file:cursor-pointer
+                cursor-pointer bg-white p-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
             />
           </div>
 

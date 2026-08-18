@@ -1,7 +1,7 @@
 // "use client";
 
 // import { useState, useEffect, useRef } from "react";
-// import { db, functions } from "@/lib/firebase";
+// import { db, functions, storage } from "@/lib/firebase";
 // import {
 //   arrayUnion,
 //   collection,
@@ -33,6 +33,9 @@
 //   IconButton,
 //   Collapse,
 //   Box,
+//   LinearProgress,
+//   Typography,
+//   CircularProgress,
 // } from "@mui/material";
 // import {
 //   Table,
@@ -44,18 +47,22 @@
 //   Paper,
 // } from "@mui/material";
 // import toast from "react-hot-toast";
-// import { VehicleTypes } from "@/types/types";
+// import { ProfileValues, VehicleTypes } from "@/types/types";
 // import { useAuth } from "@/contexts/AuthContexts";
-// import { GlobalToastError } from "@/utils/globalErrorToast";
+// // import { GlobalToastError } from "@/utils/globalErrorToast";
 // import { CiSearch, CiTurnL1 } from "react-icons/ci";
 // import { IoMdAdd } from "react-icons/io";
 // import Link from "next/link";
 // import DatePicker from "react-datepicker";
+// import "react-datepicker/dist/react-datepicker.css";
 // import { BiFilter, BiSearch } from "react-icons/bi";
 // import { FaPrint } from "react-icons/fa";
 // import html2canvas from "html2canvas";
 // import jsPDF from "jspdf";
 // import { httpsCallable } from "firebase/functions";
+// import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+// import Image from "next/image";
+// import { parseISO, format } from "date-fns";
 
 // interface Vehicle {
 //   brand: string;
@@ -108,6 +115,7 @@
 //   invoice?: string;
 //   description?: string;
 //   invoiceAmount: string;
+//   imageUrl: string;
 // }
 
 // interface RecordData extends ServiceRecord {
@@ -124,6 +132,8 @@
 //   const [services, setServices] = useState<ServiceData[]>([]);
 //   const [records, setRecords] = useState<ServiceRecord[]>([]);
 //   const { user } = useAuth() || { user: null };
+//   const [effectiveUserId, setEffectiveUserId] = useState("");
+//   const [userRole, setUserRole] = useState("");
 
 //   // Search & Filter State
 //   const [filterVehicle, setFilterVehicle] = useState("");
@@ -163,12 +173,16 @@
 //   const [showSearchFilter, setShowSearchFilter] = useState(false);
 //   const [serviceSearchText, setServiceSearchText] = useState("");
 
+//   const [activeTab, setActiveTab] = useState<"records" | "miles">("records");
+
 //   //for editing
 //   const [isEditing, setIsEditing] = useState(false);
 //   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
 //   const [selectedVehicleData, setSelectedVehicleData] =
 //     useState<VehicleTypes | null>(null);
+
+//   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
 //   // Add Miles Form State
 //   const [showAddMiles, setShowAddMiles] = useState(false);
@@ -178,30 +192,90 @@
 //   const [selectedVehicleType, setSelectedVehicleType] = useState("");
 //   const printRef = useRef<HTMLDivElement>(null);
 
+//   const [imageFile, setImageFile] = useState<File | null>(null);
+//   const [imagePreview, setImagePreview] = useState<string | null>(null);
+//   const [uploadProgress, setUploadProgress] = useState(0);
+//   const [isUploading, setIsUploading] = useState(false);
+//   const [isRecordSaving, setIsRecordSaving] = useState(false);
+//   const [isMilesSaving, setIsMilesSaving] = useState(false);
+//   const [summaryStartDate, setSummaryStartDate] = useState<Date | null>(null);
+//   const [summaryEndDate, setSummaryEndDate] = useState<Date | null>(null);
+//   const [userData, setUserData] = useState<ProfileValues | null>(null);
+//   const [role, setRole] = useState("");
+//   const [selectedVehicleTypeFilter, setSelectedVehicleTypeFilter] = useState<
+//     "all" | "truck" | "trailer"
+//   >("all");
+//   const [selectedVehiclesForFilter, setSelectedVehiclesForFilter] = useState<
+//     Set<string>
+//   >(new Set());
+//   const [showVehicleFilter, setShowVehicleFilter] = useState(false);
+
+//   const [validationErrors, setValidationErrors] = useState<{
+//     [key: string]: string;
+//   }>({});
+
 //   const handleRedirect = ({ path }: RedirectProps): void => {
 //     setShowPopup(false);
 //     window.location.href = path;
 //   };
 
-//   const fetchVehicles = async () => {
-//     if (!user) return;
-//     try {
-//       const vehiclesRef = collection(db, "Users", user.uid, "Vehicles");
-//       const q = query(vehiclesRef, where("active", "==", true));
-//       const vehiclesSnapshot = await getDocs(q);
-//       const vehiclesList = vehiclesSnapshot.docs.map(
-//         (doc) =>
-//           ({
-//             id: doc.id,
-//             ...doc.data(),
-//           } as VehicleTypes)
-//       );
-//       setVehicles(vehiclesList);
-//     } catch (error) {
-//       console.error("Error fetching vehicles:", error);
-//       GlobalToastError(error);
-//     }
-//   };
+//   useEffect(() => {
+//     if (!user?.uid) return;
+
+//     const fetchEffectiveUserData = async () => {
+//       try {
+//         const userDoc = await getDoc(doc(db, "Users", user.uid));
+//         if (userDoc.exists()) {
+//           const userData = userDoc.data() as ProfileValues;
+//           setUserData(userData);
+//           setUserRole(userData.role || "");
+//           setRole(userData.role || "");
+
+//           // Determine effectiveUserId based on role
+//           if (userData.role === "SubOwner" && userData.createdBy) {
+//             setEffectiveUserId(userData.createdBy);
+//             console.log(
+//               "SubOwner detected, using effectiveUserId:",
+//               userData.createdBy
+//             );
+//           } else {
+//             setEffectiveUserId(user.uid);
+//             console.log("Regular user, using own uid:", user.uid);
+//           }
+//         }
+//       } catch (error) {
+//         console.error("Error fetching user data:", error);
+//       }
+//     };
+
+//     fetchEffectiveUserData();
+//   }, [user?.uid]);
+
+//   // const fetchVehicles = async () => {
+//   //   if (!effectiveUserId) return;
+
+//   //   try {
+//   //     const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
+//   //     const q = query(vehiclesRef, where("active", "==", true));
+
+//   //     // Replace getDocs with onSnapshot for real-time updates
+//   //     const unsubscribe = onSnapshot(q, (snapshot) => {
+//   //       const vehiclesList = snapshot.docs.map(
+//   //         (doc) =>
+//   //           ({
+//   //             id: doc.id,
+//   //             ...doc.data(),
+//   //           } as VehicleTypes)
+//   //       );
+//   //       setVehicles(vehiclesList);
+//   //     });
+
+//   //     // Return the unsubscribe function to clean up later
+//   //     return unsubscribe;
+//   //   } catch (error) {
+//   //     console.error("Error fetching vehicles:", error);
+//   //   }
+//   // };
 
 //   const fetchServices = async () => {
 //     try {
@@ -220,7 +294,7 @@
 //       }
 //     } catch (error) {
 //       console.error("Error fetching services:", error);
-//       toast.error("Failed to fetch services");
+//       // toast.error("Failed to fetch services");
 //     }
 //   };
 
@@ -238,18 +312,18 @@
 //       }
 //     } catch (error) {
 //       console.error("Error fetching service packages:", error);
-//       toast.error("Failed to fetch service packages");
+//       // toast.error("Failed to fetch service packages");
 //     }
 //   };
 
 //   const updateServiceDefaultValues = async () => {
-//     if (!selectedVehicle || !user?.uid) return;
+//     if (!selectedVehicle || !effectiveUserId) return;
 
 //     try {
 //       const vehicleRef = doc(
 //         db,
 //         "Users",
-//         user.uid,
+//         effectiveUserId,
 //         "Vehicles",
 //         selectedVehicle
 //       );
@@ -307,6 +381,7 @@
 //   const handleServiceSelect = (serviceId: string) => {
 //     const newSelectedServices = new Set(selectedServices);
 //     const isServiceSelected = newSelectedServices.has(serviceId);
+//     const service = services.find((s) => s.sId === serviceId);
 
 //     if (isServiceSelected) {
 //       // Deselect the service
@@ -318,12 +393,18 @@
 //         delete newSubServices[serviceId];
 //         return newSubServices;
 //       });
+
+//       // Clear validation error for this service
+//       setValidationErrors((prev) => {
+//         const newErrors = { ...prev };
+//         delete newErrors[serviceId];
+//         return newErrors;
+//       });
 //     } else {
 //       // Select the service
 //       newSelectedServices.add(serviceId);
 
 //       // Initialize subservices if they exist
-//       const service = services.find((s) => s.sId === serviceId);
 //       if (service?.subServices) {
 //         const subServiceNames = service.subServices
 //           .flatMap((sub) => sub.sName)
@@ -334,6 +415,12 @@
 //             ...prev,
 //             [serviceId]: [],
 //           }));
+
+//           // Set validation error if service requires subservices
+//           setValidationErrors((prev) => ({
+//             ...prev,
+//             [serviceId]: "Select at least one sub-service",
+//           }));
 //         }
 //       }
 //     }
@@ -341,16 +428,20 @@
 //     setSelectedServices(newSelectedServices);
 //     updateServiceDefaultValues();
 
-//     // Toggle expansion only if selecting (not deselecting)
-//     if (!isServiceSelected) {
+//     // Only expand if the service has subservices and we're selecting it
+//     if (
+//       service?.subServices &&
+//       service.subServices.length > 0 &&
+//       !isServiceSelected
+//     ) {
 //       setExpandedService(serviceId);
-//     } else {
-//       setExpandedService(null);
+//       console.log("Expanded service:", expandedService);
 //     }
 //   };
 
 //   const handleAddMiles = async () => {
-//     if (!selectedVehicle || !todayMiles || !user?.uid) {
+//     setIsMilesSaving(true);
+//     if (!selectedVehicle || !todayMiles || !effectiveUserId) {
 //       toast.error("Please select a vehicle and enter miles/hours.");
 //       return;
 //     }
@@ -362,10 +453,17 @@
 //     }
 
 //     try {
+//       // Check if current user is team member and get owner ID
+//       const currentUserDoc = await getDoc(doc(db, "Users", effectiveUserId));
+//       const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
+//       const ownerId = isTeamMember
+//         ? currentUserDoc.data()?.createdBy || effectiveUserId
+//         : effectiveUserId;
+
 //       const vehicleRef = doc(
 //         db,
 //         "Users",
-//         user.uid,
+//         effectiveUserId,
 //         "Vehicles",
 //         selectedVehicle
 //       );
@@ -394,16 +492,17 @@
 //       );
 //       const enteredValue = parseInt(todayMiles);
 
-//       if (enteredValue < currentReading) {
-//         toast.error(
-//           `${
-//             selectedVehicleType === "Truck" ? "Miles" : "Hours"
-//           } cannot be less than the current value.`
-//         );
-//         return;
-//       }
+//       // if (enteredValue < currentReading) {
+//       //   toast.error(
+//       //     `${
+//       //       selectedVehicleType === "Truck" ? "Miles" : "Hours"
+//       //     } cannot be less than the current value.`
+//       //   );
+//       //   return;
+//       // }
 
 //       const data = {
+//         updatedAt: new Date().toISOString().split("T")[0],
 //         [prevReadingField]: currentReading.toString(),
 //         [currentReadingField]: enteredValue.toString(),
 //         [readingValueField]: enteredValue.toString(),
@@ -414,55 +513,64 @@
 //       };
 
 //       // Update owner's vehicle first
-//       await updateDoc(vehicleRef, data);
+//       const ownerVehicleRef = doc(
+//         db,
+//         "Users",
+//         ownerId,
+//         "Vehicles",
+//         selectedVehicle
+//       );
+//       await updateDoc(ownerVehicleRef, data);
 
-//       // Check if current user is team member
-//       const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-//       const isTeamMember = currentUserDoc.data()?.isTeamMember || false;
+//       // Query all team members under this owner
+//       const teamMembersQuery = query(
+//         collection(db, "Users"),
+//         where("createdBy", "==", ownerId),
+//         where("isTeamMember", "==", true)
+//       );
 
-//       if (isTeamMember) {
-//         // If current user is team member, update owner's vehicle
-//         const ownerId = currentUserDoc.data()?.createdBy;
-//         if (ownerId) {
-//           const ownerVehicleRef = doc(
-//             db,
-//             "Users",
-//             ownerId,
-//             "Vehicles",
-//             selectedVehicle
-//           );
-//           await updateDoc(ownerVehicleRef, data);
-//         }
-//       } else {
-//         // If current user is owner, update all team members who have this vehicle
-//         const teamMembersQuery = query(
-//           collection(db, "Users"),
-//           where("createdBy", "==", user.uid),
-//           where("isTeamMember", "==", true)
+//       const teamMembersSnapshot = await getDocs(teamMembersQuery);
+
+//       // Save to all team members who have this vehicle
+//       for (const memberDoc of teamMembersSnapshot.docs) {
+//         const teamMemberUid = memberDoc.id;
+
+//         // Skip current user if they're a team member (we'll update them separately)
+//         if (isTeamMember && teamMemberUid === effectiveUserId) continue;
+
+//         const teamMemberVehicleRef = doc(
+//           db,
+//           "Users",
+//           teamMemberUid,
+//           "Vehicles",
+//           selectedVehicle
 //         );
+//         const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
 
-//         const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-//         for (const memberDoc of teamMembersSnapshot.docs) {
-//           const teamMemberUid = memberDoc.id;
-//           const teamMemberVehicleRef = doc(
-//             db,
-//             "Users",
-//             teamMemberUid,
-//             "Vehicles",
-//             selectedVehicle
-//           );
-//           const teamMemberVehicleDoc = await getDoc(teamMemberVehicleRef);
-
-//           if (teamMemberVehicleDoc.exists()) {
-//             await updateDoc(teamMemberVehicleRef, data);
-//           }
+//         if (teamMemberVehicleDoc.exists()) {
+//           await updateDoc(teamMemberVehicleRef, data);
 //         }
 //       }
 
-//       // Check DataServices
+//       // If current user is team member, also update their own vehicle
+//       if (isTeamMember && effectiveUserId !== ownerId) {
+//         const currentUserVehicleRef = doc(
+//           db,
+//           "Users",
+//           effectiveUserId,
+//           "Vehicles",
+//           selectedVehicle
+//         );
+//         const currentUserVehicleDoc = await getDoc(currentUserVehicleRef);
+
+//         if (currentUserVehicleDoc.exists()) {
+//           await updateDoc(currentUserVehicleRef, data);
+//         }
+//       }
+
+//       // Check DataServices for the owner
 //       const dataServicesQuery = query(
-//         collection(db, "Users", user.uid, "DataServices"),
+//         collection(db, "Users", ownerId, "DataServices"),
 //         where("vehicleId", "==", selectedVehicle)
 //       );
 //       const dataServicesSnapshot = await getDocs(dataServicesQuery);
@@ -473,7 +581,7 @@
 //           functions,
 //           "checkAndNotifyUserForVehicleService"
 //         );
-//         await checkAndNotify({ userId: user.uid, vehicleId: selectedVehicle });
+//         await checkAndNotify({ userId: ownerId, vehicleId: selectedVehicle });
 //         console.log(
 //           "Called checkAndNotifyUserForVehicleService for",
 //           selectedVehicle
@@ -485,7 +593,7 @@
 //           "checkDataServicesAndNotify"
 //         );
 //         const result = await checkDataServices({
-//           userId: user.uid,
+//           userId: ownerId,
 //           vehicleId: selectedVehicle,
 //         });
 //         console.log(
@@ -507,11 +615,13 @@
 //       setSelectedVehicleType("");
 //     } catch (error) {
 //       console.error("Error updating miles/hours:", error);
-//       toast.error(
-//         `Failed to save ${
-//           selectedVehicleType === "Truck" ? "miles" : "hours"
-//         }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
-//       );
+//       // toast.error(
+//       //   `Failed to save ${
+//       //     selectedVehicleType === "Truck" ? "miles" : "hours"
+//       //   }: ${error instanceof Error ? error.message : "Unknown error occurred"}`
+//       // );
+//     } finally {
+//       setIsMilesSaving(false);
 //     }
 //   };
 
@@ -520,10 +630,10 @@
 //     setSelectedVehicleData(null);
 //     setSelectedPackages(new Set());
 
-//     if (!user?.uid || !value) return;
+//     if (!effectiveUserId || !value) return;
 
 //     try {
-//       const vehicleRef = doc(db, "Users", user.uid, "Vehicles", value);
+//       const vehicleRef = doc(db, "Users", effectiveUserId, "Vehicles", value);
 //       const vehicleDoc = await getDoc(vehicleRef);
 
 //       if (vehicleDoc.exists()) {
@@ -545,10 +655,12 @@
 //     return name.toLowerCase().replace(/\s+/g, "");
 //   };
 
-//   const handlePackageSelect = (selectedPackages: string[]) => {
-//     const newSelectedServices = new Set(selectedServices);
+//   const handlePackageSelect = (selectedPackageNames: string[]) => {
+//     const newSelectedPackages = new Set(selectedPackageNames);
 
-//     selectedPackages.forEach((pkg) => {
+//     // First, create a set of all services that should be selected based on packages
+//     const packageServices = new Set<string>();
+//     selectedPackageNames.forEach((pkg) => {
 //       services.forEach((service) => {
 //         if (
 //           service.pName &&
@@ -556,28 +668,105 @@
 //             (p) => normalizePackageName(p) === normalizePackageName(pkg)
 //           )
 //         ) {
-//           newSelectedServices.add(service.sId);
+//           packageServices.add(service.sId);
 //         }
 //       });
 //     });
 
+//     // Now determine which services to keep selected:
+//     // 1. All services from selected packages
+//     // 2. Any manually selected services that aren't part of any package
+//     const newSelectedServices = new Set<string>();
+
+//     // Add all services from selected packages
+//     packageServices.forEach((serviceId) => {
+//       newSelectedServices.add(serviceId);
+//     });
+
+//     // Add manually selected services that aren't in any package
+//     selectedServices.forEach((serviceId) => {
+//       const service = services.find((s) => s.sId === serviceId);
+//       // Only keep if service has no packages or isn't in any selected package
+//       if (!service?.pName || service.pName.length === 0) {
+//         newSelectedServices.add(serviceId);
+//       }
+//     });
+
 //     setSelectedServices(newSelectedServices);
-//     setSelectedPackages(new Set(selectedPackages));
+//     setSelectedPackages(newSelectedPackages);
+
+//     // Also clear subservices for any deselected services
+//     setSelectedSubServices((prev) => {
+//       const newSubServices = { ...prev };
+//       Object.keys(newSubServices).forEach((serviceId) => {
+//         if (!newSelectedServices.has(serviceId)) {
+//           delete newSubServices[serviceId];
+//         }
+//       });
+//       return newSubServices;
+//     });
 //   };
 
-//   const resetForm = () => {
-//     setSelectedVehicle("");
-//     setSelectedServices(new Set());
-//     setSelectedPackages(new Set());
-//     setSelectedSubServices({});
-//     setServiceDefaultValues({});
-//     setMiles("");
-//     setHours("");
-//     setDate("");
-//     setWorkshopName("");
-//     setInvoice("");
-//     setDescription("");
-//     setShowAddRecords(false);
+//   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+//     if (e.target.files && e.target.files[0]) {
+//       const file = e.target.files[0];
+//       setImageFile(file);
+
+//       // Create preview
+//       const reader = new FileReader();
+//       reader.onload = (event) => {
+//         if (event.target?.result) {
+//           setImagePreview(event.target.result as string);
+//         }
+//       };
+//       reader.readAsDataURL(file);
+//     }
+//   };
+
+//   const uploadImage = async (): Promise<string | null> => {
+//     if (!imageFile || !effectiveUserId) return null;
+
+//     try {
+//       setIsUploading(true);
+//       setUploadProgress(0);
+
+//       const storageRef = ref(
+//         storage,
+//         `service-records/${effectiveUserId}/${Date.now()}_${imageFile.name}`
+//       );
+//       const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+//       return new Promise((resolve, reject) => {
+//         uploadTask.on(
+//           "state_changed",
+//           (snapshot) => {
+//             const progress =
+//               (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+//             setUploadProgress(progress);
+//           },
+//           (error) => {
+//             console.error("Upload error:", error);
+//             setIsUploading(false);
+//             reject(error);
+//           },
+//           async () => {
+//             try {
+//               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+//               setIsUploading(false);
+//               resolve(downloadURL);
+//             } catch (error) {
+//               console.error("Error getting download URL:", error);
+//               setIsUploading(false);
+//               reject(error);
+//             }
+//           }
+//         );
+//       });
+//     } catch (error) {
+//       console.error("Upload error:", error);
+//       setIsUploading(false);
+//       return null;
+//     }
 //   };
 
 //   const filteredRecords = records
@@ -620,22 +809,23 @@
 //           return true;
 //       }
 //     })
-//     .sort(
-//       (a, b) =>
-//         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-//     );
+//     .sort((a, b) => {
+//       // Convert date strings to Date objects (format: "2025-06-28")
+//       const dateA = new Date(a.date);
+//       const dateB = new Date(b.date);
+
+//       // For descending order (newest first)
+//       return dateB.getTime() - dateA.getTime();
+//     });
 
 //   const handleSearchFilterOpen = () => setShowSearchFilter(true);
 //   const handleSearchFilterClose = () => setShowSearchFilter(false);
 
 //   useEffect(() => {
-//     fetchVehicles();
-//     fetchServices();
-//     fetchServicePackages();
-//     if (!user?.uid) return;
+//     if (!effectiveUserId) return; // Wait until effectiveUserId is set
 
 //     const recordsQuery = query(
-//       collection(db, "Users", user.uid, "DataServices"),
+//       collection(db, "Users", effectiveUserId, "DataServices"),
 //       where("active", "==", true)
 //     );
 
@@ -650,12 +840,48 @@
 //       });
 
 //       setRecords(recordsData);
-//       console.log(`Fetched ${recordsData.length} records`);
+//       console.log(
+//         `Fetched ${recordsData.length} records for user: ${effectiveUserId}`
+//       );
 //     });
 
+//     // Fetch vehicles using effectiveUserId
+//     const fetchData = async () => {
+//       try {
+//         const vehiclesRef = collection(
+//           db,
+//           "Users",
+//           effectiveUserId,
+//           "Vehicles"
+//         );
+//         const q = query(vehiclesRef, where("active", "==", true));
+
+//         const unsubscribeVehicles = onSnapshot(q, (snapshot) => {
+//           const vehiclesList = snapshot.docs.map(
+//             (doc) =>
+//               ({
+//                 id: doc.id,
+//                 ...doc.data(),
+//               } as VehicleTypes)
+//           );
+//           setVehicles(vehiclesList);
+//           console.log(
+//             `Fetched ${vehiclesList.length} vehicles for user: ${effectiveUserId}`
+//           );
+//         });
+
+//         return unsubscribeVehicles;
+//       } catch (error) {
+//         console.error("Error fetching vehicles:", error);
+//       }
+//     };
+
+//     fetchData();
+//     fetchServices();
+//     fetchServicePackages();
+
 //     return () => unsubscribe();
-//     // eslint-disable-next-line react-hooks/exhaustive-deps
-//   }, [user]);
+//   }, [effectiveUserId]);
 
 //   useEffect(() => {
 //     updateServiceDefaultValues();
@@ -762,9 +988,40 @@
 //     }
 //   };
 
+//   const validateForm = () => {
+//     const errors: { [key: string]: string } = {};
+
+//     // Check if at least one service is selected
+//     if (selectedServices.size === 0) {
+//       errors.general = "Please select at least one service";
+//     }
+
+//     // Check if services with subservices have at least one subservice selected
+//     selectedServices.forEach((serviceId) => {
+//       const service = services.find((s) => s.sId === serviceId);
+//       if (service?.subServices && service.subServices.length > 0) {
+//         const subServices = selectedSubServices[serviceId] || [];
+//         if (subServices.length === 0) {
+//           errors[serviceId] = "Please select at least one sub-service";
+//         }
+//       }
+//     });
+
+//     setValidationErrors(errors);
+//     return Object.keys(errors).length === 0;
+//   };
+
 //   const handleSaveRecords = async () => {
 //     try {
-//       if (!user || !selectedVehicle || selectedServices.size === 0) {
+//       if (!validateForm()) {
+//         toast.error(`Select at least one service and required sub-services`);
+//         return;
+//       }
+
+//       setIsRecordSaving(true);
+
+//       // Validate inputs
+//       if (!effectiveUserId || !selectedVehicle || selectedServices.size === 0) {
 //         toast.error("Please select vehicle and at least one service");
 //         return;
 //       }
@@ -775,14 +1032,25 @@
 //         return;
 //       }
 
+//       // Upload image if exists
+//       let imageUrl = existingImageUrl;
+//       if (imageFile) {
+//         imageUrl = await uploadImage();
+//         if (!imageUrl) {
+//           toast.error("Failed to upload image");
+//           return;
+//         }
+//       }
+
+//       // Get numeric values
 //       const currentMiles = Number(miles);
 //       const currentHours = Number(hours) || 0;
 
-//       // Get current vehicle services to preserve existing ones
+//       // Get current vehicle services
 //       const vehicleRef = doc(
 //         db,
 //         "Users",
-//         user.uid,
+//         effectiveUserId,
 //         "Vehicles",
 //         selectedVehicle
 //       );
@@ -796,33 +1064,28 @@
 //       const notificationData = [];
 //       const updatedVehicleServices = [...currentVehicleServices];
 
+//       // Process each selected service
 //       for (const serviceId of selectedServices) {
 //         const service = services.find((s) => s.sId === serviceId);
 //         if (!service) continue;
 
-//         // Check if vehicle already has this service
+//         // Find existing service or initialize new one
 //         const existingServiceIndex = updatedVehicleServices.findIndex(
-//           (s: { serviceId: string }) => s.serviceId === serviceId
+//           (s) => s.serviceId === serviceId
 //         );
 
-//         // Get default value - priority to vehicle-specific if exists
+//         // Determine service type and default value
 //         let defaultValue = serviceDefaultValues[serviceId] || 0;
 //         let type = "reading";
 
 //         if (existingServiceIndex >= 0) {
-//           // Keep existing service type if available
 //           type = updatedVehicleServices[existingServiceIndex].type || "reading";
-//           // Use existing default if available, otherwise use calculated
 //           defaultValue =
 //             updatedVehicleServices[existingServiceIndex]
-//               .defaultNotificationValue ||
-//             serviceDefaultValues[serviceId] ||
-//             0;
+//               .defaultNotificationValue || defaultValue;
 //         } else {
-//           // Determine type from metadata if new service
 //           const engineName = vehicleData.engineNumber?.toString().toUpperCase();
-//           const dValues = service.dValues || [];
-//           const matchingDValue = dValues.find(
+//           const matchingDValue = service.dValues?.find(
 //             (dv) => dv.brand?.toString().toUpperCase() === engineName
 //           );
 //           type = (matchingDValue?.type || "reading").toLowerCase();
@@ -844,20 +1107,20 @@
 //             formattedDate = formatDateToDDMMYYYY(nextDate);
 //             numericValue = nextDate.getTime();
 //             nextNotificationValue = numericValue;
-//           } else if (type === "hour") {
+//           } else if (type === "hours") {
 //             nextNotificationValue = currentHours + defaultValue;
 //             numericValue = nextNotificationValue;
 //           }
 //         }
 
-//         // Prepare service data for record
+//         // Prepare service data
 //         const serviceData = {
 //           serviceId,
 //           serviceName: service.sName || "",
 //           type,
 //           defaultNotificationValue: defaultValue,
 //           nextNotificationValue:
-//             type === "day" ? formattedDate : nextNotificationValue.toString(),
+//             type === "day" ? formattedDate : nextNotificationValue,
 //           subServices: (selectedSubServices[serviceId] || []).map(
 //             (subService, index) => ({
 //               name: subService,
@@ -872,45 +1135,41 @@
 //           serviceName: service.sName || "",
 //           type,
 //           nextNotificationValue:
-//             type === "day" ? formattedDate : nextNotificationValue.toString(),
+//             type === "day" ? formattedDate : nextNotificationValue,
 //           subServices: selectedSubServices[serviceId] || [],
 //         });
 
-//         // Update vehicle services array - update existing or add new
+//         // Update vehicle services
 //         if (existingServiceIndex >= 0) {
 //           updatedVehicleServices[existingServiceIndex] = {
 //             ...updatedVehicleServices[existingServiceIndex],
 //             nextNotificationValue:
-//               type === "day" ? formattedDate : nextNotificationValue.toString(),
+//               type === "day" ? formattedDate : nextNotificationValue,
 //           };
 //         } else {
 //           updatedVehicleServices.push({
 //             ...serviceData,
 //             nextNotificationValue:
-//               type === "day" ? formattedDate : nextNotificationValue.toString(),
+//               type === "day" ? formattedDate : nextNotificationValue,
 //           });
 //         }
 //       }
 
-//       // Format date for storage
+//       // Prepare record data
 //       const baseDate = date ? new Date(date) : new Date();
 //       const formattedDate = baseDate.toISOString().split("T")[0];
 
 //       const recordData = {
-//         userId: user.uid,
+//         userId: effectiveUserId,
 //         vehicleId: selectedVehicle,
+//         imageUrl,
 //         vehicleDetails: {
 //           ...vehicleData,
 //           currentMiles: currentMiles.toString(),
 //           nextNotificationMiles: notificationData,
 //         },
 //         services: servicesData,
-//         currentMilesArray: [
-//           {
-//             miles: currentMiles,
-//             date: formattedDate,
-//           },
-//         ],
+//         currentMilesArray: [{ miles: currentMiles, date: formattedDate }],
 //         miles: vehicleData.vehicleType === "Truck" ? currentMiles : 0,
 //         hours: vehicleData.vehicleType === "Trailer" ? currentHours : 0,
 //         totalMiles: currentMiles,
@@ -919,51 +1178,53 @@
 //         invoice,
 //         invoiceAmount,
 //         description,
-//         createdAt: new Date().toISOString(),
+//         createdAt: new Date().toISOString().split("T")[0],
+//         updatedAt: new Date().toISOString().split("T")[0],
 //         active: true,
+//         addedFrom: "Web",
 //       };
 
 //       const batch = writeBatch(db);
 
-//       // Handle record creation/update
+//       // Determine owner and if current user is team member
+//       const currentUserDoc = await getDoc(doc(db, "Users", effectiveUserId));
+//       const isTeamMember = currentUserDoc.data()?.isTeamMember;
+//       const ownerId = isTeamMember
+//         ? currentUserDoc.data()?.createdBy
+//         : effectiveUserId;
+
+//       // 1. Handle record in owner's collection
+//       const recordId =
+//         isEditing && editingRecordId
+//           ? editingRecordId
+//           : doc(collection(db, "temp")).id;
+//       const ownerRecordRef = doc(
+//         db,
+//         "Users",
+//         ownerId,
+//         "DataServices",
+//         recordId
+//       );
+
 //       if (isEditing && editingRecordId) {
-//         // Update existing record
-//         const recordRef = doc(
-//           db,
-//           "Users",
-//           user.uid,
-//           "DataServices",
-//           editingRecordId
-//         );
-//         batch.update(recordRef, recordData);
-
-//         // Update global record if exists
-//         const globalRecordQuery = query(
-//           collection(db, "DataServicesRecords"),
-//           where("userId", "==", user.uid),
-//           where("vehicleId", "==", selectedVehicle),
-//           where("createdAt", "==", recordData.createdAt)
-//         );
-//         const globalSnapshot = await getDocs(globalRecordQuery);
-//         if (!globalSnapshot.empty) {
-//           batch.update(globalSnapshot.docs[0].ref, recordData);
-//         }
+//         batch.update(ownerRecordRef, recordData);
 //       } else {
-//         // Create new records
-//         const newRecordRef = doc(
-//           collection(db, "Users", user.uid, "DataServices")
-//         );
-//         const globalRecordRef = doc(collection(db, "DataServicesRecords"));
-
-//         batch.set(newRecordRef, recordData);
-//         batch.set(globalRecordRef, {
-//           ...recordData,
-//           id: newRecordRef.id,
-//         });
+//         batch.set(ownerRecordRef, recordData);
 //       }
 
-//       // Update vehicle document
-//       batch.update(vehicleRef, {
+//       // 2. Handle global record
+//       const globalRecordRef = doc(db, "DataServicesRecords", recordId);
+//       batch.set(globalRecordRef, { ...recordData, id: recordId });
+
+//       // 3. Update owner's vehicle
+//       const ownerVehicleRef = doc(
+//         db,
+//         "Users",
+//         ownerId,
+//         "Vehicles",
+//         selectedVehicle
+//       );
+//       batch.update(ownerVehicleRef, {
 //         services: updatedVehicleServices,
 //         currentMiles: currentMiles.toString(),
 //         currentMilesArray: arrayUnion({
@@ -973,26 +1234,29 @@
 //         nextNotificationMiles: notificationData,
 //       });
 
-//       // Handle team members (similar to app logic)
+//       // 4. Handle all team members
 //       const teamMembersQuery = query(
 //         collection(db, "Users"),
-//         where("createdBy", "==", user.uid),
+//         where("createdBy", "==", ownerId),
 //         where("isTeamMember", "==", true)
 //       );
 //       const teamMembersSnapshot = await getDocs(teamMembersQuery);
 
 //       for (const memberDoc of teamMembersSnapshot.docs) {
+//         const memberId = memberDoc.id;
+//         if (memberId === ownerId) continue;
+
 //         const memberVehicleRef = doc(
 //           db,
 //           "Users",
-//           memberDoc.id,
+//           memberId,
 //           "Vehicles",
 //           selectedVehicle
 //         );
 //         const memberVehicleSnap = await getDoc(memberVehicleRef);
 
 //         if (memberVehicleSnap.exists()) {
-//           // Update team member's vehicle
+//           // Update vehicle
 //           batch.update(memberVehicleRef, {
 //             services: updatedVehicleServices,
 //             currentMiles: currentMiles.toString(),
@@ -1003,46 +1267,28 @@
 //             nextNotificationMiles: notificationData,
 //           });
 
-//           // Add record to team member's DataServices
+//           // Update or create record
 //           const memberRecordRef = doc(
-//             collection(db, "Users", memberDoc.id, "DataServices")
+//             db,
+//             "Users",
+//             memberId,
+//             "DataServices",
+//             recordId
 //           );
 //           batch.set(memberRecordRef, recordData);
 //         }
 //       }
 
-//       // Handle if current user is team member (save to owner)
-//       const currentUserDoc = await getDoc(doc(db, "Users", user.uid));
-//       if (currentUserDoc.data()?.isTeamMember) {
-//         const ownerId = currentUserDoc.data()?.createdBy;
-//         if (ownerId) {
-//           const ownerVehicleRef = doc(
-//             db,
-//             "Users",
-//             ownerId,
-//             "Vehicles",
-//             selectedVehicle
-//           );
-//           const ownerVehicleSnap = await getDoc(ownerVehicleRef);
-
-//           if (ownerVehicleSnap.exists()) {
-//             batch.update(ownerVehicleRef, {
-//               services: updatedVehicleServices,
-//               currentMiles: currentMiles.toString(),
-//               currentMilesArray: arrayUnion({
-//                 miles: currentMiles,
-//                 date: formattedDate,
-//               }),
-//               nextNotificationMiles: notificationData,
-//             });
-
-//             // Add record to owner's DataServices
-//             const ownerRecordRef = doc(
-//               collection(db, "Users", ownerId, "DataServices")
-//             );
-//             batch.set(ownerRecordRef, recordData);
-//           }
-//         }
+//       // 5. If current user is team member, ensure their record exists
+//       if (isTeamMember && effectiveUserId !== ownerId) {
+//         const currentUserRecordRef = doc(
+//           db,
+//           "Users",
+//           effectiveUserId,
+//           "DataServices",
+//           recordId
+//         );
+//         batch.set(currentUserRecordRef, recordData);
 //       }
 
 //       await batch.commit();
@@ -1059,10 +1305,56 @@
 //           error instanceof Error ? error.message : "Unknown error"
 //         }`
 //       );
+//     } finally {
+//       setIsRecordSaving(false);
 //     }
 //   };
 
-//   // Helper function for date formatting
+//   const handleEditRecord = (record: ServiceRecord) => {
+//     setIsEditing(true);
+//     setEditingRecordId(record.id);
+
+//     // Set form values from record
+//     setSelectedVehicle(record.vehicleId);
+//     setSelectedVehicleData(
+//       vehicles.find((v) => v.id === record.vehicleId) || null
+//     );
+
+//     // Initialize service defaults
+//     const newServiceDefaultValues: Record<string, number> = {};
+//     record.services.forEach((service) => {
+//       newServiceDefaultValues[service.serviceId] =
+//         service.defaultNotificationValue || 0;
+//     });
+//     setServiceDefaultValues(newServiceDefaultValues);
+
+//     // Set selected services and subservices
+//     setSelectedServices(new Set(record.services.map((s) => s.serviceId)));
+
+//     const subServices: Record<string, string[]> = {};
+//     record.services.forEach((service) => {
+//       subServices[service.serviceId] =
+//         service.subServices?.map((ss) => ss.name) || [];
+//     });
+//     setSelectedSubServices(subServices);
+
+//     // Set other fields
+//     setMiles(record.miles.toString());
+//     setHours(record.hours.toString());
+//     setDate(
+//       record.date.includes("T") ? record.date.split("T")[0] : record.date
+//     );
+//     setWorkshopName(record.workshopName || "");
+//     setInvoice(record.invoice || "");
+//     setInvoiceAmount(record.invoiceAmount || "");
+//     setDescription(record.description || "");
+
+//     setExistingImageUrl(record.imageUrl || null);
+//     setImagePreview(record.imageUrl || null);
+
+//     setShowAddRecords(true);
+//   };
+
 //   const formatDateToDDMMYYYY = (date: Date | string): string => {
 //     const d = new Date(date);
 //     const year = d.getFullYear();
@@ -1071,69 +1363,57 @@
 //     return `${day}/${month}/${year}`;
 //   };
 
-//   // Update the handleSubserviceToggle function for better single-selection handling
-
-//   const handleEditRecord = (record: ServiceRecord) => {
-//     setIsEditing(true);
-//     setEditingRecordId(record.id);
-
-//     // Set form values from the selected record
-//     setSelectedVehicle(record.vehicleId);
-//     const vehicleData = vehicles.find((v) => v.id === record.vehicleId) || null;
-//     setSelectedVehicleData(vehicleData);
-
-//     // Initialize serviceDefaultValues from the record
-//     const newServiceDefaultValues: { [key: string]: number } = {};
-//     record.services.forEach((service) => {
-//       newServiceDefaultValues[service.serviceId] =
-//         service.defaultNotificationValue || 0;
-//     });
-//     setServiceDefaultValues(newServiceDefaultValues);
-
-//     // Set selected services from the record (convert to Set)
-//     const servicesSet = new Set(record.services.map((s) => s.serviceId));
-//     setSelectedServices(servicesSet);
-
-//     // Set subservices from the record
-//     const subServices: { [key: string]: string[] } = {};
-//     record.services.forEach((service) => {
-//       subServices[service.serviceId] =
-//         service.subServices?.map((ss) => ss.name) || [];
-//     });
-
-//     let recordDate = record.date;
-//     setSelectedSubServices(subServices);
-//     setMiles(record.miles.toString());
-//     setHours(record.hours.toString());
-//     if (recordDate && recordDate.includes("T")) {
-//       recordDate = recordDate.split("T")[0];
-//     }
-//     setDate(record.date);
-//     setWorkshopName(record.workshopName || "");
-//     setInvoice(record.invoice || "");
-//     setInvoiceAmount(record.invoiceAmount || "");
-//     setDescription(record.description || "");
-
-//     setShowAddRecords(true);
-//   };
-
 //   const handleSubserviceToggle = (serviceId: string, subName: string) => {
 //     setSelectedSubServices((prev) => {
 //       const currentSubs = prev[serviceId] || [];
 //       const service = services.find((s) => s.sId === serviceId);
 
 //       // For "Steer Tires" and "DPF Clean", allow only one selection
-//       if (service?.sName === "Steer Tires" || service?.sName === "DPF Clean") {
+//       if (
+//         service?.sName === "Steer Tires" ||
+//         service?.sName === "DPF Percentage"
+//       ) {
 //         // If already selected, deselect it, otherwise select only this one
+//         const newSubs = currentSubs.includes(subName) ? [] : [subName];
+
+//         // Clear validation error if subservice is selected
+//         if (newSubs.length > 0) {
+//           setValidationErrors((prev) => {
+//             const newErrors = { ...prev };
+//             delete newErrors[serviceId];
+//             return newErrors;
+//           });
+//         } else {
+//           setValidationErrors((prev) => ({
+//             ...prev,
+//             [serviceId]: "Please select at least one sub-service",
+//           }));
+//         }
+
 //         return {
 //           ...prev,
-//           [serviceId]: currentSubs.includes(subName) ? [] : [subName],
+//           [serviceId]: newSubs,
 //         };
 //       } else {
 //         // For other services, allow multiple selections
 //         const newSubs = currentSubs.includes(subName)
 //           ? currentSubs.filter((name) => name !== subName)
 //           : [...currentSubs, subName];
+
+//         // Clear validation error if at least one subservice is selected
+//         if (newSubs.length > 0) {
+//           setValidationErrors((prev) => {
+//             const newErrors = { ...prev };
+//             delete newErrors[serviceId];
+//             return newErrors;
+//           });
+//         } else {
+//           setValidationErrors((prev) => ({
+//             ...prev,
+//             [serviceId]: "Please select at least one sub-service",
+//           }));
+//         }
+
 //         return { ...prev, [serviceId]: newSubs };
 //       }
 //     });
@@ -1151,6 +1431,103 @@
 //     }
 //   };
 
+//   const calculateTotals = () => {
+//     let totalInvoiceAmount = 0;
+//     let truckTotal = 0;
+//     let trailerTotal = 0;
+//     let otherTotal = 0;
+
+//     filteredRecords.forEach((record) => {
+//       // Get the record date (already in YYYY-MM-DD format)
+//       const recordDateStr = record.date;
+
+//       // Convert filter dates to YYYY-MM-DD strings
+//       const startDateStr = summaryStartDate
+//         ? formatDateToYYYYMMDD(summaryStartDate)
+//         : null;
+
+//       const endDateStr = summaryEndDate
+//         ? formatDateToYYYYMMDD(summaryEndDate)
+//         : null;
+
+//       // Check if record is within date range using string comparison
+//       const isWithinDateRange =
+//         (!startDateStr || recordDateStr >= startDateStr) &&
+//         (!endDateStr || recordDateStr <= endDateStr);
+
+//       // Check vehicle filters
+//       const vehicleType = record.vehicleDetails.vehicleType;
+//       const vehicleId = record.vehicleId;
+
+//       const passesVehicleFilter =
+//         selectedVehicleTypeFilter === "all" ||
+//         (selectedVehicleTypeFilter === "truck" && vehicleType === "Truck") ||
+//         (selectedVehicleTypeFilter === "trailer" && vehicleType === "Trailer");
+
+//       const passesSpecificVehicleFilter =
+//         selectedVehiclesForFilter.size === 0 ||
+//         selectedVehiclesForFilter.has(vehicleId);
+
+//       if (
+//         isWithinDateRange &&
+//         passesVehicleFilter &&
+//         passesSpecificVehicleFilter
+//       ) {
+//         const amount = parseFloat(record.invoiceAmount) || 0;
+//         totalInvoiceAmount += amount;
+
+//         if (vehicleType === "Truck") {
+//           truckTotal += amount;
+//         } else if (vehicleType === "Trailer") {
+//           trailerTotal += amount;
+//         } else {
+//           otherTotal += amount;
+//         }
+//       }
+//     });
+
+//     return {
+//       totalInvoiceAmount,
+//       truckTotal,
+//       trailerTotal,
+//       otherTotal,
+//     };
+//   };
+
+//   const formatDateToYYYYMMDD = (date: Date): string => {
+//     const year = date.getFullYear();
+//     const month = String(date.getMonth() + 1).padStart(2, "0");
+//     const day = String(date.getDate()).padStart(2, "0");
+//     return `${year}-${month}-${day}`;
+//   };
+
+//   const { totalInvoiceAmount, truckTotal, trailerTotal, otherTotal } =
+//     calculateTotals();
+
+//   const resetForm = () => {
+//     setSelectedVehicle("");
+//     setSelectedVehicleData(null);
+//     setSelectedServices(new Set());
+//     setSelectedPackages(new Set());
+//     setSelectedSubServices({});
+//     setServiceDefaultValues({});
+//     setMiles("");
+//     setHours("");
+//     setDate("");
+//     setWorkshopName("");
+//     setInvoice("");
+//     setInvoiceAmount("");
+//     setDescription("");
+//     setImageFile(null);
+//     setImagePreview(null);
+//     setExistingImageUrl(null);
+//     setValidationErrors({});
+//     setServiceSearchText("");
+//     setIsEditing(false);
+//     setEditingRecordId(null);
+//     setShowAddRecords(false);
+//   };
+
 //   if (!user) {
 //     return (
 //       <div className="flex justify-center items-center min-h-[60vh]">
@@ -1161,14 +1538,60 @@
 //     );
 //   }
 
-//   return (
+//   const DRY_VAN_EXCLUDED_SERVICES = [
+//     "Alternator",
+//     "Battery Change",
+//     "EGR Cooler Clean",
+//     "Oil Change/Service",
+//     "Starter",
+//     "Water /Coolant Pump",
+//   ];
+
+//   const MilesTab = () => {
+//     return (
+//       <div className="w-full bg-white p-4 rounded-lg shadow">
+//         <TableContainer>
+//           <Table>
+//             <TableHead>
+//               <TableRow>
+//                 <TableCell>Vehicle</TableCell>
+//                 <TableCell>Company</TableCell>
+//                 <TableCell>Type</TableCell>
+//                 <TableCell>Current Miles/Hours</TableCell>
+//               </TableRow>
+//             </TableHead>
+//             <TableBody>
+//               {vehicles.map((vehicle) => (
+//                 <TableRow key={vehicle.id}>
+//                   <TableCell>{vehicle.vehicleNumber}</TableCell>
+//                   <TableCell>{vehicle.companyName}</TableCell>
+//                   <TableCell>{vehicle.vehicleType}</TableCell>
+//                   <TableCell>
+//                     {vehicle.vehicleType === "Truck"
+//                       ? vehicle.currentMiles || "0"
+//                       : vehicle.hoursReading || "0"}
+//                   </TableCell>
+//                 </TableRow>
+//               ))}
+//             </TableBody>
+//           </Table>
+//         </TableContainer>
+//       </div>
+//     );
+//   };
+
+//   return userData?.isView ? (
 //     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
 //       {/* Button Container */}
 //       <div className="flex justify-center gap-4 mb-6">
 //         {/** Add Record */}
 
 //         <button
-//           onClick={() => setShowAddRecords(true)}
+//           onClick={() =>
+//             userData?.isAdd
+//               ? setShowAddRecords(true)
+//               : toast.error("You don't have permission to add records.")
+//           }
 //           className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
 //         >
 //           <IoMdAdd /> Add Record
@@ -1177,7 +1600,11 @@
 //         {/** Add mile */}
 
 //         <button
-//           onClick={() => setShowAddMiles(true)}
+//           onClick={() =>
+//             userData?.isView || userData?.isAdd
+//               ? setShowAddMiles(true)
+//               : toast.error("You don't have permission to add miles/hours.")
+//           }
 //           className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
 //         >
 //           <IoMdAdd /> Add Miles/Hours
@@ -1198,6 +1625,197 @@
 //           className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
 //         >
 //           <FaPrint /> Print
+//         </button>
+//       </div>
+
+//       {userRole === "SubOwner" && (
+//         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+//           <p className="text-blue-700 text-sm">
+//             Viewing records as Co-Owner (Owner&apos;s data)
+//           </p>
+//         </div>
+//       )}
+
+//       {/* Summary Box */}
+//       {(role === "Owner" || role === "Accountant" || role === "SubOwner") && (
+//         <div className="w-full bg-white p-4 rounded-lg shadow-md mb-6">
+//           <div className="flex justify-between items-center mb-4">
+//             <h2 className="text-lg font-semibold">Invoice Summary</h2>
+//             <div className="flex gap-2">
+//               <button
+//                 onClick={() => setShowVehicleFilter(!showVehicleFilter)}
+//                 className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+//               >
+//                 {selectedVehicleTypeFilter === "all"
+//                   ? "All Vehicles"
+//                   : selectedVehicleTypeFilter === "truck"
+//                   ? "Trucks"
+//                   : "Trailers"}
+//               </button>
+
+//               <DatePicker
+//                 selected={summaryStartDate}
+//                 onChange={(date) => setSummaryStartDate(date)}
+//                 selectsStart
+//                 startDate={summaryStartDate}
+//                 endDate={summaryEndDate}
+//                 placeholderText="Start Date"
+//                 className="p-2 border rounded w-40"
+//               />
+
+//               <DatePicker
+//                 selected={summaryEndDate}
+//                 onChange={(date) => setSummaryEndDate(date)}
+//                 selectsEnd
+//                 startDate={summaryStartDate}
+//                 endDate={summaryEndDate}
+//                 minDate={summaryStartDate ?? undefined}
+//                 placeholderText="End Date"
+//                 className="p-2 border rounded w-40"
+//               />
+//               <button
+//                 onClick={() => {
+//                   setSummaryStartDate(null);
+//                   setSummaryEndDate(null);
+//                   setSelectedVehicleTypeFilter("all");
+//                   setSelectedVehiclesForFilter(new Set());
+//                 }}
+//                 className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+//               >
+//                 Clear
+//               </button>
+//             </div>
+//           </div>
+
+//           {/* Vehicle Filter Dropdown */}
+//           {showVehicleFilter && (
+//             <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+//               <div className="flex gap-4 mb-4">
+//                 <button
+//                   onClick={() => setSelectedVehicleTypeFilter("all")}
+//                   className={`px-3 py-1 rounded ${
+//                     selectedVehicleTypeFilter === "all"
+//                       ? "bg-blue-500 text-white"
+//                       : "bg-gray-200"
+//                   }`}
+//                 >
+//                   All
+//                 </button>
+//                 <button
+//                   onClick={() => setSelectedVehicleTypeFilter("truck")}
+//                   className={`px-3 py-1 rounded ${
+//                     selectedVehicleTypeFilter === "truck"
+//                       ? "bg-blue-500 text-white"
+//                       : "bg-gray-200"
+//                   }`}
+//                 >
+//                   Trucks
+//                 </button>
+//                 <button
+//                   onClick={() => setSelectedVehicleTypeFilter("trailer")}
+//                   className={`px-3 py-1 rounded ${
+//                     selectedVehicleTypeFilter === "trailer"
+//                       ? "bg-blue-500 text-white"
+//                       : "bg-gray-200"
+//                   }`}
+//                 >
+//                   Trailers
+//                 </button>
+//               </div>
+
+//               {selectedVehicleTypeFilter !== "all" && (
+//                 <div className="max-h-60 overflow-y-auto">
+//                   <p className="text-sm font-medium mb-2">
+//                     Select specific vehicles:
+//                   </p>
+//                   {/* Fixed height scrollable container */}
+//                   <div className="max-h-[300px] overflow-y-auto border rounded-lg p-2">
+//                     {vehicles
+//                       .filter((v) =>
+//                         selectedVehicleTypeFilter === "truck"
+//                           ? v.vehicleType === "Truck"
+//                           : v.vehicleType === "Trailer"
+//                       )
+//                       .map((vehicle) => (
+//                         <div
+//                           key={vehicle.id}
+//                           className="flex items-center mb-2"
+//                         >
+//                           <Checkbox
+//                             checked={selectedVehiclesForFilter.has(vehicle.id)}
+//                             onChange={() => {
+//                               const newSelected = new Set(
+//                                 selectedVehiclesForFilter
+//                               );
+//                               if (newSelected.has(vehicle.id)) {
+//                                 newSelected.delete(vehicle.id);
+//                               } else {
+//                                 newSelected.add(vehicle.id);
+//                               }
+//                               setSelectedVehiclesForFilter(newSelected);
+//                             }}
+//                           />
+//                           <span>
+//                             {vehicle.vehicleNumber} ({vehicle.companyName})
+//                           </span>
+//                         </div>
+//                       ))}
+//                   </div>
+//                 </div>
+//               )}
+//             </div>
+//           )}
+
+//           <div className="grid grid-cols-4 gap-4">
+//             <div className="bg-blue-50 p-4 rounded-lg">
+//               <h3 className="text-sm font-medium text-gray-500">
+//                 Total Invoice Amount
+//               </h3>
+//               <p className="text-2xl font-bold">
+//                 ${totalInvoiceAmount.toFixed(0)}
+//               </p>
+//             </div>
+
+//             <div className="bg-green-50 p-4 rounded-lg">
+//               <h3 className="text-sm font-medium text-gray-500">
+//                 Truck Services
+//               </h3>
+//               <p className="text-2xl font-bold">${truckTotal.toFixed(0)}</p>
+//             </div>
+
+//             <div className="bg-yellow-50 p-4 rounded-lg">
+//               <h3 className="text-sm font-medium text-gray-500">
+//                 Trailer Services
+//               </h3>
+//               <p className="text-2xl font-bold">${trailerTotal.toFixed(0)}</p>
+//             </div>
+
+//             <div className="bg-red-50 p-4 rounded-lg">
+//               <h3 className="text-sm font-medium text-gray-500">
+//                 Other Services
+//               </h3>
+//               <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       <div className="flex justify-center gap-4 mb-6">
+//         <button
+//           onClick={() => setActiveTab("records")}
+//           className={`px-4 py-2 rounded ${
+//             activeTab === "records" ? "bg-[#F96176] text-white" : "bg-gray-200"
+//           }`}
+//         >
+//           Records
+//         </button>
+//         <button
+//           onClick={() => setActiveTab("miles")}
+//           className={`px-4 py-2 rounded ${
+//             activeTab === "miles" ? "bg-[#F96176] text-white" : "bg-gray-200"
+//           }`}
+//         >
+//           Miles/Hours
 //         </button>
 //       </div>
 
@@ -1392,21 +2010,34 @@
 //           >
 //             Cancel
 //           </Button>
-//           <Button
-//             onClick={handleAddMiles}
-//             variant="contained"
-//             color="primary"
-//             className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
-//           >
-//             Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"}
-//           </Button>
+
+//           {isMilesSaving ? (
+//             <CircularProgress />
+//           ) : (
+//             <Button
+//               onClick={handleAddMiles}
+//               variant="contained"
+//               color="primary"
+//               className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
+//             >
+//               {isMilesSaving
+//                 ? "Saving..."
+//                 : selectedVehicleType === "Truck"
+//                 ? "Save Miles"
+//                 : "Save Hours"}
+//               {/* Save {selectedVehicleType === "Truck" ? "Miles" : "Hours"} */}
+//             </Button>
+//           )}
 //         </DialogActions>
 //       </Dialog>
 
 //       {/* Add Record Dialog */}
 //       <Dialog
 //         open={showAddRecords}
-//         onClose={() => setShowAddRecords(false)}
+//         // onClose={() => setShowAddRecords(false)}
+//         onClose={() => {
+//           resetForm();
+//         }}
 //         maxWidth="md"
 //         fullWidth
 //       >
@@ -1437,11 +2068,16 @@
 //                       sx={{ minHeight: "56px", flex: 1, marginRight: "8px" }}
 //                       label="Select Vehicle"
 //                     >
-//                       {vehicles.map((vehicle) => (
-//                         <MenuItem key={vehicle.id} value={vehicle.id}>
-//                           {vehicle.vehicleNumber} ({vehicle.companyName})
-//                         </MenuItem>
-//                       ))}
+//                       {/* Sort vehicles alphabetically by vehicleNumber before mapping */}
+//                       {vehicles
+//                         .sort((a, b) =>
+//                           a.vehicleNumber.localeCompare(b.vehicleNumber)
+//                         )
+//                         .map((vehicle) => (
+//                           <MenuItem key={vehicle.id} value={vehicle.id}>
+//                             {vehicle.vehicleNumber} ({vehicle.companyName})
+//                           </MenuItem>
+//                         ))}
 //                     </Select>
 
 //                     {/* Circular + Add Button */}
@@ -1536,7 +2172,6 @@
 //                   </Box>
 //                 </FormControl>
 //               </div>
-
 //               {/** Select packages */}
 
 //               {selectedVehicleData?.vehicleType == "Truck" && (
@@ -1549,9 +2184,10 @@
 //                       labelId="select-packages-label"
 //                       multiple
 //                       value={Array.from(selectedPackages)}
-//                       onChange={(e) =>
-//                         handlePackageSelect(e.target.value as string[])
-//                       }
+//                       onChange={(e) => {
+//                         const newPackages = e.target.value as string[];
+//                         handlePackageSelect(newPackages);
+//                       }}
 //                       renderValue={(selected) => selected.join(", ")}
 //                       label="Select Packages"
 //                       sx={{ minHeight: "56px" }}
@@ -1576,7 +2212,6 @@
 //                   </FormControl>
 //                 </div>
 //               )}
-
 //               <div className="mb-4">
 //                 <TextField
 //                   fullWidth
@@ -1594,18 +2229,30 @@
 //                 />
 //               </div>
 //               {/** Select Services */}
-
 //               <div className="grid grid-cols-4 gap-3 mb-4">
 //                 {services
-//                   .filter(
-//                     (service) =>
-//                       service.sName
-//                         .toLowerCase()
-//                         .includes(serviceSearchText.toLowerCase()) &&
-//                       (!selectedVehicleData ||
-//                         service.vType === selectedVehicleData.vehicleType)
-//                   )
-//                   .sort((a, b) => a.sName.localeCompare(b.sName)) // ✅ Sort alphabetically
+//                   .filter((service) => {
+//                     const matchesSearch = service.sName
+//                       .toLowerCase()
+//                       .includes(serviceSearchText.toLowerCase());
+
+//                     const matchesVehicleType =
+//                       !selectedVehicleData ||
+//                       service.vType === selectedVehicleData.vehicleType;
+
+//                     // Exclude specific services for DRY VAN
+//                     const isDryVan =
+//                       selectedVehicleData?.engineName === "DRY VAN";
+//                     const isExcludedService =
+//                       DRY_VAN_EXCLUDED_SERVICES.includes(service.sName);
+
+//                     return (
+//                       matchesSearch &&
+//                       matchesVehicleType &&
+//                       !(isDryVan && isExcludedService)
+//                     );
+//                   })
+//                   .sort((a, b) => a.sName.localeCompare(b.sName))
 //                   .map((service) => (
 //                     <div key={service.sId} className="w-full">
 //                       <Chip
@@ -1613,9 +2260,6 @@
 //                         onClick={(e) => {
 //                           e.preventDefault();
 //                           handleServiceSelect(service.sId);
-//                           setExpandedService(
-//                             expandedService === service.sId ? null : service.sId
-//                           );
 //                         }}
 //                         sx={{
 //                           backgroundColor: selectedServices.has(service.sId)
@@ -1629,25 +2273,36 @@
 //                               ? "#F96176"
 //                               : "#FFCDD2",
 //                           },
+//                           border: validationErrors[service.sId]
+//                             ? "2px solid red"
+//                             : "none",
 //                         }}
 //                         variant={
 //                           selectedServices.has(service.sId)
 //                             ? "filled"
 //                             : "outlined"
 //                         }
-//                         className="mb-2 transition duration-300 hover:shadow-lg"
+//                         className="w-full transition duration-300 hover:shadow-lg"
 //                       />
+
+//                       {/* Show validation error if exists */}
+//                       {validationErrors[service.sId] && (
+//                         <div className="text-red-500 text-xs mt-1 ml-2">
+//                           {validationErrors[service.sId]}
+//                         </div>
+//                       )}
 
 //                       <Collapse
 //                         in={
-//                           expandedService === service.sId &&
-//                           selectedServices.has(service.sId)
+//                           selectedServices.has(service.sId) &&
+//                           service.subServices &&
+//                           service.subServices.length > 0
 //                         }
 //                         timeout="auto"
-//                         unmountOnExit // Add this to properly unmount when collapsed
+//                         unmountOnExit
 //                       >
 //                         {service.subServices && (
-//                           <div className="ml-4 mt-2">
+//                           <div className="ml-1 mt-2 w-3/4">
 //                             {service.subServices.map((subService) =>
 //                               subService.sName.map((name, idx) => {
 //                                 const isSelected =
@@ -1657,27 +2312,25 @@
 //                                 return (
 //                                   <div
 //                                     key={`${service.sId}-${name}-${idx}`}
-//                                     className="relative"
+//                                     className={`flex items-center rounded-full px-1 py-1 m-1 transition duration-300
+//                 ${
+//                   isSelected
+//                     ? "bg-[#58BB87] text-gray-800"
+//                     : "bg-gray-200 text-gray-800"
+//                 }`}
+//                                     onClick={(e) => {
+//                                       e.stopPropagation();
+//                                       handleSubserviceToggle(service.sId, name);
+//                                     }}
 //                                   >
-//                                     <Chip
-//                                       label={name}
-//                                       size="small"
-//                                       className={`m-1 transition duration-300 ${
-//                                         isSelected
-//                                           ? "bg-green-500 text-white"
-//                                           : "bg-gray-100 hover:bg-gray-200"
-//                                       }`}
-//                                       onClick={(e) => {
-//                                         e.stopPropagation();
-//                                         handleSubserviceToggle(
-//                                           service.sId,
-//                                           name
-//                                         );
-//                                       }}
-//                                     />
-//                                     {isSelected && (
-//                                       <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></span>
-//                                     )}
+//                                     <span className="flex items-center text-sm ml-1 space-x-1">
+//                                       <span>{name}</span>
+//                                       {isSelected && (
+//                                         <span className="text-[#F96176] bg-white rounded-full px-2">
+//                                           ✓
+//                                         </span>
+//                                       )}
+//                                     </span>
 //                                   </div>
 //                                 );
 //                               })
@@ -1688,7 +2341,6 @@
 //                     </div>
 //                   ))}
 //               </div>
-
 //               <div className="mb-4 flex flex-col gap-4">
 //                 {selectedVehicleData?.vehicleType === "Truck" && (
 //                   <TextField
@@ -1725,15 +2377,6 @@
 //                         className="mb-4 rounded-lg"
 //                       />
 //                     )}
-//                     {/* <TextField
-//                       fullWidth
-//                       label="Date"
-//                       type="date"
-//                       value={date}
-//                       onChange={(e) => setDate(e.target.value)}
-//                       InputLabelProps={{ shrink: true }}
-//                       className="mb-4 rounded-lg"
-//                     /> */}
 //                   </>
 //                 )}
 
@@ -1744,11 +2387,27 @@
 //                   onChange={(e) => setWorkshopName(e.target.value)}
 //                   className="mb-4 rounded-lg"
 //                 />
-//                 <TextField
+//                 {/* <TextField
 //                   fullWidth
 //                   label="Invoice Number (Optional)"
 //                   value={invoice}
 //                   onChange={(e) => setInvoice(e.target.value)}
+//                   className="mb-4 rounded-lg"
+//                 /> */}
+
+//                 <TextField
+//                   fullWidth
+//                   label="Invoice Number (Optional)"
+//                   value={invoice}
+//                   onChange={(e) => {
+//                     // Limit to 10 characters
+//                     if (e.target.value.length <= 10) {
+//                       setInvoice(e.target.value);
+//                     }
+//                   }}
+//                   inputProps={{
+//                     maxLength: 10,
+//                   }}
 //                   className="mb-4 rounded-lg"
 //                 />
 //                 <TextField
@@ -1767,13 +2426,70 @@
 //                   onChange={(e) => setDescription(e.target.value)}
 //                   className="rounded-lg"
 //                 />
+
+//                 <div className="mb-4">
+//                   <label className="block text-sm font-medium text-gray-700 mb-2">
+//                     Upload Service Image (Optional)
+//                   </label>
+//                   <input
+//                     type="file"
+//                     accept="image/*"
+//                     onChange={handleImageChange}
+//                     className="block w-full text-sm text-gray-500
+//       file:mr-4 file:py-2 file:px-4
+//       file:rounded-md file:border-0
+//       file:text-sm file:font-semibold
+//       file:bg-blue-50 file:text-blue-700
+//       hover:file:bg-blue-100"
+//                   />
+
+//                   {(imagePreview || existingImageUrl) && (
+//                     <div className="mt-2">
+//                       <Image
+//                         src={imagePreview || existingImageUrl || ""}
+//                         alt="Preview"
+//                         width={128}
+//                         height={128}
+//                         className="object-contain rounded border"
+//                       />
+
+//                       <button
+//                         type="button"
+//                         onClick={() => {
+//                           setImagePreview(null);
+//                           setImageFile(null);
+//                           setExistingImageUrl(null); // Also clear the existing image URL
+//                         }}
+//                         className="mt-2 text-sm text-red-600 hover:text-red-800"
+//                       >
+//                         Remove Image
+//                       </button>
+//                     </div>
+//                   )}
+
+//                   {isUploading && (
+//                     <div className="mt-2">
+//                       <LinearProgress
+//                         variant="determinate"
+//                         value={uploadProgress}
+//                       />
+//                       <Typography
+//                         variant="caption"
+//                         display="block"
+//                         gutterBottom
+//                       >
+//                         Uploading: {Math.round(uploadProgress)}%
+//                       </Typography>
+//                     </div>
+//                   )}
+//                 </div>
 //               </div>
 //             </CardContent>
 //           </Card>
 //         </DialogContent>
 //         <DialogActions>
 //           <Button
-//             onClick={() => setShowAddRecords(false)}
+//             onClick={() => resetForm()}
 //             className="text-gray-600 hover:text-gray-800"
 //           >
 //             Cancel
@@ -1785,109 +2501,139 @@
 //             className="bg-[#F96176] hover:bg-[#F96176] transition duration-300"
 //           >
 //             {/* Save Record */}
-//             {isEditing ? "Update Record" : "Save Record"}
+
+//             {isEditing
+//               ? isRecordSaving
+//                 ? "Updating..."
+//                 : "Update Record"
+//               : isRecordSaving
+//               ? "Saving..."
+//               : "Save Record"}
 //           </Button>
 //         </DialogActions>
 //       </Dialog>
 
 //       {/* Records Table */}
 
-//       {records.length === 0 ? (
-//         <div className="flex justify-center items-center min-h-[60vh]">
-//           <h1 className="text-xl font-semibold text-gray-700">
-//             No records found.
-//           </h1>
-//         </div>
-//       ) : (
-//         <div
-//           ref={printRef}
-//           className="w-full bg-white"
-//           style={{ overflow: "visible", maxHeight: "none" }}
-//         >
-//           <TableContainer component={Paper}>
-//             <Table className="table">
-//               <TableHead>
-//                 <TableRow>
-//                   <TableCell>Date</TableCell>
-//                   <TableCell>Invoice</TableCell>
-//                   <TableCell>Vehicle</TableCell>
-//                   <TableCell>Company</TableCell>
-//                   {records.some((record) => record.miles > 0) && (
-//                     <TableCell>Miles/Hours</TableCell>
-//                   )}
-//                   {records.some((record) => record.hours < 0) && (
-//                     <TableCell>Hours</TableCell>
-//                   )}
-//                   <TableCell>Services</TableCell>
-//                   <TableCell>Workshop Name</TableCell>
-//                   <TableCell>Action</TableCell>
-//                 </TableRow>
-//               </TableHead>
-//               <TableBody>
-//                 {filteredRecords.map((record) => (
-//                   <TableRow key={record.id}>
-//                     <TableCell className="table-cell">
-//                       {new Date(record.date).toLocaleDateString()}
-//                     </TableCell>
-//                     <TableCell className="table-cell">
-//                       {record.invoice && record.invoice.trim() !== ""
-//                         ? record.invoice
-//                         : "N/A"}
-//                     </TableCell>
-//                     <TableCell className="table-cell">
-//                       {record.vehicleDetails.vehicleNumber}
-//                     </TableCell>
-
-//                     <TableCell className="table-cell">
-//                       {record.vehicleDetails.companyName}
-//                     </TableCell>
-
-//                     <TableCell className="table-cell">
-//                       {record.vehicleDetails.vehicleType === "Trailer"
-//                         ? record.hours
-//                           ? `${record.hours}`
-//                           : "N/A"
-//                         : record.miles
-//                         ? `${record.miles}`
-//                         : "N/A"}
-//                     </TableCell>
-//                     <TableCell className="table-cell">
-//                       {record.services && record.services.length > 0
-//                         ? record.services
-//                             .map((service) => service.serviceName)
-//                             .join(", ")
-//                         : "N/A"}
-//                     </TableCell>
-
-//                     <TableCell className="table-cell">
-//                       {record.workshopName && record.workshopName.trim() !== ""
-//                         ? record.workshopName
-//                         : "N/A"}
-//                     </TableCell>
-
-//                     <TableCell>
-//                       <div style={{ display: "flex", gap: "8px" }}>
-//                         <button
-//                           onClick={() => handleEditRecord(record)}
-//                           className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
-//                         >
-//                           Edit
-//                         </button>
-
-//                         <Link href={`/records/${record.id}`} passHref>
-//                           <button className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]">
-//                             View
-//                           </button>
-//                         </Link>
-//                       </div>
-//                     </TableCell>
+//       {activeTab === "records" ? (
+//         records.length === 0 ? (
+//           <div className="flex justify-center items-center min-h-[60vh]">
+//             <h1 className="text-xl font-semibold text-gray-700">
+//               No records found.
+//             </h1>
+//           </div>
+//         ) : (
+//           <div
+//             ref={printRef}
+//             className="w-full bg-white"
+//             style={{ overflow: "visible", maxHeight: "none" }}
+//           >
+//             <TableContainer component={Paper}>
+//               <Table className="table">
+//                 <TableHead>
+//                   <TableRow>
+//                     <TableCell>Date</TableCell>
+//                     <TableCell>Invoice</TableCell>
+//                     <TableCell>Vehicle</TableCell>
+//                     <TableCell>Company</TableCell>
+//                     <TableCell>Inv. Amount</TableCell>
+//                     {records.some((record) => record.miles > 0) && (
+//                       <TableCell>Miles/Hours</TableCell>
+//                     )}
+//                     {records.some((record) => record.hours < 0) && (
+//                       <TableCell>Hours</TableCell>
+//                     )}
+//                     <TableCell>Services</TableCell>
+//                     <TableCell>Workshop Name</TableCell>
+//                     <TableCell>Action</TableCell>
 //                   </TableRow>
-//                 ))}
-//               </TableBody>
-//             </Table>
-//           </TableContainer>
-//         </div>
+//                 </TableHead>
+//                 <TableBody>
+//                   {filteredRecords.map((record) => (
+//                     <TableRow key={record.id}>
+//                       <TableCell className="table-cell">
+//                         {format(parseISO(record.date), "MM-dd-yyyy")}
+//                       </TableCell>
+//                       <TableCell className="table-cell">
+//                         {record.invoice && record.invoice.trim() !== ""
+//                           ? record.invoice
+//                           : "N/A"}
+//                       </TableCell>
+//                       <TableCell className="table-cell">
+//                         {record.vehicleDetails.vehicleNumber}
+//                       </TableCell>
+
+//                       <TableCell className="table-cell">
+//                         {record.vehicleDetails.companyName}
+//                       </TableCell>
+//                       <TableCell className="table-cell">
+//                         {record.invoiceAmount &&
+//                         record.invoiceAmount.trim() !== ""
+//                           ? `$${record.invoiceAmount}`
+//                           : "N/A"}
+//                       </TableCell>
+
+//                       <TableCell className="table-cell">
+//                         {record.vehicleDetails.vehicleType === "Trailer"
+//                           ? record.hours
+//                             ? `${record.hours}`
+//                             : "N/A"
+//                           : record.miles
+//                           ? `${record.miles}`
+//                           : "N/A"}
+//                       </TableCell>
+//                       <TableCell className="table-cell">
+//                         {record.services && record.services.length > 0
+//                           ? record.services
+//                               .sort((a, b) =>
+//                                 a.serviceName.localeCompare(b.serviceName)
+//                               )
+//                               .map((service) => service.serviceName)
+//                               .join(", ")
+//                           : "N/A"}
+//                       </TableCell>
+
+//                       <TableCell className="table-cell">
+//                         {record.workshopName &&
+//                         record.workshopName.trim() !== ""
+//                           ? record.workshopName
+//                           : "N/A"}
+//                       </TableCell>
+
+//                       <TableCell>
+//                         <div style={{ display: "flex", gap: "8px" }}>
+//                           <button
+//                             onClick={() =>
+//                               userData?.isEdit
+//                                 ? handleEditRecord(record)
+//                                 : toast.error(
+//                                     "You don't have permission to edit this record."
+//                                   )
+//                             }
+//                             className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
+//                           >
+//                             Edit
+//                           </button>
+
+//                           <Link href={`/records/${record.id}`} passHref>
+//                             <button className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]">
+//                               View
+//                             </button>
+//                           </Link>
+//                         </div>
+//                       </TableCell>
+//                     </TableRow>
+//                   ))}
+//                 </TableBody>
+//               </Table>
+//             </TableContainer>
+//           </div>
+//         )
+//       ) : (
+//         <MilesTab />
 //       )}
 //     </div>
+//   ) : (
+//     <div>You don&apos;t have permission to see this page.</div>
 //   );
 // }

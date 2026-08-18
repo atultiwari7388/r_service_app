@@ -56,7 +56,8 @@ import Link from "next/link";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { BiFilter, BiSearch } from "react-icons/bi";
-import { FaPrint } from "react-icons/fa";
+import { FaPrint, FaDownload, FaFileImport } from "react-icons/fa";
+import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { httpsCallable } from "firebase/functions";
@@ -988,6 +989,119 @@ export default function RecordsPage() {
     }
   };
 
+  const downloadSingleRecord = (record: ServiceRecord) => {
+    try {
+      const isTrailer = record.vehicleDetails?.vehicleType === "Trailer";
+      const recordRow = {
+        vehicleNumber: record.vehicleDetails?.vehicleNumber || "",
+        companyName: record.vehicleDetails?.companyName || "",
+        vehicleType:
+          record.vehicleDetails?.vehicleType ||
+          (isTrailer ? "Trailer" : "Truck"),
+        date: record.date || "",
+        ...(isTrailer
+          ? { hours: record.hours || 0 }
+          : { miles: record.miles || 0 }),
+        services: record.services?.map((s) => s.serviceName).join(", ") || "",
+        subServices:
+          record.services
+            ?.flatMap((s) => (s.subServices || []).map((sub) => sub.name))
+            .join(", ") || "",
+        workshopName: record.workshopName || "",
+        invoice: record.invoice || "",
+        invoiceAmount: record.invoiceAmount || "",
+        description: record.description || "",
+      };
+
+      const wb = utils.book_new();
+      const ws = utils.json_to_sheet([recordRow]);
+      ws["!cols"] = [
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 40 },
+        { wch: 35 },
+        { wch: 25 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 50 },
+      ];
+      utils.book_append_sheet(wb, ws, "Service Record");
+      writeFile(
+        wb,
+        `${record.vehicleDetails?.vehicleNumber || "vehicle"}_record_${
+          record.date || "service"
+        }.xlsx`
+      );
+      toast.success("Record downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading record:", error);
+      toast.error("Failed to download record");
+    }
+  };
+
+  const downloadAllRecords = () => {
+    try {
+      if (!filteredRecords || filteredRecords.length === 0) {
+        toast.error("No records available to download");
+        return;
+      }
+
+      const rows = filteredRecords.map((record) => {
+        const isTrailer = record.vehicleDetails?.vehicleType === "Trailer";
+        return {
+          vehicleNumber: record.vehicleDetails?.vehicleNumber || "",
+          companyName: record.vehicleDetails?.companyName || "",
+          vehicleType:
+            record.vehicleDetails?.vehicleType ||
+            (isTrailer ? "Trailer" : "Truck"),
+          date: record.date || "",
+          miles: isTrailer ? "" : record.miles || 0,
+          hours: isTrailer ? record.hours || 0 : "",
+          services: record.services?.map((s) => s.serviceName).join(", ") || "",
+          subServices:
+            record.services
+              ?.flatMap((s) => (s.subServices || []).map((sub) => sub.name))
+              .join(", ") || "",
+          workshopName: record.workshopName || "",
+          invoice: record.invoice || "",
+          invoiceAmount: record.invoiceAmount || "",
+          description: record.description || "",
+        };
+      });
+
+      const wb = utils.book_new();
+      const ws = utils.json_to_sheet(rows);
+      ws["!cols"] = [
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 40 },
+        { wch: 35 },
+        { wch: 25 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 50 },
+      ];
+      utils.book_append_sheet(wb, ws, "All Records");
+      writeFile(
+        wb,
+        `all_service_records_${format(new Date(), "yyyy-MM-dd")}.xlsx`
+      );
+      toast.success(
+        `Downloaded ${filteredRecords.length} record(s) successfully!`
+      );
+    } catch (error) {
+      console.error("Error downloading records:", error);
+      toast.error("Failed to download records");
+    }
+  };
+
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
 
@@ -1625,6 +1739,21 @@ export default function RecordsPage() {
           className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
         >
           <FaPrint /> Print
+        </button>
+
+        {/** Import Record Excel */}
+        <Link href="/import-record" passHref>
+          <button className="bg-[#3B82F6] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#2563EB]">
+            <FaFileImport /> Import Excel
+          </button>
+        </Link>
+
+        {/** Download All Records */}
+        <button
+          onClick={downloadAllRecords}
+          className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669]"
+        >
+          <FaDownload /> Download All
         </button>
       </div>
 
@@ -2552,9 +2681,7 @@ export default function RecordsPage() {
                   {filteredRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell className="table-cell">
-                        <TableCell className="table-cell">
-                          {format(parseISO(record.date), "MM-dd-yyyy")}
-                        </TableCell>
+                        {format(parseISO(record.date), "MM-dd-yyyy")}
                       </TableCell>
                       <TableCell className="table-cell">
                         {record.invoice && record.invoice.trim() !== ""
@@ -2622,6 +2749,14 @@ export default function RecordsPage() {
                               View
                             </button>
                           </Link>
+
+                          <button
+                            onClick={() => downloadSingleRecord(record)}
+                            className="bg-[#3B82F6] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#2563EB]"
+                            title="Download Excel"
+                          >
+                            <FaDownload /> Download
+                          </button>
                         </div>
                       </TableCell>
                     </TableRow>
