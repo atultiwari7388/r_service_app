@@ -8,7 +8,13 @@ import {
   FaTrash,
   FaMapMarkerAlt,
   FaTimes,
+  FaFileUpload,
+  FaFileDownload,
+  FaFileExcel,
+  FaCheckCircle,
+  FaExclamationCircle,
 } from "react-icons/fa";
+import { read, utils } from "xlsx";
 import {
   GoogleMap,
   Marker,
@@ -28,6 +34,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { GlobalToastError } from "@/utils/globalErrorToast";
@@ -225,6 +232,177 @@ const getExtraColumns = (tabId: TabId) => {
   }
 };
 
+const dispatchSampleFiles: Record<
+  string,
+  { single: string; bulk: string; singleLabel: string; bulkLabel: string }
+> = {
+  shippers: {
+    single: "/sample_excels/dispatch/shipper_single_sample.xlsx",
+    bulk: "/sample_excels/dispatch/shipper_bulk_sample.xlsx",
+    singleLabel: "Single Shipper Sample",
+    bulkLabel: "Bulk Shippers Sample (6 Facilities)",
+  },
+  carrier: {
+    single: "/sample_excels/dispatch/carrier_single_sample.xlsx",
+    bulk: "/sample_excels/dispatch/carrier_bulk_sample.xlsx",
+    singleLabel: "Single Carrier Sample",
+    bulkLabel: "Bulk Carriers Sample (6 Carriers)",
+  },
+  customers: {
+    single: "/sample_excels/dispatch/customer_single_sample.xlsx",
+    bulk: "/sample_excels/dispatch/customer_bulk_sample.xlsx",
+    singleLabel: "Single Customer Sample",
+    bulkLabel: "Bulk Customers Sample (6 Customers)",
+  },
+};
+
+const formatExcelTime = (val: unknown): string => {
+  if (!val && val !== 0) return "";
+  if (typeof val === "string") return val.trim();
+  if (typeof val === "number") {
+    // If it is an Excel fractional day time e.g. 0.3333333333333333 for 8 AM
+    const totalMinutes = Math.round(val * 24 * 60);
+    const hours24 = Math.floor(totalMinutes / 60) % 24;
+    const mins = totalMinutes % 60;
+    const period = hours24 >= 12 ? "PM" : "AM";
+    const hours12 = hours24 % 12 || 12;
+    return `${String(hours12).padStart(2, "0")}:${String(mins).padStart(
+      2,
+      "0"
+    )} ${period}`;
+  }
+  return String(val).trim();
+};
+
+const normalizeExcelRow = (
+  row: Record<string, unknown>,
+  tabId: TabId
+): Record<string, string> => {
+  const result: Record<string, string> = {};
+
+  const cleanMap: Record<string, unknown> = {};
+  Object.entries(row).forEach(([k, v]) => {
+    const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+    cleanMap[cleanKey] = v;
+  });
+
+  const getVal = (possibleKeys: string[]): string => {
+    for (const key of possibleKeys) {
+      const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleanMap[cleanKey] !== undefined && cleanMap[cleanKey] !== null) {
+        return String(cleanMap[cleanKey]).trim();
+      }
+    }
+    return "";
+  };
+
+  const getTimeVal = (possibleKeys: string[]): string => {
+    for (const key of possibleKeys) {
+      const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleanMap[cleanKey] !== undefined && cleanMap[cleanKey] !== null) {
+        return formatExcelTime(cleanMap[cleanKey]);
+      }
+    }
+    return "";
+  };
+
+  if (tabId === "shippers") {
+    result.name = getVal([
+      "name",
+      "shipperName",
+      "consigneeName",
+      "facilityName",
+      "companyName",
+    ]);
+    result.address = getVal(["address", "facilityAddress", "location"]);
+    result.phone = getVal([
+      "phone",
+      "phoneNumber",
+      "tel",
+      "contact",
+      "contactNumber",
+    ]);
+    result.pinCode = getVal([
+      "pinCode",
+      "pincode",
+      "zipCode",
+      "zip",
+      "postalCode",
+    ]);
+    result.startTime = getTimeVal([
+      "startTime",
+      "openingTime",
+      "openTime",
+      "start",
+    ]);
+    result.endTime = getTimeVal(["endTime", "closingTime", "closeTime", "end"]);
+  } else if (tabId === "carrier") {
+    result.name = getVal(["name", "carrierName", "companyName"]);
+    result.address = getVal([
+      "address",
+      "carrierAddress",
+      "officeAddress",
+      "location",
+    ]);
+    result.mcNumber = getVal(["mcNumber", "mc", "mcNum", "motorCarrierNumber"]);
+    result.dotNumber = getVal(["dotNumber", "dot", "dotNum", "usDotNumber"]);
+    result.primaryContact = getVal([
+      "primaryContact",
+      "contactPerson",
+      "contactName",
+      "dispatcher",
+    ]);
+    result.email = getVal([
+      "email",
+      "emailAddress",
+      "contactEmail",
+      "dispatchEmail",
+    ]);
+    result.phone = getVal(["phone", "phoneNumber", "officePhone", "tel"]);
+    result.cellPhone = getVal([
+      "cellPhone",
+      "mobile",
+      "cell",
+      "mobileNumber",
+      "alternatePhone",
+    ]);
+    result.yardLocation = getVal(["yardLocation", "yard", "terminal"]);
+  } else if (tabId === "customers") {
+    result.name = getVal(["name", "customerName", "clientName", "companyName"]);
+    result.email = getVal(["email", "emailAddress", "billingEmail"]);
+    result.phone = getVal(["phone", "phoneNumber", "tel", "contactNumber"]);
+    result.address = getVal([
+      "address",
+      "billingAddress",
+      "officeAddress",
+      "location",
+    ]);
+    result.pinCode = getVal([
+      "pinCode",
+      "pincode",
+      "zipCode",
+      "zip",
+      "postalCode",
+    ]);
+  }
+
+  return result;
+};
+
+const validateImportRow = (
+  row: Record<string, string>,
+  tabId: TabId
+): string[] => {
+  const errors: string[] = [];
+  const fields = getFormFields(tabId);
+  fields.forEach((f) => {
+    if (f.required && (!row[f.name] || row[f.name].trim() === "")) {
+      errors.push(`${f.label} is required`);
+    }
+  });
+  return errors;
+};
+
 // ─── Manual Time Input Component with AM/PM ───
 interface TimePickerProps {
   value: string;
@@ -278,23 +456,6 @@ const ManualTimePicker: React.FC<TimePickerProps> = ({
     setLocalMinute(minute);
     setLocalPeriod(period);
   }, [value, hour, minute, period]);
-
-  const buildValue = (h: string, m: string, p: string) => {
-    const hNum = parseInt(h, 10);
-    const mNum = parseInt(m, 10);
-    if (
-      !isNaN(hNum) &&
-      !isNaN(mNum) &&
-      hNum >= 1 &&
-      hNum <= 12 &&
-      mNum >= 0 &&
-      mNum <= 59
-    ) {
-      onChange(
-        `${String(hNum).padStart(2, "0")}:${String(mNum).padStart(2, "0")} ${p}`
-      );
-    }
-  };
 
   const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
@@ -575,6 +736,17 @@ export default function SettingPage() {
   const [mapCenter, setMapCenter] = useState({ lat: 41.8781, lng: -87.6298 });
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
+  // Import related states
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreviewRows, setImportPreviewRows] = useState<
+    Array<Record<string, string>>
+  >([]);
+  const [importRowErrors, setImportRowErrors] = useState<
+    Record<number, string[]>
+  >({});
+  const [isImporting, setIsImporting] = useState(false);
+
   const currentTab = tabs.find((tab) => tab.id === activeTab) || tabs[0];
   const formFields = getFormFields(activeTab);
   const extraColumns = getExtraColumns(activeTab);
@@ -756,6 +928,12 @@ export default function SettingPage() {
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
+      if (place.geometry?.location) {
+        setMapCenter({
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        });
+      }
       if (place.formatted_address) {
         setFormData((prev) => ({
           ...prev,
@@ -769,6 +947,7 @@ export default function SettingPage() {
 
   const onMapClick = (e: google.maps.MapMouseEvent) => {
     if (e.latLng) {
+      setMapCenter({ lat: e.latLng.lat(), lng: e.latLng.lng() });
       const geocoder = new google.maps.Geocoder();
       geocoder.geocode({ location: e.latLng }, (results, status) => {
         if (status === "OK" && results && results[0]) {
@@ -780,6 +959,123 @@ export default function SettingPage() {
           closeMapModal();
         }
       });
+    }
+  };
+
+  const openImportModal = () => {
+    setIsImportModalOpen(true);
+    setImportFile(null);
+    setImportPreviewRows([]);
+    setImportRowErrors({});
+  };
+
+  const closeImportModal = () => {
+    setIsImportModalOpen(false);
+    setImportFile(null);
+    setImportPreviewRows([]);
+    setImportRowErrors({});
+  };
+
+  const handleImportFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = read(data, { cellDates: false });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rawRows = utils.sheet_to_json<Record<string, unknown>>(worksheet);
+
+      if (rawRows.length === 0) {
+        toast.error("The uploaded Excel file contains no data rows.");
+        setImportPreviewRows([]);
+        setImportRowErrors({});
+        return;
+      }
+
+      const normalizedRows: Record<string, string>[] = [];
+      const errorsMap: Record<number, string[]> = {};
+
+      rawRows.forEach((rawRow, idx) => {
+        const normalized = normalizeExcelRow(rawRow, activeTab);
+        normalizedRows.push(normalized);
+        const rowErrors = validateImportRow(normalized, activeTab);
+        if (rowErrors.length > 0) {
+          errorsMap[idx] = rowErrors;
+        }
+      });
+
+      setImportPreviewRows(normalizedRows);
+      setImportRowErrors(errorsMap);
+      toast.success(`Loaded ${normalizedRows.length} rows from Excel!`);
+    } catch (err) {
+      console.error("Excel parse error:", err);
+      toast.error(
+        "Failed to parse Excel file. Please ensure it is a valid .xlsx or .xls file."
+      );
+    }
+  };
+
+  const handleBatchImportSubmit = async () => {
+    if (!user?.uid || !effectiveUserId) {
+      toast.error("Please log in to import data.");
+      return;
+    }
+
+    if (importPreviewRows.length === 0) {
+      toast.error("No records to import.");
+      return;
+    }
+
+    const validRows = importPreviewRows.filter(
+      (_, idx) => !importRowErrors[idx] || importRowErrors[idx].length === 0
+    );
+
+    if (validRows.length === 0) {
+      toast.error(
+        "No valid records found to import. Please fix the errors in your Excel file."
+      );
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const targetCollectionRef = collection(db, currentTab.collectionName);
+      const BATCH_SIZE = 400;
+      let savedCount = 0;
+
+      for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
+        const chunk = validRows.slice(i, i + BATCH_SIZE);
+        const batch = writeBatch(db);
+
+        chunk.forEach((row) => {
+          const newDocRef = doc(targetCollectionRef);
+          batch.set(newDocRef, {
+            ...row,
+            currentUserId: user.uid,
+            effectiveUserId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        });
+
+        await batch.commit();
+        savedCount += chunk.length;
+      }
+
+      toast.success(
+        `Successfully imported ${savedCount} ${currentTab.label} records!`
+      );
+      closeImportModal();
+      await fetchEntities(1);
+    } catch (error) {
+      GlobalToastError(error);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -963,57 +1259,68 @@ export default function SettingPage() {
   }
 
   return (
-      <div className="min-h-screen bg-gray-50">
-        {/* ─── FULL WIDTH CONTAINER ─── */}
-        <div className="w-full py-8 px-4 sm:px-6 lg:px-10 xl:px-16">
-          {/* Header */}
-          <div className="mb-10">
-            <p className="mt-4 text-xl text-gray-500 max-w-3xl">
-              Manage shippers, carriers, agents and all your master data in one
-              place
-            </p>
-            {userRole === "SubOwner" && (
-              <div className="mt-4 inline-flex rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                You are managing the owner&apos;s shared master data.
+    <div className="min-h-screen bg-gray-50">
+      {/* ─── FULL WIDTH CONTAINER ─── */}
+      <div className="w-full py-8 px-4 sm:px-6 lg:px-10 xl:px-16">
+        {/* Header */}
+        <div className="mb-10">
+          <p className="mt-4 text-xl text-gray-500 max-w-3xl">
+            Manage shippers, carriers, agents and all your master data in one
+            place
+          </p>
+          {userRole === "SubOwner" && (
+            <div className="mt-4 inline-flex rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              You are managing the owner&apos;s shared master data.
+            </div>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-10">
+          <nav className="-mb-px flex flex-nowrap space-x-6 lg:space-x-10 overflow-x-auto overflow-y-hidden border-b border-gray-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 snap-x snap-mandatory pb-px">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={
+                  activeTab === tab.id
+                    ? "whitespace-nowrap py-4 px-1 border-b-2 border-[#F96176] text-[#F96176] font-semibold text-sm flex-shrink-0 snap-center transition-all"
+                    : "whitespace-nowrap py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex-shrink-0 snap-center"
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* ─── FULL WIDTH CARD ─── */}
+        <div className="bg-white shadow-xl border border-gray-200 rounded-3xl overflow-hidden w-full">
+          <div className="p-6 sm:p-8 lg:p-10">
+            {/* Section Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-4">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">
+                  {currentTab.label}
+                </h2>
+                <p className="mt-1.5 text-base text-gray-500">
+                  {isFetching
+                    ? "Loading..."
+                    : `${entities.length} entries on this page`}
+                </p>
               </div>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="mb-10">
-            <nav className="-mb-px flex flex-nowrap space-x-6 lg:space-x-10 overflow-x-auto overflow-y-hidden border-b border-gray-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 snap-x snap-mandatory pb-px">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={
-                    activeTab === tab.id
-                      ? "whitespace-nowrap py-4 px-1 border-b-2 border-[#F96176] text-[#F96176] font-semibold text-sm flex-shrink-0 snap-center transition-all"
-                      : "whitespace-nowrap py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm transition-colors flex-shrink-0 snap-center"
-                  }
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* ─── FULL WIDTH CARD ─── */}
-          <div className="bg-white shadow-xl border border-gray-200 rounded-3xl overflow-hidden w-full">
-            <div className="p-6 sm:p-8 lg:p-10">
-              {/* Section Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-4">
-                <div>
-                  <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                    {currentTab.label}
-                  </h2>
-                  <p className="mt-1.5 text-base text-gray-500">
-                    {isFetching
-                      ? "Loading..."
-                      : `${entities.length} entries on this page`}
-                  </p>
-                </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {["shippers", "carrier", "customers"].includes(activeTab) && (
+                  <button
+                    type="button"
+                    onClick={openImportModal}
+                    className="self-start lg:self-center w-full sm:w-auto inline-flex items-center justify-center px-6 py-3.5 bg-[#58BB87] hover:bg-[#4aa975] text-white font-medium rounded-2xl shadow-lg transition-all"
+                  >
+                    <FaFileUpload className="mr-2.5 w-4 h-4" />
+                    Import {currentTab.label}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => openModal()}
@@ -1023,302 +1330,543 @@ export default function SettingPage() {
                   {currentTab.buttonText}
                 </button>
               </div>
+            </div>
 
-              {/* ─── FULL WIDTH TABLE ─── */}
-              <div className="rounded-2xl border border-gray-200 overflow-hidden bg-gray-50 w-full">
-                {isFetching ? (
-                  <div className="py-16 text-center text-gray-500">
-                    Fetching {currentTab.label.toLowerCase()}...
-                  </div>
-                ) : entities.length > 0 ? (
-                  <div>
-                    <div className="overflow-x-auto w-full">
-                      <table className="w-full divide-y divide-gray-200">
-                        <thead className="bg-white">
-                          <tr>
-                            <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-16">
-                              Sr
-                            </th>
-                            <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              Address
-                            </th>
-                            <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                              Phone
-                            </th>
-                            {extraColumns.map((column) => (
-                              <th
-                                key={column.key}
-                                className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider"
-                              >
-                                {column.label}
-                              </th>
-                            ))}
-                            <th className="px-5 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider w-24">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                          {entities.map((item, index) => (
-                            <tr
-                              key={item.id}
-                              className="hover:bg-gray-50/80 transition-colors"
+            {/* ─── FULL WIDTH TABLE ─── */}
+            <div className="rounded-2xl border border-gray-200 overflow-hidden bg-gray-50 w-full">
+              {isFetching ? (
+                <div className="py-16 text-center text-gray-500">
+                  Fetching {currentTab.label.toLowerCase()}...
+                </div>
+              ) : entities.length > 0 ? (
+                <div>
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full divide-y divide-gray-200">
+                      <thead className="bg-white">
+                        <tr>
+                          <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-16">
+                            Sr
+                          </th>
+                          <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Address
+                          </th>
+                          <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                            Phone
+                          </th>
+                          {extraColumns.map((column) => (
+                            <th
+                              key={column.key}
+                              className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider"
                             >
-                              <td className="px-5 py-4 whitespace-nowrap">
-                                <div className="text-sm font-semibold text-gray-500">
-                                  {(currentPage - 1) * PAGE_SIZE + index + 1}
-                                </div>
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap">
-                                <div className="text-sm font-semibold text-gray-900">
-                                  {item.companyName || item.name}
-                                </div>
-                              </td>
-                              <td className="px-5 py-4">
-                                <div className="text-sm text-gray-700 max-w-sm truncate">
-                                  {item.address || "-"}
-                                </div>
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-700">
-                                  {item.phone || "-"}
-                                </div>
-                              </td>
-                              {extraColumns.map((column) => (
-                                <td
-                                  key={column.key}
-                                  className="px-5 py-4 whitespace-nowrap"
-                                >
-                                  <div className="text-sm text-gray-700">
-                                    {renderExtraColumnValue(item, column.key)}
-                                  </div>
-                                </td>
-                              ))}
-                              <td className="px-5 py-4 whitespace-nowrap text-right">
-                                <ActionMenu item={item} />
-                              </td>
-                            </tr>
+                              {column.label}
+                            </th>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          <th className="px-5 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider w-24">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {entities.map((item, index) => (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-gray-50/80 transition-colors"
+                          >
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-500">
+                                {(currentPage - 1) * PAGE_SIZE + index + 1}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {item.companyName || item.name}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="text-sm text-gray-700 max-w-sm truncate">
+                                {item.address || "-"}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-700">
+                                {item.phone || "-"}
+                              </div>
+                            </td>
+                            {extraColumns.map((column) => (
+                              <td
+                                key={column.key}
+                                className="px-5 py-4 whitespace-nowrap"
+                              >
+                                <div className="text-sm text-gray-700">
+                                  {renderExtraColumnValue(item, column.key)}
+                                </div>
+                              </td>
+                            ))}
+                            <td className="px-5 py-4 whitespace-nowrap text-right">
+                              <ActionMenu item={item} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                    {/* Pagination */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200 bg-white px-6 py-4">
-                      <p className="text-sm text-gray-500">
-                        Page {currentPage}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => goToPage(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className="px-5 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                        >
-                          Previous
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => goToPage(currentPage + 1)}
-                          disabled={!hasNextPage}
-                          className="px-5 py-2.5 rounded-xl bg-[#F96176] text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F96176]/90 transition-colors"
-                        >
-                          Next
-                        </button>
-                      </div>
+                  {/* Pagination */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200 bg-white px-6 py-4">
+                    <p className="text-sm text-gray-500">Page {currentPage}</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-5 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={!hasNextPage}
+                        className="px-5 py-2.5 rounded-xl bg-[#F96176] text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F96176]/90 transition-colors"
+                      >
+                        Next
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  <EmptyState />
-                )}
-              </div>
+                </div>
+              ) : (
+                <EmptyState />
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ─── FORM MODAL (Scrollable) ─── */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden mx-4">
-              {/* Modal Header — fixed at top */}
-              <div className="px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  {editingItem ? "Edit" : "New"} {currentTab.label}
-                </h3>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="p-2 -m-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <FaTimes className="w-5 h-5" />
-                </button>
-              </div>
+      {/* ─── FORM MODAL (Scrollable) ─── */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden mx-4">
+            {/* Modal Header — fixed at top */}
+            <div className="px-6 pt-6 pb-4 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-gray-900">
+                {editingItem ? "Edit" : "New"} {currentTab.label}
+              </h3>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="p-2 -m-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
 
-              {/* Modal Body — scrollable */}
-              <div className="flex-1 overflow-y-auto overscroll-contain">
-                <form onSubmit={handleSubmit} className="p-6 space-y-7">
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {formFields.map((field) => {
-                      // ─── Time fields: Manual type input with AM/PM ───
-                      if (field.type === "time") {
-                        return (
-                          <div key={field.name} className="xl:col-span-1">
-                            <ManualTimePicker
-                              label={field.label}
-                              required={field.required}
-                              value={formData[field.name] || ""}
-                              onChange={(val) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  [field.name]: val,
-                                }))
-                              }
-                            />
-                          </div>
-                        );
-                      }
-
-                      // ─── Address fields: Autocomplete with suggestions ───
-                      if (field.name === "address") {
-                        return (
-                          <div
-                            key={field.name}
-                            className="md:col-span-2 xl:col-span-2"
-                          >
-                            <AddressAutocompleteInput
-                              label={field.label}
-                              required={field.required}
-                              value={formData[field.name] || ""}
-                              onChange={(val) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  address: val,
-                                }))
-                              }
-                              showMapButton={
-                                activeTab === "shippers" ||
-                                activeTab === "customers"
-                              }
-                              onOpenMap={openMapModal}
-                            />
-                          </div>
-                        );
-                      }
-
-                      // ─── Default text/tel fields ───
+            {/* Modal Body — scrollable */}
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              <form onSubmit={handleSubmit} className="p-6 space-y-7">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {formFields.map((field) => {
+                    // ─── Time fields: Manual type input with AM/PM ───
+                    if (field.type === "time") {
                       return (
-                        <div key={field.name} className="space-y-2">
-                          <label
-                            htmlFor={field.name}
-                            className="block text-sm font-semibold text-gray-700"
-                          >
-                            {field.label}
-                            {field.required && (
-                              <span className="text-red-500 ml-1">*</span>
-                            )}
-                          </label>
-                          <input
-                            id={field.name}
-                            name={field.name}
-                            type={field.type}
-                            value={formData[field.name] || ""}
-                            onChange={handleInputChange}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
-                            placeholder={`Enter ${field.label}`}
+                        <div key={field.name} className="xl:col-span-1">
+                          <ManualTimePicker
+                            label={field.label}
                             required={field.required}
+                            value={formData[field.name] || ""}
+                            onChange={(val) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                [field.name]: val,
+                              }))
+                            }
                           />
                         </div>
                       );
-                    })}
-                  </div>
+                    }
 
-                  {/* Action Buttons */}
-                  <div className="flex space-x-3 pt-4 pb-2">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="flex-1 px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex-1 px-6 py-3 bg-[#F96176] text-white font-medium rounded-xl shadow-lg hover:bg-[#F96176]/90 transition-all disabled:opacity-60"
-                    >
-                      {isSubmitting
-                        ? "Saving..."
-                        : editingItem
-                        ? "Update"
-                        : "Create"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
+                    // ─── Address fields: Autocomplete with suggestions ───
+                    if (field.name === "address") {
+                      return (
+                        <div
+                          key={field.name}
+                          className="md:col-span-2 xl:col-span-2"
+                        >
+                          <AddressAutocompleteInput
+                            label={field.label}
+                            required={field.required}
+                            value={formData[field.name] || ""}
+                            onChange={(val) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                address: val,
+                              }))
+                            }
+                            showMapButton={
+                              activeTab === "shippers" ||
+                              activeTab === "customers"
+                            }
+                            onOpenMap={openMapModal}
+                          />
+                        </div>
+                      );
+                    }
 
-        {/* ─── MAP MODAL ─── */}
-        {isMapModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-              <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-                <h3 className="text-2xl font-bold text-gray-900">
-                  Select Location on Map
-                </h3>
-                <button
-                  type="button"
-                  onClick={closeMapModal}
-                  className="p-2 -m-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <FaTimes className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="flex-1 relative overflow-hidden rounded-b-3xl">
-                {googleLoadError ? (
-                  <div className="h-full w-full flex items-center justify-center text-red-600">
-                    Failed to load Google Maps.
-                  </div>
-                ) : !isGoogleLoaded ? (
-                  <div className="h-full w-full flex items-center justify-center text-gray-500">
-                    Loading map...
-                  </div>
-                ) : (
-                  <GoogleMap
-                    mapContainerStyle={{ width: "100%", height: "100%" }}
-                    center={mapCenter}
-                    zoom={4}
-                    onClick={onMapClick}
-                    options={{
-                      zoomControl: true,
-                      streetViewControl: false,
-                      mapTypeControl: false,
-                      fullscreenControl: true,
-                    }}
+                    // ─── Default text/tel fields ───
+                    return (
+                      <div key={field.name} className="space-y-2">
+                        <label
+                          htmlFor={field.name}
+                          className="block text-sm font-semibold text-gray-700"
+                        >
+                          {field.label}
+                          {field.required && (
+                            <span className="text-red-500 ml-1">*</span>
+                          )}
+                        </label>
+                        <input
+                          id={field.name}
+                          name={field.name}
+                          type={field.type}
+                          value={formData[field.name] || ""}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#F96176] focus:border-[#F96176] transition-colors shadow-sm"
+                          placeholder={`Enter ${field.label}`}
+                          required={field.required}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex space-x-3 pt-4 pb-2">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                   >
-                    <Autocomplete
-                      onLoad={(autocomplete) => {
-                        autocompleteRef.current = autocomplete;
-                      }}
-                      onPlaceChanged={onPlaceChanged}
-                    >
-                      <input
-                        type="text"
-                        placeholder="Search for location..."
-                        className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4/5 z-10 p-3 rounded-2xl shadow-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] bg-white text-lg"
-                      />
-                    </Autocomplete>
-                    <Marker position={mapCenter} />
-                  </GoogleMap>
-                )}
-              </div>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 px-6 py-3 bg-[#F96176] text-white font-medium rounded-xl shadow-lg hover:bg-[#F96176]/90 transition-all disabled:opacity-60"
+                  >
+                    {isSubmitting
+                      ? "Saving..."
+                      : editingItem
+                      ? "Update"
+                      : "Create"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ─── MAP MODAL ─── */}
+      {isMapModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-2xl font-bold text-gray-900">
+                Select Location on Map
+              </h3>
+              <button
+                type="button"
+                onClick={closeMapModal}
+                className="p-2 -m-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 relative overflow-hidden rounded-b-3xl">
+              {googleLoadError ? (
+                <div className="h-full w-full flex items-center justify-center text-red-600">
+                  Failed to load Google Maps.
+                </div>
+              ) : !isGoogleLoaded ? (
+                <div className="h-full w-full flex items-center justify-center text-gray-500">
+                  Loading map...
+                </div>
+              ) : (
+                <GoogleMap
+                  mapContainerStyle={{ width: "100%", height: "100%" }}
+                  center={mapCenter}
+                  zoom={4}
+                  onClick={onMapClick}
+                  options={{
+                    zoomControl: true,
+                    streetViewControl: false,
+                    mapTypeControl: false,
+                    fullscreenControl: true,
+                  }}
+                >
+                  <Autocomplete
+                    onLoad={(autocomplete) => {
+                      autocompleteRef.current = autocomplete;
+                    }}
+                    onPlaceChanged={onPlaceChanged}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Search for location..."
+                      className="absolute top-4 left-1/2 transform -translate-x-1/2 w-4/5 z-10 p-3 rounded-2xl shadow-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F96176] bg-white text-lg"
+                    />
+                  </Autocomplete>
+                  <Marker position={mapCenter} />
+                </GoogleMap>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── BULK IMPORT EXCEL MODAL ─── */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="p-6 bg-[#58BB87] text-white flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <FaFileExcel className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Import {currentTab.label} (Bulk Excel)
+                  </h3>
+                  <p className="text-xs text-white/90">
+                    Upload an Excel (.xlsx / .xls) file to bulk create{" "}
+                    {currentTab.label.toLowerCase()}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeImportModal}
+                className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-colors"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* 1. Sample Templates */}
+              {dispatchSampleFiles[activeTab] && (
+                <div className="bg-[#58BB87]/10 border border-[#58BB87]/30 rounded-2xl p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#20593b] flex items-center gap-2">
+                        <FaFileDownload className="w-4 h-4 text-[#58BB87]" />
+                        Download Sample Excel Templates
+                      </h4>
+                      <p className="text-xs text-[#2e724f] mt-0.5">
+                        Use these pre-formatted sample files with Indian entity
+                        examples:
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a
+                        href={dispatchSampleFiles[activeTab].single}
+                        download
+                        className="inline-flex items-center px-3.5 py-2 text-xs font-semibold bg-white border border-[#58BB87]/40 text-[#20593b] hover:bg-[#58BB87]/20 rounded-xl transition-all shadow-sm"
+                      >
+                        <FaFileDownload className="mr-1.5 text-[#58BB87]" />
+                        {dispatchSampleFiles[activeTab].singleLabel}
+                      </a>
+                      <a
+                        href={dispatchSampleFiles[activeTab].bulk}
+                        download
+                        className="inline-flex items-center px-3.5 py-2 text-xs font-semibold bg-[#58BB87] text-white hover:bg-[#4aa975] rounded-xl transition-all shadow-sm"
+                      >
+                        <FaFileDownload className="mr-1.5 text-white" />
+                        {dispatchSampleFiles[activeTab].bulkLabel}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2. File Upload Box */}
+              <div className="border-2 border-dashed border-gray-300 hover:border-[#58BB87] rounded-2xl p-6 text-center transition-all bg-gray-50/50 hover:bg-[#58BB87]/5">
+                <input
+                  type="file"
+                  id="excel-import-file-input"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleImportFileChange}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="excel-import-file-input"
+                  className="cursor-pointer flex flex-col items-center justify-center space-y-2"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#58BB87]/15 text-[#58BB87] flex items-center justify-center shadow-inner">
+                    <FaFileUpload className="w-6 h-6" />
+                  </div>
+                  <span className="text-sm font-bold text-gray-700">
+                    {importFile
+                      ? importFile.name
+                      : "Click to select or drag & drop Excel file"}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    Supports .xlsx, .xls, .csv files
+                  </span>
+                </label>
+              </div>
+
+              {/* 3. Preview Table */}
+              {importPreviewRows.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+                    <div>
+                      <h4 className="text-base font-bold text-gray-900">
+                        Preview Data ({importPreviewRows.length} Rows)
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Review parsed records before importing to Firestore
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="px-3 py-1 bg-[#58BB87]/20 text-[#20593b] rounded-full font-semibold flex items-center gap-1">
+                        <FaCheckCircle className="w-3.5 h-3.5 text-[#58BB87]" />
+                        Valid:{" "}
+                        {importPreviewRows.length -
+                          Object.keys(importRowErrors).length}
+                      </span>
+                      {Object.keys(importRowErrors).length > 0 && (
+                        <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full font-semibold flex items-center gap-1">
+                          <FaExclamationCircle className="w-3.5 h-3.5 text-red-600" />
+                          Errors: {Object.keys(importRowErrors).length}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-2xl overflow-x-auto max-h-[340px]">
+                    <table className="w-full text-xs divide-y divide-gray-200">
+                      <thead className="bg-gray-100 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 py-2.5 text-left font-bold text-gray-700 w-12">
+                            #
+                          </th>
+                          <th className="px-3 py-2.5 text-left font-bold text-gray-700 w-24">
+                            Status
+                          </th>
+                          {formFields.map((field) => (
+                            <th
+                              key={field.name}
+                              className="px-3 py-2.5 text-left font-bold text-gray-700 whitespace-nowrap"
+                            >
+                              {field.label}
+                              {field.required && (
+                                <span className="text-red-500 ml-0.5">*</span>
+                              )}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {importPreviewRows.map((row, idx) => {
+                          const errors = importRowErrors[idx] || [];
+                          const isValid = errors.length === 0;
+
+                          return (
+                            <tr
+                              key={idx}
+                              className={
+                                isValid
+                                  ? "hover:bg-gray-50"
+                                  : "bg-red-50/50 hover:bg-red-50"
+                              }
+                            >
+                              <td className="px-3 py-2.5 font-medium text-gray-500">
+                                {idx + 1}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                {isValid ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#58BB87]/20 text-[#20593b]">
+                                    Valid
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800"
+                                    title={errors.join(", ")}
+                                  >
+                                    Invalid
+                                  </span>
+                                )}
+                              </td>
+                              {formFields.map((field) => (
+                                <td
+                                  key={field.name}
+                                  className={`px-3 py-2.5 whitespace-nowrap max-w-[220px] truncate ${
+                                    !row[field.name] && field.required
+                                      ? "text-red-500 italic font-semibold"
+                                      : "text-gray-700"
+                                  }`}
+                                  title={
+                                    row[field.name] ||
+                                    (field.required
+                                      ? "Missing required value"
+                                      : "")
+                                  }
+                                >
+                                  {row[field.name] ||
+                                    (field.required ? "Missing" : "—")}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 bg-gray-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
+              <button
+                type="button"
+                onClick={closeImportModal}
+                className="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchImportSubmit}
+                disabled={
+                  isImporting ||
+                  importPreviewRows.length === 0 ||
+                  importPreviewRows.length ===
+                    Object.keys(importRowErrors).length
+                }
+                className="px-8 py-2.5 bg-[#58BB87] hover:bg-[#4aa975] text-white font-medium rounded-xl shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {isImporting ? (
+                  "Importing..."
+                ) : (
+                  <>
+                    <FaFileUpload className="w-4 h-4" />
+                    Import{" "}
+                    {importPreviewRows.length -
+                      Object.keys(importRowErrors).length}{" "}
+                    Valid Records
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
