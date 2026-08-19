@@ -33,6 +33,7 @@ import {
   FaCloudUploadAlt,
   FaImage,
   FaTrash,
+  FaCheckCircle,
 } from "react-icons/fa";
 
 export interface VehicleServiceEntry {
@@ -87,6 +88,11 @@ export interface ExcelRecordRow {
   description?: string;
 }
 
+export interface RowImageData {
+  file: File;
+  preview: string;
+}
+
 export default function ImportRecordsPage() {
   const { user } = useAuth() || { user: null };
   const router = useRouter();
@@ -102,11 +108,9 @@ export default function ImportRecordsPage() {
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
 
-  // Service Image State
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
+  // Map of rowIndex (number) -> { file: File, preview: string }
+  const [rowImages, setRowImages] = useState<Record<number, RowImageData>>({});
+  const [savingProgress, setSavingProgress] = useState<string>("");
 
   const sampleFiles = {
     truckSingle: "/records/truck_sample_record.xlsx",
@@ -247,6 +251,7 @@ export default function ImportRecordsPage() {
         });
 
         setExcelData(processedData);
+        setRowImages({});
         if (processedData.length === 0) {
           toast.warning("The uploaded Excel file contains no data rows.");
         } else {
@@ -263,64 +268,73 @@ export default function ImportRecordsPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle per-row image upload
+  const handleRowImageChange = (
+    index: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setImageFile(file);
-
       const reader = new FileReader();
       reader.onload = (event) => {
-        if (event.target) {
-          setImagePreview(event.target.result as string);
+        if (event.target?.result) {
+          setRowImages((prev) => ({
+            ...prev,
+            [index]: {
+              file,
+              preview: event.target?.result as string,
+            },
+          }));
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile || !effectiveUserId) return null;
+  const handleRemoveRowImage = (index: number) => {
+    setRowImages((prev) => {
+      const updated = { ...prev };
+      delete updated[index];
+      return updated;
+    });
+  };
+
+  // Upload an individual file to Firebase Storage
+  const uploadSingleImage = async (
+    file: File,
+    vehicleNumber: string
+  ): Promise<string> => {
+    if (!effectiveUserId) return "";
 
     try {
-      setIsUploading(true);
-      setUploadProgress(0);
-
+      const sanitizedNumber = (vehicleNumber || "vehicle").replace(/[^a-zA-Z0-9]/g, "_");
       const storageRef = ref(
         storage,
-        `service-records/${effectiveUserId}/${Date.now()}_${imageFile.name}`
+        `service-records/${effectiveUserId}/${Date.now()}_${sanitizedNumber}_${file.name}`
       );
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
+      const uploadTask = uploadBytesResumable(storageRef, file);
 
       return new Promise((resolve, reject) => {
         uploadTask.on(
           "state_changed",
-          (snapshot) => {
-            const progress =
-              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
+          () => {},
           (error) => {
-            console.error("Upload error:", error);
-            setIsUploading(false);
+            console.error("Upload error for image:", error);
             reject(error);
           },
           async () => {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              setIsUploading(false);
               resolve(downloadURL);
-            } catch (error) {
-              console.error("Error getting download URL:", error);
-              setIsUploading(false);
-              reject(error);
+            } catch (err) {
+              reject(err);
             }
           }
         );
       });
     } catch (error) {
-      console.error("Error uploading image:", error);
-      setIsUploading(false);
-      return null;
+      console.error("Error in uploadSingleImage:", error);
+      return "";
     }
   };
 
@@ -338,7 +352,8 @@ export default function ImportRecordsPage() {
 
     // Match vehicle in user active vehicles
     const matchedVehicle = vehicles.find(
-      (v) => v.vehicleNumber?.toString().trim().toUpperCase() === vehicleNumber
+      (v) =>
+        v.vehicleNumber?.toString().trim().toUpperCase() === vehicleNumber
     );
 
     if (!matchedVehicle) {
@@ -348,37 +363,20 @@ export default function ImportRecordsPage() {
     }
 
     const vehicleId = matchedVehicle.id;
-    const vehicleType =
-      matchedVehicle.vehicleType ||
-      (row.vehicleType ? String(row.vehicleType) : "Truck");
+    const vehicleType = matchedVehicle.vehicleType || (row.vehicleType ? String(row.vehicleType) : "Truck");
     const engineName = (
       matchedVehicle.engineName ||
       matchedVehicle.engineNumber ||
       ""
-    )
-      .toString()
-      .toUpperCase();
+    ).toString().toUpperCase();
 
-    const milesNum = row.miles
-      ? Number(row.miles)
-      : vehicleType === "Truck"
-      ? Number(matchedVehicle.currentMiles || 0)
-      : 0;
-    const hoursNum = row.hours
-      ? Number(row.hours)
-      : vehicleType === "Trailer"
-      ? Number(matchedVehicle.hoursReading || 0)
-      : 0;
+    const milesNum = row.miles ? Number(row.miles) : (vehicleType === "Truck" ? Number(matchedVehicle.currentMiles || 0) : 0);
+    const hoursNum = row.hours ? Number(row.hours) : (vehicleType === "Trailer" ? Number(matchedVehicle.hoursReading || 0) : 0);
 
-    const recordDate =
-      row.date?.toString().trim() || format(new Date(), "yyyy-MM-dd");
+    const recordDate = row.date?.toString().trim() || format(new Date(), "yyyy-MM-dd");
 
     // Process services list from string
-    const rawServicesString = (
-      row.services ||
-      row.serviceNames ||
-      ""
-    ).toString();
+    const rawServicesString = (row.services || row.serviceNames || "").toString();
     const serviceNameList = rawServicesString
       .split(",")
       .map((s) => s.trim())
@@ -404,22 +402,21 @@ export default function ImportRecordsPage() {
       ? vehicleDoc.data()?.services || []
       : [];
 
-    const updatedVehicleServices: VehicleServiceEntry[] = [
-      ...currentVehicleServices,
-    ];
+    const updatedVehicleServices: VehicleServiceEntry[] = [...currentVehicleServices];
     const servicesDataForRecord = [];
     const notificationData = [];
 
     for (const sName of serviceNameList) {
-      // Find matching service metadata
+      // Find matching service metadata (normalizing slashes and whitespace)
+      const cleanSName = sName.toLowerCase().replace(/\s*\/\s*/g, "/").trim();
       const matchedMeta =
         servicesData.find(
           (s) =>
-            s.sName?.toLowerCase().trim() === sName.toLowerCase().trim() &&
+            s.sName?.toLowerCase().replace(/\s*\/\s*/g, "/").trim() === cleanSName &&
             (!s.vType || s.vType.toLowerCase() === vehicleType.toLowerCase())
         ) ||
         servicesData.find(
-          (s) => s.sName?.toLowerCase().trim() === sName.toLowerCase().trim()
+          (s) => s.sName?.toLowerCase().replace(/\s*\/\s*/g, "/").trim() === cleanSName
         );
 
       const serviceId =
@@ -641,16 +638,22 @@ export default function ImportRecordsPage() {
     const errors: string[] = [];
     let successCount = 0;
 
-    // Upload service image if provided
-    let uploadedImageUrl = "";
-    if (imageFile) {
-      uploadedImageUrl = (await uploadImage()) || "";
-    }
-
     for (let i = 0; i < excelData.length; i++) {
       const row = excelData[i];
+      setSavingProgress(`Saving record ${i + 1} of ${excelData.length} (${row.vehicleNumber || ""})...`);
+
       try {
-        await saveRecordRow(row, i + 1, uploadedImageUrl);
+        // Upload row-specific image if present
+        let rowImageUrl = "";
+        if (rowImages[i]?.file) {
+          setSavingProgress(`Uploading image for record ${i + 1} (${row.vehicleNumber || ""})...`);
+          rowImageUrl = await uploadSingleImage(
+            rowImages[i].file,
+            row.vehicleNumber || `record_${i + 1}`
+          );
+        }
+
+        await saveRecordRow(row, i + 1, rowImageUrl);
         successCount++;
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : "Unknown error";
@@ -660,6 +663,7 @@ export default function ImportRecordsPage() {
 
     setUploadErrors(errors);
     setIsSaving(false);
+    setSavingProgress("");
 
     if (successCount > 0) {
       toast.success(
@@ -680,6 +684,8 @@ export default function ImportRecordsPage() {
     }
   };
 
+  const attachedImagesCount = Object.keys(rowImages).length;
+
   if (isLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-gray-100 fixed top-0 left-0 z-50">
@@ -689,7 +695,7 @@ export default function ImportRecordsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="w-full max-w-[96%] 2xl:max-w-[1650px] mx-auto px-4 md:px-8 py-6">
       <ToastContainer />
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -741,7 +747,7 @@ export default function ImportRecordsPage() {
                 and Trailers (with hours)
               </p>
 
-              <div className="w-full max-w-md">
+              <div className="w-full max-w-2xl">
                 <input
                   id="excelFile"
                   type="file"
@@ -767,163 +773,111 @@ export default function ImportRecordsPage() {
             </span>
             <Button variant="outline" asChild size="sm">
               <Link href={sampleFiles.truckSingle} download>
-                <FaFileDownload className="mr-2 text-rose-500" /> Truck Sample
-                (ACHA9999)
+                <FaFileDownload className="mr-2 text-rose-500" /> Truck Single (ACHA9999)
+              </Link>
+            </Button>
+            <Button variant="outline" asChild size="sm">
+              <Link href={sampleFiles.truckBulk} download>
+                <FaFileDownload className="mr-2 text-purple-500" /> Bulk Trucks (6 Records)
               </Link>
             </Button>
             <Button variant="outline" asChild size="sm">
               <Link href={sampleFiles.trailerSingle} download>
-                <FaFileDownload className="mr-2 text-blue-500" /> Trailer Sample
-                (BZ88BS77)
+                <FaFileDownload className="mr-2 text-blue-500" /> Trailer Single (BZ88BS77)
+              </Link>
+            </Button>
+            <Button variant="outline" asChild size="sm">
+              <Link href={sampleFiles.trailerBulk} download>
+                <FaFileDownload className="mr-2 text-indigo-500" /> Bulk Trailers (9 Records)
               </Link>
             </Button>
             <Button variant="outline" asChild size="sm">
               <Link href={sampleFiles.servicesList} download>
-                <FaFileDownload className="mr-2 text-emerald-500" /> Services
-                Reference List
+                <FaFileDownload className="mr-2 text-emerald-500" /> Services Reference List
               </Link>
             </Button>
           </div>
         </div>
       </Card>
 
-      {/* 2. Preview Data & Optional Service Image Upload */}
+      {/* 2. Preview Data with Per-Record Image Upload */}
       {excelData.length > 0 && (
         <>
           <Card className="p-6 mb-6 shadow-sm border border-gray-200">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-4 mb-6 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 mb-6 border-b border-gray-200">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                   Preview Data ({excelData.length} Records)
                 </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Review your parsed records below. You can also optionally
-                  attach a service image/invoice.
+                <p className="text-xs text-gray-500 mt-1">
+                  Each record below has its own optional service image upload. Upload individual invoices, receipts, or inspection photos per record.
                 </p>
               </div>
 
-              {imagePreview && (
-                <span className="text-xs bg-blue-100 text-blue-800 font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 w-fit">
-                  <FaImage /> Image attached ({imageFile?.name})
-                </span>
-              )}
-            </div>
+              <div className="flex items-center gap-3">
+                {attachedImagesCount > 0 ? (
+                  <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <FaCheckCircle className="text-emerald-600" />
+                    {attachedImagesCount} of {excelData.length} images attached
+                  </span>
+                ) : (
+                  <span className="text-xs bg-gray-100 text-gray-600 font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <FaImage className="text-gray-500" />
+                    0 of {excelData.length} images attached (optional)
+                  </span>
+                )}
 
-            {/* Upload Service Image Section inside Preview Data */}
-            <div className="mb-6 p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
-              <Label
-                htmlFor="serviceImage"
-                className="text-sm font-semibold mb-1 flex items-center gap-2 text-gray-800"
-              >
-                <FaImage className="text-blue-600" /> Upload Service Image
-                (Optional)
-              </Label>
-              <p className="text-xs text-gray-600 mb-3">
-                Attach an invoice, receipt, or service photo to be linked with
-                the imported records.
-              </p>
-
-              <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <div className="w-full max-w-md">
-                  <input
-                    id="serviceImage"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    disabled={isParsing || isSaving}
-                    className="block w-full text-sm text-gray-600
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-lg file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-blue-600 file:text-white
-                      hover:file:bg-blue-700 file:cursor-pointer
-                      cursor-pointer bg-white p-2.5 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-
-                {imagePreview && (
-                  <div className="flex items-center gap-3 p-2 bg-white rounded-lg border border-gray-200">
-                    <Image
-                      src={imagePreview}
-                      alt="Service Image Preview"
-                      width={48}
-                      height={48}
-                      className="object-contain rounded border bg-gray-50 h-12 w-12"
-                    />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-800 truncate max-w-[150px]">
-                        {imageFile?.name}
-                      </p>
-                      <p className="text-[11px] text-gray-500">
-                        {imageFile ? (imageFile.size / 1024).toFixed(1) : 0} KB
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setImageFile(null);
-                        setImagePreview(null);
-                      }}
-                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 p-1.5 h-auto ml-1"
-                      title="Remove image"
-                    >
-                      <FaTrash className="text-xs" />
-                    </Button>
-                  </div>
+                {attachedImagesCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRowImages({})}
+                    className="text-xs text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                  >
+                    Clear All Images
+                  </Button>
                 )}
               </div>
-
-              {isUploading && (
-                <div className="mt-3 max-w-md">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Uploading Image: {Math.round(uploadProgress)}%
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Parsed Data Table */}
-            <div className="overflow-x-auto">
+            {/* Parsed Data Table with Image Upload Column per Row */}
+            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
               <table className="min-w-full divide-y divide-gray-200 border text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       #
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Vehicle #
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Company
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Date
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Miles / Hours
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Services
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Workshop
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Invoice
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Amount
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 min-w-[180px]">
                       Description
+                    </th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap bg-blue-50/70 border-l border-blue-100">
+                      Upload Service Image (Optional)
                     </th>
                   </tr>
                 </thead>
@@ -934,30 +888,35 @@ export default function ImportRecordsPage() {
                         v.vehicleNumber?.toString().trim().toUpperCase() ===
                         row.vehicleNumber?.toString().trim().toUpperCase()
                     );
+                    const rowImg = rowImages[index];
 
                     return (
                       <tr
                         key={index}
                         className={
                           vehicleExists
-                            ? "hover:bg-gray-50"
-                            : "bg-red-50 hover:bg-red-100"
+                            ? "hover:bg-gray-50/80"
+                            : "bg-red-50/80 hover:bg-red-100/80"
                         }
                       >
-                        <td className="px-4 py-2 font-medium">{index + 1}</td>
-                        <td className="px-4 py-2 font-semibold">
+                        <td className="px-4 py-3 font-medium text-gray-600">
+                          {index + 1}
+                        </td>
+                        <td className="px-5 py-3 font-semibold text-gray-900">
                           {String(row.vehicleNumber || "—")}
                           {!vehicleExists && (
-                            <span className="block text-xs text-red-600 font-normal">
+                            <span className="block text-[11px] text-red-600 font-normal mt-0.5">
                               Vehicle not found
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-3 text-gray-700">
                           {String(row.companyName || "—")}
                         </td>
-                        <td className="px-4 py-2">{String(row.date || "—")}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                          {String(row.date || "—")}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
                           {row.miles
                             ? `${row.miles} mi`
                             : row.hours
@@ -965,25 +924,71 @@ export default function ImportRecordsPage() {
                             : "—"}
                         </td>
                         <td
-                          className="px-4 py-2 max-w-xs truncate"
+                          className="px-5 py-3 text-gray-800"
                           title={String(row.services || row.serviceNames || "")}
                         >
-                          {String(row.services || row.serviceNames || "—")}
+                          <span className="inline-block bg-rose-50 text-rose-700 text-xs px-2 py-1 rounded font-medium border border-rose-200/60">
+                            {String(row.services || row.serviceNames || "—")}
+                          </span>
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-3 text-gray-700">
                           {String(row.workshopName || "—")}
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-3 text-gray-700">
                           {String(row.invoice || "—")}
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-4 py-3 font-medium text-gray-800">
                           {row.invoiceAmount ? `$${row.invoiceAmount}` : "—"}
                         </td>
-                        <td
-                          className="px-4 py-2 max-w-xs truncate"
-                          title={String(row.description || "")}
-                        >
+                        <td className="px-5 py-3 text-gray-600 text-xs">
                           {String(row.description || "—")}
+                        </td>
+
+                        {/* Individual Upload Service Image Section */}
+                        <td className="px-5 py-3 bg-blue-50/30 border-l border-blue-100 min-w-[240px]">
+                          {rowImg ? (
+                            <div className="flex items-center gap-2.5 p-1.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
+                              <Image
+                                src={rowImg.preview}
+                                alt={`Record ${index + 1} Image`}
+                                width={38}
+                                height={38}
+                                className="object-contain rounded border bg-gray-50 h-9 w-9 shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-gray-800 truncate" title={rowImg.file.name}>
+                                  {rowImg.file.name}
+                                </p>
+                                <p className="text-[10px] text-gray-500">
+                                  {(rowImg.file.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveRowImage(index)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition-colors"
+                                title="Remove Image"
+                              >
+                                <FaTrash className="text-xs" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label
+                              htmlFor={`image-upload-${index}`}
+                              className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/60 hover:bg-blue-100/70 hover:border-blue-500 text-xs font-medium text-blue-700 transition-all"
+                            >
+                              <FaImage className="text-blue-500 shrink-0" />
+                              <span>Upload Image</span>
+                              <input
+                                id={`image-upload-${index}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleRowImageChange(index, e)}
+                                disabled={isParsing || isSaving}
+                              />
+                            </label>
+                          )}
                         </td>
                       </tr>
                     );
@@ -993,15 +998,22 @@ export default function ImportRecordsPage() {
             </div>
           </Card>
 
+          {isSaving && savingProgress && (
+            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-sm font-medium flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-rose-600 border-t-transparent rounded-full animate-spin"></div>
+              {savingProgress}
+            </div>
+          )}
+
           <Button
             onClick={handleUpload}
             disabled={isSaving}
-            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3 text-lg font-semibold flex items-center justify-center gap-2 shadow-sm"
+            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3.5 text-lg font-semibold flex items-center justify-center gap-2 shadow-sm rounded-lg transition-colors"
           >
             <FaCloudUploadAlt className="text-xl" />
             {isSaving
               ? "Saving & Syncing Records..."
-              : `Upload & Save ${excelData.length} Records`}
+              : `Upload & Save ${excelData.length} Records (${attachedImagesCount} image${attachedImagesCount === 1 ? "" : "s"})`}
           </Button>
         </>
       )}
@@ -1023,12 +1035,9 @@ export default function ImportRecordsPage() {
       {/* Sample Modal */}
       <Modal show={showSampleModal} onClose={() => setShowSampleModal(false)}>
         <div className="p-6">
-          <h3 className="text-xl font-bold mb-4">
-            Download Sample Excel Files
-          </h3>
+          <h3 className="text-xl font-bold mb-4">Download Sample Excel Files</h3>
           <p className="text-sm text-gray-600 mb-6">
-            Choose a sample file below. Pre-filled with accurate truck and
-            trailer details matching the database.
+            Choose a sample file below. Pre-filled with accurate truck and trailer details matching the database.
           </p>
           <div className="flex flex-col gap-3">
             <Button asChild variant="outline" className="justify-start">
@@ -1038,21 +1047,21 @@ export default function ImportRecordsPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
+              <Link href={sampleFiles.truckBulk} download>
+                <FaFileDownload className="mr-2 text-purple-500" />
+                Truck Bulk Sample (6 Vehicles)
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerSingle} download>
                 <FaFileDownload className="mr-2 text-blue-500" />
                 Trailer Single Record Sample (BZ88BS77 / HYUNDAI)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link href={sampleFiles.truckBulk} download>
-                <FaFileDownload className="mr-2 text-purple-500" />
-                Truck Bulk Sample (25 Records)
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerBulk} download>
                 <FaFileDownload className="mr-2 text-indigo-500" />
-                Trailer Bulk Sample (25 Records)
+                Trailer Bulk Sample (9 Trailers)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">

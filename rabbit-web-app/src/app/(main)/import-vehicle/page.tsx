@@ -26,7 +26,6 @@ import { Modal } from "@/components/Modal";
 import { useAuth } from "@/contexts/AuthContexts";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { HashLoader } from "react-spinners";
 import { format } from "date-fns";
@@ -127,7 +126,9 @@ export default function ImportVehicle() {
 
   const sampleFiles = {
     truck: "/sample_excels/trenoops_truck_sample_file.xlsx",
+    bulkTrucks: "/sample_excels/bulk_trucks_sample_file.xlsx",
     trailer: "/sample_excels/trenoops_trailer_sample_file.xlsx",
+    bulkTrailers: "/sample_excels/bulk_trailers_sample_file.xlsx",
     truckCompanies: "/sample_excels/truck_company_nd_engine_name.xlsx",
     trailerCompanies: "/sample_excels/trailer_companies.xlsx",
   };
@@ -514,7 +515,7 @@ export default function ImportVehicle() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="w-full max-w-[96%] 2xl:max-w-[1650px] mx-auto px-4 md:px-8 py-6">
       <ToastContainer />
       <h1 className="text-2xl font-bold mb-6">Import Vehicles</h1>
       {userRole === "SubOwner" && (
@@ -549,12 +550,22 @@ export default function ImportVehicle() {
 
           <div className="space-y-2">
             <h3 className="font-medium">Sample Files</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-2">
               <Button
                 variant="outline"
                 onClick={() => setShowInstructions(true)}
               >
                 Download Vehicle Template
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href={sampleFiles.bulkTrucks} download>
+                  Bulk Trucks Sample (6 Vehicles)
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href={sampleFiles.bulkTrailers} download>
+                  Bulk Trailers Sample (9 Vehicles)
+                </Link>
               </Button>
               <Button variant="outline" asChild>
                 <Link href={sampleFiles.truckCompanies} target="_blank">
@@ -575,106 +586,83 @@ export default function ImportVehicle() {
         <>
           <Card className="p-4 mb-6">
             <div className="overflow-x-auto">
-              <h2 className="text-xl font-bold mb-4">Preview Data</h2>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">
+                  Preview Data ({excelData.length} Vehicles)
+                </h2>
+              </div>
+              <table className="min-w-full divide-y divide-gray-200 border text-sm">
+                <thead className="bg-gray-50">
                   <tr>
-                    {Object.keys(excelData[0])
-                      .filter((key) => {
-                        // Always show these fields for both vehicle types
-                        const commonFields = [
-                          "vehicleNumber",
-                          "vehicleType",
-                          "companyName",
-                          "engineName",
-                          "vin",
-                          "licensePlate",
-                          "year",
-                        ];
-
-                        if (commonFields.includes(key)) return true;
-
-                        // For trucks, show all fields
-                        if (excelData[0]?.vehicleType === "Truck") return true;
-
-                        // For trailers, hide these specific fields
-                        if (excelData[0]?.vehicleType === "Trailer") {
-                          return ![
-                            "currentMiles",
-                            "dot",
-                            "iccms",
-                            "oilChangeDate",
-                            "hoursReading",
-                          ].includes(key);
-                        }
-
-                        return true;
-                      })
-                      .map((key) => (
-                        <th key={key} className="px-4 py-2 text-left">
-                          {key === "currentMiles" ? "Miles" : key}
-                        </th>
-                      ))}
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">#</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Vehicle #</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Type</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Company</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Engine</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">VIN</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">License Plate</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Year</th>
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Miles / Hours</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {excelData.map((row, index) => (
-                    <tr key={index}>
-                      {Object.entries(row)
-                        .filter(([key]) => {
-                          // Always show these fields for both vehicle types
-                          const commonFields = [
-                            "vehicleNumber",
-                            "vehicleType",
-                            "companyName",
-                            "engineName",
-                            "vin",
-                            "licensePlate",
-                            "year",
-                          ];
-
-                          if (commonFields.includes(key)) return true;
-
-                          // For trucks, show all fields
-                          if (row.vehicleType === "Truck") return true;
-
-                          // For trailers, hide these specific fields
-                          if (row.vehicleType === "Trailer") {
-                            return ![
-                              "currentMiles",
-                              "dot",
-                              "iccms",
-                              "oilChangeDate",
-                              "hoursReading",
-                            ].includes(key);
-                          }
-
-                          return true;
-                        })
-                        .map(([key, value]) => (
-                          <td key={key} className="px-4 py-2">
-                            {String(value)}
-                          </td>
-                        ))}
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {excelData.map((row, index) => {
+                    const isTruck = row.vehicleType === "Truck";
+                    return (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-5 py-3 font-medium">{index + 1}</td>
+                        <td className="px-5 py-3 font-semibold">
+                          {String(row.vehicleNumber || "—")}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                              isTruck
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}
+                          >
+                            {String(row.vehicleType || "Truck")}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">{String(row.companyName || "—")}</td>
+                        <td className="px-5 py-3">{String(row.engineName || "—")}</td>
+                        <td className="px-5 py-3 font-mono text-xs">{String(row.vin || "—")}</td>
+                        <td className="px-5 py-3">{String(row.licensePlate || "—")}</td>
+                        <td className="px-5 py-3">{String(row.year || "—")}</td>
+                        <td className="px-5 py-3">
+                          {row.currentMiles
+                            ? `${row.currentMiles} mi`
+                            : row.hoursReading
+                            ? `${row.hoursReading} hrs`
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </Card>
-          <Button onClick={handleUpload} disabled={isSaving} className="w-full">
-            {isSaving ? "Uploading..." : "Upload Vehicles"}
+          <Button
+            onClick={handleUpload}
+            disabled={isSaving}
+            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3 text-lg font-semibold"
+          >
+            {isSaving
+              ? "Saving & Uploading Vehicles..."
+              : `Upload & Save ${excelData.length} Vehicles`}
           </Button>
         </>
       )}
 
       {uploadErrors.length > 0 && (
-        <Card className="p-4 mt-6">
+        <Card className="p-4 mt-6 border-red-200 bg-red-50">
           <h2 className="text-xl font-bold mb-4 text-red-600">Upload Errors</h2>
           <div className="space-y-2">
             {uploadErrors.map((error, index) => (
-              <p key={index} className="text-red-500">
-                {error}
+              <p key={index} className="text-red-600 text-sm">
+                • {error}
               </p>
             ))}
           </div>
@@ -683,16 +671,26 @@ export default function ImportVehicle() {
 
       <Modal show={showInstructions} onClose={() => setShowInstructions(false)}>
         <div className="p-4">
-          <h3 className="text-lg font-bold mb-4">Select Vehicle Type</h3>
-          <div className="space-y-2">
-            <Button asChild>
-              <Link href={sampleFiles.truck} target="_blank">
-                Download Truck Template
+          <h3 className="text-lg font-bold mb-4">Select Vehicle Template</h3>
+          <div className="flex flex-col gap-2">
+            <Button asChild variant="outline">
+              <Link href={sampleFiles.truck} download>
+                Single Truck Template
               </Link>
             </Button>
-            <Button asChild>
-              <Link href={sampleFiles.trailer} target="_blank">
-                Download Trailer Template
+            <Button asChild variant="outline">
+              <Link href={sampleFiles.bulkTrucks} download>
+                Bulk Trucks Sample (6 Vehicles)
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={sampleFiles.trailer} download>
+                Single Trailer Template
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={sampleFiles.bulkTrailers} download>
+                Bulk Trailers Sample (9 Vehicles)
               </Link>
             </Button>
           </div>
