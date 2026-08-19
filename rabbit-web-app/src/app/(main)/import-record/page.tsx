@@ -115,7 +115,11 @@ export default function ImportRecordsPage() {
     truckSingle: "/records/truck_sample_record.xlsx",
     trailerSingle: "/records/trailer_sample_record.xlsx",
     truckBulk: "/records/truck_bulk_records_sample.xlsx",
+    truckMultiServicesBulk: "/records/truck_multi_services_bulk_sample.xlsx",
     trailerBulk: "/records/trailer_bulk_records_sample.xlsx",
+    trailerMultiServicesBulk: "/records/trailer_multi_services_bulk_sample.xlsx",
+    truckServicesList: "/records/truck_services_sample_list.xlsx",
+    trailerServicesList: "/records/trailer_services_sample_list.xlsx",
     servicesList: "/records/truck_trailer_services_list.xlsx",
   };
 
@@ -766,7 +770,7 @@ export default function ImportRecordsPage() {
           </div>
 
           {/* Sample Download Links */}
-          <div className="pt-4 border-t flex flex-wrap items-center gap-3">
+          <div className="pt-4 border-t flex flex-wrap items-center gap-2.5">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-1">
               Sample Templates:
             </span>
@@ -776,8 +780,8 @@ export default function ImportRecordsPage() {
               </Link>
             </Button>
             <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.truckBulk} download>
-                <FaFileDownload className="mr-2 text-purple-500" /> Bulk Trucks (6 Records)
+              <Link href={sampleFiles.truckMultiServicesBulk} download>
+                <FaFileDownload className="mr-2 text-purple-600" /> Truck Bulk Multi-Services (10-30 Services)
               </Link>
             </Button>
             <Button variant="outline" asChild size="sm">
@@ -786,13 +790,18 @@ export default function ImportRecordsPage() {
               </Link>
             </Button>
             <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.trailerBulk} download>
-                <FaFileDownload className="mr-2 text-indigo-500" /> Bulk Trailers (9 Records)
+              <Link href={sampleFiles.trailerMultiServicesBulk} download>
+                <FaFileDownload className="mr-2 text-indigo-600" /> Trailer Bulk Multi-Services (8-16 Services)
               </Link>
             </Button>
             <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.servicesList} download>
-                <FaFileDownload className="mr-2 text-emerald-500" /> Services Reference List
+              <Link href={sampleFiles.truckServicesList} download>
+                <FaFileDownload className="mr-2 text-emerald-500" /> Truck Services List (56)
+              </Link>
+            </Button>
+            <Button variant="outline" asChild size="sm">
+              <Link href={sampleFiles.trailerServicesList} download>
+                <FaFileDownload className="mr-2 text-teal-600" /> Trailer Services List (18)
               </Link>
             </Button>
           </div>
@@ -1046,9 +1055,15 @@ export default function ImportRecordsPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
+              <Link href={sampleFiles.truckMultiServicesBulk} download>
+                <FaFileDownload className="mr-2 text-purple-600" />
+                Truck Bulk Multi-Services (10, 20, 30 Services with Sub-Services)
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckBulk} download>
-                <FaFileDownload className="mr-2 text-purple-500" />
-                Truck Bulk Sample (6 Vehicles)
+                <FaFileDownload className="mr-2 text-purple-400" />
+                Truck Bulk Sample (6 Records - Single Service)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
@@ -1058,15 +1073,27 @@ export default function ImportRecordsPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link href={sampleFiles.trailerBulk} download>
-                <FaFileDownload className="mr-2 text-indigo-500" />
-                Trailer Bulk Sample (9 Trailers)
+              <Link href={sampleFiles.trailerMultiServicesBulk} download>
+                <FaFileDownload className="mr-2 text-indigo-600" />
+                Trailer Bulk Multi-Services (8 to 16 Services with Sub-Services)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link href={sampleFiles.servicesList} download>
+              <Link href={sampleFiles.trailerBulk} download>
+                <FaFileDownload className="mr-2 text-indigo-400" />
+                Trailer Bulk Sample (9 Records - Single Service)
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
+              <Link href={sampleFiles.truckServicesList} download>
                 <FaFileDownload className="mr-2 text-emerald-500" />
-                Truck & Trailer Services Reference List
+                Truck Services Reference List (56 Services & Sub-Services)
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
+              <Link href={sampleFiles.trailerServicesList} download>
+                <FaFileDownload className="mr-2 text-teal-600" />
+                Trailer Services Reference List (18 Services & Sub-Services)
               </Link>
             </Button>
           </div>
