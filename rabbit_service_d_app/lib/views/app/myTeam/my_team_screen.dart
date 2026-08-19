@@ -8,6 +8,7 @@ import 'package:regal_service_d_app/services/make_call.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dart';
+import 'package:regal_service_d_app/views/app/myTeam/widgets/driver_live_tracking_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/edit_team_screen.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/member_jobs_history.dart';
 import 'package:regal_service_d_app/views/app/myTeam/widgets/view_member_profile_screen.dart';
@@ -671,6 +672,14 @@ class _MyTeamScreenState extends State<MyTeamScreen>
         // Check if the team member is an Owner - if so, hide switch and menu buttons
         bool isTeamMemberOwner = memberRole == 'Owner';
 
+        final memberVehicles = (member['vehicles'] as List<dynamic>?) ?? [];
+        final defaultVehicleNumber = memberVehicles.isNotEmpty
+            ? (memberVehicles.first['vehicleNumber'] ??
+                    memberVehicles.first['companyName'] ??
+                    '')
+                .toString()
+            : null;
+
         return Container(
           margin: EdgeInsets.only(left: 8.w, right: 8.w),
           padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -725,6 +734,24 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (memberRole == 'Driver')
+                        InkWell(
+                          onTap: () {
+                            Get.to(() => DriverLiveTrackingScreen(
+                                  driverId: memberId,
+                                  driverName: name,
+                                  driverPhone: phone,
+                                  vehicleNumber: defaultVehicleNumber,
+                                ));
+                          },
+                          child: CircleAvatar(
+                            radius: 18.r,
+                            backgroundColor: const Color(0xFF58BB87),
+                            child: Icon(Icons.location_on,
+                                color: kWhite, size: 18.r),
+                          ),
+                        ),
+                      if (memberRole == 'Driver') SizedBox(width: 4.w),
                       InkWell(
                         onTap: () => makePhoneCall(phone),
                         child: CircleAvatar(
@@ -757,91 +784,17 @@ class _MyTeamScreenState extends State<MyTeamScreen>
                           },
                         ),
                       if (!isTeamMemberOwner) // Only show menu for non-owner team members
-                        // PopupMenuButton<String>(
-                        //   icon: Icon(Icons.more_vert_rounded),
-                        //   onSelected: (value) {
-                        //     if (value == 'edit') {
-                        //       // Only Owners and SubOwners can edit team members
-                        //       if ((role == "Owner" || role == "SubOwner") &&
-                        //           !isOwnedByCurrentUser) {
-                        //         Get.to(() => EditTeamMember(
-                        //             memberId: memberId,
-                        //             currentUId: role == 'SubOwner'
-                        //                 ? ownerId!
-                        //                 : currentUId));
-                        //       } else {
-                        //         showToastMessage(
-                        //             "Permission Denied",
-                        //             "Only owners can edit team members",
-                        //             Colors.red);
-                        //       }
-                        //     } else if (value == 'view_trip') {
-                        //       Get.to(() => ViewMemberTrip(
-                        //             memberName: name,
-                        //             memberId: memberId,
-                        //             ownerId: ownerId,
-                        //             perMileCharge: num.parse(perMileCharge),
-                        //             role: role,
-                        //             teamRole: memberRole,
-                        //             effectiveUserId: role == 'SubOwner'
-                        //                 ? ownerId!
-                        //                 : currentUId,
-                        //           ));
-                        //     } else if (value == 'view_vehicles') {
-                        //       Get.to(() => MemberVehiclesScreen(
-                        //             memberName: name,
-                        //             memberContact: phone,
-                        //             memberId: memberId,
-                        //             vehicles: member['vehicles'],
-                        //           ));
-                        //     } else if (value == 'view_jobs') {
-                        //       Get.to(() => MemberJobsHistoryScreen(
-                        //             memberName: name,
-                        //             memebrId: memberId,
-                        //             ownerId: ownerId,
-                        //           ));
-                        //     }
-                        //   },
-                        //   itemBuilder: (BuildContext context) => [
-                        //     // Show edit option only for Owners and SubOwners
-                        //     if ((role == "Owner" || role == "SubOwner") &&
-                        //         !isOwnedByCurrentUser)
-                        //       PopupMenuItem(
-                        //         value: 'edit',
-                        //         child: ListTile(
-                        //           leading: Icon(Icons.edit, color: kPrimary),
-                        //           title: Text('Edit'),
-                        //         ),
-                        //       ),
-                        //     PopupMenuItem(
-                        //       value: 'view_trip',
-                        //       child: ListTile(
-                        //         leading:
-                        //             Icon(Icons.directions_car, color: kPrimary),
-                        //         title: Text('View Trip'),
-                        //       ),
-                        //     ),
-                        //     PopupMenuItem(
-                        //       value: 'view_vehicles',
-                        //       child: ListTile(
-                        //         leading: Icon(Icons.work, color: kPrimary),
-                        //         title: Text('View Vehicles'),
-                        //       ),
-                        //     ),
-                        //     PopupMenuItem(
-                        //       value: 'view_jobs',
-                        //       child: ListTile(
-                        //         leading: Icon(Icons.work, color: kPrimary),
-                        //         title: Text('View Jobs'),
-                        //       ),
-                        //     ),
-                        //   ],
-                        // ),
-
                         PopupMenuButton<String>(
                           icon: Icon(Icons.more_vert_rounded),
                           onSelected: (value) {
-                            if (value == 'edit') {
+                            if (value == 'live_tracking') {
+                              Get.to(() => DriverLiveTrackingScreen(
+                                    driverId: memberId,
+                                    driverName: name,
+                                    driverPhone: phone,
+                                    vehicleNumber: defaultVehicleNumber,
+                                  ));
+                            } else if (value == 'edit') {
                               // Only Owners and SubOwners can edit team members
                               if ((role == "Owner" || role == "SubOwner") &&
                                   !isOwnedByCurrentUser) {
@@ -905,6 +858,15 @@ class _MyTeamScreenState extends State<MyTeamScreen>
 
                             // For other team member roles, show all options
                             return [
+                              if (memberRole == "Driver")
+                                PopupMenuItem(
+                                  value: 'live_tracking',
+                                  child: ListTile(
+                                    leading: Icon(Icons.location_on,
+                                        color: const Color(0xFF58BB87)),
+                                    title: Text('Live Tracking'),
+                                  ),
+                                ),
                               // Show edit option only for Owners and SubOwners (current user)
                               if ((role == "Owner" || role == "SubOwner") &&
                                   !isOwnedByCurrentUser)

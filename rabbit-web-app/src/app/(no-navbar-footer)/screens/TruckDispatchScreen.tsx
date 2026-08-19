@@ -27,10 +27,12 @@ import {
   PauseCircle,
   Phone,
   X,
+  Navigation,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
+import DriverLiveTrackingModal from "@/components/dispatch/DriverLiveTrackingModal";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db, storage } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
@@ -67,6 +69,7 @@ interface LoadData {
   truck: string;
   trailer: string;
   driver: string;
+  driverId?: string;
   pickupLocation: string;
   pickupDate: string;
   dropLocation: string;
@@ -209,6 +212,15 @@ export default function TruckDispatchScreen({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyItems, setHistoryItems] = useState<DispatchHistoryRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const [trackingModalOpen, setTrackingModalOpen] = useState(false);
+  const [selectedTrackingLoad, setSelectedTrackingLoad] =
+    useState<LoadData | null>(null);
+
+  const handleOpenLiveTracking = (load: LoadData) => {
+    setSelectedTrackingLoad(load);
+    setTrackingModalOpen(true);
+  };
 
   const itemsPerPage = 10;
 
@@ -446,6 +458,7 @@ export default function TruckDispatchScreen({
             (record.driverId && driverMap[record.driverId]) ||
             record.driverId ||
             "-",
+          driverId: record.driverId || "",
           pickupLocation: pickup.company || "-",
           pickupDate: toDateLabel(pickup.date),
           dropLocation: delivery.company || "-",
@@ -1074,6 +1087,15 @@ export default function TruckDispatchScreen({
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
+                        {load.driverId && (
+                          <button
+                            onClick={() => handleOpenLiveTracking(load)}
+                            className="p-1.5 hover:bg-[#58BB87]/15 rounded text-[#58BB87] transition-colors"
+                            title="Live Track Driver"
+                          >
+                            <Navigation className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEditLoad(load.id)}
                           className="p-1.5 hover:bg-green-50 rounded text-green-600"
@@ -1335,6 +1357,23 @@ export default function TruckDispatchScreen({
             </div>
           </div>
         </div>
+      )}
+
+      {selectedTrackingLoad && (
+        <DriverLiveTrackingModal
+          isOpen={trackingModalOpen}
+          onClose={() => {
+            setTrackingModalOpen(false);
+            setSelectedTrackingLoad(null);
+          }}
+          driverId={selectedTrackingLoad.driverId || ""}
+          driverName={selectedTrackingLoad.driver}
+          loadNumber={selectedTrackingLoad.loadNumber}
+          vehicleNumber={selectedTrackingLoad.truck}
+          customerName={selectedTrackingLoad.customer}
+          pickupLocation={selectedTrackingLoad.pickupLocation}
+          dropLocation={selectedTrackingLoad.dropLocation}
+        />
       )}
     </div>
   );

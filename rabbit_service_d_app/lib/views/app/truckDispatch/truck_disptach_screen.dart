@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:regal_service_d_app/services/driver_location_service.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/widgets/truck_dispatch_detail_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,6 +28,7 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
     _searchController.addListener(() {
       if (mounted) setState(() {});
     });
+    DriverLocationService.checkAndResumeTracking();
   }
 
   void _handleTabSelection() {
@@ -93,12 +95,28 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
         },
       });
 
+      // Start 5-minute background location tracking
+      final ownerId = load.ownerId.isNotEmpty
+          ? load.ownerId
+          : (load.rawData['effectiveUserId'] ??
+                  load.rawData['currentUserId'] ??
+                  '')
+              .toString();
+      if (ownerId.isNotEmpty) {
+        await DriverLocationService.startTracking(
+          loadId: load.id,
+          ownerId: ownerId,
+          loadNumber: load.loadNumber,
+          vehicleNumber: load.vehicleNumber,
+        );
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${load.loadNumber} accepted successfully!'),
+          content: Text('${load.loadNumber} accepted! Live tracking active (5 min interval)'),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF58BB87),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -872,6 +890,10 @@ class LoadData {
   final String dropLocation;
   final String dropDate;
 
+  final String ownerId;
+  final String vehicleNumber;
+  final Map<String, dynamic> rawData;
+
   String get fullPickupAddress {
     final list = [pickupBuilding, pickupAddress, pickupLocation]
         .where((s) => s.trim().isNotEmpty && s.trim() != '-')
@@ -906,6 +928,9 @@ class LoadData {
     required this.progress,
     required this.isTerminalStatus,
     required this.sortTimestamp,
+    this.ownerId = '',
+    this.vehicleNumber = '',
+    this.rawData = const {},
     this.price,
   });
 
@@ -964,6 +989,9 @@ class LoadData {
       driverName: (data['driverName'] ?? '').toString(),
       progress: _progressForStatus(rawStatus, acceptanceStatus),
       isTerminalStatus: isTerminalStatus,
+      ownerId: (data['effectiveUserId'] ?? data['currentUserId'] ?? '').toString(),
+      vehicleNumber: (data['vehicleNumber'] ?? data['truckNumber'] ?? '').toString(),
+      rawData: data,
       sortTimestamp: _resolveSortTimestamp(
         data['updatedAt'],
         data['createdAt'],

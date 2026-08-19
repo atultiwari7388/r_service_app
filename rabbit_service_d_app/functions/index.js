@@ -1708,3 +1708,110 @@ exports.notifyDriverOnDispatchLoadAssignment = functions.firestore
       return null;
     }
   });
+
+/**
+ * Scheduled Watchdog: Checks for missing telemetry on in-progress loads.
+ * If driver hasn't pinged in > 20 minutes, sends a high-priority wakeup FCM.
+ */
+exports.checkDriverTelemetryWatchdog = functions.pubsub
+  .schedule("every 15 minutes")
+  .onRun(async (context) => {
+    try {
+      const now = Date.now();
+      const twentyMinsAgo = new Date(now - 20 * 60 * 1000);
+
+      // Query active in-progress loads
+      const activeLoadsSnap = await admin
+        .firestore()
+        .collection("dispatch_loads")
+        .where("status", "in", ["Assigned", "In Transit"])
+        .get();
+
+      for (const loadDoc of activeLoadsSnap.docs) {
+        const load = loadDoc.data();
+        const driverId = load.driverId;
+        if (!driverId) continue;
+
+        const driverLocDoc = await admin
+          .firestore()
+          .collection("DriverLocations")
+          .doc(driverId)
+          .get();
+
+        if (driverLocDoc.exists) {
+          const locData = driverLocDoc.data();
+          const lastUpdated = locData.lastUpdated
+            ? locData.lastUpdated.toDate()
+            : null;
+
+          if (!lastUpdated || lastUpdated < twentyMinsAgo) {
+            // Send high-priority wakeup notification to driver
+            const driverDoc = await admin
+              .firestore()
+              .collection("Users")
+              .doc(driverId)
+              .get();
+
+            const fcmToken = driverDoc.data()?.fcmToken;
+            if (fcmToken) {
+              await admin.messaging().send({
+                token: fcmToken,
+                notification: {
+                  title: "⚠️ Trip GPS Tracking Inactive",
+                  body: `Please keep Trenoops App open to send location updates for Load #${
+                    load.loadNumber || ""
+                  }`,
+                },
+                data: {
+                  type: "tracking_heartbeat_alert",
+                  loadId: loadDoc.id,
+                },
+              });
+            }
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error in checkDriverTelemetryWatchdog:", error);
+      return null;
+    }
+  });
+
+/**
+ * On Load Delivered / Completed: Turn off active tracking flag in DriverLocations
+ */
+exports.cleanupDriverTelemetryOnLoadComplete = functions.firestore
+  .document("dispatch_loads/{loadId}")
+  .onUpdate(async (change, context) => {
+    try {
+      const afterData = change.after.data();
+      const status = (afterData.status || "").toLowerCase();
+
+      if (
+        status === "delivered" ||
+        status === "completed" ||
+        status === "cancelled"
+      ) {
+        const driverId = afterData.driverId;
+        if (driverId) {
+          await admin
+            .firestore()
+            .collection("DriverLocations")
+            .doc(driverId)
+            .set(
+              {
+                isTrackingActive: false,
+                activeLoadId: null,
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error("Error in cleanupDriverTelemetryOnLoadComplete:", error);
+      return null;
+    }
+  });

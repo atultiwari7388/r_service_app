@@ -10,6 +10,7 @@ import 'package:regal_service_d_app/controllers/dashboard_controller.dart';
 import 'package:regal_service_d_app/services/userRoleService.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
+import 'package:regal_service_d_app/services/driver_location_service.dart';
 import 'package:regal_service_d_app/views/app/splash/splash_screen.dart';
 import 'services/push_notification.dart';
 import 'entry_screen.dart';
@@ -44,6 +45,11 @@ void main() async {
 
   // Register background handler early
   FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessaging);
+
+  // Auto-resume driver background location tracking if active load exists
+  try {
+    DriverLocationService.checkAndResumeTracking();
+  } catch (_) {}
 
   runApp(const MyApp());
 }
