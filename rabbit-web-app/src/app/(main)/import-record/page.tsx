@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db, functions, storage } from "@/lib/firebase";
-import { httpsCallable } from "firebase/functions";
+import { db, storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -616,16 +615,16 @@ export default function ImportRecordsPage() {
 
     await batch.commit();
 
-    // Trigger cloud function notification
-    try {
-      const checkDataServices = httpsCallable(
-        functions,
-        "checkDataServicesAndNotify"
-      );
-      await checkDataServices({ userId: ownerId, vehicleId });
-    } catch (e) {
-      console.warn("Cloud function notify warning:", e);
-    }
+    // Trigger cloud function notification (commented out)
+    // try {
+    //   const checkDataServices = httpsCallable(
+    //     functions,
+    //     "checkDataServicesAndNotify"
+    //   );
+    //   await checkDataServices({ userId: ownerId, vehicleId });
+    // } catch (e) {
+    //   console.warn("Cloud function notify warning:", e);
+    // }
 
     return true;
   };

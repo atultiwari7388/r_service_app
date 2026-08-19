@@ -379,6 +379,93 @@ export default function RecordsPage() {
     }
   };
 
+  const extractSubServices = (subServices: unknown): string[] => {
+    if (!subServices || !Array.isArray(subServices)) return [];
+    const result: string[] = [];
+    subServices.forEach((item) => {
+      if (typeof item === "string") {
+        result.push(item);
+      } else if (item && typeof item === "object") {
+        const itemObj = item as Record<string, unknown>;
+        if (Array.isArray(itemObj.sName)) {
+          itemObj.sName.forEach((n) => result.push(String(n)));
+        } else if (typeof itemObj.sName === "string") {
+          result.push(itemObj.sName);
+        } else if (typeof itemObj.name === "string") {
+          result.push(itemObj.name);
+        }
+      }
+    });
+    return result;
+  };
+
+  const handleAddRecordVehicleSelect = (value: string) => {
+    setSelectedVehicle(value);
+    const vehicleData = vehicles.find((v) => v.id === value) || null;
+    setSelectedVehicleData(vehicleData);
+
+    if (vehicleData) {
+      const isDryVan = vehicleData.engineName === "DRY VAN";
+      const availableServices = services
+        .filter((service) => {
+          const matchesVehicleType =
+            !vehicleData || service.vType === vehicleData.vehicleType;
+          const isExcludedService =
+            DRY_VAN_EXCLUDED_SERVICES.includes(service.sName);
+          return matchesVehicleType && !(isDryVan && isExcludedService);
+        })
+        .sort((a, b) => a.sName.localeCompare(b.sName));
+
+      const formattedServices = availableServices.map((s, idx) => {
+        const subs = extractSubServices(s.subServices);
+        return {
+          "#": idx + 1,
+          "Service Name": s.sName,
+          "Sub-Services": subs.length > 0 ? subs.join(", ") : "—",
+          "Type": s.vType,
+        };
+      });
+
+      console.group(
+        `%c🚗 SELECTED VEHICLE: ${vehicleData.vehicleNumber} | ${vehicleData.companyName} (${vehicleData.vehicleType})`,
+        "color: #F96176; font-weight: bold; font-size: 14px;"
+      );
+      console.log(
+        `📌 Total Available Services for this vehicle: ${availableServices.length}`
+      );
+
+      console.log(
+        "%c📊 TABLE OF SERVICES & SUBSERVICES:",
+        "color: #3B82F6; font-weight: bold;"
+      );
+      console.table(formattedServices);
+
+      console.log(
+        "%c📋 COMMA-SEPARATED SERVICES LIST (Copy for Excel):",
+        "color: #10B981; font-weight: bold;"
+      );
+      console.log(availableServices.map((s) => s.sName).join(", "));
+
+      console.log(
+        "%c📦 COMPLETE SERVICES & SUBSERVICES JSON OBJECT (Copy as JSON):",
+        "color: #8B5CF6; font-weight: bold;"
+      );
+      console.log(
+        JSON.stringify(
+          availableServices.map((s) => ({
+            serviceName: s.sName,
+            serviceId: s.sId,
+            vehicleType: s.vType,
+            subServices: extractSubServices(s.subServices),
+          })),
+          null,
+          2
+        )
+      );
+      console.groupEnd();
+    }
+  };
+
   const handleServiceSelect = (serviceId: string) => {
     const newSelectedServices = new Set(selectedServices);
     const isServiceSelected = newSelectedServices.has(serviceId);
@@ -2187,11 +2274,7 @@ export default function RecordsPage() {
                       labelId="select-vehicle-label"
                       value={selectedVehicle}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        setSelectedVehicle(value);
-                        const vehicleData =
-                          vehicles.find((v) => v.id === value) || null;
-                        setSelectedVehicleData(vehicleData);
+                        handleAddRecordVehicleSelect(e.target.value);
                       }}
                       className="rounded-lg"
                       sx={{ minHeight: "56px", flex: 1, marginRight: "8px" }}

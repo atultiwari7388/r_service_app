@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db, functions } from "@/lib/firebase";
-import { httpsCallable } from "firebase/functions";
+import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
 import { read, utils } from "xlsx";
@@ -451,15 +450,15 @@ export default function ImportVehicle() {
       const docRef = await addDoc(vehiclesRef, vehicleData);
       await updateDoc(docRef, { vehicleId: docRef.id });
 
-      // 7. Trigger cloud function
-      const callable = httpsCallable(
-        functions,
-        "checkAndNotifyUserForVehicleService"
-      );
-      await callable({
-        userId: effectiveUserId,
-        vehicleId: docRef.id,
-      });
+      // 7. Trigger cloud function (commented out)
+      // const callable = httpsCallable(
+      //   functions,
+      //   "checkAndNotifyUserForVehicleService"
+      // );
+      // await callable({
+      //   userId: effectiveUserId,
+      //   vehicleId: docRef.id,
+      // });
 
       return true;
     } catch (error) {
