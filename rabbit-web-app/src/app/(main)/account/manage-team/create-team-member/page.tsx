@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import HashLoader from "react-spinners/HashLoader";
+import { FiUploadCloud } from "react-icons/fi";
+import DriverExcelImportModal from "@/components/dispatch/DriverExcelImportModal";
 
 interface Vehicle {
   id: string;
@@ -97,6 +99,7 @@ export default function CreateTeamMemberPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [effectiveUserId, setEffectiveUserId] = useState<string | null>(null);
   const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const [formData, setFormData] = useState<CreateTeamMemberForm>({
     memberName: "",
@@ -394,9 +397,19 @@ export default function CreateTeamMemberPage() {
       )}
 
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          Create Team Member
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Create Team Member
+          </h1>
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#58BB87] hover:bg-[#4aa975] text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+          >
+            <FiUploadCloud className="w-4 h-4" />
+            Import Drivers via Excel
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Role Selection */}
@@ -915,6 +928,15 @@ export default function CreateTeamMemberPage() {
           </div>
         </form>
       </div>
+
+      {isImportModalOpen && effectiveUserId && (
+        <DriverExcelImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          effectiveUserId={effectiveUserId}
+          onSuccess={() => router.push("/account/manage-team")}
+        />
+      )}
     </div>
   );
 }

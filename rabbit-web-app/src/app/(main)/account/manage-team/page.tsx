@@ -26,8 +26,10 @@ import {
   FiTruck,
   FiBriefcase,
   FiUser,
+  FiUploadCloud,
 } from "react-icons/fi";
 import { Menu, Switch, Transition } from "@headlessui/react";
+import DriverExcelImportModal from "@/components/dispatch/DriverExcelImportModal";
 
 interface TeamMember {
   uid: string;
@@ -72,6 +74,8 @@ export default function ManageTeam(): JSX.Element {
   const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
   const [showFilters, setShowFilters] = useState(false);
   const [effectiveUserId, setEffectiveUserId] = useState("");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Step 1: Fetch user data and determine effectiveUserId
   useEffect(() => {
@@ -227,7 +231,7 @@ export default function ManageTeam(): JSX.Element {
     };
 
     fetchData();
-  }, [effectiveUserId]);
+  }, [effectiveUserId, refreshKey]);
 
   const filterMembers = () => {
     const query = searchQuery.toLowerCase();
@@ -318,12 +322,22 @@ export default function ManageTeam(): JSX.Element {
             Manage Team
           </h1>
           {role === "Owner" || role === "SubOwner" ? (
-            <Link href="/account/manage-team/create-team-member">
-              <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center">
-                <span className="mr-2">+</span>
-                Add Member
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="bg-[#58BB87] hover:bg-[#4aa975] text-white py-2 px-5 rounded-lg shadow-md flex items-center gap-2 font-medium transition-all"
+              >
+                <FiUploadCloud className="w-4 h-4" />
+                Import Drivers
               </button>
-            </Link>
+              <Link href="/account/manage-team/create-team-member">
+                <button className="bg-[#F96176] hover:bg-[#e54d62] text-white py-2 px-6 rounded-lg shadow-md flex items-center font-medium transition-all">
+                  <span className="mr-2">+</span>
+                  Add Member
+                </button>
+              </Link>
+            </div>
           ) : (
             <div></div>
           )}
@@ -740,6 +754,15 @@ export default function ManageTeam(): JSX.Element {
           )}
         </div>
       </div>
+
+      {isImportModalOpen && (
+        <DriverExcelImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          effectiveUserId={effectiveUserId}
+          onSuccess={() => setRefreshKey((prev) => prev + 1)}
+        />
+      )}
     </div>
   );
 }
