@@ -65,6 +65,35 @@ import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import Image from "next/image";
 import { parseISO, format } from "date-fns";
 
+const formatDateSafe = (dateStr?: string | null): string => {
+  if (!dateStr) return "N/A";
+  try {
+    const trimmed = String(dateStr).trim();
+    if (!trimmed) return "N/A";
+
+    // If format is MM-DD-YYYY or MM/DD/YYYY, convert to MM-DD-YYYY
+    if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
+      return trimmed.replace(/\//g, "-");
+    }
+
+    // Try parseISO
+    const isoParsed = parseISO(trimmed);
+    if (!isNaN(isoParsed.getTime())) {
+      return format(isoParsed, "MM-dd-yyyy");
+    }
+
+    // Try new Date
+    const fallback = new Date(trimmed);
+    if (!isNaN(fallback.getTime())) {
+      return format(fallback, "MM-dd-yyyy");
+    }
+
+    return trimmed;
+  } catch {
+    return dateStr ? String(dateStr) : "N/A";
+  }
+};
+
 interface Vehicle {
   brand: string;
   type: string;
@@ -859,26 +888,34 @@ export default function RecordsPage() {
 
   const filteredRecords = records
     .filter((record) => {
-      const recordDate = new Date(record.date);
+      if (!record) return false;
+      const recordDate = record.date ? new Date(record.date) : null;
+      const vehNum = record.vehicleDetails?.vehicleNumber || "";
       const matchesVehicle =
         !filterVehicle ||
-        record.vehicleDetails.vehicleNumber
-          .toLowerCase()
-          .includes(filterVehicle.toLowerCase());
+        vehNum.toLowerCase().includes(filterVehicle.toLowerCase());
+
       const matchesService =
         !filterService ||
-        record.services.some((s: { serviceName: string }) =>
-          s.serviceName.toLowerCase().includes(filterService.toLowerCase())
+        (record.services || []).some((s: { serviceName?: string }) =>
+          (s?.serviceName || "")
+            .toLowerCase()
+            .includes(filterService.toLowerCase())
         );
+
       const matchesInvoice =
         !filterInvoice ||
         (record.invoice || "")
           .toLowerCase()
           .includes(filterInvoice.toLowerCase());
+
       const matchesDate =
         !startDate ||
         !endDate ||
-        (recordDate >= startDate && recordDate <= endDate);
+        (recordDate !== null &&
+          !isNaN(recordDate.getTime()) &&
+          recordDate >= startDate &&
+          recordDate <= endDate);
 
       switch (searchType) {
         case "vehicle":
@@ -898,12 +935,9 @@ export default function RecordsPage() {
       }
     })
     .sort((a, b) => {
-      // Convert date strings to Date objects (format: "2025-06-28")
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-
-      // For descending order (newest first)
-      return dateB.getTime() - dateA.getTime();
+      const dateA = a?.date ? new Date(a.date).getTime() : 0;
+      const dateB = b?.date ? new Date(b.date).getTime() : 0;
+      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
     });
 
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
@@ -919,12 +953,30 @@ export default function RecordsPage() {
 
     const unsubscribe = onSnapshot(recordsQuery, (snapshot) => {
       const recordsData: RecordData[] = snapshot.docs.map((doc) => {
-        const data = doc.data() as ServiceRecord;
-        return {
-          ...data,
-          id: doc.id,
-          vehicle: data.vehicleDetails.companyName,
+        const data = (doc.data() || {}) as Partial<ServiceRecord>;
+        const vehDetails = data.vehicleDetails || {
+          vehicleNumber: "",
+          vehicleType: "Truck",
+          companyName: "",
+          engineNumber: "",
         };
+        return {
+          id: doc.id,
+          vehicleId: data.vehicleId || "",
+          vehicleDetails: vehDetails,
+          services: Array.isArray(data.services) ? data.services : [],
+          date: data.date || "",
+          hours: Number(data.hours) || 0,
+          miles: Number(data.miles) || 0,
+          totalMiles: Number(data.totalMiles) || 0,
+          createdAt: data.createdAt || "",
+          workshopName: data.workshopName || "",
+          invoice: data.invoice || "",
+          description: data.description || "",
+          invoiceAmount: data.invoiceAmount ? String(data.invoiceAmount) : "",
+          imageUrl: data.imageUrl || "",
+          vehicle: vehDetails.companyName || vehDetails.vehicleNumber || "",
+        } as RecordData;
       });
 
       setRecords(recordsData);
@@ -1512,39 +1564,51 @@ export default function RecordsPage() {
   };
 
   const handleEditRecord = (record: ServiceRecord) => {
+    if (!record) return;
     setIsEditing(true);
     setEditingRecordId(record.id);
 
     // Set form values from record
-    setSelectedVehicle(record.vehicleId);
+    setSelectedVehicle(record.vehicleId || "");
     setSelectedVehicleData(
       vehicles.find((v) => v.id === record.vehicleId) || null
     );
 
     // Initialize service defaults
     const newServiceDefaultValues: Record<string, number> = {};
-    record.services.forEach((service) => {
-      newServiceDefaultValues[service.serviceId] =
-        service.defaultNotificationValue || 0;
+    const recordServices = Array.isArray(record.services) ? record.services : [];
+    recordServices.forEach((service) => {
+      if (service && service.serviceId) {
+        newServiceDefaultValues[service.serviceId] =
+          service.defaultNotificationValue || 0;
+      }
     });
     setServiceDefaultValues(newServiceDefaultValues);
 
     // Set selected services and subservices
-    setSelectedServices(new Set(record.services.map((s) => s.serviceId)));
+    setSelectedServices(
+      new Set(
+        recordServices
+          .filter((s) => s && s.serviceId)
+          .map((s) => s.serviceId)
+      )
+    );
 
     const subServices: Record<string, string[]> = {};
-    record.services.forEach((service) => {
-      subServices[service.serviceId] =
-        service.subServices?.map((ss) => ss.name) || [];
+    recordServices.forEach((service) => {
+      if (service && service.serviceId) {
+        subServices[service.serviceId] = Array.isArray(service.subServices)
+          ? service.subServices.map((ss) => ss.name)
+          : [];
+      }
     });
     setSelectedSubServices(subServices);
 
     // Set other fields
-    setMiles(record.miles.toString());
-    setHours(record.hours.toString());
-    setDate(
-      record.date.includes("T") ? record.date.split("T")[0] : record.date
-    );
+    setMiles((record.miles || 0).toString());
+    setHours((record.hours || 0).toString());
+    const dateStr = record.date || "";
+    setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
     setWorkshopName(record.workshopName || "");
     setInvoice(record.invoice || "");
     setInvoiceAmount(record.invoiceAmount || "");
@@ -2577,7 +2641,7 @@ export default function RecordsPage() {
 
                 {selectedVehicleData?.vehicleType === "Trailer" && (
                   <>
-                    {selectedVehicleData.engineName === "DRY VAN" ? (
+                    {selectedVehicleData?.engineName === "DRY VAN" ? (
                       <div></div>
                     ) : (
                       <TextField
@@ -2764,7 +2828,7 @@ export default function RecordsPage() {
                   {filteredRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell className="table-cell">
-                        {format(parseISO(record.date), "MM-dd-yyyy")}
+                        {formatDateSafe(record.date)}
                       </TableCell>
                       <TableCell className="table-cell">
                         {record.invoice && record.invoice.trim() !== ""
@@ -2772,21 +2836,21 @@ export default function RecordsPage() {
                           : "N/A"}
                       </TableCell>
                       <TableCell className="table-cell">
-                        {record.vehicleDetails.vehicleNumber}
+                        {record.vehicleDetails?.vehicleNumber || "N/A"}
                       </TableCell>
 
                       <TableCell className="table-cell">
-                        {record.vehicleDetails.companyName}
+                        {record.vehicleDetails?.companyName || "N/A"}
                       </TableCell>
                       <TableCell className="table-cell">
                         {record.invoiceAmount &&
-                        record.invoiceAmount.trim() !== ""
+                        String(record.invoiceAmount).trim() !== ""
                           ? `$${record.invoiceAmount}`
                           : "N/A"}
                       </TableCell>
 
                       <TableCell className="table-cell">
-                        {record.vehicleDetails.vehicleType === "Trailer"
+                        {record.vehicleDetails?.vehicleType === "Trailer"
                           ? record.hours
                             ? `${record.hours}`
                             : "N/A"
@@ -2796,12 +2860,15 @@ export default function RecordsPage() {
                       </TableCell>
                       <TableCell className="table-cell">
                         {record.services && record.services.length > 0
-                          ? record.services
+                          ? [...record.services]
+                              .filter((s) => s && s.serviceName)
                               .sort((a, b) =>
-                                a.serviceName.localeCompare(b.serviceName)
+                                (a.serviceName || "").localeCompare(
+                                  b.serviceName || ""
+                                )
                               )
                               .map((service) => service.serviceName)
-                              .join(", ")
+                              .join(", ") || "N/A"
                           : "N/A"}
                       </TableCell>
 
