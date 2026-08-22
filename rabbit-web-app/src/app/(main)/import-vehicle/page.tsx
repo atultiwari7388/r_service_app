@@ -59,6 +59,8 @@ export interface Vehicle {
   prevHoursReadingValue?: string;
   nextNotificationMiles?: NextNotificationMile[];
   vehicleId?: string;
+  myCompany?: string;
+  mycomId?: string;
 }
 
 export interface Service {
@@ -121,6 +123,14 @@ export default function ImportVehicle() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
+
+  // My Companies state
+  const [myCompaniesList, setMyCompaniesList] = useState<
+    { id: string; companyName: string }[]
+  >([]);
+  const [selectedMyCompanyId, setSelectedMyCompanyId] = useState<string>("");
+  const [selectedMyCompanyName, setSelectedMyCompanyName] = useState<string>("");
+
   const router = useRouter();
 
   const sampleFiles = {
@@ -130,6 +140,44 @@ export default function ImportVehicle() {
     bulkTrailers: "/sample_excels/bulk_trailers_sample_file.xlsx",
     truckCompanies: "/sample_excels/truck_company_nd_engine_name.xlsx",
     trailerCompanies: "/sample_excels/trailer_companies.xlsx",
+  };
+
+  // Fetch myCompanies
+  const fetchMyCompanies = async (userId: string) => {
+    try {
+      const companiesSnapshot = await getDocs(
+        collection(db, "Users", userId, "myCompanies")
+      );
+      const loaded: { id: string; companyName: string }[] = [];
+
+      companiesSnapshot.forEach((docSnap) => {
+        const cData = docSnap.data();
+        const cName = (cData.companyName || cData.name || "").toString().trim();
+        const isActive = cData.isActive !== false;
+        if (cName && isActive) {
+          loaded.push({ id: docSnap.id, companyName: cName });
+        }
+      });
+
+      if (loaded.length === 0) {
+        const userDoc = await getDoc(doc(db, "Users", userId));
+        if (userDoc.exists()) {
+          const rootComp = (userDoc.data().companyName || "").toString().trim();
+          if (rootComp) {
+            loaded.push({ id: "default", companyName: rootComp });
+          }
+        }
+      }
+
+      loaded.sort((a, b) => a.companyName.localeCompare(b.companyName));
+      setMyCompaniesList(loaded);
+      if (loaded.length > 0) {
+        setSelectedMyCompanyId(loaded[0].id);
+        setSelectedMyCompanyName(loaded[0].companyName);
+      }
+    } catch (error) {
+      console.error("Error fetching myCompanies:", error);
+    }
   };
 
   // Fetch user data and determine effectiveUserId
@@ -143,17 +191,13 @@ export default function ImportVehicle() {
           const userData = userDoc.data();
           setUserRole(userData.role || "");
 
-          // Determine effectiveUserId based on role
+          let effId = user.uid;
           if (userData.role === "SubOwner" && userData.createdBy) {
-            setEffectiveUserId(userData.createdBy);
-            console.log(
-              "SubOwner detected, using effectiveUserId:",
-              userData.createdBy
-            );
-          } else {
-            setEffectiveUserId(user.uid);
-            console.log("Regular user, using own uid:", user.uid);
+            effId = userData.createdBy;
           }
+
+          setEffectiveUserId(effId);
+          await fetchMyCompanies(effId);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -315,7 +359,18 @@ export default function ImportVehicle() {
             }
           }
 
-          return item;
+          // Assign default My Company to each row if selected
+          return {
+            ...item,
+            myCompany:
+              item.myCompany ||
+              selectedMyCompanyName ||
+              (myCompaniesList.length > 0 ? myCompaniesList[0].companyName : ""),
+            mycomId:
+              item.mycomId ||
+              selectedMyCompanyId ||
+              (myCompaniesList.length > 0 ? myCompaniesList[0].id : ""),
+          };
         });
 
         setExcelData(processedData);
@@ -329,6 +384,23 @@ export default function ImportVehicle() {
     reader.readAsArrayBuffer(file);
   };
 
+  const handleApplyCompanyToAll = (compId: string) => {
+    const matched = myCompaniesList.find((c) => c.id === compId);
+    const cName = matched?.companyName || "";
+    setSelectedMyCompanyId(compId);
+    setSelectedMyCompanyName(cName);
+    setExcelData((prev) =>
+      prev.map((row) => ({
+        ...row,
+        mycomId: compId,
+        myCompany: cName,
+      }))
+    );
+    if (cName && excelData.length > 0) {
+      toast.info(`Assigned "${cName}" to all ${excelData.length} vehicles`);
+    }
+  };
+
   const saveVehicle = async (data: Partial<Vehicle>) => {
     if (!effectiveUserId) throw new Error("User not authenticated");
 
@@ -338,9 +410,25 @@ export default function ImportVehicle() {
       const companyName = data.companyName?.toString().trim().toUpperCase();
       const engineName = data.engineName?.toString().trim().toUpperCase();
       const vehicleNumber = data.vehicleNumber?.toString().trim() || "";
+      const assignedCompany = (
+        data.myCompany ||
+        selectedMyCompanyName ||
+        ""
+      ).trim();
+      const assignedCompanyId = (
+        data.mycomId ||
+        selectedMyCompanyId ||
+        ""
+      ).trim();
 
       if (!vehicleType || !companyName || !engineName || !vehicleNumber) {
         throw new Error("Missing required vehicle properties");
+      }
+
+      if (!assignedCompany) {
+        throw new Error(
+          `Please select My Company for vehicle ${vehicleNumber || "entry"}`
+        );
       }
 
       // 2. Vehicle type specific validation and default values
@@ -393,6 +481,8 @@ export default function ImportVehicle() {
         companyName,
         engineName,
         vehicleNumber,
+        myCompany: assignedCompany,
+        mycomId: assignedCompanyId,
         vin: data.vin?.toString().trim() || "",
         dot: "",
         iccms: "",
@@ -470,6 +560,18 @@ export default function ImportVehicle() {
   const handleUpload = async () => {
     if (!excelData.length) return;
 
+    // Validate that all vehicles have a company assigned
+    const missingIndex = excelData.findIndex(
+      (r) => !r.myCompany && !selectedMyCompanyName
+    );
+    if (missingIndex !== -1) {
+      toast.error(
+        `Row ${missingIndex + 1}: Please select 'My Company' for this vehicle before uploading.`,
+        { autoClose: 5000 }
+      );
+      return;
+    }
+
     setIsSaving(true);
     setUploadErrors([]);
     const errors: string[] = [];
@@ -527,6 +629,46 @@ export default function ImportVehicle() {
 
       <Card className="p-4 mb-6">
         <div className="space-y-4">
+          {/* Default Company (Quick Assign All) */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="myCompany" className="text-base font-semibold block">
+                Default My Company (Quick Assign All)
+              </Label>
+              <Link
+                href="/my-companies"
+                className="text-xs font-semibold text-[#F96176] hover:underline"
+              >
+                + Add / Manage Companies
+              </Link>
+            </div>
+            <div className="flex gap-2 items-center">
+              <select
+                id="myCompany"
+                value={selectedMyCompanyId}
+                onChange={(e) => handleApplyCompanyToAll(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-white text-sm"
+              >
+                <option value="">Select default company for all</option>
+                {myCompaniesList.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.companyName}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/my-companies"
+                title="Add New Company"
+                className="p-3 bg-[#F96176] text-white rounded-lg hover:bg-[#e05065] transition-colors shrink-0 flex items-center justify-center h-[46px] w-[46px]"
+              >
+                <span className="text-xl font-bold leading-none">+</span>
+              </Link>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Selecting a company here applies it as the default for all imported vehicles. You can also customize individual vehicles in the table below.
+            </p>
+          </div>
+
           <div>
             <Label htmlFor="excelFile" className="text-base font-semibold mb-2 block">
               Upload Excel File (.xlsx)
@@ -586,22 +728,30 @@ export default function ImportVehicle() {
           <Card className="p-4 mb-6">
             <div className="overflow-x-auto">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">
-                  Preview Data ({excelData.length} Vehicles)
-                </h2>
+                <div>
+                  <h2 className="text-xl font-bold">
+                    Preview Data ({excelData.length} Vehicles)
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Assign or change &lsquo;My Company&rsquo; for each individual vehicle before saving.
+                  </p>
+                </div>
               </div>
               <table className="min-w-full divide-y divide-gray-200 border text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">#</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Vehicle #</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Type</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Company</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Engine</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">VIN</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">License Plate</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Year</th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Miles / Hours</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">#</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Vehicle #</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Type</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Company Make</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Engine</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap bg-rose-50/70 border-x border-rose-200">
+                      Assign My Company *
+                    </th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">VIN</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">License Plate</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Year</th>
+                    <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">Miles / Hours</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
@@ -609,11 +759,11 @@ export default function ImportVehicle() {
                     const isTruck = row.vehicleType === "Truck";
                     return (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-5 py-3 font-medium">{index + 1}</td>
-                        <td className="px-5 py-3 font-semibold">
+                        <td className="px-4 py-3 font-medium">{index + 1}</td>
+                        <td className="px-4 py-3 font-semibold">
                           {String(row.vehicleNumber || "—")}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-semibold ${
                               isTruck
@@ -624,12 +774,43 @@ export default function ImportVehicle() {
                             {String(row.vehicleType || "Truck")}
                           </span>
                         </td>
-                        <td className="px-5 py-3">{String(row.companyName || "—")}</td>
-                        <td className="px-5 py-3">{String(row.engineName || "—")}</td>
-                        <td className="px-5 py-3 font-mono text-xs">{String(row.vin || "—")}</td>
-                        <td className="px-5 py-3">{String(row.licensePlate || "—")}</td>
-                        <td className="px-5 py-3">{String(row.year || "—")}</td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">{String(row.companyName || "—")}</td>
+                        <td className="px-4 py-3">{String(row.engineName || "—")}</td>
+                        {/* Per-Vehicle Assign My Company Dropdown */}
+                        <td className="px-4 py-3 min-w-[210px] bg-rose-50/30 border-x border-rose-100">
+                          <select
+                            value={row.mycomId || ""}
+                            onChange={(e) => {
+                              const compId = e.target.value;
+                              const matched = myCompaniesList.find(
+                                (c) => c.id === compId
+                              );
+                              setExcelData((prev) =>
+                                prev.map((r, i) =>
+                                  i === index
+                                    ? {
+                                        ...r,
+                                        mycomId: compId,
+                                        myCompany: matched?.companyName || "",
+                                      }
+                                    : r
+                                )
+                              );
+                            }}
+                            className="w-full p-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-[#F96176] focus:border-transparent font-medium shadow-sm"
+                          >
+                            <option value="">Select Company *</option>
+                            {myCompaniesList.map((comp) => (
+                              <option key={comp.id} value={comp.id}>
+                                {comp.companyName}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs">{String(row.vin || "—")}</td>
+                        <td className="px-4 py-3">{String(row.licensePlate || "—")}</td>
+                        <td className="px-4 py-3">{String(row.year || "—")}</td>
+                        <td className="px-4 py-3">
                           {row.currentMiles
                             ? `${row.currentMiles} mi`
                             : row.hoursReading

@@ -1412,12 +1412,22 @@ export default function RecordsPage() {
       const baseDate = date ? new Date(date) : new Date();
       const formattedDate = baseDate.toISOString().split("T")[0];
 
+      const selectedVehicleObj = vehicles.find((v) => v.id === selectedVehicle);
+      const myCompany =
+        selectedVehicleObj?.myCompany || vehicleData?.myCompany || "";
+      const mycomId =
+        selectedVehicleObj?.mycomId || vehicleData?.mycomId || "";
+
       const recordData = {
         userId: effectiveUserId,
         vehicleId: selectedVehicle,
         imageUrl,
+        myCompany: myCompany,
+        mycomId: mycomId,
         vehicleDetails: {
           ...vehicleData,
+          myCompany: myCompany,
+          mycomId: mycomId,
           currentMiles: currentMiles.toString(),
           nextNotificationMiles: notificationData,
         },
@@ -2037,6 +2047,7 @@ export default function RecordsPage() {
                           />
                           <span>
                             {vehicle.vehicleNumber} ({vehicle.companyName})
+                            {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
                           </span>
                         </div>
                       ))}
@@ -2152,6 +2163,7 @@ export default function RecordsPage() {
                   {vehicles.map((vehicle) => (
                     <MenuItem key={vehicle.id} value={vehicle.vehicleNumber}>
                       {vehicle.vehicleNumber} ({vehicle.companyName})
+                      {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
                     </MenuItem>
                   ))}
                 </Select>
@@ -2260,6 +2272,7 @@ export default function RecordsPage() {
                     {vehicles.map((vehicle) => (
                       <MenuItem key={vehicle.id} value={vehicle.id}>
                         {vehicle.vehicleNumber} ({vehicle.companyName})
+                        {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
                       </MenuItem>
                     ))}
                   </Select>
@@ -2352,6 +2365,7 @@ export default function RecordsPage() {
                         .map((vehicle) => (
                           <MenuItem key={vehicle.id} value={vehicle.id}>
                             {vehicle.vehicleNumber} ({vehicle.companyName})
+                            {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
                           </MenuItem>
                         ))}
                     </Select>

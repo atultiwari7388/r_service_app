@@ -73,6 +73,23 @@ export interface ServiceType {
   isFeatured: boolean;
 }
 
+/** Companies */
+
+export interface CompanyType {
+  id: string;
+  companyName: string;
+  dot: string;
+  mc: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  isDefault: boolean;
+  isActive: boolean;
+  created_at?: Timestamp | Date;
+  updated_at?: Timestamp | Date;
+}
+
 /** Vehicles */
 
 export interface VehicleTypes {
@@ -94,6 +111,8 @@ export interface VehicleTypes {
   currentMiles: string;
   hoursReading: string;
   currentMilesArray: { date: Timestamp; value: string }[];
+  myCompany?: string;
+  mycomId?: string;
 }
 
 /** Mechanics Offer and User History Interface */

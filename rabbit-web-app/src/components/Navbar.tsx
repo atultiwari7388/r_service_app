@@ -284,6 +284,12 @@ export default function NavBar() {
                       Manage Team
                     </Link>
                     <Link
+                      href="/my-companies"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                    >
+                      My Companies
+                    </Link>
+                    <Link
                       href="/dispatch-settings"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
                     >
@@ -449,6 +455,12 @@ export default function NavBar() {
                       onClick={toggleMenu}
                     >
                       ↳ Manage Team
+                    </MobileNavLink>
+                    <MobileNavLink
+                      href="/my-companies"
+                      onClick={toggleMenu}
+                    >
+                      ↳ My Companies
                     </MobileNavLink>
 
                     {(userData?.role === "Owner" ||

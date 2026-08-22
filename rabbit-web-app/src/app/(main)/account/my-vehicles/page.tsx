@@ -27,6 +27,8 @@ interface Vehicle {
   image: string;
   active?: boolean;
   vehicleType: string;
+  myCompany?: string;
+  mycomId?: string;
 }
 
 interface UserData {
@@ -310,9 +312,14 @@ export default function MyVehiclesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm font-medium text-gray-700">
                       {vehicle.companyName || "Unknown Company"}
                     </div>
+                    {vehicle.myCompany && (
+                      <div className="text-xs text-gray-500">
+                        {vehicle.myCompany}
+                      </div>
+                    )}
                   </td>
                   {userData?.role === "Owner" ||
                     (userData?.role === "SubOwner" && (

@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { FaSignOutAlt } from "react-icons/fa";
+import { FaSignOutAlt, FaBuilding } from "react-icons/fa";
 import { CgProfile } from "react-icons/cg";
 import { CiDatabase, CiStar } from "react-icons/ci";
 import Link from "next/link";
@@ -34,6 +34,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
       icon: <CgProfile className="mr-2" />,
       label: "My Profile",
       path: "/account/my-profile",
+    },
+    {
+      icon: <FaBuilding className="mr-2 text-gray-500" />,
+      label: "My Companies",
+      path: "/my-companies",
     },
     {
       icon: <CiStar className="mr-2" />,

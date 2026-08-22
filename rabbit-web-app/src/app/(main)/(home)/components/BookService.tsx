@@ -262,6 +262,8 @@ const BookingSection: React.FC = () => {
                 currentMiles: data.currentMiles || "0",
                 hoursReading: data.hoursReading || "0",
                 currentMilesArray: data.currentMilesArray || [],
+                myCompany: data.myCompany || "",
+                mycomId: data.mycomId || "",
               };
             })
             .filter((vehicle) => vehicle.active === true);
@@ -377,6 +379,10 @@ const BookingSection: React.FC = () => {
       }
 
       // Prepare job data
+      const vehicleLabel = `${selectedVehicle} (${selectedVehicleData.companyName})${
+        selectedVehicleData.myCompany ? ` (${selectedVehicleData.myCompany})` : ""
+      }`;
+
       const jobData = {
         orderId: orderId,
         cancelReason: "",
@@ -386,8 +392,10 @@ const BookingSection: React.FC = () => {
         userName: userData.userName,
         selectedService: selectedService,
         companyName: selectedVehicleData.companyName,
+        myCompany: selectedVehicleData.myCompany || "",
+        mycomId: selectedVehicleData.mycomId || "",
         description: description,
-        vehicleNumber: `${selectedVehicle} (${selectedVehicleData.companyName})`,
+        vehicleNumber: vehicleLabel,
         userPhoneNumber: userData.phoneNumber,
         userDeliveryAddress: selectedLocation,
         userLat: selectedLocationData.location.latitude,
@@ -650,6 +658,7 @@ const BookingSection: React.FC = () => {
                     .map((vehicle, index) => (
                       <option key={index} value={vehicle.vehicleNumber}>
                         {vehicle.vehicleNumber} ({vehicle.companyName})
+                        {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
                       </option>
                     ))}
                 </select>

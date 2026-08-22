@@ -77,6 +77,8 @@ interface VehicleData {
   lastServiceDate?: string;
   lastServiceMiles?: number;
   lastServiceHours?: number;
+  myCompany?: string;
+  mycomId?: string;
 }
 
 export default function AddVehiclePage() {
@@ -99,7 +101,55 @@ export default function AddVehiclePage() {
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
 
+  // My Companies state
+  const [myCompaniesList, setMyCompaniesList] = useState<
+    { id: string; companyName: string }[]
+  >([]);
+  const [selectedMyCompanyId, setSelectedMyCompanyId] = useState<string>("");
+  const [selectedMyCompanyName, setSelectedMyCompanyName] = useState<string>("");
+
   const router = useRouter();
+
+  // Fetch myCompanies for effective user
+  const fetchMyCompanies = async (userId: string) => {
+    try {
+      const companiesSnapshot = await getDocs(
+        collection(db, "Users", userId, "myCompanies")
+      );
+      const loaded: { id: string; companyName: string }[] = [];
+
+      companiesSnapshot.forEach((docSnap) => {
+        const cData = docSnap.data();
+        const cName = (cData.companyName || cData.name || "").toString().trim();
+        const isActive = cData.isActive !== false;
+        if (cName && isActive) {
+          loaded.push({ id: docSnap.id, companyName: cName });
+        }
+      });
+
+      // Fallback to root user document companyName if none found in subcollection
+      if (loaded.length === 0) {
+        const userDoc = await getDoc(doc(db, "Users", userId));
+        if (userDoc.exists()) {
+          const rootComp = (userDoc.data().companyName || "").toString().trim();
+          if (rootComp) {
+            loaded.push({ id: "default", companyName: rootComp });
+          }
+        }
+      }
+
+      // Sort A to Z
+      loaded.sort((a, b) => a.companyName.localeCompare(b.companyName));
+
+      setMyCompaniesList(loaded);
+      if (loaded.length > 0) {
+        setSelectedMyCompanyId(loaded[0].id);
+        setSelectedMyCompanyName(loaded[0].companyName);
+      }
+    } catch (error) {
+      console.error("Error fetching myCompanies:", error);
+    }
+  };
 
   // Fetch user data and determine effectiveUserId
   useEffect(() => {
@@ -112,17 +162,13 @@ export default function AddVehiclePage() {
           const userData = userDoc.data();
           setUserRole(userData.role || "");
 
-          // Determine effectiveUserId based on role
+          let effId = user.uid;
           if (userData.role === "SubOwner" && userData.createdBy) {
-            setEffectiveUserId(userData.createdBy);
-            console.log(
-              "SubOwner detected, using effectiveUserId:",
-              userData.createdBy
-            );
-          } else {
-            setEffectiveUserId(user.uid);
-            console.log("Regular user, using own uid:", user.uid);
+            effId = userData.createdBy;
           }
+
+          setEffectiveUserId(effId);
+          await fetchMyCompanies(effId);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -215,7 +261,8 @@ export default function AddVehiclePage() {
       !selectedVehicleType ||
       !selectedCompany ||
       !selectedEngineName ||
-      !vehicleNumber
+      !vehicleNumber ||
+      !selectedMyCompanyName
     ) {
       toast.error("Please fill all required fields");
       return false;
@@ -354,6 +401,8 @@ export default function AddVehiclePage() {
         vehicleType: selectedVehicleType,
         companyName: selectedCompany.toUpperCase(),
         engineName: selectedEngineName.toUpperCase(),
+        myCompany: selectedMyCompanyName,
+        mycomId: selectedMyCompanyId,
         vehicleNumber,
         vin,
         // dot: dot || "",
@@ -509,13 +558,17 @@ export default function AddVehiclePage() {
             </select>
           </div>
 
-          {/* Company Selection */}
+          {/* Company Selection (Manufacturer Make) */}
           <div>
             <label
               htmlFor="company"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Company Name *
+              {selectedVehicleType === "Truck"
+                ? "Truck Company Name *"
+                : selectedVehicleType === "Trailer"
+                ? "Trailer Company Name *"
+                : "Company Name *"}
             </label>
             <select
               id="company"
@@ -531,6 +584,51 @@ export default function AddVehiclePage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* My Company Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label
+                htmlFor="myCompany"
+                className="block text-sm font-medium text-gray-700"
+              >
+                My Company *
+              </label>
+              <Link
+                href="/my-companies"
+                className="text-xs font-semibold text-[#F96176] hover:underline"
+              >
+                + Add / Manage Companies
+              </Link>
+            </div>
+            <div className="flex gap-2 items-center">
+              <select
+                id="myCompany"
+                value={selectedMyCompanyId}
+                onChange={(e) => {
+                  const compId = e.target.value;
+                  setSelectedMyCompanyId(compId);
+                  const matched = myCompaniesList.find((c) => c.id === compId);
+                  setSelectedMyCompanyName(matched?.companyName || "");
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F96176] focus:border-transparent bg-white"
+              >
+                <option value="">Select your company</option>
+                {myCompaniesList.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.companyName}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/my-companies"
+                title="Add / Manage Companies"
+                className="p-3 bg-[#F96176] text-white rounded-lg hover:bg-[#e05065] transition-colors shrink-0 flex items-center justify-center h-[48px] w-[48px]"
+              >
+                <span className="text-xl font-bold leading-none">+</span>
+              </Link>
+            </div>
           </div>
 
           {/* Engine Name Selection */}

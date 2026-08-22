@@ -598,59 +598,6 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     }
   }
 
-  // Delete Company
-  void _confirmDeleteCompany(
-      String companyId, String companyName, bool isDefault) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-          title: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: kRed),
-              SizedBox(width: 8.w),
-              Text("Delete Company",
-                  style: appStyle(18, kDark, FontWeight.bold)),
-            ],
-          ),
-          content: Text(
-            "Are you sure you want to delete '$companyName'? This action cannot be undone.",
-            style: appStyle(14, kDark, FontWeight.normal),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child:
-                  Text("Cancel", style: appStyle(14, kGray, FontWeight.w500)),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await _firestore
-                      .collection("Users")
-                      .doc(currentUId)
-                      .collection("myCompanies")
-                      .doc(companyId)
-                      .delete();
-                  showToastMessage(
-                      "Success", "Company deleted successfully", kPrimary);
-                } catch (e) {
-                  log("Error deleting company: $e");
-                  showToastMessage(
-                      "Error", "Failed to delete company", Colors.red);
-                }
-              },
-              child: Text("Delete", style: appStyle(14, kRed, FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
@@ -945,8 +892,6 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                                   companyId: doc.id,
                                   initialData: data,
                                 );
-                              } else if (value == "delete") {
-                                _confirmDeleteCompany(doc.id, name, isDefault);
                               }
                             },
                             itemBuilder: (context) => [
@@ -990,18 +935,6 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                                         color: kDark, size: 18),
                                     SizedBox(width: 8),
                                     Text("Edit"),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: "delete",
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.delete_outline,
-                                        color: kRed, size: 18),
-                                    SizedBox(width: 8),
-                                    Text("Delete",
-                                        style: TextStyle(color: kRed)),
                                   ],
                                 ),
                               ),
