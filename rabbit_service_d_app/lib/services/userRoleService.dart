@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:regal_service_d_app/controllers/authentication_controller.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -36,14 +37,13 @@ class UserService extends GetxService {
           .doc(uid)
           .get(GetOptions(source: Source.server));
 
-      if (!doc.exists || !doc.data()!.containsKey('role')) {
+      if (doc.exists && doc.data() != null && doc.data()!.containsKey('role')) {
+        role.value = doc.get('role') ?? '';
+        log("User role updated to: ${role.value}");
+      } else {
         role.value = '';
-        await _auth.signOut();
-        return;
+        log("User role not found or document does not exist for uid: $uid");
       }
-
-      role.value = doc.get('role') ?? '';
-      log("User role updated to: ${role.value}");
     } catch (e) {
       role.value = '';
       log("Role fetch error: $e");
@@ -61,6 +61,10 @@ class UserService extends GetxService {
         await _firestore.collection('Users').doc(userId).delete();
         await prefs.remove('an_user_id');
         log("Anonymous user $userId deleted from Firestore");
+      }
+
+      if (Get.isRegistered<AuthController>()) {
+        Get.find<AuthController>().clearAllControllers();
       }
 
       await _auth.signOut();

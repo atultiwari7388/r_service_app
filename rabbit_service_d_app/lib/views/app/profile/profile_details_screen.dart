@@ -6,8 +6,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:get/get.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
+import 'package:regal_service_d_app/views/app/myCompanies/my_companies_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:regal_service_d_app/widgets/text_field.dart';
 import '../../../utils/constants.dart';
@@ -519,7 +521,51 @@ class _ProfileDetailsScreenState extends State<ProfileDetailsScreen> {
                             //   ],
                             // ),
 
-                            SizedBox(height: 20.0.h),
+                            SizedBox(height: 16.0.h),
+
+                            // My Companies Card
+                            Container(
+                              margin: EdgeInsets.symmetric(horizontal: 16.w),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16.r),
+                                border: Border.all(color: Colors.grey.shade200),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16.w, vertical: 6.h),
+                                leading: Container(
+                                  padding: EdgeInsets.all(10.w),
+                                  decoration: BoxDecoration(
+                                    color: kPrimary.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Icon(Icons.business,
+                                      color: kPrimary, size: 22.sp),
+                                ),
+                                title: Text(
+                                  "My Companies",
+                                  style: appStyle(15, kDark, FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  "Manage multiple company profiles, DOT & MC",
+                                  style: appStyle(11, kGray, FontWeight.normal),
+                                ),
+                                trailing: const Icon(Icons.arrow_forward_ios,
+                                    size: 14, color: kGray),
+                                onTap: () =>
+                                    Get.to(() => const MyCompaniesScreen()),
+                              ),
+                            ),
+
+                            SizedBox(height: 16.0.h),
 
                             // Change Password Section
                             _buildSectionCard(

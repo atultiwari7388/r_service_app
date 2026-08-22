@@ -27,6 +27,15 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firestore = FirebaseFirestore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Get.isRegistered<AuthController>()) {
+      Get.find<AuthController>().clearAllControllers();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,14 +46,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           return GetBuilder<AuthController>(
             init: AuthController(),
             builder: (controller) {
-              if (!controller.isUserAcCreated) {
-                if (isDesktop) {
-                  return SizedBox();
-                } else {
-                  return buildMobileLayout(controller, context);
-                }
+              if (isDesktop) {
+                return const SizedBox();
               } else {
-                return Center(child: CircularProgressIndicator());
+                return buildMobileLayout(controller, context);
               }
             },
           );
@@ -93,121 +98,63 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.06),
                     ReusableText(
                       text: "Sign up",
-                      style: appStyle(34, kPrimary, FontWeight.normal),
+                      style: appStyle(32, kPrimary, FontWeight.bold),
                     ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 16.h),
+
+                    // ================= PERSONAL DETAILS =================
+                    _buildSectionHeader(
+                      "Personal Details",
+                      MaterialCommunityIcons.account_outline,
+                    ),
+
                     buildTextFieldInputWidget(
                       "Enter your name*",
                       TextInputType.text,
                       controller.nameController,
                       MaterialCommunityIcons.account,
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return "Please enter your name";
                         }
                         return null;
                       },
                     ),
+                    SizedBox(height: 10.h),
 
-                    SizedBox(height: 15.h),
-
-                    buildTextFieldInputWidget(
-                      "Enter Company name*",
-                      TextInputType.text,
-                      controller.companyNameController,
-                      MaterialCommunityIcons.account,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your company name";
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15.h),
                     buildTextFieldInputWidget(
                       "Enter your email*",
                       TextInputType.emailAddress,
                       controller.emailController,
                       MaterialCommunityIcons.email,
                       validator: (value) {
-                        if (value == null || !GetUtils.isEmail(value)) {
+                        if (value == null || !GetUtils.isEmail(value.trim())) {
                           return "Please enter a valid email";
                         }
                         return null;
                       },
                     ),
-                    SizedBox(height: 15.h),
-                    buildTextFieldInputWidget(
-                      "Enter your address*",
-                      TextInputType.streetAddress,
-                      controller.addressController,
-                      MaterialCommunityIcons.home,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your address";
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15.h),
-                    buildTextFieldInputWidget(
-                      "Enter your city*",
-                      TextInputType.streetAddress,
-                      controller.cityController,
-                      MaterialCommunityIcons.city,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your city";
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15.h),
-                    buildTextFieldInputWidget(
-                      "Enter your state*",
-                      TextInputType.streetAddress,
-                      controller.stateController,
-                      MaterialCommunityIcons.home_account,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your state";
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15.h),
-                    buildTextFieldInputWidget(
-                      "Enter your country*",
-                      TextInputType.streetAddress,
-                      controller.countryController,
-                      MaterialCommunityIcons.earth,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Please enter your country";
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 15.h),
+                    SizedBox(height: 10.h),
 
                     buildTextFieldInputWidget(
-                      "Enter your phone number",
-                      TextInputType.number,
+                      "Enter your phone number*",
+                      TextInputType.phone,
                       controller.phoneNumberController,
                       MaterialCommunityIcons.phone,
                       validator: (value) {
-                        if (value == null || value.length != 10) {
-                          return "Please enter a valid phone number";
+                        if (value == null || value.trim().length != 10) {
+                          return "Please enter a valid 10-digit phone number";
                         }
                         return null;
                       },
                     ),
-                    SizedBox(height: 15.h),
+                    SizedBox(height: 10.h),
+
                     buildTextFieldInputWidget(
-                      "Enter your password",
+                      "Enter your password*",
                       TextInputType.visiblePassword,
                       controller.passController,
                       MaterialCommunityIcons.security,
@@ -219,46 +166,46 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         return null;
                       },
                     ),
-                    SizedBox(height: 15.h),
+                    SizedBox(height: 10.h),
+
                     Obx(
                       () => DropdownButtonFormField<String>(
                         decoration: InputDecoration(
-                          labelText: "Number of Vehicles",
-                          labelStyle: appStyle(15, kPrimary, FontWeight.normal),
+                          labelText: "Number of Vehicles*",
+                          labelStyle: appStyle(14, kPrimary, FontWeight.normal),
                           fillColor: Colors.white,
                           filled: true,
                           focusedBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Rounded corners
+                            borderRadius: BorderRadius.circular(12.0),
                             borderSide: BorderSide(
-                              color: Colors.grey.shade300, // Border color
-                              width: 1.0,
+                              color: kPrimary,
+                              width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Rounded corners
+                            borderRadius: BorderRadius.circular(12.0),
                             borderSide: BorderSide(
-                              color: Colors.grey.shade300, // Border color
+                              color: Colors.grey.shade300,
                               width: 1.0,
                             ),
                           ),
                           border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Rounded corners
+                            borderRadius: BorderRadius.circular(12.0),
                             borderSide: BorderSide(
-                              color: Colors.grey.shade300, // Border color
+                              color: Colors.grey.shade300,
                               width: 1.0,
                             ),
                           ),
-                          contentPadding: const EdgeInsets.all(8),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                         ),
                         value: controller.selectedVehicleRange.value,
                         icon: const Icon(Icons.arrow_drop_down),
                         items: controller.vehicleRanges.map((String range) {
                           return DropdownMenuItem<String>(
                             value: range,
-                            child: Text(range),
+                            child: Text(range,
+                                style: appStyle(14, kDark, FontWeight.normal)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -274,9 +221,102 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         },
                       ),
                     ),
-                    SizedBox(height: 15.h),
+                    SizedBox(height: 16.h),
+
+                    // ================= COMPANY DETAILS =================
+                    _buildSectionHeader(
+                      "Company Details",
+                      MaterialCommunityIcons.domain,
+                    ),
+
+                    buildTextFieldInputWidget(
+                      "Enter Company name*",
+                      TextInputType.text,
+                      controller.companyNameController,
+                      MaterialCommunityIcons.office_building,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "Please enter your company name";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter DOT (Optional)",
+                      TextInputType.text,
+                      controller.dotController,
+                      MaterialCommunityIcons.card_bulleted_outline,
+                    ),
+                    SizedBox(height: 10.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter MC (Optional)",
+                      TextInputType.text,
+                      controller.mcController,
+                      MaterialCommunityIcons.card_text_outline,
+                    ),
+                    SizedBox(height: 10.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter your address*",
+                      TextInputType.streetAddress,
+                      controller.addressController,
+                      MaterialCommunityIcons.home,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "Please enter your address";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter your city*",
+                      TextInputType.streetAddress,
+                      controller.cityController,
+                      MaterialCommunityIcons.city,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "Please enter your city";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter your state*",
+                      TextInputType.streetAddress,
+                      controller.stateController,
+                      MaterialCommunityIcons.home_account,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "Please enter your state";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    buildTextFieldInputWidget(
+                      "Enter your country*",
+                      TextInputType.streetAddress,
+                      controller.countryController,
+                      MaterialCommunityIcons.earth,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "Please enter your country";
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16.h),
+
                     SizedBox(
-                      width: 260.w,
+                      width: 280.w,
                       child: RichText(
                         textAlign: TextAlign.center,
                         text: TextSpan(
@@ -294,7 +334,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     await launchUrl(Uri.parse(url),
                                         mode: LaunchMode.externalApplication);
                                   } else {
-                                    // Handle error if the URL can't be launched
                                     print("Could not launch $url");
                                   }
                                 },
@@ -314,7 +353,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                     await launchUrl(Uri.parse(url),
                                         mode: LaunchMode.externalApplication);
                                   } else {
-                                    // Handle error if the URL can't be launched
                                     print("Could not launch $url");
                                   }
                                 },
@@ -323,124 +361,78 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 14.h),
+                    SizedBox(height: 16.h),
                     CustomButton(
-                      text: "Continue",
-                      // onPress: controller.isUserAcCreated
-                      //     ? null
-                      //     : () async {
-                      //         if (_formKey.currentState != null) {
-                      //           if (_formKey.currentState!.validate()) {
-                      //             //firstly we delete the anonymous user from the firestore if exists
-                      //             final prefs =
-                      //                 await SharedPreferences.getInstance();
-                      //             final userId = prefs.getString('an_user_id');
-
-                      //             if (userId != null) {
-                      //               await _firestore
-                      //                   .collection('Users')
-                      //                   .doc(userId)
-                      //                   .delete();
-                      //               await prefs.remove('an_user_id');
-
-                      //               log("Anonymous user $userId deleted from Firestore");
-                      //             }
-
-                      //             controller.createUserWithEmailAndPassword();
-                      //           } else {
-                      //             // Check which fields are empty and show specific message
-                      //             if (controller
-                      //                 .addressController.text.isEmpty) {
-                      //               showToastMessage(
-                      //                   "Error",
-                      //                   "Please enter your address",
-                      //                   Colors.red);
-                      //             } else if (controller
-                      //                 .cityController.text.isEmpty) {
-                      //               showToastMessage("Error",
-                      //                   "Please enter your city", Colors.red);
-                      //             } else if (controller
-                      //                 .stateController.text.isEmpty) {
-                      //               showToastMessage("Error",
-                      //                   "Please enter your state", Colors.red);
-                      //             } else if (controller
-                      //                 .countryController.text.isEmpty) {
-                      //               showToastMessage(
-                      //                   "Error",
-                      //                   "Please enter your country",
-                      //                   Colors.red);
-                      //             } else {
-                      //               showToastMessage(
-                      //                   "Error",
-                      //                   "Please fill all required fields",
-                      //                   Colors.red);
-                      //             }
-                      //           }
-                      //         }
-                      //       },
+                      text: controller.isUserAcCreated ? "Creating Account..." : "Continue",
                       onPress: controller.isUserAcCreated
                           ? null
                           : () async {
                               if (_formKey.currentState != null) {
                                 if (_formKey.currentState!.validate()) {
                                   // Delete anonymous user if exists
-                                  final prefs =
-                                      await SharedPreferences.getInstance();
-                                  final userId = prefs.getString('an_user_id');
+                                  try {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    final userId = prefs.getString('an_user_id');
 
-                                  if (userId != null) {
-                                    await _firestore
-                                        .collection('Users')
-                                        .doc(userId)
-                                        .delete();
-                                    await prefs.remove('an_user_id');
-                                    log("Anonymous user $userId deleted from Firestore");
+                                    if (userId != null) {
+                                      await _firestore
+                                          .collection('Users')
+                                          .doc(userId)
+                                          .delete();
+                                      await prefs.remove('an_user_id');
+                                      log("Anonymous user $userId deleted from Firestore");
+                                    }
+                                  } catch (e) {
+                                    log("Error deleting anonymous user: $e");
                                   }
 
                                   // Create user account
                                   await controller
                                       .createUserWithEmailAndPassword();
-
-                                  // Show verification dialog
-                                  // showDialog(
-                                  //   context: context,
-                                  //   barrierDismissible: false,
-                                  //   builder: (BuildContext context) {
-                                  //     return AlertDialog(
-                                  //       title: Text("Verify Your Email"),
-                                  //       content: Text(
-                                  //           "Signup Complete! Check your inbox (or spam) to verify."),
-                                  //       actions: [
-                                  //         TextButton(
-                                  //           onPressed: () {
-                                  //             Navigator.of(context).pop();
-                                  //             // Get.offAll(() =>
-                                  //             //     LoginScreen()); // Redirect to login
-                                  //           },
-                                  //           child: Text("OK"),
-                                  //         ),
-                                  //       ],
-                                  //     );
-                                  //   },
-                                  // );
                                 } else {
-                                  // Your existing validation error handling code
-                                  if (controller
-                                      .addressController.text.isEmpty) {
+                                  if (controller.nameController.text.trim().isEmpty) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter your name",
+                                        Colors.red);
+                                  } else if (controller.emailController.text.trim().isEmpty ||
+                                      !GetUtils.isEmail(controller.emailController.text.trim())) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter a valid email",
+                                        Colors.red);
+                                  } else if (controller.phoneNumberController.text.trim().length != 10) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter a valid 10-digit phone number",
+                                        Colors.red);
+                                  } else if (controller.passController.text.length < 6) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Password must be at least 6 characters",
+                                        Colors.red);
+                                  } else if (controller.companyNameController.text.trim().isEmpty) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter your company name",
+                                        Colors.red);
+                                  } else if (controller.addressController.text.trim().isEmpty) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter your address",
                                         Colors.red);
-                                  } else if (controller
-                                      .cityController.text.isEmpty) {
-                                    showToastMessage("Error",
-                                        "Please enter your city", Colors.red);
-                                  } else if (controller
-                                      .stateController.text.isEmpty) {
-                                    showToastMessage("Error",
-                                        "Please enter your state", Colors.red);
-                                  } else if (controller
-                                      .countryController.text.isEmpty) {
+                                  } else if (controller.cityController.text.trim().isEmpty) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter your city",
+                                        Colors.red);
+                                  } else if (controller.stateController.text.trim().isEmpty) {
+                                    showToastMessage(
+                                        "Error",
+                                        "Please enter your state",
+                                        Colors.red);
+                                  } else if (controller.countryController.text.trim().isEmpty) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter your country",
@@ -454,7 +446,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                 }
                               }
                             },
-
                       color: kPrimary,
                     ),
                     SizedBox(height: 24.h),
@@ -504,9 +495,44 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Container(
+      margin: EdgeInsets.only(top: 10.h, bottom: 12.h),
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18.sp, color: kPrimary),
+              SizedBox(width: 8.w),
+              Text(
+                title,
+                style: appStyle(16, kDark, FontWeight.bold),
+              ),
+            ],
+          ),
+          SizedBox(height: 6.h),
+          Container(
+            height: 2.h,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [kPrimary, kPrimary.withOpacity(0.1)],
+              ),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    // TODO: implement dispose
+    if (Get.isRegistered<AuthController>()) {
+      Get.find<AuthController>().clearAllControllers();
+    }
     super.dispose();
   }
 }

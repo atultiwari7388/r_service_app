@@ -19,6 +19,8 @@ class AuthController extends GetxController {
   // final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
+  final TextEditingController _dotController = TextEditingController();
+  final TextEditingController _mcController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
@@ -42,6 +44,10 @@ class AuthController extends GetxController {
   TextEditingController get nameController => _nameController;
 
   TextEditingController get companyNameController => _companyNameController;
+
+  TextEditingController get dotController => _dotController;
+
+  TextEditingController get mcController => _mcController;
 
   TextEditingController get vehicleRangeController => _vehicleRangeController;
 
@@ -99,24 +105,48 @@ class AuthController extends GetxController {
       print("DeviceId: $deviceId");
     }
   }
-//========================== Create account with email and password =================
+
+  void clearAllControllers() {
+    _nameController.clear();
+    _companyNameController.clear();
+    _dotController.clear();
+    _mcController.clear();
+    _emailController.clear();
+    _addressController.clear();
+    _cityController.clear();
+    _stateController.clear();
+    _countryController.clear();
+    _phoneNumberController.clear();
+    _passController.clear();
+    _vehicleRangeController.clear();
+    selectedVehicleRange.value = '1 to 5';
+    isUserAcCreated = false;
+    isUserSign = false;
+    forgotPass = false;
+    update();
+  }
+
+  //========================== Create account with email and password =================
 
   Future<void> createUserWithEmailAndPassword() async {
     isUserAcCreated = true;
     update();
     try {
       var user = await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text, password: _passController.text);
+          email: _emailController.text.trim(),
+          password: _passController.text.trim());
 
       await DatabaseServices(uid: user.user!.uid).savingUserData(
-        _emailController.text,
-        _nameController.text,
-        _phoneNumberController.text,
-        _addressController.text,
-        _companyNameController.text,
-        _cityController.text,
-        _stateController.text,
-        _countryController.text,
+        _emailController.text.trim(),
+        _nameController.text.trim(),
+        _phoneNumberController.text.trim(),
+        _addressController.text.trim(),
+        _companyNameController.text.trim(),
+        _dotController.text.trim(),
+        _mcController.text.trim(),
+        _cityController.text.trim(),
+        _stateController.text.trim(),
+        _countryController.text.trim(),
         selectedVehicleRange.value,
         deviceId ?? null,
       );
@@ -124,8 +154,8 @@ class AuthController extends GetxController {
       // Send email verification
       await user.user!.sendEmailVerification();
 
-      isUserAcCreated = false;
-      update();
+      // Clear all fields so old data is not retained
+      clearAllControllers();
 
       // Inform the user to verify their email before logging in
       showToastMessage(
@@ -442,34 +472,23 @@ class AuthController extends GetxController {
   }
 
   void clearUserData() {
-    _nameController.clear();
-    _companyNameController.clear();
-    _emailController.clear();
-    _addressController.clear();
-    _cityController.clear();
-    _stateController.clear();
-    _countryController.clear();
-    _phoneNumberController.clear();
-    _passController.clear();
-    _vehicleRangeController.clear();
-    selectedVehicleRange.value = '1 to 5';
-    isUserSign = false;
-    isUserAcCreated = false;
-    forgotPass = false;
-    update();
+    clearAllControllers();
   }
 
   @override
   void onClose() {
     _nameController.dispose();
+    _companyNameController.dispose();
+    _dotController.dispose();
+    _mcController.dispose();
     _emailController.dispose();
     _addressController.dispose();
-    _phoneNumberController.dispose();
-    _passController.dispose();
-    _companyNameController.dispose();
     _cityController.dispose();
     _stateController.dispose();
     _countryController.dispose();
+    _phoneNumberController.dispose();
+    _passController.dispose();
+    _vehicleRangeController.dispose();
     super.onClose();
   }
 }

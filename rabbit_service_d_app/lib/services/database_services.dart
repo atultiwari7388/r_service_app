@@ -19,13 +19,16 @@ class DatabaseServices {
     String phoneNumber,
     String address,
     String companyName,
+    String dot,
+    String mc,
     String city,
     String state,
     String country,
     String selectedVehicleRange,
     String? deviceId,
   ) async {
-    return fireStoreDatabase.doc(uid!).set({
+    // 1. Save main User doc
+    await fireStoreDatabase.doc(uid!).set({
       "status": "active", //active and deleted
       "isAnonymous": false, //is anonymous
       "isProfileComplete": true, //is profile complete
@@ -50,6 +53,8 @@ class DatabaseServices {
       "active": true,
       'perMileCharge': "",
       "companyName": companyName,
+      "dot": dot,
+      "mc": mc,
       "vehicleRange": selectedVehicleRange,
       "isTeamMember": false,
       "isMultiDeEnable": false,
@@ -77,5 +82,21 @@ class DatabaseServices {
       'lastLogin': FieldValue.serverTimestamp(),
       'createdFrom': Platform.isAndroid ? 'android' : 'ios',
     });
+
+    // 2. Save company in myCompanies subcollection
+    if (companyName.isNotEmpty) {
+      await fireStoreDatabase.doc(uid!).collection("myCompanies").add({
+        "companyName": companyName,
+        "dot": dot,
+        "mc": mc,
+        "address": address,
+        "city": city,
+        "state": state,
+        "country": country,
+        "isDefault": true,
+        "created_at": FieldValue.serverTimestamp(),
+        "updated_at": FieldValue.serverTimestamp(),
+      });
+    }
   }
 }
