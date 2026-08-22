@@ -158,6 +158,7 @@ interface DriverRecord {
 interface VehicleRecord {
   vehicleNumber?: string;
   companyName?: string;
+  myCompany?: string;
 }
 
 const resolveStatusGroup = (
@@ -410,17 +411,53 @@ export default function TruckDispatchScreen({
             const vehicleData = vehicleDoc.data() as VehicleRecord;
             const vehicleNumber = (vehicleData.vehicleNumber || "").trim();
             const companyName = (vehicleData.companyName || "").trim();
+            const myCompany = (vehicleData.myCompany || "").trim();
 
             if (vehicleNumber && companyName) {
-              vehicleMap[vehicleDoc.id] = `${vehicleNumber} (${companyName})`;
+              vehicleMap[vehicleDoc.id] = `${vehicleNumber} (${companyName})${
+                myCompany ? ` (${myCompany})` : ""
+              }`;
             } else if (vehicleNumber) {
-              vehicleMap[vehicleDoc.id] = vehicleNumber;
+              vehicleMap[vehicleDoc.id] = `${vehicleNumber}${
+                myCompany ? ` (${myCompany})` : ""
+              }`;
             } else if (companyName) {
-              vehicleMap[vehicleDoc.id] = companyName;
+              vehicleMap[vehicleDoc.id] = `${companyName}${
+                myCompany ? ` (${myCompany})` : ""
+              }`;
             }
           });
         })
       );
+
+      // Also fetch owner's direct vehicles
+      try {
+        const ownerVehiclesSnap = await getDocs(
+          collection(db, "Users", effectiveUserId, "Vehicles")
+        );
+        ownerVehiclesSnap.docs.forEach((vehicleDoc) => {
+          const vehicleData = vehicleDoc.data() as VehicleRecord;
+          const vehicleNumber = (vehicleData.vehicleNumber || "").trim();
+          const companyName = (vehicleData.companyName || "").trim();
+          const myCompany = (vehicleData.myCompany || "").trim();
+
+          if (vehicleNumber && companyName) {
+            vehicleMap[vehicleDoc.id] = `${vehicleNumber} (${companyName})${
+              myCompany ? ` (${myCompany})` : ""
+            }`;
+          } else if (vehicleNumber) {
+            vehicleMap[vehicleDoc.id] = `${vehicleNumber}${
+              myCompany ? ` (${myCompany})` : ""
+            }`;
+          } else if (companyName) {
+            vehicleMap[vehicleDoc.id] = `${companyName}${
+              myCompany ? ` (${myCompany})` : ""
+            }`;
+          }
+        });
+      } catch (err) {
+        console.error("Error loading owner vehicles in dispatch screen:", err);
+      }
 
       const normalized = rawRecords.map((record) => {
         const pickups = record.pickups || [];

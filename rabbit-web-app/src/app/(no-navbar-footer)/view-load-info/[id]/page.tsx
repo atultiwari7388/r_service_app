@@ -1325,19 +1325,33 @@ export default function LoadDetailsPage() {
           }
 
           if (data.truckId) {
-            const truckSnap = await getDoc(
-              doc(db, "Users", data.driverId, "Vehicles", data.truckId)
-            );
-            if (truckSnap.exists()) {
+            let truckSnap = data.driverId
+              ? await getDoc(
+                  doc(db, "Users", data.driverId, "Vehicles", data.truckId)
+                )
+              : null;
+            if (!truckSnap || !truckSnap.exists()) {
+              const fallbackOwnerId = data.effectiveUserId || data.currentUserId;
+              if (fallbackOwnerId) {
+                truckSnap = await getDoc(
+                  doc(db, "Users", fallbackOwnerId, "Vehicles", data.truckId)
+                );
+              }
+            }
+            if (truckSnap && truckSnap.exists()) {
               const truckData = truckSnap.data() as {
                 vehicleNumber?: string;
                 companyName?: string;
+                myCompany?: string;
               };
               const vehicleNumber = (truckData.vehicleNumber || "").trim();
               const companyName = (truckData.companyName || "").trim();
+              const myCompany = (truckData.myCompany || "").trim();
               setTruckLabel(
                 vehicleNumber && companyName
-                  ? `${vehicleNumber} (${companyName})`
+                  ? `${vehicleNumber} (${companyName})${
+                      myCompany ? ` (${myCompany})` : ""
+                    }`
                   : vehicleNumber || companyName || data.truckId
               );
             } else {
@@ -1348,19 +1362,33 @@ export default function LoadDetailsPage() {
           }
 
           if (data.trailerId) {
-            const trailerSnap = await getDoc(
-              doc(db, "Users", data.driverId, "Vehicles", data.trailerId)
-            );
-            if (trailerSnap.exists()) {
+            let trailerSnap = data.driverId
+              ? await getDoc(
+                  doc(db, "Users", data.driverId, "Vehicles", data.trailerId)
+                )
+              : null;
+            if (!trailerSnap || !trailerSnap.exists()) {
+              const fallbackOwnerId = data.effectiveUserId || data.currentUserId;
+              if (fallbackOwnerId) {
+                trailerSnap = await getDoc(
+                  doc(db, "Users", fallbackOwnerId, "Vehicles", data.trailerId)
+                );
+              }
+            }
+            if (trailerSnap && trailerSnap.exists()) {
               const trailerData = trailerSnap.data() as {
                 vehicleNumber?: string;
                 companyName?: string;
+                myCompany?: string;
               };
               const vehicleNumber = (trailerData.vehicleNumber || "").trim();
               const companyName = (trailerData.companyName || "").trim();
+              const myCompany = (trailerData.myCompany || "").trim();
               setTrailerLabel(
                 vehicleNumber && companyName
-                  ? `${vehicleNumber} (${companyName})`
+                  ? `${vehicleNumber} (${companyName})${
+                      myCompany ? ` (${myCompany})` : ""
+                    }`
                   : vehicleNumber || companyName || data.trailerId
               );
             } else {

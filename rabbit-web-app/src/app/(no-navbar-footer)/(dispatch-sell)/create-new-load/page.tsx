@@ -351,6 +351,8 @@ interface AssignedVehicle {
   companyName: string;
   vehicleNumber: string;
   vehicleType: string;
+  myCompany?: string;
+  mycomId?: string;
 }
 
 interface SectionHeaderProps {
@@ -1089,19 +1091,25 @@ function CreateNewLoadPageContent() {
           { value: "CAR-103", label: "A & D Trucklines" },
         ];
   const selectedDriverVehicles = formData.driverId
-    ? driverVehiclesById[formData.driverId] || []
-    : [];
+    ? driverVehiclesById[formData.driverId] ||
+      driverVehiclesById["__owner__"] ||
+      []
+    : driverVehiclesById["__owner__"] || [];
   const assignedTruckOptions: Option[] = selectedDriverVehicles
     .filter((vehicle) => vehicle.vehicleType.toLowerCase() === "truck")
     .map((vehicle) => ({
       value: vehicle.id,
-      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
+      label: `${vehicle.vehicleNumber} (${vehicle.companyName})${
+        vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
+      }`,
     }));
   const assignedTrailerOptions: Option[] = selectedDriverVehicles
     .filter((vehicle) => vehicle.vehicleType.toLowerCase() === "trailer")
     .map((vehicle) => ({
       value: vehicle.id,
-      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
+      label: `${vehicle.vehicleNumber} (${vehicle.companyName})${
+        vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
+      }`,
     }));
 
   const mapSettingsToOptions = (
@@ -1306,6 +1314,8 @@ function CreateNewLoadPageContent() {
               vehicleNumber?: string;
               vehicleType?: string;
               type?: string;
+              myCompany?: string;
+              mycomId?: string;
             };
 
             return {
@@ -1313,12 +1323,43 @@ function CreateNewLoadPageContent() {
               companyName: vehicleData.companyName || "Unknown Company",
               vehicleNumber: vehicleData.vehicleNumber || "Unknown Vehicle",
               vehicleType: vehicleData.vehicleType || vehicleData.type || "",
+              myCompany: vehicleData.myCompany || "",
+              mycomId: vehicleData.mycomId || "",
             };
           });
 
           vehiclesByDriver[driver.id] = vehicles;
         })
       );
+
+      // Also fetch owner's direct vehicles
+      try {
+        const ownerVehiclesSnap = await getDocs(
+          collection(db, "Users", ownerId, "Vehicles")
+        );
+        const ownerVehicles = ownerVehiclesSnap.docs.map((vehicleDoc) => {
+          const vehicleData = vehicleDoc.data() as {
+            companyName?: string;
+            vehicleNumber?: string;
+            vehicleType?: string;
+            type?: string;
+            myCompany?: string;
+            mycomId?: string;
+          };
+
+          return {
+            id: vehicleDoc.id,
+            companyName: vehicleData.companyName || "Unknown Company",
+            vehicleNumber: vehicleData.vehicleNumber || "Unknown Vehicle",
+            vehicleType: vehicleData.vehicleType || vehicleData.type || "",
+            myCompany: vehicleData.myCompany || "",
+            mycomId: vehicleData.mycomId || "",
+          };
+        });
+        vehiclesByDriver["__owner__"] = ownerVehicles;
+      } catch (err) {
+        console.error("Error fetching owner vehicles:", err);
+      }
 
       setDriverVehiclesById(vehiclesByDriver);
     } catch (error) {
