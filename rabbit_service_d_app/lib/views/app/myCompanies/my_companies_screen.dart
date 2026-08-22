@@ -260,18 +260,83 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                         ),
                         SizedBox(height: 12.h),
 
-                        // Country Field
-                        _buildInputField(
-                          controller: _countryController,
-                          label: "Country*",
-                          hint: "Enter country",
-                          icon: MaterialCommunityIcons.earth,
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return "Country is required";
-                            }
-                            return null;
-                          },
+                        // Country Dropdown
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Country*",
+                              style: appStyle(13, kDark, FontWeight.w600),
+                            ),
+                            SizedBox(height: 6.h),
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              value: const [
+                                "USA",
+                                "Canada",
+                                "England",
+                                "Australia",
+                                "Mexico"
+                              ].contains(_countryController.text)
+                                  ? _countryController.text
+                                  : null,
+                              hint: Text(
+                                "Select country",
+                                style:
+                                    appStyle(13, kGray, FontWeight.normal),
+                              ),
+                              decoration: InputDecoration(
+                                prefixIcon: Icon(MaterialCommunityIcons.earth,
+                                    size: 18.sp, color: kPrimary),
+                                filled: true,
+                                fillColor: kLightWhite,
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12.w, vertical: 10.h),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey.shade200),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey.shade200),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: const BorderSide(
+                                      color: kPrimary, width: 1.5),
+                                ),
+                              ),
+                              items: const [
+                                "USA",
+                                "Canada",
+                                "England",
+                                "Australia",
+                                "Mexico"
+                              ].map((String country) {
+                                return DropdownMenuItem<String>(
+                                  value: country,
+                                  child: Text(
+                                    country,
+                                    style:
+                                        appStyle(14, kDark, FontWeight.normal),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (String? val) {
+                                setModalState(() {
+                                  _countryController.text = val ?? "";
+                                });
+                              },
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return "Country is required";
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
                         ),
                         SizedBox(height: 14.h),
 

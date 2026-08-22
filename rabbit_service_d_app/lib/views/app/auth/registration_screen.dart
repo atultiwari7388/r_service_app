@@ -27,6 +27,13 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firestore = FirebaseFirestore.instance;
+  static const List<String> _countries = [
+    "USA",
+    "Canada",
+    "England",
+    "Australia",
+    "Mexico",
+  ];
 
   @override
   void initState() {
@@ -301,17 +308,71 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                     SizedBox(height: 10.h),
 
-                    buildTextFieldInputWidget(
-                      "Enter your country*",
-                      TextInputType.streetAddress,
-                      controller.countryController,
-                      MaterialCommunityIcons.earth,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return "Please enter your country";
-                        }
-                        return null;
-                      },
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 4.0.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0.r),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: _countries.contains(controller.countryController.text)
+                            ? controller.countryController.text
+                            : null,
+                        hint: Text(
+                          "Select your country*",
+                          style: appStyle(14, kGrayLight, FontWeight.normal),
+                        ),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(MaterialCommunityIcons.earth,
+                              color: kPrimary),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0.r),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.0,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0.r),
+                            borderSide: const BorderSide(
+                              color: kPrimary,
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0.r),
+                            borderSide: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1.0,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 12),
+                        ),
+                        items: _countries.map((String country) {
+                          return DropdownMenuItem<String>(
+                            value: country,
+                            child: Text(
+                              country,
+                              style: appStyle(14, kDark, FontWeight.normal),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            controller.countryController.text = newValue ?? '';
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Please select your country";
+                          }
+                          return null;
+                        },
+                      ),
                     ),
                     SizedBox(height: 16.h),
 
