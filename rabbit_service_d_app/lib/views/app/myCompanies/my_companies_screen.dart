@@ -34,6 +34,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
   final GlobalKey<FormState> _dialogFormKey = GlobalKey<FormState>();
 
   bool _isDefaultCompany = false;
+  bool _isActiveCompany = true;
   bool _isSubmitting = false;
 
   @override
@@ -88,6 +89,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     _stateController.clear();
     _countryController.clear();
     _isDefaultCompany = false;
+    _isActiveCompany = true;
   }
 
   // Open Bottom Sheet Form to Add or Edit Company
@@ -107,6 +109,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
       _stateController.text = initialData["state"] ?? "";
       _countryController.text = initialData["country"] ?? "";
       _isDefaultCompany = initialData["isDefault"] ?? false;
+      _isActiveCompany = initialData["isActive"] ?? true;
     } else {
       _clearControllers();
     }
@@ -272,6 +275,52 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                         ),
                         SizedBox(height: 14.h),
 
+                        // Active / Inactive Switch
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 8.h),
+                          decoration: BoxDecoration(
+                            color: kLightWhite,
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Active Status",
+                                    style: appStyle(14, kDark, FontWeight.w600),
+                                  ),
+                                  Text(
+                                    _isActiveCompany
+                                        ? "Company is operational & active"
+                                        : "Company is closed / inactive",
+                                    style: appStyle(
+                                        11,
+                                        _isActiveCompany
+                                            ? Colors.green.shade700
+                                            : kGray,
+                                        FontWeight.normal),
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: _isActiveCompany,
+                                activeColor: Colors.green,
+                                onChanged: (val) {
+                                  setModalState(() {
+                                    _isActiveCompany = val;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 10.h),
+
                         // Default Switch
                         Container(
                           padding: EdgeInsets.symmetric(
@@ -388,6 +437,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
         "state": state,
         "country": country,
         "isDefault": makeDefault,
+        "isActive": _isActiveCompany,
         "updated_at": FieldValue.serverTimestamp(),
       };
 
@@ -416,6 +466,33 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
     } catch (e) {
       log("Error saving company: $e");
       showToastMessage("Error", "Failed to save company: $e", Colors.red);
+    }
+  }
+
+  // Toggle Company Active / Closed Status
+  Future<void> _toggleCompanyStatus(
+      String companyId, bool currentStatus) async {
+    try {
+      final bool newStatus = !currentStatus;
+      await _firestore
+          .collection("Users")
+          .doc(currentUId)
+          .collection("myCompanies")
+          .doc(companyId)
+          .update({
+        "isActive": newStatus,
+        "updated_at": FieldValue.serverTimestamp(),
+      });
+
+      showToastMessage(
+          "Success",
+          newStatus
+              ? "Company marked as Active"
+              : "Company marked as Closed / Inactive",
+          newStatus ? kPrimary : kGray);
+    } catch (e) {
+      log("Error toggling company status: $e");
+      showToastMessage("Error", "Failed to update company status", Colors.red);
     }
   }
 
@@ -661,6 +738,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
               final String state = data["state"] ?? "";
               final String country = data["country"] ?? "";
               final bool isDefault = data["isDefault"] ?? false;
+              final bool isActive = data["isActive"] ?? true;
 
               // Build address string
               final List<String> addressParts = [
@@ -694,7 +772,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header Row: Icon + Name + Default Badge + Menu
+                      // Header Row: Icon + Name + Default/Active Badges + Menu
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -726,7 +804,33 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                                             16, kDark, FontWeight.bold),
                                       ),
                                     ),
-                                    if (isDefault)
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 8.w, vertical: 3.h),
+                                      decoration: BoxDecoration(
+                                        color: isActive
+                                            ? Colors.green.withOpacity(0.12)
+                                            : Colors.orange.withOpacity(0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(20.r),
+                                        border: Border.all(
+                                            color: isActive
+                                                ? Colors.green.withOpacity(0.4)
+                                                : Colors.orange
+                                                    .withOpacity(0.4)),
+                                      ),
+                                      child: Text(
+                                        isActive ? "Active" : "Closed",
+                                        style: appStyle(
+                                            11,
+                                            isActive
+                                                ? Colors.green.shade700
+                                                : Colors.orange.shade800,
+                                            FontWeight.bold),
+                                      ),
+                                    ),
+                                    if (isDefault) ...[
+                                      SizedBox(width: 6.w),
                                       Container(
                                         padding: EdgeInsets.symmetric(
                                             horizontal: 8.w, vertical: 3.h),
@@ -735,7 +839,8 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                                           borderRadius:
                                               BorderRadius.circular(20.r),
                                           border: Border.all(
-                                              color: kPrimary.withOpacity(0.4)),
+                                              color:
+                                                  kPrimary.withOpacity(0.4)),
                                         ),
                                         child: Text(
                                           "Default",
@@ -743,6 +848,7 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                                               11, kPrimary, FontWeight.bold),
                                         ),
                                       ),
+                                    ],
                                   ],
                                 ),
                                 if (dot.isNotEmpty || mc.isNotEmpty) ...[
@@ -767,6 +873,8 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                             onSelected: (value) {
                               if (value == "default") {
                                 _setAsDefault(doc.id, data);
+                              } else if (value == "toggle_status") {
+                                _toggleCompanyStatus(doc.id, isActive);
                               } else if (value == "edit") {
                                 _openCompanyFormDialog(
                                   companyId: doc.id,
@@ -777,6 +885,26 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
                               }
                             },
                             itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: "toggle_status",
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isActive
+                                          ? Icons.pause_circle_outline
+                                          : Icons.play_circle_outline,
+                                      color: isActive
+                                          ? Colors.orange
+                                          : Colors.green,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(isActive
+                                        ? "Mark as Closed"
+                                        : "Mark as Active"),
+                                  ],
+                                ),
+                              ),
                               if (!isDefault)
                                 const PopupMenuItem(
                                   value: "default",

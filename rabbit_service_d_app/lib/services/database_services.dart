@@ -94,6 +94,7 @@ class DatabaseServices {
         "state": state,
         "country": country,
         "isDefault": true,
+        "isActive": true,
         "created_at": FieldValue.serverTimestamp(),
         "updated_at": FieldValue.serverTimestamp(),
       });

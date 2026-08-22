@@ -141,12 +141,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         final cData = doc.data();
         final cName =
             (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
-        if (cName.isNotEmpty) {
+        final bool isActive = cData['isActive'] != false;
+        if (cName.isNotEmpty && isActive) {
           loadedCompanies.add({
             'id': doc.id,
             'companyName': cName,
             'dot': cData['dot'] ?? '',
             'mc': cData['mc'] ?? '',
+            'isActive': isActive,
           });
         }
       }
