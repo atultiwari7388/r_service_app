@@ -11,6 +11,7 @@ import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:regal_service_d_app/views/app/myCompanies/my_companies_screen.dart';
 
 class AddVehicleScreen extends StatefulWidget {
   AddVehicleScreen({required this.currentUId});
@@ -38,6 +39,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   List<String> _vehicleTypes = [];
   List<String> _engineNameList = [];
   List<Map<String, dynamic>> servicesData = [];
+
+  String effectiveUserId = '';
+  List<Map<String, dynamic>> _myCompaniesList = [];
+  String? _selectedMyCompanyId;
+  String? _selectedMyCompanyName;
+  bool _isLoadingCompanies = false;
+
   bool isLoading = true;
   bool isSaving = false;
   StreamSubscription<DocumentSnapshot>? _engineNameSubscription;
@@ -92,6 +100,96 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       print("Error fetching services data: $e");
       setState(() {
         isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchEffectiveUserIdAndCompanies() async {
+    setState(() {
+      _isLoadingCompanies = true;
+    });
+
+    try {
+      String uid = widget.currentUId;
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
+        if (data != null &&
+            data.containsKey('createdBy') &&
+            data['createdBy'] != null &&
+            data['createdBy'].toString().trim().isNotEmpty) {
+          effectiveUserId = data['createdBy'].toString().trim();
+        } else {
+          effectiveUserId = uid;
+        }
+      } else {
+        effectiveUserId = uid;
+      }
+
+      // Fetch ALL companies from Users/{effectiveUserId}/myCompanies
+      final companiesSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(effectiveUserId)
+          .collection('myCompanies')
+          .get();
+
+      List<Map<String, dynamic>> loadedCompanies = [];
+
+      for (var doc in companiesSnapshot.docs) {
+        final cData = doc.data();
+        final cName =
+            (cData['companyName'] ?? cData['name'] ?? '').toString().trim();
+        if (cName.isNotEmpty) {
+          loadedCompanies.add({
+            'id': doc.id,
+            'companyName': cName,
+            'dot': cData['dot'] ?? '',
+            'mc': cData['mc'] ?? '',
+          });
+        }
+      }
+
+      // Fallback: If no subcollection items found, check root user document
+      if (loadedCompanies.isEmpty && userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
+        final rootCompanyName = (data?['companyName'] ?? '').toString().trim();
+        if (rootCompanyName.isNotEmpty) {
+          loadedCompanies.add({
+            'id': 'default',
+            'companyName': rootCompanyName,
+            'dot': data?['dot'] ?? '',
+            'mc': data?['mc'] ?? '',
+          });
+        }
+      }
+
+      // Sort companies alphabetically from A to Z
+      loadedCompanies.sort((a, b) {
+        final nameA = (a['companyName'] ?? '').toString().toLowerCase();
+        final nameB = (b['companyName'] ?? '').toString().toLowerCase();
+        return nameA.compareTo(nameB);
+      });
+
+      setState(() {
+        _myCompaniesList = loadedCompanies;
+        if (loadedCompanies.isNotEmpty) {
+          if (_selectedMyCompanyId == null ||
+              !loadedCompanies.any((c) => c['id'] == _selectedMyCompanyId)) {
+            _selectedMyCompanyId = loadedCompanies.first['id'];
+            _selectedMyCompanyName = loadedCompanies.first['companyName'];
+          }
+        } else {
+          _selectedMyCompanyId = null;
+          _selectedMyCompanyName = null;
+        }
+        _isLoadingCompanies = false;
+      });
+    } catch (e) {
+      print('Error fetching myCompanies in AddVehicleScreen: $e');
+      setState(() {
+        _isLoadingCompanies = false;
       });
     }
   }
@@ -273,9 +371,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     });
 
     try {
+      String targetUserId =
+          effectiveUserId.isNotEmpty ? effectiveUserId : widget.currentUId;
       CollectionReference vehiclesRef = FirebaseFirestore.instance
           .collection('Users')
-          .doc(widget.currentUId)
+          .doc(targetUserId)
           .collection('Vehicles');
 
       // Check if the vehicle already exists based on vehicle number, vehicleType, companyName, and engineName
@@ -315,6 +415,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         'vehicleType': _selectedVehicleType,
         'companyName': _selectedCompany?.toUpperCase(),
         'engineName': _selectedEngineName?.toUpperCase(),
+        'myCompany': _selectedMyCompanyName ?? '',
+        'mycomId': _selectedMyCompanyId ?? '',
         'vehicleNumber': _vehicleNumberController.text.toString(),
         'vin': _vinController.text.toString(),
         // 'dot': _dotController.text.toString(),
@@ -384,11 +486,11 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
       // Call the function with necessary data
       await callable.call({
-        'userId': widget.currentUId, // Pass userId
+        'userId': targetUserId, // Pass targetUserId
         'vehicleId': vehicleDocRef.id, // Pass the vehicleId
       });
 
-      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: ${widget.currentUId}");
+      log("Cloud function called successfully with vehicleId: ${vehicleDocRef.id} and userId: $targetUserId");
 
       setState(() {
         isSaving = false;
@@ -417,6 +519,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchEffectiveUserIdAndCompanies();
     _fetchVehicleTypes();
     _fetchServicesData();
   }
@@ -523,9 +626,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                               ),
                               child: DropdownButtonFormField<String>(
                                 value: _selectedCompany,
-                                hint: Text('Select Company Name'),
+                                hint: Text(_selectedVehicleType == 'Truck'
+                                    ? 'Select Truck Company Name'
+                                    : _selectedVehicleType == 'Trailer'
+                                        ? 'Select Trailer Company Name'
+                                        : 'Select Company Name'),
                                 decoration: InputDecoration(
-                                  labelText: 'Company Name *',
+                                  labelText: _selectedVehicleType == 'Truck'
+                                      ? 'Truck Company Name *'
+                                      : _selectedVehicleType == 'Trailer'
+                                          ? 'Trailer Company Name *'
+                                          : 'Company Name *',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12.0),
                                     borderSide: BorderSide(
@@ -634,6 +745,155 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                         });
                                       },
                               ),
+                            ),
+                            SizedBox(height: 16.h),
+
+                            // ================= MY COMPANIES DROPDOWN WITH ADD BUTTON =================
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    margin:
+                                        EdgeInsets.symmetric(vertical: 4.0.h),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius:
+                                          BorderRadius.circular(12.0.r),
+                                    ),
+                                    child: _isLoadingCompanies
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(12.0),
+                                            child: Center(
+                                              child: SizedBox(
+                                                height: 20,
+                                                width: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2),
+                                              ),
+                                            ),
+                                          )
+                                        : DropdownButtonFormField<String>(
+                                            isExpanded: true,
+                                            value: _selectedMyCompanyId,
+                                            hint: const Text(
+                                              'Select My Company',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            decoration: InputDecoration(
+                                              isDense: true,
+                                              labelText: 'My Company *',
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                borderSide: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                  width: 1.0,
+                                                ),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                borderSide: const BorderSide(
+                                                  color: kPrimary,
+                                                  width: 1.5,
+                                                ),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12.0),
+                                                borderSide: BorderSide(
+                                                  color: Colors.grey.shade300,
+                                                  width: 1.0,
+                                                ),
+                                              ),
+                                              filled: true,
+                                              fillColor: Colors.white,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 12),
+                                              labelStyle: appStyle(14, kPrimary,
+                                                  FontWeight.bold),
+                                            ),
+                                            items:
+                                                _myCompaniesList.map((company) {
+                                              final String cName =
+                                                  company['companyName'] ?? '';
+                                              return DropdownMenuItem<String>(
+                                                value: company['id'] as String,
+                                                child: Text(
+                                                  cName,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: appStyle(14, kDark,
+                                                      FontWeight.normal),
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (String? newId) {
+                                              if (newId != null) {
+                                                final selected =
+                                                    _myCompaniesList.firstWhere(
+                                                  (c) => c['id'] == newId,
+                                                  orElse: () => {},
+                                                );
+                                                setState(() {
+                                                  _selectedMyCompanyId = newId;
+                                                  _selectedMyCompanyName =
+                                                      selected['companyName'];
+                                                });
+                                              }
+                                            },
+                                          ),
+                                  ),
+                                ),
+                                SizedBox(width: 8.w),
+                                Tooltip(
+                                  message: "Manage / Add Companies",
+                                  child: InkWell(
+                                    onTap: () async {
+                                      await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              MyCompaniesScreen(
+                                            currentUId:
+                                                effectiveUserId.isNotEmpty
+                                                    ? effectiveUserId
+                                                    : widget.currentUId,
+                                          ),
+                                        ),
+                                      );
+                                      // Refresh companies list upon returning
+                                      await _fetchEffectiveUserIdAndCompanies();
+                                    },
+                                    borderRadius: BorderRadius.circular(21),
+                                    child: Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: kPrimary,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: kPrimary.withOpacity(0.3),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.add,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             if (_selectedVehicleType == 'Truck') ...[
                               // SizedBox(height: 16.h),
@@ -1053,10 +1313,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                 bool isYearRequired =
                                     _selectedVehicleType != 'Truck' &&
                                         _selectedVehicleType != 'Trailer';
+                                bool isMyCompanyRequired =
+                                    _myCompaniesList.isNotEmpty;
 
                                 if (_selectedVehicleType != null &&
                                     _selectedCompany != null &&
                                     _selectedEngineName != null &&
+                                    (!isMyCompanyRequired ||
+                                        _selectedMyCompanyId != null) &&
                                     _vehicleNumberController.text.isNotEmpty &&
                                     (!isVinRequired ||
                                         _vinController.text.isNotEmpty) &&

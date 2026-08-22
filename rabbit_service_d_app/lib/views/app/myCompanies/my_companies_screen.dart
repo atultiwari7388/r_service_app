@@ -12,14 +12,15 @@ import "package:regal_service_d_app/widgets/custom_button.dart";
 import "package:regal_service_d_app/widgets/reusable_text.dart";
 
 class MyCompaniesScreen extends StatefulWidget {
-  const MyCompaniesScreen({super.key});
+  final String? currentUId;
+  const MyCompaniesScreen({super.key, this.currentUId});
 
   @override
   State<MyCompaniesScreen> createState() => _MyCompaniesScreenState();
 }
 
 class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  late String currentUId;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Form Controllers
@@ -34,6 +35,37 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
 
   bool _isDefaultCompany = false;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    currentUId = widget.currentUId ??
+        FirebaseAuth.instance.currentUser?.uid ??
+        '';
+    _resolveEffectiveUserId();
+  }
+
+  Future<void> _resolveEffectiveUserId() async {
+    try {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('Users').doc(currentUId).get();
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>?;
+        if (data != null &&
+            data.containsKey('createdBy') &&
+            data['createdBy'] != null &&
+            data['createdBy'].toString().trim().isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              currentUId = data['createdBy'].toString().trim();
+            });
+          }
+        }
+      }
+    } catch (e) {
+      log("Error resolving effective user in MyCompaniesScreen: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -551,7 +583,6 @@ class _MyCompaniesScreenState extends State<MyCompaniesScreen> {
             .collection("Users")
             .doc(currentUId)
             .collection("myCompanies")
-            .orderBy("created_at", descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
