@@ -673,13 +673,30 @@ class ReportsController extends GetxController {
       final formattedDate = selectedDate != null
           ? DateFormat('yyyy-MM-dd').format(selectedDate!)
           : null;
+
+      // Extract myCompany and mycomId from selected vehicle
+      final String vehicleMyCompany = (selectedVehicleData?['myCompany'] ??
+              vehicleDoc.data()?['myCompany'] ??
+              '')
+          .toString()
+          .trim();
+      final String vehicleMyComId = (selectedVehicleData?['mycomId'] ??
+              vehicleDoc.data()?['mycomId'] ??
+              '')
+          .toString()
+          .trim();
+
       final recordData = {
         "active": true,
         "userId": effectiveUserId, // Use effectiveUserId for the record
         "vehicleId": selectedVehicle,
+        "myCompany": vehicleMyCompany,
+        "mycomId": vehicleMyComId,
         "imageUrl": imageUrl,
         "vehicleDetails": {
           ...selectedVehicleData!,
+          if (vehicleMyCompany.isNotEmpty) "myCompany": vehicleMyCompany,
+          if (vehicleMyComId.isNotEmpty) "mycomId": vehicleMyComId,
           "currentMiles": currentMiles.toString(),
           "nextNotificationMiles": notificationData,
         },

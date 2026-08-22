@@ -59,29 +59,40 @@ class _FindMechanicState extends State<FindMechanic> {
               }
 
               // Process the data and build the UI
-              List<String> vehicleNames = snapshot.data!.docs.map((doc) {
+              List<Map<String, dynamic>> vehicles = snapshot.data!.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                String vehicleNumber = data['vehicleNumber'] ?? '';
-                String companyName = data['companyName'] ?? '';
-
-                return "$vehicleNumber ($companyName)";
+                String vNum = (data['vehicleNumber'] ?? '').toString().trim();
+                String cName = (data['companyName'] ?? '').toString().trim();
+                String myComp = (data['myCompany'] ?? '').toString().trim();
+                String myCId = (data['mycomId'] ?? '').toString().trim();
+                String displayName = myComp.isNotEmpty
+                    ? "$vNum ($cName) ($myComp)"
+                    : "$vNum ($cName)";
+                return {
+                  'id': doc.id,
+                  'vehicleNumber': vNum,
+                  'companyName': cName,
+                  'myCompany': myComp,
+                  'mycomId': myCId,
+                  'displayName': displayName,
+                };
               }).toList();
 
-              // Update your controller or state here
-              widget.controller.allVehicleAndCompanyName = vehicleNames;
+              widget.controller.userVehiclesList = vehicles;
+              widget.controller.filteredUserVehiclesList = List.from(vehicles);
+              widget.controller.allVehicleAndCompanyName =
+                  vehicles.map((v) => v['displayName'] as String).toList();
               widget.controller.filterSelectedCompanyAndvehicleName =
-                  List.from(vehicleNames);
+                  List.from(widget.controller.allVehicleAndCompanyName);
 
               return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      widget.controller
-                          .showSelectedVehicleAndCompanyOptions(context);
-                    },
-                    child: SizedBox(
-                      width: 270.w,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        widget.controller
+                            .showSelectedVehicleAndCompanyOptions(context);
+                      },
                       child: AbsorbPointer(
                         child: DashBoardSearchTextField(
                           label: "Select your Vehicle",
@@ -92,93 +103,32 @@ class _FindMechanicState extends State<FindMechanic> {
                       ),
                     ),
                   ),
-                  widget.controller.role == "Owner" ||
-                          widget.controller.role == "SubOwner"
-                      ? GestureDetector(
-                          onTap: () {
-                            if (widget.controller.isAnonymous == true ||
-                                widget.controller.isProfileComplete == false) {
-                              showToastMessage(
-                                  "Profile Incomplete",
-                                  "Please Create an account to add vehicle",
-                                  kRed);
-                            } else {
-                              Get.to(() => AddVehicleScreen(
-                                  currentUId: widget.currentUId));
-
-                              // showDialog(
-                              //   context: context,
-                              //   builder: (BuildContext context) {
-                              //     return AlertDialog(
-                              //       title: Text("Choose an option"),
-                              //       content: Column(
-                              //         mainAxisSize: MainAxisSize.min,
-                              //         children: [
-                              //           ListTile(
-                              //             leading: Icon(Icons.directions_car),
-                              //             title: Text("Add Vehicle"),
-                              //             onTap: () async {
-                              //               Navigator.pop(
-                              //                   context); // Close the dialog
-                              //               var result = await Navigator.push(
-                              //                 context,
-                              //                 MaterialPageRoute(
-                              //                   builder: (context) =>
-                              //                       AddVehicleScreen(
-                              //                           currentUId:
-                              //                               widget.currentUId),
-                              //                 ),
-                              //               );
-                              //               if (result != null) {
-                              //                 String? company =
-                              //                     result['company'];
-                              //                 String? vehicleNumber =
-                              //                     result['vehicleNumber'];
-                              //                 log("Company: $company, Vehicle Number: $vehicleNumber");
-
-                              //                 setState(() {
-                              //                   widget.controller
-                              //                           .selectedCompanyAndVehcileName =
-                              //                       company;
-                              //                 });
-                              //               }
-                              //             },
-                              //           ),
-
-                              //           // ListTile(
-                              //           //   leading: Icon(Icons.upload_file),
-                              //           //   title: Text("Import Vehicle"),
-                              //           //   onTap: () {
-                              //           //     Navigator.pop(
-                              //           //         context); // Close the dialog
-                              //           //     Navigator.push(
-                              //           //       context,
-                              //           //       MaterialPageRoute(
-                              //           //         builder: (context) =>
-                              //           //             AddVehicleViaExcelScreen(
-                              //           //                 currentUId:
-                              //           //                     widget.currentUId),
-                              //           //       ),
-                              //           //     );
-                              //           //   },
-                              //           // ),
-                              //         ],
-                              //       ),
-                              //     );
-                              //   },
-                              // );
-                            }
-                          },
-                          child: CircleAvatar(
-                            backgroundColor: kPrimary,
-                            child: Icon(
-                              Icons.add,
-                              color: kWhite,
-                              size: 24.r,
-                            ),
-                          ),
-                        )
-                      : SizedBox()
+                  if (widget.controller.role == "Owner" ||
+                      widget.controller.role == "SubOwner") ...[
+                    SizedBox(width: 8.w),
+                    GestureDetector(
+                      onTap: () {
+                        if (widget.controller.isAnonymous == true ||
+                            widget.controller.isProfileComplete == false) {
+                          showToastMessage(
+                              "Profile Incomplete",
+                              "Please Create an account to add vehicle",
+                              kRed);
+                        } else {
+                          Get.to(() => AddVehicleScreen(
+                              currentUId: widget.currentUId));
+                        }
+                      },
+                      child: CircleAvatar(
+                        backgroundColor: kPrimary,
+                        child: Icon(
+                          Icons.add,
+                          color: kWhite,
+                          size: 24.r,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               );
             },

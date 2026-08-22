@@ -947,6 +947,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     ),
                   )
                 : DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: reController.selectedVehicle,
                     hint: const Text('Select Vehicle'),
                     items: (reController.vehicles
@@ -956,11 +957,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                               .compareTo(
                                   b['vehicleNumber'].toString().toLowerCase())))
                         .map((vehicle) {
+                      final String myCompany =
+                          (vehicle['myCompany'] ?? '').toString().trim();
+                      final String displayText = myCompany.isNotEmpty
+                          ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
+                          : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
                       return DropdownMenuItem<String>(
                         value: vehicle['id'],
                         child: Text(
-                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                          displayText,
                           style: appStyleUniverse(13, kDark, FontWeight.normal),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       );
                     }).toList(),
@@ -1226,6 +1234,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: reController.selectedVehicle,
                     hint: const Text('Select Vehicle'),
                     items: (reController.vehicles
@@ -1235,11 +1244,17 @@ class _ReportsScreenState extends State<ReportsScreen>
                               .compareTo(
                                   b['vehicleNumber'].toString().toLowerCase())))
                         .map((vehicle) {
+                      final String myCompany =
+                          (vehicle['myCompany'] ?? '').toString().trim();
+                      final String displayText = myCompany.isNotEmpty
+                          ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
+                          : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
                       return DropdownMenuItem<String>(
                         value: vehicle['id'],
                         child: Text(
-                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                          displayText,
                           style: appStyleUniverse(14, kDark, FontWeight.normal),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       );
@@ -1267,51 +1282,57 @@ class _ReportsScreenState extends State<ReportsScreen>
                               "Please Create an account or login with existing account",
                               kRed);
                         } else {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: Text("Choose an option"),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ListTile(
-                                      leading: Icon(Icons.directions_car),
-                                      title: Text("Add Vehicle"),
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                AddVehicleScreen(
-                                                    currentUId: reController
-                                                        .currentUId),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    ListTile(
-                                      leading: Icon(Icons.upload_file),
-                                      title: Text("Import Vehicle"),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                AddVehicleViaExcelScreen(
-                                              currentUId:
-                                                  reController.currentUId,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          );
+                          // showDialog(
+                          //   context: context,
+                          //   builder: (BuildContext context) {
+                          //     return AlertDialog(
+                          //       title: Text("Choose an option"),
+                          //       content: Column(
+                          //         mainAxisSize: MainAxisSize.min,
+                          //         children: [
+                          //           ListTile(
+                          //             leading: Icon(Icons.directions_car),
+                          //             title: Text("Add Vehicle"),
+                          //             onTap: () {
+                          //               Navigator.push(
+                          //                 context,
+                          //                 MaterialPageRoute(
+                          //                   builder: (context) =>
+                          //                       AddVehicleScreen(
+                          //                           currentUId: reController
+                          //                               .currentUId),
+                          //                 ),
+                          //               );
+                          //             },
+                          //           ),
+                          //           ListTile(
+                          //             leading: Icon(Icons.upload_file),
+                          //             title: Text("Import Vehicle"),
+                          //             onTap: () {
+                          //               Navigator.pop(context);
+                          //               Navigator.push(
+                          //                 context,
+                          //                 MaterialPageRoute(
+                          //                   builder: (context) =>
+                          //                       AddVehicleViaExcelScreen(
+                          //                     currentUId:
+                          //                         reController.currentUId,
+                          //                   ),
+                          //                 ),
+                          //               );
+                          //             },
+                          //           ),
+                          //         ],
+                          //       ),
+                          //     );
+                          //   },
+                          // );
+
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => AddVehicleScreen(
+                                      currentUId: reController.currentUId)));
                         }
                       },
                       child: CircleAvatar(
@@ -1817,6 +1838,7 @@ class _ReportsScreenState extends State<ReportsScreen>
             if (reController.showVehicleSearch ||
                 reController.showCombinedSearch)
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 hint: const Text('Select Vehicle'),
                 items: (reController.vehicles
                       ..sort((a, b) => a['vehicleNumber']
@@ -1825,11 +1847,18 @@ class _ReportsScreenState extends State<ReportsScreen>
                           .compareTo(
                               b['vehicleNumber'].toString().toLowerCase())))
                     .map((vehicle) {
+                  final String myCompany =
+                      (vehicle['myCompany'] ?? '').toString().trim();
+                  final String displayText = myCompany.isNotEmpty
+                      ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
+                      : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
                   return DropdownMenuItem<String>(
                     value: vehicle['id'],
                     child: Text(
-                      '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                      displayText,
                       style: appStyleUniverse(13, kDark, FontWeight.normal),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   );
                 }).toList(),

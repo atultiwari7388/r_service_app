@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:location/location.dart';
+import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/views/app/onBoard/on_boarding_screen.dart';
 import '../services/find_mechanic.dart';
 import '../services/generate_order_id.dart';
@@ -83,6 +84,11 @@ class DashboardController extends GetxController {
 
   List<dynamic> allVehicleAndCompanyName = [];
   List<dynamic> filterSelectedCompanyAndvehicleName = [];
+  List<Map<String, dynamic>> userVehiclesList = [];
+  List<Map<String, dynamic>> filteredUserVehiclesList = [];
+  String? selectedVehicleId;
+  String selectedVehicleMyCompany = '';
+  String selectedVehicleMyComId = '';
 
   @override
   void onInit() {
@@ -234,14 +240,22 @@ class DashboardController extends GetxController {
         String vehicleNumber =
             vehicleData['vehicleNumber'] ?? 'Select your Vehicle';
         String companyName = vehicleData['companyName'] ?? 'Company Name';
+        String myCompany = (vehicleData['myCompany'] ?? '').toString().trim();
 
-        // Format as "BZDPT6650G (MACK)"
-        String formattedVehicle = "$vehicleNumber ($companyName)";
+        // Format as "BZDPT6650G (MACK) (ABC Fleet)"
+        String formattedVehicle = myCompany.isNotEmpty
+            ? "$vehicleNumber ($companyName) ($myCompany)"
+            : "$vehicleNumber ($companyName)";
 
         // Assign formatted data
+        selectedVehicleId = vehiclesSnapshot.docs.first.id;
         selectedCompanyAndVehcileName = formattedVehicle;
         selectedCompanyAndVehcileNameController.text = formattedVehicle;
         companyNameController.text = companyName;
+        selectedVehicleMyCompany =
+            (vehicleData['myCompany'] ?? '').toString().trim();
+        selectedVehicleMyComId =
+            (vehicleData['mycomId'] ?? '').toString().trim();
 
         isVehicleSelected = true; // Vehicle selected
         checkIfAllSelected();
@@ -277,11 +291,15 @@ class DashboardController extends GetxController {
       if (vehiclesSnapshot.docs.isNotEmpty) {
         List<String> vehicleNames = vehiclesSnapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
-          String vehicleNumber = data['vehicleNumber'] ?? '';
-          String companyName = data['companyName'] ?? '';
+          String vehicleNumber =
+              (data['vehicleNumber'] ?? '').toString().trim();
+          String companyName = (data['companyName'] ?? '').toString().trim();
+          String myCompany = (data['myCompany'] ?? '').toString().trim();
 
-          // Combine vehicleNumber and companyName
-          return "$vehicleNumber ($companyName)";
+          // Combine vehicleNumber, companyName and myCompany
+          return myCompany.isNotEmpty
+              ? "$vehicleNumber ($companyName) ($myCompany)"
+              : "$vehicleNumber ($companyName)";
         }).toList();
 
         print('Vehicle Names with isSet true: $vehicleNames'); // Debugging line
@@ -308,11 +326,21 @@ class DashboardController extends GetxController {
   }
 
   void filterselectedCompanyAndvehicle(String query) {
-    final filteredList = allVehicleAndCompanyName
-        .where((item) => item.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    if (query.isEmpty) {
+      filteredUserVehiclesList = List.from(userVehiclesList);
+      filterSelectedCompanyAndvehicleName = List.from(allVehicleAndCompanyName);
+    } else {
+      final q = query.toLowerCase();
+      filteredUserVehiclesList = userVehiclesList.where((v) {
+        final dName = (v['displayName'] ?? '').toString().toLowerCase();
+        final vNum = (v['vehicleNumber'] ?? '').toString().toLowerCase();
+        return dName.contains(q) || vNum.contains(q);
+      }).toList();
 
-    filterSelectedCompanyAndvehicleName = filteredList;
+      filterSelectedCompanyAndvehicleName = filteredUserVehiclesList
+          .map((v) => v['displayName'] as String)
+          .toList();
+    }
     update();
   }
 
@@ -361,6 +389,54 @@ class DashboardController extends GetxController {
                   Expanded(
                     child: Builder(
                       builder: (_) {
+                        final listToUse = filteredUserVehiclesList.isNotEmpty
+                            ? filteredUserVehiclesList
+                            : userVehiclesList;
+
+                        if (listToUse.isNotEmpty) {
+                          return ListView.builder(
+                            controller: scrollController,
+                            itemCount: listToUse.length,
+                            itemBuilder: (context, index) {
+                              final vehicle = listToUse[index];
+                              final String displayName =
+                                  vehicle['displayName'] ?? '';
+                              return ListTile(
+                                title: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: appStyle(14, kDark, FontWeight.w500),
+                                ),
+                                onTap: () async {
+                                  selectedVehicleId = vehicle['id'];
+                                  selectedVehicleMyCompany =
+                                      (vehicle['myCompany'] ?? '')
+                                          .toString()
+                                          .trim();
+                                  selectedVehicleMyComId =
+                                      (vehicle['mycomId'] ?? '')
+                                          .toString()
+                                          .trim();
+                                  selectedCompanyAndVehcileName = displayName;
+                                  selectedCompanyAndVehcileNameController.text =
+                                      displayName;
+                                  companyNameController.text =
+                                      vehicle['companyName'] ?? '';
+
+                                  log("Selected vehicle ID: $selectedVehicleId, myCompany: $selectedVehicleMyCompany, mycomId: $selectedVehicleMyComId");
+
+                                  await updateVehicleSelection(displayName);
+                                  isVehicleSelected = true;
+                                  checkIfAllSelected();
+                                  update();
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          );
+                        }
+
                         filterSelectedCompanyAndvehicleName.sort((a, b) =>
                             a.toLowerCase().compareTo(b.toLowerCase()));
                         return ListView.builder(
@@ -369,7 +445,11 @@ class DashboardController extends GetxController {
                           itemBuilder: (context, index) {
                             return ListTile(
                               title: Text(
-                                  filterSelectedCompanyAndvehicleName[index]),
+                                filterSelectedCompanyAndvehicleName[index],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: appStyle(14, kDark, FontWeight.w500),
+                              ),
                               onTap: () async {
                                 selectedCompanyAndVehcileName =
                                     filterSelectedCompanyAndvehicleName[index];
@@ -402,6 +482,10 @@ class DashboardController extends GetxController {
 //================================== Update Vehicle Section =============================
   Future<void> updateVehicleSelection(String selectedVehicle) async {
     try {
+      String cleanNum = selectedVehicle.contains('(')
+          ? selectedVehicle.split('(').first.trim()
+          : selectedVehicle.trim();
+
       // First, set all vehicles' isSet to false
       QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
           .collection('Users')
@@ -425,26 +509,33 @@ class DashboardController extends GetxController {
             .update({'isSet': false});
       }
 
-      // Then, set the selected vehicle's isSet to true
-      QuerySnapshot selectedVehicleSnapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(_effectiveUserId) // Use effective user ID
-          .collection('Vehicles')
-          .where('vehicleNumber',
-              isEqualTo: selectedVehicle) // Ensure the field name is correct
-          .get();
+      // Then, find the matching vehicle
+      DocumentSnapshot? matchedDoc;
+      for (var doc in vehiclesSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final vNum = (data['vehicleNumber'] ?? '').toString().trim();
+        if (vNum.toLowerCase() == cleanNum.toLowerCase() ||
+            vNum.toLowerCase() == selectedVehicle.trim().toLowerCase()) {
+          matchedDoc = doc;
+          break;
+        }
+      }
 
       // Check if the selected vehicle is found
-      if (selectedVehicleSnapshot.docs.isNotEmpty) {
+      if (matchedDoc != null) {
         await FirebaseFirestore.instance
             .collection('Users')
             .doc(_effectiveUserId) // Use effective user ID
             .collection('Vehicles')
-            .doc(selectedVehicleSnapshot.docs.first.id)
+            .doc(matchedDoc.id)
             .update({'isSet': true});
-        log("Vehicle $selectedVehicle set to isSet true");
+
+        final vData = matchedDoc.data() as Map<String, dynamic>;
+        selectedVehicleMyCompany = (vData['myCompany'] ?? '').toString().trim();
+        selectedVehicleMyComId = (vData['mycomId'] ?? '').toString().trim();
+        log("Vehicle $cleanNum set to isSet true. myCompany: $selectedVehicleMyCompany, mycomId: $selectedVehicleMyComId");
       } else {
-        log("Selected vehicle $selectedVehicle not found");
+        log("Selected vehicle $cleanNum not found");
       }
     } catch (e) {
       log("Error updating vehicle selection: $e");
@@ -570,6 +661,71 @@ class DashboardController extends GetxController {
 
       final actualUserId = FirebaseAuth.instance.currentUser?.uid ?? userId;
 
+      // Extract clean vehicle number
+      String cleanVehicleNumber = vehicleNumber.contains('(')
+          ? vehicleNumber.split('(').first.trim()
+          : vehicleNumber.trim();
+
+      String vehicleMyCompany = selectedVehicleMyCompany.trim();
+      String vehicleMyComId = selectedVehicleMyComId.trim();
+
+      // Priority 1: Fetch directly by selectedVehicleId
+      if (selectedVehicleId != null && selectedVehicleId!.isNotEmpty) {
+        try {
+          DocumentSnapshot vDoc = await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(_effectiveUserId)
+              .collection('Vehicles')
+              .doc(selectedVehicleId)
+              .get();
+
+          if (vDoc.exists) {
+            final vData = vDoc.data() as Map<String, dynamic>;
+            vehicleMyCompany = (vData['myCompany'] ?? '').toString().trim();
+            vehicleMyComId = (vData['mycomId'] ?? '').toString().trim();
+          }
+        } catch (e) {
+          log("Error fetching vehicle by selectedVehicleId in findMechanic: $e");
+        }
+      }
+
+      // Priority 2: If still empty, search across vehicles list by vehicle number
+      if (vehicleMyCompany.isEmpty && cleanVehicleNumber.isNotEmpty) {
+        final List<String> targetUids = {
+          _effectiveUserId,
+          actualUserId,
+          userId,
+          if (ownerId.isNotEmpty) ownerId,
+        }.where((id) => id.trim().isNotEmpty).toList();
+
+        for (String targetUid in targetUids) {
+          if (vehicleMyCompany.isNotEmpty) break;
+          try {
+            QuerySnapshot vSnap = await FirebaseFirestore.instance
+                .collection('Users')
+                .doc(targetUid)
+                .collection('Vehicles')
+                .get();
+
+            for (var doc in vSnap.docs) {
+              final vData = doc.data() as Map<String, dynamic>;
+              final vNum = (vData['vehicleNumber'] ?? '').toString().trim();
+              if (vNum.toLowerCase() == cleanVehicleNumber.toLowerCase() ||
+                  vNum.toLowerCase() == vehicleNumber.trim().toLowerCase()) {
+                vehicleMyCompany = (vData['myCompany'] ?? '').toString().trim();
+                vehicleMyComId = (vData['mycomId'] ?? '').toString().trim();
+                selectedVehicleId = doc.id;
+                selectedVehicleMyCompany = vehicleMyCompany;
+                selectedVehicleMyComId = vehicleMyComId;
+                break;
+              }
+            }
+          } catch (e) {
+            log("Error fetching vehicle in findMechanic for uid $targetUid: $e");
+          }
+        }
+      }
+
       // Prepare data for the job document
       var data = {
         'orderId': orderId.toString(),
@@ -580,6 +736,8 @@ class DashboardController extends GetxController {
         'userName': name,
         'selectedService': selectedService,
         "companyName": companyName,
+        "myCompany": vehicleMyCompany,
+        "mycomId": vehicleMyComId,
         "description": descriptionController.text.toString(),
         "vehicleNumber": vehicleNumber,
         'userPhoneNumber': phoneNumber,

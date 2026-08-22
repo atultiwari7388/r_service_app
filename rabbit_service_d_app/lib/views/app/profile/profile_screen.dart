@@ -198,9 +198,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     buildListTile("assets/rating_bw.png", "Ratings", () {
                       Get.to(() => RatingsScreen());
                     }),
-                    buildListTile("assets/rating_bw.png", "Truck Dispatch", () {
-                      Get.to(() => TruckDispatchDashboard());
-                    }),
+                    role == "Driver"
+                        ? buildListTile(
+                            "assets/rating_bw.png", "Truck Dispatch", () {
+                            Get.to(() => TruckDispatchDashboard());
+                          })
+                        : SizedBox(),
                     buildListTile("assets/notification_setting.png",
                         "Notification ON/OFF", () {
                       Get.to(() => NotificationScreenSetting());
