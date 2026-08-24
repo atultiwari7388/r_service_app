@@ -379,9 +379,9 @@ const BookingSection: React.FC = () => {
       }
 
       // Prepare job data
-      const vehicleLabel = `${selectedVehicle} (${selectedVehicleData.companyName})${
-        selectedVehicleData.myCompany ? ` (${selectedVehicleData.myCompany})` : ""
-      }`;
+      const cleanVehicleNumber = (
+        selectedVehicleData.vehicleNumber || selectedVehicle
+      ).trim();
 
       const jobData = {
         orderId: orderId,
@@ -395,7 +395,7 @@ const BookingSection: React.FC = () => {
         myCompany: selectedVehicleData.myCompany || "",
         mycomId: selectedVehicleData.mycomId || "",
         description: description,
-        vehicleNumber: vehicleLabel,
+        vehicleNumber: cleanVehicleNumber,
         userPhoneNumber: userData.phoneNumber,
         userDeliveryAddress: selectedLocation,
         userLat: selectedLocationData.location.latitude,

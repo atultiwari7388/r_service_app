@@ -752,7 +752,7 @@ class DashboardController extends GetxController {
         "myCompany": vehicleMyCompany,
         "mycomId": vehicleMyComId,
         "description": descriptionController.text.toString(),
-        "vehicleNumber": vehicleNumber,
+        "vehicleNumber": cleanVehicleNumber,
         'userPhoneNumber': phoneNumber,
         'userDeliveryAddress': address,
         'userLat': userLatitude,
