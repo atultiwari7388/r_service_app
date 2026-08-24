@@ -19,7 +19,7 @@ import '../utils/constants.dart';
 import '../utils/show_toast_msg.dart';
 
 class DashboardController extends GetxController {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  String get currentUId => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   // bool _showMenu = false;
   String appbarTitle = "";
@@ -63,7 +63,9 @@ class DashboardController extends GetxController {
   // Method to set loading state
   void setLoading(bool loading) {
     _isLoading = loading;
-    update(); // Notify listeners
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      update(); // Notify listeners safely after build phase
+    });
   }
 
   TextEditingController locationController =
@@ -93,8 +95,9 @@ class DashboardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-
-    initializeController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      initializeController();
+    });
   }
 
   Future<void> initializeController() async {
@@ -102,13 +105,17 @@ class DashboardController extends GetxController {
       setLoading(true);
       await _fetchAndVerifyUserRole();
       if (_role.value.isEmpty) {
-        Get.offAll(() => const OnBoardingScreen());
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.offAll(() => const OnBoardingScreen());
+          });
+        }
         return;
       }
       await _loadAllData();
     } catch (e) {
       log("DashboardController init error: $e");
-      Get.offAll(() => const OnBoardingScreen());
     } finally {
       setLoading(false);
     }
@@ -117,28 +124,34 @@ class DashboardController extends GetxController {
   Future<void> _fetchAndVerifyUserRole() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception("No authenticated user");
+      if (user == null) {
+        log("DashboardController: No authenticated user");
+        _role.value = '';
+        return;
+      }
 
       final doc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
-          .get(GetOptions(source: Source.server)); // Force server fetch
+          .get();
 
-      if (!doc.exists) throw Exception("User document not found");
+      if (!doc.exists) {
+        log("DashboardController: User document not found for ${user.uid}");
+        _role.value = '';
+        return;
+      }
 
-      final role = doc.get('role')?.toString() ?? '';
-      isAnonymous = doc.get('isAnonymous') ?? true;
-      isProfileComplete = doc.get('isProfileComplete') ?? false;
-      ownerId = doc.get('createdBy')?.toString() ?? user.uid; // Set ownerId
-
-      if (role.isEmpty) throw Exception("Role not set");
+      final role = doc.data()?['role']?.toString() ?? '';
+      isAnonymous = doc.data()?['isAnonymous'] ?? true;
+      isProfileComplete = doc.data()?['isProfileComplete'] ?? false;
+      ownerId = doc.data()?['createdBy']?.toString() ?? user.uid;
 
       _role.value = role;
       log("Role definitively set to: $role");
       log("Owner ID set to: $ownerId");
     } catch (e) {
       _role.value = '';
-      rethrow;
+      log("Error in _fetchAndVerifyUserRole: $e");
     }
   }
 

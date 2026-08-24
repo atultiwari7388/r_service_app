@@ -1240,21 +1240,16 @@ class ReportsController extends GetxController {
 
   @override
   void onClose() {
-    vehiclesSubscription.cancel();
-    recordsSubscription.cancel();
-    servicesSubscription.cancel();
-    milesSubscription.cancel();
-    packagesSubscription.cancel();
-    usersSubscription.cancel();
-    milesController.dispose();
-    hoursController.dispose();
-    workshopController.dispose();
-    invoiceController.dispose();
-    invoiceAmountController.dispose();
-    invoiceAmountController.dispose();
-    serviceSearchController.dispose();
-    vehicleSearchController.dispose();
-    dateSearchController.dispose();
+    try {
+      vehiclesSubscription.cancel();
+      recordsSubscription.cancel();
+      servicesSubscription.cancel();
+      milesSubscription.cancel();
+      packagesSubscription.cancel();
+      usersSubscription.cancel();
+    } catch (e) {
+      log("Error canceling streams in ReportsController onClose: $e");
+    }
     super.onClose();
   }
 

@@ -48,10 +48,14 @@ class _EntryScreenState extends State<EntryScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initScreen();
-    dashboardController.initializeController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      dashboardController.initializeController();
+    });
     getAnonymousUserFromSharedPrefs();
     fetchHelpContact().then((_) {
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),

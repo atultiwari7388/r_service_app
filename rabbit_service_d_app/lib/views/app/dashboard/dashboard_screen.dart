@@ -22,12 +22,11 @@ class DashBoardScreen extends StatefulWidget {
 }
 
 class _DashBoardScreenState extends State<DashBoardScreen> {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  String get currentUId => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   Widget build(BuildContext context) {
     return GetBuilder<DashboardController>(
-      init: DashboardController(),
       builder: (controller) {
         if (controller.isLoading) {
           return Center(child: CircularProgressIndicator());

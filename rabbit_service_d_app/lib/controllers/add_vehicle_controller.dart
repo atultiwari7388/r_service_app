@@ -10,7 +10,7 @@ import "package:regal_service_d_app/utils/constants.dart";
 import "package:regal_service_d_app/utils/show_toast_msg.dart";
 
 class AddVehicleController extends GetxController {
-  final String currentUId = FirebaseAuth.instance.currentUser!.uid;
+  String get currentUId => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   final vehicleNumberController = TextEditingController();
   final vinController = TextEditingController();

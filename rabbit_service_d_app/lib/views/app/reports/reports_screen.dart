@@ -44,7 +44,7 @@ class _ReportsScreenState extends State<ReportsScreen>
   @override
   Widget build(BuildContext context) {
     return GetBuilder<ReportsController>(
-        init: ReportsController(),
+        autoRemove: false,
         builder: (reController) {
           final filteredRecords = reController.getFilteredRecords();
           return Scaffold(
