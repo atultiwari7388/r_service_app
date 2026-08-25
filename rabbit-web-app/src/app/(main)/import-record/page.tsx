@@ -33,6 +33,8 @@ import {
   FaImage,
   FaTrash,
   FaCheckCircle,
+  FaLayerGroup,
+  FaWrench,
 } from "react-icons/fa";
 
 export interface VehicleServiceEntry {
@@ -55,6 +57,8 @@ export interface VehicleTypes {
   hoursReading?: string;
   active?: boolean;
   services?: VehicleServiceEntry[];
+  myCompany?: string;
+  mycomId?: string;
 }
 
 export interface ServiceDataDefaultValue {
@@ -87,6 +91,27 @@ export interface ExcelRecordRow {
   description?: string;
 }
 
+export interface GroupedServiceItem {
+  serviceName: string;
+  subServices: string[];
+}
+
+export interface GroupedRecord {
+  groupKey: string;
+  vehicleNumber: string;
+  companyName: string;
+  vehicleType?: string;
+  date: string;
+  miles?: number | string;
+  hours?: number | string;
+  services: GroupedServiceItem[];
+  workshopName: string;
+  invoice: string;
+  invoiceAmount: string | number;
+  description: string;
+  rawRowCount: number;
+}
+
 export interface RowImageData {
   file: File;
   preview: string;
@@ -99,7 +124,8 @@ export default function ImportRecordsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [excelData, setExcelData] = useState<ExcelRecordRow[]>([]);
+  const [groupedRecords, setGroupedRecords] = useState<GroupedRecord[]>([]);
+  const [totalExcelRowsCount, setTotalExcelRowsCount] = useState<number>(0);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
@@ -107,7 +133,7 @@ export default function ImportRecordsPage() {
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
 
-  // Map of rowIndex (number) -> { file: File, preview: string }
+  // Map of group index (number) -> { file: File, preview: string }
   const [rowImages, setRowImages] = useState<Record<number, RowImageData>>({});
   const [savingProgress, setSavingProgress] = useState<string>("");
 
@@ -139,6 +165,8 @@ export default function ImportRecordsPage() {
           } else {
             setEffectiveUserId(user.uid);
           }
+        } else {
+          setEffectiveUserId(user.uid);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -176,6 +204,8 @@ export default function ImportRecordsPage() {
             hoursReading: data.hoursReading || "",
             active: data.active ?? true,
             services: data.services || [],
+            myCompany: data.myCompany || "",
+            mycomId: data.mycomId || "",
           };
         });
         setVehicles(vList);
@@ -207,6 +237,133 @@ export default function ImportRecordsPage() {
     return format(localDate, "yyyy-MM-dd");
   };
 
+  // Group multiple Excel rows by Vehicle + Invoice (or Date + Workshop)
+  const groupExcelRows = (rows: ExcelRecordRow[]): GroupedRecord[] => {
+    const groupsMap = new Map<string, GroupedRecord>();
+
+    rows.forEach((row, index) => {
+      const vNum = (row.vehicleNumber || "").toString().trim().toUpperCase();
+      if (!vNum) return; // Ignore empty rows without vehicle number
+
+      const invoice = (row.invoice || "").toString().trim();
+      let recordDate = "";
+      if (row.date) {
+        if (typeof row.date === "number") {
+          recordDate = convertExcelDate(row.date);
+        } else if (typeof row.date === "string") {
+          const strDate = row.date.trim();
+          try {
+            const parsed = new Date(strDate);
+            if (!isNaN(parsed.getTime())) {
+              recordDate = format(parsed, "yyyy-MM-dd");
+            } else {
+              recordDate = strDate;
+            }
+          } catch {
+            recordDate = strDate;
+          }
+        }
+      } else {
+        recordDate = format(new Date(), "yyyy-MM-dd");
+      }
+
+      const workshopName = (row.workshopName || "").toString().trim();
+
+      // Determine Group Key:
+      // If invoice number is provided, group strictly by VehicleNumber + Invoice
+      // Otherwise group by VehicleNumber + Date + Workshop
+      let groupKey = "";
+      if (invoice) {
+        groupKey = `${vNum}___INV___${invoice.toUpperCase()}`;
+      } else {
+        groupKey = `${vNum}___DATE___${recordDate}___WS___${workshopName.toUpperCase()}___ROW___${index}`;
+      }
+
+      // Parse services from row
+      const rawServicesStr = (row.services || row.serviceNames || "").toString();
+      const serviceNamesList = rawServicesStr
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+      // Parse subservices from row
+      const rawSubServicesStr = (row.subServices || "").toString();
+      const subServicesList = rawSubServicesStr
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+      if (!groupsMap.has(groupKey)) {
+        groupsMap.set(groupKey, {
+          groupKey,
+          vehicleNumber: vNum,
+          companyName: (row.companyName || "").toString().trim(),
+          vehicleType: (row.vehicleType || "").toString().trim(),
+          date: recordDate,
+          miles: row.miles ? String(row.miles).trim() : undefined,
+          hours: row.hours ? String(row.hours).trim() : undefined,
+          workshopName,
+          invoice,
+          invoiceAmount: row.invoiceAmount ? String(row.invoiceAmount).trim() : "",
+          description: (row.description || "").toString().trim(),
+          services: [],
+          rawRowCount: 0,
+        });
+      }
+
+      const currentGroup = groupsMap.get(groupKey)!;
+      currentGroup.rawRowCount += 1;
+
+      // Fill in any fields that were empty in previous rows
+      if (!currentGroup.companyName && row.companyName) {
+        currentGroup.companyName = row.companyName.toString().trim();
+      }
+      if (!currentGroup.miles && row.miles) {
+        currentGroup.miles = String(row.miles).trim();
+      }
+      if (!currentGroup.hours && row.hours) {
+        currentGroup.hours = String(row.hours).trim();
+      }
+      if (!currentGroup.invoiceAmount && row.invoiceAmount) {
+        currentGroup.invoiceAmount = String(row.invoiceAmount).trim();
+      }
+      if (!currentGroup.workshopName && row.workshopName) {
+        currentGroup.workshopName = row.workshopName.toString().trim();
+      }
+      if (!currentGroup.description && row.description) {
+        currentGroup.description = row.description.toString().trim();
+      }
+
+      // Add services & map subservices
+      serviceNamesList.forEach((sName) => {
+        const existingService = currentGroup.services.find(
+          (s) => s.serviceName.toLowerCase() === sName.toLowerCase()
+        );
+
+        if (existingService) {
+          // Merge subservices avoiding duplicates
+          subServicesList.forEach((sub) => {
+            if (
+              !existingService.subServices.some(
+                (existingSub) =>
+                  existingSub.toLowerCase() === sub.toLowerCase()
+              )
+            ) {
+              existingService.subServices.push(sub);
+            }
+          });
+        } else {
+          currentGroup.services.push({
+            serviceName: sName,
+            subServices: [...subServicesList],
+          });
+        }
+      });
+    });
+
+    return Array.from(groupsMap.values());
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
 
@@ -225,40 +382,18 @@ export default function ImportRecordsPage() {
           dateNF: "yyyy-mm-dd",
         }) as ExcelRecordRow[];
 
-        const processedData = jsonData.map((item) => {
-          // Normalize date
-          if (item.date) {
-            if (typeof item.date === "number") {
-              item.date = convertExcelDate(item.date);
-            } else if (typeof item.date === "string") {
-              const strDate = item.date.trim();
-              try {
-                const parsed = new Date(strDate);
-                if (!isNaN(parsed.getTime())) {
-                  item.date = format(parsed, "yyyy-MM-dd");
-                }
-              } catch (err) {
-                console.warn(`Could not parse date: ${item.date}`, err);
-              }
-            }
-          } else {
-            item.date = format(new Date(), "yyyy-MM-dd");
-          }
+        setTotalExcelRowsCount(jsonData.length);
 
-          // Normalize serviceNames or services
-          if (!item.services && item.serviceNames) {
-            item.services = item.serviceNames;
-          }
-
-          return item;
-        });
-
-        setExcelData(processedData);
+        const grouped = groupExcelRows(jsonData);
+        setGroupedRecords(grouped);
         setRowImages({});
-        if (processedData.length === 0) {
-          toast.warning("The uploaded Excel file contains no data rows.");
+
+        if (grouped.length === 0) {
+          toast.warning("The uploaded Excel file contains no valid vehicle records.");
         } else {
-          toast.success(`Parsed ${processedData.length} record(s) from Excel.`);
+          toast.success(
+            `Parsed ${jsonData.length} Excel row(s) into ${grouped.length} unified invoice record(s)!`
+          );
         }
       } catch (error) {
         console.error("Failed to parse Excel:", error);
@@ -271,7 +406,7 @@ export default function ImportRecordsPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  // Handle per-row image upload
+  // Handle per-record image upload
   const handleRowImageChange = (
     index: number,
     e: React.ChangeEvent<HTMLInputElement>
@@ -302,7 +437,7 @@ export default function ImportRecordsPage() {
     });
   };
 
-  // Upload an individual file to Firebase Storage
+  // Upload image to Firebase Storage
   const uploadSingleImage = async (
     file: File,
     vehicleNumber: string
@@ -310,7 +445,10 @@ export default function ImportRecordsPage() {
     if (!effectiveUserId) return "";
 
     try {
-      const sanitizedNumber = (vehicleNumber || "vehicle").replace(/[^a-zA-Z0-9]/g, "_");
+      const sanitizedNumber = (vehicleNumber || "vehicle").replace(
+        /[^a-zA-Z0-9]/g,
+        "_"
+      );
       const storageRef = ref(
         storage,
         `service-records/${effectiveUserId}/${Date.now()}_${sanitizedNumber}_${file.name}`
@@ -341,16 +479,17 @@ export default function ImportRecordsPage() {
     }
   };
 
-  const saveRecordRow = async (
-    row: ExcelRecordRow,
-    rowIndex: number,
+  // Save 1 unified record containing all grouped services to Firestore
+  const saveGroupedRecord = async (
+    record: GroupedRecord,
+    recordIndex: number,
     imageUrl: string
   ) => {
     if (!effectiveUserId) throw new Error("User not authenticated");
 
-    const vehicleNumber = row.vehicleNumber?.toString().trim().toUpperCase();
+    const vehicleNumber = record.vehicleNumber.trim().toUpperCase();
     if (!vehicleNumber) {
-      throw new Error(`Row ${rowIndex}: Vehicle Number is required`);
+      throw new Error(`Record #${recordIndex}: Vehicle Number is required`);
     }
 
     // Match vehicle in user active vehicles
@@ -361,42 +500,39 @@ export default function ImportRecordsPage() {
 
     if (!matchedVehicle) {
       throw new Error(
-        `Row ${rowIndex}: Vehicle with number "${vehicleNumber}" not found in your active vehicles list.`
+        `Record #${recordIndex}: Vehicle with number "${vehicleNumber}" not found in your active vehicles list.`
       );
     }
 
     const vehicleId = matchedVehicle.id;
-    const vehicleType = matchedVehicle.vehicleType || (row.vehicleType ? String(row.vehicleType) : "Truck");
+    const vehicleType =
+      matchedVehicle.vehicleType || record.vehicleType || "Truck";
     const engineName = (
       matchedVehicle.engineName ||
       matchedVehicle.engineNumber ||
       ""
-    ).toString().toUpperCase();
+    )
+      .toString()
+      .toUpperCase();
 
-    const milesNum = row.miles ? Number(row.miles) : (vehicleType === "Truck" ? Number(matchedVehicle.currentMiles || 0) : 0);
-    const hoursNum = row.hours ? Number(row.hours) : (vehicleType === "Trailer" ? Number(matchedVehicle.hoursReading || 0) : 0);
+    const milesNum = record.miles
+      ? Number(record.miles)
+      : vehicleType === "Truck"
+      ? Number(matchedVehicle.currentMiles || 0)
+      : 0;
+    const hoursNum = record.hours
+      ? Number(record.hours)
+      : vehicleType === "Trailer"
+      ? Number(matchedVehicle.hoursReading || 0)
+      : 0;
 
-    const recordDate = row.date?.toString().trim() || format(new Date(), "yyyy-MM-dd");
+    const recordDate = record.date || format(new Date(), "yyyy-MM-dd");
 
-    // Process services list from string
-    const rawServicesString = (row.services || row.serviceNames || "").toString();
-    const serviceNameList = rawServicesString
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    if (serviceNameList.length === 0) {
+    if (record.services.length === 0) {
       throw new Error(
-        `Row ${rowIndex}: At least one service is required (e.g. Oil Change/Service)`
+        `Record #${recordIndex}: At least one service is required for vehicle ${vehicleNumber}`
       );
     }
-
-    // Sub-services list
-    const rawSubServicesString = (row.subServices || "").toString();
-    const subServiceNameList = rawSubServicesString
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
 
     // Fetch existing vehicle services
     const vehicleRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
@@ -405,11 +541,16 @@ export default function ImportRecordsPage() {
       ? vehicleDoc.data()?.services || []
       : [];
 
-    const updatedVehicleServices: VehicleServiceEntry[] = [...currentVehicleServices];
+    const updatedVehicleServices: VehicleServiceEntry[] = [
+      ...currentVehicleServices,
+    ];
     const servicesDataForRecord = [];
     const notificationData = [];
 
-    for (const sName of serviceNameList) {
+    for (const serviceItem of record.services) {
+      const sName = serviceItem.serviceName;
+      const subServiceNameList = serviceItem.subServices;
+
       // Find matching service metadata (normalizing slashes and whitespace)
       const cleanSName = sName.toLowerCase().replace(/\s*\/\s*/g, "/").trim();
       const matchedMeta =
@@ -419,7 +560,8 @@ export default function ImportRecordsPage() {
             (!s.vType || s.vType.toLowerCase() === vehicleType.toLowerCase())
         ) ||
         servicesData.find(
-          (s) => s.sName?.toLowerCase().replace(/\s*\/\s*/g, "/").trim() === cleanSName
+          (s) =>
+            s.sName?.toLowerCase().replace(/\s*\/\s*/g, "/").trim() === cleanSName
         );
 
       const serviceId =
@@ -498,7 +640,7 @@ export default function ImportRecordsPage() {
       }
     }
 
-    // Build Record Data
+    // Build Single Unified Record Data
     const recordId = doc(collection(db, "temp")).id;
     const currentMilesStr = milesNum.toString();
 
@@ -517,14 +659,16 @@ export default function ImportRecordsPage() {
       hours: vehicleType === "Trailer" ? hoursNum : 0,
       totalMiles: milesNum,
       date: recordDate,
-      workshopName: row.workshopName?.toString().trim() || "",
-      invoice: row.invoice?.toString().trim() || "",
-      invoiceAmount: row.invoiceAmount?.toString().trim() || "",
-      description: row.description?.toString().trim() || "",
+      workshopName: record.workshopName,
+      invoice: record.invoice,
+      invoiceAmount: record.invoiceAmount,
+      description: record.description,
+      myCompany: matchedVehicle.myCompany || "",
+      mycomId: matchedVehicle.mycomId || "",
       createdAt: format(new Date(), "yyyy-MM-dd"),
       updatedAt: format(new Date(), "yyyy-MM-dd"),
       active: true,
-      addedFrom: "Web Excel Import",
+      addedFrom: "Web Excel Import (Line-Item Grouped)",
     };
 
     const batch = writeBatch(db);
@@ -618,45 +762,39 @@ export default function ImportRecordsPage() {
     }
 
     await batch.commit();
-
-    // Trigger cloud function notification (commented out)
-    // try {
-    //   const checkDataServices = httpsCallable(
-    //     functions,
-    //     "checkDataServicesAndNotify"
-    //   );
-    //   await checkDataServices({ userId: ownerId, vehicleId });
-    // } catch (e) {
-    //   console.warn("Cloud function notify warning:", e);
-    // }
-
     return true;
   };
 
   const handleUpload = async () => {
-    if (!excelData.length) return;
+    if (!groupedRecords.length) return;
 
     setIsSaving(true);
     setUploadErrors([]);
     const errors: string[] = [];
     let successCount = 0;
 
-    for (let i = 0; i < excelData.length; i++) {
-      const row = excelData[i];
-      setSavingProgress(`Saving record ${i + 1} of ${excelData.length} (${row.vehicleNumber || ""})...`);
+    for (let i = 0; i < groupedRecords.length; i++) {
+      const record = groupedRecords[i];
+      setSavingProgress(
+        `Saving invoice record ${i + 1} of ${groupedRecords.length} (${record.vehicleNumber}${
+          record.invoice ? ` / ${record.invoice}` : ""
+        })...`
+      );
 
       try {
         // Upload row-specific image if present
         let rowImageUrl = "";
         if (rowImages[i]?.file) {
-          setSavingProgress(`Uploading image for record ${i + 1} (${row.vehicleNumber || ""})...`);
+          setSavingProgress(
+            `Uploading invoice image for record ${i + 1} (${record.vehicleNumber})...`
+          );
           rowImageUrl = await uploadSingleImage(
             rowImages[i].file,
-            row.vehicleNumber || `record_${i + 1}`
+            record.vehicleNumber || `record_${i + 1}`
           );
         }
 
-        await saveRecordRow(row, i + 1, rowImageUrl);
+        await saveGroupedRecord(record, i + 1, rowImageUrl);
         successCount++;
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : "Unknown error";
@@ -670,7 +808,7 @@ export default function ImportRecordsPage() {
 
     if (successCount > 0) {
       toast.success(
-        `Successfully imported ${successCount} service record(s)!`,
+        `Successfully imported ${successCount} service invoice record(s)!`,
         {
           autoClose: 4000,
         }
@@ -715,7 +853,7 @@ export default function ImportRecordsPage() {
         <Button
           variant="outline"
           onClick={() => setShowSampleModal(true)}
-          className="flex items-center gap-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+          className="flex items-center gap-2 border-blue-500 text-blue-600 hover:bg-blue-50 font-semibold"
         >
           <FaFileDownload /> Download Sample Excels
         </Button>
@@ -746,110 +884,44 @@ export default function ImportRecordsPage() {
                 Select your Excel records file to upload
               </p>
               <p className="text-xs text-gray-500 mb-4">
-                Supports single or bulk service records for Trucks (with miles)
-                and Trailers (with hours)
+                Supports line-item records with multiple services &amp; sub-services automatically grouped per invoice!
               </p>
-
-              <div className="w-full max-w-2xl">
-                <input
-                  id="excelFile"
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileUpload}
-                  disabled={isParsing || isSaving}
-                  className="block w-full text-sm text-gray-600
-                    file:mr-4 file:py-2.5 file:px-5
-                    file:rounded-lg file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-rose-500 file:text-white
-                    hover:file:bg-rose-600 file:cursor-pointer
-                    cursor-pointer bg-white p-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
-                />
-              </div>
+              <input
+                id="excelFile"
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleFileUpload}
+                disabled={isParsing || isSaving}
+                className="block text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 cursor-pointer"
+              />
             </div>
-          </div>
-
-          {/* Sample Download Links */}
-          <div className="pt-4 border-t flex flex-wrap items-center gap-2.5">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-1">
-              Sample Templates:
-            </span>
-            <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.truckSingle} download>
-                <FaFileDownload className="mr-2 text-rose-500" /> Truck Single (ACHA9999)
-              </Link>
-            </Button>
-            <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.truckMultiServicesBulk} download>
-                <FaFileDownload className="mr-2 text-purple-600" /> Truck Bulk Multi-Services (10-30 Services)
-              </Link>
-            </Button>
-            <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.trailerSingle} download>
-                <FaFileDownload className="mr-2 text-blue-500" /> Trailer Single (BZ88BS77)
-              </Link>
-            </Button>
-            <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.trailerMultiServicesBulk} download>
-                <FaFileDownload className="mr-2 text-indigo-600" /> Trailer Bulk Multi-Services (8-16 Services)
-              </Link>
-            </Button>
-            <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.truckServicesList} download>
-                <FaFileDownload className="mr-2 text-emerald-500" /> Truck Services List (56)
-              </Link>
-            </Button>
-            <Button variant="outline" asChild size="sm">
-              <Link href={sampleFiles.trailerServicesList} download>
-                <FaFileDownload className="mr-2 text-teal-600" /> Trailer Services List (18)
-              </Link>
-            </Button>
           </div>
         </div>
       </Card>
 
-      {/* 2. Preview Data with Per-Record Image Upload */}
-      {excelData.length > 0 && (
+      {/* 2. Parsed Data Preview Card */}
+      {groupedRecords.length > 0 && (
         <>
           <Card className="p-6 mb-6 shadow-sm border border-gray-200">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 mb-6 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  Preview Data ({excelData.length} Records)
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <FaCheckCircle className="text-emerald-500" />
+                  Preview Grouped Records ({groupedRecords.length} Invoices / {totalExcelRowsCount} Excel Lines)
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  Each record below has its own optional service image upload. Upload individual invoices, receipts, or inspection photos per record.
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Lines with the same Vehicle # and Invoice are merged into 1 unified database record with all respective services &amp; sub-services.
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                {attachedImagesCount > 0 ? (
-                  <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                    <FaCheckCircle className="text-emerald-600" />
-                    {attachedImagesCount} of {excelData.length} images attached
-                  </span>
-                ) : (
-                  <span className="text-xs bg-gray-100 text-gray-600 font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                    <FaImage className="text-gray-500" />
-                    0 of {excelData.length} images attached (optional)
-                  </span>
-                )}
-
-                {attachedImagesCount > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setRowImages({})}
-                    className="text-xs text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-                  >
-                    Clear All Images
-                  </Button>
-                )}
-              </div>
+              {attachedImagesCount > 0 && (
+                <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 self-start sm:self-auto">
+                  {attachedImagesCount} image{attachedImagesCount === 1 ? "" : "s"} attached
+                </span>
+              )}
             </div>
 
-            {/* Parsed Data Table with Image Upload Column per Row */}
+            {/* Parsed Data Table with Nested Services & Sub-Services */}
             <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
               <table className="min-w-full divide-y divide-gray-200 border text-sm">
                 <thead className="bg-gray-50">
@@ -869,8 +941,8 @@ export default function ImportRecordsPage() {
                     <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Miles / Hours
                     </th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
-                      Services
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 min-w-[280px]">
+                      Services &amp; Sub-Services
                     </th>
                     <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Workshop
@@ -881,20 +953,20 @@ export default function ImportRecordsPage() {
                     <th className="px-4 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap">
                       Amount
                     </th>
-                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 min-w-[180px]">
+                    <th className="px-5 py-3.5 text-left font-semibold text-gray-700 min-w-[160px]">
                       Description
                     </th>
                     <th className="px-5 py-3.5 text-left font-semibold text-gray-700 whitespace-nowrap bg-blue-50/70 border-l border-blue-100">
-                      Upload Service Image (Optional)
+                      Upload Invoice Image (Optional)
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                  {excelData.map((row, index) => {
+                  {groupedRecords.map((record, index) => {
                     const vehicleExists = vehicles.some(
                       (v) =>
                         v.vehicleNumber?.toString().trim().toUpperCase() ===
-                        row.vehicleNumber?.toString().trim().toUpperCase()
+                        record.vehicleNumber?.toString().trim().toUpperCase()
                     );
                     const rowImg = rowImages[index];
 
@@ -907,53 +979,103 @@ export default function ImportRecordsPage() {
                             : "bg-red-50/80 hover:bg-red-100/80"
                         }
                       >
-                        <td className="px-4 py-3 font-medium text-gray-600">
-                          {index + 1}
+                        {/* Index & Merged indicator */}
+                        <td className="px-4 py-3 font-medium text-gray-600 align-top">
+                          <div className="flex flex-col items-start gap-1">
+                            <span>{index + 1}</span>
+                            {record.rawRowCount > 1 && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200"
+                                title={`Merged ${record.rawRowCount} Excel rows under this invoice`}
+                              >
+                                <FaLayerGroup className="text-[9px]" />
+                                {record.rawRowCount} rows
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-5 py-3 font-semibold text-gray-900">
-                          {String(row.vehicleNumber || "—")}
+
+                        {/* Vehicle Number */}
+                        <td className="px-5 py-3 font-semibold text-gray-900 align-top">
+                          {record.vehicleNumber || "—"}
                           {!vehicleExists && (
                             <span className="block text-[11px] text-red-600 font-normal mt-0.5">
                               Vehicle not found
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {String(row.companyName || "—")}
+
+                        {/* Company / Make */}
+                        <td className="px-4 py-3 text-gray-700 align-top">
+                          {record.companyName || "—"}
                         </td>
-                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                          {String(row.date || "—")}
+
+                        {/* Date */}
+                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap align-top">
+                          {record.date || "—"}
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
-                          {row.miles
-                            ? `${row.miles} mi`
-                            : row.hours
-                            ? `${row.hours} hrs`
+
+                        {/* Miles / Hours */}
+                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap align-top">
+                          {record.miles
+                            ? `${record.miles} mi`
+                            : record.hours
+                            ? `${record.hours} hrs`
                             : "—"}
                         </td>
-                        <td
-                          className="px-5 py-3 text-gray-800"
-                          title={String(row.services || row.serviceNames || "")}
-                        >
-                          <span className="inline-block bg-rose-50 text-rose-700 text-xs px-2 py-1 rounded font-medium border border-rose-200/60">
-                            {String(row.services || row.serviceNames || "—")}
-                          </span>
+
+                        {/* Services & Sub-Services Badges */}
+                        <td className="px-5 py-3 text-gray-800 align-top">
+                          <div className="flex flex-col gap-2">
+                            {record.services.map((srv, sIdx) => (
+                              <div
+                                key={sIdx}
+                                className="p-2 rounded-lg bg-rose-50/70 border border-rose-200/80"
+                              >
+                                <div className="font-semibold text-xs text-rose-800 flex items-center gap-1.5">
+                                  <FaWrench className="text-[10px] text-rose-500" />
+                                  {srv.serviceName}
+                                </div>
+
+                                {srv.subServices && srv.subServices.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1.5 pl-3 border-l-2 border-rose-300">
+                                    {srv.subServices.map((sub, subIdx) => (
+                                      <span
+                                        key={subIdx}
+                                        className="inline-block bg-white text-gray-700 text-[11px] px-2 py-0.5 rounded border border-gray-200 font-medium shadow-2xs"
+                                      >
+                                        {sub}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {String(row.workshopName || "—")}
+
+                        {/* Workshop */}
+                        <td className="px-4 py-3 text-gray-700 align-top">
+                          {record.workshopName || "—"}
                         </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {String(row.invoice || "—")}
+
+                        {/* Invoice */}
+                        <td className="px-4 py-3 font-semibold text-gray-800 align-top">
+                          {record.invoice || "—"}
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-800">
-                          {row.invoiceAmount ? `$${row.invoiceAmount}` : "—"}
+
+                        {/* Amount */}
+                        <td className="px-4 py-3 font-medium text-gray-800 align-top whitespace-nowrap">
+                          {record.invoiceAmount ? `$${record.invoiceAmount}` : "—"}
                         </td>
-                        <td className="px-5 py-3 text-gray-600 text-xs">
-                          {String(row.description || "—")}
+
+                        {/* Description */}
+                        <td className="px-5 py-3 text-gray-600 text-xs align-top">
+                          {record.description || "—"}
                         </td>
 
                         {/* Individual Upload Service Image Section */}
-                        <td className="px-5 py-3 bg-blue-50/30 border-l border-blue-100 min-w-[240px]">
+                        <td className="px-5 py-3 bg-blue-50/30 border-l border-blue-100 min-w-[240px] align-top">
                           {rowImg ? (
                             <div className="flex items-center gap-2.5 p-1.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
                               <Image
@@ -964,7 +1086,10 @@ export default function ImportRecordsPage() {
                                 className="object-contain rounded border bg-gray-50 h-9 w-9 shrink-0"
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold text-gray-800 truncate" title={rowImg.file.name}>
+                                <p
+                                  className="text-xs font-semibold text-gray-800 truncate"
+                                  title={rowImg.file.name}
+                                >
                                   {rowImg.file.name}
                                 </p>
                                 <p className="text-[10px] text-gray-500">
@@ -1021,7 +1146,11 @@ export default function ImportRecordsPage() {
             <FaCloudUploadAlt className="text-xl" />
             {isSaving
               ? "Saving & Syncing Records..."
-              : `Upload & Save ${excelData.length} Records (${attachedImagesCount} image${attachedImagesCount === 1 ? "" : "s"})`}
+              : `Upload & Save ${groupedRecords.length} Record${
+                  groupedRecords.length === 1 ? "" : "s"
+                } (${attachedImagesCount} image${
+                  attachedImagesCount === 1 ? "" : "s"
+                })`}
           </Button>
         </>
       )}
@@ -1057,7 +1186,7 @@ export default function ImportRecordsPage() {
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckMultiServicesBulk} download>
                 <FaFileDownload className="mr-2 text-purple-600" />
-                Truck Bulk Multi-Services (10, 20, 30 Services with Sub-Services)
+                Truck Bulk Multi-Services (Line-Item Grouped with Sub-Services)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
@@ -1075,7 +1204,7 @@ export default function ImportRecordsPage() {
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerMultiServicesBulk} download>
                 <FaFileDownload className="mr-2 text-indigo-600" />
-                Trailer Bulk Multi-Services (8 to 16 Services with Sub-Services)
+                Trailer Bulk Multi-Services (Line-Item Grouped with Sub-Services)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
@@ -1087,13 +1216,13 @@ export default function ImportRecordsPage() {
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.truckServicesList} download>
                 <FaFileDownload className="mr-2 text-emerald-500" />
-                Truck Services Reference List (56 Services & Sub-Services)
+                Truck Services Reference List (56 Services &amp; Sub-Services)
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
               <Link href={sampleFiles.trailerServicesList} download>
                 <FaFileDownload className="mr-2 text-teal-600" />
-                Trailer Services Reference List (18 Services & Sub-Services)
+                Trailer Services Reference List (18 Services &amp; Sub-Services)
               </Link>
             </Button>
           </div>
