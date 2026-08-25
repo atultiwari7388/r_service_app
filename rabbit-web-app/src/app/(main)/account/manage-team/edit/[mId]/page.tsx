@@ -49,6 +49,7 @@ interface TeamMember {
   perMileCharge: string;
   role: string;
   payType: string;
+  selectedPayType?: string;
   payMode: string;
   isView: boolean;
   isEdit: boolean;
@@ -62,7 +63,7 @@ interface TeamMember {
 }
 
 const roles = ["Manager", "Driver", "Vendor", "Accountant", "Other Staff"];
-const payTypes = ["Per Mile", "Per Trip", "Per Hour", "Monthly"];
+const payTypes = ["Per Mile", "Per Trip", "Per Hour", "Per Month", "Monthly"];
 const recordAccessOptions = ["View", "Edit", "Add"];
 const chequeAccessOptions = ["Cheque"];
 
@@ -129,8 +130,21 @@ export default function EditTeamMemberPage() {
       const memberDoc = await getDoc(doc(db, "Users", memberId));
 
       if (memberDoc.exists()) {
-        const data = memberDoc.data() as TeamMember;
-        setFormData(data);
+        const data = memberDoc.data() as Record<string, unknown>;
+        const resolvedPayType = (
+          (data.payType as string) ||
+          (data.selectedPayType as string) ||
+          (data.payMode as string) ||
+          ""
+        )
+          .toString()
+          .trim();
+
+        setFormData({
+          ...(data as unknown as TeamMember),
+          payType: resolvedPayType,
+          payMode: resolvedPayType,
+        });
 
         // Convert boolean access fields to array
         const recordAccess = [];
@@ -307,7 +321,8 @@ export default function EditTeamMemberPage() {
         perMileCharge: formData.perMileCharge || "0",
         role: formData.role,
         payType: formData.payType || "",
-        payMode: formData.payMode || "",
+        selectedPayType: formData.payType || "",
+        payMode: formData.payType || "",
         // assignedVehicles: selectedVehicles,
         isView: selectedRecordAccess.includes("View"),
         isEdit: selectedRecordAccess.includes("Edit"),
@@ -754,6 +769,12 @@ export default function EditTeamMemberPage() {
                         {type}
                       </option>
                     ))}
+                    {formData.payType &&
+                      !payTypes.includes(formData.payType) && (
+                        <option value={formData.payType}>
+                          {formData.payType}
+                        </option>
+                      )}
                   </select>
                 </div>
 

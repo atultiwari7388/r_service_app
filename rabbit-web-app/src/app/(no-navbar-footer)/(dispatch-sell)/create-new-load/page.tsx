@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
 import { GlobalToastError } from "@/utils/globalErrorToast";
@@ -421,7 +422,8 @@ const InputGroup: React.FC<InputGroupProps> = ({
 );
 
 interface SelectGroupProps {
-  label: string;
+  label: React.ReactNode | string;
+  rightLabel?: React.ReactNode;
   name: string;
   value: string;
   onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
@@ -431,6 +433,7 @@ interface SelectGroupProps {
 
 const SelectGroup: React.FC<SelectGroupProps> = ({
   label,
+  rightLabel,
   name,
   value,
   onChange,
@@ -438,9 +441,12 @@ const SelectGroup: React.FC<SelectGroupProps> = ({
   className = "",
 }) => (
   <div className={`flex flex-col ${className}`}>
-    <label className="text-xs font-semibold text-gray-500 uppercase mb-1">
-      {label}
-    </label>
+    <div className="flex items-center justify-between mb-1">
+      <label className="text-xs font-semibold text-gray-500 uppercase">
+        {label}
+      </label>
+      {rightLabel && <div>{rightLabel}</div>}
+    </div>
     <div className="relative">
       <select
         name={name}
@@ -2305,6 +2311,16 @@ function CreateNewLoadPageContent() {
                       <div className="col-span-1">
                         <SelectGroup
                           label="Assigned Truck"
+                          rightLabel={
+                            formData.driverId ? (
+                              <Link
+                                href={`/account/manage-team/edit/${formData.driverId}`}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium hover:underline cursor-pointer"
+                              >
+                                Choose another Truck
+                              </Link>
+                            ) : undefined
+                          }
                           name="truckId"
                           value={formData.truckId}
                           onChange={handleInputChange}
@@ -2319,6 +2335,16 @@ function CreateNewLoadPageContent() {
                       <div className="col-span-1">
                         <SelectGroup
                           label="Assigned Trailer"
+                          rightLabel={
+                            formData.driverId ? (
+                              <Link
+                                href={`/account/manage-team/edit/${formData.driverId}`}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium hover:underline cursor-pointer"
+                              >
+                                Choose another Trailer
+                              </Link>
+                            ) : undefined
+                          }
                           name="trailerId"
                           value={formData.trailerId}
                           onChange={handleInputChange}
