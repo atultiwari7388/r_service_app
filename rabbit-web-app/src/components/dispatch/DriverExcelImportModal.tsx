@@ -514,7 +514,7 @@ export default function DriverExcelImportModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-5xl max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="bg-white w-full max-w-[96vw] xl:max-w-7xl 2xl:max-w-[1550px] max-h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-6 bg-[#58BB87] text-white flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -672,22 +672,22 @@ export default function DriverExcelImportModal({
                 </div>
               </div>
 
-              <div className="overflow-x-auto border border-gray-200 rounded-2xl max-h-72 overflow-y-auto">
-                <table className="w-full text-left text-xs text-gray-600 border-collapse">
+              <div className="overflow-x-auto border border-gray-200 rounded-2xl max-h-[460px] overflow-y-auto shadow-xs">
+                <table className="w-full text-left text-xs text-gray-600 border-collapse min-w-[1200px]">
                   <thead className="bg-gray-50 text-gray-700 font-semibold sticky top-0 border-b border-gray-200 z-10">
                     <tr>
-                      <th className="p-3 w-10">#</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Driver Name</th>
-                      <th className="p-3">Email & Phone</th>
-                      <th className="p-3">Assigned Vehicles</th>
-                      <th className="p-3">Pay Type / Rate</th>
-                      <th className="p-3">City / State / Zip</th>
-                      <th className="p-3">License #</th>
-                      <th className="p-3">SSN</th>
+                      <th className="p-3.5 w-10 whitespace-nowrap">#</th>
+                      <th className="p-3.5 whitespace-nowrap">Status</th>
+                      <th className="p-3.5 whitespace-nowrap min-w-[140px]">Driver Name</th>
+                      <th className="p-3.5 whitespace-nowrap min-w-[200px]">Email & Phone</th>
+                      <th className="p-3.5 min-w-[180px]">Assigned Vehicles</th>
+                      <th className="p-3.5 whitespace-nowrap">Pay Type / Rate</th>
+                      <th className="p-3.5 whitespace-nowrap min-w-[160px]">City / State / Zip</th>
+                      <th className="p-3.5 whitespace-nowrap">License #</th>
+                      <th className="p-3.5 whitespace-nowrap">SSN</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 bg-white">
                     {displayRows.map((row) => (
                       <tr
                         key={row.rowIndex}
@@ -697,45 +697,45 @@ export default function DriverExcelImportModal({
                             : "bg-rose-50/40 hover:bg-rose-50/70"
                         }
                       >
-                        <td className="p-3 font-mono text-gray-400">
+                        <td className="p-3.5 font-mono text-gray-400 align-middle">
                           {row.rowIndex}
                         </td>
-                        <td className="p-3">
+                        <td className="p-3.5 align-middle whitespace-nowrap">
                           {row.isValid ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                              <FiCheckCircle className="w-3 h-3 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                              <FiCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                               Ready
                             </span>
                           ) : (
                             <div className="space-y-0.5">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
-                                <FiAlertCircle className="w-3 h-3 text-rose-600" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800">
+                                <FiAlertCircle className="w-3.5 h-3.5 text-rose-600" />
                                 Error
                               </span>
-                              <div className="text-[10px] text-rose-600 font-medium">
+                              <div className="text-[10px] text-rose-600 font-medium max-w-[200px]">
                                 {row.errors.join(", ")}
                               </div>
                             </div>
                           )}
                         </td>
-                        <td className="p-3 font-semibold text-gray-900">
+                        <td className="p-3.5 font-semibold text-gray-900 align-middle whitespace-nowrap">
                           {row.memberName || "-"}
                         </td>
-                        <td className="p-3">
-                          <div className="font-medium text-gray-800">
+                        <td className="p-3.5 align-middle">
+                          <div className="font-medium text-gray-800 whitespace-nowrap">
                             {row.memberEmail || "-"}
                           </div>
-                          <div className="text-[11px] text-gray-400">
+                          <div className="text-[11px] text-gray-500 whitespace-nowrap mt-0.5 font-mono">
                             {row.memberPhoneNumber || "-"}
                           </div>
                         </td>
-                        <td className="p-3">
+                        <td className="p-3.5 align-middle">
                           {row.assignedVehicleNames.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="flex flex-wrap gap-1.5">
                               {row.assignedVehicleNames.map((vNum) => (
                                 <span
                                   key={vNum}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#58BB87]/15 text-[#20593b] font-medium text-[11px]"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#58BB87]/15 text-[#20593b] font-medium text-[11px] whitespace-nowrap"
                                 >
                                   <FiTruck className="w-3 h-3 text-[#58BB87]" />
                                   {vNum}
@@ -748,7 +748,7 @@ export default function DriverExcelImportModal({
                             </span>
                           )}
                         </td>
-                        <td className="p-3">
+                        <td className="p-3.5 align-middle whitespace-nowrap">
                           <span className="font-medium text-gray-800">
                             {row.payType}
                           </span>
@@ -758,12 +758,12 @@ export default function DriverExcelImportModal({
                             </span>
                           )}
                         </td>
-                        <td className="p-3 text-gray-700">
+                        <td className="p-3.5 text-gray-700 align-middle whitespace-nowrap">
                           {row.city ? (
                             <span>
                               {row.city}, {row.state}
                               {row.postal && (
-                                <span className="text-gray-400 text-[11px] block">
+                                <span className="text-gray-500 text-[11px] block mt-0.5">
                                   Zip: {row.postal}
                                 </span>
                               )}
@@ -772,10 +772,10 @@ export default function DriverExcelImportModal({
                             "-"
                           )}
                         </td>
-                        <td className="p-3 text-gray-700 font-mono">
+                        <td className="p-3.5 text-gray-700 font-mono align-middle whitespace-nowrap">
                           {row.licenseNumber || "-"}
                         </td>
-                        <td className="p-3 text-gray-700 font-mono">
+                        <td className="p-3.5 text-gray-700 font-mono align-middle whitespace-nowrap">
                           {row.socialSecurity || "-"}
                         </td>
                       </tr>
