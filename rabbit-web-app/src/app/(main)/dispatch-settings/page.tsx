@@ -62,11 +62,10 @@ interface SettingsEntity {
   name: string;
   email?: string;
   address: string;
-  phone: string;
-  mcNumber?: string;
-  dotNumber?: string;
+  phone?: string;
   primaryContact?: string;
   cellPhone?: string;
+  telephone?: string;
   zipCode?: string;
   pinCode?: string;
   startTime?: string;
@@ -141,14 +140,17 @@ const getFormFields = (tabId: TabId): FormField[] => {
     { name: "name", label: "Name", type: "text", required: true },
     { name: "address", label: "Address", type: "text", required: true },
     { name: "phone", label: "Phone", type: "tel", required: true },
-    { name: "pinCode", label: "Pin Code", type: "text", required: true },
+    { name: "zipCode", label: "Zip Code", type: "text", required: true },
   ];
 
   switch (tabId) {
     case "shippers":
       return [
-        ...baseFields,
-        // { name: "zipCode", label: "Zip Code", type: "text", required: true },
+        { name: "name", label: "Name", type: "text", required: true },
+        { name: "address", label: "Address", type: "text", required: true },
+        { name: "email", label: "Email", type: "email", required: true },
+        { name: "phone", label: "Phone", type: "tel", required: true },
+        { name: "zipCode", label: "Zip Code", type: "text", required: true },
         {
           name: "startTime",
           label: "Start Time",
@@ -159,15 +161,8 @@ const getFormFields = (tabId: TabId): FormField[] => {
       ];
     case "carrier":
       return [
-        { name: "name", label: "Name", type: "text", required: true },
+        { name: "name", label: "Carrier Name", type: "text", required: true },
         { name: "address", label: "Address", type: "text", required: true },
-        { name: "mcNumber", label: "MC Number", type: "text", required: true },
-        {
-          name: "dotNumber",
-          label: "DOT Number",
-          type: "text",
-          required: true,
-        },
         {
           name: "primaryContact",
           label: "Primary Contact",
@@ -175,10 +170,15 @@ const getFormFields = (tabId: TabId): FormField[] => {
           required: true,
         },
         { name: "email", label: "Email", type: "email", required: true },
-        { name: "phone", label: "Phone", type: "tel", required: true },
         {
           name: "cellPhone",
           label: "Cell Phone",
+          type: "tel",
+          required: true,
+        },
+        {
+          name: "telephone",
+          label: "Telephone",
           type: "tel",
           required: true,
         },
@@ -191,15 +191,17 @@ const getFormFields = (tabId: TabId): FormField[] => {
           type: "text",
           required: true,
         },
-        ...baseFields.slice(1),
+        { name: "address", label: "Address", type: "text", required: true },
+        { name: "phone", label: "Phone", type: "tel", required: true },
+        { name: "zipCode", label: "Zip Code", type: "text", required: true },
       ];
     case "customers":
       return [
         { name: "name", label: "Name", type: "text", required: true },
-        { name: "email", label: "Email", type: "text", required: true },
+        { name: "email", label: "Email", type: "email", required: true },
         { name: "phone", label: "Phone", type: "tel", required: true },
         { name: "address", label: "Address", type: "text", required: true },
-        { name: "pinCode", label: "Pin Code", type: "text", required: true },
+        { name: "zipCode", label: "Zip Code", type: "text", required: true },
       ];
     default:
       return baseFields;
@@ -210,25 +212,24 @@ const getExtraColumns = (tabId: TabId) => {
   switch (tabId) {
     case "shippers":
       return [
-        { key: "pinCode", label: "Pin Code" },
-        // { key: "zipCode", label: "Zip Code" },
+        { key: "email", label: "Email" },
+        { key: "zipCode", label: "Zip Code" },
         { key: "timings", label: "Working Hours" },
       ];
     case "carrier":
       return [
-        { key: "mcNumber", label: "MC Number" },
-        { key: "dotNumber", label: "DOT Number" },
         { key: "primaryContact", label: "Primary Contact" },
         { key: "email", label: "Email" },
         { key: "cellPhone", label: "Cell Phone" },
+        { key: "telephone", label: "Telephone" },
       ];
     case "customers":
       return [
         { key: "email", label: "Email" },
-        { key: "pinCode", label: "Pin Code" },
+        { key: "zipCode", label: "Zip Code" },
       ];
     default:
-      return [{ key: "pinCode", label: "Pin Code" }];
+      return [{ key: "zipCode", label: "Zip Code" }];
   }
 };
 
@@ -306,6 +307,9 @@ const normalizeExcelRow = (
     return "";
   };
 
+  const cleanPhone = (val: string) =>
+    val.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
+
   if (tabId === "shippers") {
     result.name = getVal([
       "name",
@@ -315,19 +319,17 @@ const normalizeExcelRow = (
       "companyName",
     ]);
     result.address = getVal(["address", "facilityAddress", "location"]);
-    result.phone = getVal([
-      "phone",
-      "phoneNumber",
-      "tel",
-      "contact",
-      "contactNumber",
-    ]);
-    result.pinCode = getVal([
-      "pinCode",
-      "pincode",
+    result.email = getVal(["email", "emailAddress", "contactEmail"]);
+    result.phone = cleanPhone(
+      getVal(["phone", "phoneNumber", "tel", "contact", "contactNumber"])
+    );
+    result.zipCode = getVal([
       "zipCode",
       "zip",
+      "pinCode",
+      "pincode",
       "postalCode",
+      "postal",
     ]);
     result.startTime = getTimeVal([
       "startTime",
@@ -344,8 +346,6 @@ const normalizeExcelRow = (
       "officeAddress",
       "location",
     ]);
-    result.mcNumber = getVal(["mcNumber", "mc", "mcNum", "motorCarrierNumber"]);
-    result.dotNumber = getVal(["dotNumber", "dot", "dotNum", "usDotNumber"]);
     result.primaryContact = getVal([
       "primaryContact",
       "contactPerson",
@@ -358,31 +358,45 @@ const normalizeExcelRow = (
       "contactEmail",
       "dispatchEmail",
     ]);
-    result.phone = getVal(["phone", "phoneNumber", "officePhone", "tel"]);
-    result.cellPhone = getVal([
-      "cellPhone",
-      "mobile",
-      "cell",
-      "mobileNumber",
-      "alternatePhone",
-    ]);
+    result.cellPhone = cleanPhone(
+      getVal([
+        "cellPhone",
+        "cell",
+        "mobile",
+        "mobileNumber",
+        "alternatePhone",
+      ])
+    );
+    result.telephone = cleanPhone(
+      getVal([
+        "telephone",
+        "tel",
+        "phone",
+        "phoneNumber",
+        "officePhone",
+        "landline",
+      ])
+    );
     result.yardLocation = getVal(["yardLocation", "yard", "terminal"]);
   } else if (tabId === "customers") {
     result.name = getVal(["name", "customerName", "clientName", "companyName"]);
     result.email = getVal(["email", "emailAddress", "billingEmail"]);
-    result.phone = getVal(["phone", "phoneNumber", "tel", "contactNumber"]);
+    result.phone = cleanPhone(
+      getVal(["phone", "phoneNumber", "tel", "contactNumber"])
+    );
     result.address = getVal([
       "address",
       "billingAddress",
       "officeAddress",
       "location",
     ]);
-    result.pinCode = getVal([
-      "pinCode",
-      "pincode",
+    result.zipCode = getVal([
       "zipCode",
       "zip",
+      "pinCode",
+      "pincode",
       "postalCode",
+      "postal",
     ]);
   }
 
@@ -763,8 +777,21 @@ export default function SettingPage() {
         return acc;
       }
 
-      acc[field.name] =
+      if (field.name === "zipCode") {
+        acc[field.name] = item.zipCode || item.pinCode || "";
+        return acc;
+      }
+
+      const rawVal =
         (item[field.name as keyof SettingsEntity] as string) || "";
+      if (["phone", "cellPhone", "telephone"].includes(field.name)) {
+        acc[field.name] = rawVal
+          .replace(/^\+1\s*/, "")
+          .replace(/^\+/, "")
+          .trim();
+      } else {
+        acc[field.name] = rawVal;
+      }
       return acc;
     }, {});
 
@@ -1164,6 +1191,17 @@ export default function SettingPage() {
       return `${item.startTime || "-"} — ${item.endTime || "-"}`;
     }
 
+    if (key === "zipCode") {
+      return item.zipCode || item.pinCode || "-";
+    }
+
+    if (["phone", "cellPhone", "telephone"].includes(key)) {
+      const val = (item[key as keyof SettingsEntity] as string) || "";
+      return val
+        ? val.replace(/^\+1\s*/, "").replace(/^\+/, "").trim()
+        : "-";
+    }
+
     return (item[key as keyof SettingsEntity] as string) || "-";
   };
 
@@ -1353,9 +1391,11 @@ export default function SettingPage() {
                           <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                             Address
                           </th>
-                          <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                            Phone
-                          </th>
+                          {activeTab !== "carrier" && (
+                            <th className="px-5 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                              Phone
+                            </th>
+                          )}
                           {extraColumns.map((column) => (
                             <th
                               key={column.key}
@@ -1386,15 +1426,23 @@ export default function SettingPage() {
                               </div>
                             </td>
                             <td className="px-5 py-4">
-                              <div className="text-sm text-gray-700 max-w-sm truncate">
+                              <div
+                                className="text-sm text-gray-700 max-w-sm truncate"
+                                title={item.address}
+                              >
                                 {item.address || "-"}
                               </div>
                             </td>
-                            <td className="px-5 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-700">
-                                {item.phone || "-"}
-                              </div>
-                            </td>
+                            {activeTab !== "carrier" && (
+                              <td className="px-5 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-700">
+                                  {(item.phone || "")
+                                    .replace(/^\+1\s*/, "")
+                                    .replace(/^\+/, "")
+                                    .trim() || "-"}
+                                </div>
+                              </td>
+                            )}
                             {extraColumns.map((column) => (
                               <td
                                 key={column.key}
