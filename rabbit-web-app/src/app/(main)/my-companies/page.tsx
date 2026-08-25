@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { HashLoader } from "react-spinners";
 import toast from "react-hot-toast";
+import Link from "next/link";
 import {
   FaBuilding,
   FaPlus,
@@ -26,6 +27,7 @@ import {
   FaTimes,
   FaPauseCircle,
   FaPlayCircle,
+  FaTruck,
 } from "react-icons/fa";
 import { CompanyType } from "@/types/types";
 
@@ -67,6 +69,9 @@ export default function MyCompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
+  const [vehicleCountByCompanyId, setVehicleCountByCompanyId] = useState<
+    Record<string, number>
+  >({});
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,14 +119,14 @@ export default function MyCompaniesPage() {
     resolveEffectiveUser();
   }, [user?.uid]);
 
-  // Real-time listener for companies
+  // Real-time listener for companies & vehicles
   useEffect(() => {
     if (!effectiveUserId) return;
 
     setLoading(true);
     const companiesRef = collection(db, "Users", effectiveUserId, "myCompanies");
 
-    const unsubscribe = onSnapshot(
+    const unsubscribeCompanies = onSnapshot(
       companiesRef,
       (snapshot) => {
         const loaded: CompanyType[] = [];
@@ -152,7 +157,27 @@ export default function MyCompaniesPage() {
       }
     );
 
-    return () => unsubscribe();
+    // Listen to vehicles to calculate vehicle count per company
+    const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
+    const unsubscribeVehicles = onSnapshot(vehiclesRef, (snapshot) => {
+      const counts: Record<string, number> = {};
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const comId = data.mycomId;
+        const comName = (data.myCompany || "").toString().trim().toLowerCase();
+        if (comId) {
+          counts[comId] = (counts[comId] || 0) + 1;
+        } else if (comName) {
+          counts[comName] = (counts[comName] || 0) + 1;
+        }
+      });
+      setVehicleCountByCompanyId(counts);
+    });
+
+    return () => {
+      unsubscribeCompanies();
+      unsubscribeVehicles();
+    };
   }, [effectiveUserId]);
 
   // Sort companies: Default first, then A to Z
@@ -430,6 +455,11 @@ export default function MyCompaniesPage() {
             ].filter(Boolean);
             const fullAddress = addressParts.join(", ");
 
+            const vehicleCount =
+              vehicleCountByCompanyId[company.id] ??
+              vehicleCountByCompanyId[company.companyName.trim().toLowerCase()] ??
+              0;
+
             return (
               <div
                 key={company.id}
@@ -497,6 +527,14 @@ export default function MyCompaniesPage() {
                           onClick={(e) => e.stopPropagation()}
                           className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 text-sm"
                         >
+                          <Link
+                            href={`/my-companies/vehicles/${company.id}`}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2.5 text-gray-700"
+                          >
+                            <FaTruck className="text-[#F96176]" />
+                            View Vehicles
+                          </Link>
+
                           <button
                             onClick={() => {
                               setActiveDropdownId(null);
@@ -562,13 +600,32 @@ export default function MyCompaniesPage() {
                   )}
                 </div>
 
-                {/* Address Section */}
-                {fullAddress && (
-                  <div className="pt-3 mt-3 border-t border-gray-100 flex items-start gap-2 text-xs text-gray-500">
-                    <FaMapMarkerAlt className="mt-0.5 text-gray-400 shrink-0" />
-                    <span className="line-clamp-2 leading-relaxed">{fullAddress}</span>
+                {/* Footer Section */}
+                <div>
+                  {/* Address Section */}
+                  {fullAddress && (
+                    <div className="pt-3 mt-3 border-t border-gray-100 flex items-start gap-2 text-xs text-gray-500">
+                      <FaMapMarkerAlt className="mt-0.5 text-gray-400 shrink-0" />
+                      <span className="line-clamp-2 leading-relaxed">{fullAddress}</span>
+                    </div>
+                  )}
+
+                  {/* View Assigned Vehicles Button */}
+                  <div className="pt-3 mt-3 border-t border-gray-100">
+                    <Link
+                      href={`/my-companies/vehicles/${company.id}`}
+                      className="w-full inline-flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-gray-50 hover:bg-[#F96176]/10 border border-gray-200 hover:border-[#F96176]/30 text-xs font-semibold text-gray-700 hover:text-[#F96176] transition-all group"
+                    >
+                      <span className="flex items-center gap-2">
+                        <FaTruck className="text-[#F96176] text-sm group-hover:scale-110 transition-transform" />
+                        View Assigned Vehicles
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white group-hover:bg-[#F96176] text-gray-700 group-hover:text-white border border-gray-200 group-hover:border-[#F96176] transition-colors">
+                        {vehicleCount} {vehicleCount === 1 ? "Vehicle" : "Vehicles"}
+                      </span>
+                    </Link>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
