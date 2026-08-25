@@ -126,6 +126,7 @@ export interface MechanicsOffer {
   mDp: string;
   mId: string;
   mName: string;
+  workshopName?: string;
   mNumber: string;
   mechanicAddress: string;
   offerAcceptedDate: Timestamp;

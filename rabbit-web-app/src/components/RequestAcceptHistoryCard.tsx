@@ -1,4 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { calculateDistance } from "@/utils/calculateLatLng";
 import { HistoryItem, MechanicsOffer } from "@/types/types";
 
@@ -21,6 +24,31 @@ export default function RequestAcceptHistoryCard({
   selectedPaymentMode,
   setSelectedPaymentMode,
 }: RequestAcceptHistoryCardProps) {
+  const [workshopName, setWorkshopName] = useState<string>(
+    mechanic.workshopName || ""
+  );
+
+  useEffect(() => {
+    if (!mechanic.mId) return;
+
+    const fetchMechanicDetails = async () => {
+      try {
+        const mechanicDoc = await getDoc(doc(db, "Mechanics", mechanic.mId));
+        if (mechanicDoc.exists()) {
+          const data = mechanicDoc.data();
+          const wName = (data?.workshopName ?? "").toString().trim();
+          if (wName) {
+            setWorkshopName(wName);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching mechanic workshop details:", error);
+      }
+    };
+
+    fetchMechanicDetails();
+  }, [mechanic.mId]);
+
   const distance = calculateDistance(
     jobDetails.userLat,
     jobDetails.userLong,
@@ -28,13 +56,19 @@ export default function RequestAcceptHistoryCard({
     mechanic.longitude
   );
 
+  // Show workshopName if present, otherwise fallback to mName
+  const displayName =
+    workshopName && workshopName.trim().length > 0
+      ? workshopName
+      : mechanic.mName;
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300">
       <div className="flex items-center gap-6">
         <div className="relative">
           <img
             src={mechanic.mDp || "/profile.png"}
-            alt={mechanic.mName}
+            alt={displayName}
             className="w-20 h-20 rounded-full object-cover border-4 border-pink-100"
           />
           <div className="absolute -bottom-2 -right-2 bg-green-500 p-1 rounded-full">
@@ -43,9 +77,7 @@ export default function RequestAcceptHistoryCard({
         </div>
 
         <div className="flex-1">
-          <h3 className="font-semibold text-xl text-gray-800">
-            {mechanic.mName}
-          </h3>
+          <h3 className="font-semibold text-xl text-gray-800">{displayName}</h3>
 
           <div className="flex flex-wrap gap-3 mt-2">
             <span className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-sm font-medium shadow-sm">
