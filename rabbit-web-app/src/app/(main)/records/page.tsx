@@ -2047,7 +2047,7 @@ export default function RecordsPage() {
                           />
                           <span>
                             {vehicle.vehicleNumber} ({vehicle.companyName})
-                            {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
+                            {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
                           </span>
                         </div>
                       ))}
@@ -2163,7 +2163,7 @@ export default function RecordsPage() {
                   {vehicles.map((vehicle) => (
                     <MenuItem key={vehicle.id} value={vehicle.vehicleNumber}>
                       {vehicle.vehicleNumber} ({vehicle.companyName})
-                      {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
+                      {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
                     </MenuItem>
                   ))}
                 </Select>
@@ -2272,7 +2272,7 @@ export default function RecordsPage() {
                     {vehicles.map((vehicle) => (
                       <MenuItem key={vehicle.id} value={vehicle.id}>
                         {vehicle.vehicleNumber} ({vehicle.companyName})
-                        {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
+                        {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
                       </MenuItem>
                     ))}
                   </Select>
@@ -2365,7 +2365,7 @@ export default function RecordsPage() {
                         .map((vehicle) => (
                           <MenuItem key={vehicle.id} value={vehicle.id}>
                             {vehicle.vehicleNumber} ({vehicle.companyName})
-                            {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
+                            {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
                           </MenuItem>
                         ))}
                     </Select>

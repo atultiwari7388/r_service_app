@@ -658,7 +658,7 @@ const BookingSection: React.FC = () => {
                     .map((vehicle, index) => (
                       <option key={index} value={vehicle.vehicleNumber}>
                         {vehicle.vehicleNumber} ({vehicle.companyName})
-                        {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""}
+                        {/* {vehicle.myCompany ? ` (${vehicle.myCompany})` : ""} */}
                       </option>
                     ))}
                 </select>

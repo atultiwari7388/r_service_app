@@ -1106,7 +1106,8 @@ function CreateNewLoadPageContent() {
     .map((vehicle) => ({
       value: vehicle.id,
       label: `${vehicle.vehicleNumber} (${vehicle.companyName})${
-        vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
+        // vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
+        ""
       }`,
     }));
   const assignedTrailerOptions: Option[] = selectedDriverVehicles
@@ -1114,7 +1115,8 @@ function CreateNewLoadPageContent() {
     .map((vehicle) => ({
       value: vehicle.id,
       label: `${vehicle.vehicleNumber} (${vehicle.companyName})${
-        vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
+        // vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
+        ""
       }`,
     }));
 
