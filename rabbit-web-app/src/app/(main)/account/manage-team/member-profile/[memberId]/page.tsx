@@ -214,12 +214,18 @@ export default function ViewMemberProfile() {
           </h3>
           <InfoCard
             title="Phone Number"
-            value={memberData.phoneNumber}
+            value={(memberData.phoneNumber || "")
+              .replace(/^\+1\s*/, "")
+              .replace(/^\+/, "")
+              .trim()}
             icon={FiPhone}
           />
           <InfoCard
             title="Telephone Number"
-            value={memberData.telephoneNumber}
+            value={(memberData.telephoneNumber || "")
+              .replace(/^\+1\s*/, "")
+              .replace(/^\+/, "")
+              .trim()}
             icon={FiPhone}
           />
           <InfoCard
@@ -247,7 +253,7 @@ export default function ViewMemberProfile() {
           <InfoCard title="Country" value={memberData.country} icon={FiGlobe} />
           {memberData.postalCode && (
             <InfoCard
-              title="Postal Code"
+              title="Zip Code"
               value={memberData.postalCode}
               icon={FiMapPin}
             />

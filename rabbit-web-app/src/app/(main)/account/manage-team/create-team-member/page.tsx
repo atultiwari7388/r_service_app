@@ -247,12 +247,24 @@ export default function CreateTeamMemberPage() {
 
       const createTeamMember = httpsCallable(functions, "createTeamMember");
 
+      const formatPhoneForBackend = (p: string) => {
+        if (!p) return "";
+        const trimmed = p.trim();
+        if (trimmed.startsWith("+")) return trimmed;
+        const digits = trimmed.replace(/\D/g, "");
+        if (digits.length === 10) return `+1${digits}`;
+        if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+        return `+1${digits}`;
+      };
+
       await createTeamMember({
         name: formData.memberName,
         email: formData.memberEmail,
         email2: formData.memberEmail2,
-        phone: formData.memberPhoneNumber,
-        telephone: formData.memberTelephone,
+        phone: formatPhoneForBackend(formData.memberPhoneNumber),
+        telephone: formData.memberTelephone
+          ? formatPhoneForBackend(formData.memberTelephone)
+          : "",
         password: formData.memberPassword,
         companyName: formData.companyName,
         address: formData.address,
@@ -539,7 +551,7 @@ export default function CreateTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder="Postal Code*"
+                    placeholder="Zip Code*"
                     name="postal"
                     value={formData.postal}
                     onChange={handleInputChange}
@@ -614,7 +626,7 @@ export default function CreateTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder="Postal Code"
+                    placeholder="Zip Code"
                     name="postal"
                     value={formData.postal}
                     onChange={handleInputChange}

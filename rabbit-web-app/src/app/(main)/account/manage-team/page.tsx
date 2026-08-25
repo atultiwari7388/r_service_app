@@ -203,7 +203,11 @@ export default function ManageTeam(): JSX.Element {
             uid: memberId,
             userName: memberData.userName || "No Name",
             email: memberData.email || "No Email",
-            phoneNumber: memberData.phoneNumber || "",
+            phoneNumber: (memberData.phoneNumber || "")
+              .toString()
+              .replace(/^\+1\s*/, "")
+              .replace(/^\+/, "")
+              .trim(),
             role: memberRole,
             active: memberData.active || false,
             profilePicture: memberData.profilePicture || "/default-avatar.png",

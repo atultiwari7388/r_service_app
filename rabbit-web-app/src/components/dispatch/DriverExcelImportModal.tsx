@@ -253,7 +253,8 @@ export default function DriverExcelImportModal({
 
         const name = getCol("Driver Name", "Name", "Full Name", "Member Name");
         const email = getCol("Email", "Driver Email", "Member Email").toLowerCase();
-        const phone = getCol("Phone Number", "Phone", "Mobile", "Contact");
+        const rawPhone = getCol("Phone Number", "Phone", "Mobile", "Contact");
+        const phone = rawPhone.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
         const vehicleInput = getCol(
           "Assigned Vehicle Numbers",
           "Assigned Vehicles",
@@ -268,11 +269,12 @@ export default function DriverExcelImportModal({
         const city = getCol("City") || "Dallas";
         const state = getCol("State") || "TX";
         const country = getCol("Country") || "USA";
-        const postal = getCol("Postal Code", "Zip Code", "Postal", "Zip");
+        const postal = getCol("Zip Code", "Zip", "Postal Code", "Postal");
         const licenseNumber = getCol("License Number", "DL Number", "License");
         const socialSecurity = getCol("Social Security Number", "SSN", "Social Security");
         const secondaryEmail = getCol("Secondary Email", "Email 2", "Member Email 2");
-        const telephone = getCol("Telephone", "Tel");
+        const rawTelephone = getCol("Telephone", "Tel");
+        const telephone = rawTelephone.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
         const recordAccessStr = getCol("Record Access", "Access");
 
         // Parse Dates
@@ -407,13 +409,24 @@ export default function DriverExcelImportModal({
           continue;
         }
 
+        // Helper to format phone for backend authentication (E.164 with +)
+        const formatPhoneForBackend = (p: string) => {
+          if (!p) return "";
+          const trimmed = p.trim();
+          if (trimmed.startsWith("+")) return trimmed;
+          const digits = trimmed.replace(/\D/g, "");
+          if (digits.length === 10) return `+1${digits}`;
+          if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+          return `+1${digits}`;
+        };
+
         // Call Cloud Function
         await createTeamMemberFn({
           name: row.memberName,
           email: row.memberEmail,
           email2: row.memberEmail2,
-          phone: row.memberPhoneNumber,
-          telephone: row.memberTelephone,
+          phone: formatPhoneForBackend(row.memberPhoneNumber),
+          telephone: row.memberTelephone ? formatPhoneForBackend(row.memberTelephone) : "",
           password: row.memberPassword,
           companyName: row.companyName,
           address: row.address,
@@ -669,8 +682,9 @@ export default function DriverExcelImportModal({
                       <th className="p-3">Email & Phone</th>
                       <th className="p-3">Assigned Vehicles</th>
                       <th className="p-3">Pay Type / Rate</th>
-                      <th className="p-3">City / State</th>
+                      <th className="p-3">City / State / Zip</th>
                       <th className="p-3">License #</th>
+                      <th className="p-3">SSN</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -745,10 +759,24 @@ export default function DriverExcelImportModal({
                           )}
                         </td>
                         <td className="p-3 text-gray-700">
-                          {row.city ? `${row.city}, ${row.state}` : "-"}
+                          {row.city ? (
+                            <span>
+                              {row.city}, {row.state}
+                              {row.postal && (
+                                <span className="text-gray-400 text-[11px] block">
+                                  Zip: {row.postal}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className="p-3 text-gray-700 font-mono">
                           {row.licenseNumber || "-"}
+                        </td>
+                        <td className="p-3 text-gray-700 font-mono">
+                          {row.socialSecurity || "-"}
                         </td>
                       </tr>
                     ))}

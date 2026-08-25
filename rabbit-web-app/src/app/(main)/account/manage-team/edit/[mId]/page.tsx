@@ -140,8 +140,15 @@ export default function EditTeamMemberPage() {
           .toString()
           .trim();
 
+        const rawPhone = (data.phoneNumber as string) || "";
+        const cleanPhoneUI = rawPhone.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
+        const rawTel = (data.telephone as string) || "";
+        const cleanTelUI = rawTel.replace(/^\+1\s*/, "").replace(/^\+/, "").trim();
+
         setFormData({
           ...(data as unknown as TeamMember),
+          phoneNumber: cleanPhoneUI,
+          telephone: cleanTelUI,
           payType: resolvedPayType,
           payMode: resolvedPayType,
         });
@@ -303,13 +310,23 @@ export default function EditTeamMemberPage() {
     setIsLoading(true);
 
     try {
+      const formatPhoneForBackend = (p: string) => {
+        if (!p) return "";
+        const trimmed = p.trim();
+        if (trimmed.startsWith("+")) return trimmed;
+        const digits = trimmed.replace(/\D/g, "");
+        if (digits.length === 10) return `+1${digits}`;
+        if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+        return `+1${digits}`;
+      };
+
       // Prepare update data
       const updateData: Partial<TeamMember> = {
         userName: formData.userName,
         email: formData.email,
         email2: formData.email2 || "",
-        phoneNumber: formData.phoneNumber,
-        telephone: formData.telephone || "",
+        phoneNumber: formatPhoneForBackend(formData.phoneNumber),
+        telephone: formData.telephone ? formatPhoneForBackend(formData.telephone) : "",
         companyName: formData.companyName || "",
         address: formData.address || "",
         city: formData.city || "",
@@ -588,7 +605,7 @@ export default function EditTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder="Postal Code"
+                    placeholder="Zip Code"
                     name="postalCode"
                     value={formData.postalCode || ""}
                     onChange={handleInputChange}
@@ -660,7 +677,7 @@ export default function EditTeamMemberPage() {
 
                   <input
                     type="text"
-                    placeholder="Postal Code"
+                    placeholder="Zip Code"
                     name="postalCode"
                     value={formData.postalCode || ""}
                     onChange={handleInputChange}
