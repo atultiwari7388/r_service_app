@@ -11,6 +11,7 @@ import {
   query,
   updateDoc,
   where,
+  writeBatch,
   arrayRemove,
 } from "firebase/firestore";
 import {
@@ -22,7 +23,14 @@ import {
 import { db, storage } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
-import { FaDownload, FaEdit, FaEye, FaPrint, FaTrash } from "react-icons/fa";
+import {
+  FaDownload,
+  FaEdit,
+  FaEye,
+  FaPrint,
+  FaTrash,
+  FaTimes,
+} from "react-icons/fa";
 import { toast } from "react-toastify";
 import { ProfileValues } from "@/types/types";
 
@@ -68,7 +76,6 @@ export default function MyVehicleDetailsScreen() {
 
   const [filesToUpload, setFilesToUpload] = useState<FileWithId[]>([]);
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
-  // const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -79,41 +86,73 @@ export default function MyVehicleDetailsScreen() {
   const [currentImage, setCurrentImage] = useState<string>("");
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
 
-  //firstly we fetch the user data to get the role and createdBy field and then we determine the effectiveUserId based on that
+  // Edit Service Modal States
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceData | null>(null);
+  const [serviceNewValue, setServiceNewValue] = useState<string>("");
+  const [syncScope, setSyncScope] = useState<"all" | "single">("all");
+  const [isSavingService, setIsSavingService] = useState(false);
+  const [matchingVehiclesCount, setMatchingVehiclesCount] = useState<number>(1);
+
+  // 1. Fetch user data to get role and determine effectiveUserId
   useEffect(() => {
     if (!user?.uid) return;
 
     const fetchUserDataAndDetermineEffectiveUserId = async () => {
-      const userDoc = await getDoc(doc(db, "Users", user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data() as ProfileValues;
-        setRole(data.role);
+      try {
+        const userDoc = await getDoc(doc(db, "Users", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data() as ProfileValues;
+          setRole(data.role);
 
-        // Determine effectiveUserId based on role
-        if (data.role === "SubOwner" && data.createdBy) {
-          setEffectiveUserId(data.createdBy);
-        } else {
-          setEffectiveUserId(user.uid);
+          if (data.role === "SubOwner" && data.createdBy) {
+            setEffectiveUserId(data.createdBy);
+          } else {
+            setEffectiveUserId(user.uid);
+          }
         }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
       }
     };
 
     fetchUserDataAndDetermineEffectiveUserId();
   }, [user?.uid]);
 
+  // 2. Fetch current vehicle data
   useEffect(() => {
     const fetchVehicleData = async () => {
       if (!vehicleId || !effectiveUserId) return;
 
-      const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
+        const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        setVehicleData(docSnap.data() as VehicleData);
-      } else {
-        console.log("No such document!");
+        if (docSnap.exists()) {
+          const data = docSnap.data() as VehicleData;
+          setVehicleData(data);
+
+          // Count matching vehicles in fleet with same vehicleType
+          const vType = data.vehicleType || "Truck";
+          const fleetQuery = query(
+            collection(db, "Users", effectiveUserId, "Vehicles"),
+            where("active", "==", true)
+          );
+          const fleetSnap = await getDocs(fleetQuery);
+          const matchingCount = fleetSnap.docs.filter((d) => {
+            const v = d.data();
+            const docVType = (v.vehicleType || "Truck").toLowerCase();
+            return docVType === vType.toLowerCase();
+          }).length;
+          setMatchingVehiclesCount(matchingCount || 1);
+        } else {
+          console.log("No such vehicle document!");
+        }
+      } catch (error) {
+        console.error("Error fetching vehicle details:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchVehicleData();
@@ -248,7 +287,6 @@ export default function MyVehicleDetailsScreen() {
 
       toast.success("Documents uploaded successfully!");
       setFilesToUpload([]);
-      // Refresh the page to show new images
       window.location.reload();
     } catch (error) {
       console.error("Error uploading files:", error);
@@ -280,17 +318,14 @@ export default function MyVehicleDetailsScreen() {
 
     setDeleteLoading(true);
     try {
-      // Delete from storage
       const imageRef = ref(storage, docToDelete.imageUrl);
       await deleteObject(imageRef);
 
-      // Delete from Firestore
       const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
       await updateDoc(docRef, {
         uploadedDocuments: arrayRemove(docToDelete),
       });
 
-      // Update local state
       setVehicleData((prev) => ({
         ...prev!,
         uploadedDocuments:
@@ -310,254 +345,6 @@ export default function MyVehicleDetailsScreen() {
     }
   };
 
-  const handleEditService = async (index: number, service: ServiceData) => {
-    const newDefaultValue = prompt(
-      `Edit default notification value for ${service.serviceName}`,
-      service.defaultNotificationValue.toString()
-    );
-
-    if (newDefaultValue && vehicleData && user?.uid && vehicleId) {
-      const newValue = parseInt(newDefaultValue, 10);
-      if (isNaN(newValue)) {
-        alert("Please enter a valid number");
-        return;
-      }
-
-      try {
-        setLoading(true);
-
-        // Get current values
-        const currentDefault = service.defaultNotificationValue;
-        const currentNext = service.nextNotificationValue;
-
-        let newNextValue;
-
-        if (service.type === "day") {
-          // For day type, handle date calculations
-          if (typeof currentNext === "string" && isDateString(currentNext)) {
-            // Current next value is a date string
-            const currentNextDate = parseDateString(currentNext);
-            const currentDefaultInt =
-              typeof currentDefault === "string"
-                ? parseInt(currentDefault, 10)
-                : currentDefault;
-
-            // Calculate the date difference between current default and next value
-            const today = new Date();
-            const daysUntilNext = Math.floor(
-              (currentNextDate.getTime() - today.getTime()) /
-                (1000 * 60 * 60 * 24)
-            );
-
-            // Calculate the new next date based on the new default value
-            const newNextDate = new Date();
-            newNextDate.setDate(
-              today.getDate() + daysUntilNext + (newValue - currentDefaultInt)
-            );
-
-            newNextValue = formatDateToString(newNextDate);
-          } else {
-            // Fallback: if next value is not a date string, calculate normally
-            const currentNextInt =
-              typeof currentNext === "string"
-                ? parseInt(currentNext, 10)
-                : currentNext;
-            const currentDefaultInt =
-              typeof currentDefault === "string"
-                ? parseInt(currentDefault, 10)
-                : currentDefault;
-
-            const difference = currentNextInt - currentDefaultInt;
-            newNextValue = newValue + difference;
-          }
-        } else {
-          // For other types (reading, hours), handle numeric calculations
-          const currentNextInt =
-            typeof currentNext === "string"
-              ? parseInt(currentNext, 10)
-              : currentNext;
-          const currentDefaultInt =
-            typeof currentDefault === "string"
-              ? parseInt(currentDefault, 10)
-              : currentDefault;
-
-          const difference = currentNextInt - currentDefaultInt;
-          newNextValue = newValue + difference;
-
-          // Ensure the new next value is not less than the new default
-          if (newNextValue < newValue) {
-            newNextValue = newValue;
-          }
-        }
-
-        // Create the updated service object
-        const updatedService = {
-          ...service,
-          defaultNotificationValue: newValue,
-          nextNotificationValue: newNextValue,
-          preValue: currentDefault,
-        };
-
-        // First update current user's vehicle
-        await updateCurrentUserVehicle(updatedService);
-
-        // Check if current user is owner and update team members
-        const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
-        const userData = userDoc.data();
-
-        if (userData?.role === "Owner") {
-          await updateTeamMembersVehicles(updatedService);
-        } else {
-          // If current user is team member, update owner's vehicle
-          if (userData?.createdBy) {
-            await updateOwnerVehicle(userData.createdBy, updatedService);
-          }
-        }
-
-        alert("Service value updated successfully");
-      } catch (error) {
-        console.error("Error updating service:", error);
-        alert("Error updating service");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  // Helper function to check if a string is a date in the expected format (dd/MM/yyyy)
-  const isDateString = (value: string): boolean => {
-    try {
-      const parts = value.split("/");
-      if (parts.length === 3) {
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10);
-        const year = parseInt(parts[2], 10);
-
-        return (
-          !isNaN(day) &&
-          !isNaN(month) &&
-          !isNaN(year) &&
-          day >= 1 &&
-          day <= 31 &&
-          month >= 1 &&
-          month <= 12 &&
-          year >= 2000 &&
-          year <= 2100
-        );
-      }
-      return false;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      return false;
-    }
-  };
-
-  // Helper function to parse date string (dd/MM/yyyy)
-  const parseDateString = (dateString: string): Date => {
-    const parts = dateString.split("/");
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // Months are 0-indexed in JavaScript
-    const year = parseInt(parts[2], 10);
-    return new Date(year, month, day);
-  };
-
-  // Helper function to format DateTime to string (dd/MM/yyyy)
-  const formatDateToString = (date: Date): string => {
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear().toString();
-    return `${day}/${month}/${year}`;
-  };
-
-  const updateCurrentUserVehicle = async (updatedService: ServiceData) => {
-    if (!vehicleData || !user?.uid) return;
-
-    // Find the index of the service to update using serviceId
-    const serviceIndex = vehicleData.services?.findIndex(
-      (s) => s.serviceId === updatedService.serviceId
-    );
-
-    if (serviceIndex === undefined || serviceIndex === -1) return;
-
-    const updatedServices = [...(vehicleData.services || [])];
-    updatedServices[serviceIndex] = updatedService;
-
-    const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
-    await updateDoc(docRef, { services: updatedServices });
-
-    setVehicleData((prevData) => ({
-      ...prevData!,
-      services: updatedServices,
-    }));
-  };
-
-  // Helper function to update team members' vehicles
-  const updateTeamMembersVehicles = async (updatedService: ServiceData) => {
-    if (!user?.uid) return;
-
-    // Get all team members
-    const teamMembersQuery = query(
-      collection(db, "Users"),
-      where("createdBy", "==", effectiveUserId),
-      where("isTeamMember", "==", true)
-    );
-
-    const teamMembersSnapshot = await getDocs(teamMembersQuery);
-
-    const updatePromises: Promise<void>[] = [];
-
-    teamMembersSnapshot.forEach((memberDoc) => {
-      const memberId = memberDoc.id;
-      const promise = updateVehicleService(memberId, updatedService);
-      updatePromises.push(promise);
-    });
-
-    await Promise.all(updatePromises);
-  };
-
-  // Helper function to update owner's vehicle
-  const updateOwnerVehicle = async (
-    ownerId: string,
-    updatedService: ServiceData
-  ) => {
-    return updateVehicleService(ownerId, updatedService);
-  };
-
-  // Generic function to update a vehicle's service
-  const updateVehicleService = async (
-    userId: string,
-    updatedService: ServiceData
-  ) => {
-    try {
-      const vehicleDocRef = doc(
-        db,
-        "Users",
-        effectiveUserId,
-        "Vehicles",
-        vehicleId
-      );
-      const vehicleDoc = await getDoc(vehicleDocRef);
-
-      if (vehicleDoc.exists()) {
-        const vehicleData = vehicleDoc.data();
-        const services = [...(vehicleData.services || [])];
-
-        // Find the exact service to update using serviceId
-        const serviceIndex = services.findIndex(
-          (s) => s.serviceId === updatedService.serviceId
-        );
-
-        if (serviceIndex !== -1) {
-          services[serviceIndex] = updatedService;
-          await updateDoc(vehicleDocRef, { services });
-        }
-      }
-    } catch (error) {
-      console.error(`Error updating vehicle for user ${userId}:`, error);
-      throw error;
-    }
-  };
-
   const handleViewImage = (imageUrl: string) => {
     setCurrentImage(imageUrl);
     setShowImageViewer(true);
@@ -565,32 +352,273 @@ export default function MyVehicleDetailsScreen() {
 
   const handleDownloadImage = async (imageUrl: string, fileName: string) => {
     try {
-      // Fetch with CORS support
       const response = await fetch(imageUrl, { mode: "cors" });
       if (!response.ok) {
         throw new Error("Failed to fetch image");
       }
-
-      // Convert to blob
       const blob = await response.blob();
-
-      // Create a temporary link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `${fileName}.jpg`;
       document.body.appendChild(a);
-
-      a.click(); // Trigger download
-
-      // Cleanup
+      a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-
       toast.success("Document downloaded successfully!");
     } catch (error) {
       console.error("Error downloading document:", error);
       toast.error("Error downloading document");
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // Helper Date Functions
+  // ─────────────────────────────────────────────────────────────
+  const isDateString = (value: string): boolean => {
+    try {
+      const parts = value.split(/[-/]/);
+      if (parts.length === 3) {
+        const p0 = parseInt(parts[0], 10);
+        const p1 = parseInt(parts[1], 10);
+        const p2 = parseInt(parts[2], 10);
+        return !isNaN(p0) && !isNaN(p1) && !isNaN(p2);
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const parseDateString = (dateString: string): Date => {
+    const parts = dateString.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // yyyy-mm-dd
+        return new Date(
+          parseInt(parts[0], 10),
+          parseInt(parts[1], 10) - 1,
+          parseInt(parts[2], 10)
+        );
+      } else {
+        // dd-mm-yyyy or dd/mm/yyyy
+        return new Date(
+          parseInt(parts[2], 10),
+          parseInt(parts[1], 10) - 1,
+          parseInt(parts[0], 10)
+        );
+      }
+    }
+    return new Date();
+  };
+
+  const formatDateToString = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear().toString();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Open Edit Service Modal
+  const handleOpenEditModal = (service: ServiceData) => {
+    setEditingService(service);
+    setServiceNewValue(service.defaultNotificationValue?.toString() || "");
+    setSyncScope("all");
+    setShowServiceModal(true);
+  };
+
+  // Helper to recalculate services array for any vehicle
+  const calculateUpdatedServices = (
+    existingServices: ServiceData[] = [],
+    targetService: ServiceData,
+    newValueNum: number,
+    vehicleCurrentReading: number = 0
+  ): ServiceData[] => {
+    return existingServices.map((s) => {
+      const isTarget =
+        s.serviceId === targetService.serviceId ||
+        s.serviceName?.toLowerCase() === targetService.serviceName?.toLowerCase();
+
+      if (!isTarget) return s;
+
+      const currentDefault =
+        typeof s.defaultNotificationValue === "string"
+          ? parseInt(s.defaultNotificationValue, 10) || 0
+          : s.defaultNotificationValue || 0;
+
+      const currentNext = s.nextNotificationValue;
+      let newNextValue: string | number = 0;
+
+      if (s.type === "day") {
+        if (typeof currentNext === "string" && isDateString(currentNext)) {
+          const currentNextDate = parseDateString(currentNext);
+          const daysDelta = newValueNum - currentDefault;
+          const newNextDate = new Date(currentNextDate);
+          newNextDate.setDate(newNextDate.getDate() + daysDelta);
+          newNextValue = formatDateToString(newNextDate);
+        } else {
+          const baseDate = new Date();
+          baseDate.setDate(baseDate.getDate() + newValueNum);
+          newNextValue = formatDateToString(baseDate);
+        }
+      } else {
+        // numeric (reading / hours)
+        const currentNextInt =
+          typeof currentNext === "string"
+            ? parseInt(currentNext, 10) || 0
+            : currentNext || 0;
+
+        if (currentNextInt > 0 && currentDefault > 0) {
+          const delta = newValueNum - currentDefault;
+          newNextValue = currentNextInt + delta;
+          if (newNextValue < newValueNum) {
+            newNextValue = newValueNum;
+          }
+        } else {
+          newNextValue = vehicleCurrentReading + newValueNum;
+        }
+      }
+
+      return {
+        ...s,
+        defaultNotificationValue: newValueNum,
+        nextNotificationValue: newNextValue,
+        preValue: currentDefault,
+      };
+    });
+  };
+
+  // Save Service Value (Single or Fleet-Wide)
+  const handleSaveService = async () => {
+    if (!editingService || !effectiveUserId || !vehicleData) return;
+
+    const newValueNum = parseInt(serviceNewValue.trim(), 10);
+    if (isNaN(newValueNum) || newValueNum <= 0) {
+      toast.error("Please enter a valid positive number for service interval.");
+      return;
+    }
+
+    setIsSavingService(true);
+
+    try {
+      const currentVType = (vehicleData.vehicleType || "Truck").toLowerCase();
+      const currentReading =
+        currentVType === "trailer"
+          ? Number(vehicleData.hoursReading || 0)
+          : Number(vehicleData.currentMiles || 0);
+
+      // Determine Owner ID
+      const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
+      const userData = userDoc.data();
+      const ownerId =
+        userData?.role === "SubOwner" && userData?.createdBy
+          ? userData.createdBy
+          : effectiveUserId;
+
+      const batch = writeBatch(db);
+
+      // 1. Fetch Target Vehicles to update
+      let targetVehicles: Array<{ id: string; currentMiles?: string; hoursReading?: string; services?: ServiceData[] }> = [];
+
+      if (syncScope === "all") {
+        const fleetQuery = query(
+          collection(db, "Users", ownerId, "Vehicles"),
+          where("active", "==", true)
+        );
+        const fleetSnap = await getDocs(fleetQuery);
+
+        targetVehicles = fleetSnap.docs
+          .filter((d) => {
+            const vType = (d.data().vehicleType || "Truck").toLowerCase();
+            return vType === currentVType;
+          })
+          .map((d) => ({
+            id: d.id,
+            currentMiles: d.data().currentMiles,
+            hoursReading: d.data().hoursReading,
+            services: d.data().services || [],
+          }));
+      } else {
+        // Single vehicle only
+        targetVehicles = [
+          {
+            id: vehicleId,
+            currentMiles: vehicleData.currentMiles,
+            hoursReading: vehicleData.hoursReading,
+            services: vehicleData.services || [],
+          },
+        ];
+      }
+
+      // 2. Fetch Team Members
+      const teamMembersQuery = query(
+        collection(db, "Users"),
+        where("createdBy", "==", ownerId),
+        where("isTeamMember", "==", true)
+      );
+      const teamMembersSnap = await getDocs(teamMembersQuery);
+      const memberIds = teamMembersSnap.docs.map((d) => d.id);
+
+      // 3. Apply updates to Owner's vehicles
+      for (const veh of targetVehicles) {
+        const reading =
+          currentVType === "trailer"
+            ? Number(veh.hoursReading || 0)
+            : Number(veh.currentMiles || 0);
+
+        const updatedServices = calculateUpdatedServices(
+          veh.services,
+          editingService,
+          newValueNum,
+          reading
+        );
+
+        const ownerVehRef = doc(db, "Users", ownerId, "Vehicles", veh.id);
+        batch.update(ownerVehRef, { services: updatedServices });
+
+        // Sync with Team Members who have this vehicle
+        for (const memberId of memberIds) {
+          const memberVehRef = doc(db, "Users", memberId, "Vehicles", veh.id);
+          const memberDocSnap = await getDoc(memberVehRef);
+          if (memberDocSnap.exists()) {
+            batch.update(memberVehRef, { services: updatedServices });
+          }
+        }
+      }
+
+      await batch.commit();
+
+      // 4. Update local state for current vehicle
+      const updatedLocalServices = calculateUpdatedServices(
+        vehicleData.services,
+        editingService,
+        newValueNum,
+        currentReading
+      );
+
+      setVehicleData((prev) => ({
+        ...prev!,
+        services: updatedLocalServices,
+      }));
+
+      setShowServiceModal(false);
+
+      if (syncScope === "all") {
+        toast.success(
+          `Updated "${editingService.serviceName}" across all ${
+            targetVehicles.length
+          } ${vehicleData.vehicleType || "Truck"}(s) and synced with team members!`
+        );
+      } else {
+        toast.success(
+          `Updated "${editingService.serviceName}" for ${vehicleData.vehicleNumber}!`
+        );
+      }
+    } catch (error) {
+      console.error("Error updating service value:", error);
+      toast.error("Failed to update service value");
+    } finally {
+      setIsSavingService(false);
     }
   };
 
@@ -601,6 +629,8 @@ export default function MyVehicleDetailsScreen() {
       </div>
     );
   }
+
+  const currentVehicleTypeLabel = vehicleData?.vehicleType || "Truck";
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -660,6 +690,121 @@ export default function MyVehicleDetailsScreen() {
         </div>
       )}
 
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* Fleet-Wide Service Rule Sync Modal */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {showServiceModal && editingService && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Edit {editingService.serviceName}
+              </h3>
+              <button
+                onClick={() => setShowServiceModal(false)}
+                disabled={isSavingService}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Default Value (
+                  {editingService.type === "reading"
+                    ? "Miles"
+                    : editingService.type === "hours"
+                    ? "Hours"
+                    : "Days"}
+                  )
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={serviceNewValue}
+                  onChange={(e) => setServiceNewValue(e.target.value)}
+                  placeholder={`Enter value`}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#F96176] focus:border-[#F96176]"
+                />
+              </div>
+
+              {/* Sync Scope Selection */}
+              <div className="space-y-2 pt-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Update Option:
+                </label>
+
+                {/* Option 1: Fleet-Wide */}
+                <label className="flex items-start gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="syncScope"
+                    value="all"
+                    checked={syncScope === "all"}
+                    onChange={() => setSyncScope("all")}
+                    className="mt-1 accent-[#F96176]"
+                  />
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-900">
+                      Apply to all {currentVehicleTypeLabel}s ({matchingVehiclesCount} in fleet)
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      Updates this service interval across all your {currentVehicleTypeLabel}s and syncs with team members.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 2: Single Vehicle Only */}
+                <label className="flex items-start gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="syncScope"
+                    value="single"
+                    checked={syncScope === "single"}
+                    onChange={() => setSyncScope("single")}
+                    className="mt-1 accent-[#F96176]"
+                  />
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-900">
+                      Apply only to this {currentVehicleTypeLabel} ({vehicleData?.vehicleNumber || ""})
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowServiceModal(false)}
+                disabled={isSavingService}
+                className="px-4 py-2 border rounded hover:bg-gray-100 text-sm font-medium text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveService}
+                disabled={isSavingService}
+                className="px-4 py-2 bg-[#F96176] text-white rounded hover:bg-[#e04f64] text-sm font-medium flex items-center gap-2"
+              >
+                {isSavingService ? (
+                  <>
+                    <LoadingIndicator />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold">Vehicle Details</h1>
         <button
@@ -691,8 +836,7 @@ export default function MyVehicleDetailsScreen() {
             </span>
           </p>
           <p className="text-gray-600">
-            VIN:{" "}
-            <span className="font-semibold">{vehicleData?.vin || ""}</span>
+            VIN: <span className="font-semibold">{vehicleData?.vin || ""}</span>
           </p>
           <p className="text-gray-600">
             Engine Name:{" "}
@@ -768,7 +912,7 @@ export default function MyVehicleDetailsScreen() {
                       </td>
                       <td className="px-4 py-2">
                         <button
-                          onClick={() => handleEditService(index, service)}
+                          onClick={() => handleOpenEditModal(service)}
                           className="text-[#F96176] hover:text-[#F96176]"
                         >
                           <FaEdit />
