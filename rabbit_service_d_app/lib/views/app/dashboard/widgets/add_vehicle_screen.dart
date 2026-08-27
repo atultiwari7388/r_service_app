@@ -349,6 +349,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               'defaultNotificationValue': notificationValue,
               'nextNotificationValue': notificationValue,
               'type': type,
+              'isNotification': true,
               'subServices':
                   subServices.map((s) => s['sName'].toString()).toList(),
             });

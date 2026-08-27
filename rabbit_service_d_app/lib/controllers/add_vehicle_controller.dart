@@ -125,6 +125,7 @@ class AddVehicleController extends GetxController {
               'serviceName': serviceName,
               'defaultNotificationValue': defaultNotificationvalues,
               'nextNotificationValue': nextMiles,
+              'isNotification': true,
               'subServices':
                   subServices.map((s) => s['sName'].toString()).toList(),
             });

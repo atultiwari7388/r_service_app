@@ -797,10 +797,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         borderRadius: BorderRadius.circular(10),
         child: Table(
           columnWidths: const {
-            0: FixedColumnWidth(40),
+            0: FixedColumnWidth(35),
             1: FlexColumnWidth(),
-            2: FixedColumnWidth(80),
-            3: FixedColumnWidth(40),
+            2: FixedColumnWidth(70),
+            3: FixedColumnWidth(50),
+            4: FixedColumnWidth(38),
           },
           children: [
             TableRow(
@@ -808,13 +809,27 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                 color: kPrimary,
               ),
               children: [
-                _buildTableHeader('Sr. No.'),
+                _buildTableHeader('Sr.'),
                 _buildTableHeader('Service Name'),
                 _buildTableHeader("D'Value"),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+                  child: const Center(
+                    child: Text(
+                      'Notif',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                  child: Icon(Icons.edit, color: kWhite, size: 20),
+                      const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+                  child: Icon(Icons.edit, color: kWhite, size: 18),
                 ),
               ],
             ),
@@ -822,6 +837,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
               final index = entry.key + 1;
               final service = entry.value;
               final bool isEven = index.isEven;
+              final bool isNotificationActive =
+                  service['isNotification'] != false;
 
               return TableRow(
                 decoration: BoxDecoration(
@@ -833,12 +850,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
 
                   _buildTableCell(
                     service['type'] == 'day'
-                        ? _isDate(service['defaultNotificationValue'])
-                            ? service['defaultNotificationValue'].toString() +
-                                ' (Day)'
-                            : service['defaultNotificationValue'].toString() +
-                                ' (Day)'
-                        : service['defaultNotificationValue'].toString() +
+                        ? (service['defaultNotificationValue']?.toString() ??
+                                '') +
+                            ' (Day)'
+                        : (service['defaultNotificationValue']?.toString() ??
+                                '') +
                             ' (' +
                             (service['type'] == 'reading'
                                 ? 'Miles'
@@ -849,16 +865,39 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   ),
 
                   TableCell(
-                    child: Container(
-                      padding: const EdgeInsets.all(2.0),
+                    verticalAlignment: TableCellVerticalAlignment.middle,
+                    child: Center(
+                      child: SizedBox(
+                        height: 28,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: Switch(
+                            value: isNotificationActive,
+                            activeColor: kSecondary,
+                            onChanged: (val) {
+                              _showNotificationToggleDialog(context, service,
+                                  vehicleId, vehicleType, val);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  TableCell(
+                    verticalAlignment: TableCellVerticalAlignment.middle,
+                    child: Center(
                       child: (service['type'] == 'hours' ||
                               service['type'] == 'reading' ||
                               service['type'] == 'day')
                           ? IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                               icon: const Icon(Icons.edit,
-                                  color: kPrimary, size: 20),
+                                  color: kPrimary, size: 18),
                               onPressed: () {
-                                _showEditDialog(context, service, vehicleId);
+                                _showEditDialog(
+                                    context, service, vehicleId, vehicleType);
                               },
                             )
                           : const SizedBox(),
@@ -873,25 +912,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  bool _isDate(dynamic value) {
-    if (value is String) {
-      try {
-        // Try to parse dd/MM/yyyy format
-        final parts = value.split('/');
-        if (parts.length == 3) {
-          final day = int.tryParse(parts[0]);
-          final month = int.tryParse(parts[1]);
-          final year = int.tryParse(parts[2]);
-          if (day != null && month != null && year != null) {
-            DateTime parsedDate = DateTime(year, month, day);
-            return true;
-          }
-        }
-      } catch (_) {}
-    }
-    return false;
-  }
-
   Widget _buildTableHeader(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
@@ -901,7 +921,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          fontSize: 15,
+          fontSize: 14,
         ),
       ),
     );
@@ -917,235 +937,738 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-  void _showEditDialog(
-      BuildContext context, Map<String, dynamic> service, String vehicleId) {
+  void _showEditDialog(BuildContext context, Map<String, dynamic> service,
+      String vehicleId, String vehicleType) {
     final TextEditingController controller = TextEditingController(
       text: service['defaultNotificationValue'].toString(),
     );
+    String syncScope = "all";
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: const Text(
-            'Edit Default Notification Value',
-            style: TextStyle(color: kPrimary),
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Enter New Value',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: kPrimary, width: 2),
+              title: Text(
+                'Edit ${service['serviceName'] ?? 'Service'}',
+                style: const TextStyle(
+                    color: kPrimary, fontWeight: FontWeight.bold),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancel',
-                  style: appStyle(17, kPrimary, FontWeight.normal)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kSecondary,
-                foregroundColor: kWhite,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText:
+                            'Default Value (${service['type'] == 'reading' ? 'Miles' : service['type'] == 'hours' ? 'Hours' : 'Days'})',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(color: kPrimary, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Update Option:',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: syncScope == 'all'
+                              ? kSecondary
+                              : Colors.grey.shade300,
+                          width: syncScope == 'all' ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: RadioListTile<String>(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 0),
+                        title: Text(
+                          'Apply to all ${vehicleType}s in fleet & sync team members',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          'Updates this service interval across all your ${vehicleType}s.',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                        value: 'all',
+                        groupValue: syncScope,
+                        activeColor: kSecondary,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            syncScope = val ?? 'all';
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: syncScope == 'single'
+                              ? kSecondary
+                              : Colors.grey.shade300,
+                          width: syncScope == 'single' ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: RadioListTile<String>(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 0),
+                        title: Text(
+                          'Apply only to this $vehicleType',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        value: 'single',
+                        groupValue: syncScope,
+                        activeColor: kSecondary,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            syncScope = val ?? 'single';
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              onPressed: () async {
-                final newValue = int.tryParse(controller.text);
-                if (newValue == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Please enter a valid number')),
-                  );
-                  return;
-                }
-
-                try {
-                  // First update the current user's vehicle (whether owner or team member)
-                  await _updateServiceValue(
-                      widget.currentUId, vehicleId, service, newValue);
-
-                  if (widget.role == "Owner") {
-                    // If current user is owner, update all team members with this vehicle
-                    await _updateTeamMembers(
-                        widget.currentUId, vehicleId, service, newValue);
-                  } else {
-                    // If current user is team member, update owner's vehicle
-                    final userDoc = await FirebaseFirestore.instance
-                        .collection('Users')
-                        .doc(widget.currentUId)
-                        .get();
-
-                    final createdBy = userDoc['createdBy'];
-                    if (createdBy != null) {
-                      // Check if owner has this vehicle
-                      final ownerVehicleRef = FirebaseFirestore.instance
-                          .collection("Users")
-                          .doc(createdBy)
-                          .collection('Vehicles')
-                          .doc(vehicleId);
-
-                      final ownerVehicleDoc = await ownerVehicleRef.get();
-                      if (ownerVehicleDoc.exists) {
-                        await _updateServiceValue(
-                            createdBy, vehicleId, service, newValue);
-                      }
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Cancel',
+                      style: appStyle(
+                          16, Colors.grey.shade700, FontWeight.normal)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kSecondary,
+                    foregroundColor: kWhite,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final newValue = int.tryParse(controller.text.trim());
+                    if (newValue == null || newValue <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                                Text('Please enter a valid positive number')),
+                      );
+                      return;
                     }
-                  }
 
-                  Navigator.pop(context); // Close dialog on success
-                  showToastMessage(
-                      "Success", "Service value updated", kSecondary);
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error updating service: $e')),
-                  );
-                }
-              },
-              child: const Text('Update'),
-            ),
-          ],
+                    Navigator.pop(context);
+                    await _saveServiceValue(
+                        vehicleId, vehicleType, service, newValue, syncScope);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  // Add this helper function
-  Future<void> _updateTeamMembers(String ownerId, String vehicleId,
-      Map<String, dynamic> service, int newValue) async {
-    // Check if owner has any team members
-    final teamCheck = await FirebaseFirestore.instance
-        .collection('Users')
-        .where('createdBy', isEqualTo: ownerId)
-        .where('isTeamMember', isEqualTo: true)
-        .limit(1)
-        .get();
+  void _showNotificationToggleDialog(
+      BuildContext context,
+      Map<String, dynamic> service,
+      String vehicleId,
+      String vehicleType,
+      bool targetState) {
+    String syncScope = "all";
 
-    if (teamCheck.docs.isNotEmpty) {
-      // Owner has team members - get all members
-      final teamMembers = await FirebaseFirestore.instance
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              title: Text(
+                targetState ? 'Enable Notification' : 'Disable Notification',
+                style: const TextStyle(
+                    color: kPrimary, fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Service: ${service['serviceName'] ?? 'Service'}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: targetState
+                            ? Colors.green.shade50
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: targetState
+                              ? Colors.green.shade300
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Target Status:',
+                              style: TextStyle(fontSize: 13)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: targetState
+                                  ? Colors.green.shade600
+                                  : Colors.grey.shade600,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              targetState ? 'ON (Enabled)' : 'OFF (Disabled)',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Update Option:',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: syncScope == 'all'
+                              ? kSecondary
+                              : Colors.grey.shade300,
+                          width: syncScope == 'all' ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: RadioListTile<String>(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 0),
+                        title: Text(
+                          'Apply to all ${vehicleType}s in fleet & sync team members',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          'Sets notification status across all your ${vehicleType}s.',
+                          style: TextStyle(
+                              fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                        value: 'all',
+                        groupValue: syncScope,
+                        activeColor: kSecondary,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            syncScope = val ?? 'all';
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: syncScope == 'single'
+                              ? kSecondary
+                              : Colors.grey.shade300,
+                          width: syncScope == 'single' ? 1.5 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: RadioListTile<String>(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 0),
+                        title: Text(
+                          'Apply only to this $vehicleType',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        value: 'single',
+                        groupValue: syncScope,
+                        activeColor: kSecondary,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            syncScope = val ?? 'single';
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text('Cancel',
+                      style: appStyle(
+                          16, Colors.grey.shade700, FontWeight.normal)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kSecondary,
+                    foregroundColor: kWhite,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _saveNotificationToggle(vehicleId, vehicleType,
+                        service, targetState, syncScope);
+                  },
+                  child: const Text('Confirm & Update'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<String> _getEffectiveOwnerId() async {
+    String ownerId = widget.currentUId;
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(widget.currentUId)
+          .get();
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        if (data?['role'] == 'SubOwner' && data?['createdBy'] != null) {
+          ownerId = data!['createdBy'];
+        } else if (data?['isTeamMember'] == true &&
+            data?['createdBy'] != null) {
+          ownerId = data!['createdBy'];
+        }
+      }
+    } catch (e) {
+      log('Error getting owner id: $e');
+    }
+    return ownerId;
+  }
+
+  Map<String, dynamic> _calculateUpdatedService(
+    Map<String, dynamic> currentService,
+    int newValueNum,
+    int vehicleCurrentReading,
+  ) {
+    dynamic currentDefault = currentService['defaultNotificationValue'];
+    dynamic currentNext = currentService['nextNotificationValue'];
+    dynamic type = currentService['type'];
+
+    int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
+    dynamic newNextValue;
+
+    if (type == 'day') {
+      if (currentNext is String && _isDateString(currentNext)) {
+        DateTime currentNextDate = _parseDateString(currentNext);
+        int daysDelta = newValueNum - currentDefaultInt;
+        DateTime newNextDate = currentNextDate.add(Duration(days: daysDelta));
+        newNextValue = _formatDateToString(newNextDate);
+      } else {
+        DateTime baseDate = DateTime.now();
+        DateTime newNextDate = baseDate.add(Duration(days: newValueNum));
+        newNextValue = _formatDateToString(newNextDate);
+      }
+    } else {
+      int currentNextInt = int.tryParse(currentNext.toString()) ?? 0;
+      if (currentNextInt > 0 && currentDefaultInt > 0) {
+        int delta = newValueNum - currentDefaultInt;
+        newNextValue = currentNextInt + delta;
+        if (newNextValue < newValueNum) {
+          newNextValue = newValueNum;
+        }
+      } else {
+        newNextValue = vehicleCurrentReading + newValueNum;
+      }
+    }
+
+    Map<String, dynamic> updated = Map<String, dynamic>.from(currentService);
+    updated['defaultNotificationValue'] = newValueNum;
+    updated['nextNotificationValue'] = newNextValue;
+    updated['preValue'] = currentDefaultInt;
+    updated['isNotification'] = currentService['isNotification'] != false;
+    return updated;
+  }
+
+  List<dynamic> _getUpdatedServicesList(
+    List<dynamic> existingList,
+    Map<String, dynamic> targetService,
+    int newValueNum,
+    int vehicleCurrentReading,
+  ) {
+    return existingList.map((item) {
+      final s = Map<String, dynamic>.from(item);
+      final isTarget = (s['serviceId'] != null &&
+              s['serviceId'] == targetService['serviceId']) ||
+          (s['sId'] != null && s['sId'] == targetService['serviceId']) ||
+          (s['serviceName']?.toString().toLowerCase() ==
+              targetService['serviceName']?.toString().toLowerCase()) ||
+          (s['sName']?.toString().toLowerCase() ==
+              targetService['serviceName']?.toString().toLowerCase());
+
+      if (!isTarget) return s;
+      return _calculateUpdatedService(s, newValueNum, vehicleCurrentReading);
+    }).toList();
+  }
+
+  List<dynamic> _getNotificationToggledList(
+    List<dynamic> existingList,
+    Map<String, dynamic> targetService,
+    bool newNotificationState,
+  ) {
+    return existingList.map((item) {
+      final s = Map<String, dynamic>.from(item);
+      final isTarget = (s['serviceId'] != null &&
+              s['serviceId'] == targetService['serviceId']) ||
+          (s['sId'] != null && s['sId'] == targetService['serviceId']) ||
+          (s['serviceName']?.toString().toLowerCase() ==
+              targetService['serviceName']?.toString().toLowerCase()) ||
+          (s['sName']?.toString().toLowerCase() ==
+              targetService['serviceName']?.toString().toLowerCase());
+
+      if (!isTarget) return s;
+      s['isNotification'] = newNotificationState;
+      return s;
+    }).toList();
+  }
+
+  Future<void> _saveServiceValue(
+    String vehicleId,
+    String vehicleType,
+    Map<String, dynamic> service,
+    int newValueNum,
+    String syncScope,
+  ) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final ownerId = await _getEffectiveOwnerId();
+      final batch = FirebaseFirestore.instance.batch();
+
+      List<Map<String, dynamic>> targetVehicles = [];
+
+      if (syncScope == 'all') {
+        final fleetSnap = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(ownerId)
+            .collection('Vehicles')
+            .where('active', isEqualTo: true)
+            .get();
+
+        targetVehicles = fleetSnap.docs
+            .where((d) =>
+                (d.data()['vehicleType'] ?? 'Truck').toString().toLowerCase() ==
+                vehicleType.toLowerCase())
+            .map((d) => {
+                  'id': d.id,
+                  'currentMiles': d.data()['currentMiles'],
+                  'hoursReading': d.data()['hoursReading'],
+                  'services': d.data()['services'] ?? [],
+                  'nextNotificationMiles':
+                      d.data()['nextNotificationMiles'] ?? [],
+                })
+            .toList();
+      } else {
+        final vehDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(ownerId)
+            .collection('Vehicles')
+            .doc(vehicleId)
+            .get();
+
+        if (vehDoc.exists) {
+          targetVehicles = [
+            {
+              'id': vehicleId,
+              'currentMiles': vehDoc.data()?['currentMiles'],
+              'hoursReading': vehDoc.data()?['hoursReading'],
+              'services': vehDoc.data()?['services'] ?? [],
+              'nextNotificationMiles':
+                  vehDoc.data()?['nextNotificationMiles'] ?? [],
+            }
+          ];
+        }
+      }
+
+      // Fetch team members
+      final teamMembersSnap = await FirebaseFirestore.instance
           .collection('Users')
           .where('createdBy', isEqualTo: ownerId)
           .where('isTeamMember', isEqualTo: true)
           .get();
+      final memberIds = teamMembersSnap.docs.map((d) => d.id).toList();
 
-      for (var member in teamMembers.docs) {
-        final memberId = member.id;
-        try {
-          // Check if team member has this specific vehicle
-          final memberVehicleRef = FirebaseFirestore.instance
-              .collection("Users")
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      for (var veh in targetVehicles) {
+        final vehId = veh['id'] as String;
+        final isTrailer = vehicleType.toLowerCase() == 'trailer';
+        final reading = isTrailer
+            ? int.tryParse(veh['hoursReading']?.toString() ?? '0') ?? 0
+            : int.tryParse(veh['currentMiles']?.toString() ?? '0') ?? 0;
+
+        final updatedServices = _getUpdatedServicesList(
+            veh['services'] as List<dynamic>, service, newValueNum, reading);
+
+        final updateData = <String, dynamic>{
+          'services': updatedServices,
+          'updatedAt': todayStr,
+        };
+
+        if (veh['nextNotificationMiles'] != null &&
+            (veh['nextNotificationMiles'] as List).isNotEmpty) {
+          updateData['nextNotificationMiles'] = _getUpdatedServicesList(
+              veh['nextNotificationMiles'] as List<dynamic>,
+              service,
+              newValueNum,
+              reading);
+        }
+
+        final ownerVehRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(ownerId)
+            .collection('Vehicles')
+            .doc(vehId);
+        batch.update(ownerVehRef, updateData);
+
+        for (var memberId in memberIds) {
+          final memberVehRef = FirebaseFirestore.instance
+              .collection('Users')
               .doc(memberId)
               .collection('Vehicles')
-              .doc(vehicleId);
-
-          final memberVehicleDoc = await memberVehicleRef.get();
-
-          if (memberVehicleDoc.exists) {
-            // Only update if vehicle exists for team member
-            await _updateServiceValue(memberId, vehicleId, service, newValue);
+              .doc(vehId);
+          final memberDocSnap = await memberVehRef.get();
+          if (memberDocSnap.exists) {
+            final memberData = memberDocSnap.data() as Map<String, dynamic>;
+            final memberUpdateData = <String, dynamic>{
+              'services': updatedServices,
+              'updatedAt': todayStr,
+            };
+            if (memberData['nextNotificationMiles'] != null &&
+                (memberData['nextNotificationMiles'] as List).isNotEmpty) {
+              memberUpdateData['nextNotificationMiles'] =
+                  _getUpdatedServicesList(
+                      memberData['nextNotificationMiles'] as List<dynamic>,
+                      service,
+                      newValueNum,
+                      reading);
+            }
+            batch.update(memberVehRef, memberUpdateData);
           }
-        } catch (e) {
-          // Skip if team member has no Vehicles collection or other error
-          log("Team member $memberId has no Vehicles collection or error: $e");
-          continue;
         }
       }
+
+      await batch.commit();
+
+      if (syncScope == 'all') {
+        showToastMessage(
+            "Success",
+            'Updated "${service['serviceName']}" across all ${targetVehicles.length} $vehicleType(s)!',
+            kSecondary);
+      } else {
+        showToastMessage(
+            "Success", 'Service value updated successfully!', kSecondary);
+      }
+    } catch (e) {
+      log('Error saving service value: $e');
+      showToastMessage(
+          "Error", "Failed to update service value: $e", Colors.red);
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
-  Future<void> _updateServiceValue(String userId, String vehicleId,
-      Map<String, dynamic> service, int newValue) async {
-    final vehicleDocRef = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(userId)
-        .collection('Vehicles')
-        .doc(vehicleId);
+  Future<void> _saveNotificationToggle(
+    String vehicleId,
+    String vehicleType,
+    Map<String, dynamic> service,
+    bool targetNotificationState,
+    String syncScope,
+  ) async {
+    setState(() {
+      isLoading = true;
+    });
 
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final docSnapshot = await transaction.get(vehicleDocRef);
-      if (!docSnapshot.exists) throw Exception('Document not found');
+    try {
+      final ownerId = await _getEffectiveOwnerId();
+      final batch = FirebaseFirestore.instance.batch();
 
-      List<dynamic> services = List.from(docSnapshot['services']);
-      int index = services.indexWhere(
-        (s) => s['serviceName'] == service['serviceName'],
-      );
+      List<Map<String, dynamic>> targetVehicles = [];
 
-      if (index == -1) throw Exception('Service not found');
+      if (syncScope == 'all') {
+        final fleetSnap = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(ownerId)
+            .collection('Vehicles')
+            .where('active', isEqualTo: true)
+            .get();
 
-      // Get current values
-      Map<String, dynamic> currentService = Map.from(services[index]);
-      dynamic currentDefault = currentService['defaultNotificationValue'];
-      dynamic currentNext = currentService['nextNotificationValue'];
-      dynamic currentPreValue = currentService['preValue'];
-
-      // Handle different types of values
-      dynamic newNextValue;
-
-      if (service['type'] == 'day') {
-        // For day type, handle date calculations
-        if (currentNext is String && _isDateString(currentNext)) {
-          // Current next value is a date string
-          DateTime currentNextDate = _parseDateString(currentNext);
-          int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
-          int currentPreValueInt =
-              int.tryParse(currentPreValue.toString()) ?? 0;
-
-          // Calculate the date difference between current default and pre value
-          int dateDifference = currentDefaultInt - currentPreValueInt;
-
-          // Adjust the date based on the new default value
-          DateTime newNextDate = currentNextDate.add(
-              Duration(days: (newValue - currentDefaultInt) + dateDifference));
-
-          newNextValue = _formatDateToString(newNextDate);
-        } else {
-          // Fallback: if next value is not a date, calculate normally
-          int currentNextInt = int.tryParse(currentNext.toString()) ?? 0;
-          int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
-          int difference = currentNextInt - currentDefaultInt;
-          newNextValue = newValue + difference;
-        }
+        targetVehicles = fleetSnap.docs
+            .where((d) =>
+                (d.data()['vehicleType'] ?? 'Truck').toString().toLowerCase() ==
+                vehicleType.toLowerCase())
+            .map((d) => {
+                  'id': d.id,
+                  'services': d.data()['services'] ?? [],
+                  'nextNotificationMiles':
+                      d.data()['nextNotificationMiles'] ?? [],
+                })
+            .toList();
       } else {
-        // For other types (reading, hours), handle numeric calculations
-        int currentNextInt = int.tryParse(currentNext.toString()) ?? 0;
-        int currentDefaultInt = int.tryParse(currentDefault.toString()) ?? 0;
-        int difference = currentNextInt - currentDefaultInt;
-        newNextValue = newValue + difference;
+        final vehDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(ownerId)
+            .collection('Vehicles')
+            .doc(vehicleId)
+            .get();
 
-        // Ensure the new next value is not less than the new default
-        if (newNextValue < newValue) {
-          newNextValue = newValue;
+        if (vehDoc.exists) {
+          targetVehicles = [
+            {
+              'id': vehicleId,
+              'services': vehDoc.data()?['services'] ?? [],
+              'nextNotificationMiles':
+                  vehDoc.data()?['nextNotificationMiles'] ?? [],
+            }
+          ];
         }
       }
 
-      // Update the service
-      Map<String, dynamic> updatedService = Map.from(currentService);
-      updatedService['defaultNotificationValue'] = newValue;
-      updatedService['nextNotificationValue'] = newNextValue;
-      updatedService['preValue'] = currentDefault; // Store previous value
+      // Fetch team members
+      final teamMembersSnap = await FirebaseFirestore.instance
+          .collection('Users')
+          .where('createdBy', isEqualTo: ownerId)
+          .where('isTeamMember', isEqualTo: true)
+          .get();
+      final memberIds = teamMembersSnap.docs.map((d) => d.id).toList();
 
-      services[index] = updatedService;
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-      transaction.update(vehicleDocRef, {
-        "updatedAt": DateFormat('yyyy-MM-dd').format(DateTime.now()),
-        'services': services
+      for (var veh in targetVehicles) {
+        final vehId = veh['id'] as String;
+
+        final updatedServices = _getNotificationToggledList(
+            veh['services'] as List<dynamic>, service, targetNotificationState);
+
+        final updateData = <String, dynamic>{
+          'services': updatedServices,
+          'updatedAt': todayStr,
+        };
+
+        if (veh['nextNotificationMiles'] != null &&
+            (veh['nextNotificationMiles'] as List).isNotEmpty) {
+          updateData['nextNotificationMiles'] = _getNotificationToggledList(
+              veh['nextNotificationMiles'] as List<dynamic>,
+              service,
+              targetNotificationState);
+        }
+
+        final ownerVehRef = FirebaseFirestore.instance
+            .collection('Users')
+            .doc(ownerId)
+            .collection('Vehicles')
+            .doc(vehId);
+        batch.update(ownerVehRef, updateData);
+
+        for (var memberId in memberIds) {
+          final memberVehRef = FirebaseFirestore.instance
+              .collection('Users')
+              .doc(memberId)
+              .collection('Vehicles')
+              .doc(vehId);
+          final memberDocSnap = await memberVehRef.get();
+          if (memberDocSnap.exists) {
+            final memberData = memberDocSnap.data() as Map<String, dynamic>;
+            final memberUpdateData = <String, dynamic>{
+              'services': updatedServices,
+              'updatedAt': todayStr,
+            };
+            if (memberData['nextNotificationMiles'] != null &&
+                (memberData['nextNotificationMiles'] as List).isNotEmpty) {
+              memberUpdateData['nextNotificationMiles'] =
+                  _getNotificationToggledList(
+                      memberData['nextNotificationMiles'] as List<dynamic>,
+                      service,
+                      targetNotificationState);
+            }
+            batch.update(memberVehRef, memberUpdateData);
+          }
+        }
+      }
+
+      await batch.commit();
+
+      final statusText = targetNotificationState ? 'ON' : 'OFF';
+      if (syncScope == 'all') {
+        showToastMessage(
+            "Success",
+            'Notification turned $statusText for "${service['serviceName']}" across all ${targetVehicles.length} $vehicleType(s)!',
+            kSecondary);
+      } else {
+        showToastMessage(
+            "Success",
+            'Notification turned $statusText for "${service['serviceName']}"!',
+            kSecondary);
+      }
+    } catch (e) {
+      log('Error saving notification toggle: $e');
+      showToastMessage(
+          "Error", "Failed to update notification: $e", Colors.red);
+    } finally {
+      setState(() {
+        isLoading = false;
       });
-    });
+    }
   }
 
 // Helper function to check if a string is a date in the expected format
