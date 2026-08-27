@@ -70,6 +70,7 @@ export interface Service {
   nextNotificationValue: number;
   type: string;
   subServices: string[];
+  isNotification?: boolean;
 }
 
 export interface NextNotificationMile {
@@ -79,6 +80,7 @@ export interface NextNotificationMile {
   nextNotificationValue: number;
   type: string;
   subServices: string[];
+  isNotification?: boolean;
 }
 
 export interface ServiceData {
@@ -271,6 +273,7 @@ export default function ImportVehicle() {
               nextNotificationValue: notificationValue,
               type: type,
               subServices: subServices.map((s) => s.sName.toString()),
+              isNotification: true,
             });
           }
         });
@@ -508,6 +511,7 @@ export default function ImportVehicle() {
           serviceName: service.serviceName,
           type: service.type,
           subServices: service.subServices,
+          isNotification: service.isNotification ?? true,
         })),
         ...(vehicleType === "Truck"
           ? {

@@ -37,6 +37,7 @@ interface Service {
   vType: string;
   dValues: DValue[];
   type?: string;
+  isNotification?: boolean;
 }
 
 interface ServicesDB {
@@ -46,6 +47,7 @@ interface ServicesDB {
   nextNotificationValue: number;
   subServices: { sName: string }[];
   type?: string;
+  isNotification?: boolean;
 }
 
 interface VehicleData {
@@ -339,6 +341,7 @@ export default function AddVehiclePage() {
               type: type,
               vType: service.vType,
               dValues: service.dValues,
+              isNotification: true,
               subServices: subServices.map((s: { sName: string }) => ({
                 sName: s.sName,
               })), // Array of strings
@@ -435,6 +438,7 @@ export default function AddVehiclePage() {
             // vType: service.vType || "",
             type: service.type || "",
             // dValues: service.dValues || [],
+            isNotification: service.isNotification ?? true,
           })) || [],
 
         lastServiceMiles: currentReading ? parseInt(currentReading) : 0,

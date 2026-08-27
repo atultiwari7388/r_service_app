@@ -32,6 +32,7 @@ interface Service {
   vType: string;
   dValues: DValue[];
   type?: string;
+  isNotification?: boolean;
 }
 
 interface ServicesDB {
@@ -43,6 +44,7 @@ interface ServicesDB {
   vType: string;
   dValues: DValue[];
   type?: string;
+  isNotification?: boolean;
 }
 
 interface VehicleData {
@@ -308,6 +310,7 @@ export default function EditVehicleComponent({ vId }: { vId: string }) {
               type: type,
               vType: service.vType,
               dValues: service.dValues,
+              isNotification: true,
               subServices: subServices.map((s: { sName: string }) => ({
                 sName: s.sName,
               })), // Array of strings
@@ -418,6 +421,7 @@ export default function EditVehicleComponent({ vId }: { vId: string }) {
             vType: service.vType || "",
             type: service.type || "",
             dValues: service.dValues || [],
+            isNotification: service.isNotification ?? true,
           })) || [],
         lastServiceMiles: currentReading ? parseInt(currentReading) : 0,
         lastServiceHours: hoursReading ? parseInt(hoursReading) : 0,

@@ -13,6 +13,8 @@ import {
   where,
   writeBatch,
   arrayRemove,
+  UpdateData,
+  DocumentData,
 } from "firebase/firestore";
 import {
   ref,
@@ -46,6 +48,7 @@ interface ServiceData {
   serviceName: string;
   type: string;
   preValue?: number | string;
+  isNotification?: boolean;
 }
 
 interface VehicleData {
@@ -86,13 +89,27 @@ export default function MyVehicleDetailsScreen() {
   const [currentImage, setCurrentImage] = useState<string>("");
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
 
-  // Edit Service Modal States
+  // Edit Service Value Modal States
   const [showServiceModal, setShowServiceModal] = useState(false);
-  const [editingService, setEditingService] = useState<ServiceData | null>(null);
+  const [editingService, setEditingService] = useState<ServiceData | null>(
+    null
+  );
   const [serviceNewValue, setServiceNewValue] = useState<string>("");
   const [syncScope, setSyncScope] = useState<"all" | "single">("all");
   const [isSavingService, setIsSavingService] = useState(false);
   const [matchingVehiclesCount, setMatchingVehiclesCount] = useState<number>(1);
+
+  // Toggle Notification Modal States
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [togglingService, setTogglingService] = useState<ServiceData | null>(
+    null
+  );
+  const [targetNotificationState, setTargetNotificationState] =
+    useState<boolean>(true);
+  const [notificationSyncScope, setNotificationSyncScope] = useState<
+    "all" | "single"
+  >("all");
+  const [isTogglingNotification, setIsTogglingNotification] = useState(false);
 
   // 1. Fetch user data to get role and determine effectiveUserId
   useEffect(() => {
@@ -419,7 +436,9 @@ export default function MyVehicleDetailsScreen() {
     return `${day}/${month}/${year}`;
   };
 
-  // Open Edit Service Modal
+  // ─────────────────────────────────────────────────────────────
+  // 1. EDIT SERVICE INTERVAL MODAL
+  // ─────────────────────────────────────────────────────────────
   const handleOpenEditModal = (service: ServiceData) => {
     setEditingService(service);
     setServiceNewValue(service.defaultNotificationValue?.toString() || "");
@@ -427,7 +446,6 @@ export default function MyVehicleDetailsScreen() {
     setShowServiceModal(true);
   };
 
-  // Helper to recalculate services array for any vehicle
   const calculateUpdatedServices = (
     existingServices: ServiceData[] = [],
     targetService: ServiceData,
@@ -437,7 +455,8 @@ export default function MyVehicleDetailsScreen() {
     return existingServices.map((s) => {
       const isTarget =
         s.serviceId === targetService.serviceId ||
-        s.serviceName?.toLowerCase() === targetService.serviceName?.toLowerCase();
+        s.serviceName?.toLowerCase() ===
+          targetService.serviceName?.toLowerCase();
 
       if (!isTarget) return s;
 
@@ -484,11 +503,79 @@ export default function MyVehicleDetailsScreen() {
         defaultNotificationValue: newValueNum,
         nextNotificationValue: newNextValue,
         preValue: currentDefault,
+        isNotification: s.isNotification !== false,
       };
     });
   };
 
-  // Save Service Value (Single or Fleet-Wide)
+  const calculateUpdatedNextNotificationMiles = (
+    existingList: Array<Record<string, unknown>> = [],
+    targetService: ServiceData,
+    newValueNum: number,
+    vehicleCurrentReading: number = 0
+  ): Array<Record<string, unknown>> => {
+    return existingList.map((s) => {
+      const isTarget =
+        (s.serviceId && s.serviceId === targetService.serviceId) ||
+        (s.sId && s.sId === targetService.serviceId) ||
+        (typeof s.serviceName === "string" &&
+          s.serviceName.toLowerCase() ===
+            targetService.serviceName.toLowerCase()) ||
+        (typeof s.sName === "string" &&
+          s.sName.toLowerCase() === targetService.serviceName.toLowerCase());
+
+      if (!isTarget) return s;
+
+      const currentDefault =
+        typeof s.defaultNotificationValue === "string"
+          ? parseInt(s.defaultNotificationValue, 10) || 0
+          : typeof s.defaultNotificationValue === "number"
+          ? s.defaultNotificationValue
+          : 0;
+
+      const currentNext = s.nextNotificationValue;
+      let newNextValue: string | number = 0;
+
+      if (s.type === "day") {
+        if (typeof currentNext === "string" && isDateString(currentNext)) {
+          const currentNextDate = parseDateString(currentNext);
+          const daysDelta = newValueNum - currentDefault;
+          const newNextDate = new Date(currentNextDate);
+          newNextDate.setDate(newNextDate.getDate() + daysDelta);
+          newNextValue = formatDateToString(newNextDate);
+        } else {
+          const baseDate = new Date();
+          baseDate.setDate(baseDate.getDate() + newValueNum);
+          newNextValue = formatDateToString(baseDate);
+        }
+      } else {
+        const currentNextInt =
+          typeof currentNext === "string"
+            ? parseInt(currentNext, 10) || 0
+            : typeof currentNext === "number"
+            ? currentNext
+            : 0;
+
+        if (currentNextInt > 0 && currentDefault > 0) {
+          const delta = newValueNum - currentDefault;
+          newNextValue = currentNextInt + delta;
+          if (newNextValue < newValueNum) {
+            newNextValue = newValueNum;
+          }
+        } else {
+          newNextValue = vehicleCurrentReading + newValueNum;
+        }
+      }
+
+      return {
+        ...s,
+        defaultNotificationValue: newValueNum,
+        nextNotificationValue: newNextValue,
+        isNotification: s.isNotification !== false,
+      };
+    });
+  };
+
   const handleSaveService = async () => {
     if (!editingService || !effectiveUserId || !vehicleData) return;
 
@@ -507,7 +594,6 @@ export default function MyVehicleDetailsScreen() {
           ? Number(vehicleData.hoursReading || 0)
           : Number(vehicleData.currentMiles || 0);
 
-      // Determine Owner ID
       const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
       const userData = userDoc.data();
       const ownerId =
@@ -517,8 +603,13 @@ export default function MyVehicleDetailsScreen() {
 
       const batch = writeBatch(db);
 
-      // 1. Fetch Target Vehicles to update
-      let targetVehicles: Array<{ id: string; currentMiles?: string; hoursReading?: string; services?: ServiceData[] }> = [];
+      let targetVehicles: Array<{
+        id: string;
+        currentMiles?: string;
+        hoursReading?: string;
+        services?: ServiceData[];
+        nextNotificationMiles?: Array<Record<string, unknown>>;
+      }> = [];
 
       if (syncScope === "all") {
         const fleetQuery = query(
@@ -537,9 +628,9 @@ export default function MyVehicleDetailsScreen() {
             currentMiles: d.data().currentMiles,
             hoursReading: d.data().hoursReading,
             services: d.data().services || [],
+            nextNotificationMiles: d.data().nextNotificationMiles || [],
           }));
       } else {
-        // Single vehicle only
         targetVehicles = [
           {
             id: vehicleId,
@@ -550,7 +641,6 @@ export default function MyVehicleDetailsScreen() {
         ];
       }
 
-      // 2. Fetch Team Members
       const teamMembersQuery = query(
         collection(db, "Users"),
         where("createdBy", "==", ownerId),
@@ -559,7 +649,6 @@ export default function MyVehicleDetailsScreen() {
       const teamMembersSnap = await getDocs(teamMembersQuery);
       const memberIds = teamMembersSnap.docs.map((d) => d.id);
 
-      // 3. Apply updates to Owner's vehicles
       for (const veh of targetVehicles) {
         const reading =
           currentVType === "trailer"
@@ -573,22 +662,50 @@ export default function MyVehicleDetailsScreen() {
           reading
         );
 
-        const ownerVehRef = doc(db, "Users", ownerId, "Vehicles", veh.id);
-        batch.update(ownerVehRef, { services: updatedServices });
+        const updatePayload: UpdateData<DocumentData> = {
+          services: updatedServices,
+        };
 
-        // Sync with Team Members who have this vehicle
+        if (veh.nextNotificationMiles && veh.nextNotificationMiles.length > 0) {
+          updatePayload.nextNotificationMiles =
+            calculateUpdatedNextNotificationMiles(
+              veh.nextNotificationMiles,
+              editingService,
+              newValueNum,
+              reading
+            );
+        }
+
+        const ownerVehRef = doc(db, "Users", ownerId, "Vehicles", veh.id);
+        batch.update(ownerVehRef, updatePayload);
+
         for (const memberId of memberIds) {
           const memberVehRef = doc(db, "Users", memberId, "Vehicles", veh.id);
           const memberDocSnap = await getDoc(memberVehRef);
           if (memberDocSnap.exists()) {
-            batch.update(memberVehRef, { services: updatedServices });
+            const memberData = memberDocSnap.data();
+            const memberPayload: UpdateData<DocumentData> = {
+              services: updatedServices,
+            };
+            if (
+              memberData.nextNotificationMiles &&
+              memberData.nextNotificationMiles.length > 0
+            ) {
+              memberPayload.nextNotificationMiles =
+                calculateUpdatedNextNotificationMiles(
+                  memberData.nextNotificationMiles,
+                  editingService,
+                  newValueNum,
+                  reading
+                );
+            }
+            batch.update(memberVehRef, memberPayload);
           }
         }
       }
 
       await batch.commit();
 
-      // 4. Update local state for current vehicle
       const updatedLocalServices = calculateUpdatedServices(
         vehicleData.services,
         editingService,
@@ -607,7 +724,9 @@ export default function MyVehicleDetailsScreen() {
         toast.success(
           `Updated "${editingService.serviceName}" across all ${
             targetVehicles.length
-          } ${vehicleData.vehicleType || "Truck"}(s) and synced with team members!`
+          } ${
+            vehicleData.vehicleType || "Truck"
+          }(s) and synced with team members!`
         );
       } else {
         toast.success(
@@ -619,6 +738,202 @@ export default function MyVehicleDetailsScreen() {
       toast.error("Failed to update service value");
     } finally {
       setIsSavingService(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // 2. TOGGLE NOTIFICATION SWITCH MODAL & SYNC
+  // ─────────────────────────────────────────────────────────────
+  const handleToggleNotificationClick = (service: ServiceData) => {
+    const currentState = service.isNotification !== false;
+    setTogglingService(service);
+    setTargetNotificationState(!currentState);
+    setNotificationSyncScope("all");
+    setShowNotificationModal(true);
+  };
+
+  const calculateNotificationToggledServices = (
+    existingServices: ServiceData[] = [],
+    targetService: ServiceData,
+    newNotificationState: boolean
+  ): ServiceData[] => {
+    return existingServices.map((s) => {
+      const isTarget =
+        s.serviceId === targetService.serviceId ||
+        s.serviceName?.toLowerCase() ===
+          targetService.serviceName?.toLowerCase();
+
+      if (!isTarget) return s;
+
+      return {
+        ...s,
+        isNotification: newNotificationState,
+      };
+    });
+  };
+
+  const calculateNotificationToggledNextNotificationMiles = (
+    existingList: Array<Record<string, unknown>> = [],
+    targetService: ServiceData,
+    newNotificationState: boolean
+  ): Array<Record<string, unknown>> => {
+    return existingList.map((s) => {
+      const isTarget =
+        (s.serviceId && s.serviceId === targetService.serviceId) ||
+        (s.sId && s.sId === targetService.serviceId) ||
+        (typeof s.serviceName === "string" &&
+          s.serviceName.toLowerCase() ===
+            targetService.serviceName.toLowerCase()) ||
+        (typeof s.sName === "string" &&
+          s.sName.toLowerCase() === targetService.serviceName.toLowerCase());
+
+      if (!isTarget) return s;
+
+      return {
+        ...s,
+        isNotification: newNotificationState,
+      };
+    });
+  };
+
+  const handleSaveNotificationToggle = async () => {
+    if (!togglingService || !effectiveUserId || !vehicleData) return;
+
+    setIsTogglingNotification(true);
+
+    try {
+      const currentVType = (vehicleData.vehicleType || "Truck").toLowerCase();
+
+      const userDoc = await getDoc(doc(db, "Users", effectiveUserId));
+      const userData = userDoc.data();
+      const ownerId =
+        userData?.role === "SubOwner" && userData?.createdBy
+          ? userData.createdBy
+          : effectiveUserId;
+
+      const batch = writeBatch(db);
+
+      let targetVehicles: Array<{
+        id: string;
+        services?: ServiceData[];
+        nextNotificationMiles?: Array<Record<string, unknown>>;
+      }> = [];
+
+      if (notificationSyncScope === "all") {
+        const fleetQuery = query(
+          collection(db, "Users", ownerId, "Vehicles"),
+          where("active", "==", true)
+        );
+        const fleetSnap = await getDocs(fleetQuery);
+
+        targetVehicles = fleetSnap.docs
+          .filter((d) => {
+            const vType = (d.data().vehicleType || "Truck").toLowerCase();
+            return vType === currentVType;
+          })
+          .map((d) => ({
+            id: d.id,
+            services: d.data().services || [],
+            nextNotificationMiles: d.data().nextNotificationMiles || [],
+          }));
+      } else {
+        targetVehicles = [
+          {
+            id: vehicleId,
+            services: vehicleData.services || [],
+          },
+        ];
+      }
+
+      const teamMembersQuery = query(
+        collection(db, "Users"),
+        where("createdBy", "==", ownerId),
+        where("isTeamMember", "==", true)
+      );
+      const teamMembersSnap = await getDocs(teamMembersQuery);
+      const memberIds = teamMembersSnap.docs.map((d) => d.id);
+
+      for (const veh of targetVehicles) {
+        const updatedServices = calculateNotificationToggledServices(
+          veh.services,
+          togglingService,
+          targetNotificationState
+        );
+
+        const updatePayload: UpdateData<DocumentData> = {
+          services: updatedServices,
+        };
+
+        if (veh.nextNotificationMiles && veh.nextNotificationMiles.length > 0) {
+          updatePayload.nextNotificationMiles =
+            calculateNotificationToggledNextNotificationMiles(
+              veh.nextNotificationMiles,
+              togglingService,
+              targetNotificationState
+            );
+        }
+
+        const ownerVehRef = doc(db, "Users", ownerId, "Vehicles", veh.id);
+        batch.update(ownerVehRef, updatePayload);
+
+        for (const memberId of memberIds) {
+          const memberVehRef = doc(db, "Users", memberId, "Vehicles", veh.id);
+          const memberDocSnap = await getDoc(memberVehRef);
+          if (memberDocSnap.exists()) {
+            const memberData = memberDocSnap.data();
+            const memberPayload: UpdateData<DocumentData> = {
+              services: updatedServices,
+            };
+            if (
+              memberData.nextNotificationMiles &&
+              memberData.nextNotificationMiles.length > 0
+            ) {
+              memberPayload.nextNotificationMiles =
+                calculateNotificationToggledNextNotificationMiles(
+                  memberData.nextNotificationMiles,
+                  togglingService,
+                  targetNotificationState
+                );
+            }
+            batch.update(memberVehRef, memberPayload);
+          }
+        }
+      }
+
+      await batch.commit();
+
+      const updatedLocalServices = calculateNotificationToggledServices(
+        vehicleData.services,
+        togglingService,
+        targetNotificationState
+      );
+
+      setVehicleData((prev) => ({
+        ...prev!,
+        services: updatedLocalServices,
+      }));
+
+      setShowNotificationModal(false);
+
+      const statusText = targetNotificationState ? "ON" : "OFF";
+      if (notificationSyncScope === "all") {
+        toast.success(
+          `Turned Notification ${statusText} for "${
+            togglingService.serviceName
+          }" across all ${targetVehicles.length} ${
+            vehicleData.vehicleType || "Truck"
+          }(s)!`
+        );
+      } else {
+        toast.success(
+          `Turned Notification ${statusText} for "${togglingService.serviceName}" on ${vehicleData.vehicleNumber}!`
+        );
+      }
+    } catch (error) {
+      console.error("Error updating notification status:", error);
+      toast.error("Failed to update notification status");
+    } finally {
+      setIsTogglingNotification(false);
     }
   };
 
@@ -691,7 +1006,7 @@ export default function MyVehicleDetailsScreen() {
       )}
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* Fleet-Wide Service Rule Sync Modal */}
+      {/* Edit Service Value Modal */}
       {/* ───────────────────────────────────────────────────────────── */}
       {showServiceModal && editingService && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -748,10 +1063,12 @@ export default function MyVehicleDetailsScreen() {
                   />
                   <div className="text-sm">
                     <span className="font-medium text-gray-900">
-                      Apply to all {currentVehicleTypeLabel}s ({matchingVehiclesCount} in fleet)
+                      Apply to all {currentVehicleTypeLabel}s (
+                      {matchingVehiclesCount} in fleet)
                     </span>
                     <p className="text-xs text-gray-500">
-                      Updates this service interval across all your {currentVehicleTypeLabel}s and syncs with team members.
+                      Updates this service interval across all your{" "}
+                      {currentVehicleTypeLabel}s and syncs with team members.
                     </p>
                   </div>
                 </label>
@@ -768,7 +1085,8 @@ export default function MyVehicleDetailsScreen() {
                   />
                   <div className="text-sm">
                     <span className="font-medium text-gray-900">
-                      Apply only to this {currentVehicleTypeLabel} ({vehicleData?.vehicleNumber || ""})
+                      Apply only to this {currentVehicleTypeLabel} (
+                      {vehicleData?.vehicleNumber || ""})
                     </span>
                   </div>
                 </label>
@@ -805,6 +1123,129 @@ export default function MyVehicleDetailsScreen() {
         </div>
       )}
 
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* Toggle Notification Modal */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {showNotificationModal && togglingService && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">
+                {targetNotificationState
+                  ? "Enable Notification"
+                  : "Disable Notification"}
+              </h3>
+              <button
+                onClick={() => setShowNotificationModal(false)}
+                disabled={isTogglingNotification}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Service:{" "}
+                <strong className="text-gray-900">
+                  {togglingService.serviceName}
+                </strong>
+              </p>
+
+              <div className="p-3 bg-gray-50 rounded-lg border flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">
+                  Target Status:
+                </span>
+                <span
+                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    targetNotificationState
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-200 text-gray-700"
+                  }`}
+                >
+                  {targetNotificationState ? "ON (Enabled)" : "OFF (Disabled)"}
+                </span>
+              </div>
+
+              {/* Sync Scope Selection */}
+              <div className="space-y-2 pt-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Update Option:
+                </label>
+
+                {/* Option 1: Fleet-Wide */}
+                <label className="flex items-start gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="notificationSyncScope"
+                    value="all"
+                    checked={notificationSyncScope === "all"}
+                    onChange={() => setNotificationSyncScope("all")}
+                    className="mt-1 accent-[#F96176]"
+                  />
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-900">
+                      Apply to all {currentVehicleTypeLabel}s (
+                      {matchingVehiclesCount} in fleet)
+                    </span>
+                    <p className="text-xs text-gray-500">
+                      Sets notification status across all your{" "}
+                      {currentVehicleTypeLabel}s and syncs with team members.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Option 2: Single Vehicle Only */}
+                <label className="flex items-start gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="notificationSyncScope"
+                    value="single"
+                    checked={notificationSyncScope === "single"}
+                    onChange={() => setNotificationSyncScope("single")}
+                    className="mt-1 accent-[#F96176]"
+                  />
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-900">
+                      Apply only to this {currentVehicleTypeLabel} (
+                      {vehicleData?.vehicleNumber || ""})
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowNotificationModal(false)}
+                disabled={isTogglingNotification}
+                className="px-4 py-2 border rounded hover:bg-gray-100 text-sm font-medium text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNotificationToggle}
+                disabled={isTogglingNotification}
+                className="px-4 py-2 bg-[#F96176] text-white rounded hover:bg-[#e04f64] text-sm font-medium flex items-center gap-2"
+              >
+                {isTogglingNotification ? (
+                  <>
+                    <LoadingIndicator />
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  <span>Confirm &amp; Update</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold">Vehicle Details</h1>
         <button
@@ -890,7 +1331,8 @@ export default function MyVehicleDetailsScreen() {
                   {/* Serial number header */}
                   <th className="px-4 py-2 text-left">Service Name</th>
                   <th className="px-4 py-2 text-left">Default Value</th>
-                  <th className="px-4 py-2 text-left">Actions</th>
+                  <th className="px-4 py-2 text-center">Notification</th>
+                  <th className="px-4 py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -902,18 +1344,46 @@ export default function MyVehicleDetailsScreen() {
                   )
                   .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
                   .map((service, index) => (
-                    <tr key={service.serviceId} className="border-b">
+                    <tr key={service.serviceId || index} className="border-b">
                       <td className="px-4 py-2">{index + 1}</td>
                       {/* Serial number */}
-                      <td className="px-4 py-2">{service.serviceName}</td>
+                      <td className="px-4 py-2 font-medium text-gray-800">
+                        {service.serviceName}
+                      </td>
                       <td className="px-4 py-2">
                         {service.defaultNotificationValue || "N/A"} (
                         {service.type === "reading" ? "Miles" : service.type})
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleNotificationClick(service)}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            service.isNotification !== false
+                              ? "bg-[#F96176]"
+                              : "bg-gray-300"
+                          }`}
+                          title={
+                            service.isNotification !== false
+                              ? "Notification is ON (Click to turn OFF)"
+                              : "Notification is OFF (Click to turn ON)"
+                          }
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              service.isNotification !== false
+                                ? "translate-x-5"
+                                : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </td>
+                      <td className="px-4 py-2 text-right">
                         <button
                           onClick={() => handleOpenEditModal(service)}
-                          className="text-[#F96176] hover:text-[#F96176]"
+                          className="text-[#F96176] hover:text-[#F96176] p-1.5 rounded"
+                          title="Edit Service Value"
                         >
                           <FaEdit />
                         </button>
@@ -925,6 +1395,7 @@ export default function MyVehicleDetailsScreen() {
           </div>
         </div>
       ) : null}
+
       {role === "Owner" || role === "SubOwner" ? (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>

@@ -26,6 +26,7 @@ interface Service {
   vType: string;
   dValues: DValue[];
   type?: string;
+  isNotification?: boolean;
 }
 
 interface ServicesDB {
@@ -35,6 +36,7 @@ interface ServicesDB {
   nextNotificationValue: number;
   subServices: { sName: string }[];
   type?: string;
+  isNotification?: boolean;
 }
 
 interface VehicleData {

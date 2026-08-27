@@ -504,6 +504,14 @@ exports.checkAndNotifyUserForVehicleService = functions.https.onCall(
       let hasNotifications = false;
 
       for (const service of nextNotificationMiles) {
+        // Skip service if notification is disabled
+        if (service.isNotification === false) {
+          console.log(
+            `Skipping ${service.serviceName} - notification is disabled (isNotification: false)`
+          );
+          continue;
+        }
+
         const defaultNotificationValue = service.defaultNotificationValue || 0;
         const serviceName = service.serviceName || "Unknown Service";
         const type = (service.type || "").toLowerCase();
@@ -798,6 +806,14 @@ exports.checkDataServicesAndNotify = functions.https.onCall(
       const serviceNotifications = [];
 
       vehicleData.services.forEach((service) => {
+        // Skip service if notification is disabled
+        if (service.isNotification === false) {
+          console.log(
+            `Skipping ${service.serviceName} - notification is disabled (isNotification: false)`
+          );
+          return;
+        }
+
         const type = (service.type || "reading").toLowerCase();
         const nextNotificationValue = parseInt(
           service.nextNotificationValue || "0"
