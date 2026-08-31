@@ -65,6 +65,7 @@ import {
   FaFileImport,
   FaFilePdf,
   FaTrash,
+  FaCopy,
 } from "react-icons/fa";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
@@ -1805,6 +1806,79 @@ export default function RecordsPage() {
     setShowAddRecords(true);
   };
 
+  const handleDuplicateRecord = (record: ServiceRecord) => {
+    if (!record) return;
+
+    // Set isEditing to false so that saving creates a new record
+    setIsEditing(false);
+    setEditingRecordId(null);
+
+    // Set form values from record to duplicate
+    setSelectedVehicle(record.vehicleId || "");
+    setSelectedVehicleData(
+      vehicles.find((v) => v.id === record.vehicleId) || null
+    );
+
+    // Initialize service defaults
+    const newServiceDefaultValues: Record<string, number> = {};
+    const recordServices = Array.isArray(record.services)
+      ? record.services
+      : [];
+    recordServices.forEach((service) => {
+      if (service && service.serviceId) {
+        newServiceDefaultValues[service.serviceId] =
+          service.defaultNotificationValue || 0;
+      }
+    });
+    setServiceDefaultValues(newServiceDefaultValues);
+
+    // Set selected services and subservices
+    const predefinedIds = new Set<string>();
+    let customServiceFound = false;
+    let customServiceName = "";
+
+    recordServices.forEach((s) => {
+      if (!s) return;
+      if (s.serviceId && s.serviceId.startsWith("custom_")) {
+        customServiceFound = true;
+        customServiceName = s.serviceName || "";
+      } else if (s.serviceId) {
+        predefinedIds.add(s.serviceId);
+      }
+    });
+
+    setSelectedServices(predefinedIds);
+    setIsOtherServiceSelected(customServiceFound);
+    setOtherServiceName(customServiceName);
+
+    const subServices: Record<string, string[]> = {};
+    recordServices.forEach((service) => {
+      if (service && service.serviceId) {
+        subServices[service.serviceId] = Array.isArray(service.subServices)
+          ? service.subServices.map((ss) => ss.name)
+          : [];
+      }
+    });
+    setSelectedSubServices(subServices);
+
+    // Set other fields
+    setMiles((record.miles || 0).toString());
+    setHours((record.hours || 0).toString());
+    const dateStr = record.date || "";
+    setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
+    setWorkshopName(record.workshopName || "");
+    setInvoice(record.invoice || "");
+    setInvoiceAmount(record.invoiceAmount || "");
+    setDescription(record.description || "");
+
+    setExistingImageUrl(record.imageUrl || null);
+    setImagePreview(record.imageUrl || null);
+    setImageFile(null);
+
+    setShowAddRecords(true);
+    toast.success("Record details loaded! Modify fields and save as new record.");
+  };
+
   const formatDateToDDMMYYYY = (date: Date | string): string => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -3189,6 +3263,14 @@ export default function RecordsPage() {
                             className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
                           >
                             Edit
+                          </button>
+
+                          <button
+                            onClick={() => handleDuplicateRecord(record)}
+                            className="bg-[#8B5CF6] text-white px-3.5 py-2 rounded flex items-center gap-1.5 hover:bg-[#7C3AED] transition shadow-xs"
+                            title="Duplicate record to create a new one"
+                          >
+                            <FaCopy /> Duplicate
                           </button>
 
                           <Link href={`/records/${record.id}`} passHref>
