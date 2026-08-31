@@ -255,10 +255,11 @@ class DashboardController extends GetxController {
         String companyName = vehicleData['companyName'] ?? 'Company Name';
         String myCompany = (vehicleData['myCompany'] ?? '').toString().trim();
 
-        // Format as "BZDPT6650G (MACK) (ABC Fleet)"
-        String formattedVehicle = myCompany.isNotEmpty
-            ? "$vehicleNumber ($companyName) ($myCompany)"
-            : "$vehicleNumber ($companyName)";
+        // Format as "BZDPT6650G (MACK)"
+        // String formattedVehicle = myCompany.isNotEmpty
+        //     ? "$vehicleNumber ($companyName) ($myCompany)"
+        //     : "$vehicleNumber ($companyName)";
+        String formattedVehicle = "$vehicleNumber ($companyName)";
 
         // Assign formatted data
         selectedVehicleId = vehiclesSnapshot.docs.first.id;
@@ -307,12 +308,13 @@ class DashboardController extends GetxController {
           String vehicleNumber =
               (data['vehicleNumber'] ?? '').toString().trim();
           String companyName = (data['companyName'] ?? '').toString().trim();
-          String myCompany = (data['myCompany'] ?? '').toString().trim();
+          // String myCompany = (data['myCompany'] ?? '').toString().trim();
 
-          // Combine vehicleNumber, companyName and myCompany
-          return myCompany.isNotEmpty
-              ? "$vehicleNumber ($companyName) ($myCompany)"
-              : "$vehicleNumber ($companyName)";
+          // Combine vehicleNumber and companyName
+          // return myCompany.isNotEmpty
+          //     ? "$vehicleNumber ($companyName) ($myCompany)"
+          //     : "$vehicleNumber ($companyName)";
+          return "$vehicleNumber ($companyName)";
         }).toList();
 
         print('Vehicle Names with isSet true: $vehicleNames'); // Debugging line

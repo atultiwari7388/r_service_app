@@ -65,9 +65,10 @@ class _FindMechanicState extends State<FindMechanic> {
                 String cName = (data['companyName'] ?? '').toString().trim();
                 String myComp = (data['myCompany'] ?? '').toString().trim();
                 String myCId = (data['mycomId'] ?? '').toString().trim();
-                String displayName = myComp.isNotEmpty
-                    ? "$vNum ($cName) ($myComp)"
-                    : "$vNum ($cName)";
+                // String displayName = myComp.isNotEmpty
+                //     ? "$vNum ($cName) ($myComp)"
+                //     : "$vNum ($cName)";
+                String displayName = "$vNum ($cName)";
                 return {
                   'id': doc.id,
                   'vehicleNumber': vNum,

@@ -555,8 +555,8 @@ class ReportsController extends GetxController {
           FirebaseFirestore.instance.collection("DataServicesRecords");
       final docId = isEditing ? editingRecordId! : dataServicesRef.doc().id;
 
-      final currentMiles = int.tryParse(milesController.text) ?? 0;
-      final currentHours = int.tryParse(hoursController.text) ?? 0;
+      final enteredMiles = int.tryParse(milesController.text.trim());
+      final enteredHours = int.tryParse(hoursController.text.trim());
 
       // Get vehicle document to check for service-specific defaults
       final vehicleDoc = await FirebaseFirestore.instance
@@ -565,6 +565,16 @@ class ReportsController extends GetxController {
           .collection('Vehicles')
           .doc(selectedVehicle)
           .get();
+
+      final existingVehicleMiles = int.tryParse(
+              (vehicleDoc.data()?['currentMiles'] ?? '0').toString()) ??
+          0;
+      final existingVehicleHours = int.tryParse(
+              (vehicleDoc.data()?['hoursReading'] ?? '0').toString()) ??
+          0;
+
+      final currentMiles = enteredMiles ?? existingVehicleMiles;
+      final currentHours = enteredHours ?? existingVehicleHours;
 
       final vehicleServices =
           List<Map<String, dynamic>>.from(vehicleDoc.data()?['services'] ?? []);
@@ -871,15 +881,25 @@ class ReportsController extends GetxController {
             }
           }
 
-          batch.update(userVehicleRef, {
+          Map<String, dynamic> vehicleUpdateData = {
             'updatedAt': FieldValue.serverTimestamp(),
             'services': updatedVehicleServices,
-            'currentMiles': currentMiles.toString(),
-            'currentMilesArray': FieldValue.arrayUnion([
-              {"miles": currentMiles, "date": DateTime.now().toIso8601String()}
-            ]),
             'nextNotificationMiles': notificationData,
-          });
+          };
+          if (enteredMiles != null && enteredMiles > 0) {
+            vehicleUpdateData['currentMiles'] = enteredMiles.toString();
+            vehicleUpdateData['currentMilesArray'] = FieldValue.arrayUnion([
+              {"miles": enteredMiles, "date": DateTime.now().toIso8601String()}
+            ]);
+          }
+          if (enteredHours != null && enteredHours > 0) {
+            vehicleUpdateData['hoursReading'] = enteredHours.toString();
+            vehicleUpdateData['hoursReadingArray'] = FieldValue.arrayUnion([
+              {"hours": enteredHours, "date": DateTime.now().toIso8601String()}
+            ]);
+          }
+
+          batch.update(userVehicleRef, vehicleUpdateData);
         }
       }
 
@@ -1051,17 +1071,7 @@ class ReportsController extends GetxController {
       return false;
     }
 
-    if (milesController.text.isEmpty &&
-        selectedVehicleData?['vehicleType'] == "Truck") {
-      showToastMessage("Error", "Please enter miles", kRed);
-      return false;
-    }
-
-    if (hoursController.text.isEmpty &&
-        selectedVehicleData?['vehicleType'] == "Trailer") {
-      showToastMessage("Error", "Please enter hours", kRed);
-      return false;
-    }
+    // Miles and Hours are optional
 
     if (selectedDate == null) {
       showToastMessage("Error", "Please select a date", kRed);

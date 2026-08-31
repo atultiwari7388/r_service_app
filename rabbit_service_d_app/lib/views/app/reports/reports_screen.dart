@@ -957,11 +957,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                               .compareTo(
                                   b['vehicleNumber'].toString().toLowerCase())))
                         .map((vehicle) {
-                      final String myCompany =
-                          (vehicle['myCompany'] ?? '').toString().trim();
-                      final String displayText = myCompany.isNotEmpty
-                          ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
-                          : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                      // final String myCompany =
+                      //     (vehicle['myCompany'] ?? '').toString().trim();
+                      // final String displayText = myCompany.isNotEmpty
+                      //     ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
+                      //     : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                      final String displayText =
+                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
                       return DropdownMenuItem<String>(
                         value: vehicle['id'],
                         child: Text(
@@ -1244,11 +1246,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                               .compareTo(
                                   b['vehicleNumber'].toString().toLowerCase())))
                         .map((vehicle) {
-                      final String myCompany =
-                          (vehicle['myCompany'] ?? '').toString().trim();
-                      final String displayText = myCompany.isNotEmpty
-                          ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
-                          : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                      // final String myCompany =
+                      //     (vehicle['myCompany'] ?? '').toString().trim();
+                      // final String displayText = myCompany.isNotEmpty
+                      //     ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
+                      //     : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                      final String displayText =
+                          '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
                       return DropdownMenuItem<String>(
                         value: vehicle['id'],
                         child: Text(
@@ -1497,7 +1501,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 child: TextField(
                   controller: reController.milesController,
                   decoration: const InputDecoration(
-                    labelText: 'Miles',
+                    labelText: 'Miles (Optional)',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -1511,7 +1515,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 child: TextField(
                   controller: reController.hoursController,
                   decoration: const InputDecoration(
-                    labelText: 'Hours',
+                    labelText: 'Hours (Optional)',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -1847,11 +1851,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                           .compareTo(
                               b['vehicleNumber'].toString().toLowerCase())))
                     .map((vehicle) {
-                  final String myCompany =
-                      (vehicle['myCompany'] ?? '').toString().trim();
-                  final String displayText = myCompany.isNotEmpty
-                      ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
-                      : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                  // final String myCompany =
+                  //     (vehicle['myCompany'] ?? '').toString().trim();
+                  // final String displayText = myCompany.isNotEmpty
+                  //     ? '${vehicle['vehicleNumber']} (${vehicle['companyName']}) ($myCompany)'
+                  //     : '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
+                  final String displayText =
+                      '${vehicle['vehicleNumber']} (${vehicle['companyName']})';
                   return DropdownMenuItem<String>(
                     value: vehicle['id'],
                     child: Text(
