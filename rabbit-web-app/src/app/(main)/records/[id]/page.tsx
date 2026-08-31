@@ -364,7 +364,15 @@ import { collection, onSnapshot, query, doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/contexts/AuthContexts";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { FaPrint, FaTimes, FaSearchPlus, FaSearchMinus } from "react-icons/fa";
+import {
+  FaPrint,
+  FaTimes,
+  FaSearchPlus,
+  FaSearchMinus,
+  FaFilePdf,
+  FaDownload,
+  FaExternalLinkAlt,
+} from "react-icons/fa";
 import Image from "next/image";
 import { parseISO, format } from "date-fns";
 
@@ -525,6 +533,28 @@ export default function RecordsDetailsPage({
 
   const zoomOut = () => {
     setImageScale((prev) => Math.max(prev - 0.25, 0.5)); // Limit zoom out to 0.5x
+  };
+
+  const handleDownloadFile = async (
+    url: string,
+    filename: string,
+    isPdf: boolean
+  ) => {
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      if (!response.ok) throw new Error("Network response not ok");
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = isPdf ? `${filename}.pdf` : `${filename}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
   };
 
   // Update loading checks
@@ -692,30 +722,79 @@ export default function RecordsDetailsPage({
           </div>
         )}
 
-        {/* Image Display Section */}
+        {/* Document Display Section (Image or PDF) */}
         {record.imageUrl && (
           <div className="mt-8 m-8">
             <h3 className="text-2xl font-semibold text-gray-800 border-b pb-2 mb-4">
-              Service Image
+              Service Document / Invoice
             </h3>
-            <div
-              className="relative w-full max-w-md mx-auto cursor-pointer hover:opacity-90 transition"
-              onClick={openImageModal}
-            >
-              <Image
-                src={record.imageUrl}
-                alt="Service record"
-                width={800}
-                height={600}
-                className="w-full h-auto rounded-lg border shadow-sm"
-                objectFit="contain"
-              />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                <div className="bg-black bg-opacity-50 text-white p-2 rounded-full">
-                  <FaSearchPlus size={24} />
+            {record.imageUrl.toLowerCase().includes(".pdf") ||
+            record.imageUrl.toLowerCase().includes("application%2fpdf") ? (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md mx-auto flex flex-col items-center justify-center text-center shadow-sm">
+                <FaFilePdf className="text-red-500 text-6xl mb-3" />
+                <h4 className="text-lg font-semibold text-gray-800 mb-1">
+                  Attached PDF Document
+                </h4>
+                <p className="text-xs text-gray-500 mb-4 truncate max-w-xs">
+                  Invoice {record.invoice || "Record Document"}
+                </p>
+                <div className="flex gap-3 w-full justify-center">
+                  <button
+                    onClick={() => window.open(record.imageUrl, "_blank")}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-red-600 transition"
+                  >
+                    <FaExternalLinkAlt size={12} /> Open PDF
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleDownloadFile(
+                        record.imageUrl!,
+                        `invoice_${record.invoice || record.id}`,
+                        true
+                      )
+                    }
+                    className="bg-gray-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-gray-900 transition"
+                  >
+                    <FaDownload size={12} /> Download PDF
+                  </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <div
+                  className="relative w-full max-w-md mx-auto cursor-pointer hover:opacity-90 transition"
+                  onClick={openImageModal}
+                >
+                  <Image
+                    src={record.imageUrl}
+                    alt="Service record"
+                    width={800}
+                    height={600}
+                    className="w-full h-auto rounded-lg border shadow-sm"
+                    objectFit="contain"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition">
+                    <div className="bg-black bg-opacity-50 text-white p-2 rounded-full">
+                      <FaSearchPlus size={24} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-center mt-3">
+                  <button
+                    onClick={() =>
+                      handleDownloadFile(
+                        record.imageUrl!,
+                        `invoice_${record.invoice || record.id}`,
+                        false
+                      )
+                    }
+                    className="text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 border shadow-sm transition"
+                  >
+                    <FaDownload size={12} /> Download Image
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

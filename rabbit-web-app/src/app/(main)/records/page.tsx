@@ -13,6 +13,8 @@ import {
   query,
   where,
   writeBatch,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   FormControl,
@@ -36,6 +38,7 @@ import {
   LinearProgress,
   Typography,
   CircularProgress,
+  Autocomplete,
 } from "@mui/material";
 import {
   Table,
@@ -56,7 +59,16 @@ import Link from "next/link";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { BiFilter, BiSearch } from "react-icons/bi";
-import { FaPrint, FaDownload, FaFileImport } from "react-icons/fa";
+import {
+  FaPrint,
+  FaDownload,
+  FaFileImport,
+  FaFilePdf,
+  FaFileImage,
+  FaExternalLinkAlt,
+  FaTimes,
+  FaTrash,
+} from "react-icons/fa";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -196,6 +208,10 @@ export default function RecordsPage() {
   const [hours, setHours] = useState("");
   const [date, setDate] = useState("");
   const [workshopName, setWorkshopName] = useState("");
+  const [workshopList, setWorkshopList] = useState<string[]>([]);
+  const [isOtherServiceSelected, setIsOtherServiceSelected] =
+    useState<boolean>(false);
+  const [otherServiceName, setOtherServiceName] = useState<string>("");
   const [invoice, setInvoice] = useState("");
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -829,14 +845,22 @@ export default function RecordsPage() {
       const file = e.target.files[0];
       setImageFile(file);
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setImagePreview(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      const isPdf =
+        file.type.toLowerCase().includes("pdf") ||
+        file.name.toLowerCase().endsWith(".pdf");
+
+      if (!isPdf) {
+        // Create image preview
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setImagePreview(event.target.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setImagePreview(null);
+      }
     }
   };
 
@@ -847,11 +871,18 @@ export default function RecordsPage() {
       setIsUploading(true);
       setUploadProgress(0);
 
+      const isPdf =
+        imageFile.type.toLowerCase().includes("pdf") ||
+        imageFile.name.toLowerCase().endsWith(".pdf");
+
       const storageRef = ref(
         storage,
         `service-records/${effectiveUserId}/${Date.now()}_${imageFile.name}`
       );
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
+      const uploadTask = uploadBytesResumable(storageRef, imageFile, {
+        contentType:
+          imageFile.type || (isPdf ? "application/pdf" : "image/jpeg"),
+      });
 
       return new Promise((resolve, reject) => {
         uploadTask.on(
@@ -880,7 +911,7 @@ export default function RecordsPage() {
         );
       });
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error("Error setting up upload:", error);
       setIsUploading(false);
       return null;
     }
@@ -1016,9 +1047,33 @@ export default function RecordsPage() {
       }
     };
 
+    const fetchWorkshopNames = async () => {
+      try {
+        const snap = await getDocs(
+          collection(db, "Users", effectiveUserId, "recordWorkshopName")
+        );
+        const list: string[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          const name = (data.workshopName || data.name || "").toString().trim();
+          if (
+            name &&
+            !list.some((item) => item.toLowerCase() === name.toLowerCase())
+          ) {
+            list.push(name);
+          }
+        });
+        list.sort((a, b) => a.localeCompare(b));
+        setWorkshopList(list);
+      } catch (err) {
+        console.error("Error fetching workshop names:", err);
+      }
+    };
+
     fetchData();
     fetchServices();
     fetchServicePackages();
+    fetchWorkshopNames();
 
     return () => unsubscribe();
   }, [effectiveUserId]);
@@ -1244,9 +1299,17 @@ export default function RecordsPage() {
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
 
+    const hasPredefinedServices = selectedServices.size > 0;
+    const hasOtherService =
+      isOtherServiceSelected && otherServiceName.trim() !== "";
+
     // Check if at least one service is selected
-    if (selectedServices.size === 0) {
+    if (!hasPredefinedServices && !hasOtherService) {
       errors.general = "Please select at least one service";
+    }
+
+    if (isOtherServiceSelected && !otherServiceName.trim()) {
+      errors.otherService = "Please specify the other service name";
     }
 
     // Check if services with subservices have at least one subservice selected
@@ -1273,8 +1336,16 @@ export default function RecordsPage() {
 
       setIsRecordSaving(true);
 
+      const hasPredefinedServices = selectedServices.size > 0;
+      const hasOtherService =
+        isOtherServiceSelected && otherServiceName.trim() !== "";
+
       // Validate inputs
-      if (!effectiveUserId || !selectedVehicle || selectedServices.size === 0) {
+      if (
+        !effectiveUserId ||
+        !selectedVehicle ||
+        (!hasPredefinedServices && !hasOtherService)
+      ) {
         toast.error("Please select vehicle and at least one service");
         return;
       }
@@ -1285,12 +1356,12 @@ export default function RecordsPage() {
         return;
       }
 
-      // Upload image if exists
+      // Upload image/pdf if exists
       let imageUrl = existingImageUrl;
       if (imageFile) {
         imageUrl = await uploadImage();
         if (!imageUrl) {
-          toast.error("Failed to upload image");
+          toast.error("Failed to upload document");
           return;
         }
       }
@@ -1317,7 +1388,7 @@ export default function RecordsPage() {
       const notificationData = [];
       const updatedVehicleServices = [...currentVehicleServices];
 
-      // Process each selected service
+      // Process each selected predefined service
       for (const serviceId of selectedServices) {
         const service = services.find((s) => s.sId === serviceId);
         if (!service) continue;
@@ -1408,6 +1479,29 @@ export default function RecordsPage() {
         }
       }
 
+      // Process "Other Service" if selected and specified
+      if (hasOtherService) {
+        const customName = otherServiceName.trim();
+        const customId = `custom_${customName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "_")}`;
+        const otherServiceData = {
+          serviceId: customId,
+          serviceName: customName,
+          type: "reading",
+          defaultNotificationValue: 0,
+          nextNotificationValue: 0,
+          subServices: [],
+        };
+        servicesData.push(otherServiceData);
+        notificationData.push({
+          serviceName: customName,
+          type: "reading",
+          nextNotificationValue: 0,
+          subServices: [],
+        });
+      }
+
       // Prepare record data
       const baseDate = date ? new Date(date) : new Date();
       const formattedDate = baseDate.toISOString().split("T")[0];
@@ -1473,6 +1567,35 @@ export default function RecordsPage() {
         batch.update(ownerRecordRef, recordData);
       } else {
         batch.set(ownerRecordRef, recordData);
+      }
+
+      // Save Workshop Name to recordWorkshopName collection if new
+      const trimmedWorkshop = (workshopName || "").trim();
+      if (trimmedWorkshop) {
+        try {
+          const alreadyExists = workshopList.some(
+            (w) => w.toLowerCase() === trimmedWorkshop.toLowerCase()
+          );
+          if (!alreadyExists) {
+            const wsColRef = collection(
+              db,
+              "Users",
+              effectiveUserId,
+              "recordWorkshopName"
+            );
+            await addDoc(wsColRef, {
+              workshopName: trimmedWorkshop,
+              createdAt: serverTimestamp(),
+            });
+            setWorkshopList((prev) => {
+              const updated = [...prev, trimmedWorkshop];
+              updated.sort((a, b) => a.localeCompare(b));
+              return updated;
+            });
+          }
+        } catch (wsError) {
+          console.error("Error adding workshop name:", wsError);
+        }
       }
 
       // 2. Handle global record
@@ -1596,13 +1719,23 @@ export default function RecordsPage() {
     setServiceDefaultValues(newServiceDefaultValues);
 
     // Set selected services and subservices
-    setSelectedServices(
-      new Set(
-        recordServices
-          .filter((s) => s && s.serviceId)
-          .map((s) => s.serviceId)
-      )
-    );
+    const predefinedIds = new Set<string>();
+    let customServiceFound = false;
+    let customServiceName = "";
+
+    recordServices.forEach((s) => {
+      if (!s) return;
+      if (s.serviceId && s.serviceId.startsWith("custom_")) {
+        customServiceFound = true;
+        customServiceName = s.serviceName || "";
+      } else if (s.serviceId) {
+        predefinedIds.add(s.serviceId);
+      }
+    });
+
+    setSelectedServices(predefinedIds);
+    setIsOtherServiceSelected(customServiceFound);
+    setOtherServiceName(customServiceName);
 
     const subServices: Record<string, string[]> = {};
     recordServices.forEach((service) => {
@@ -1796,6 +1929,8 @@ export default function RecordsPage() {
     setImageFile(null);
     setImagePreview(null);
     setExistingImageUrl(null);
+    setIsOtherServiceSelected(false);
+    setOtherServiceName("");
     setValidationErrors({});
     setServiceSearchText("");
     setIsEditing(false);
@@ -2630,6 +2765,53 @@ export default function RecordsPage() {
                       </Collapse>
                     </div>
                   ))}
+
+                {/* Other Service Option */}
+                <div className="w-full">
+                  <Chip
+                    label="Other Service"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsOtherServiceSelected(!isOtherServiceSelected);
+                    }}
+                    sx={{
+                      backgroundColor: isOtherServiceSelected
+                        ? "#F96176"
+                        : "default",
+                      color: isOtherServiceSelected ? "white" : "inherit",
+                      "&:hover": {
+                        backgroundColor: isOtherServiceSelected
+                          ? "#F96176"
+                          : "#FFCDD2",
+                      },
+                      border: validationErrors.otherService
+                        ? "2px solid red"
+                        : "none",
+                    }}
+                    variant={isOtherServiceSelected ? "filled" : "outlined"}
+                    className="w-full transition duration-300 hover:shadow-lg font-medium"
+                  />
+
+                  {validationErrors.otherService && (
+                    <div className="text-red-500 text-xs mt-1 ml-2">
+                      {validationErrors.otherService}
+                    </div>
+                  )}
+
+                  {isOtherServiceSelected && (
+                    <div className="mt-2 w-full">
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Enter Custom Service Name *"
+                        placeholder="e.g. Battery Replacement, AC Repair, Body Work"
+                        value={otherServiceName}
+                        onChange={(e) => setOtherServiceName(e.target.value)}
+                        className="bg-white rounded"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="mb-4 flex flex-col gap-4">
                 {selectedVehicleData?.vehicleType === "Truck" && (
@@ -2670,20 +2852,26 @@ export default function RecordsPage() {
                   </>
                 )}
 
-                <TextField
-                  fullWidth
-                  label="Workshop Name"
+                <Autocomplete
+                  freeSolo
+                  options={workshopList}
                   value={workshopName}
-                  onChange={(e) => setWorkshopName(e.target.value)}
-                  className="mb-4 rounded-lg"
+                  onInputChange={(event, newInputValue) => {
+                    setWorkshopName(newInputValue);
+                  }}
+                  onChange={(event, newValue) => {
+                    setWorkshopName(newValue || "");
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      fullWidth
+                      label="Workshop Name"
+                      placeholder="Select existing workshop or type new workshop"
+                      className="mb-4 rounded-lg"
+                    />
+                  )}
                 />
-                {/* <TextField
-                  fullWidth
-                  label="Invoice Number (Optional)"
-                  value={invoice}
-                  onChange={(e) => setInvoice(e.target.value)}
-                  className="mb-4 rounded-lg"
-                /> */}
 
                 <TextField
                   fullWidth
@@ -2719,40 +2907,78 @@ export default function RecordsPage() {
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Service Image (Optional)
+                    Upload Service Document / Invoice (Image or PDF)
                   </label>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf,.pdf"
                     onChange={handleImageChange}
                     className="block w-full text-sm text-gray-500
-      file:mr-4 file:py-2 file:px-4
-      file:rounded-md file:border-0
-      file:text-sm file:font-semibold
-      file:bg-blue-50 file:text-blue-700
-      hover:file:bg-blue-100"
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-[#F96176] file:text-white
+                      hover:file:bg-[#e05065]"
                   />
 
-                  {(imagePreview || existingImageUrl) && (
-                    <div className="mt-2">
-                      <Image
-                        src={imagePreview || existingImageUrl || ""}
-                        alt="Preview"
-                        width={128}
-                        height={128}
-                        className="object-contain rounded border"
-                      />
+                  {(imageFile || imagePreview || existingImageUrl) && (
+                    <div className="mt-3 p-3 border rounded-lg bg-gray-50 flex items-center justify-between">
+                      {(imageFile &&
+                        (imageFile.type.toLowerCase().includes("pdf") ||
+                          imageFile.name.toLowerCase().endsWith(".pdf"))) ||
+                      (!imageFile &&
+                        existingImageUrl &&
+                        (existingImageUrl.toLowerCase().includes(".pdf") ||
+                          existingImageUrl
+                            .toLowerCase()
+                            .includes("application%2fpdf"))) ? (
+                        <div className="flex items-center gap-3">
+                          <FaFilePdf className="text-red-500 text-3xl shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {imageFile
+                                ? imageFile.name
+                                : "Attached PDF Invoice"}
+                            </p>
+                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-semibold uppercase">
+                              PDF Document
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="relative w-16 h-16 rounded overflow-hidden border bg-white shrink-0">
+                            {imagePreview || existingImageUrl ? (
+                              <img
+                                src={imagePreview || existingImageUrl || ""}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : null}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {imageFile
+                                ? imageFile.name
+                                : "Attached Service Image"}
+                            </p>
+                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded font-semibold uppercase">
+                              Image
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       <button
                         type="button"
                         onClick={() => {
                           setImagePreview(null);
                           setImageFile(null);
-                          setExistingImageUrl(null); // Also clear the existing image URL
+                          setExistingImageUrl(null);
                         }}
-                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                        className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1 p-2 rounded hover:bg-red-50"
                       >
-                        Remove Image
+                        <FaTrash size={12} /> Remove
                       </button>
                     </div>
                   )}

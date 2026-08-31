@@ -15,6 +15,8 @@ import {
   where,
   writeBatch,
   arrayUnion,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -31,6 +33,7 @@ import {
   FaArrowLeft,
   FaCloudUploadAlt,
   FaImage,
+  FaFilePdf,
   FaTrash,
   FaCheckCircle,
   FaLayerGroup,
@@ -406,26 +409,40 @@ export default function ImportRecordsPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  // Handle per-record image upload
+  // Handle per-record document (image or PDF) upload
   const handleRowImageChange = (
     index: number,
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setRowImages((prev) => ({
-            ...prev,
-            [index]: {
-              file,
-              preview: event.target?.result as string,
-            },
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
+      const isPdf =
+        file.type.toLowerCase().includes("pdf") ||
+        file.name.toLowerCase().endsWith(".pdf");
+
+      if (!isPdf) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setRowImages((prev) => ({
+              ...prev,
+              [index]: {
+                file,
+                preview: event.target?.result as string,
+              },
+            }));
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setRowImages((prev) => ({
+          ...prev,
+          [index]: {
+            file,
+            preview: "",
+          },
+        }));
+      }
     }
   };
 
@@ -437,7 +454,7 @@ export default function ImportRecordsPage() {
     });
   };
 
-  // Upload image to Firebase Storage
+  // Upload document (image or PDF) to Firebase Storage
   const uploadSingleImage = async (
     file: File,
     vehicleNumber: string
@@ -445,6 +462,9 @@ export default function ImportRecordsPage() {
     if (!effectiveUserId) return "";
 
     try {
+      const isPdf =
+        file.type.toLowerCase().includes("pdf") ||
+        file.name.toLowerCase().endsWith(".pdf");
       const sanitizedNumber = (vehicleNumber || "vehicle").replace(
         /[^a-zA-Z0-9]/g,
         "_"
@@ -453,14 +473,16 @@ export default function ImportRecordsPage() {
         storage,
         `service-records/${effectiveUserId}/${Date.now()}_${sanitizedNumber}_${file.name}`
       );
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const uploadTask = uploadBytesResumable(storageRef, file, {
+        contentType: file.type || (isPdf ? "application/pdf" : "image/jpeg"),
+      });
 
       return new Promise((resolve, reject) => {
         uploadTask.on(
           "state_changed",
           () => {},
           (error) => {
-            console.error("Upload error for image:", error);
+            console.error("Upload error for document:", error);
             reject(error);
           },
           async () => {
@@ -762,6 +784,31 @@ export default function ImportRecordsPage() {
     }
 
     await batch.commit();
+
+    // Save Workshop Name to recordWorkshopName collection if new
+    const trimmedWorkshop = (record.workshopName || "").trim();
+    if (trimmedWorkshop) {
+      try {
+        const wsRef = collection(
+          db,
+          "Users",
+          effectiveUserId,
+          "recordWorkshopName"
+        );
+        const wsSnap = await getDocs(
+          query(wsRef, where("workshopName", "==", trimmedWorkshop))
+        );
+        if (wsSnap.empty) {
+          await addDoc(wsRef, {
+            workshopName: trimmedWorkshop,
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (wsErr) {
+        console.error("Error saving workshop name during import:", wsErr);
+      }
+    }
+
     return true;
   };
 
@@ -1074,17 +1121,22 @@ export default function ImportRecordsPage() {
                           {record.description || "—"}
                         </td>
 
-                        {/* Individual Upload Service Image Section */}
+                        {/* Individual Upload Document (Image or PDF) Section */}
                         <td className="px-5 py-3 bg-blue-50/30 border-l border-blue-100 min-w-[240px] align-top">
                           {rowImg ? (
                             <div className="flex items-center gap-2.5 p-1.5 bg-white rounded-lg border border-blue-200 shadow-2xs">
-                              <Image
-                                src={rowImg.preview}
-                                alt={`Record ${index + 1} Image`}
-                                width={38}
-                                height={38}
-                                className="object-contain rounded border bg-gray-50 h-9 w-9 shrink-0"
-                              />
+                              {rowImg.file.type.toLowerCase().includes("pdf") ||
+                              rowImg.file.name.toLowerCase().endsWith(".pdf") ? (
+                                <div className="h-9 w-9 bg-red-100 rounded border border-red-200 flex items-center justify-center shrink-0">
+                                  <FaFilePdf className="text-red-500 text-lg" />
+                                </div>
+                              ) : (
+                                <img
+                                  src={rowImg.preview}
+                                  alt={`Record ${index + 1} Image`}
+                                  className="object-cover rounded border bg-gray-50 h-9 w-9 shrink-0"
+                                />
+                              )}
                               <div className="flex-1 min-w-0">
                                 <p
                                   className="text-xs font-semibold text-gray-800 truncate"
@@ -1092,15 +1144,18 @@ export default function ImportRecordsPage() {
                                 >
                                   {rowImg.file.name}
                                 </p>
-                                <p className="text-[10px] text-gray-500">
-                                  {(rowImg.file.size / 1024).toFixed(1)} KB
-                                </p>
+                                <span className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium uppercase">
+                                  {rowImg.file.type.toLowerCase().includes("pdf") ||
+                                  rowImg.file.name.toLowerCase().endsWith(".pdf")
+                                    ? "PDF"
+                                    : "IMAGE"}
+                                </span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveRowImage(index)}
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition-colors"
-                                title="Remove Image"
+                                title="Remove File"
                               >
                                 <FaTrash className="text-xs" />
                               </button>
@@ -1110,12 +1165,12 @@ export default function ImportRecordsPage() {
                               htmlFor={`image-upload-${index}`}
                               className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/60 hover:bg-blue-100/70 hover:border-blue-500 text-xs font-medium text-blue-700 transition-all"
                             >
-                              <FaImage className="text-blue-500 shrink-0" />
-                              <span>Upload Image</span>
+                              <FaCloudUploadAlt className="text-blue-500 text-sm shrink-0" />
+                              <span>Upload Invoice (PDF/Image)</span>
                               <input
                                 id={`image-upload-${index}`}
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,application/pdf,.pdf"
                                 className="hidden"
                                 onChange={(e) => handleRowImageChange(index, e)}
                                 disabled={isParsing || isSaving}
