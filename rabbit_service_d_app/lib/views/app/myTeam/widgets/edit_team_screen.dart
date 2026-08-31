@@ -133,10 +133,24 @@ class _EditTeamMemberState extends State<EditTeamMember> {
         lastDrugTest = memberDoc['lastDrugTestDate']?.toDate();
         dateOfHire = memberDoc['dateOfHire']?.toDate();
         dateOfTermination = memberDoc['dateOfTermination']?.toDate();
-        selectedPayType = memberDoc['payMode'] ?? null;
+
+        final Map<String, dynamic> memberData =
+            memberDoc.data() as Map<String, dynamic>? ?? {};
+        final resolvedPayType = (memberData['payMode'] ??
+                memberData['payType'] ??
+                memberData['selectedPayType'] ??
+                '')
+            .toString()
+            .trim();
+        selectedPayType = resolvedPayType.isNotEmpty ? resolvedPayType : null;
 
         // Role and permissions
         selectedRole = memberDoc['role'];
+        if (selectedRole == "Manager" || selectedRole == "Accountant") {
+          payTypeModes = ["Per Hour", "Per Month"];
+        } else {
+          payTypeModes = ["Per Mile", "Per Trip", "Per Hour", "Per Month"];
+        }
         if (memberDoc['isView'] == true) selectedRecordAccess.add('View');
         if (memberDoc['isEdit'] == true) selectedRecordAccess.add('Edit');
         if (memberDoc['isAdd'] == true) selectedRecordAccess.add('Add');
@@ -256,6 +270,21 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                         onChanged: (String? newValue) {
                           setState(() {
                             selectedRole = newValue;
+                            if (selectedRole == "Manager" ||
+                                selectedRole == "Accountant") {
+                              payTypeModes = ["Per Hour", "Per Month"];
+                              if (selectedPayType == "Per Mile" ||
+                                  selectedPayType == "Per Trip") {
+                                selectedPayType = null;
+                              }
+                            } else {
+                              payTypeModes = [
+                                "Per Mile",
+                                "Per Trip",
+                                "Per Hour",
+                                "Per Month"
+                              ];
+                            }
                           });
                         },
                         items: roleDisplayNames.asMap().entries.map((entry) {
@@ -515,17 +544,33 @@ class _EditTeamMemberState extends State<EditTeamMember> {
                           }).toList(),
                         ),
                       ),
-                    ],
-
-                    SizedBox(height: 15.h),
-                    // Per mile charge (only for drivers)
-                    if (selectedRole == "Driver") ...[
-                      SizedBox(height: 24.h),
+                      if (selectedPayType != null &&
+                          selectedPayType!.isNotEmpty) ...[
+                        SizedBox(height: 15.h),
+                        _buildEditableField(
+                          selectedPayType == "Per Mile"
+                              ? "Per Mile Charge"
+                              : selectedPayType == "Per Trip"
+                                  ? "Per Trip Charge"
+                                  : selectedPayType == "Per Hour"
+                                      ? "Per Hour Charge"
+                                      : selectedPayType == "Per Month"
+                                          ? "Per Month Charge"
+                                          : "${selectedPayType!} Charge",
+                          const TextInputType.numberWithOptions(
+                              decimal: true, signed: false),
+                          perMileChargeController,
+                          Icons.attach_money,
+                        ),
+                      ],
+                    ] else if (selectedRole == "Driver") ...[
+                      SizedBox(height: 15.h),
                       _buildEditableField(
-                        "Per mile charge",
-                        TextInputType.number,
+                        "Per Mile Charge",
+                        const TextInputType.numberWithOptions(
+                            decimal: true, signed: false),
                         perMileChargeController,
-                        Icons.money,
+                        Icons.attach_money,
                       ),
                     ],
 
@@ -742,8 +787,12 @@ class _EditTeamMemberState extends State<EditTeamMember> {
         "isDriver": selectedRole == "Driver",
         "isVendor": selectedRole == "Vendor",
         "isAccountant": selectedRole == "Accountant",
-        "perMileCharge":
-            selectedRole == "Driver" ? perMileChargeController.text : "0",
+        "payMode": selectedPayType ?? "",
+        "payType": selectedPayType ?? "",
+        "selectedPayType": selectedPayType ?? "",
+        "perMileCharge": perMileChargeController.text.trim().isNotEmpty
+            ? perMileChargeController.text.trim()
+            : "0",
         "isView": selectedRecordAccess.contains("View"),
         "isEdit": selectedRecordAccess.contains("Edit"),
         "isAdd": selectedRecordAccess.contains("Add"),

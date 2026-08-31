@@ -514,14 +514,30 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   ),
                 ),
               ],
-              selectedRole == "Driver"
-                  ? buildTextFieldInputWidget(
-                      "Enter per mile charge",
-                      TextInputType.streetAddress,
-                      perMileChargeController,
-                      Icons.money,
-                    )
-                  : Container(),
+              if (selectedPayType != null && selectedPayType!.isNotEmpty)
+                buildTextFieldInputWidget(
+                  selectedPayType == "Per Mile"
+                      ? "Enter per mile charge"
+                      : selectedPayType == "Per Trip"
+                          ? "Enter per trip charge"
+                          : selectedPayType == "Per Hour"
+                              ? "Enter per hour charge"
+                              : selectedPayType == "Per Month"
+                                  ? "Enter per month charge"
+                                  : "Enter ${selectedPayType!} charge",
+                  const TextInputType.numberWithOptions(
+                      decimal: true, signed: false),
+                  perMileChargeController,
+                  Icons.attach_money,
+                )
+              else if (selectedRole == "Driver")
+                buildTextFieldInputWidget(
+                  "Enter per mile charge",
+                  const TextInputType.numberWithOptions(
+                      decimal: true, signed: false),
+                  perMileChargeController,
+                  Icons.attach_money,
+                ),
               SizedBox(height: 24.h),
               isUserAcCreated
                   ? CircularProgressIndicator()

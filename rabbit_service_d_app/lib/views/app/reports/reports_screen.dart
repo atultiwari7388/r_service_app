@@ -17,7 +17,6 @@ import 'package:regal_service_d_app/utils/show_toast_msg.dart';
 import 'package:regal_service_d_app/views/app/auth/registration_screen.dart';
 import 'package:regal_service_d_app/views/app/cloudNotiMsg/cloud_noti_msg.dart';
 import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_screen.dart';
-import 'package:regal_service_d_app/views/app/dashboard/widgets/add_vehicle_via_excel.dart';
 import 'package:regal_service_d_app/views/app/profile/profile_screen.dart';
 import 'package:regal_service_d_app/views/app/reports/widgets/miles_details_screen.dart';
 import 'package:regal_service_d_app/views/app/reports/widgets/records_details_screen.dart';
