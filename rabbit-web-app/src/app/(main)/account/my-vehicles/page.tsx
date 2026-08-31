@@ -281,15 +281,15 @@ export default function MyVehiclesPage() {
                 >
                   Company Name
                 </th>
-                {userData?.role === "Owner" ||
-                  (userData?.role === "SubOwner" && (
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
-                    >
-                      Active
-                    </th>
-                  ))}
+                {(userData?.role === "Owner" ||
+                  userData?.role === "SubOwner") && (
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
+                  >
+                    Active
+                  </th>
+                )}
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"
@@ -321,51 +321,50 @@ export default function MyVehiclesPage() {
                       </div>
                     )}
                   </td>
-                  {userData?.role === "Owner" ||
-                    (userData?.role === "SubOwner" && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Switch
-                          checked={vehicle.active || false}
-                          onChange={(value) => {
-                            setVehicles((prev) =>
-                              prev.map((v) =>
-                                v.id === vehicle.id
-                                  ? { ...v, active: value }
-                                  : v
-                              )
-                            );
-                            handleToggleActive(vehicle.id, value);
-                          }}
-                          className={`${
-                            vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
-                          }
+                  {(userData?.role === "Owner" ||
+                    userData?.role === "SubOwner") && (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Switch
+                        checked={vehicle.active || false}
+                        onChange={(value) => {
+                          setVehicles((prev) =>
+                            prev.map((v) =>
+                              v.id === vehicle.id
+                                ? { ...v, active: value }
+                                : v
+                            )
+                          );
+                          handleToggleActive(vehicle.id, value);
+                        }}
+                        className={`${
+                          vehicle.active ? "bg-[#F96176]" : "bg-gray-200"
+                        }
                           relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F96176]`}
-                        >
-                          <span
-                            className={`${
-                              vehicle.active ? "translate-x-6" : "translate-x-1"
-                            }
+                      >
+                        <span
+                          className={`${
+                            vehicle.active ? "translate-x-6" : "translate-x-1"
+                          }
                             inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-                          />
-                        </Switch>
-                      </td>
-                    ))}
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        />
+                      </Switch>
+                    </td>
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                     <Link
                       href={`/account/my-vehicles/${vehicle.id}`}
-                      className="text-[#F96176] hover:text-[#eb929e] mr-4"
+                      className="text-[#F96176] hover:text-[#eb929e] font-medium"
                     >
                       View
                     </Link>
-                    {role === "Owner" ||
-                      (role === "SubOwner" && (
-                        <Link
-                          href={`/account/my-vehicles/edit/${vehicle.id}`}
-                          className="text-gray-600 hover:text-gray-900"
-                        >
-                          Edit
-                        </Link>
-                      ))}
+                    {(role === "Owner" || role === "SubOwner") && (
+                      <Link
+                        href={`/account/my-vehicles/edit/${vehicle.id}`}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Edit
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}
