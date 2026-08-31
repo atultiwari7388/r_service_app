@@ -64,9 +64,6 @@ import {
   FaDownload,
   FaFileImport,
   FaFilePdf,
-  FaFileImage,
-  FaExternalLinkAlt,
-  FaTimes,
   FaTrash,
 } from "react-icons/fa";
 import { utils, writeFile } from "xlsx";
@@ -74,7 +71,6 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
-import Image from "next/image";
 import { parseISO, format } from "date-fns";
 
 const formatDateSafe = (dateStr?: string | null): string => {
@@ -968,7 +964,12 @@ export default function RecordsPage() {
     .sort((a, b) => {
       const dateA = a?.date ? new Date(a.date).getTime() : 0;
       const dateB = b?.date ? new Date(b.date).getTime() : 0;
-      return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+      if (dateB !== dateA) {
+        return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+      }
+      const createdA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const createdB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA);
     });
 
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
@@ -984,13 +985,33 @@ export default function RecordsPage() {
 
     const unsubscribe = onSnapshot(recordsQuery, (snapshot) => {
       const recordsData: RecordData[] = snapshot.docs.map((doc) => {
-        const data = (doc.data() || {}) as Partial<ServiceRecord>;
+        const data = doc.data();
         const vehDetails = data.vehicleDetails || {
           vehicleNumber: "",
           vehicleType: "Truck",
           companyName: "",
           engineNumber: "",
         };
+
+        let createdAtStr = "";
+        if (data.createdAt) {
+          if (typeof data.createdAt === "string") {
+            createdAtStr = data.createdAt;
+          } else if (
+            typeof data.createdAt === "object" &&
+            data.createdAt !== null &&
+            "toDate" in data.createdAt &&
+            typeof (data.createdAt as { toDate: () => Date }).toDate ===
+              "function"
+          ) {
+            createdAtStr = (
+              data.createdAt as { toDate: () => Date }
+            )
+              .toDate()
+              .toISOString();
+          }
+        }
+
         return {
           id: doc.id,
           vehicleId: data.vehicleId || "",
@@ -1000,7 +1021,7 @@ export default function RecordsPage() {
           hours: Number(data.hours) || 0,
           miles: Number(data.miles) || 0,
           totalMiles: Number(data.totalMiles) || 0,
-          createdAt: data.createdAt || "",
+          createdAt: createdAtStr,
           workshopName: data.workshopName || "",
           invoice: data.invoice || "",
           description: data.description || "",
@@ -1008,6 +1029,17 @@ export default function RecordsPage() {
           imageUrl: data.imageUrl || "",
           vehicle: vehDetails.companyName || vehDetails.vehicleNumber || "",
         } as RecordData;
+      });
+
+      recordsData.sort((a, b) => {
+        const dateA = a?.date ? new Date(a.date).getTime() : 0;
+        const dateB = b?.date ? new Date(b.date).getTime() : 0;
+        if (dateB !== dateA) {
+          return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+        }
+        const createdA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const createdB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA);
       });
 
       setRecords(recordsData);
@@ -1312,6 +1344,12 @@ export default function RecordsPage() {
       errors.otherService = "Please specify the other service name";
     }
 
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (date && date > todayStr) {
+      errors.date =
+        "Future dates are not allowed. Please select today or a previous date.";
+    }
+
     // Check if services with subservices have at least one subservice selected
     selectedServices.forEach((serviceId) => {
       const service = services.find((s) => s.sId === serviceId);
@@ -1535,8 +1573,12 @@ export default function RecordsPage() {
         invoice,
         invoiceAmount,
         description,
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
+        createdAt:
+          isEditing && editingRecordId
+            ? records.find((r) => r.id === editingRecordId)?.createdAt ||
+              new Date().toISOString()
+            : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         active: true,
         addedFrom: "Web",
       };
@@ -2830,8 +2872,23 @@ export default function RecordsPage() {
                   label="Date"
                   type="date"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => {
+                    const selected = e.target.value;
+                    const todayStr = new Date().toISOString().split("T")[0];
+                    if (selected && selected > todayStr) {
+                      toast.error(
+                        "Future dates cannot be selected. Please select today or a past date."
+                      );
+                      return;
+                    }
+                    setDate(selected);
+                  }}
                   InputLabelProps={{ shrink: true }}
+                  inputProps={{
+                    max: new Date().toISOString().split("T")[0],
+                  }}
+                  error={Boolean(validationErrors.date)}
+                  helperText={validationErrors.date}
                   className="mb-4 rounded-lg mt-4"
                 />
 

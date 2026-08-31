@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { db, storage } from "@/lib/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { read, utils } from "xlsx";
 import {
   collection,
@@ -32,7 +31,6 @@ import {
   FaFileDownload,
   FaArrowLeft,
   FaCloudUploadAlt,
-  FaImage,
   FaFilePdf,
   FaTrash,
   FaCheckCircle,
