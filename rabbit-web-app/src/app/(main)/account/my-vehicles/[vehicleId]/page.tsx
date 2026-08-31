@@ -32,6 +32,9 @@ import {
   FaPrint,
   FaTrash,
   FaTimes,
+  FaFilePdf,
+  FaFileImage,
+  FaExternalLinkAlt,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { ProfileValues } from "@/types/types";
@@ -39,6 +42,7 @@ import { ProfileValues } from "@/types/types";
 interface VehicleDocument {
   imageUrl: string;
   text: string;
+  fileType?: string;
 }
 
 interface ServiceData {
@@ -283,15 +287,24 @@ export default function MyVehicleDetailsScreen() {
 
     try {
       for (const { file, customText } of filesToUpload) {
+        const isPdfFile =
+          file.type.toLowerCase().includes("pdf") ||
+          file.name.toLowerCase().endsWith(".pdf");
         const storageRef = ref(
           storage,
           `vehicle_images/${effectiveUserId}/${vehicleId}/${
             file.name
           }_${Date.now()}`
         );
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, file, {
+          contentType: file.type || (isPdfFile ? "application/pdf" : "image/jpeg"),
+        });
         const downloadURL = await getDownloadURL(storageRef);
-        uploads.push({ imageUrl: downloadURL, text: customText });
+        uploads.push({
+          imageUrl: downloadURL,
+          text: customText,
+          fileType: isPdfFile ? "pdf" : "image",
+        });
       }
 
       const docRef = doc(db, "Users", effectiveUserId, "Vehicles", vehicleId);
@@ -311,6 +324,13 @@ export default function MyVehicleDetailsScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const isPdfDocument = (documentItem: VehicleDocument): boolean => {
+    if (documentItem.fileType?.toLowerCase() === "pdf") return true;
+    if (documentItem.imageUrl?.toLowerCase().includes(".pdf")) return true;
+    if (documentItem.text?.toLowerCase().endsWith(".pdf")) return true;
+    return false;
   };
 
   const handleTextChange = (id: string, newText: string) => {
@@ -367,25 +387,44 @@ export default function MyVehicleDetailsScreen() {
     setShowImageViewer(true);
   };
 
-  const handleDownloadImage = async (imageUrl: string, fileName: string) => {
+  const handleDownloadDocument = async (
+    fileUrl: string,
+    fileName: string,
+    isPdf: boolean
+  ) => {
     try {
-      const response = await fetch(imageUrl, { mode: "cors" });
+      const response = await fetch(fileUrl, { mode: "cors" });
       if (!response.ok) {
-        throw new Error("Failed to fetch image");
+        throw new Error("Failed to fetch document");
       }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${fileName}.jpg`;
+      const cleanName = fileName?.trim() || `document-${Date.now()}`;
+      if (isPdf || fileUrl.toLowerCase().includes(".pdf")) {
+        a.download = cleanName.toLowerCase().endsWith(".pdf")
+          ? cleanName
+          : `${cleanName}.pdf`;
+      } else {
+        a.download = cleanName.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+          ? cleanName
+          : `${cleanName}.jpg`;
+      }
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
       toast.success("Document downloaded successfully!");
     } catch (error) {
-      console.error("Error downloading document:", error);
-      toast.error("Error downloading document");
+      console.error("Error downloading document via blob, trying direct download:", error);
+      const a = document.createElement("a");
+      a.href = fileUrl;
+      a.target = "_blank";
+      a.download = fileName || "document";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
   };
 
@@ -1399,21 +1438,21 @@ export default function MyVehicleDetailsScreen() {
       {role === "Owner" || role === "SubOwner" ? (
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">Upload Documents</h2>
-          <div className="flex gap-4 mb-4">
+          <div className="flex gap-4 mb-4 flex-wrap items-center">
             <input
               type="file"
               multiple
               onChange={handleFileChange}
-              className="border p-2 rounded"
-              accept="image/*"
+              className="border p-2 rounded max-w-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#F96176] file:text-white hover:file:bg-[#e05065]"
+              accept="image/*,application/pdf,.pdf"
             />
             <button
               onClick={handleUpload}
-              disabled={filesToUpload.length === 0}
-              className={`px-4 py-2 rounded flex items-center gap-2 ${
+              disabled={filesToUpload.length === 0 || loading}
+              className={`px-5 py-2.5 rounded font-medium flex items-center gap-2 transition ${
                 filesToUpload.length === 0
-                  ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-[#F96176] text-white hover:bg-[#F96176]"
+                  ? "bg-gray-300 cursor-not-allowed text-gray-500"
+                  : "bg-[#F96176] text-white hover:bg-[#e05065]"
               }`}
             >
               {loading ? <LoadingIndicator /> : "Upload Documents"}
@@ -1422,33 +1461,56 @@ export default function MyVehicleDetailsScreen() {
 
           {filesToUpload.length > 0 && (
             <div className="space-y-4">
-              <h3 className="font-medium">Files to upload:</h3>
-              {filesToUpload.map(({ id, file, customText }) => (
-                <div
-                  key={id}
-                  className="flex items-center gap-4 p-3 border rounded"
-                >
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600 truncate">
-                      {file.name}
-                    </p>
-                    <input
-                      type="text"
-                      value={customText}
-                      onChange={(e) => handleTextChange(id, e.target.value)}
-                      className="w-full p-2 border rounded mt-1"
-                      placeholder="Enter description"
-                    />
-                  </div>
-                  <button
-                    onClick={() => removeFile(id)}
-                    className="text-red-500 hover:text-red-700"
-                    title="Remove file"
+              <h3 className="font-medium text-gray-700">Files to upload:</h3>
+              {filesToUpload.map(({ id, file, customText }) => {
+                const isPdf =
+                  file.type.toLowerCase().includes("pdf") ||
+                  file.name.toLowerCase().endsWith(".pdf");
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center gap-4 p-3 border rounded-lg bg-gray-50"
                   >
-                    <FaTrash />
-                  </button>
-                </div>
-              ))}
+                    <div className="text-2xl shrink-0">
+                      {isPdf ? (
+                        <FaFilePdf className="text-red-500 text-3xl" />
+                      ) : (
+                        <FaFileImage className="text-blue-500 text-3xl" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-800 truncate">
+                          {file.name}
+                        </p>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded font-semibold uppercase ${
+                            isPdf
+                              ? "bg-red-100 text-red-600"
+                              : "bg-blue-100 text-blue-600"
+                          }`}
+                        >
+                          {isPdf ? "PDF" : "Image"}
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={customText}
+                        onChange={(e) => handleTextChange(id, e.target.value)}
+                        className="w-full p-2 border rounded mt-1 text-sm bg-white"
+                        placeholder="Enter description"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeFile(id)}
+                      className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50"
+                      title="Remove file"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1458,45 +1520,130 @@ export default function MyVehicleDetailsScreen() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-semibold mb-4">Uploaded Documents</h2>
           {vehicleData?.uploadedDocuments?.length ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {vehicleData.uploadedDocuments.map((doc, index) => (
-                <div key={index} className="border rounded p-4 relative group">
-                  <img
-                    src={doc.imageUrl}
-                    alt={`Document ${index + 1}`}
-                    className="w-full h-40 object-cover mb-2"
-                  />
-                  <p className="text-gray-600 truncate">
-                    {doc.text || `Document ${index + 1}`}
-                  </p>
-                  <button
-                    onClick={() => handleViewImage(doc.imageUrl)}
-                    className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600"
-                    title="View document"
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+              {vehicleData.uploadedDocuments.map((docItem, index) => {
+                const isPdf = isPdfDocument(docItem);
+                return (
+                  <div
+                    key={index}
+                    className="border border-gray-200 rounded-xl p-4 relative group bg-white hover:shadow-md transition-shadow flex flex-col justify-between"
                   >
-                    <FaEye size={14} />
-                  </button>
-                  <button
-                    onClick={() =>
-                      handleDownloadImage(
-                        doc.imageUrl,
-                        doc.text || `document-${index + 1}`
-                      )
-                    }
-                    className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600"
-                    title="Download document"
-                  >
-                    <FaDownload size={14} />
-                  </button>
-                  <button
-                    onClick={() => confirmDelete(doc)}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                    title="Delete document"
-                  >
-                    <FaTrash size={14} />
-                  </button>
-                </div>
-              ))}
+                    {/* Preview Area */}
+                    {isPdf ? (
+                      <div
+                        onClick={() => window.open(docItem.imageUrl, "_blank")}
+                        className="w-full h-44 bg-red-50 hover:bg-red-100 rounded-lg flex flex-col items-center justify-center cursor-pointer transition border border-red-200 mb-3"
+                        title="Click to open PDF in new tab"
+                      >
+                        <FaFilePdf className="text-red-500 text-5xl mb-2 group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-red-600 bg-red-100 px-2.5 py-0.5 rounded">
+                          PDF Document
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          Open in new tab <FaExternalLinkAlt size={10} />
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => handleViewImage(docItem.imageUrl)}
+                        className="w-full h-44 rounded-lg overflow-hidden bg-gray-100 mb-3 cursor-pointer relative group/img"
+                        title="Click to view image"
+                      >
+                        <img
+                          src={docItem.imageUrl}
+                          alt={docItem.text || `Document ${index + 1}`}
+                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/img:bg-opacity-20 transition-all flex items-center justify-center">
+                          <span className="opacity-0 group-hover/img:opacity-100 bg-black bg-opacity-60 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-opacity">
+                            <FaEye size={12} /> View Full
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Document Info */}
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`text-[11px] font-bold uppercase px-2 py-0.5 rounded ${
+                            isPdf
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {isPdf ? "PDF" : "IMAGE"}
+                        </span>
+                        <p className="text-sm font-semibold text-gray-800 truncate flex-1">
+                          {docItem.text || `Document ${index + 1}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                      {isPdf ? (
+                        <>
+                          <button
+                            onClick={() =>
+                              window.open(docItem.imageUrl, "_blank")
+                            }
+                            className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
+                            title="Open PDF"
+                          >
+                            <FaEye size={13} /> View
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDownloadDocument(
+                                docItem.imageUrl,
+                                docItem.text || `document-${index + 1}`,
+                                true
+                              )
+                            }
+                            className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
+                            title="Download PDF"
+                          >
+                            <FaDownload size={13} /> Download
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleViewImage(docItem.imageUrl)}
+                            className="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
+                            title="Preview Image"
+                          >
+                            <FaEye size={13} /> View
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleDownloadDocument(
+                                docItem.imageUrl,
+                                docItem.text || `document-${index + 1}`,
+                                false
+                              )
+                            }
+                            className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
+                            title="Download Image"
+                          >
+                            <FaDownload size={13} /> Download
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Delete Icon Button */}
+                    <button
+                      onClick={() => confirmDelete(docItem)}
+                      className="absolute top-3 right-3 bg-white/90 hover:bg-red-500 text-gray-600 hover:text-white p-2 rounded-full shadow transition-all"
+                      title="Delete document"
+                    >
+                      <FaTrash size={12} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-gray-500">No documents uploaded yet</p>
