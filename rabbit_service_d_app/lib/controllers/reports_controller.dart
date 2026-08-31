@@ -39,6 +39,7 @@ class ReportsController extends GetxController {
   final TextEditingController serviceSearchController = TextEditingController();
   final TextEditingController vehicleSearchController = TextEditingController();
   final TextEditingController dateSearchController = TextEditingController();
+  final TextEditingController dateController = TextEditingController();
   DateTime? selectedDate;
   DateTime? originalRecordDate;
 
@@ -680,9 +681,18 @@ class ReportsController extends GetxController {
         });
       }
 
+      if (dateController.text.trim().isNotEmpty) {
+        final parsed = DateTime.tryParse(dateController.text.trim());
+        if (parsed != null) {
+          selectedDate = parsed;
+        }
+      }
+
       final formattedDate = selectedDate != null
           ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-          : null;
+          : dateController.text.trim().isNotEmpty
+              ? dateController.text.trim()
+              : null;
 
       // Extract myCompany and mycomId from selected vehicle
       final String vehicleMyCompany = (selectedVehicleData?['myCompany'] ??
@@ -1005,7 +1015,13 @@ class ReportsController extends GetxController {
     invoiceController.text = record['invoice'] ?? '';
     invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
     descriptionController.text = record['description'] ?? '';
-    selectedDate = DateTime.parse(record['date']);
+    if (record['date'] != null) {
+      selectedDate = DateTime.tryParse(record['date'].toString());
+      dateController.text = record['date'].toString();
+    } else {
+      selectedDate = null;
+      dateController.clear();
+    }
     showAddRecords = true;
     update();
   }
@@ -1073,8 +1089,15 @@ class ReportsController extends GetxController {
 
     // Miles and Hours are optional
 
-    if (selectedDate == null) {
-      showToastMessage("Error", "Please select a date", kRed);
+    if (dateController.text.trim().isNotEmpty) {
+      final parsed = DateTime.tryParse(dateController.text.trim());
+      if (parsed != null) {
+        selectedDate = parsed;
+      }
+    }
+
+    if (selectedDate == null && dateController.text.trim().isEmpty) {
+      showToastMessage("Error", "Please enter or select a date", kRed);
       return false;
     }
 
@@ -1229,6 +1252,7 @@ class ReportsController extends GetxController {
     descriptionController.clear();
     selectedPackages.clear();
     selectedDate = null;
+    dateController.clear();
     showAddRecords = false;
     selectedVehicleData = null;
     selectedServiceData.clear();

@@ -1524,33 +1524,52 @@ class _ReportsScreenState extends State<ReportsScreen>
             ],
             SizedBox(height: 10.h),
 
-            InkWell(
-              onTap: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: reController.selectedDate ?? DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    reController.selectedDate = picked;
-                  });
-                }
-              },
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Date',
-                  border: OutlineInputBorder(),
+            SizedBox(
+              height: 40.h,
+              child: TextField(
+                controller: reController.dateController,
+                keyboardType: TextInputType.datetime,
+                decoration: InputDecoration(
+                  labelText: 'Date (YYYY-MM-DD)',
+                  hintText: 'YYYY-MM-DD',
+                  labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
+                  border: const OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                  suffixIcon: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(Icons.calendar_today,
+                        size: 18, color: kPrimary),
+                    onPressed: () async {
+                      DateTime initial = reController.selectedDate ??
+                          (reController.dateController.text.trim().isNotEmpty
+                              ? DateTime.tryParse(
+                                      reController.dateController.text.trim()) ??
+                                  DateTime.now()
+                              : DateTime.now());
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: initial,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          reController.selectedDate = picked;
+                          reController.dateController.text =
+                              DateFormat('yyyy-MM-dd').format(picked);
+                        });
+                      }
+                    },
+                  ),
                 ),
-                child: Text(
-                  reController.selectedDate != null
-                      ? reController.selectedDate!
-                          .toLocal()
-                          .toString()
-                          .split(' ')[0]
-                      : 'Select Date',
-                ),
+                onChanged: (value) {
+                  final parsed = DateTime.tryParse(value.trim());
+                  if (parsed != null) {
+                    reController.selectedDate = parsed;
+                  }
+                },
               ),
             ),
 
