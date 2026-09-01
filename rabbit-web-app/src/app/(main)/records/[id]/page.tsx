@@ -432,6 +432,7 @@ export default function RecordsDetailsPage({
   const { user } = useAuth() || { user: null };
   const printRef = useRef<HTMLDivElement>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [imageScale, setImageScale] = useState(1);
   const [effectiveUserId, setEffectiveUserId] = useState(""); // Add effectiveUserId state
   const [userRole, setUserRole] = useState(""); // Add user role state
@@ -786,7 +787,7 @@ export default function RecordsDetailsPage({
                 </p>
                 <div className="flex gap-3 w-full justify-center">
                   <button
-                    onClick={() => window.open(record.imageUrl, "_blank")}
+                    onClick={() => setIsPdfModalOpen(true)}
                     className="bg-red-500 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-red-600 transition shadow-sm cursor-pointer"
                   >
                     <FaExternalLinkAlt size={13} /> View
@@ -853,6 +854,68 @@ export default function RecordsDetailsPage({
           </button>
         </div>
       </div>
+
+      {/* In-Page PDF Preview Modal */}
+      {isPdfModalOpen && record.imageUrl && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-6 no-print">
+          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-gray-900 text-white border-b border-gray-800">
+              <div className="flex items-center gap-3 min-w-0">
+                <FaFilePdf className="text-red-500 text-2xl flex-shrink-0" />
+                <div className="truncate">
+                  <h3
+                    className="font-semibold text-base truncate"
+                    title={getPdfFileName(record)}
+                  >
+                    {getPdfFileName(record)}
+                  </h3>
+                  <p className="text-xs text-gray-400">PDF Preview</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() =>
+                    handleDownloadFile(
+                      record.imageUrl!,
+                      getPdfFileName(record),
+                      true
+                    )
+                  }
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
+                  title="Download PDF"
+                >
+                  <FaDownload size={11} /> Download
+                </button>
+                <button
+                  onClick={() => window.open(record.imageUrl, "_blank")}
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
+                  title="Open in new tab"
+                >
+                  <FaExternalLinkAlt size={11} /> New Tab
+                </button>
+                <button
+                  onClick={() => setIsPdfModalOpen(false)}
+                  className="bg-red-600/80 hover:bg-red-600 text-white p-2 rounded-lg transition ml-1 cursor-pointer"
+                  title="Close"
+                >
+                  <FaTimes size={15} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body / PDF Viewer */}
+            <div className="flex-1 w-full h-full bg-gray-100 relative">
+              <iframe
+                src={`${record.imageUrl}#toolbar=1&navpanes=0`}
+                className="w-full h-full border-0"
+                title={getPdfFileName(record)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Modal */}
       {isImageModalOpen && record.imageUrl && (
