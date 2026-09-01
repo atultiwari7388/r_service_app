@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../utils/app_styles.dart';
 import '../../../../utils/constants.dart';
 import 'package:photo_view/photo_view.dart';
@@ -187,52 +188,98 @@ class RecordsDetailsScreen extends StatelessWidget {
                   ],
 
                   if (imageUrl != null && imageUrl.toString().isNotEmpty) ...[
-                    GestureDetector(
-                      onTap: () {
-                        // Show zoomable image dialog
-                        showDialog(
-                          context: context,
-                          builder: (context) => Dialog(
-                            child: Container(
-                              width: MediaQuery.of(context).size.width * 0.9,
-                              height: MediaQuery.of(context).size.height * 0.7,
-                              child: PhotoView(
-                                imageProvider: NetworkImage(imageUrl),
-                                minScale: PhotoViewComputedScale.contained,
-                                maxScale: PhotoViewComputedScale.covered * 2,
-                              ),
+                    Builder(builder: (context) {
+                      final bool isPdfDoc = imageUrl.toString().toLowerCase().contains('.pdf') ||
+                          record['fileType'] == 'pdf';
+
+                      if (isPdfDoc) {
+                        return InkWell(
+                          onTap: () async {
+                            final uri = Uri.parse(imageUrl.toString());
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                                vertical: 20.h, horizontal: 16.w),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.picture_as_pdf,
+                                    color: Colors.red, size: 50),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  "Invoice / Service Document (PDF)",
+                                  style: appStyle(
+                                      15, Colors.red, FontWeight.bold),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  "Tap to View / Open PDF",
+                                  style: appStyle(12, Colors.grey.shade700,
+                                      FontWeight.normal),
+                                ),
+                              ],
                             ),
                           ),
                         );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        height: 200.h,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12.r),
-                          image: DecorationImage(
-                            image: NetworkImage(imageUrl),
-                            fit: BoxFit.cover,
+                      }
+
+                      return GestureDetector(
+                        onTap: () {
+                          // Show zoomable image dialog
+                          showDialog(
+                            context: context,
+                            builder: (context) => Dialog(
+                              child: Container(
+                                width: MediaQuery.of(context).size.width * 0.9,
+                                height:
+                                    MediaQuery.of(context).size.height * 0.7,
+                                child: PhotoView(
+                                  imageProvider: NetworkImage(imageUrl),
+                                  minScale: PhotoViewComputedScale.contained,
+                                  maxScale: PhotoViewComputedScale.covered * 2,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          height: 200.h,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12.r),
+                            image: DecorationImage(
+                              image: NetworkImage(imageUrl),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          child: Align(
+                            alignment: Alignment.bottomRight,
+                            child: Container(
+                              margin: EdgeInsets.all(8.w),
+                              padding: EdgeInsets.all(6.w),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(20.r),
+                              ),
+                              child: Icon(
+                                Icons.zoom_in,
+                                color: Colors.white,
+                                size: 20.sp,
+                              ),
+                            ),
                           ),
                         ),
-                        child: Align(
-                          alignment: Alignment.bottomRight,
-                          child: Container(
-                            margin: EdgeInsets.all(8.w),
-                            padding: EdgeInsets.all(6.w),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            child: Icon(
-                              Icons.zoom_in,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                      );
+                    }),
                     SizedBox(height: 16.h),
                   ],
                 ],

@@ -616,76 +616,76 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                 child: Padding(
                                                                   padding:
                                                                       EdgeInsets
-                                                                          .all(16
+                                                                          .all(12
                                                                               .w),
                                                                   child: Column(
                                                                     crossAxisAlignment:
                                                                         CrossAxisAlignment
                                                                             .start,
                                                                     children: [
-                                                                      Row(
-                                                                        mainAxisAlignment:
-                                                                            MainAxisAlignment.spaceBetween,
-                                                                        children: [
-                                                                          if (record['invoice']
-                                                                              .isNotEmpty)
+                                                                      SingleChildScrollView(
+                                                                        physics:
+                                                                            BouncingScrollPhysics(),
+                                                                        scrollDirection:
+                                                                            Axis.horizontal,
+                                                                        child:
+                                                                            Row(
+                                                                          mainAxisAlignment:
+                                                                              MainAxisAlignment.spaceBetween,
+                                                                          children: [
+                                                                            if (record['invoice'].isNotEmpty)
+                                                                              Container(
+                                                                                padding: EdgeInsets.symmetric(
+                                                                                  horizontal: 12.w,
+                                                                                  vertical: 6.h,
+                                                                                ),
+                                                                                decoration: BoxDecoration(
+                                                                                  color: kPrimary.withOpacity(0.1),
+                                                                                  borderRadius: BorderRadius.circular(20.r),
+                                                                                ),
+                                                                                child: Row(
+                                                                                  children: [
+                                                                                    Icon(Icons.receipt_outlined, size: 20, color: kPrimary),
+                                                                                    SizedBox(width: 8.w),
+                                                                                    SizedBox(
+                                                                                      width: 80.w,
+                                                                                      child: Text("#${record['invoice']}", overflow: TextOverflow.ellipsis, style: appStyleUniverse(13, kDark, FontWeight.w500)),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                              ),
                                                                             Container(
                                                                               padding: EdgeInsets.symmetric(
                                                                                 horizontal: 12.w,
                                                                                 vertical: 6.h,
                                                                               ),
                                                                               decoration: BoxDecoration(
-                                                                                color: kPrimary.withOpacity(0.1),
+                                                                                color: kSecondary.withOpacity(0.1),
                                                                                 borderRadius: BorderRadius.circular(20.r),
                                                                               ),
                                                                               child: Row(
                                                                                 children: [
-                                                                                  Icon(Icons.receipt_outlined, size: 20, color: kPrimary),
+                                                                                  Icon(Icons.calendar_today, size: 18, color: kSecondary),
                                                                                   SizedBox(width: 8.w),
-                                                                                  SizedBox(
-                                                                                    width: 80.w,
-                                                                                    child: Text("#${record['invoice']}", overflow: TextOverflow.ellipsis, style: appStyleUniverse(13, kDark, FontWeight.w500)),
-                                                                                  ),
+                                                                                  Text(date, style: appStyleUniverse(13, kDark, FontWeight.w500)),
                                                                                 ],
                                                                               ),
                                                                             ),
-                                                                          Container(
-                                                                            padding:
-                                                                                EdgeInsets.symmetric(
-                                                                              horizontal: 12.w,
-                                                                              vertical: 6.h,
-                                                                            ),
-                                                                            decoration:
-                                                                                BoxDecoration(
-                                                                              color: kSecondary.withOpacity(0.1),
-                                                                              borderRadius: BorderRadius.circular(20.r),
-                                                                            ),
-                                                                            child:
-                                                                                Row(
-                                                                              children: [
-                                                                                Icon(Icons.calendar_today, size: 18, color: kSecondary),
-                                                                                SizedBox(width: 8.w),
-                                                                                Text(date, style: appStyleUniverse(13, kDark, FontWeight.w500)),
-                                                                              ],
-                                                                            ),
-                                                                          ),
-                                                                          //Edit Icon
 
-                                                                          GestureDetector(
-                                                                            onTap:
-                                                                                () {
-                                                                              if (reController.isEdit!) {
+                                                                            // Duplicate Icon
+                                                                            GestureDetector(
+                                                                              onTap: () {
                                                                                 showDialog(
                                                                                     context: context,
                                                                                     builder: (_) {
                                                                                       return AlertDialog(
-                                                                                        title: Text("Edit Record"),
-                                                                                        content: Text("Are you sure you want to edit this record?"),
+                                                                                        title: const Text("Duplicate Record"),
+                                                                                        content: const Text("Do you want to duplicate this record to create a new one?"),
                                                                                         actions: [
                                                                                           TextButton(
                                                                                             onPressed: () {
-                                                                                              reController.handleEditRecord(record);
                                                                                               Navigator.pop(context);
+                                                                                              reController.handleDuplicateRecord(record);
                                                                                             },
                                                                                             child: Text(
                                                                                               "Yes",
@@ -704,24 +704,79 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                         ],
                                                                                       );
                                                                                     });
-                                                                              } else {
-                                                                                showToastMessage("Sorry", "You don't have permission to edit record", kPrimary);
-                                                                              }
-                                                                            },
-                                                                            child:
-                                                                                Container(
-                                                                              padding: EdgeInsets.symmetric(
-                                                                                horizontal: 12.w,
-                                                                                vertical: 6.h,
+                                                                              },
+                                                                              child: Container(
+                                                                                padding: EdgeInsets.symmetric(
+                                                                                  horizontal: 10.w,
+                                                                                  vertical: 6.h,
+                                                                                ),
+                                                                                decoration: BoxDecoration(
+                                                                                  color: kSecondary,
+                                                                                  borderRadius: BorderRadius.circular(20.r),
+                                                                                ),
+                                                                                child: Row(
+                                                                                  mainAxisSize: MainAxisSize.min,
+                                                                                  children: [
+                                                                                    const Icon(Icons.copy, color: kWhite, size: 14),
+                                                                                    SizedBox(width: 4.w),
+                                                                                    Text("Duplicate", style: appStyle(12, kWhite, FontWeight.w600)),
+                                                                                  ],
+                                                                                ),
                                                                               ),
-                                                                              decoration: BoxDecoration(
-                                                                                color: kPrimary,
-                                                                                borderRadius: BorderRadius.circular(20.r),
-                                                                              ),
-                                                                              child: Icon(Icons.edit, color: kWhite, size: 16),
                                                                             ),
-                                                                          ),
-                                                                        ],
+                                                                            SizedBox(width: 8.w),
+
+                                                                            //Edit Icon
+                                                                            GestureDetector(
+                                                                              onTap: () {
+                                                                                if (reController.isEdit!) {
+                                                                                  showDialog(
+                                                                                      context: context,
+                                                                                      builder: (_) {
+                                                                                        return AlertDialog(
+                                                                                          title: Text("Edit Record"),
+                                                                                          content: Text("Are you sure you want to edit this record?"),
+                                                                                          actions: [
+                                                                                            TextButton(
+                                                                                              onPressed: () {
+                                                                                                reController.handleEditRecord(record);
+                                                                                                Navigator.pop(context);
+                                                                                              },
+                                                                                              child: Text(
+                                                                                                "Yes",
+                                                                                                style: appStyle(15, kSecondary, FontWeight.bold),
+                                                                                              ),
+                                                                                            ),
+                                                                                            TextButton(
+                                                                                              onPressed: () {
+                                                                                                Navigator.pop(context);
+                                                                                              },
+                                                                                              child: Text(
+                                                                                                "No",
+                                                                                                style: appStyle(15, kPrimary, FontWeight.bold),
+                                                                                              ),
+                                                                                            ),
+                                                                                          ],
+                                                                                        );
+                                                                                      });
+                                                                                } else {
+                                                                                  showToastMessage("Sorry", "You don't have permission to edit record", kPrimary);
+                                                                                }
+                                                                              },
+                                                                              child: Container(
+                                                                                padding: EdgeInsets.symmetric(
+                                                                                  horizontal: 12.w,
+                                                                                  vertical: 6.h,
+                                                                                ),
+                                                                                decoration: BoxDecoration(
+                                                                                  color: kPrimary,
+                                                                                  borderRadius: BorderRadius.circular(20.r),
+                                                                                ),
+                                                                                child: Icon(Icons.edit, color: kWhite, size: 16),
+                                                                              ),
+                                                                            ),
+                                                                          ],
+                                                                        ),
                                                                       ),
                                                                       SizedBox(
                                                                           height:
@@ -1470,27 +1525,69 @@ class _ReportsScreenState extends State<ReportsScreen>
             Wrap(
               spacing: 4.w,
               runSpacing: 4.h,
-              children: reController.services.where((service) {
-                final searchTerm =
-                    reController.serviceSearchController.text.toLowerCase();
-                final matchesSearch = searchTerm.isEmpty ||
-                    service['sName']
-                        .toString()
-                        .toLowerCase()
-                        .contains(searchTerm);
-                final matchesVehicleType =
-                    reController.selectedVehicleData == null ||
-                        service['vType'] ==
-                            reController.selectedVehicleData?['vehicleType'];
+              children: [
+                ...reController.services.where((service) {
+                  final searchTerm =
+                      reController.serviceSearchController.text.toLowerCase();
+                  final matchesSearch = searchTerm.isEmpty ||
+                      service['sName']
+                          .toString()
+                          .toLowerCase()
+                          .contains(searchTerm);
+                  final matchesVehicleType =
+                      reController.selectedVehicleData == null ||
+                          service['vType'] ==
+                              reController.selectedVehicleData?['vehicleType'];
 
-                return matchesSearch && matchesVehicleType;
-              }).map((service) {
-                bool isSelected =
-                    reController.selectedServices.contains(service['sId']);
-                return reController.buildServiceChip(
-                    service, isSelected, context);
-              }).toList(),
+                  return matchesSearch && matchesVehicleType;
+                }).map((service) {
+                  bool isSelected =
+                      reController.selectedServices.contains(service['sId']);
+                  return reController.buildServiceChip(
+                      service, isSelected, context);
+                }).toList(),
+                ChoiceChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Other Service'),
+                      if (reController.isOtherServiceSelected)
+                        reController.buildCustomTickBox(),
+                    ],
+                  ),
+                  selected: reController.isOtherServiceSelected,
+                  selectedColor: kPrimary,
+                  backgroundColor: kPrimary.withOpacity(0.1),
+                  labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
+                  onSelected: (bool selected) {
+                    setState(() {
+                      reController.isOtherServiceSelected = selected;
+                      if (!selected) {
+                        reController.otherServiceController.clear();
+                      }
+                    });
+                  },
+                ),
+              ],
             ),
+
+            if (reController.isOtherServiceSelected) ...[
+              SizedBox(height: 8.h),
+              SizedBox(
+                height: 42.h,
+                child: TextField(
+                  controller: reController.otherServiceController,
+                  decoration: InputDecoration(
+                    labelText: 'Custom Service Name *',
+                    hintText: 'Enter custom service name',
+                    labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
+                    border: const OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                  ),
+                ),
+              ),
+            ],
 
             SizedBox(height: 10.h),
 
@@ -1544,15 +1641,19 @@ class _ReportsScreenState extends State<ReportsScreen>
                     onPressed: () async {
                       DateTime initial = reController.selectedDate ??
                           (reController.dateController.text.trim().isNotEmpty
-                              ? DateTime.tryParse(
-                                      reController.dateController.text.trim()) ??
+                              ? DateTime.tryParse(reController
+                                      .dateController.text
+                                      .trim()) ??
                                   DateTime.now()
                               : DateTime.now());
+                      if (initial.isAfter(DateTime.now())) {
+                        initial = DateTime.now();
+                      }
                       final DateTime? picked = await showDatePicker(
                         context: context,
                         initialDate: initial,
                         firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
+                        lastDate: DateTime.now(),
                       );
                       if (picked != null) {
                         setState(() {
@@ -1575,16 +1676,89 @@ class _ReportsScreenState extends State<ReportsScreen>
 
             SizedBox(height: 10.h),
 
-            // Workshop Name
+            // Workshop Name (Autocomplete with suggestions)
             SizedBox(
-              height: 40.h,
-              child: TextField(
-                controller: reController.workshopController,
-                decoration: InputDecoration(
-                  labelText: 'Workshop Name',
-                  labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
-                  border: OutlineInputBorder(),
-                ),
+              height: 42.h,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Autocomplete<String>(
+                    initialValue: TextEditingValue(
+                        text: reController.workshopController.text),
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (reController.workshopList.isEmpty) {
+                        return const Iterable<String>.empty();
+                      }
+                      if (textEditingValue.text.isEmpty) {
+                        return reController.workshopList;
+                      }
+                      return reController.workshopList.where((String option) {
+                        return option
+                            .toLowerCase()
+                            .contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    onSelected: (String selection) {
+                      reController.workshopController.text = selection;
+                    },
+                    fieldViewBuilder: (context, textEditingController,
+                        focusNode, onFieldSubmitted) {
+                      if (textEditingController.text !=
+                              reController.workshopController.text &&
+                          reController.workshopController.text.isNotEmpty) {
+                        textEditingController.text =
+                            reController.workshopController.text;
+                      }
+                      return TextField(
+                        controller: textEditingController,
+                        focusNode: focusNode,
+                        onChanged: (val) {
+                          reController.workshopController.text = val;
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Workshop Name (Optional)',
+                          hintText: 'Select or type workshop name',
+                          labelStyle:
+                              appStyleUniverse(14, kDark, FontWeight.normal),
+                          border: const OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10.w, vertical: 8.h),
+                          suffixIcon: reController.workshopList.isNotEmpty
+                              ? const Icon(Icons.arrow_drop_down,
+                                  color: kPrimary)
+                              : null,
+                        ),
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          elevation: 4.0,
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            height: 150.h,
+                            child: ListView.builder(
+                              padding: EdgeInsets.zero,
+                              itemCount: options.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final String option = options.elementAt(index);
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(option,
+                                      style: appStyle(
+                                          14, kDark, FontWeight.normal)),
+                                  onTap: () {
+                                    onSelected(option);
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
             SizedBox(height: 10.h),
@@ -1596,24 +1770,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                   labelText: 'Invoice Number (Optional)',
                   labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
                   border: OutlineInputBorder(),
-                  // counterText:
-                  //     '${invoiceController.text.length}/10',
                 ),
                 maxLength: 15,
                 keyboardType: TextInputType.text,
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
                 ],
-                onChanged: (value) {
-                  // setState(() {}); // Refresh to update counter
-                },
               ),
             ),
-            // Text(
-            //   'Max 10 characters (letters and numbers only)',
-            //   style: appStyleUniverse(
-            //       12, kDarkGray, FontWeight.normal),
-            // ),
             SizedBox(height: 10.h),
 
             SizedBox(
@@ -1655,7 +1819,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Upload Images"),
+                    Text(
+                      reController.documentFile != null ||
+                              reController.image != null ||
+                              reController.existingImageUrl != null
+                          ? "Change Document / Image"
+                          : "Upload Document (PDF / Image)",
+                      style: appStyle(14, kDark, FontWeight.w500),
+                    ),
                     SizedBox(width: 20.w),
                     Icon(Icons.upload_file, color: kDark),
                   ],
@@ -1664,30 +1835,122 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             SizedBox(height: 10.h),
 
-            // image section
-            if (reController.image != null)
+            // Document / image section preview
+            if (reController.isPdfFile &&
+                (reController.documentFile != null ||
+                    (reController.existingImageUrl != null &&
+                        reController.existingImageUrl!
+                            .toLowerCase()
+                            .contains('.pdf'))))
               Container(
-                width: 80.w,
-                height: 80.h,
+                padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
+                  color: Colors.red.shade50,
                   borderRadius: BorderRadius.circular(12.r),
-                  image: DecorationImage(
-                    image: FileImage(reController.image!),
-                    fit: BoxFit.cover,
-                  ),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.picture_as_pdf,
+                        color: Colors.red, size: 36),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            reController.documentName ?? 'PDF Document',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, color: Colors.red),
+                          ),
+                          const Text('PDF Document selected',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          reController.documentFile = null;
+                          reController.documentName = null;
+                          reController.isPdfFile = false;
+                          reController.existingImageUrl = null;
+                        });
+                      },
+                    ),
+                  ],
                 ),
               )
-            else if (reController.existingImageUrl != null)
-              Container(
-                width: 80.w,
-                height: 80.h,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12.r),
-                  image: DecorationImage(
-                    image: NetworkImage(reController.existingImageUrl!),
-                    fit: BoxFit.cover,
+            else if (reController.image != null)
+              Stack(
+                children: [
+                  Container(
+                    width: 80.w,
+                    height: 80.h,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.r),
+                      image: DecorationImage(
+                        image: FileImage(reController.image!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          reController.image = null;
+                          reController.documentFile = null;
+                        });
+                      },
+                      child: Container(
+                        decoration: const BoxDecoration(
+                            color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.close,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else if (reController.existingImageUrl != null)
+              Stack(
+                children: [
+                  Container(
+                    width: 80.w,
+                    height: 80.h,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.r),
+                      image: DecorationImage(
+                        image: NetworkImage(reController.existingImageUrl!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          reController.existingImageUrl = null;
+                        });
+                      },
+                      child: Container(
+                        decoration: const BoxDecoration(
+                            color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.close,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
             // Save Button

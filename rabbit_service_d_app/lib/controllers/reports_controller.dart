@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +30,8 @@ class ReportsController extends GetxController {
   Set<String> selectedServices = {};
   Map<String, List<String>> selectedSubServices = {};
   Map<String, int> serviceDefaultValues = {};
+  bool isOtherServiceSelected = false;
+  final TextEditingController otherServiceController = TextEditingController();
   final TextEditingController milesController = TextEditingController();
   final TextEditingController todayMilesController = TextEditingController();
   final TextEditingController hoursController = TextEditingController();
@@ -64,7 +67,13 @@ class ReportsController extends GetxController {
   bool isAnonymous = true;
   bool isProfileComplete = false;
   File? image;
+  File? documentFile;
+  String? documentName;
+  bool isPdfFile = false;
   String? existingImageUrl;
+
+  // Workshop suggestions
+  final List<String> workshopList = [];
 
   // Define a new variable to track the selected filter option
   String? selectedFilterOption;
@@ -83,6 +92,7 @@ class ReportsController extends GetxController {
   late StreamSubscription milesSubscription;
   late StreamSubscription packagesSubscription;
   late StreamSubscription usersSubscription;
+  StreamSubscription? workshopSubscription;
   String selectedVehicleType = 'Truck';
 
   // Selected data
@@ -232,17 +242,61 @@ class ReportsController extends GetxController {
         .snapshots()
         .listen((snapshot) {
       records.clear();
-      records.addAll(snapshot.docs.map((doc) => {
-            ...doc.data(),
-            'id': doc.id,
-            'vehicle': doc['vehicleDetails']['companyName']
-          }));
+      records.addAll(snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          ...data,
+          'id': doc.id,
+          'vehicle': data['vehicleDetails'] != null
+              ? data['vehicleDetails']['companyName']
+              : ''
+        };
+      }));
+
+      records.sort((a, b) {
+        DateTime? dateA =
+            a['date'] != null ? DateTime.tryParse(a['date'].toString()) : null;
+        DateTime? dateB =
+            b['date'] != null ? DateTime.tryParse(b['date'].toString()) : null;
+        if (dateA != null && dateB != null && !dateA.isAtSameMomentAs(dateB)) {
+          return dateB.compareTo(dateA); // Newest date first
+        }
+        DateTime? createdA = a['createdAt'] != null
+            ? DateTime.tryParse(a['createdAt'].toString())
+            : null;
+        DateTime? createdB = b['createdAt'] != null
+            ? DateTime.tryParse(b['createdAt'].toString())
+            : null;
+        if (createdA != null && createdB != null) {
+          return createdB.compareTo(createdA); // Newest created first
+        }
+        return 0;
+      });
 
       // Update showAddRecords based on whether we have any records
       showAddRecords = snapshot.docs.isEmpty;
       update();
       debugPrint(
           'Fetched ${records.length} records for effective user: $effectiveUserId');
+    });
+
+    // Setup workshop names stream
+    workshopSubscription?.cancel();
+    workshopSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(effectiveUserId)
+        .collection('recordWorkshopName')
+        .snapshots()
+        .listen((snapshot) {
+      workshopList.clear();
+      for (var doc in snapshot.docs) {
+        final name = (doc.data()['workshopName'] ?? '').toString().trim();
+        if (name.isNotEmpty && !workshopList.contains(name)) {
+          workshopList.add(name);
+        }
+      }
+      workshopList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      update();
     });
 
     // Setup miles stream - use effectiveUserId
@@ -315,18 +369,19 @@ class ReportsController extends GetxController {
 
       // Service filter
       final serviceMatch = filterService.isEmpty ||
-          (record['services'] as List).any((service) => service['serviceName']
+          (record['services'] as List).any((service) => (service['serviceName'] ?? '')
               .toString()
               .toLowerCase()
               .contains(filterService.toLowerCase()));
 
       // Date range filter
-      final recordDate = DateTime.parse(record['date']);
+      final recordDate = DateTime.tryParse(record['date']?.toString() ?? '');
       final dateMatch = startDate == null ||
           endDate == null ||
-          (recordDate.isAfter(startDate!) &&
+          (recordDate != null &&
+              recordDate.isAfter(startDate!.subtract(const Duration(seconds: 1))) &&
               recordDate.isBefore(
-                  endDate!.add(Duration(days: 1)))); // Include end date
+                  endDate!.add(const Duration(days: 1)))); // Include end date
 
       // Invoice filter
       final invoiceMatch = filterInvoice.isEmpty ||
@@ -336,9 +391,23 @@ class ReportsController extends GetxController {
       return vehicleMatch && serviceMatch && dateMatch && invoiceMatch;
     }).toList()
       ..sort((a, b) {
-        final dateA = DateTime.parse(a['date']);
-        final dateB = DateTime.parse(b['date']);
-        return dateB.compareTo(dateA); // Newest first
+        DateTime? dateA =
+            a['date'] != null ? DateTime.tryParse(a['date'].toString()) : null;
+        DateTime? dateB =
+            b['date'] != null ? DateTime.tryParse(b['date'].toString()) : null;
+        if (dateA != null && dateB != null && !dateA.isAtSameMomentAs(dateB)) {
+          return dateB.compareTo(dateA); // Newest date first
+        }
+        DateTime? createdA = a['createdAt'] != null
+            ? DateTime.tryParse(a['createdAt'].toString())
+            : null;
+        DateTime? createdB = b['createdAt'] != null
+            ? DateTime.tryParse(b['createdAt'].toString())
+            : null;
+        if (createdA != null && createdB != null) {
+          return createdB.compareTo(createdA); // Newest created first
+        }
+        return 0;
       });
   }
 
@@ -465,35 +534,73 @@ class ReportsController extends GetxController {
   void getImage(ImageSource source, BuildContext context) async {
     final pickedFile = await ImagePicker().pickImage(
       source: source,
-      imageQuality: 50,
+      imageQuality: 70,
     );
 
-    image = pickedFile != null ? File(pickedFile.path) : null;
-    update();
+    if (pickedFile != null) {
+      image = File(pickedFile.path);
+      documentFile = File(pickedFile.path);
+      documentName = pickedFile.name;
+      isPdfFile = false;
+      existingImageUrl = null;
+      update();
+    }
   }
 
-  //=============================== Image Uploader =====================================
+  void pickPdfFile(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      final platformFile = result.files.single;
+      documentFile = File(platformFile.path!);
+      documentName = platformFile.name;
+      isPdfFile = true;
+      image = null;
+      existingImageUrl = null;
+      update();
+    }
+  }
+
+  //=============================== Document / Image Uploader =====================================
   void showImageSourceDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Select Image Source'),
+          title: Text('Select Document / Image Source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.camera_alt, color: kPrimary),
+                title: Text('Camera'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  getImage(ImageSource.camera, context);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_library, color: kPrimary),
+                title: Text('Gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  getImage(ImageSource.gallery, context);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.picture_as_pdf, color: Colors.red),
+                title: Text('PDF Document'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  pickPdfFile(context);
+                },
+              ),
+            ],
+          ),
           actions: <Widget>[
-            TextButton(
-              child: Text('Camera'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                getImage(ImageSource.camera, context);
-              },
-            ),
-            TextButton(
-              child: Text('Gallery'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                getImage(ImageSource.gallery, context);
-              },
-            ),
             TextButton(
               child: Text('Cancel'),
               onPressed: () {
@@ -513,17 +620,24 @@ class ReportsController extends GetxController {
       }
 
       String? imageUrl;
+      String fileType = isPdfFile ? 'pdf' : 'image';
 
-      // Upload images to Firebase Storage
-      if (image != null) {
-        String fileName =
-            DateTime.now().millisecondsSinceEpoch.toString() + '.jpg';
-        Reference storageRef = FirebaseStorage.instance
+      // Upload file to Firebase Storage
+      if (documentFile != null || image != null) {
+        final uploadTarget = documentFile ?? image!;
+        final String ext = isPdfFile ? 'pdf' : 'jpg';
+        final String fileName =
+            '${DateTime.now().millisecondsSinceEpoch}.$ext';
+        final Reference storageRef = FirebaseStorage.instance
             .ref()
-            .child('service_images')
+            .child(isPdfFile ? 'service_documents' : 'service_images')
             .child(fileName);
 
-        UploadTask uploadTask = storageRef.putFile(image!);
+        final SettableMetadata metadata = SettableMetadata(
+          contentType: isPdfFile ? 'application/pdf' : 'image/jpeg',
+        );
+
+        final UploadTask uploadTask = storageRef.putFile(uploadTarget, metadata);
         imageUrl = await (await uploadTask).ref.getDownloadURL();
       } else if (isEditing && existingImageUrl != null) {
         imageUrl = existingImageUrl;
@@ -681,6 +795,29 @@ class ReportsController extends GetxController {
         });
       }
 
+      // If Other Service is selected, add custom service
+      if (isOtherServiceSelected && otherServiceController.text.trim().isNotEmpty) {
+        final customName = otherServiceController.text.trim();
+        final customId =
+            'custom_${customName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+
+        servicesData.add({
+          "serviceId": customId,
+          "serviceName": customName,
+          "type": "reading",
+          "defaultNotificationValue": 0,
+          "nextNotificationValue": 0,
+          "subServices": [],
+        });
+
+        notificationData.add({
+          "serviceName": customName,
+          "type": "reading",
+          "nextNotificationValue": 0,
+          "subServices": [],
+        });
+      }
+
       if (dateController.text.trim().isNotEmpty) {
         final parsed = DateTime.tryParse(dateController.text.trim());
         if (parsed != null) {
@@ -706,6 +843,11 @@ class ReportsController extends GetxController {
           .toString()
           .trim();
 
+      final existingRec = isEditing
+          ? records.firstWhere((r) => r['id'] == editingRecordId,
+              orElse: () => {})
+          : {};
+
       final recordData = {
         "active": true,
         "userId": effectiveUserId, // Use effectiveUserId for the record
@@ -713,6 +855,7 @@ class ReportsController extends GetxController {
         "myCompany": vehicleMyCompany,
         "mycomId": vehicleMyComId,
         "imageUrl": imageUrl,
+        "fileType": fileType,
         "vehicleDetails": {
           ...selectedVehicleData!,
           if (vehicleMyCompany.isNotEmpty) "myCompany": vehicleMyCompany,
@@ -721,9 +864,9 @@ class ReportsController extends GetxController {
           "nextNotificationMiles": notificationData,
         },
         "services": servicesData,
-        "invoice": invoiceController.text,
-        "invoiceAmount": invoiceAmountController.text,
-        "description": descriptionController.text.toString(),
+        "invoice": invoiceController.text.trim(),
+        "invoiceAmount": invoiceAmountController.text.trim(),
+        "description": descriptionController.text.trim(),
         "miles": isEditing
             ? currentMiles
             : selectedVehicleData?['vehicleType'] == "Truck" &&
@@ -737,15 +880,34 @@ class ReportsController extends GetxController {
                 ? int.tryParse(hoursController.text) ?? 0
                 : 0,
         "date": formattedDate,
-        "workshopName": workshopController.text,
-        "createdAt": DateTime.now().toIso8601String(),
-        "updatedAt": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        "workshopName": workshopController.text.trim(),
+        "createdAt": isEditing
+            ? (existingRec['createdAt'] ?? DateTime.now().toIso8601String())
+            : DateTime.now().toIso8601String(),
+        "updatedAt": DateTime.now().toIso8601String(),
         "addedFrom": Platform.isAndroid
             ? "Android"
             : Platform.isIOS
                 ? "iOS"
                 : "N/A",
       };
+
+      // Auto-save new workshop to Users/{effectiveUserId}/recordWorkshopName (deduplicated)
+      final String enteredWorkshop = workshopController.text.trim();
+      if (enteredWorkshop.isNotEmpty) {
+        if (!workshopList.any((w) => w.toLowerCase() == enteredWorkshop.toLowerCase())) {
+          FirebaseFirestore.instance
+              .collection('Users')
+              .doc(effectiveUserId)
+              .collection('recordWorkshopName')
+              .add({
+            'workshopName': enteredWorkshop,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          workshopList.add(enteredWorkshop);
+          workshopList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+        }
+      }
 
       // Get current user data to determine the actual owner
       final currentUserDoc = await FirebaseFirestore.instance
@@ -852,12 +1014,14 @@ class ReportsController extends GetxController {
             final serviceName = serviceInfo['serviceName'];
             final subServices = serviceInfo['subServices'];
 
-            int index = updatedVehicleServices
-                .indexWhere((s) => s['serviceId'] == serviceId);
+            final existingServiceIndex = updatedVehicleServices.indexWhere(
+              (service) => service['serviceId'] == serviceId,
+            );
 
-            if (index != -1) {
-              updatedVehicleServices[index] = {
-                ...updatedVehicleServices[index],
+            if (existingServiceIndex != -1) {
+              updatedVehicleServices[existingServiceIndex] = {
+                'serviceId': serviceId,
+                'serviceName': serviceName,
                 'nextNotificationValue':
                     type == 'day' ? formattedDate : nextNotificationValue,
                 'type': type,
@@ -952,18 +1116,20 @@ class ReportsController extends GetxController {
   void handleEditRecord(Map<String, dynamic> record) {
     isEditing = true;
     editingRecordId = record['id'];
-    originalRecordDate = DateTime.parse(record['date']);
+    originalRecordDate = DateTime.tryParse(record['date']?.toString() ?? '');
     selectedVehicle = record['vehicleId'];
     selectedVehicleData = record['vehicleDetails'];
 
     // Initialize serviceDefaultValues from vehicle services first
-    if (record['vehicleDetails']['services'] != null) {
+    if (record['vehicleDetails'] != null &&
+        record['vehicleDetails']['services'] != null) {
       final vehicleServices =
           List<Map<String, dynamic>>.from(record['vehicleDetails']['services']);
 
       serviceDefaultValues.clear();
-      for (var service in record['services']) {
-        String serviceId = service['serviceId'];
+      final recordServices = record['services'] as List<dynamic>? ?? [];
+      for (var service in recordServices) {
+        String serviceId = (service['serviceId'] ?? '').toString();
         final vehicleService = vehicleServices.firstWhere(
           (vs) => vs['serviceId'] == serviceId,
           orElse: () => {},
@@ -977,44 +1143,62 @@ class ReportsController extends GetxController {
                   : int.tryParse(vehicleService['defaultNotificationValue']
                           .toString()) ??
                       0;
-        } else {
+        } else if (service['defaultNotificationValue'] != null) {
           serviceDefaultValues[serviceId] =
-              service['defaultNotificationValue'] ?? 0;
+              service['defaultNotificationValue'] is int
+                  ? service['defaultNotificationValue']
+                  : int.tryParse(service['defaultNotificationValue'].toString()) ?? 0;
         }
       }
     }
 
     selectedServices.clear();
     selectedSubServices.clear();
-    for (var service in record['services']) {
-      String serviceId = service['serviceId'];
-      selectedServices.add(serviceId);
+    isOtherServiceSelected = false;
+    otherServiceController.clear();
+
+    final recordServices = record['services'] as List<dynamic>? ?? [];
+    for (var service in recordServices) {
+      String serviceId = (service['serviceId'] ?? '').toString();
+      if (serviceId.startsWith('custom_')) {
+        isOtherServiceSelected = true;
+        otherServiceController.text = (service['serviceName'] ?? '').toString();
+      } else if (serviceId.isNotEmpty) {
+        selectedServices.add(serviceId);
+      }
+
       if (service['subServices'] != null) {
         selectedSubServices[serviceId] = (service['subServices'] as List)
-            .map<String>((sub) => sub['name'].toString())
+            .map<String>((sub) => (sub is Map ? sub['name'] : sub).toString())
             .toList();
       }
     }
 
-    if (record['imageUrl'] != null) {
+    if (record['imageUrl'] != null && record['imageUrl'].toString().isNotEmpty) {
       if (record['imageUrl'] is String) {
         image = null;
+        documentFile = null;
         existingImageUrl = record['imageUrl'];
+        isPdfFile = record['imageUrl'].toString().toLowerCase().contains('.pdf') ||
+            record['fileType'] == 'pdf';
       } else if (record['imageUrl'] is File) {
         image = record['imageUrl'] as File;
+        documentFile = record['imageUrl'] as File;
         existingImageUrl = null;
       }
     } else {
       image = null;
+      documentFile = null;
       existingImageUrl = null;
+      isPdfFile = false;
     }
 
-    milesController.text = record['miles'].toString();
-    hoursController.text = record['hours'].toString();
-    workshopController.text = record['workshopName'] ?? '';
-    invoiceController.text = record['invoice'] ?? '';
-    invoiceAmountController.text = record['invoiceAmount']?.toString() ?? '';
-    descriptionController.text = record['description'] ?? '';
+    milesController.text = (record['miles'] ?? '').toString();
+    hoursController.text = (record['hours'] ?? '').toString();
+    workshopController.text = (record['workshopName'] ?? '').toString();
+    invoiceController.text = (record['invoice'] ?? '').toString();
+    invoiceAmountController.text = (record['invoiceAmount'] ?? '').toString();
+    descriptionController.text = (record['description'] ?? '').toString();
     if (record['date'] != null) {
       selectedDate = DateTime.tryParse(record['date'].toString());
       dateController.text = record['date'].toString();
@@ -1024,6 +1208,109 @@ class ReportsController extends GetxController {
     }
     showAddRecords = true;
     update();
+  }
+
+  void handleDuplicateRecord(Map<String, dynamic> record) {
+    isEditing = false;
+    editingRecordId = null;
+    originalRecordDate = null;
+    selectedVehicle = record['vehicleId'];
+    selectedVehicleData = record['vehicleDetails'];
+
+    // Initialize serviceDefaultValues from vehicle services first
+    if (record['vehicleDetails'] != null &&
+        record['vehicleDetails']['services'] != null) {
+      final vehicleServices =
+          List<Map<String, dynamic>>.from(record['vehicleDetails']['services']);
+
+      serviceDefaultValues.clear();
+      final recordServices = record['services'] as List<dynamic>? ?? [];
+      for (var service in recordServices) {
+        String serviceId = (service['serviceId'] ?? '').toString();
+        final vehicleService = vehicleServices.firstWhere(
+          (vs) => vs['serviceId'] == serviceId,
+          orElse: () => {},
+        );
+
+        if (vehicleService.isNotEmpty &&
+            vehicleService['defaultNotificationValue'] != null) {
+          serviceDefaultValues[serviceId] =
+              vehicleService['defaultNotificationValue'] is int
+                  ? vehicleService['defaultNotificationValue']
+                  : int.tryParse(vehicleService['defaultNotificationValue']
+                          .toString()) ??
+                      0;
+        } else if (service['defaultNotificationValue'] != null) {
+          serviceDefaultValues[serviceId] =
+              service['defaultNotificationValue'] is int
+                  ? service['defaultNotificationValue']
+                  : int.tryParse(service['defaultNotificationValue'].toString()) ?? 0;
+        }
+      }
+    }
+
+    selectedServices.clear();
+    selectedSubServices.clear();
+    isOtherServiceSelected = false;
+    otherServiceController.clear();
+
+    final recordServices = record['services'] as List<dynamic>? ?? [];
+    for (var service in recordServices) {
+      String serviceId = (service['serviceId'] ?? '').toString();
+      if (serviceId.startsWith('custom_')) {
+        isOtherServiceSelected = true;
+        otherServiceController.text = (service['serviceName'] ?? '').toString();
+      } else if (serviceId.isNotEmpty) {
+        selectedServices.add(serviceId);
+      }
+
+      if (service['subServices'] != null) {
+        selectedSubServices[serviceId] = (service['subServices'] as List)
+            .map<String>((sub) => (sub is Map ? sub['name'] : sub).toString())
+            .toList();
+      }
+    }
+
+    if (record['imageUrl'] != null && record['imageUrl'].toString().isNotEmpty) {
+      if (record['imageUrl'] is String) {
+        image = null;
+        documentFile = null;
+        existingImageUrl = record['imageUrl'];
+        isPdfFile = record['imageUrl'].toString().toLowerCase().contains('.pdf') ||
+            record['fileType'] == 'pdf';
+      } else if (record['imageUrl'] is File) {
+        image = record['imageUrl'] as File;
+        documentFile = record['imageUrl'] as File;
+        existingImageUrl = null;
+      }
+    } else {
+      image = null;
+      documentFile = null;
+      existingImageUrl = null;
+      isPdfFile = false;
+    }
+
+    milesController.text = (record['miles'] ?? '').toString();
+    hoursController.text = (record['hours'] ?? '').toString();
+    workshopController.text = (record['workshopName'] ?? '').toString();
+    invoiceController.text = (record['invoice'] ?? '').toString();
+    invoiceAmountController.text = (record['invoiceAmount'] ?? '').toString();
+    descriptionController.text = (record['description'] ?? '').toString();
+
+    if (record['date'] != null) {
+      selectedDate = DateTime.tryParse(record['date'].toString());
+      dateController.text = record['date'].toString();
+    } else {
+      selectedDate = null;
+      dateController.clear();
+    }
+
+    showAddRecords = true;
+    update();
+    showToastMessage(
+        "Success",
+        "Record duplicated! Modify details and save as new record.",
+        kSecondary);
   }
 
   Map<String, double> calculateInvoiceTotals() {
@@ -1082,8 +1369,16 @@ class ReportsController extends GetxController {
       return false;
     }
 
-    if (selectedServices.isEmpty) {
+    if (selectedServices.isEmpty &&
+        (!isOtherServiceSelected ||
+            otherServiceController.text.trim().isEmpty)) {
       showToastMessage("Error", "Please select at least one service", kRed);
+      return false;
+    }
+
+    if (isOtherServiceSelected &&
+        otherServiceController.text.trim().isEmpty) {
+      showToastMessage("Error", "Please enter a custom service name", kRed);
       return false;
     }
 
@@ -1098,6 +1393,18 @@ class ReportsController extends GetxController {
 
     if (selectedDate == null && dateController.text.trim().isEmpty) {
       showToastMessage("Error", "Please enter or select a date", kRed);
+      return false;
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (selectedDate != null &&
+        DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day)
+            .isAfter(today)) {
+      showToastMessage(
+          "Error",
+          "Future dates cannot be selected. Please select today or a past date.",
+          kRed);
       return false;
     }
 
@@ -1240,10 +1547,15 @@ class ReportsController extends GetxController {
     editingRecordId = null;
     selectedVehicle = null;
     image = null;
+    documentFile = null;
+    documentName = null;
+    isPdfFile = false;
     existingImageUrl = null;
     selectedServices.clear();
     selectedSubServices.clear();
     serviceDefaultValues.clear();
+    isOtherServiceSelected = false;
+    otherServiceController.clear();
     milesController.clear();
     invoiceAmountController.clear();
     hoursController.clear();
@@ -1281,6 +1593,7 @@ class ReportsController extends GetxController {
       milesSubscription.cancel();
       packagesSubscription.cancel();
       usersSubscription.cancel();
+      workshopSubscription?.cancel();
     } catch (e) {
       log("Error canceling streams in ReportsController onClose: $e");
     }

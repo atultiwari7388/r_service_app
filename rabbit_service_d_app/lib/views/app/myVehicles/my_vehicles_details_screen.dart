@@ -10,6 +10,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/utils/show_toast_msg.dart';
@@ -36,24 +39,86 @@ class MyVehiclesDetailsScreen extends StatefulWidget {
 }
 
 class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
-  // final String currentUId = FirebaseAuth.instance.currentUser!.uid;
-
   final List<Map<String, dynamic>> uploadedFiles = [];
   final ImagePicker _imagePicker = ImagePicker();
   bool isLoading = false;
   late bool isActive;
 
-  Future<void> _pickImage() async {
-    final pickedFile =
-        await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        uploadedFiles.add({
-          'image': File(pickedFile.path),
-          'textController': TextEditingController(),
-        });
-      });
-    }
+  Future<void> _pickDocument() async {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_camera, color: kPrimary),
+                title: const Text('Take Photo (Camera)'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final picked = await _imagePicker.pickImage(
+                      source: ImageSource.camera, imageQuality: 85);
+                  if (picked != null) {
+                    setState(() {
+                      uploadedFiles.add({
+                        'file': File(picked.path),
+                        'name': picked.name,
+                        'isPdf': false,
+                        'textController': TextEditingController(),
+                      });
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: kPrimary),
+                title: const Text('Choose Image (Gallery)'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final picked = await _imagePicker.pickImage(
+                      source: ImageSource.gallery, imageQuality: 85);
+                  if (picked != null) {
+                    setState(() {
+                      uploadedFiles.add({
+                        'file': File(picked.path),
+                        'name': picked.name,
+                        'isPdf': false,
+                        'textController': TextEditingController(),
+                      });
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                title: const Text('Upload PDF Document'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final result = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ['pdf'],
+                  );
+                  if (result != null && result.files.single.path != null) {
+                    final platformFile = result.files.single;
+                    setState(() {
+                      uploadedFiles.add({
+                        'file': File(platformFile.path!),
+                        'name': platformFile.name,
+                        'isPdf': true,
+                        'textController': TextEditingController(),
+                      });
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _uploadToFirestore(String vehicleId) async {
@@ -64,12 +129,16 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     });
     try {
       final List<Map<String, dynamic>> uploads = [];
-      for (var file in uploadedFiles) {
-        final imageUrl = await _uploadImageToStorage(file['image']);
-        final text = file['textController'].text;
+      for (var item in uploadedFiles) {
+        final File file = item['file'];
+        final bool isPdf = item['isPdf'] == true;
+        final String fileUrl = await _uploadFileToStorage(file, isPdf);
+        final String text = item['textController'].text;
 
         uploads.add({
-          'imageUrl': imageUrl,
+          'imageUrl': fileUrl,
+          'fileType': isPdf ? 'pdf' : 'image',
+          'name': item['name'] ?? (isPdf ? 'document.pdf' : 'image.png'),
           'text': text,
         });
       }
@@ -110,15 +179,22 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     }
   }
 
-  Future<String> _uploadImageToStorage(File image) async {
+  Future<String> _uploadFileToStorage(File file, bool isPdf) async {
     try {
       final storageRef = FirebaseStorage.instance.ref();
-      final imageRef = storageRef
-          .child('vehicle_images/${DateTime.now().millisecondsSinceEpoch}.png');
-      await imageRef.putFile(image);
-      return await imageRef.getDownloadURL();
+      final String folder = isPdf ? 'vehicle_documents' : 'vehicle_images';
+      final String ext = isPdf ? 'pdf' : 'png';
+      final fileRef = storageRef
+          .child('$folder/${DateTime.now().millisecondsSinceEpoch}.$ext');
+
+      final SettableMetadata metadata = SettableMetadata(
+        contentType: isPdf ? 'application/pdf' : 'image/png',
+      );
+
+      await fileRef.putFile(file, metadata);
+      return await fileRef.getDownloadURL();
     } catch (e) {
-      throw Exception('Failed to upload image: $e');
+      throw Exception('Failed to upload file: $e');
     }
   }
 
@@ -375,6 +451,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 title: 'Uploaded Documents',
                                 content: uploadedDocuments.isNotEmpty
                                     ? uploadedDocuments.map<Widget>((doc) {
+                                        final String? docUrl = doc['imageUrl'];
+                                        final bool isPdfDoc = docUrl != null &&
+                                            (docUrl.toLowerCase().contains('.pdf') ||
+                                                doc['fileType'] == 'pdf');
+
                                         return Card(
                                           elevation: 2,
                                           shape: RoundedRectangleBorder(
@@ -387,16 +468,119 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                if (doc['imageUrl'] != null)
-                                                  ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            10),
-                                                    child: Image.network(
-                                                      doc['imageUrl'],
-                                                      height: 150,
+                                                if (isPdfDoc)
+                                                  InkWell(
+                                                    onTap: () async {
+                                                      if (docUrl != null &&
+                                                          docUrl.isNotEmpty) {
+                                                        final uri =
+                                                            Uri.parse(docUrl);
+                                                        if (await canLaunchUrl(
+                                                            uri)) {
+                                                          await launchUrl(uri,
+                                                              mode: LaunchMode
+                                                                  .externalApplication);
+                                                        }
+                                                      }
+                                                    },
+                                                    child: Container(
+                                                      height: 120,
                                                       width: double.infinity,
-                                                      fit: BoxFit.cover,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red.shade50,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                10),
+                                                        border: Border.all(
+                                                            color: Colors.red
+                                                                .shade200),
+                                                      ),
+                                                      child: Column(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          const Icon(
+                                                              Icons
+                                                                  .picture_as_pdf,
+                                                              color: Colors.red,
+                                                              size: 48),
+                                                          const SizedBox(
+                                                              height: 8),
+                                                          Text(
+                                                            doc['name'] ??
+                                                                'PDF Document',
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style:
+                                                                const TextStyle(
+                                                              color: Colors.red,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 14,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                              height: 4),
+                                                          const Text(
+                                                            'Tap to View / Open PDF',
+                                                            style: TextStyle(
+                                                                color: Colors
+                                                                    .grey,
+                                                                fontSize: 12),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  )
+                                                else if (docUrl != null &&
+                                                    docUrl.isNotEmpty)
+                                                  GestureDetector(
+                                                    onTap: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) =>
+                                                            Dialog(
+                                                          child: Container(
+                                                            width: MediaQuery.of(
+                                                                        context)
+                                                                    .size
+                                                                    .width *
+                                                                0.9,
+                                                            height: MediaQuery.of(
+                                                                        context)
+                                                                    .size
+                                                                    .height *
+                                                                0.7,
+                                                            child: PhotoView(
+                                                              imageProvider:
+                                                                  NetworkImage(
+                                                                      docUrl),
+                                                              minScale:
+                                                                  PhotoViewComputedScale
+                                                                      .contained,
+                                                              maxScale:
+                                                                  PhotoViewComputedScale
+                                                                          .covered *
+                                                                      2,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                    child: ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                      child: Image.network(
+                                                        docUrl,
+                                                        height: 150,
+                                                        width: double.infinity,
+                                                        fit: BoxFit.cover,
+                                                      ),
                                                     ),
                                                   ),
                                                 const SizedBox(height: 10),
@@ -405,9 +589,14 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                       MainAxisAlignment
                                                           .spaceBetween,
                                                   children: [
-                                                    Text(
-                                                      doc['text'] ??
-                                                          'No description provided',
+                                                    Expanded(
+                                                      child: Text(
+                                                        doc['text'] ??
+                                                            'No description provided',
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
                                                     ),
                                                     Row(
                                                       children: [
@@ -425,9 +614,23 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                         ),
                                                         IconButton(
                                                           onPressed: () async {
-                                                            await _generatePdfForDocument(
-                                                                doc['imageUrl'],
-                                                                doc['text']);
+                                                            if (isPdfDoc &&
+                                                                docUrl != null) {
+                                                              final uri =
+                                                                  Uri.parse(
+                                                                      docUrl);
+                                                              if (await canLaunchUrl(
+                                                                  uri)) {
+                                                                await launchUrl(
+                                                                    uri,
+                                                                    mode: LaunchMode
+                                                                        .externalApplication);
+                                                              }
+                                                            } else {
+                                                              await _generatePdfForDocument(
+                                                                  doc['imageUrl'],
+                                                                  doc['text']);
+                                                            }
                                                           },
                                                           icon: const Icon(
                                                               Icons.download),
@@ -455,11 +658,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                 children: [
                                   const SizedBox(height: 20),
                                   ElevatedButton.icon(
-                                    onPressed: _pickImage,
+                                    onPressed: _pickDocument,
                                     icon: const Icon(Icons.add_photo_alternate,
                                         color: Colors.white),
                                     label: const Text(
-                                      'Upload Document',
+                                      'Upload Document (PDF / Image)',
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold),
@@ -476,6 +679,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                   ),
                                   const SizedBox(height: 20),
                                   ...uploadedFiles.map((file) {
+                                    final bool isPdf = file['isPdf'] == true;
+                                    final File itemFile = file['file'];
+
                                     return Card(
                                       margin: const EdgeInsets.only(bottom: 16),
                                       shape: RoundedRectangleBorder(
@@ -486,39 +692,51 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                         padding: const EdgeInsets.all(12),
                                         child: Column(
                                           children: [
-                                            if (file['image'] != null)
-                                              GestureDetector(
-                                                onTap: () {
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (_) => Dialog(
-                                                      backgroundColor:
-                                                          Colors.black,
-                                                      insetPadding:
-                                                          EdgeInsets.all(10),
-                                                      child: InteractiveViewer(
-                                                        child: ClipRRect(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(10),
-                                                          child: Image.file(
-                                                            file['image'],
-                                                            fit: BoxFit.contain,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                child: ClipRRect(
+                                            if (isPdf)
+                                              Container(
+                                                height: 100,
+                                                width: double.infinity,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.shade50,
                                                   borderRadius:
                                                       BorderRadius.circular(10),
-                                                  child: Image.file(
-                                                    file['image'],
-                                                    height: 200,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.cover,
-                                                  ),
+                                                  border: Border.all(
+                                                      color:
+                                                          Colors.red.shade200),
+                                                ),
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(
+                                                        Icons.picture_as_pdf,
+                                                        color: Colors.red,
+                                                        size: 40),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      file['name'] ??
+                                                          'document.pdf',
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: Colors.red,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            else
+                                              ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                child: Image.file(
+                                                  itemFile,
+                                                  height: 200,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
                                                 ),
                                               ),
                                             const SizedBox(height: 12),
