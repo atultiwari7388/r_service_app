@@ -28,6 +28,20 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { HashLoader } from "react-spinners";
 import { format } from "date-fns";
+import { FaExclamationTriangle, FaCheck } from "react-icons/fa";
+
+export interface ExistingVehicleMatch {
+  rowNumber: number;
+  vehicleNumber: string;
+  vehicleType: string;
+  companyName: string;
+  engineName: string;
+  existingDocId: string;
+  existingCompany?: string;
+  newMiles?: string;
+  newMyCompany?: string;
+  newData: Partial<Vehicle>;
+}
 
 export interface Vehicle {
   firstTimeVehicle: boolean;
@@ -125,6 +139,13 @@ export default function ImportVehicle() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
+
+  // Overwrite Confirmation State
+  const [showOverwriteModal, setShowOverwriteModal] = useState(false);
+  const [existingMatches, setExistingMatches] = useState<ExistingVehicleMatch[]>(
+    []
+  );
+  const [isPreChecking, setIsPreChecking] = useState(false);
 
   // My Companies state
   const [myCompaniesList, setMyCompaniesList] = useState<
@@ -404,78 +425,160 @@ export default function ImportVehicle() {
     }
   };
 
-  const saveVehicle = async (data: Partial<Vehicle>) => {
+  const saveOrUpdateVehicle = async (
+    data: Partial<Vehicle>,
+    existingDocId?: string
+  ): Promise<{ action: "added" | "updated"; vehicleNumber: string }> => {
     if (!effectiveUserId) throw new Error("User not authenticated");
 
-    try {
-      // 1. Validate required fields
-      const vehicleType = data.vehicleType;
-      const companyName = data.companyName?.toString().trim().toUpperCase();
-      const engineName = data.engineName?.toString().trim().toUpperCase();
-      const vehicleNumber = data.vehicleNumber?.toString().trim() || "";
-      const assignedCompany = (
-        data.myCompany ||
-        selectedMyCompanyName ||
-        ""
-      ).trim();
-      const assignedCompanyId = (
-        data.mycomId ||
-        selectedMyCompanyId ||
-        ""
-      ).trim();
+    // 1. Validate required fields
+    const vehicleType = data.vehicleType;
+    const companyName = data.companyName?.toString().trim().toUpperCase();
+    const engineName = data.engineName?.toString().trim().toUpperCase();
+    const vehicleNumber = data.vehicleNumber?.toString().trim() || "";
+    const assignedCompany = (
+      data.myCompany ||
+      selectedMyCompanyName ||
+      ""
+    ).trim();
+    const assignedCompanyId = (
+      data.mycomId ||
+      selectedMyCompanyId ||
+      ""
+    ).trim();
 
-      if (!vehicleType || !companyName || !engineName || !vehicleNumber) {
-        throw new Error("Missing required vehicle properties");
-      }
+    if (!vehicleType || !companyName || !engineName || !vehicleNumber) {
+      throw new Error("Missing required vehicle properties");
+    }
 
-      if (!assignedCompany) {
-        throw new Error(
-          `Please select My Company for vehicle ${vehicleNumber || "entry"}`
-        );
-      }
-
-      // 2. Vehicle type specific validation and default values
-      if (vehicleType === "Truck") {
-        // Current miles is optional for Truck
-      } else if (vehicleType === "Trailer") {
-        // Set default hoursReading for trailer if not provided (only for save, not preview)
-        if (!data.hoursReading || data.hoursReading.toString().trim() === "") {
-          data.hoursReading = "1000";
-        } else {
-          data.hoursReading = data.hoursReading.toString();
-        }
-
-        // Set oil change date to current date if not provided
-        const currentDate = format(new Date(), "yyyy-MM-dd");
-        data.oilChangeDate = data.oilChangeDate?.toString() || currentDate;
-      }
-
-      // 3. Check for duplicate vehicle
-      const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
-      const duplicateQuery = await getDocs(
-        query(
-          vehiclesRef,
-          where("vehicleNumber", "==", vehicleNumber),
-          where("vehicleType", "==", vehicleType),
-          where("companyName", "==", companyName),
-          where("engineName", "==", engineName)
-        )
+    if (!assignedCompany) {
+      throw new Error(
+        `Please select My Company for vehicle ${vehicleNumber || "entry"}`
       );
+    }
 
-      if (!duplicateQuery.empty) {
-        throw new Error("Vehicle already exists");
+    // 2. Vehicle type specific validation and default values
+    if (vehicleType === "Truck") {
+      // Current miles is optional for Truck
+    } else if (vehicleType === "Trailer") {
+      if (!data.hoursReading || data.hoursReading.toString().trim() === "") {
+        data.hoursReading = "1000";
+      } else {
+        data.hoursReading = data.hoursReading.toString();
       }
 
-      // 4. Calculate next notification miles
-      const nextNotificationMiles = calculateNextNotificationMiles(
+      const currentDate = format(new Date(), "yyyy-MM-dd");
+      data.oilChangeDate = data.oilChangeDate?.toString() || currentDate;
+    }
+
+    // 3. Calculate next notification miles
+    const nextNotificationMiles = calculateNextNotificationMiles(
+      vehicleType === "Truck"
+        ? parseInt(data.currentMiles || "0")
+        : parseInt(data.hoursReading || "0"),
+      vehicleType,
+      engineName
+    );
+
+    const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
+
+    if (existingDocId) {
+      // OVERWRITE / UPDATE existing vehicle
+      const existingDocRef = doc(
+        db,
+        "Users",
+        effectiveUserId,
+        "Vehicles",
+        existingDocId
+      );
+      const existingDocSnap = await getDoc(existingDocRef);
+      const existingData = existingDocSnap.exists()
+        ? existingDocSnap.data()
+        : {};
+
+      const currentMilesNum =
         vehicleType === "Truck"
           ? parseInt(data.currentMiles || "0")
-          : parseInt(data.hoursReading || "0"),
-        vehicleType,
-        engineName
-      );
+          : parseInt(data.hoursReading || "1000");
 
-      // 5. Prepare vehicle data
+      const updatedMilesArray = [
+        ...(existingData.currentMilesArray || []),
+        {
+          miles: currentMilesNum,
+          date: new Date().toISOString(),
+        },
+      ];
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updatedVehicleData: { [x: string]: any } = {
+        active: true,
+        vehicleType,
+        companyName,
+        engineName,
+        vehicleNumber,
+        myCompany: assignedCompany,
+        mycomId: assignedCompanyId,
+        vin: data.vin?.toString().trim() || existingData.vin || "",
+        licensePlate:
+          data.licensePlate?.toString().trim() ||
+          existingData.licensePlate ||
+          "",
+        year: data.year?.toString().trim() || existingData.year || "",
+        isSet: true,
+        updatedAt: serverTimestamp(),
+        nextNotificationMiles,
+        services: nextNotificationMiles.map((service) => ({
+          defaultNotificationValue: service.defaultNotificationValue,
+          nextNotificationValue: service.nextNotificationValue,
+          serviceId: service.serviceId,
+          serviceName: service.serviceName,
+          type: service.type,
+          subServices: service.subServices,
+          isNotification: service.isNotification ?? true,
+        })),
+        ...(vehicleType === "Truck"
+          ? {
+              currentMiles:
+                data.currentMiles?.toString() ||
+                existingData.currentMiles ||
+                "",
+              prevMilesValue:
+                data.currentMiles?.toString() ||
+                existingData.prevMilesValue ||
+                "",
+              firstTimeMiles:
+                existingData.firstTimeMiles ||
+                data.currentMiles?.toString() ||
+                "",
+              currentMilesArray: updatedMilesArray,
+            }
+          : {
+              oilChangeDate:
+                data.oilChangeDate ||
+                existingData.oilChangeDate ||
+                format(new Date(), "yyyy-MM-dd"),
+              hoursReading:
+                data.hoursReading?.toString() ||
+                existingData.hoursReading ||
+                "1000",
+              prevHoursReadingValue:
+                data.hoursReading?.toString() ||
+                existingData.prevHoursReadingValue ||
+                "1000",
+              hoursReadingArray: [
+                ...(existingData.hoursReadingArray || []),
+                {
+                  hours: parseInt(data.hoursReading?.toString() || "1000"),
+                  date: new Date().toISOString(),
+                },
+              ],
+            }),
+      };
+
+      await updateDoc(existingDocRef, updatedVehicleData);
+      return { action: "updated", vehicleNumber };
+    } else {
+      // Create NEW vehicle
       const vehicleData: Vehicle = {
         firstTimeVehicle: true,
         active: true,
@@ -518,7 +621,7 @@ export default function ImportVehicle() {
               currentMiles: data.currentMiles?.toString() || "",
               prevMilesValue: data.currentMiles?.toString() || "",
               firstTimeMiles: data.currentMiles?.toString() || "",
-              oilChangeDate: "2025-04-12", // Default value as in mobile
+              oilChangeDate: "2025-04-12",
               hoursReading: "",
               prevHoursReadingValue: "",
               hoursReadingArray: [],
@@ -540,24 +643,9 @@ export default function ImportVehicle() {
             }),
       };
 
-      // 6. Save to Firestore
       const docRef = await addDoc(vehiclesRef, vehicleData);
       await updateDoc(docRef, { vehicleId: docRef.id });
-
-      // 7. Trigger cloud function (commented out)
-      // const callable = httpsCallable(
-      //   functions,
-      //   "checkAndNotifyUserForVehicleService"
-      // );
-      // await callable({
-      //   userId: effectiveUserId,
-      //   vehicleId: docRef.id,
-      // });
-
-      return true;
-    } catch (error) {
-      console.error("Error saving vehicle data:", error);
-      throw error;
+      return { action: "added", vehicleNumber };
     }
   };
 
@@ -576,37 +664,152 @@ export default function ImportVehicle() {
       return;
     }
 
+    if (!effectiveUserId) {
+      toast.error("User not authenticated");
+      return;
+    }
+
+    try {
+      setIsPreChecking(true);
+
+      // 1. Fetch all existing vehicles for this user to check duplicates
+      const vehiclesRef = collection(db, "Users", effectiveUserId, "Vehicles");
+      const existingSnapshot = await getDocs(vehiclesRef);
+      const existingDocs = existingSnapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as (Vehicle & { id: string })[];
+
+      const duplicates: ExistingVehicleMatch[] = [];
+
+      excelData.forEach((row, idx) => {
+        const rowVehNum = (row.vehicleNumber || "")
+          .toString()
+          .trim()
+          .toUpperCase();
+        const rowVehType = (row.vehicleType || "")
+          .toString()
+          .trim()
+          .toUpperCase();
+
+        const match = existingDocs.find((ex) => {
+          const exVehNum = (ex.vehicleNumber || "")
+            .toString()
+            .trim()
+            .toUpperCase();
+          const exVehType = (ex.vehicleType || "")
+            .toString()
+            .trim()
+            .toUpperCase();
+          return (
+            exVehNum === rowVehNum &&
+            (rowVehType ? exVehType === rowVehType : true)
+          );
+        });
+
+        if (match) {
+          duplicates.push({
+            rowNumber: idx + 1,
+            vehicleNumber: row.vehicleNumber || match.vehicleNumber,
+            vehicleType: row.vehicleType || match.vehicleType,
+            companyName: row.companyName || match.companyName,
+            engineName: row.engineName || match.engineName,
+            existingDocId: match.id,
+            existingCompany: match.myCompany || match.companyName,
+            newMiles: row.currentMiles || row.hoursReading || "",
+            newMyCompany: row.myCompany || selectedMyCompanyName,
+            newData: row,
+          });
+        }
+      });
+
+      setIsPreChecking(false);
+
+      if (duplicates.length > 0) {
+        setExistingMatches(duplicates);
+        setShowOverwriteModal(true);
+      } else {
+        // No duplicates found, save all directly as new
+        await executeUpload(false, []);
+      }
+    } catch (error) {
+      setIsPreChecking(false);
+      console.error("Error pre-checking vehicles:", error);
+      toast.error("Failed to check existing vehicles: " + error);
+    }
+  };
+
+  const executeUpload = async (
+    allowOverwrite: boolean,
+    overrideMatches?: ExistingVehicleMatch[]
+  ) => {
+    setShowOverwriteModal(false);
     setIsSaving(true);
     setUploadErrors([]);
-    const errors: string[] = [];
-    let successCount = 0;
 
-    for (const data of excelData) {
+    const matchesMap = new Map<string, string>();
+    const currentMatches = overrideMatches || existingMatches;
+
+    if (allowOverwrite) {
+      currentMatches.forEach((m) => {
+        const keyWithBoth = `${m.vehicleNumber.trim().toUpperCase()}_${m.vehicleType.trim().toUpperCase()}`;
+        matchesMap.set(keyWithBoth, m.existingDocId);
+        matchesMap.set(m.vehicleNumber.trim().toUpperCase(), m.existingDocId);
+      });
+    }
+
+    const errors: string[] = [];
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    for (let i = 0; i < excelData.length; i++) {
+      const data = excelData[i];
       try {
-        await saveVehicle(data);
-        successCount++;
+        const keyWithBoth = `${(data.vehicleNumber || "").trim().toUpperCase()}_${(data.vehicleType || "").trim().toUpperCase()}`;
+        const keyNumOnly = (data.vehicleNumber || "").trim().toUpperCase();
+        const existingDocId = allowOverwrite
+          ? matchesMap.get(keyWithBoth) || matchesMap.get(keyNumOnly)
+          : undefined;
+
+        const res = await saveOrUpdateVehicle(data, existingDocId);
+        if (res.action === "updated") {
+          updatedCount++;
+        } else {
+          addedCount++;
+        }
       } catch (error) {
-        const rowNumber = excelData.indexOf(data) + 1;
+        const rowNumber = i + 1;
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
-        errors.push(`Row ${rowNumber}: ${errorMessage}`);
+        errors.push(
+          `Row ${rowNumber} (${data.vehicleNumber || "entry"}): ${errorMessage}`
+        );
       }
     }
 
     setUploadErrors(errors);
     setIsSaving(false);
 
-    if (successCount > 0) {
-      toast.success(`Successfully uploaded ${successCount} vehicles`, {
-        autoClose: 5000,
-      });
-      router.push("/account/my-vehicles");
+    if (addedCount > 0 || updatedCount > 0) {
+      let successMsg = "";
+      if (updatedCount > 0 && addedCount > 0) {
+        successMsg = `Successfully updated ${updatedCount} existing and added ${addedCount} new vehicles!`;
+      } else if (updatedCount > 0) {
+        successMsg = `Successfully overwritten & updated ${updatedCount} vehicle(s)!`;
+      } else {
+        successMsg = `Successfully added ${addedCount} new vehicle(s)!`;
+      }
+
+      toast.success(successMsg, { autoClose: 5000 });
+      setTimeout(() => {
+        router.push("/account/my-vehicles");
+      }, 1500);
     }
 
     if (errors.length > 0) {
       toast.error(
         `${errors.length} error(s) occurred during upload. See details below.`,
-        { autoClose: 5000 }
+        { autoClose: 6000 }
       );
     }
   };
@@ -830,10 +1033,12 @@ export default function ImportVehicle() {
           </Card>
           <Button
             onClick={handleUpload}
-            disabled={isSaving}
-            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3 text-lg font-semibold"
+            disabled={isSaving || isPreChecking}
+            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3 text-lg font-semibold cursor-pointer"
           >
-            {isSaving
+            {isPreChecking
+              ? "Checking for Existing Vehicles..."
+              : isSaving
               ? "Saving & Uploading Vehicles..."
               : `Upload & Save ${excelData.length} Vehicles`}
           </Button>
@@ -852,6 +1057,82 @@ export default function ImportVehicle() {
           </div>
         </Card>
       )}
+
+      {/* Overwrite Confirmation Modal */}
+      <Modal
+        show={showOverwriteModal}
+        onClose={() => setShowOverwriteModal(false)}
+      >
+        <div className="p-6 max-w-2xl">
+          <div className="flex items-center gap-3 mb-4 text-amber-600">
+            <div className="p-3 bg-amber-100 rounded-full">
+              <FaExclamationTriangle className="text-2xl text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Existing Vehicle(s) Found
+              </h3>
+              <p className="text-sm text-gray-500">
+                {existingMatches.length} vehicle(s) from your file already exist in your account.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 mb-4 text-sm text-amber-900">
+            <p className="font-semibold mb-1">
+              Do you want to overwrite and update the existing vehicle details?
+            </p>
+            <p className="text-xs text-amber-800">
+              Confirming will update their specifications (My Company, Engine, Miles/Hours, Services) with the new details from this Excel file.
+            </p>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto border rounded-lg mb-6 shadow-xs">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Row</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Vehicle #</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Type</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Company</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {existingMatches.map((m, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-500">{m.rowNumber}</td>
+                    <td className="px-3 py-2 font-bold text-gray-800">{m.vehicleNumber}</td>
+                    <td className="px-3 py-2 text-gray-600">{m.vehicleType}</td>
+                    <td className="px-3 py-2 text-gray-600">{m.newMyCompany || m.companyName || "—"}</td>
+                    <td className="px-3 py-2">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                        Will Overwrite
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowOverwriteModal(false)}
+              className="px-4 py-2 text-gray-700 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => executeUpload(true)}
+              className="bg-[#F96176] hover:bg-[#e05064] text-white px-5 py-2 font-semibold flex items-center gap-2 shadow-sm cursor-pointer"
+            >
+              <FaCheck size={14} /> Yes, Overwrite & Import All
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal show={showInstructions} onClose={() => setShowInstructions(false)}>
         <div className="p-4">
