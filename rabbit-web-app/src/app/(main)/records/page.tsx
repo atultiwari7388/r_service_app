@@ -178,10 +178,11 @@ export default function RecordsPage() {
   const [filterVehicle, setFilterVehicle] = useState("");
   const [filterService, setFilterService] = useState("");
   const [filterInvoice, setFilterInvoice] = useState("");
+  const [filterDescription, setFilterDescription] = useState("");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [searchType, setSearchType] = useState<
-    "vehicle" | "service" | "date" | "invoice" | "all"
+    "vehicle" | "service" | "date" | "invoice" | "description" | "all"
   >("all");
 
   // Add Records Form State
@@ -937,6 +938,12 @@ export default function RecordsPage() {
           .toLowerCase()
           .includes(filterInvoice.toLowerCase());
 
+      const matchesDescription =
+        !filterDescription ||
+        (record.description || "")
+          .toLowerCase()
+          .includes(filterDescription.toLowerCase());
+
       const matchesDate =
         !startDate ||
         !endDate ||
@@ -954,9 +961,15 @@ export default function RecordsPage() {
           return matchesDate;
         case "invoice":
           return matchesInvoice;
+        case "description":
+          return matchesDescription;
         case "all":
           return (
-            matchesVehicle && matchesService && matchesDate && matchesInvoice
+            matchesVehicle &&
+            matchesService &&
+            matchesDate &&
+            matchesInvoice &&
+            matchesDescription
           );
         default:
           return true;
@@ -2400,6 +2413,7 @@ export default function RecordsPage() {
                 <MenuItem value="service">Search by Service</MenuItem>
                 <MenuItem value="date">Search by Date</MenuItem>
                 <MenuItem value="invoice">Search by Invoice</MenuItem>
+                <MenuItem value="description">Search by Description</MenuItem>
               </Select>
             </FormControl>
 
@@ -2476,6 +2490,23 @@ export default function RecordsPage() {
                 }}
               />
             )}
+
+            {(searchType === "description" || searchType === "all") && (
+              <TextField
+                fullWidth
+                label="Description"
+                value={filterDescription}
+                onChange={(e) => setFilterDescription(e.target.value)}
+                placeholder="Search by record description..."
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BiSearch />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
           </div>
         </DialogContent>
 
@@ -2485,6 +2516,7 @@ export default function RecordsPage() {
               setFilterVehicle("");
               setFilterService("");
               setFilterInvoice("");
+              setFilterDescription("");
               setStartDate(null);
               setEndDate(null);
               setSearchType("all");
@@ -3191,6 +3223,7 @@ export default function RecordsPage() {
                       <TableCell>Hours</TableCell>
                     )}
                     <TableCell>Services</TableCell>
+                    <TableCell>Description</TableCell>
                     <TableCell>Workshop Name</TableCell>
                     <TableCell>Action</TableCell>
                   </TableRow>
@@ -3241,6 +3274,21 @@ export default function RecordsPage() {
                               .map((service) => service.serviceName)
                               .join(", ") || "N/A"
                           : "N/A"}
+                      </TableCell>
+
+                      <TableCell className="table-cell max-w-[200px]">
+                        {record.description && record.description.trim() !== "" ? (
+                          <span
+                            title={record.description}
+                            className="text-gray-700 block truncate"
+                          >
+                            {record.description.trim().split(/\s+/).length > 10
+                              ? record.description.trim().split(/\s+/).slice(0, 10).join(" ") + "..."
+                              : record.description}
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
                       </TableCell>
 
                       <TableCell className="table-cell">
