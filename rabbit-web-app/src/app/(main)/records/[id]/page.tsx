@@ -407,6 +407,8 @@ interface ServiceRecord {
   invoice?: string;
   description?: string;
   imageUrl?: string;
+  documentName?: string;
+  fileType?: string;
 }
 
 interface RecordData extends ServiceRecord {
@@ -535,25 +537,65 @@ export default function RecordsDetailsPage({
     setImageScale((prev) => Math.max(prev - 0.25, 0.5)); // Limit zoom out to 0.5x
   };
 
+  const getPdfFileName = (record: ServiceRecord) => {
+    if (record.documentName && record.documentName.trim() !== "") {
+      return record.documentName;
+    }
+    if (record.imageUrl) {
+      try {
+        const decodedUrl = decodeURIComponent(record.imageUrl);
+        const cleanUrl = decodedUrl.split("?")[0];
+        const lastSegment = cleanUrl.split("/").pop() || "";
+        // Strip timestamp prefix (e.g., 1725183492834_filename.pdf or 1725183492834.pdf)
+        const nameWithoutTimestamp = lastSegment.replace(/^\d+[_]/, "");
+        if (nameWithoutTimestamp.toLowerCase().endsWith(".pdf")) {
+          return nameWithoutTimestamp;
+        }
+        if (nameWithoutTimestamp) {
+          return nameWithoutTimestamp.includes(".")
+            ? nameWithoutTimestamp
+            : `${nameWithoutTimestamp}.pdf`;
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return record.invoice ? `invoice_${record.invoice}.pdf` : "service_document.pdf";
+  };
+
   const handleDownloadFile = async (
     url: string,
     filename: string,
     isPdf: boolean
   ) => {
     try {
-      const response = await fetch(url, { mode: "cors" });
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Network response not ok");
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = isPdf ? `${filename}.pdf` : `${filename}.jpg`;
+      const downloadName =
+        filename.toLowerCase().endsWith(".pdf") ||
+        filename.toLowerCase().endsWith(".jpg") ||
+        filename.toLowerCase().endsWith(".png")
+          ? filename
+          : isPdf
+          ? `${filename}.pdf`
+          : `${filename}.jpg`;
+      a.download = downloadName;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(url, "_blank");
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch (e) {
+      console.error("Direct download fetch failed, trying download anchor:", e);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
   };
 
@@ -729,33 +771,37 @@ export default function RecordsDetailsPage({
               Service Document / Invoice
             </h3>
             {record.imageUrl.toLowerCase().includes(".pdf") ||
-            record.imageUrl.toLowerCase().includes("application%2fpdf") ? (
+            record.imageUrl.toLowerCase().includes("application%2fpdf") ||
+            record.fileType === "pdf" ? (
               <div className="bg-red-50 border border-red-200 rounded-xl p-6 max-w-md mx-auto flex flex-col items-center justify-center text-center shadow-sm">
                 <FaFilePdf className="text-red-500 text-6xl mb-3" />
                 <h4 className="text-lg font-semibold text-gray-800 mb-1">
                   Attached PDF Document
                 </h4>
-                <p className="text-xs text-gray-500 mb-4 truncate max-w-xs">
-                  Invoice {record.invoice || "Record Document"}
+                <p
+                  className="text-sm font-semibold text-red-600 mb-4 px-3 py-1 bg-red-100/60 rounded-md truncate max-w-xs"
+                  title={getPdfFileName(record)}
+                >
+                  {getPdfFileName(record)}
                 </p>
                 <div className="flex gap-3 w-full justify-center">
                   <button
                     onClick={() => window.open(record.imageUrl, "_blank")}
-                    className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-red-600 transition"
+                    className="bg-red-500 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-red-600 transition shadow-sm cursor-pointer"
                   >
-                    <FaExternalLinkAlt size={12} /> Open PDF
+                    <FaExternalLinkAlt size={13} /> View
                   </button>
                   <button
                     onClick={() =>
                       handleDownloadFile(
                         record.imageUrl!,
-                        `invoice_${record.invoice || record.id}`,
+                        getPdfFileName(record),
                         true
                       )
                     }
-                    className="bg-gray-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-gray-900 transition"
+                    className="bg-gray-800 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-gray-900 transition shadow-sm cursor-pointer"
                   >
-                    <FaDownload size={12} /> Download PDF
+                    <FaDownload size={13} /> Download
                   </button>
                 </div>
               </div>
