@@ -1380,6 +1380,7 @@ export default function RecordsPage() {
   };
 
   const handleSaveRecords = async () => {
+    if (isRecordSaving) return;
     try {
       if (!validateForm()) {
         toast.error(`Select at least one service and required sub-services`);
@@ -1399,12 +1400,14 @@ export default function RecordsPage() {
         (!hasPredefinedServices && !hasOtherService)
       ) {
         toast.error("Please select vehicle and at least one service");
+        setIsRecordSaving(false);
         return;
       }
 
       const vehicleData = vehicles.find((v) => v.id === selectedVehicle);
       if (!vehicleData) {
         toast.error("Vehicle data not found");
+        setIsRecordSaving(false);
         return;
       }
 
@@ -1414,6 +1417,7 @@ export default function RecordsPage() {
         imageUrl = await uploadImage();
         if (!imageUrl) {
           toast.error("Failed to upload document");
+          setIsRecordSaving(false);
           return;
         }
       }
@@ -3169,18 +3173,18 @@ export default function RecordsPage() {
         <DialogActions>
           <Button
             onClick={() => resetForm()}
-            className="text-gray-600 hover:text-gray-800"
+            disabled={isRecordSaving}
+            className="text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSaveRecords}
+            disabled={isRecordSaving}
             variant="contained"
             color="primary"
-            className="bg-[#F96176] hover:bg-[#F96176] transition duration-300"
+            className="bg-[#F96176] hover:bg-[#e05064] text-white transition duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            {/* Save Record */}
-
             {isEditing
               ? isRecordSaving
                 ? "Updating..."
