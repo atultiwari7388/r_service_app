@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location/location.dart' as loc;
@@ -424,6 +425,52 @@ class DashboardController extends GetxController {
                                   style: appStyle(14, kDark, FontWeight.w500),
                                 ),
                                 onTap: () async {
+                                  // 1. Show immediate small loading indicator
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    barrierColor: Colors.black26,
+                                    builder: (dialogCtx) => Center(
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 24.w, vertical: 18.h),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(16.r),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black26,
+                                              blurRadius: 10,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              width: 24.w,
+                                              height: 24.w,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.8,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(kPrimary),
+                                              ),
+                                            ),
+                                            SizedBox(width: 14.w),
+                                            Text(
+                                              "Selecting vehicle...",
+                                              style: appStyle(
+                                                  14, kDark, FontWeight.w600),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+
                                   selectedVehicleId = vehicle['id'];
                                   selectedVehicleMyCompany =
                                       (vehicle['myCompany'] ?? '')
@@ -438,13 +485,19 @@ class DashboardController extends GetxController {
                                       displayName;
                                   companyNameController.text =
                                       vehicle['companyName'] ?? '';
-
-                                  log("Selected vehicle ID: $selectedVehicleId, myCompany: $selectedVehicleMyCompany, mycomId: $selectedVehicleMyComId");
-
-                                  await updateVehicleSelection(displayName);
                                   isVehicleSelected = true;
                                   checkIfAllSelected();
                                   update();
+
+                                  log("Selected vehicle ID: $selectedVehicleId, myCompany: $selectedVehicleMyCompany, mycomId: $selectedVehicleMyComId");
+
+                                  // Fast atomic batch update in Firestore
+                                  await updateVehicleSelection(displayName,
+                                      vehicleDocId: vehicle['id']);
+
+                                  // Close loading dialog & bottom sheet
+                                  Navigator.of(context, rootNavigator: true)
+                                      .pop();
                                   Navigator.pop(context);
                                 },
                               );
@@ -458,25 +511,77 @@ class DashboardController extends GetxController {
                           controller: scrollController,
                           itemCount: filterSelectedCompanyAndvehicleName.length,
                           itemBuilder: (context, index) {
+                            final name =
+                                filterSelectedCompanyAndvehicleName[index];
                             return ListTile(
                               title: Text(
-                                filterSelectedCompanyAndvehicleName[index],
+                                name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: appStyle(14, kDark, FontWeight.w500),
                               ),
                               onTap: () async {
-                                selectedCompanyAndVehcileName =
-                                    filterSelectedCompanyAndvehicleName[index];
-                                log("New Selected Company ${filterSelectedCompanyAndvehicleName[index]} ");
+                                // 1. Show immediate small loading indicator
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  barrierColor: Colors.black26,
+                                  builder: (dialogCtx) => Center(
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 24.w, vertical: 18.h),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius:
+                                            BorderRadius.circular(16.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 10,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 24.w,
+                                            height: 24.w,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2.8,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                      kPrimary),
+                                            ),
+                                          ),
+                                          SizedBox(width: 14.w),
+                                          Text(
+                                            "Selecting vehicle...",
+                                            style: appStyle(
+                                                14, kDark, FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
 
-                                await updateVehicleSelection(
-                                    filterSelectedCompanyAndvehicleName[index]);
+                                selectedCompanyAndVehcileName = name;
                                 selectedCompanyAndVehcileNameController.text =
-                                    filterSelectedCompanyAndvehicleName[index];
+                                    name;
                                 isVehicleSelected = true;
                                 checkIfAllSelected();
                                 update();
+
+                                log("New Selected Company $name ");
+
+                                // Fast atomic batch update in Firestore
+                                await updateVehicleSelection(name);
+
+                                // Close loading dialog & bottom sheet
+                                Navigator.of(context, rootNavigator: true)
+                                    .pop();
                                 Navigator.pop(context);
                               },
                             );
@@ -495,63 +600,54 @@ class DashboardController extends GetxController {
   }
 
 //================================== Update Vehicle Section =============================
-  Future<void> updateVehicleSelection(String selectedVehicle) async {
+  Future<void> updateVehicleSelection(String selectedVehicle,
+      {String? vehicleDocId}) async {
     try {
-      String cleanNum = selectedVehicle.contains('(')
-          ? selectedVehicle.split('(').first.trim()
-          : selectedVehicle.trim();
-
-      // First, set all vehicles' isSet to false
-      QuerySnapshot vehiclesSnapshot = await FirebaseFirestore.instance
+      final vehiclesRef = FirebaseFirestore.instance
           .collection('Users')
-          .doc(_effectiveUserId) // Use effective user ID
-          .collection('Vehicles')
-          .get();
+          .doc(_effectiveUserId)
+          .collection('Vehicles');
 
-      // Check if there are any vehicles to update
-      if (vehiclesSnapshot.docs.isEmpty) {
-        log("No vehicles found for user $_effectiveUserId");
-        return;
-      }
+      // 1. Fetch only vehicles that currently have isSet == true
+      final currentSetSnapshot =
+          await vehiclesRef.where('isSet', isEqualTo: true).get();
 
-      // Set isSet to false for all vehicles
-      for (var doc in vehiclesSnapshot.docs) {
-        await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(_effectiveUserId) // Use effective user ID
-            .collection('Vehicles')
-            .doc(doc.id)
-            .update({'isSet': false});
-      }
+      final batch = FirebaseFirestore.instance.batch();
 
-      // Then, find the matching vehicle
-      DocumentSnapshot? matchedDoc;
-      for (var doc in vehiclesSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final vNum = (data['vehicleNumber'] ?? '').toString().trim();
-        if (vNum.toLowerCase() == cleanNum.toLowerCase() ||
-            vNum.toLowerCase() == selectedVehicle.trim().toLowerCase()) {
-          matchedDoc = doc;
-          break;
+      // 2. Unset existing isSet true documents
+      for (var doc in currentSetSnapshot.docs) {
+        if (vehicleDocId != null && doc.id != vehicleDocId) {
+          batch.update(doc.reference, {'isSet': false});
+        } else if (vehicleDocId == null) {
+          batch.update(doc.reference, {'isSet': false});
         }
       }
 
-      // Check if the selected vehicle is found
-      if (matchedDoc != null) {
-        await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(_effectiveUserId) // Use effective user ID
-            .collection('Vehicles')
-            .doc(matchedDoc.id)
-            .update({'isSet': true});
-
-        final vData = matchedDoc.data() as Map<String, dynamic>;
-        selectedVehicleMyCompany = (vData['myCompany'] ?? '').toString().trim();
-        selectedVehicleMyComId = (vData['mycomId'] ?? '').toString().trim();
-        log("Vehicle $cleanNum set to isSet true. myCompany: $selectedVehicleMyCompany, mycomId: $selectedVehicleMyComId");
+      // 3. Set the target vehicle isSet to true
+      if (vehicleDocId != null && vehicleDocId.isNotEmpty) {
+        batch.update(vehiclesRef.doc(vehicleDocId), {'isSet': true});
       } else {
-        log("Selected vehicle $cleanNum not found");
+        String cleanNum = selectedVehicle.contains('(')
+            ? selectedVehicle.split('(').first.trim()
+            : selectedVehicle.trim();
+
+        final matchSnapshot = await vehiclesRef
+            .where('vehicleNumber', isEqualTo: cleanNum)
+            .limit(1)
+            .get();
+
+        if (matchSnapshot.docs.isNotEmpty) {
+          batch.update(matchSnapshot.docs.first.reference, {'isSet': true});
+          final vData = matchSnapshot.docs.first.data();
+          selectedVehicleMyCompany =
+              (vData['myCompany'] ?? '').toString().trim();
+          selectedVehicleMyComId = (vData['mycomId'] ?? '').toString().trim();
+        }
       }
+
+      // 4. Commit all updates atomically in a single roundtrip
+      await batch.commit();
+      log("Vehicle selection updated successfully in atomic batch");
     } catch (e) {
       log("Error updating vehicle selection: $e");
     }
