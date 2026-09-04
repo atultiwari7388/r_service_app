@@ -36,6 +36,7 @@ import {
   FaCheckCircle,
   FaLayerGroup,
   FaWrench,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 
 export interface VehicleServiceEntry {
@@ -118,6 +119,15 @@ export interface RowImageData {
   preview: string;
 }
 
+export interface DuplicateInvoiceMatch {
+  rowNumber: number;
+  vehicleNumber: string;
+  invoice: string;
+  date: string;
+  workshopName?: string;
+  invoiceAmount?: string | number;
+}
+
 export default function ImportRecordsPage() {
   const { user } = useAuth() || { user: null };
   const router = useRouter();
@@ -125,12 +135,18 @@ export default function ImportRecordsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const [groupedRecords, setGroupedRecords] = useState<GroupedRecord[]>([]);
   const [totalExcelRowsCount, setTotalExcelRowsCount] = useState<number>(0);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [servicesData, setServicesData] = useState<ServiceData[]>([]);
   const [showSampleModal, setShowSampleModal] = useState(false);
+  const [showDuplicateInvoiceModal, setShowDuplicateInvoiceModal] =
+    useState(false);
+  const [existingInvoiceMatches, setExistingInvoiceMatches] = useState<
+    DuplicateInvoiceMatch[]
+  >([]);
   const [effectiveUserId, setEffectiveUserId] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
 
@@ -812,7 +828,65 @@ export default function ImportRecordsPage() {
 
   const handleUpload = async () => {
     if (!groupedRecords.length) return;
+    if (!effectiveUserId) {
+      toast.error("User not authenticated");
+      return;
+    }
 
+    try {
+      setIsCheckingDuplicates(true);
+      // Fetch existing records for this user to check duplicate invoice numbers
+      const recordsRef = collection(
+        db,
+        "Users",
+        effectiveUserId,
+        "DataServices"
+      );
+      const recordsSnap = await getDocs(recordsRef);
+      const existingInvoices = new Set<string>();
+
+      recordsSnap.docs.forEach((docSnap) => {
+        const inv = (docSnap.data().invoice || "")
+          .toString()
+          .trim()
+          .toUpperCase();
+        if (inv) existingInvoices.add(inv);
+      });
+
+      const duplicates: DuplicateInvoiceMatch[] = [];
+      groupedRecords.forEach((rec, idx) => {
+        const inv = (rec.invoice || "").toString().trim().toUpperCase();
+        if (inv && existingInvoices.has(inv)) {
+          duplicates.push({
+            rowNumber: idx + 1,
+            vehicleNumber: rec.vehicleNumber,
+            invoice: rec.invoice,
+            date: rec.date,
+            workshopName: rec.workshopName,
+            invoiceAmount: rec.invoiceAmount,
+          });
+        }
+      });
+
+      setIsCheckingDuplicates(false);
+
+      if (duplicates.length > 0) {
+        setExistingInvoiceMatches(duplicates);
+        setShowDuplicateInvoiceModal(true);
+      } else {
+        // No duplicates, proceed directly
+        await executeUpload();
+      }
+    } catch (err) {
+      setIsCheckingDuplicates(false);
+      console.error("Error checking existing invoices:", err);
+      // Fallback: proceed with upload if check fails
+      await executeUpload();
+    }
+  };
+
+  const executeUpload = async () => {
+    setShowDuplicateInvoiceModal(false);
     setIsSaving(true);
     setUploadErrors([]);
     const errors: string[] = [];
@@ -1193,11 +1267,13 @@ export default function ImportRecordsPage() {
 
           <Button
             onClick={handleUpload}
-            disabled={isSaving}
-            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3.5 text-lg font-semibold flex items-center justify-center gap-2 shadow-sm rounded-lg transition-colors"
+            disabled={isSaving || isCheckingDuplicates}
+            className="w-full bg-[#F96176] hover:bg-[#e05064] text-white py-3.5 text-lg font-semibold flex items-center justify-center gap-2 shadow-sm rounded-lg transition-colors cursor-pointer"
           >
             <FaCloudUploadAlt className="text-xl" />
-            {isSaving
+            {isCheckingDuplicates
+              ? "Checking Existing Invoices..."
+              : isSaving
               ? "Saving & Syncing Records..."
               : `Upload & Save ${groupedRecords.length} Record${
                   groupedRecords.length === 1 ? "" : "s"
@@ -1221,6 +1297,84 @@ export default function ImportRecordsPage() {
           </div>
         </Card>
       )}
+
+      {/* Duplicate Invoice Number Confirmation Modal */}
+      <Modal
+        show={showDuplicateInvoiceModal}
+        onClose={() => setShowDuplicateInvoiceModal(false)}
+      >
+        <div className="p-6 max-w-2xl">
+          <div className="flex items-center gap-3 mb-4 text-amber-600">
+            <div className="p-3 bg-amber-100 rounded-full">
+              <FaExclamationTriangle className="text-2xl text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Existing Invoice Number(s) Found
+              </h3>
+              <p className="text-sm text-gray-500">
+                {existingInvoiceMatches.length} record(s) in your file have invoice numbers that already exist in your records.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 mb-4 text-sm text-amber-900">
+            <p className="font-semibold mb-1">
+              Do you want to proceed and import these records with duplicate invoice numbers?
+            </p>
+            <p className="text-xs text-amber-800">
+              Confirming will add these records to your account alongside existing records.
+            </p>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto border rounded-lg mb-6 shadow-xs">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Row</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Vehicle #</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Invoice #</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Date</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Amount</th>
+                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {existingInvoiceMatches.map((m, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 text-gray-500">{m.rowNumber}</td>
+                    <td className="px-3 py-2 font-bold text-gray-800">{m.vehicleNumber}</td>
+                    <td className="px-3 py-2 font-semibold text-amber-700">{m.invoice}</td>
+                    <td className="px-3 py-2 text-gray-600">{m.date || "—"}</td>
+                    <td className="px-3 py-2 text-gray-600">{m.invoiceAmount ? `$${m.invoiceAmount}` : "—"}</td>
+                    <td className="px-3 py-2">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                        Duplicate Invoice
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDuplicateInvoiceModal(false)}
+              className="px-4 py-2 text-gray-700 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => executeUpload()}
+              className="bg-[#F96176] hover:bg-[#e05064] text-white px-5 py-2 font-semibold flex items-center gap-2 shadow-sm cursor-pointer"
+            >
+              <FaCheckCircle size={14} /> Yes, Proceed & Import All
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Sample Modal */}
       <Modal show={showSampleModal} onClose={() => setShowSampleModal(false)}>

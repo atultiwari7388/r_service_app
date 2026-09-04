@@ -66,6 +66,7 @@ import {
   FaFilePdf,
   FaTrash,
   FaCopy,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
@@ -177,13 +178,26 @@ export default function RecordsPage() {
   // Search & Filter State
   const [filterVehicle, setFilterVehicle] = useState("");
   const [filterService, setFilterService] = useState("");
+  const [filterOtherService, setFilterOtherService] = useState("");
   const [filterInvoice, setFilterInvoice] = useState("");
   const [filterDescription, setFilterDescription] = useState("");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [searchType, setSearchType] = useState<
-    "vehicle" | "service" | "date" | "invoice" | "description" | "all"
+    | "vehicle"
+    | "service"
+    | "other_service"
+    | "date"
+    | "invoice"
+    | "description"
+    | "all"
   >("all");
+
+  // Duplicate Invoice Alert State
+  const [showDuplicateInvoiceModal, setShowDuplicateInvoiceModal] =
+    useState(false);
+  const [duplicateInvoiceRecord, setDuplicateInvoiceRecord] =
+    useState<ServiceRecord | null>(null);
 
   // Add Records Form State
   const [selectedVehicle, setSelectedVehicle] = useState("");
@@ -932,6 +946,14 @@ export default function RecordsPage() {
             .includes(filterService.toLowerCase())
         );
 
+      const matchesOtherService =
+        !filterOtherService ||
+        (record.services || []).some((s: { serviceName?: string }) =>
+          (s?.serviceName || "")
+            .toLowerCase()
+            .includes(filterOtherService.toLowerCase())
+        );
+
       const matchesInvoice =
         !filterInvoice ||
         (record.invoice || "")
@@ -957,6 +979,8 @@ export default function RecordsPage() {
           return matchesVehicle;
         case "service":
           return matchesService;
+        case "other_service":
+          return matchesOtherService;
         case "date":
           return matchesDate;
         case "invoice":
@@ -967,6 +991,7 @@ export default function RecordsPage() {
           return (
             matchesVehicle &&
             matchesService &&
+            matchesOtherService &&
             matchesDate &&
             matchesInvoice &&
             matchesDescription
@@ -1358,10 +1383,17 @@ export default function RecordsPage() {
       errors.otherService = "Please specify the other service name";
     }
 
-    const todayStr = new Date().toISOString().split("T")[0];
-    if (date && date > todayStr) {
-      errors.date =
-        "Future dates are not allowed. Please select today or a previous date.";
+    if (!date || date.trim() === "") {
+      errors.date = "Please enter or select a date";
+    } else {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const parsed = new Date(date + "T00:00:00");
+      if (isNaN(parsed.getTime())) {
+        errors.date = "Invalid date format. Please use YYYY-MM-DD";
+      } else if (date > todayStr) {
+        errors.date =
+          "Future dates are not allowed. Please select today or a previous date.";
+      }
     }
 
     // Check if services with subservices have at least one subservice selected
@@ -1379,12 +1411,28 @@ export default function RecordsPage() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSaveRecords = async () => {
+  const handleSaveRecords = async (bypassDuplicateCheck = false) => {
     if (isRecordSaving) return;
     try {
       if (!validateForm()) {
-        toast.error(`Select at least one service and required sub-services`);
+        toast.error(`Please complete required fields and select services`);
         return;
+      }
+
+      // Check for duplicate invoice number if provided
+      const trimmedInvoice = invoice.trim();
+      if (trimmedInvoice && !bypassDuplicateCheck) {
+        const existingMatch = records.find(
+          (r) =>
+            (!isEditing || r.id !== editingRecordId) &&
+            (r.invoice || "").trim().toLowerCase() ===
+              trimmedInvoice.toLowerCase()
+        );
+        if (existingMatch) {
+          setDuplicateInvoiceRecord(existingMatch);
+          setShowDuplicateInvoiceModal(true);
+          return;
+        }
       }
 
       setIsRecordSaving(true);
@@ -2405,8 +2453,10 @@ export default function RecordsPage() {
                     e.target.value as
                       | "vehicle"
                       | "service"
+                      | "other_service"
                       | "date"
                       | "invoice"
+                      | "description"
                       | "all"
                   )
                 }
@@ -2415,6 +2465,7 @@ export default function RecordsPage() {
                 <MenuItem value="all">Search All</MenuItem>
                 <MenuItem value="vehicle">Search by Vehicle</MenuItem>
                 <MenuItem value="service">Search by Service</MenuItem>
+                <MenuItem value="other_service">Search by Other Service</MenuItem>
                 <MenuItem value="date">Search by Date</MenuItem>
                 <MenuItem value="invoice">Search by Invoice</MenuItem>
                 <MenuItem value="description">Search by Description</MenuItem>
@@ -2454,6 +2505,23 @@ export default function RecordsPage() {
                   ))}
                 </Select>
               </FormControl>
+            )}
+
+            {(searchType === "other_service" || searchType === "all") && (
+              <TextField
+                fullWidth
+                label="Other Service (Custom Service)"
+                value={filterOtherService}
+                onChange={(e) => setFilterOtherService(e.target.value)}
+                placeholder="Search by other / custom service name..."
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BiSearch />
+                    </InputAdornment>
+                  ),
+                }}
+              />
             )}
 
             {(searchType === "date" || searchType === "all") && (
@@ -2519,6 +2587,7 @@ export default function RecordsPage() {
             onClick={() => {
               setFilterVehicle("");
               setFilterService("");
+              setFilterOtherService("");
               setFilterInvoice("");
               setFilterDescription("");
               setStartDate(null);
@@ -2977,30 +3046,77 @@ export default function RecordsPage() {
                   />
                 )}
 
-                <TextField
-                  fullWidth
-                  label="Date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    const selected = e.target.value;
-                    const todayStr = new Date().toISOString().split("T")[0];
-                    if (selected && selected > todayStr) {
-                      toast.error(
-                        "Future dates cannot be selected. Please select today or a past date."
-                      );
-                      return;
-                    }
-                    setDate(selected);
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{
-                    max: new Date().toISOString().split("T")[0],
-                  }}
-                  error={Boolean(validationErrors.date)}
-                  helperText={validationErrors.date}
-                  className="mb-4 rounded-lg mt-4"
-                />
+                <div className="mb-4 mt-4">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Date <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <DatePicker
+                      selected={
+                        date && !isNaN(new Date(date + "T00:00:00").getTime())
+                          ? new Date(date + "T00:00:00")
+                          : null
+                      }
+                      onChange={(selectedDate: Date | null) => {
+                        if (!selectedDate) {
+                          setDate("");
+                          return;
+                        }
+                        const todayStr = format(new Date(), "yyyy-MM-dd");
+                        const formatted = format(selectedDate, "yyyy-MM-dd");
+                        if (formatted > todayStr) {
+                          toast.error(
+                            "Future dates cannot be selected. Please select today or a past date."
+                          );
+                          return;
+                        }
+                        setDate(formatted);
+                        if (validationErrors.date) {
+                          setValidationErrors((prev) => {
+                            const copy = { ...prev };
+                            delete copy.date;
+                            return copy;
+                          });
+                        }
+                      }}
+                      onChangeRaw={(e) => {
+                        const val = e?.target
+                          ? (e.target as HTMLInputElement).value
+                          : "";
+                        if (val) {
+                          const todayStr = format(new Date(), "yyyy-MM-dd");
+                          if (val > todayStr && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                            toast.error(
+                              "Future dates cannot be selected. Please select today or a past date."
+                            );
+                            return;
+                          }
+                          setDate(val);
+                        }
+                      }}
+                      maxDate={new Date()}
+                      dateFormat="yyyy-MM-dd"
+                      placeholderText="YYYY-MM-DD (e.g. 2025-04-12)"
+                      className={`w-full p-3 border rounded-lg text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176] ${
+                        validationErrors.date
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                      wrapperClassName="w-full"
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Format: YYYY-MM-DD (You can type directly or pick from calendar)
+                  </p>
+                  {validationErrors.date && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {validationErrors.date}
+                    </p>
+                  )}
+                </div>
 
                 {selectedVehicleData?.vehicleType === "Trailer" && (
                   <>
@@ -3179,7 +3295,7 @@ export default function RecordsPage() {
             Cancel
           </Button>
           <Button
-            onClick={handleSaveRecords}
+            onClick={() => handleSaveRecords(false)}
             disabled={isRecordSaving}
             variant="contained"
             color="primary"
@@ -3192,6 +3308,82 @@ export default function RecordsPage() {
               : isRecordSaving
               ? "Saving..."
               : "Save Record"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Duplicate Invoice Number Alert Dialog */}
+      <Dialog
+        open={showDuplicateInvoiceModal}
+        onClose={() => setShowDuplicateInvoiceModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle className="flex items-center gap-2 text-amber-700 bg-amber-50 py-3 border-b border-amber-100">
+          <FaExclamationTriangle className="text-xl text-amber-600" />
+          <span className="font-bold text-base">Duplicate Invoice Number Found</span>
+        </DialogTitle>
+        <DialogContent className="pt-4 mt-2">
+          <p className="text-sm text-gray-700 mb-3">
+            A record with invoice number{" "}
+            <span className="font-bold text-gray-900 bg-amber-100 px-2 py-0.5 rounded">
+              &quot;{invoice.trim()}&quot;
+            </span>{" "}
+            already exists in your account:
+          </p>
+          {duplicateInvoiceRecord && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 mb-4 space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Vehicle:</span>
+                <span className="font-semibold text-gray-900">
+                  {duplicateInvoiceRecord.vehicleDetails?.vehicleNumber || "—"} (
+                  {duplicateInvoiceRecord.vehicleDetails?.companyName || "—"})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Date:</span>
+                <span className="font-semibold text-gray-900">
+                  {duplicateInvoiceRecord.date || "—"}
+                </span>
+              </div>
+              {duplicateInvoiceRecord.workshopName && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Workshop:</span>
+                  <span className="font-semibold text-gray-900">
+                    {duplicateInvoiceRecord.workshopName}
+                  </span>
+                </div>
+              )}
+              {duplicateInvoiceRecord.invoiceAmount && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Invoice Amount:</span>
+                  <span className="font-semibold text-gray-900">
+                    ${duplicateInvoiceRecord.invoiceAmount}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          <p className="text-sm text-gray-800 font-medium">
+            Do you want to proceed and save this record with the same invoice number?
+          </p>
+        </DialogContent>
+        <DialogActions className="p-4 bg-gray-50 border-t border-gray-100">
+          <Button
+            onClick={() => setShowDuplicateInvoiceModal(false)}
+            className="text-gray-600 hover:text-gray-800 cursor-pointer"
+          >
+            Cancel / Edit Invoice
+          </Button>
+          <Button
+            onClick={() => {
+              setShowDuplicateInvoiceModal(false);
+              handleSaveRecords(true);
+            }}
+            variant="contained"
+            className="bg-[#F96176] hover:bg-[#e05064] text-white font-semibold cursor-pointer shadow-sm"
+          >
+            Yes, Save Anyway
           </Button>
         </DialogActions>
       </Dialog>
