@@ -883,63 +883,63 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
 
                             // Vehicle type specific fields
                             if (_selectedVehicleType == 'Truck') ...[
-                              SizedBox(height: 16.h),
-                              Container(
-                                margin: kIsWeb
-                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                    : EdgeInsets.symmetric(vertical: 4.0.h),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: kIsWeb
-                                      ? BorderRadius.circular(12.r)
-                                      : BorderRadius.circular(12.0.r),
-                                ),
-                                child: TextField(
-                                  controller: _currentMilesController,
-                                  onChanged: (value) {
-                                    _currentMilesController.value =
-                                        TextEditingValue(
-                                      text: value.toUpperCase(),
-                                      selection:
-                                          _currentMilesController.selection,
-                                    );
-                                  },
-                                  decoration: InputDecoration(
-                                    labelText: 'Current Miles *',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: kIsWeb
-                                        ? EdgeInsets.all(2)
-                                        : const EdgeInsets.all(8),
-                                    labelStyle: kIsWeb
-                                        ? TextStyle()
-                                        : appStyle(
-                                            14, kPrimary, FontWeight.bold),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
+                              // SizedBox(height: 16.h),
+                              // Container(
+                              //   margin: kIsWeb
+                              //       ? EdgeInsets.symmetric(vertical: 4.0.h)
+                              //       : EdgeInsets.symmetric(vertical: 4.0.h),
+                              //   decoration: BoxDecoration(
+                              //     color: Colors.white,
+                              //     borderRadius: kIsWeb
+                              //         ? BorderRadius.circular(12.r)
+                              //         : BorderRadius.circular(12.0.r),
+                              //   ),
+                              //   child: TextField(
+                              //     controller: _currentMilesController,
+                              //     onChanged: (value) {
+                              //       _currentMilesController.value =
+                              //           TextEditingValue(
+                              //         text: value.toUpperCase(),
+                              //         selection:
+                              //             _currentMilesController.selection,
+                              //       );
+                              //     },
+                              //     decoration: InputDecoration(
+                              //       labelText: 'Current Miles (Optional)',
+                              //       border: OutlineInputBorder(
+                              //         borderRadius: BorderRadius.circular(12.0),
+                              //         borderSide: BorderSide(
+                              //           color: Colors.grey.shade300,
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       focusedBorder: OutlineInputBorder(
+                              //         borderRadius: BorderRadius.circular(12.0),
+                              //         borderSide: BorderSide(
+                              //           color: Colors.grey.shade300,
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       enabledBorder: OutlineInputBorder(
+                              //         borderRadius: BorderRadius.circular(12.0),
+                              //         borderSide: BorderSide(
+                              //           color: Colors.grey.shade300,
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       filled: true,
+                              //       fillColor: Colors.white,
+                              //       contentPadding: kIsWeb
+                              //           ? EdgeInsets.all(2)
+                              //           : const EdgeInsets.all(8),
+                              //       labelStyle: kIsWeb
+                              //           ? TextStyle()
+                              //           : appStyle(
+                              //               14, kPrimary, FontWeight.bold),
+                              //     ),
+                              //     keyboardType: TextInputType.number,
+                              //   ),
+                              // ),
                             ],
 
                             if (_selectedVehicleType == 'Trailer') ...[
@@ -1156,7 +1156,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                                   );
                                 },
                                 decoration: InputDecoration(
-                                  labelText: 'VIN *',
+                                  labelText: 'VIN (Optional)',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12.0),
                                     borderSide: BorderSide(
@@ -1190,116 +1190,116 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                               ),
                             ),
 
-                            if (_selectedVehicleType == 'Truck') ...[
-                              SizedBox(height: 16.h),
-                              Container(
-                                margin: kIsWeb
-                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                    : EdgeInsets.symmetric(vertical: 4.0.h),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: kIsWeb
-                                      ? BorderRadius.circular(12.r)
-                                      : BorderRadius.circular(12.0.r),
-                                ),
-                                child: TextField(
-                                  controller: _dotController,
-                                  onChanged: (value) {
-                                    _dotController.value = TextEditingValue(
-                                      text: value.toUpperCase(),
-                                      selection: _dotController.selection,
-                                    );
-                                  },
-                                  decoration: InputDecoration(
-                                    labelText: 'DOT (Optional)',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: kIsWeb
-                                        ? EdgeInsets.all(2)
-                                        : const EdgeInsets.all(8),
-                                    labelStyle: kIsWeb
-                                        ? TextStyle()
-                                        : appStyle(
-                                            14, kPrimary, FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 16.h),
-                              Container(
-                                margin: kIsWeb
-                                    ? EdgeInsets.symmetric(vertical: 4.0.h)
-                                    : EdgeInsets.symmetric(vertical: 4.0.h),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: kIsWeb
-                                      ? BorderRadius.circular(12.r)
-                                      : BorderRadius.circular(12.0.r),
-                                ),
-                                child: TextField(
-                                  controller: _iccmsController,
-                                  onChanged: (value) {
-                                    _iccmsController.value = TextEditingValue(
-                                      text: value.toUpperCase(),
-                                      selection: _iccmsController.selection,
-                                    );
-                                  },
-                                  decoration: InputDecoration(
-                                    labelText: 'ICCMS (Optional)',
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.0,
-                                      ),
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    contentPadding: kIsWeb
-                                        ? EdgeInsets.all(2)
-                                        : const EdgeInsets.all(8),
-                                    labelStyle: kIsWeb
-                                        ? TextStyle()
-                                        : appStyle(
-                                            14, kPrimary, FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            // if (_selectedVehicleType == 'Truck') ...[
+                            //   SizedBox(height: 16.h),
+                            //   Container(
+                            //     margin: kIsWeb
+                            //         ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            //         : EdgeInsets.symmetric(vertical: 4.0.h),
+                            //     decoration: BoxDecoration(
+                            //       color: Colors.white,
+                            //       borderRadius: kIsWeb
+                            //           ? BorderRadius.circular(12.r)
+                            //           : BorderRadius.circular(12.0.r),
+                            //     ),
+                            //     child: TextField(
+                            //       controller: _dotController,
+                            //       onChanged: (value) {
+                            //         _dotController.value = TextEditingValue(
+                            //           text: value.toUpperCase(),
+                            //           selection: _dotController.selection,
+                            //         );
+                            //       },
+                            //       decoration: InputDecoration(
+                            //         labelText: 'DOT (Optional)',
+                            //         border: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(12.0),
+                            //           borderSide: BorderSide(
+                            //             color: Colors.grey.shade300,
+                            //             width: 1.0,
+                            //           ),
+                            //         ),
+                            //         focusedBorder: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(12.0),
+                            //           borderSide: BorderSide(
+                            //             color: Colors.grey.shade300,
+                            //             width: 1.0,
+                            //           ),
+                            //         ),
+                            //         enabledBorder: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(12.0),
+                            //           borderSide: BorderSide(
+                            //             color: Colors.grey.shade300,
+                            //             width: 1.0,
+                            //           ),
+                            //         ),
+                            //         filled: true,
+                            //         fillColor: Colors.white,
+                            //         contentPadding: kIsWeb
+                            //             ? EdgeInsets.all(2)
+                            //             : const EdgeInsets.all(8),
+                            //         labelStyle: kIsWeb
+                            //             ? TextStyle()
+                            //             : appStyle(
+                            //                 14, kPrimary, FontWeight.bold),
+                            //       ),
+                            //     ),
+                            //   ),
+                            //   SizedBox(height: 16.h),
+                            //   Container(
+                            //     margin: kIsWeb
+                            //         ? EdgeInsets.symmetric(vertical: 4.0.h)
+                            //         : EdgeInsets.symmetric(vertical: 4.0.h),
+                            //     decoration: BoxDecoration(
+                            //       color: Colors.white,
+                            //       borderRadius: kIsWeb
+                            //           ? BorderRadius.circular(12.r)
+                            //           : BorderRadius.circular(12.0.r),
+                            //     ),
+                            //     child: TextField(
+                            //       controller: _iccmsController,
+                            //       onChanged: (value) {
+                            //         _iccmsController.value = TextEditingValue(
+                            //           text: value.toUpperCase(),
+                            //           selection: _iccmsController.selection,
+                            //         );
+                            //       },
+                            //       decoration: InputDecoration(
+                            //         labelText: 'ICCMS (Optional)',
+                            //         border: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(12.0),
+                            //           borderSide: BorderSide(
+                            //             color: Colors.grey.shade300,
+                            //             width: 1.0,
+                            //           ),
+                            //         ),
+                            //         focusedBorder: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(12.0),
+                            //           borderSide: BorderSide(
+                            //             color: Colors.grey.shade300,
+                            //             width: 1.0,
+                            //           ),
+                            //         ),
+                            //         enabledBorder: OutlineInputBorder(
+                            //           borderRadius: BorderRadius.circular(12.0),
+                            //           borderSide: BorderSide(
+                            //             color: Colors.grey.shade300,
+                            //             width: 1.0,
+                            //           ),
+                            //         ),
+                            //         filled: true,
+                            //         fillColor: Colors.white,
+                            //         contentPadding: kIsWeb
+                            //             ? EdgeInsets.all(2)
+                            //             : const EdgeInsets.all(8),
+                            //         labelStyle: kIsWeb
+                            //             ? TextStyle()
+                            //             : appStyle(
+                            //                 14, kPrimary, FontWeight.bold),
+                            //       ),
+                            //     ),
+                            //   ),
+                            // ],
                             SizedBox(height: 16.h),
                             Container(
                               margin: kIsWeb
@@ -1421,17 +1421,21 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                             CustomButton(
                               text: "Update Vehicle",
                               onPress: () {
+                                bool isMyCompanyRequired =
+                                    _myCompaniesList.isNotEmpty;
+
                                 if (_selectedVehicleType != null &&
                                     _selectedCompany != null &&
                                     _selectedEngineName != null &&
-                                    _vehicleNumberController.text.isNotEmpty &&
-                                    _vinController.text.isNotEmpty &&
-                                    _licensePlateController.text.isNotEmpty &&
-                                    _selectedYear != null) {
+                                    (!isMyCompanyRequired ||
+                                        _selectedMyCompanyId != null) &&
+                                    _vehicleNumberController.text
+                                        .trim()
+                                        .isNotEmpty) {
                                   _updateVehicleData();
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
+                                    const SnackBar(
                                       content: Text(
                                           'Please fill all required fields (*)'),
                                       backgroundColor: Colors.red,

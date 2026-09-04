@@ -1310,12 +1310,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                             CustomButton(
                               text: "Save Vehicle",
                               onPress: () {
-                                bool isVinRequired =
-                                    _selectedVehicleType != 'Truck' &&
-                                        _selectedVehicleType != 'Trailer';
-                                bool isYearRequired =
-                                    _selectedVehicleType != 'Truck' &&
-                                        _selectedVehicleType != 'Trailer';
                                 bool isMyCompanyRequired =
                                     _myCompaniesList.isNotEmpty;
 
@@ -1324,15 +1318,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                                     _selectedEngineName != null &&
                                     (!isMyCompanyRequired ||
                                         _selectedMyCompanyId != null) &&
-                                    _vehicleNumberController.text.isNotEmpty &&
-                                    (!isVinRequired ||
-                                        _vinController.text.isNotEmpty) &&
-                                    (!isYearRequired ||
-                                        _selectedYear != null)) {
+                                    _vehicleNumberController.text
+                                        .trim()
+                                        .isNotEmpty) {
                                   _saveVehicleData();
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
+                                    const SnackBar(
                                       content: Text(
                                           'Please fill all required fields (*)'),
                                       backgroundColor: Colors.red,
