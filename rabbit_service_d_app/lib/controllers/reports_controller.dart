@@ -62,6 +62,7 @@ class ReportsController extends GetxController {
   bool? isAdd;
   bool? isDelete;
   bool isEditing = false;
+  bool isRecordSaving = false;
   String? editingRecordId;
   late String role = "";
   bool isAnonymous = true;
@@ -613,11 +614,170 @@ class ReportsController extends GetxController {
     );
   }
 
-  Future<void> handleSaveRecords(mounted, context) async {
-    try {
-      if (!_validateMandatoryFields()) {
+  void _showDuplicateInvoiceDialog(
+      BuildContext context, Map<String, dynamic> existingRecord, dynamic mounted) {
+    final vehicleDetails = existingRecord['vehicleDetails'] is Map
+        ? existingRecord['vehicleDetails'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final vehicleNum = (vehicleDetails['vehicleNumber'] ??
+            vehicleDetails['truckNumber'] ??
+            existingRecord['vehicle'] ??
+            '—')
+        .toString();
+    final companyName = (vehicleDetails['companyName'] ?? '').toString();
+    final vehicleDisplay = companyName.isNotEmpty && companyName != vehicleNum
+        ? '$vehicleNum ($companyName)'
+        : vehicleNum;
+    final recordDate = (existingRecord['date'] ?? '—').toString();
+    final workshop = (existingRecord['workshopName'] ?? '').toString();
+    final amount = (existingRecord['invoiceAmount'] ?? '').toString();
+    final invoiceNum = invoiceController.text.trim();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded,
+                color: Color(0xFFD97706), size: 26),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                'Duplicate Invoice Number',
+                style: appStyle(16, kDark, FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: appStyle(13, kDarkGray, FontWeight.normal),
+                children: [
+                  const TextSpan(text: 'A record with invoice number '),
+                  TextSpan(
+                    text: '"$invoiceNum"',
+                    style: appStyle(13, kPrimary, FontWeight.bold),
+                  ),
+                  const TextSpan(text: ' already exists in your records:'),
+                ],
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7).withOpacity(0.5),
+                border: Border.all(color: const Color(0xFFFCD34D)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  _buildDuplicateInfoRow('Vehicle:', vehicleDisplay),
+                  SizedBox(height: 6.h),
+                  _buildDuplicateInfoRow('Date:', recordDate),
+                  if (workshop.isNotEmpty) ...[
+                    SizedBox(height: 6.h),
+                    _buildDuplicateInfoRow('Workshop:', workshop),
+                  ],
+                  if (amount.isNotEmpty) ...[
+                    SizedBox(height: 6.h),
+                    _buildDuplicateInfoRow('Invoice Amount:', '\$$amount'),
+                  ],
+                ],
+              ),
+            ),
+            SizedBox(height: 14.h),
+            Text(
+              'Do you want to proceed and save this record with the same invoice number?',
+              style: appStyle(13, kDarkGray, FontWeight.w500),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Cancel',
+              style: appStyle(14, kGray, FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kSecondary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              handleSaveRecords(mounted, context, bypassDuplicateCheck: true);
+            },
+            child: Text(
+              'Proceed',
+              style: appStyle(14, kWhite, FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDuplicateInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: appStyle(12, kGray, FontWeight.normal)),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: appStyle(12, kDark, FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> handleSaveRecords(mounted, context,
+      {bool bypassDuplicateCheck = false}) async {
+    if (isRecordSaving) return;
+    if (!_validateMandatoryFields()) {
+      return;
+    }
+
+    // Check for duplicate invoice number if provided
+    final trimmedInvoice = invoiceController.text.trim();
+    if (trimmedInvoice.isNotEmpty && !bypassDuplicateCheck) {
+      final existingMatch = records.firstWhere(
+        (r) =>
+            (!isEditing || r['id'] != editingRecordId) &&
+            (r['invoice'] ?? '').toString().trim().toLowerCase() ==
+                trimmedInvoice.toLowerCase(),
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (existingMatch.isNotEmpty) {
+        _showDuplicateInvoiceDialog(context, existingMatch, mounted);
         return;
       }
+    }
+
+    try {
+      isRecordSaving = true;
+      update();
 
       String? imageUrl;
       String fileType = isPdfFile ? 'pdf' : 'image';
@@ -661,6 +821,8 @@ class ReportsController extends GetxController {
                 "Info",
                 "Please select at least one subservice for ${service['sName']}",
                 kRed);
+            isRecordSaving = false;
+            update();
             return;
           }
         }
@@ -1093,6 +1255,9 @@ class ReportsController extends GetxController {
       debugPrint('Error Saving records: ${e.toString()}');
       debugPrint(stackTrace.toString());
       showToastMessage("Info", "Error saving records.", kRed);
+    } finally {
+      isRecordSaving = false;
+      update();
     }
   }
 
@@ -1544,6 +1709,7 @@ class ReportsController extends GetxController {
 
   void resetForm() {
     isEditing = false;
+    isRecordSaving = false;
     editingRecordId = null;
     selectedVehicle = null;
     image = null;

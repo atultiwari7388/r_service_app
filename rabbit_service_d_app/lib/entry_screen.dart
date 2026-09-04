@@ -29,7 +29,7 @@ class EntryScreen extends StatefulWidget {
 
 class _EntryScreenState extends State<EntryScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  int tab = 3;
+  int tab = 0;
   bool loading = true;
   bool isActive = true;
   late AnimationController _animationController;
@@ -50,6 +50,7 @@ class _EntryScreenState extends State<EntryScreen>
     _initScreen();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       dashboardController.initializeController();
+      reportsController.initializeStreams();
     });
     getAnonymousUserFromSharedPrefs();
     fetchHelpContact().then((_) {
@@ -568,15 +569,13 @@ class _EntryScreenState extends State<EntryScreen>
         ],
         currentIndex: tab,
         selectedItemColor: kPrimary,
+        unselectedItemColor: kGray,
         showSelectedLabels: true,
         showUnselectedLabels: true,
-        unselectedIconTheme: tab == 3
-            ? IconThemeData(color: kDark)
-            : IconThemeData(color: kGray),
+        unselectedIconTheme: const IconThemeData(color: kGray),
         selectedIconTheme: const IconThemeData(color: kPrimary),
-        selectedLabelStyle: tab == 3
-            ? appStyle(14, kPrimary, FontWeight.bold)
-            : appStyle(12, kSecondary, FontWeight.bold),
+        selectedLabelStyle: appStyle(12, kPrimary, FontWeight.bold),
+        unselectedLabelStyle: appStyle(11, kGray, FontWeight.w500),
         type: BottomNavigationBarType.fixed,
         onTap: _refreshReportsOnTabChange);
   }

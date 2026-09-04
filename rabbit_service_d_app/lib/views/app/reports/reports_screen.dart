@@ -1961,25 +1961,36 @@ class _ReportsScreenState extends State<ReportsScreen>
               children: [
                 CustomButton(
                   height: reController.isEditing ? 45 : 45,
-                  width: reController.isEditing ? 100 : 220.w,
-                  onPress: () {
-                    if (reController.isAdd == true) {
-                      reController.handleSaveRecords(mounted, context);
-                    } else {
-                      showToastMessage(
-                          "Alert!", "Sorry you don't have access", kPrimary);
-                    }
-                  },
-                  color: kSecondary,
-                  text:
-                      reController.isEditing ? 'Update Record' : 'Save Record',
+                  width: reController.isEditing
+                      ? (reController.isRecordSaving ? 120 : 100)
+                      : 220.w,
+                  onPress: reController.isRecordSaving
+                      ? null
+                      : () {
+                          if (reController.isAdd == true) {
+                            reController.handleSaveRecords(mounted, context);
+                          } else {
+                            showToastMessage(
+                                "Alert!", "Sorry you don't have access", kPrimary);
+                          }
+                        },
+                  color: reController.isRecordSaving ? kGray : kSecondary,
+                  text: reController.isEditing
+                      ? (reController.isRecordSaving
+                          ? 'Updating...'
+                          : 'Update Record')
+                      : (reController.isRecordSaving
+                          ? 'Saving...'
+                          : 'Save Record'),
                 ),
                 reController.isEditing
                     ? CustomButton(
                         width: 80,
                         text: "Cancel",
-                        onPress: () => reController.resetForm(),
-                        color: kPrimary)
+                        onPress: reController.isRecordSaving
+                            ? null
+                            : () => reController.resetForm(),
+                        color: reController.isRecordSaving ? kGray : kPrimary)
                     : SizedBox(),
               ],
             ),
