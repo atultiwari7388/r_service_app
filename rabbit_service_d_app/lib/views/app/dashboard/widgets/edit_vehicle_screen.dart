@@ -1371,7 +1371,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                                   ),
                                   child: TextField(
                                     decoration: InputDecoration(
-                                      labelText: 'Year *',
+                                      labelText: 'Year (Optional)',
                                       border: OutlineInputBorder(
                                         borderRadius:
                                             BorderRadius.circular(12.0),
