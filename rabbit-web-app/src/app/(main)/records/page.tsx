@@ -457,16 +457,39 @@ export default function RecordsPage() {
   };
 
   const handleAddRecordVehicleSelect = (value: string) => {
-    setSelectedVehicle(value);
+    const previousVehicleType = (
+      selectedVehicleData?.vehicleType || ""
+    ).toLowerCase();
     const vehicleData = vehicles.find((v) => v.id === value) || null;
+    const newVehicleType = (vehicleData?.vehicleType || "").toLowerCase();
+
+    setSelectedVehicle(value);
     setSelectedVehicleData(vehicleData);
+
+    // If switching between different vehicle types (e.g. Truck -> Trailer or Trailer -> Truck),
+    // reset services and packages to prevent incompatibility.
+    // BUT if switching within the same vehicle type (e.g. Truck -> Truck),
+    // preserve the user's selected services!
+    if (
+      previousVehicleType &&
+      newVehicleType &&
+      previousVehicleType !== newVehicleType
+    ) {
+      setSelectedServices(new Set());
+      setSelectedSubServices({});
+      setSelectedPackages(new Set());
+      setIsOtherServiceSelected(false);
+      setOtherServiceName("");
+    }
 
     if (vehicleData) {
       const isDryVan = vehicleData.engineName === "DRY VAN";
       const availableServices = services
         .filter((service) => {
           const matchesVehicleType =
-            !vehicleData || service.vType === vehicleData.vehicleType;
+            !vehicleData ||
+            (service.vType || "").toLowerCase() ===
+              (vehicleData.vehicleType || "").toLowerCase();
           const isExcludedService = DRY_VAN_EXCLUDED_SERVICES.includes(
             service.sName
           );
@@ -1813,9 +1836,12 @@ export default function RecordsPage() {
 
     // Set form values from record
     setSelectedVehicle(record.vehicleId || "");
-    setSelectedVehicleData(
-      vehicles.find((v) => v.id === record.vehicleId) || null
-    );
+    const matchingVeh =
+      vehicles.find((v) => v.id === record.vehicleId) ||
+      (record.vehicleDetails
+        ? (record.vehicleDetails as unknown as VehicleTypes)
+        : null);
+    setSelectedVehicleData(matchingVeh);
 
     // Initialize service defaults
     const newServiceDefaultValues: Record<string, number> = {};
@@ -1841,7 +1867,13 @@ export default function RecordsPage() {
         customServiceFound = true;
         customServiceName = s.serviceName || "";
       } else if (s.serviceId) {
-        predefinedIds.add(s.serviceId);
+        const matchingService = services.find(
+          (serv) =>
+            serv.sId === s.serviceId ||
+            (s.serviceName &&
+              serv.sName.toLowerCase() === s.serviceName.toLowerCase())
+        );
+        predefinedIds.add(matchingService ? matchingService.sId : s.serviceId);
       }
     });
 
@@ -1852,8 +1884,19 @@ export default function RecordsPage() {
     const subServices: Record<string, string[]> = {};
     recordServices.forEach((service) => {
       if (service && service.serviceId) {
-        subServices[service.serviceId] = Array.isArray(service.subServices)
-          ? service.subServices.map((ss) => ss.name)
+        const matchingService = services.find(
+          (serv) =>
+            serv.sId === service.serviceId ||
+            (service.serviceName &&
+              serv.sName.toLowerCase() === service.serviceName.toLowerCase())
+        );
+        const targetId = matchingService ? matchingService.sId : service.serviceId;
+        subServices[targetId] = Array.isArray(service.subServices)
+          ? service.subServices.map((ss) =>
+              typeof ss === "string"
+                ? ss
+                : (ss as unknown as { name?: string })?.name || ""
+            )
           : [];
       }
     });
@@ -1884,9 +1927,12 @@ export default function RecordsPage() {
 
     // Set form values from record to duplicate
     setSelectedVehicle(record.vehicleId || "");
-    setSelectedVehicleData(
-      vehicles.find((v) => v.id === record.vehicleId) || null
-    );
+    const matchingVeh =
+      vehicles.find((v) => v.id === record.vehicleId) ||
+      (record.vehicleDetails
+        ? (record.vehicleDetails as unknown as VehicleTypes)
+        : null);
+    setSelectedVehicleData(matchingVeh);
 
     // Initialize service defaults
     const newServiceDefaultValues: Record<string, number> = {};
@@ -1912,7 +1958,13 @@ export default function RecordsPage() {
         customServiceFound = true;
         customServiceName = s.serviceName || "";
       } else if (s.serviceId) {
-        predefinedIds.add(s.serviceId);
+        const matchingService = services.find(
+          (serv) =>
+            serv.sId === s.serviceId ||
+            (s.serviceName &&
+              serv.sName.toLowerCase() === s.serviceName.toLowerCase())
+        );
+        predefinedIds.add(matchingService ? matchingService.sId : s.serviceId);
       }
     });
 
@@ -1923,8 +1975,19 @@ export default function RecordsPage() {
     const subServices: Record<string, string[]> = {};
     recordServices.forEach((service) => {
       if (service && service.serviceId) {
-        subServices[service.serviceId] = Array.isArray(service.subServices)
-          ? service.subServices.map((ss) => ss.name)
+        const matchingService = services.find(
+          (serv) =>
+            serv.sId === service.serviceId ||
+            (service.serviceName &&
+              serv.sName.toLowerCase() === service.serviceName.toLowerCase())
+        );
+        const targetId = matchingService ? matchingService.sId : service.serviceId;
+        subServices[targetId] = Array.isArray(service.subServices)
+          ? service.subServices.map((ss) =>
+              typeof ss === "string"
+                ? ss
+                : (ss as unknown as { name?: string })?.name || ""
+            )
           : [];
       }
     });
@@ -2202,7 +2265,7 @@ export default function RecordsPage() {
               ? setShowAddMiles(true)
               : toast.error("You don't have permission to add miles/hours.")
           }
-          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
+          className="bg-[#8B5CF6] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#7C3AED] transition"
         >
           <IoMdAdd /> Add Miles/Hours
         </button>
@@ -2211,7 +2274,7 @@ export default function RecordsPage() {
 
         <button
           onClick={() => handleSearchFilterOpen()}
-          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
+          className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#48a374] transition"
         >
           Search <BiFilter />
         </button>
@@ -2219,14 +2282,14 @@ export default function RecordsPage() {
         {/** Print pdf */}
         <button
           onClick={handlePrint}
-          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
+          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#e14a60] transition"
         >
           <FaPrint /> Print
         </button>
 
         {/** Import Record Excel */}
         <Link href="/import-record" passHref>
-          <button className="bg-[#3B82F6] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#2563EB]">
+          <button className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669] transition">
             <FaFileImport /> Import Excel
           </button>
         </Link>
@@ -2234,15 +2297,15 @@ export default function RecordsPage() {
         {/** Download All Records */}
         <button
           onClick={downloadAllRecords}
-          className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669]"
+          className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669] transition"
         >
           <FaDownload /> Download All
         </button>
       </div>
 
       {userRole === "SubOwner" && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-700 text-sm">
+        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <p className="text-gray-700 text-sm">
             Viewing records as Co-Owner (Owner&apos;s data)
           </p>
         </div>
@@ -2309,30 +2372,30 @@ export default function RecordsPage() {
               <div className="flex gap-4 mb-4">
                 <button
                   onClick={() => setSelectedVehicleTypeFilter("all")}
-                  className={`px-3 py-1 rounded ${
+                  className={`px-3 py-1 rounded transition ${
                     selectedVehicleTypeFilter === "all"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200"
+                      ? "bg-[#F96176] text-white"
+                      : "bg-gray-200 hover:bg-gray-300"
                   }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setSelectedVehicleTypeFilter("truck")}
-                  className={`px-3 py-1 rounded ${
+                  className={`px-3 py-1 rounded transition ${
                     selectedVehicleTypeFilter === "truck"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200"
+                      ? "bg-[#F96176] text-white"
+                      : "bg-gray-200 hover:bg-gray-300"
                   }`}
                 >
                   Trucks
                 </button>
                 <button
                   onClick={() => setSelectedVehicleTypeFilter("trailer")}
-                  className={`px-3 py-1 rounded ${
+                  className={`px-3 py-1 rounded transition ${
                     selectedVehicleTypeFilter === "trailer"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-200"
+                      ? "bg-[#F96176] text-white"
+                      : "bg-gray-200 hover:bg-gray-300"
                   }`}
                 >
                   Trailers
@@ -2683,7 +2746,7 @@ export default function RecordsPage() {
               onClick={handleAddMiles}
               variant="contained"
               color="primary"
-              className="bg-[#58BB87] hover:bg-[#58BB87] transition duration-300"
+              className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white transition duration-300"
             >
               {isMilesSaving
                 ? "Saving..."
@@ -2900,7 +2963,8 @@ export default function RecordsPage() {
 
                     const matchesVehicleType =
                       !selectedVehicleData ||
-                      service.vType === selectedVehicleData.vehicleType;
+                      (service.vType || "").toLowerCase() ===
+                        (selectedVehicleData.vehicleType || "").toLowerCase();
 
                     // Exclude specific services for DRY VAN
                     const isDryVan =
@@ -3432,7 +3496,9 @@ export default function RecordsPage() {
               <Table className="table">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Date</TableCell>
+                    <TableCell className="whitespace-nowrap font-medium min-w-[110px]">
+                      Date
+                    </TableCell>
                     <TableCell>Invoice</TableCell>
                     <TableCell>Vehicle</TableCell>
                     <TableCell>Company</TableCell>
@@ -3446,13 +3512,15 @@ export default function RecordsPage() {
                     <TableCell>Services</TableCell>
                     <TableCell>Description</TableCell>
                     <TableCell>Workshop Name</TableCell>
-                    <TableCell>Action</TableCell>
+                    <TableCell className="whitespace-nowrap font-medium">
+                      Action
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredRecords.map((record) => (
                     <TableRow key={record.id}>
-                      <TableCell className="table-cell">
+                      <TableCell className="table-cell whitespace-nowrap min-w-[110px]">
                         {formatDateSafe(record.date)}
                       </TableCell>
                       <TableCell className="table-cell">
@@ -3524,8 +3592,8 @@ export default function RecordsPage() {
                           : "N/A"}
                       </TableCell>
 
-                      <TableCell>
-                        <div style={{ display: "flex", gap: "8px" }}>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={() =>
                               userData?.isEdit
@@ -3534,31 +3602,31 @@ export default function RecordsPage() {
                                     "You don't have permission to edit this record."
                                   )
                             }
-                            className="bg-[#58BB87] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#58BB87]"
+                            className="bg-[#58BB87] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#48a374] transition cursor-pointer"
                           >
                             Edit
                           </button>
 
                           <button
                             onClick={() => handleDuplicateRecord(record)}
-                            className="bg-[#8B5CF6] text-white px-3.5 py-2 rounded flex items-center gap-1.5 hover:bg-[#7C3AED] transition shadow-xs"
+                            className="bg-[#8B5CF6] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer"
                             title="Duplicate record to create a new one"
                           >
-                            <FaCopy /> Duplicate
+                            <FaCopy className="text-[11px]" /> Duplicate
                           </button>
 
                           <Link href={`/records/${record.id}`} passHref>
-                            <button className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]">
+                            <button className="bg-[#F96176] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#e14a60] transition cursor-pointer">
                               View
                             </button>
                           </Link>
 
                           <button
                             onClick={() => downloadSingleRecord(record)}
-                            className="bg-[#3B82F6] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#2563EB]"
+                            className="bg-[#10B981] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#059669] transition cursor-pointer"
                             title="Download Excel"
                           >
-                            <FaDownload /> Download
+                            <FaDownload className="text-[11px]" /> Download
                           </button>
                         </div>
                       </TableCell>
