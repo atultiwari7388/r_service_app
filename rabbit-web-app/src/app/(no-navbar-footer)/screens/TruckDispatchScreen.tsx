@@ -109,6 +109,7 @@ interface DispatchLoadRecord {
   weight?: string;
   totalCustomerRate?: number;
   totalCarrierPay?: number;
+  primaryFees?: number;
   documents?: DispatchDocumentRecord[];
   pickups?: DispatchStop[];
   deliveries?: DispatchStop[];
@@ -464,13 +465,17 @@ export default function TruckDispatchScreen({
         const deliveries = record.deliveries || [];
         const pickup = pickups[0] || {};
         const delivery = deliveries[0] || {};
+        const primaryFee = Number(record.primaryFees || record.lineHaul || 0);
         const revenue =
-          Number(record.lineHaul || 0) +
+          primaryFee +
           Number(record.fuelSurcharge || 0) +
           Number(record.detention || 0) +
           Number(record.layover || 0) +
           Number(record.tonu || 0) +
           Number(record.accessorials || 0);
+        const customerRate = Number(
+          record.totalCustomerRate || revenue || primaryFee || 0
+        );
         const carrierPay = Number(record.totalCarrierPay || 0);
         const status = record.status || "Draft";
         const statusGroup = resolveStatusGroup(status);
@@ -502,10 +507,8 @@ export default function TruckDispatchScreen({
           dropDate: toDateLabel(delivery.date),
           distance: "-",
           weight: record.weight ? `${record.weight} lbs` : "-",
-          rate: Number(record.totalCustomerRate || revenue || 0),
-          profit: Number(
-            (record.totalCustomerRate || revenue || 0) - carrierPay
-          ),
+          rate: customerRate,
+          profit: Number(customerRate - carrierPay),
           progress: statusGroup === "Completed" ? 100 : 0,
           quantity: Math.max(pickups.length, deliveries.length, 1),
           specialInstructions: record.dispatchNotes || "",
@@ -741,69 +744,6 @@ export default function TruckDispatchScreen({
     }
   };
 
-  const handleDuplicateLoad = async (loadId: string) => {
-    try {
-      const sourceRef = doc(db, "dispatch_loads", loadId);
-      const sourceSnap = await getDoc(sourceRef);
-
-      if (!sourceSnap.exists()) {
-        toast.error("Load not found.");
-        return;
-      }
-
-      const sourceData = sourceSnap.data() as DispatchLoadRecord;
-      const duplicateRef = doc(collection(db, "dispatch_loads"));
-      const duplicateLoadNumber = await generateNextLoadNumber(
-        effectiveUserId,
-        companyOrUserName
-      );
-      const duplicatedDocuments = (sourceData.documents || []).map((item) => ({
-        ...item,
-        id: `${item.id || "doc"}-${Date.now()}`,
-      }));
-      const duplicateNote = `Duplicate of ${sourceData.loadNumber || loadId}`;
-      const mergedDispatchNotes = sourceData.dispatchNotes
-        ? `${duplicateNote}. ${sourceData.dispatchNotes}`
-        : duplicateNote;
-
-      await setDoc(duplicateRef, {
-        ...sourceData,
-        loadNumber: duplicateLoadNumber,
-        status: "Draft",
-        isDuplicate: true,
-        duplicateOfLoadNumber: sourceData.loadNumber || loadId,
-        dispatchNotes: mergedDispatchNotes,
-        documents: duplicatedDocuments,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      await createHistoryEntry(
-        duplicateRef.id,
-        "duplicate-load",
-        `Load duplicated from ${sourceData.loadNumber || loadId}`,
-        {
-          sourceLoadId: loadId,
-          sourceLoadNumber: sourceData.loadNumber || loadId,
-        }
-      );
-
-      await createHistoryEntry(
-        loadId,
-        "duplicate-load",
-        `Duplicated as ${duplicateLoadNumber}`,
-        {
-          duplicateLoadId: duplicateRef.id,
-        }
-      );
-
-      toast.success("Load duplicated successfully.");
-      await fetchLoads();
-    } catch (error) {
-      GlobalToastError(error);
-    }
-  };
-
   // --- Dropdown Handlers ---
   const handleMoreClick = (e: React.MouseEvent, loadId: string) => {
     e.stopPropagation();
@@ -834,7 +774,7 @@ export default function TruckDispatchScreen({
         handleShowHistory(loadId);
         break;
       case "duplicate-load":
-        handleDuplicateLoad(loadId);
+        router.push(`/create-new-load?duplicateId=${loadId}`);
         break;
       case "email-log":
       case "load-notes":

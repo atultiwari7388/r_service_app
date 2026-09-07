@@ -8,6 +8,7 @@ import React, {
   ChangeEvent,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import {
   Truck,
@@ -859,6 +860,7 @@ function CreateNewLoadPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("editId");
+  const duplicateId = searchParams.get("duplicateId");
   const { user, isLoading } = useAuth() || { user: null, isLoading: false };
   const [isCancelled, setIsCancelled] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -1096,28 +1098,32 @@ function CreateNewLoadPageContent() {
           { value: "CAR-102", label: "7 Days Carrier" },
           { value: "CAR-103", label: "A & D Trucklines" },
         ];
-  const selectedDriverVehicles = formData.driverId
-    ? driverVehiclesById[formData.driverId] ||
-      driverVehiclesById["__owner__"] ||
-      []
-    : driverVehiclesById["__owner__"] || [];
-  const assignedTruckOptions: Option[] = selectedDriverVehicles
-    .filter((vehicle) => vehicle.vehicleType.toLowerCase() === "truck")
+  const allFleetVehicles: AssignedVehicle[] = useMemo(() => {
+    const map = new Map<string, AssignedVehicle>();
+    Object.values(driverVehiclesById).forEach((vehList) => {
+      vehList.forEach((v) => {
+        if (v.id && !map.has(v.id)) {
+          map.set(v.id, v);
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      a.vehicleNumber.localeCompare(b.vehicleNumber)
+    );
+  }, [driverVehiclesById]);
+
+  const assignedTruckOptions: Option[] = allFleetVehicles
+    .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "truck")
     .map((vehicle) => ({
       value: vehicle.id,
-      label: `${vehicle.vehicleNumber} (${vehicle.companyName})${
-        // vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
-        ""
-      }`,
+      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
     }));
-  const assignedTrailerOptions: Option[] = selectedDriverVehicles
-    .filter((vehicle) => vehicle.vehicleType.toLowerCase() === "trailer")
+
+  const assignedTrailerOptions: Option[] = allFleetVehicles
+    .filter((vehicle) => (vehicle.vehicleType || "").toLowerCase() === "trailer")
     .map((vehicle) => ({
       value: vehicle.id,
-      label: `${vehicle.vehicleNumber} (${vehicle.companyName})${
-        // vehicle.myCompany ? ` (${vehicle.myCompany})` : ""
-        ""
-      }`,
+      label: `${vehicle.vehicleNumber} (${vehicle.companyName})`,
     }));
 
   const mapSettingsToOptions = (
@@ -1474,8 +1480,9 @@ function CreateNewLoadPageContent() {
   };
 
   useEffect(() => {
-    const fetchEditableLoad = async () => {
-      if (!editId) {
+    const fetchLoadData = async () => {
+      const targetId = editId || duplicateId;
+      if (!targetId) {
         setEditingLoadId(null);
         setExistingLoadNumber("");
         setExistingCreatedAt(null);
@@ -1485,10 +1492,10 @@ function CreateNewLoadPageContent() {
 
       setIsEditLoadLoading(true);
       try {
-        const loadSnap = await getDoc(doc(db, "dispatch_loads", editId));
+        const loadSnap = await getDoc(doc(db, "dispatch_loads", targetId));
 
         if (!loadSnap.exists()) {
-          toast.error("Load not found for editing.");
+          toast.error("Load not found.");
           router.push("/truck-dispatch");
           return;
         }
@@ -1498,23 +1505,36 @@ function CreateNewLoadPageContent() {
           createdAt?: unknown;
         };
 
-        setEditingLoadId(loadSnap.id);
-        setExistingLoadNumber(data.loadNumber || "");
-        setExistingCreatedAt(data.createdAt ?? null);
-        setExistingAssignedDriverId(data.driverId || "");
+        if (editId) {
+          setEditingLoadId(loadSnap.id);
+          setExistingLoadNumber(data.loadNumber || "");
+          setExistingCreatedAt(data.createdAt ?? null);
+          setExistingAssignedDriverId(data.driverId || "");
+        } else if (duplicateId) {
+          // In duplicate mode, this creates a NEW load with auto-filled values
+          setEditingLoadId(null);
+          setExistingLoadNumber("");
+          setExistingCreatedAt(null);
+          setExistingAssignedDriverId("");
+        }
+
+        const primaryFee = Number(
+          data.primaryFees ?? data.lineHaul ?? data.totalCustomerRate ?? 0
+        );
 
         setFormData({
           ...createInitialFormData(),
           ...data,
-          primaryFees: Number(data.primaryFees || 0),
+          status: duplicateId ? "Draft" : data.status || "Draft",
+          primaryFees: primaryFee,
           targetRate: Number(data.targetRate || 0),
-          lineHaul: Number(data.lineHaul || 0),
+          lineHaul: Number(data.lineHaul || primaryFee),
           fuelSurcharge: Number(data.fuelSurcharge || 0),
           detention: Number(data.detention || 0),
           layover: Number(data.layover || 0),
           tonu: Number(data.tonu || 0),
           accessorials: Number(data.accessorials || 0),
-          totalCustomerRate: Number(data.totalCustomerRate || 0),
+          totalCustomerRate: Number(data.totalCustomerRate || primaryFee),
           totalCarrierPay: Number(data.totalCarrierPay || 0),
           carrierPay: Number(data.carrierPay || 0),
           pickups: normalizeStops(
@@ -1529,7 +1549,9 @@ function CreateNewLoadPageContent() {
             ? data.documents.map((item, index) => ({
                 id:
                   typeof item?.id === "string" && item.id.length > 0
-                    ? item.id
+                    ? duplicateId
+                      ? `doc-${index + 1}-${Date.now()}`
+                      : item.id
                     : `doc-${index + 1}`,
                 name:
                   typeof item?.name === "string" && item.name.length > 0
@@ -1551,7 +1573,7 @@ function CreateNewLoadPageContent() {
                   typeof item?.storagePath === "string"
                     ? item.storagePath
                     : undefined,
-                createdAt: item?.createdAt,
+                createdAt: duplicateId ? null : item?.createdAt,
                 uploadedByRole:
                   typeof item?.uploadedByRole === "string"
                     ? item.uploadedByRole
@@ -1567,6 +1589,12 @@ function CreateNewLoadPageContent() {
               }))
             : [],
         });
+
+        if (duplicateId) {
+          toast.success(
+            "Load duplicated with auto-filled values. Modify any fields and save as a new load."
+          );
+        }
       } catch (error) {
         GlobalToastError(error);
       } finally {
@@ -1574,8 +1602,8 @@ function CreateNewLoadPageContent() {
       }
     };
 
-    fetchEditableLoad();
-  }, [editId, router]);
+    fetchLoadData();
+  }, [editId, duplicateId, router]);
 
   useEffect(() => {
     if (!effectiveUserId || editId) return;
@@ -1633,8 +1661,21 @@ function CreateNewLoadPageContent() {
         uploadedByName: item.uploadedByName || "",
       }));
 
+      const primaryFeeNum = Number(formData.primaryFees || 0);
+      const lineHaulNum = Number(formData.lineHaul || primaryFeeNum);
+      const calculatedRevenue =
+        (primaryFeeNum || lineHaulNum) +
+        Number(formData.fuelSurcharge || 0) +
+        Number(formData.detention || 0) +
+        Number(formData.layover || 0) +
+        Number(formData.tonu || 0) +
+        Number(formData.accessorials || 0);
+
       const loadPayload: Record<string, unknown> = {
         ...formData,
+        primaryFees: primaryFeeNum,
+        lineHaul: lineHaulNum,
+        totalCustomerRate: calculatedRevenue,
         loadNumber: resolvedLoadNumber,
         status: statusToSave,
         documents,
@@ -1692,21 +1733,10 @@ function CreateNewLoadPageContent() {
         [name]: checked,
       }));
     } else {
-      setFormData((prev) => {
-        if (name === "driverId") {
-          return {
-            ...prev,
-            driverId: value,
-            truckId: "",
-            trailerId: "",
-          };
-        }
-
-        return {
-          ...prev,
-          [name]: value,
-        };
-      });
+      setFormData((prev) => ({
+        ...prev,
+        [name]: type === "number" ? (value === "" ? 0 : Number(value)) : value,
+      }));
     }
   };
 
@@ -2015,15 +2045,18 @@ function CreateNewLoadPageContent() {
 
   // Auto-calculate Totals & Profit
   useEffect(() => {
+    const primaryFeeVal = Number(formData.primaryFees || 0);
+    const lineHaulVal = Number(formData.lineHaul || 0);
+    const baseRate = primaryFeeVal || lineHaulVal;
     const revenue =
-      Number(formData.lineHaul) +
-      Number(formData.fuelSurcharge) +
-      Number(formData.detention) +
-      Number(formData.layover) +
-      Number(formData.tonu) +
-      Number(formData.accessorials);
+      baseRate +
+      Number(formData.fuelSurcharge || 0) +
+      Number(formData.detention || 0) +
+      Number(formData.layover || 0) +
+      Number(formData.tonu || 0) +
+      Number(formData.accessorials || 0);
 
-    const cost = Number(formData.totalCarrierPay);
+    const cost = Number(formData.totalCarrierPay || 0);
     const profit = revenue - cost;
     const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0;
 
@@ -2035,6 +2068,7 @@ function CreateNewLoadPageContent() {
 
     setFormData((prev) => ({ ...prev, totalCustomerRate: revenue }));
   }, [
+    formData.primaryFees,
     formData.lineHaul,
     formData.fuelSurcharge,
     formData.detention,
@@ -3450,7 +3484,11 @@ function CreateNewLoadPageContent() {
               </div>
 
               <div className="mt-6 pt-4 border-t">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-2 block">
+                <label className="text-xs font-bold text-[#F96176] uppercase mb-2 flex items-center gap-2 animate-pulse tracking-wide">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F96176] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F96176]"></span>
+                  </span>
                   Change Status
                 </label>
                 <select
