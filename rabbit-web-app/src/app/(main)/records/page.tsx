@@ -467,8 +467,9 @@ export default function RecordsPage() {
         .filter((service) => {
           const matchesVehicleType =
             !vehicleData || service.vType === vehicleData.vehicleType;
-          const isExcludedService =
-            DRY_VAN_EXCLUDED_SERVICES.includes(service.sName);
+          const isExcludedService = DRY_VAN_EXCLUDED_SERVICES.includes(
+            service.sName
+          );
           return matchesVehicleType && !(isDryVan && isExcludedService);
         })
         .sort((a, b) => a.sName.localeCompare(b.sName));
@@ -479,7 +480,7 @@ export default function RecordsPage() {
           "#": idx + 1,
           "Service Name": s.sName,
           "Sub-Services": subs.length > 0 ? subs.join(", ") : "—",
-          "Type": s.vType,
+          Type: s.vType,
         };
       });
 
@@ -1008,7 +1009,9 @@ export default function RecordsPage() {
       }
       const createdA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
       const createdB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA);
+      return (
+        (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA)
+      );
     });
 
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
@@ -1043,9 +1046,7 @@ export default function RecordsPage() {
             typeof (data.createdAt as { toDate: () => Date }).toDate ===
               "function"
           ) {
-            createdAtStr = (
-              data.createdAt as { toDate: () => Date }
-            )
+            createdAtStr = (data.createdAt as { toDate: () => Date })
               .toDate()
               .toISOString();
           }
@@ -1078,7 +1079,9 @@ export default function RecordsPage() {
         }
         const createdA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
         const createdB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA);
+        return (
+          (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA)
+        );
       });
 
       setRecords(recordsData);
@@ -1613,8 +1616,7 @@ export default function RecordsPage() {
       const selectedVehicleObj = vehicles.find((v) => v.id === selectedVehicle);
       const myCompany =
         selectedVehicleObj?.myCompany || vehicleData?.myCompany || "";
-      const mycomId =
-        selectedVehicleObj?.mycomId || vehicleData?.mycomId || "";
+      const mycomId = selectedVehicleObj?.mycomId || vehicleData?.mycomId || "";
 
       const recordData = {
         userId: effectiveUserId,
@@ -1817,7 +1819,9 @@ export default function RecordsPage() {
 
     // Initialize service defaults
     const newServiceDefaultValues: Record<string, number> = {};
-    const recordServices = Array.isArray(record.services) ? record.services : [];
+    const recordServices = Array.isArray(record.services)
+      ? record.services
+      : [];
     recordServices.forEach((service) => {
       if (service && service.serviceId) {
         newServiceDefaultValues[service.serviceId] =
@@ -1941,7 +1945,9 @@ export default function RecordsPage() {
     setImageFile(null);
 
     setShowAddRecords(true);
-    toast.success("Record details loaded! Modify fields and save as new record.");
+    toast.success(
+      "Record details loaded! Modify fields and save as new record."
+    );
   };
 
   const formatDateToDDMMYYYY = (date: Date | string): string => {
@@ -2267,6 +2273,8 @@ export default function RecordsPage() {
                 endDate={summaryEndDate}
                 placeholderText="Start Date"
                 className="p-2 border rounded w-40"
+                popperPlacement="bottom-start"
+                popperClassName="!z-[9999]"
               />
 
               <DatePicker
@@ -2278,6 +2286,8 @@ export default function RecordsPage() {
                 minDate={summaryStartDate ?? undefined}
                 placeholderText="End Date"
                 className="p-2 border rounded w-40"
+                popperPlacement="bottom-start"
+                popperClassName="!z-[9999]"
               />
               <button
                 onClick={() => {
@@ -2465,7 +2475,9 @@ export default function RecordsPage() {
                 <MenuItem value="all">Search All</MenuItem>
                 <MenuItem value="vehicle">Search by Vehicle</MenuItem>
                 <MenuItem value="service">Search by Service</MenuItem>
-                <MenuItem value="other_service">Search by Other Service</MenuItem>
+                <MenuItem value="other_service">
+                  Search by Other Service
+                </MenuItem>
                 <MenuItem value="date">Search by Date</MenuItem>
                 <MenuItem value="invoice">Search by Invoice</MenuItem>
                 <MenuItem value="description">Search by Description</MenuItem>
@@ -2533,6 +2545,8 @@ export default function RecordsPage() {
                     onChange={(date) => setStartDate(date)}
                     dateFormat="yyyy-MM-dd"
                     className="w-full p-2 border rounded"
+                    popperPlacement="bottom-start"
+                    popperClassName="!z-[9999]"
                   />
                 </div>
                 <div className="flex flex-col">
@@ -2542,6 +2556,8 @@ export default function RecordsPage() {
                     onChange={(date) => setEndDate(date)}
                     dateFormat="yyyy-MM-dd"
                     className="w-full p-2 border rounded"
+                    popperPlacement="bottom-start"
+                    popperClassName="!z-[9999]"
                   />
                 </div>
               </div>
@@ -3085,7 +3101,10 @@ export default function RecordsPage() {
                           : "";
                         if (val) {
                           const todayStr = format(new Date(), "yyyy-MM-dd");
-                          if (val > todayStr && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                          if (
+                            val > todayStr &&
+                            /^\d{4}-\d{2}-\d{2}$/.test(val)
+                          ) {
                             toast.error(
                               "Future dates cannot be selected. Please select today or a past date."
                             );
@@ -3106,10 +3125,13 @@ export default function RecordsPage() {
                       showMonthDropdown
                       showYearDropdown
                       dropdownMode="select"
+                      popperPlacement="bottom-start"
+                      popperClassName="!z-[9999]"
                     />
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1">
-                    Format: YYYY-MM-DD (You can type directly or pick from calendar)
+                    Format: YYYY-MM-DD (You can type directly or pick from
+                    calendar)
                   </p>
                   {validationErrors.date && (
                     <p className="text-xs text-red-500 mt-1">
@@ -3321,7 +3343,9 @@ export default function RecordsPage() {
       >
         <DialogTitle className="flex items-center gap-2 text-amber-700 bg-amber-50 py-3 border-b border-amber-100">
           <FaExclamationTriangle className="text-xl text-amber-600" />
-          <span className="font-bold text-base">Duplicate Invoice Number Found</span>
+          <span className="font-bold text-base">
+            Duplicate Invoice Number Found
+          </span>
         </DialogTitle>
         <DialogContent className="pt-4 mt-2">
           <p className="text-sm text-gray-700 mb-3">
@@ -3336,8 +3360,8 @@ export default function RecordsPage() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Vehicle:</span>
                 <span className="font-semibold text-gray-900">
-                  {duplicateInvoiceRecord.vehicleDetails?.vehicleNumber || "—"} (
-                  {duplicateInvoiceRecord.vehicleDetails?.companyName || "—"})
+                  {duplicateInvoiceRecord.vehicleDetails?.vehicleNumber || "—"}{" "}
+                  ({duplicateInvoiceRecord.vehicleDetails?.companyName || "—"})
                 </span>
               </div>
               <div className="flex justify-between">
@@ -3365,7 +3389,8 @@ export default function RecordsPage() {
             </div>
           )}
           <p className="text-sm text-gray-800 font-medium">
-            Do you want to proceed and save this record with the same invoice number?
+            Do you want to proceed and save this record with the same invoice
+            number?
           </p>
         </DialogContent>
         <DialogActions className="p-4 bg-gray-50 border-t border-gray-100">
@@ -3473,13 +3498,18 @@ export default function RecordsPage() {
                       </TableCell>
 
                       <TableCell className="table-cell max-w-[200px]">
-                        {record.description && record.description.trim() !== "" ? (
+                        {record.description &&
+                        record.description.trim() !== "" ? (
                           <span
                             title={record.description}
                             className="text-gray-700 block truncate"
                           >
                             {record.description.trim().split(/\s+/).length > 10
-                              ? record.description.trim().split(/\s+/).slice(0, 10).join(" ") + "..."
+                              ? record.description
+                                  .trim()
+                                  .split(/\s+/)
+                                  .slice(0, 10)
+                                  .join(" ") + "..."
                               : record.description}
                           </span>
                         ) : (
