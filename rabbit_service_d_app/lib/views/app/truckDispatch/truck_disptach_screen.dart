@@ -114,7 +114,8 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${load.loadNumber} accepted! Live tracking active (5 min interval)'),
+          content: Text(
+              '${load.loadNumber} accepted! Live tracking active (5 min interval)'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: const Color(0xFF58BB87),
           shape:
@@ -562,6 +563,38 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                           color: kDark,
                         ),
                       ),
+                      if (load.temperature.isNotEmpty &&
+                          load.temperature != '-') ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.thermostat_rounded,
+                                size: 13,
+                                color: Color(0xFF2563EB),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Temp: ${load.temperature}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF1D4ED8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         load.company,
@@ -576,29 +609,29 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                     ],
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: kPrimary,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: kPrimary.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    load.price ?? '\$0.00',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+                // Container(
+                //   padding:
+                //       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                //   decoration: BoxDecoration(
+                //     color: kPrimary,
+                //     borderRadius: BorderRadius.circular(30),
+                //     boxShadow: [
+                //       BoxShadow(
+                //         color: kPrimary.withOpacity(0.3),
+                //         blurRadius: 8,
+                //         offset: const Offset(0, 4),
+                //       ),
+                //     ],
+                //   ),
+                //   child: Text(
+                //     load.price ?? '\$0.00',
+                //     style: const TextStyle(
+                //       fontWeight: FontWeight.bold,
+                //       color: Colors.white,
+                //       fontSize: 14,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -932,7 +965,10 @@ class LoadData {
     this.vehicleNumber = '',
     this.rawData = const {},
     this.price,
+    this.temperature = '',
   });
+
+  final String temperature;
 
   factory LoadData.fromFirestore(
       QueryDocumentSnapshot<Map<String, dynamic>> docSnapshot) {
@@ -989,8 +1025,10 @@ class LoadData {
       driverName: (data['driverName'] ?? '').toString(),
       progress: _progressForStatus(rawStatus, acceptanceStatus),
       isTerminalStatus: isTerminalStatus,
-      ownerId: (data['effectiveUserId'] ?? data['currentUserId'] ?? '').toString(),
-      vehicleNumber: (data['vehicleNumber'] ?? data['truckNumber'] ?? '').toString(),
+      ownerId:
+          (data['effectiveUserId'] ?? data['currentUserId'] ?? '').toString(),
+      vehicleNumber:
+          (data['vehicleNumber'] ?? data['truckNumber'] ?? '').toString(),
       rawData: data,
       sortTimestamp: _resolveSortTimestamp(
         data['updatedAt'],
@@ -999,6 +1037,8 @@ class LoadData {
       price: _formatCurrency(
         (data['totalCarrierPay'] ?? data['totalCustomerRate'] ?? 0) as dynamic,
       ),
+      temperature:
+          (data['temperature'] ?? data['temp'] ?? '').toString().trim(),
     );
   }
 

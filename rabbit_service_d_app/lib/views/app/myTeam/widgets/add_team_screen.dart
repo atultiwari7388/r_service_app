@@ -351,7 +351,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "Assign Vehicles",
+                      "Assign Vehicles (Optional)",
                       style: appStyle(16, Colors.black, FontWeight.bold),
                     ),
 

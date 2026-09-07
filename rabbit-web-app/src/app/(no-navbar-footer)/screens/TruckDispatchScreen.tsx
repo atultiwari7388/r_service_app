@@ -28,6 +28,7 @@ import {
   Phone,
   X,
   Navigation,
+  Thermometer,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -82,6 +83,7 @@ interface LoadData {
   quantity: number;
   specialInstructions: string;
   documents: number;
+  temperature?: string;
 }
 
 interface Tab {
@@ -103,6 +105,8 @@ interface DispatchLoadRecord {
   customerName?: string;
   type?: string;
   status?: string;
+  temperature?: string;
+  temp?: string;
   truckId?: string;
   trailerId?: string;
   driverId?: string;
@@ -513,6 +517,7 @@ export default function TruckDispatchScreen({
           quantity: Math.max(pickups.length, deliveries.length, 1),
           specialInstructions: record.dispatchNotes || "",
           documents: record.documents?.length || 0,
+          temperature: (record.temperature || record.temp || "").toString().trim(),
         } as LoadData;
       });
 
@@ -969,6 +974,14 @@ export default function TruckDispatchScreen({
                             {load.customer}
                           </span>
                         </div>
+                        {load.temperature && load.temperature !== "-" && (
+                          <div className="flex items-center">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              <Thermometer className="w-3 h-3 text-blue-600" />
+                              Temp: {load.temperature}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <User className="w-3 h-3" />
                           {load.driver}

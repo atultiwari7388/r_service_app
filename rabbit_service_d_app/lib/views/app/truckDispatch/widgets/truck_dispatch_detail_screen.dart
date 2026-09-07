@@ -684,6 +684,49 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                             color: kDark,
                           ),
                         ),
+                        if (((_loadData?['temperature'] ??
+                                    _loadData?['temp'] ??
+                                    widget.load.temperature)
+                                .toString()
+                                .trim())
+                            .isNotEmpty &&
+                            ((_loadData?['temperature'] ??
+                                    _loadData?['temp'] ??
+                                    widget.load.temperature)
+                                .toString()
+                                .trim()) !=
+                                '-') ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(6),
+                              border:
+                                  Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.thermostat_rounded,
+                                  size: 13,
+                                  color: Color(0xFF2563EB),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Temp: ${(_loadData?['temperature'] ?? _loadData?['temp'] ?? widget.load.temperature).toString().trim()}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1D4ED8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -1136,22 +1179,22 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
           },
         ]),
         const SizedBox(height: 20),
-        _buildInfoSection('Financials', [
-          {
-            'label': 'Customer Rate',
-            'value': _currency(_loadData?['totalCustomerRate']),
-          },
-          {
-            'label': 'Carrier Pay',
-            'value': _currency(_loadData?['totalCarrierPay']),
-          },
-          {'label': 'Line Haul', 'value': _currency(_loadData?['lineHaul'])},
-          {
-            'label': 'Fuel Surcharge',
-            'value': _currency(_loadData?['fuelSurcharge']),
-          },
-          {'label': 'Detention', 'value': _currency(_loadData?['detention'])},
-        ]),
+        // _buildInfoSection('Financials', [
+        //   {
+        //     'label': 'Customer Rate',
+        //     'value': _currency(_loadData?['totalCustomerRate']),
+        //   },
+        //   {
+        //     'label': 'Carrier Pay',
+        //     'value': _currency(_loadData?['totalCarrierPay']),
+        //   },
+        //   {'label': 'Line Haul', 'value': _currency(_loadData?['lineHaul'])},
+        //   {
+        //     'label': 'Fuel Surcharge',
+        //     'value': _currency(_loadData?['fuelSurcharge']),
+        //   },
+        //   {'label': 'Detention', 'value': _currency(_loadData?['detention'])},
+        // ]),
       ],
     );
   }
