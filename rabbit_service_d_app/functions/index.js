@@ -176,14 +176,7 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
     createdFrom,
   } = data;
 
-  if (
-    !email ||
-    !password ||
-    !name ||
-    !phone ||
-    !selectedRole ||
-    (selectedRole === "Driver" && selectedVehicles.length === 0)
-  ) {
+  if (!email || !password || !name || !phone || !selectedRole) {
     throw new functions.https.HttpsError(
       "invalid-argument",
       "All required fields must be provided."

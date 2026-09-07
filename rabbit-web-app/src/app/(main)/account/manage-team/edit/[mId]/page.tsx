@@ -302,11 +302,6 @@ export default function EditTeamMemberPage() {
       return;
     }
 
-    if (formData.role === "Driver" && selectedVehicles.length === 0) {
-      toast.error("Please assign at least one vehicle to the driver");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -815,7 +810,7 @@ export default function EditTeamMemberPage() {
                   formData.role === "Other Staff") && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Assign Vehicles
+                      Assign Vehicles (Optional)
                     </label>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-gray-500">

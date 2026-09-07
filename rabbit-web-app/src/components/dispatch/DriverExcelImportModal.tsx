@@ -303,18 +303,16 @@ export default function DriverExcelImportModal({
 
         if (!phone) errors.push("Phone Number is required");
 
-        // Match Vehicles
+        // Match Vehicles (Optional)
         const { matchedIds, matchedNames, unmatched } = matchVehicles(
           vehicleInput,
           vehicles
         );
 
-        if (matchedIds.length === 0) {
-          errors.push(
-            unmatched.length > 0
-              ? `Vehicle "${unmatched.join(", ")}" not found in your fleet`
-              : "At least one assigned vehicle from your fleet is required"
-          );
+        // Vehicle assignment is optional.
+        // Only trigger an error if the user provided a vehicle number that cannot be found in their fleet.
+        if (vehicleInput.trim() && unmatched.length > 0) {
+          errors.push(`Vehicle "${unmatched.join(", ")}" not found in your fleet`);
         }
 
         // Record Access
@@ -544,32 +542,55 @@ export default function DriverExcelImportModal({
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Sample Templates Card */}
           <div className="bg-[#58BB87]/10 border border-[#58BB87]/30 rounded-2xl p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-bold text-[#20593b] flex items-center gap-2">
                   <FiDownload className="w-4 h-4 text-[#58BB87]" />
                   Download Driver Sample Templates
                 </h4>
                 <p className="text-xs text-[#2e724f] mt-0.5">
-                  Pre-filled with your fleet vehicles (e.g. ACHA9999, AQWSAS4323, CH001):
+                  Choose between templates with pre-filled fleet vehicles or templates without assigned vehicles:
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {/* Samples with fleet vehicles */}
                 <a
                   href="/sample_excels/driver_single_sample.xlsx"
                   download="driver_single_sample.xlsx"
-                  className="inline-flex items-center px-3.5 py-2 text-xs font-semibold bg-white border border-[#58BB87]/40 text-[#20593b] hover:bg-[#58BB87]/20 rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-white border border-[#58BB87]/40 text-[#20593b] hover:bg-[#58BB87]/20 rounded-xl transition-all shadow-sm"
+                  title="Single Driver with pre-filled fleet vehicles"
                 >
                   <FiFileText className="mr-1.5 text-[#58BB87]" />
-                  Single Driver Sample
+                  Single (With Vehicles)
                 </a>
                 <a
                   href="/sample_excels/driver_bulk_sample.xlsx"
                   download="driver_bulk_sample.xlsx"
-                  className="inline-flex items-center px-3.5 py-2 text-xs font-semibold bg-[#58BB87] text-white hover:bg-[#4aa975] rounded-xl transition-all shadow-sm"
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-[#58BB87] text-white hover:bg-[#4aa975] rounded-xl transition-all shadow-sm"
+                  title="Bulk 10 Drivers with pre-filled fleet vehicles"
                 >
                   <FiDownload className="mr-1.5 text-white" />
-                  Bulk 10 Drivers Sample
+                  Bulk 10 (With Vehicles)
+                </a>
+
+                {/* Samples without vehicles */}
+                <a
+                  href="/sample_excels/driver_single_sample_no_vehicle.xlsx"
+                  download="driver_single_sample_no_vehicle.xlsx"
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl transition-all shadow-sm"
+                  title="Single Driver without assigned vehicles"
+                >
+                  <FiFileText className="mr-1.5 text-gray-500" />
+                  Single (No Vehicles)
+                </a>
+                <a
+                  href="/sample_excels/driver_bulk_sample_no_vehicle.xlsx"
+                  download="driver_bulk_sample_no_vehicle.xlsx"
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-semibold bg-gray-700 text-white hover:bg-gray-800 rounded-xl transition-all shadow-sm"
+                  title="Bulk 10 Drivers without assigned vehicles"
+                >
+                  <FiDownload className="mr-1.5 text-white" />
+                  Bulk 10 (No Vehicles)
                 </a>
               </div>
             </div>
@@ -742,9 +763,13 @@ export default function DriverExcelImportModal({
                                 </span>
                               ))}
                             </div>
-                          ) : (
+                          ) : row.unmatchedVehicles.length > 0 ? (
                             <span className="text-rose-500 font-medium">
-                              {row.assignedVehicleInput || "None"}
+                              {row.assignedVehicleInput || "Not Found"}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic text-[11px]">
+                              None (Unassigned)
                             </span>
                           )}
                         </td>

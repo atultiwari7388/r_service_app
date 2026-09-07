@@ -572,16 +572,6 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                                 "Please select a pay type", Colors.red);
                             return;
                           }
-
-                          // Driver-specific validation
-                          if (selectedRole == 'Driver' &&
-                              selectedVehicles.isEmpty) {
-                            showToastMessage(
-                                "Error",
-                                "Please assign at least one vehicle",
-                                Colors.red);
-                            return;
-                          }
                         }
 
                         if (selectedRole == 'Driver' &&
