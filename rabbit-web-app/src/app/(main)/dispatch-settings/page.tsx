@@ -72,6 +72,8 @@ interface SettingsEntity {
   endTime?: string;
   yardLocation?: string;
   companyName?: string;
+  mcNumber?: string;
+  dotNumber?: string;
   currentUserId: string;
   effectiveUserId: string;
 }
@@ -162,6 +164,8 @@ const getFormFields = (tabId: TabId): FormField[] => {
     case "carrier":
       return [
         { name: "name", label: "Carrier Name", type: "text", required: true },
+        { name: "mcNumber", label: "MC Number", type: "text", required: false },
+        { name: "dotNumber", label: "DOT Number", type: "text", required: false },
         { name: "address", label: "Address", type: "text", required: true },
         {
           name: "primaryContact",
@@ -218,6 +222,8 @@ const getExtraColumns = (tabId: TabId) => {
       ];
     case "carrier":
       return [
+        { key: "mcNumber", label: "MC Number" },
+        { key: "dotNumber", label: "DOT Number" },
         { key: "primaryContact", label: "Primary Contact" },
         { key: "email", label: "Email" },
         { key: "cellPhone", label: "Cell Phone" },
@@ -339,7 +345,39 @@ const normalizeExcelRow = (
     ]);
     result.endTime = getTimeVal(["endTime", "closingTime", "closeTime", "end"]);
   } else if (tabId === "carrier") {
+    const cleanNumberOnly = (val: string): string => {
+      if (!val) return "";
+      const digits = val
+        .replace(/^(MC|DOT)[-\s:]*/i, "")
+        .replace(/[^\d]/g, "")
+        .trim();
+      return digits || val.replace(/^(MC|DOT)[-\s:]*/i, "").trim();
+    };
+
     result.name = getVal(["name", "carrierName", "companyName"]);
+    result.mcNumber = cleanNumberOnly(
+      getVal([
+        "mcNumber",
+        "mc",
+        "mcNum",
+        "motorCarrierNumber",
+        "mc#",
+        "mc_number",
+        "mcNo",
+      ])
+    );
+    result.dotNumber = cleanNumberOnly(
+      getVal([
+        "dotNumber",
+        "dot",
+        "dotNum",
+        "usDot",
+        "usdot",
+        "dot#",
+        "dot_number",
+        "dotNo",
+      ])
+    );
     result.address = getVal([
       "address",
       "carrierAddress",
