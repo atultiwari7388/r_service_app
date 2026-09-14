@@ -260,7 +260,8 @@ class _ViewMemberProfileScreenState extends State<ViewMemberProfileScreen> {
 
                       _buildInfoCard(
                         'License Number',
-                        _memberData?['licNumber'] ?? '',
+                        _memberData?['licNumber'] ??
+                            _memberData?['licenseNumber'],
                         icon: Icons.card_membership,
                       ),
 
