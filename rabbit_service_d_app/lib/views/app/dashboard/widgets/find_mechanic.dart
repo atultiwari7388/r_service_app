@@ -59,15 +59,13 @@ class _FindMechanicState extends State<FindMechanic> {
               }
 
               // Process the data and build the UI
-              List<Map<String, dynamic>> vehicles = snapshot.data!.docs.map((doc) {
+              List<Map<String, dynamic>> vehicles =
+                  snapshot.data!.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 String vNum = (data['vehicleNumber'] ?? '').toString().trim();
                 String cName = (data['companyName'] ?? '').toString().trim();
                 String myComp = (data['myCompany'] ?? '').toString().trim();
                 String myCId = (data['mycomId'] ?? '').toString().trim();
-                // String displayName = myComp.isNotEmpty
-                //     ? "$vNum ($cName) ($myComp)"
-                //     : "$vNum ($cName)";
                 String displayName = "$vNum ($cName)";
                 return {
                   'id': doc.id,
@@ -78,6 +76,19 @@ class _FindMechanicState extends State<FindMechanic> {
                   'displayName': displayName,
                 };
               }).toList();
+
+              // Sort alphabetically by vehicleNumber and companyName
+              vehicles.sort((a, b) {
+                final aNum =
+                    (a['vehicleNumber'] ?? '').toString().toLowerCase();
+                final bNum =
+                    (b['vehicleNumber'] ?? '').toString().toLowerCase();
+                final cmp = aNum.compareTo(bNum);
+                if (cmp != 0) return cmp;
+                final aName = (a['companyName'] ?? '').toString().toLowerCase();
+                final bName = (b['companyName'] ?? '').toString().toLowerCase();
+                return aName.compareTo(bName);
+              });
 
               widget.controller.userVehiclesList = vehicles;
               widget.controller.filteredUserVehiclesList = List.from(vehicles);
@@ -111,13 +122,11 @@ class _FindMechanicState extends State<FindMechanic> {
                       onTap: () {
                         if (widget.controller.isAnonymous == true ||
                             widget.controller.isProfileComplete == false) {
-                          showToastMessage(
-                              "Profile Incomplete",
-                              "Please Create an account to add vehicle",
-                              kRed);
+                          showToastMessage("Profile Incomplete",
+                              "Please Create an account to add vehicle", kRed);
                         } else {
-                          Get.to(() => AddVehicleScreen(
-                              currentUId: widget.currentUId));
+                          Get.to(() =>
+                              AddVehicleScreen(currentUId: widget.currentUId));
                         }
                       },
                       child: CircleAvatar(
