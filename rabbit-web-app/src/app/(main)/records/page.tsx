@@ -408,12 +408,30 @@ export default function RecordsPage() {
 
         // Fall back to metadata defaults if no vehicle-specific default
         const service = services.find((s) => s.sId === serviceId);
-        const engineName = selectedVehicleData?.engineNumber?.toUpperCase();
+        const engineName =
+          selectedVehicleData?.engineNumber?.toUpperCase() ||
+          selectedVehicleData?.engineName?.toUpperCase() ||
+          "";
+        const vehType = (selectedVehicleData?.vehicleType || "").toUpperCase();
         const dValues = service?.dValues || [];
 
-        const matchingDValue = dValues.find(
-          (dv) => dv.brand?.toString().toUpperCase() === engineName
+        let matchingDValue = dValues.find(
+          (dv) =>
+            dv.brand &&
+            engineName &&
+            dv.brand.toString().toUpperCase() === engineName
         );
+
+        if (!matchingDValue) {
+          matchingDValue =
+            dValues.find(
+              (dv) =>
+                dv.brand &&
+                (dv.brand.toString().toUpperCase() === "ALL" ||
+                  dv.brand.toString().toUpperCase() === "TRAILER" ||
+                  (vehType && dv.brand.toString().toUpperCase() === vehType))
+            ) || dValues[0];
+        }
 
         if (matchingDValue) {
           const [baseValue] = matchingDValue.value
@@ -422,7 +440,11 @@ export default function RecordsPage() {
             .map(Number);
           let value = baseValue;
 
-          if (matchingDValue.type?.toLowerCase() === "reading") {
+          const rawType = (matchingDValue.type || "").toLowerCase();
+          if (
+            rawType === "reading" ||
+            (!rawType && (service?.vType || "").toLowerCase() === "truck")
+          ) {
             value = baseValue * 1000;
           }
 
@@ -1529,20 +1551,68 @@ export default function RecordsPage() {
         );
 
         // Determine service type and default value
+        const engineName = (
+          vehicleData.engineNumber ||
+          vehicleData.engineName ||
+          ""
+        )
+          ?.toString()
+          .toUpperCase();
+        const vehType = (vehicleData.vehicleType || "").toUpperCase();
+        const dValues = service.dValues || [];
+
+        let matchingDValue = dValues.find(
+          (dv) =>
+            dv.brand &&
+            engineName &&
+            dv.brand.toString().toUpperCase() === engineName
+        );
+
+        if (!matchingDValue) {
+          matchingDValue =
+            dValues.find(
+              (dv) =>
+                dv.brand &&
+                (dv.brand.toString().toUpperCase() === "ALL" ||
+                  dv.brand.toString().toUpperCase() === "TRAILER" ||
+                  (vehType && dv.brand.toString().toUpperCase() === vehType))
+            ) || dValues[0];
+        }
+
+        let metaType = (matchingDValue?.type || "").toLowerCase();
+        if (
+          metaType === "day" ||
+          metaType === "date" ||
+          metaType === "time"
+        ) {
+          metaType = "day";
+        } else if (metaType === "hours" || metaType === "hour") {
+          metaType = "hours";
+        } else if (
+          metaType === "reading" ||
+          metaType === "miles" ||
+          metaType === "mile"
+        ) {
+          metaType = "reading";
+        } else if ((service.vType || "").toLowerCase() === "trailer") {
+          metaType = "day";
+        } else {
+          metaType = "reading";
+        }
+
         let defaultValue = serviceDefaultValues[serviceId] || 0;
-        let type = "reading";
+        let type = metaType;
 
         if (existingServiceIndex >= 0) {
-          type = updatedVehicleServices[existingServiceIndex].type || "reading";
+          const existingType =
+            updatedVehicleServices[existingServiceIndex].type;
+          type =
+            existingType && existingType !== "reading"
+              ? existingType
+              : metaType;
           defaultValue =
             updatedVehicleServices[existingServiceIndex]
               .defaultNotificationValue || defaultValue;
-        } else {
-          const engineName = vehicleData.engineNumber?.toString().toUpperCase();
-          const matchingDValue = service.dValues?.find(
-            (dv) => dv.brand?.toString().toUpperCase() === engineName
-          );
-          type = (matchingDValue?.type || "reading").toLowerCase();
         }
 
         // Calculate next notification
@@ -1843,15 +1913,55 @@ export default function RecordsPage() {
         : null);
     setSelectedVehicleData(matchingVeh);
 
-    // Initialize service defaults
-    const newServiceDefaultValues: Record<string, number> = {};
+    const targetVehType = (
+      matchingVeh?.vehicleType ||
+      (record.vehicleDetails as unknown as { vehicleType?: string })
+        ?.vehicleType ||
+      ""
+    ).toLowerCase();
+
     const recordServices = Array.isArray(record.services)
       ? record.services
       : [];
+
+    // Helper to find matching service with vehicle awareness
+    const findMatchingService = (sId?: string, sName?: string) => {
+      if (!sId && !sName) return null;
+      return (
+        services.find((serv) => {
+          const matchesVeh =
+            !targetVehType ||
+            (serv.vType || "").toLowerCase() === targetVehType;
+          return (
+            matchesVeh &&
+            ((sId && serv.sId === sId) ||
+              (sName && serv.sName.toLowerCase() === sName.toLowerCase()))
+          );
+        }) ||
+        services.find(
+          (serv) =>
+            (sId && serv.sId === sId) ||
+            (sName && serv.sName.toLowerCase() === sName.toLowerCase())
+        ) ||
+        null
+      );
+    };
+
+    // Initialize service defaults
+    const newServiceDefaultValues: Record<string, number> = {};
     recordServices.forEach((service) => {
-      if (service && service.serviceId) {
-        newServiceDefaultValues[service.serviceId] =
-          service.defaultNotificationValue || 0;
+      if (service && (service.serviceId || service.serviceName)) {
+        const matchingService = findMatchingService(
+          service.serviceId,
+          service.serviceName
+        );
+        const targetId = matchingService
+          ? matchingService.sId
+          : service.serviceId;
+        if (targetId) {
+          newServiceDefaultValues[targetId] =
+            service.defaultNotificationValue || 0;
+        }
       }
     });
     setServiceDefaultValues(newServiceDefaultValues);
@@ -1866,13 +1976,8 @@ export default function RecordsPage() {
       if (s.serviceId && s.serviceId.startsWith("custom_")) {
         customServiceFound = true;
         customServiceName = s.serviceName || "";
-      } else if (s.serviceId) {
-        const matchingService = services.find(
-          (serv) =>
-            serv.sId === s.serviceId ||
-            (s.serviceName &&
-              serv.sName.toLowerCase() === s.serviceName.toLowerCase())
-        );
+      } else if (s.serviceId || s.serviceName) {
+        const matchingService = findMatchingService(s.serviceId, s.serviceName);
         predefinedIds.add(matchingService ? matchingService.sId : s.serviceId);
       }
     });
@@ -1883,21 +1988,23 @@ export default function RecordsPage() {
 
     const subServices: Record<string, string[]> = {};
     recordServices.forEach((service) => {
-      if (service && service.serviceId) {
-        const matchingService = services.find(
-          (serv) =>
-            serv.sId === service.serviceId ||
-            (service.serviceName &&
-              serv.sName.toLowerCase() === service.serviceName.toLowerCase())
+      if (service && (service.serviceId || service.serviceName)) {
+        const matchingService = findMatchingService(
+          service.serviceId,
+          service.serviceName
         );
-        const targetId = matchingService ? matchingService.sId : service.serviceId;
-        subServices[targetId] = Array.isArray(service.subServices)
-          ? service.subServices.map((ss) =>
-              typeof ss === "string"
-                ? ss
-                : (ss as unknown as { name?: string })?.name || ""
-            )
-          : [];
+        const targetId = matchingService
+          ? matchingService.sId
+          : service.serviceId;
+        if (targetId) {
+          subServices[targetId] = Array.isArray(service.subServices)
+            ? service.subServices.map((ss) =>
+                typeof ss === "string"
+                  ? ss
+                  : (ss as unknown as { name?: string })?.name || ""
+              )
+            : [];
+        }
       }
     });
     setSelectedSubServices(subServices);
@@ -1934,15 +2041,55 @@ export default function RecordsPage() {
         : null);
     setSelectedVehicleData(matchingVeh);
 
-    // Initialize service defaults
-    const newServiceDefaultValues: Record<string, number> = {};
+    const targetVehType = (
+      matchingVeh?.vehicleType ||
+      (record.vehicleDetails as unknown as { vehicleType?: string })
+        ?.vehicleType ||
+      ""
+    ).toLowerCase();
+
     const recordServices = Array.isArray(record.services)
       ? record.services
       : [];
+
+    // Helper to find matching service with vehicle awareness
+    const findMatchingService = (sId?: string, sName?: string) => {
+      if (!sId && !sName) return null;
+      return (
+        services.find((serv) => {
+          const matchesVeh =
+            !targetVehType ||
+            (serv.vType || "").toLowerCase() === targetVehType;
+          return (
+            matchesVeh &&
+            ((sId && serv.sId === sId) ||
+              (sName && serv.sName.toLowerCase() === sName.toLowerCase()))
+          );
+        }) ||
+        services.find(
+          (serv) =>
+            (sId && serv.sId === sId) ||
+            (sName && serv.sName.toLowerCase() === sName.toLowerCase())
+        ) ||
+        null
+      );
+    };
+
+    // Initialize service defaults
+    const newServiceDefaultValues: Record<string, number> = {};
     recordServices.forEach((service) => {
-      if (service && service.serviceId) {
-        newServiceDefaultValues[service.serviceId] =
-          service.defaultNotificationValue || 0;
+      if (service && (service.serviceId || service.serviceName)) {
+        const matchingService = findMatchingService(
+          service.serviceId,
+          service.serviceName
+        );
+        const targetId = matchingService
+          ? matchingService.sId
+          : service.serviceId;
+        if (targetId) {
+          newServiceDefaultValues[targetId] =
+            service.defaultNotificationValue || 0;
+        }
       }
     });
     setServiceDefaultValues(newServiceDefaultValues);
@@ -1957,13 +2104,8 @@ export default function RecordsPage() {
       if (s.serviceId && s.serviceId.startsWith("custom_")) {
         customServiceFound = true;
         customServiceName = s.serviceName || "";
-      } else if (s.serviceId) {
-        const matchingService = services.find(
-          (serv) =>
-            serv.sId === s.serviceId ||
-            (s.serviceName &&
-              serv.sName.toLowerCase() === s.serviceName.toLowerCase())
-        );
+      } else if (s.serviceId || s.serviceName) {
+        const matchingService = findMatchingService(s.serviceId, s.serviceName);
         predefinedIds.add(matchingService ? matchingService.sId : s.serviceId);
       }
     });
@@ -1974,21 +2116,23 @@ export default function RecordsPage() {
 
     const subServices: Record<string, string[]> = {};
     recordServices.forEach((service) => {
-      if (service && service.serviceId) {
-        const matchingService = services.find(
-          (serv) =>
-            serv.sId === service.serviceId ||
-            (service.serviceName &&
-              serv.sName.toLowerCase() === service.serviceName.toLowerCase())
+      if (service && (service.serviceId || service.serviceName)) {
+        const matchingService = findMatchingService(
+          service.serviceId,
+          service.serviceName
         );
-        const targetId = matchingService ? matchingService.sId : service.serviceId;
-        subServices[targetId] = Array.isArray(service.subServices)
-          ? service.subServices.map((ss) =>
-              typeof ss === "string"
-                ? ss
-                : (ss as unknown as { name?: string })?.name || ""
-            )
-          : [];
+        const targetId = matchingService
+          ? matchingService.sId
+          : service.serviceId;
+        if (targetId) {
+          subServices[targetId] = Array.isArray(service.subServices)
+            ? service.subServices.map((ss) =>
+                typeof ss === "string"
+                  ? ss
+                  : (ss as unknown as { name?: string })?.name || ""
+              )
+            : [];
+        }
       }
     });
     setSelectedSubServices(subServices);
