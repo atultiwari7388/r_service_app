@@ -76,10 +76,10 @@ import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { parseISO, format } from "date-fns";
 
 const formatDateSafe = (dateStr?: string | null): string => {
-  if (!dateStr) return "N/A";
+  if (!dateStr) return "";
   try {
     const trimmed = String(dateStr).trim();
-    if (!trimmed) return "N/A";
+    if (!trimmed) return "";
 
     // If format is MM-DD-YYYY or MM/DD/YYYY, convert to MM-DD-YYYY
     if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
@@ -100,7 +100,7 @@ const formatDateSafe = (dateStr?: string | null): string => {
 
     return trimmed;
   } catch {
-    return dateStr ? String(dateStr) : "N/A";
+    return dateStr ? String(dateStr) : "";
   }
 };
 
@@ -3670,30 +3670,31 @@ export default function RecordsPage() {
                       <TableCell className="table-cell">
                         {record.invoice && record.invoice.trim() !== ""
                           ? record.invoice
-                          : "N/A"}
+                          : ""}
                       </TableCell>
                       <TableCell className="table-cell">
-                        {record.vehicleDetails?.vehicleNumber || "N/A"}
+                        {record.vehicleDetails?.vehicleNumber || ""}
                       </TableCell>
 
                       <TableCell className="table-cell">
-                        {record.vehicleDetails?.companyName || "N/A"}
+                        {record.vehicleDetails?.companyName || ""}
                       </TableCell>
                       <TableCell className="table-cell">
                         {record.invoiceAmount &&
-                        String(record.invoiceAmount).trim() !== ""
+                        String(record.invoiceAmount).trim() !== "" &&
+                        Number(record.invoiceAmount) !== 0
                           ? `$${record.invoiceAmount}`
-                          : "N/A"}
+                          : ""}
                       </TableCell>
 
                       <TableCell className="table-cell">
                         {record.vehicleDetails?.vehicleType === "Trailer"
-                          ? record.hours
+                          ? record.hours && Number(record.hours) !== 0
                             ? `${record.hours}`
-                            : "N/A"
-                          : record.miles
+                            : ""
+                          : record.miles && Number(record.miles) !== 0
                           ? `${record.miles}`
-                          : "N/A"}
+                          : ""}
                       </TableCell>
                       <TableCell className="table-cell">
                         {record.services && record.services.length > 0
@@ -3705,8 +3706,8 @@ export default function RecordsPage() {
                                 )
                               )
                               .map((service) => service.serviceName)
-                              .join(", ") || "N/A"
-                          : "N/A"}
+                              .join(", ") || ""
+                          : ""}
                       </TableCell>
 
                       <TableCell className="table-cell max-w-[200px]">
@@ -3725,7 +3726,7 @@ export default function RecordsPage() {
                               : record.description}
                           </span>
                         ) : (
-                          "N/A"
+                          ""
                         )}
                       </TableCell>
 
@@ -3733,7 +3734,7 @@ export default function RecordsPage() {
                         {record.workshopName &&
                         record.workshopName.trim() !== ""
                           ? record.workshopName
-                          : "N/A"}
+                          : ""}
                       </TableCell>
 
                       <TableCell className="whitespace-nowrap">
