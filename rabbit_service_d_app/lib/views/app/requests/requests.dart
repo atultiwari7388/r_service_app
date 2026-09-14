@@ -282,15 +282,29 @@ class _RequestsScreenState extends State<RequestsScreen> {
                                 makePhoneCall(mNumber.toString());
                               },
                               onDirectionTapButton: () async {
-                                final Uri googleMapsUri = Uri.parse(
-                                    'https://www.google.com/maps/dir/?api=1&destination=$mLatitude,$mLongitude');
-                                // ignore: deprecated_member_use
-                                if (await canLaunch(googleMapsUri.toString())) {
-                                  // ignore: deprecated_member_use
-                                  await launch(googleMapsUri.toString());
-                                } else {
-                                  // Handle the error if the URL cannot be launched
-                                  print('Could not launch Google Maps');
+                                try {
+                                  if (!kIsWeb &&
+                                      defaultTargetPlatform ==
+                                          TargetPlatform.iOS) {
+                                    final Uri appleMapsUri = Uri.parse(
+                                        'https://maps.apple.com/?daddr=$mLatitude,$mLongitude&dirflg=d');
+                                    if (await canLaunchUrl(appleMapsUri)) {
+                                      await launchUrl(appleMapsUri,
+                                          mode: LaunchMode.externalApplication);
+                                      return;
+                                    }
+                                  }
+
+                                  final Uri googleMapsUri = Uri.parse(
+                                      'https://www.google.com/maps/dir/?api=1&destination=$mLatitude,$mLongitude');
+                                  if (await canLaunchUrl(googleMapsUri)) {
+                                    await launchUrl(googleMapsUri,
+                                        mode: LaunchMode.externalApplication);
+                                  } else {
+                                    print('Could not launch Maps');
+                                  }
+                                } catch (e) {
+                                  print('Error launching maps: $e');
                                 }
                               },
                               description: job["description"].toString());
