@@ -71,676 +71,646 @@ class _ReportsScreenState extends State<ReportsScreen>
               ],
             ),
             body: reController.isView == true
-                ? RefreshIndicator(
-                    onRefresh: () async {
-                      // _refreshPage(reController);
-                      reController.refreshPage(mounted, context);
-                    },
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: EdgeInsets.all(10.0.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Search Record Add Miles Button Section
+                ? GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    behavior: HitTestBehavior.opaque,
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        // _refreshPage(reController);
+                        reController.refreshPage(mounted, context);
+                      },
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: Padding(
+                          padding: EdgeInsets.all(10.0.w),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Search Record Add Miles Button Section
 
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                // Removed PopupMenuButton
-                                buildCustomRowButton(
-                                    Icons.search, "Search", kPrimary, () {
-                                  if (reController.currentUser == null) {
-                                    showLoginPrompt();
-                                    return;
-                                  }
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  // Removed PopupMenuButton
+                                  buildCustomRowButton(
+                                      Icons.search, "Search", kPrimary, () {
+                                    FocusScope.of(context).unfocus();
+                                    if (reController.currentUser == null) {
+                                      showLoginPrompt();
+                                      return;
+                                    }
 
-                                  setState(() {
-                                    reController.showSearchFilter =
-                                        !reController.showSearchFilter;
-                                    reController.showAddRecords = false;
-                                    reController.showAddMiles = false;
-                                    reController.showVehicleSearch = true;
-                                  });
-                                }),
-                                buildCustomRowButton(
-                                    Icons.add, "Records", kSecondary, () {
-                                  if (reController.currentUser == null) {
-                                    showLoginPrompt();
-                                    return;
-                                  }
-                                  //firstly clear the filters if any are applied
-                                  reController.resetFilters();
-
-                                  if (reController.isAdd == true) {
                                     setState(() {
-                                      reController.showAddRecords =
-                                          !reController.showAddRecords;
-                                      reController.showSearchFilter = false;
-                                      reController.showAddMiles = false;
-                                    });
-                                  } else {
-                                    showToastMessage(
-                                        "Alert!",
-                                        "Sorry you don't have access",
-                                        kPrimary);
-                                  }
-                                }),
-                                buildCustomRowButton(
-                                    Icons.add, "Miles", kPrimary, () {
-                                  if (reController.currentUser == null) {
-                                    showLoginPrompt();
-                                    return;
-                                  }
-
-                                  if (reController.isAdd == true ||
-                                      reController.isView == true) {
-                                    setState(() {
-                                      reController.showAddMiles =
-                                          !reController.showAddMiles;
-                                      reController.showSearchFilter = false;
+                                      reController.showSearchFilter =
+                                          !reController.showSearchFilter;
                                       reController.showAddRecords = false;
+                                      reController.showAddMiles = false;
+                                      reController.showVehicleSearch = true;
                                     });
-                                  } else {
-                                    showToastMessage(
-                                        "Alert!",
-                                        "Sorry you don't have access",
-                                        kPrimary);
-                                  }
-                                }),
+                                  }),
+                                  buildCustomRowButton(
+                                      Icons.add, "Records", kSecondary, () {
+                                    FocusScope.of(context).unfocus();
+                                    if (reController.currentUser == null) {
+                                      showLoginPrompt();
+                                      return;
+                                    }
+                                    //firstly clear the filters if any are applied
+                                    reController.resetFilters();
+
+                                    if (reController.isAdd == true) {
+                                      setState(() {
+                                        reController.showAddRecords =
+                                            !reController.showAddRecords;
+                                        reController.showSearchFilter = false;
+                                        reController.showAddMiles = false;
+                                      });
+                                    } else {
+                                      showToastMessage(
+                                          "Alert!",
+                                          "Sorry you don't have access",
+                                          kPrimary);
+                                    }
+                                  }),
+                                  buildCustomRowButton(
+                                      Icons.add, "Miles", kPrimary, () {
+                                    FocusScope.of(context).unfocus();
+                                    if (reController.currentUser == null) {
+                                      showLoginPrompt();
+                                      return;
+                                    }
+
+                                    if (reController.isAdd == true ||
+                                        reController.isView == true) {
+                                      setState(() {
+                                        reController.showAddMiles =
+                                            !reController.showAddMiles;
+                                        reController.showSearchFilter = false;
+                                        reController.showAddRecords = false;
+                                      });
+                                    } else {
+                                      showToastMessage(
+                                          "Alert!",
+                                          "Sorry you don't have access",
+                                          kPrimary);
+                                    }
+                                  }),
+                                ],
+                              ),
+
+                              // Search & Filter Section
+                              if (reController.showSearchFilter) ...[
+                                SizedBox(height: 10.h),
+                                buildSearchFilterMethod(context, reController),
                               ],
-                            ),
 
-                            // Search & Filter Section
-                            if (reController.showSearchFilter) ...[
-                              SizedBox(height: 10.h),
-                              buildSearchFilterMethod(context, reController),
-                            ],
+                              if (reController.showAddRecords) ...[
+                                SizedBox(height: 10.h),
+                                buildAddRecordMethod(reController, context),
+                              ],
 
-                            if (reController.showAddRecords) ...[
-                              SizedBox(height: 10.h),
-                              buildAddRecordMethod(reController, context),
-                            ],
+                              if (reController.showAddMiles) ...[
+                                SizedBox(height: 10.h),
+                                buildAddMilesMethod(reController, context),
+                              ],
 
-                            if (reController.showAddMiles) ...[
-                              SizedBox(height: 10.h),
-                              buildAddMilesMethod(reController, context),
-                            ],
-
-                            // Invoice Summary Box
-                            (reController.role == "Owner" ||
-                                    reController.role == "SubOwner")
-                                ? Card(
-                                    elevation: 4,
-                                    margin: EdgeInsets.symmetric(vertical: 8),
-                                    child: Padding(
-                                      padding: EdgeInsets.all(12),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'Invoice Summary',
-                                                style: TextStyle(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: kDark,
+                              // Invoice Summary Box
+                              (reController.role == "Owner" ||
+                                      reController.role == "SubOwner")
+                                  ? Card(
+                                      elevation: 4,
+                                      margin: EdgeInsets.symmetric(vertical: 8),
+                                      child: Padding(
+                                        padding: EdgeInsets.all(12),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'Invoice Summary',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: kDark,
+                                                  ),
                                                 ),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  IconButton(
-                                                    icon: Icon(Icons.filter_alt,
-                                                        color: kPrimary),
-                                                    onPressed: () {
-                                                      setState(() {
-                                                        reController
-                                                                .showVehicleFilter =
-                                                            !reController
-                                                                .showVehicleFilter;
-                                                      });
-                                                    },
-                                                  ),
-                                                  IconButton(
-                                                    icon: Icon(Icons.date_range,
-                                                        color: kPrimary),
-                                                    onPressed: () async {
-                                                      final DateTimeRange?
-                                                          picked =
-                                                          await showDateRangePicker(
-                                                        context: context,
-                                                        firstDate:
-                                                            DateTime(2000),
-                                                        lastDate:
-                                                            DateTime(2100),
-                                                        initialDateRange: reController
-                                                                        .summaryStartDate !=
-                                                                    null &&
-                                                                reController
-                                                                        .summaryEndDate !=
-                                                                    null
-                                                            ? DateTimeRange(
-                                                                start: reController
-                                                                    .summaryStartDate!,
-                                                                end: reController
-                                                                    .summaryEndDate!)
-                                                            : null,
-                                                      );
-                                                      if (picked != null) {
-                                                        setState(() {
-                                                          reController
-                                                                  .summaryStartDate =
-                                                              picked.start;
-                                                          reController
-                                                                  .summaryEndDate =
-                                                              picked.end;
-                                                        });
-                                                      }
-                                                    },
-                                                  ),
-                                                  if (reController
-                                                              .summaryStartDate !=
-                                                          null ||
-                                                      reController
-                                                              .summaryEndDate !=
-                                                          null)
+                                                Row(
+                                                  children: [
                                                     IconButton(
-                                                      icon: Icon(Icons.clear,
-                                                          color: Colors.red),
+                                                      icon: Icon(
+                                                          Icons.filter_alt,
+                                                          color: kPrimary),
                                                       onPressed: () {
                                                         setState(() {
                                                           reController
-                                                                  .summaryStartDate =
-                                                              null;
-                                                          reController
-                                                                  .summaryEndDate =
-                                                              null;
+                                                                  .showVehicleFilter =
+                                                              !reController
+                                                                  .showVehicleFilter;
                                                         });
                                                       },
                                                     ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-
-                                          // Show vehicle type filter only when showVehicleFilter is true
-                                          if (reController
-                                              .showVehicleFilter) ...[
-                                            SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child:
-                                                      DropdownButtonFormField<
-                                                          String>(
-                                                    value: reController
-                                                        .summaryVehicleTypeFilter,
-                                                    items: [
-                                                      'All',
-                                                      'Truck',
-                                                      'Trailer'
-                                                    ].map((String value) {
-                                                      return DropdownMenuItem<
-                                                          String>(
-                                                        value: value,
-                                                        child: Text(value),
-                                                      );
-                                                    }).toList(),
-                                                    onChanged: (value) {
-                                                      setState(() {
-                                                        reController
-                                                                .summaryVehicleTypeFilter =
-                                                            value!;
-                                                        reController
-                                                            .selectedSummaryVehicles
-                                                            .clear();
-                                                      });
-                                                    },
-                                                    decoration: InputDecoration(
-                                                      labelText: 'Vehicle Type',
-                                                      border:
-                                                          OutlineInputBorder(),
+                                                    IconButton(
+                                                      icon: Icon(
+                                                          Icons.date_range,
+                                                          color: kPrimary),
+                                                      onPressed: () async {
+                                                        final DateTimeRange?
+                                                            picked =
+                                                            await showDateRangePicker(
+                                                          context: context,
+                                                          firstDate:
+                                                              DateTime(2000),
+                                                          lastDate:
+                                                              DateTime(2100),
+                                                          initialDateRange: reController
+                                                                          .summaryStartDate !=
+                                                                      null &&
+                                                                  reController
+                                                                          .summaryEndDate !=
+                                                                      null
+                                                              ? DateTimeRange(
+                                                                  start: reController
+                                                                      .summaryStartDate!,
+                                                                  end: reController
+                                                                      .summaryEndDate!)
+                                                              : null,
+                                                        );
+                                                        if (picked != null) {
+                                                          setState(() {
+                                                            reController
+                                                                    .summaryStartDate =
+                                                                picked.start;
+                                                            reController
+                                                                    .summaryEndDate =
+                                                                picked.end;
+                                                          });
+                                                        }
+                                                      },
                                                     ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 10),
-                                                IconButton(
-                                                  icon: Icon(Icons.refresh,
-                                                      color: kPrimary),
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      reController
-                                                          .selectedSummaryVehicles
-                                                          .clear();
-                                                      reController
-                                                              .summaryVehicleTypeFilter =
-                                                          'All';
-                                                    });
-                                                  },
-                                                  tooltip: 'Clear Filters',
+                                                    if (reController
+                                                                .summaryStartDate !=
+                                                            null ||
+                                                        reController
+                                                                .summaryEndDate !=
+                                                            null)
+                                                      IconButton(
+                                                        icon: Icon(Icons.clear,
+                                                            color: Colors.red),
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            reController
+                                                                    .summaryStartDate =
+                                                                null;
+                                                            reController
+                                                                    .summaryEndDate =
+                                                                null;
+                                                          });
+                                                        },
+                                                      ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
 
-                                            // Vehicle Selection (only show if not 'All')
+                                            // Show vehicle type filter only when showVehicleFilter is true
                                             if (reController
-                                                    .summaryVehicleTypeFilter !=
-                                                'All')
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                                .showVehicleFilter) ...[
+                                              SizedBox(height: 8),
+                                              Row(
                                                 children: [
-                                                  SizedBox(height: 8),
-                                                  Text('Select Vehicles:',
-                                                      style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold)),
-                                                  SizedBox(height: 8),
-                                                  Container(
-                                                    height: 150,
-                                                    child: ListView.builder(
-                                                      shrinkWrap: true,
-                                                      itemCount: reController
-                                                          .vehicles
-                                                          .where((vehicle) {
-                                                        return reController
-                                                                    .summaryVehicleTypeFilter ==
-                                                                'All' ||
-                                                            vehicle['vehicleType'] ==
-                                                                reController
-                                                                    .summaryVehicleTypeFilter;
-                                                      }).length,
-                                                      itemBuilder:
-                                                          (context, index) {
-                                                        final filteredVehicles =
-                                                            reController
-                                                                .vehicles
-                                                                .where(
-                                                                    (vehicle) {
+                                                  Expanded(
+                                                    child:
+                                                        DropdownButtonFormField<
+                                                            String>(
+                                                      value: reController
+                                                          .summaryVehicleTypeFilter,
+                                                      items: [
+                                                        'All',
+                                                        'Truck',
+                                                        'Trailer'
+                                                      ].map((String value) {
+                                                        return DropdownMenuItem<
+                                                            String>(
+                                                          value: value,
+                                                          child: Text(value),
+                                                        );
+                                                      }).toList(),
+                                                      onChanged: (value) {
+                                                        setState(() {
+                                                          reController
+                                                                  .summaryVehicleTypeFilter =
+                                                              value!;
+                                                          reController
+                                                              .selectedSummaryVehicles
+                                                              .clear();
+                                                        });
+                                                      },
+                                                      decoration:
+                                                          InputDecoration(
+                                                        labelText:
+                                                            'Vehicle Type',
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                  IconButton(
+                                                    icon: Icon(Icons.refresh,
+                                                        color: kPrimary),
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        reController
+                                                            .selectedSummaryVehicles
+                                                            .clear();
+                                                        reController
+                                                                .summaryVehicleTypeFilter =
+                                                            'All';
+                                                      });
+                                                    },
+                                                    tooltip: 'Clear Filters',
+                                                  ),
+                                                ],
+                                              ),
+
+                                              // Vehicle Selection (only show if not 'All')
+                                              if (reController
+                                                      .summaryVehicleTypeFilter !=
+                                                  'All')
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    SizedBox(height: 8),
+                                                    Text('Select Vehicles:',
+                                                        style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold)),
+                                                    SizedBox(height: 8),
+                                                    Container(
+                                                      height: 150,
+                                                      child: ListView.builder(
+                                                        shrinkWrap: true,
+                                                        itemCount: reController
+                                                            .vehicles
+                                                            .where((vehicle) {
                                                           return reController
                                                                       .summaryVehicleTypeFilter ==
                                                                   'All' ||
                                                               vehicle['vehicleType'] ==
                                                                   reController
                                                                       .summaryVehicleTypeFilter;
-                                                        }).toList();
+                                                        }).length,
+                                                        itemBuilder:
+                                                            (context, index) {
+                                                          final filteredVehicles =
+                                                              reController
+                                                                  .vehicles
+                                                                  .where(
+                                                                      (vehicle) {
+                                                            return reController
+                                                                        .summaryVehicleTypeFilter ==
+                                                                    'All' ||
+                                                                vehicle['vehicleType'] ==
+                                                                    reController
+                                                                        .summaryVehicleTypeFilter;
+                                                          }).toList();
 
-                                                        final vehicle =
-                                                            filteredVehicles[
-                                                                index];
-                                                        final isSelected =
-                                                            reController
-                                                                .selectedSummaryVehicles
-                                                                .contains(
-                                                                    vehicle[
-                                                                        'id']);
+                                                          final vehicle =
+                                                              filteredVehicles[
+                                                                  index];
+                                                          final isSelected =
+                                                              reController
+                                                                  .selectedSummaryVehicles
+                                                                  .contains(
+                                                                      vehicle[
+                                                                          'id']);
 
-                                                        return CheckboxListTile(
-                                                          title: Text(
-                                                              '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
-                                                          value: isSelected,
-                                                          onChanged:
-                                                              (bool? value) {
-                                                            setState(() {
-                                                              if (value ==
-                                                                  true) {
-                                                                reController
-                                                                    .selectedSummaryVehicles
-                                                                    .add(vehicle[
-                                                                        'id']);
-                                                              } else {
-                                                                reController
-                                                                    .selectedSummaryVehicles
-                                                                    .remove(
-                                                                        vehicle[
-                                                                            'id']);
-                                                              }
-                                                            });
-                                                          },
-                                                        );
-                                                      },
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            SizedBox(height: 8),
-                                          ],
-
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              _buildSummaryItem(
-                                                  'Total',
-                                                  reController
-                                                          .calculateInvoiceTotals()[
-                                                      'total']!),
-                                              _buildSummaryItem(
-                                                  'Trucks',
-                                                  reController
-                                                          .calculateInvoiceTotals()[
-                                                      'truck']!),
-                                              _buildSummaryItem(
-                                                  'Trailers',
-                                                  reController
-                                                          .calculateInvoiceTotals()[
-                                                      'trailer']!),
-                                              _buildSummaryItem(
-                                                  'Others',
-                                                  reController
-                                                          .calculateInvoiceTotals()[
-                                                      'other']!),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                : SizedBox(),
-
-                            reController.currentUser == null
-                                ? AbsorbPointer(
-                                    child: TabBar(
-                                      controller: _tabController,
-                                      tabs: [
-                                        Tab(text: "My Records"),
-                                        Tab(text: "My Miles"),
-                                      ],
-                                    ),
-                                  )
-                                : TabBar(
-                                    controller: _tabController,
-                                    tabs: [
-                                      Tab(
-                                        child: Text("My Records",
-                                            style: appStyleUniverse(
-                                                20, kDark, FontWeight.w500)),
-                                      ),
-                                      Tab(
-                                        child: Text("My Miles",
-                                            style: appStyleUniverse(
-                                                20, kDark, FontWeight.w500)),
-                                      ),
-                                    ],
-                                  ),
-                            // SizedBox(height: 10.h),
-
-                            //my records section
-                            Container(
-                              // color: kPrimary,
-                              height: MediaQuery.of(context).size.height * 0.7,
-                              child: TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  // My Records Tab
-                                  (reController.isAnonymous == true ||
-                                          reController.isProfileComplete ==
-                                              false)
-                                      ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(15.0),
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(Icons.lock,
-                                                    size: 50,
-                                                    color: Colors.grey),
-                                                SizedBox(height: 20),
-                                                Text(
-                                                    'Please Create an account to \nadd records and view records',
-                                                    style: TextStyle(
-                                                        color: Colors.grey)),
-                                                SizedBox(height: 20),
-                                                CustomButton(
-                                                    text: "Register/Login",
-                                                    onPress: () =>
-                                                        showLoginPrompt(),
-                                                    color: kSecondary)
-                                              ],
-                                            ),
-                                          ),
-                                        )
-                                      : SingleChildScrollView(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              if (filteredRecords.isEmpty)
-                                                Center(
-                                                  child: Column(
-                                                    children: [
-                                                      Icon(
-                                                          Icons
-                                                              .note_alt_outlined,
-                                                          size: 80,
-                                                          color: kPrimary
-                                                              .withOpacity(
-                                                                  0.5)),
-                                                      const SizedBox(
-                                                          height: 16),
-                                                      Text('No records found',
-                                                          style:
-                                                              appStyleUniverse(
-                                                                  18,
-                                                                  kDarkGray,
-                                                                  FontWeight
-                                                                      .w500)),
-                                                    ],
-                                                  ),
-                                                )
-                                              else
-                                                Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.end,
-                                                  children: [
-                                                    CircleAvatar(
-                                                      backgroundColor: kPrimary,
-                                                      foregroundColor: kWhite,
-                                                      radius: 20.r,
-                                                      child: IconButton(
-                                                        onPressed: () async {
-                                                          try {
-                                                            final pdfBytes =
-                                                                await generateRecordPdf(
-                                                                    filteredRecords);
-                                                            await Printing
-                                                                .layoutPdf(
-                                                              onLayout:
-                                                                  (format) =>
-                                                                      pdfBytes,
-                                                            );
-                                                          } catch (e) {
-                                                            print(
-                                                                'Printing error: $e');
-                                                          }
+                                                          return CheckboxListTile(
+                                                            title: Text(
+                                                                '${vehicle['vehicleNumber']} (${vehicle['companyName']})'),
+                                                            value: isSelected,
+                                                            onChanged:
+                                                                (bool? value) {
+                                                              setState(() {
+                                                                if (value ==
+                                                                    true) {
+                                                                  reController
+                                                                      .selectedSummaryVehicles
+                                                                      .add(vehicle[
+                                                                          'id']);
+                                                                } else {
+                                                                  reController
+                                                                      .selectedSummaryVehicles
+                                                                      .remove(vehicle[
+                                                                          'id']);
+                                                                }
+                                                              });
+                                                            },
+                                                          );
                                                         },
-                                                        icon: Icon(Icons.print),
                                                       ),
                                                     ),
-                                                    ListView.builder(
-                                                      shrinkWrap: true,
-                                                      physics:
-                                                          const NeverScrollableScrollPhysics(),
-                                                      itemCount: filteredRecords
-                                                          .length,
-                                                      itemBuilder:
-                                                          (context, index) {
-                                                        final record =
-                                                            filteredRecords[
-                                                                index];
-                                                        final services = record[
-                                                                'services']
-                                                            as List<dynamic>;
-                                                        final date = DateFormat(
-                                                                'MM-dd-yy')
-                                                            .format(DateTime
-                                                                .parse(record[
-                                                                    'date']));
+                                                  ],
+                                                ),
+                                              SizedBox(height: 8),
+                                            ],
 
-                                                        return Container(
-                                                          child:
-                                                              GestureDetector(
-                                                            onTap: () => Get.to(() =>
-                                                                RecordsDetailsScreen(
-                                                                    record:
-                                                                        record)),
-                                                            child: Card(
-                                                              elevation: 0,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            15.r),
-                                                                side:
-                                                                    BorderSide(
-                                                                  color: kPrimary
-                                                                      .withOpacity(
-                                                                          0.2),
-                                                                  width: 1,
-                                                                ),
-                                                              ),
-                                                              child: Container(
-                                                                decoration:
-                                                                    BoxDecoration(
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                _buildSummaryItem(
+                                                    'Total',
+                                                    reController
+                                                            .calculateInvoiceTotals()[
+                                                        'total']!),
+                                                _buildSummaryItem(
+                                                    'Trucks',
+                                                    reController
+                                                            .calculateInvoiceTotals()[
+                                                        'truck']!),
+                                                _buildSummaryItem(
+                                                    'Trailers',
+                                                    reController
+                                                            .calculateInvoiceTotals()[
+                                                        'trailer']!),
+                                                _buildSummaryItem(
+                                                    'Others',
+                                                    reController
+                                                            .calculateInvoiceTotals()[
+                                                        'other']!),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : SizedBox(),
+
+                              reController.currentUser == null
+                                  ? AbsorbPointer(
+                                      child: TabBar(
+                                        controller: _tabController,
+                                        tabs: [
+                                          Tab(text: "My Records"),
+                                          Tab(text: "My Miles"),
+                                        ],
+                                      ),
+                                    )
+                                  : TabBar(
+                                      controller: _tabController,
+                                      tabs: [
+                                        Tab(
+                                          child: Text("My Records",
+                                              style: appStyleUniverse(
+                                                  20, kDark, FontWeight.w500)),
+                                        ),
+                                        Tab(
+                                          child: Text("My Miles",
+                                              style: appStyleUniverse(
+                                                  20, kDark, FontWeight.w500)),
+                                        ),
+                                      ],
+                                    ),
+                              // SizedBox(height: 10.h),
+
+                              //my records section
+                              Container(
+                                // color: kPrimary,
+                                height:
+                                    MediaQuery.of(context).size.height * 0.7,
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    // My Records Tab
+                                    (reController.isAnonymous == true ||
+                                            reController.isProfileComplete ==
+                                                false)
+                                        ? Center(
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.all(15.0),
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(Icons.lock,
+                                                      size: 50,
+                                                      color: Colors.grey),
+                                                  SizedBox(height: 20),
+                                                  Text(
+                                                      'Please Create an account to \nadd records and view records',
+                                                      style: TextStyle(
+                                                          color: Colors.grey)),
+                                                  SizedBox(height: 20),
+                                                  CustomButton(
+                                                      text: "Register/Login",
+                                                      onPress: () =>
+                                                          showLoginPrompt(),
+                                                      color: kSecondary)
+                                                ],
+                                              ),
+                                            ),
+                                          )
+                                        : SingleChildScrollView(
+                                            keyboardDismissBehavior:
+                                                ScrollViewKeyboardDismissBehavior
+                                                    .onDrag,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                if (filteredRecords.isEmpty)
+                                                  Center(
+                                                    child: Column(
+                                                      children: [
+                                                        Icon(
+                                                            Icons
+                                                                .note_alt_outlined,
+                                                            size: 80,
+                                                            color: kPrimary
+                                                                .withOpacity(
+                                                                    0.5)),
+                                                        const SizedBox(
+                                                            height: 16),
+                                                        Text('No records found',
+                                                            style:
+                                                                appStyleUniverse(
+                                                                    18,
+                                                                    kDarkGray,
+                                                                    FontWeight
+                                                                        .w500)),
+                                                      ],
+                                                    ),
+                                                  )
+                                                else
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.end,
+                                                    children: [
+                                                      CircleAvatar(
+                                                        backgroundColor:
+                                                            kPrimary,
+                                                        foregroundColor: kWhite,
+                                                        radius: 20.r,
+                                                        child: IconButton(
+                                                          onPressed: () async {
+                                                            try {
+                                                              final pdfBytes =
+                                                                  await generateRecordPdf(
+                                                                      filteredRecords);
+                                                              await Printing
+                                                                  .layoutPdf(
+                                                                onLayout:
+                                                                    (format) =>
+                                                                        pdfBytes,
+                                                              );
+                                                            } catch (e) {
+                                                              print(
+                                                                  'Printing error: $e');
+                                                            }
+                                                          },
+                                                          icon:
+                                                              Icon(Icons.print),
+                                                        ),
+                                                      ),
+                                                      ListView.builder(
+                                                        shrinkWrap: true,
+                                                        physics:
+                                                            const NeverScrollableScrollPhysics(),
+                                                        itemCount:
+                                                            filteredRecords
+                                                                .length,
+                                                        itemBuilder:
+                                                            (context, index) {
+                                                          final record =
+                                                              filteredRecords[
+                                                                  index];
+                                                          final services =
+                                                              record['services']
+                                                                  as List<
+                                                                      dynamic>;
+                                                          final date = DateFormat(
+                                                                  'MM-dd-yy')
+                                                              .format(DateTime
+                                                                  .parse(record[
+                                                                      'date']));
+
+                                                          return Container(
+                                                            child:
+                                                                GestureDetector(
+                                                              onTap: () => Get.to(() =>
+                                                                  RecordsDetailsScreen(
+                                                                      record:
+                                                                          record)),
+                                                              child: Card(
+                                                                elevation: 0,
+                                                                shape:
+                                                                    RoundedRectangleBorder(
                                                                   borderRadius:
                                                                       BorderRadius
                                                                           .circular(
                                                                               15.r),
+                                                                  side:
+                                                                      BorderSide(
+                                                                    color: kPrimary
+                                                                        .withOpacity(
+                                                                            0.2),
+                                                                    width: 1,
+                                                                  ),
                                                                 ),
-                                                                child: Padding(
-                                                                  padding:
-                                                                      EdgeInsets
-                                                                          .all(12
-                                                                              .w),
-                                                                  child: Column(
-                                                                    crossAxisAlignment:
-                                                                        CrossAxisAlignment
-                                                                            .start,
-                                                                    children: [
-                                                                      SingleChildScrollView(
-                                                                        physics:
-                                                                            BouncingScrollPhysics(),
-                                                                        scrollDirection:
-                                                                            Axis.horizontal,
-                                                                        child:
-                                                                            Row(
-                                                                          mainAxisAlignment:
-                                                                              MainAxisAlignment.spaceBetween,
-                                                                          children: [
-                                                                            if (record['invoice'].isNotEmpty)
+                                                                child:
+                                                                    Container(
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            15.r),
+                                                                  ),
+                                                                  child:
+                                                                      Padding(
+                                                                    padding: EdgeInsets
+                                                                        .all(12
+                                                                            .w),
+                                                                    child:
+                                                                        Column(
+                                                                      crossAxisAlignment:
+                                                                          CrossAxisAlignment
+                                                                              .start,
+                                                                      children: [
+                                                                        SingleChildScrollView(
+                                                                          physics:
+                                                                              BouncingScrollPhysics(),
+                                                                          scrollDirection:
+                                                                              Axis.horizontal,
+                                                                          child:
+                                                                              Row(
+                                                                            mainAxisAlignment:
+                                                                                MainAxisAlignment.spaceBetween,
+                                                                            children: [
+                                                                              if (record['invoice'].isNotEmpty)
+                                                                                Container(
+                                                                                  padding: EdgeInsets.symmetric(
+                                                                                    horizontal: 12.w,
+                                                                                    vertical: 6.h,
+                                                                                  ),
+                                                                                  decoration: BoxDecoration(
+                                                                                    color: kPrimary.withOpacity(0.1),
+                                                                                    borderRadius: BorderRadius.circular(20.r),
+                                                                                  ),
+                                                                                  child: Row(
+                                                                                    children: [
+                                                                                      Icon(Icons.receipt_outlined, size: 20, color: kPrimary),
+                                                                                      SizedBox(width: 8.w),
+                                                                                      SizedBox(
+                                                                                        width: 80.w,
+                                                                                        child: Text("#${record['invoice']}", overflow: TextOverflow.ellipsis, style: appStyleUniverse(13, kDark, FontWeight.w500)),
+                                                                                      ),
+                                                                                    ],
+                                                                                  ),
+                                                                                ),
                                                                               Container(
                                                                                 padding: EdgeInsets.symmetric(
                                                                                   horizontal: 12.w,
                                                                                   vertical: 6.h,
                                                                                 ),
                                                                                 decoration: BoxDecoration(
-                                                                                  color: kPrimary.withOpacity(0.1),
+                                                                                  color: kSecondary.withOpacity(0.1),
                                                                                   borderRadius: BorderRadius.circular(20.r),
                                                                                 ),
                                                                                 child: Row(
                                                                                   children: [
-                                                                                    Icon(Icons.receipt_outlined, size: 20, color: kPrimary),
+                                                                                    Icon(Icons.calendar_today, size: 18, color: kSecondary),
                                                                                     SizedBox(width: 8.w),
-                                                                                    SizedBox(
-                                                                                      width: 80.w,
-                                                                                      child: Text("#${record['invoice']}", overflow: TextOverflow.ellipsis, style: appStyleUniverse(13, kDark, FontWeight.w500)),
-                                                                                    ),
+                                                                                    Text(date, style: appStyleUniverse(13, kDark, FontWeight.w500)),
                                                                                   ],
                                                                                 ),
                                                                               ),
-                                                                            Container(
-                                                                              padding: EdgeInsets.symmetric(
-                                                                                horizontal: 12.w,
-                                                                                vertical: 6.h,
-                                                                              ),
-                                                                              decoration: BoxDecoration(
-                                                                                color: kSecondary.withOpacity(0.1),
-                                                                                borderRadius: BorderRadius.circular(20.r),
-                                                                              ),
-                                                                              child: Row(
-                                                                                children: [
-                                                                                  Icon(Icons.calendar_today, size: 18, color: kSecondary),
-                                                                                  SizedBox(width: 8.w),
-                                                                                  Text(date, style: appStyleUniverse(13, kDark, FontWeight.w500)),
-                                                                                ],
-                                                                              ),
-                                                                            ),
 
-                                                                            // Duplicate Icon
-                                                                            GestureDetector(
-                                                                              onTap: () {
-                                                                                showDialog(
-                                                                                    context: context,
-                                                                                    builder: (_) {
-                                                                                      return AlertDialog(
-                                                                                        title: const Text("Duplicate Record"),
-                                                                                        content: const Text("Do you want to duplicate this record to create a new one?"),
-                                                                                        actions: [
-                                                                                          TextButton(
-                                                                                            onPressed: () {
-                                                                                              Navigator.pop(context);
-                                                                                              reController.handleDuplicateRecord(record);
-                                                                                            },
-                                                                                            child: Text(
-                                                                                              "Yes",
-                                                                                              style: appStyle(15, kSecondary, FontWeight.bold),
-                                                                                            ),
-                                                                                          ),
-                                                                                          TextButton(
-                                                                                            onPressed: () {
-                                                                                              Navigator.pop(context);
-                                                                                            },
-                                                                                            child: Text(
-                                                                                              "No",
-                                                                                              style: appStyle(15, kPrimary, FontWeight.bold),
-                                                                                            ),
-                                                                                          ),
-                                                                                        ],
-                                                                                      );
-                                                                                    });
-                                                                              },
-                                                                              child: Container(
-                                                                                padding: EdgeInsets.symmetric(
-                                                                                  horizontal: 10.w,
-                                                                                  vertical: 6.h,
-                                                                                ),
-                                                                                decoration: BoxDecoration(
-                                                                                  color: kSecondary,
-                                                                                  borderRadius: BorderRadius.circular(20.r),
-                                                                                ),
-                                                                                child: Row(
-                                                                                  mainAxisSize: MainAxisSize.min,
-                                                                                  children: [
-                                                                                    const Icon(Icons.copy, color: kWhite, size: 14),
-                                                                                    SizedBox(width: 4.w),
-                                                                                    Text("Duplicate", style: appStyle(12, kWhite, FontWeight.w600)),
-                                                                                  ],
-                                                                                ),
-                                                                              ),
-                                                                            ),
-                                                                            SizedBox(width: 8.w),
-
-                                                                            //Edit Icon
-                                                                            GestureDetector(
-                                                                              onTap: () {
-                                                                                if (reController.isEdit!) {
+                                                                              // Duplicate Icon
+                                                                              GestureDetector(
+                                                                                onTap: () {
                                                                                   showDialog(
                                                                                       context: context,
                                                                                       builder: (_) {
                                                                                         return AlertDialog(
-                                                                                          title: Text("Edit Record"),
-                                                                                          content: Text("Are you sure you want to edit this record?"),
+                                                                                          title: const Text("Duplicate Record"),
+                                                                                          content: const Text("Do you want to duplicate this record to create a new one?"),
                                                                                           actions: [
                                                                                             TextButton(
                                                                                               onPressed: () {
-                                                                                                reController.handleEditRecord(record);
                                                                                                 Navigator.pop(context);
+                                                                                                reController.handleDuplicateRecord(record);
                                                                                               },
                                                                                               child: Text(
                                                                                                 "Yes",
@@ -759,218 +729,269 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                           ],
                                                                                         );
                                                                                       });
-                                                                                } else {
-                                                                                  showToastMessage("Sorry", "You don't have permission to edit record", kPrimary);
-                                                                                }
-                                                                              },
-                                                                              child: Container(
-                                                                                padding: EdgeInsets.symmetric(
-                                                                                  horizontal: 12.w,
-                                                                                  vertical: 6.h,
+                                                                                },
+                                                                                child: Container(
+                                                                                  padding: EdgeInsets.symmetric(
+                                                                                    horizontal: 10.w,
+                                                                                    vertical: 6.h,
+                                                                                  ),
+                                                                                  decoration: BoxDecoration(
+                                                                                    color: kSecondary,
+                                                                                    borderRadius: BorderRadius.circular(20.r),
+                                                                                  ),
+                                                                                  child: Row(
+                                                                                    mainAxisSize: MainAxisSize.min,
+                                                                                    children: [
+                                                                                      const Icon(Icons.copy, color: kWhite, size: 14),
+                                                                                      SizedBox(width: 4.w),
+                                                                                      Text("Duplicate", style: appStyle(12, kWhite, FontWeight.w600)),
+                                                                                    ],
+                                                                                  ),
                                                                                 ),
-                                                                                decoration: BoxDecoration(
-                                                                                  color: kPrimary,
-                                                                                  borderRadius: BorderRadius.circular(20.r),
-                                                                                ),
-                                                                                child: Icon(Icons.edit, color: kWhite, size: 16),
                                                                               ),
-                                                                            ),
-                                                                          ],
+                                                                              SizedBox(width: 8.w),
+
+                                                                              //Edit Icon
+                                                                              GestureDetector(
+                                                                                onTap: () {
+                                                                                  if (reController.isEdit!) {
+                                                                                    showDialog(
+                                                                                        context: context,
+                                                                                        builder: (_) {
+                                                                                          return AlertDialog(
+                                                                                            title: Text("Edit Record"),
+                                                                                            content: Text("Are you sure you want to edit this record?"),
+                                                                                            actions: [
+                                                                                              TextButton(
+                                                                                                onPressed: () {
+                                                                                                  reController.handleEditRecord(record);
+                                                                                                  Navigator.pop(context);
+                                                                                                },
+                                                                                                child: Text(
+                                                                                                  "Yes",
+                                                                                                  style: appStyle(15, kSecondary, FontWeight.bold),
+                                                                                                ),
+                                                                                              ),
+                                                                                              TextButton(
+                                                                                                onPressed: () {
+                                                                                                  Navigator.pop(context);
+                                                                                                },
+                                                                                                child: Text(
+                                                                                                  "No",
+                                                                                                  style: appStyle(15, kPrimary, FontWeight.bold),
+                                                                                                ),
+                                                                                              ),
+                                                                                            ],
+                                                                                          );
+                                                                                        });
+                                                                                  } else {
+                                                                                    showToastMessage("Sorry", "You don't have permission to edit record", kPrimary);
+                                                                                  }
+                                                                                },
+                                                                                child: Container(
+                                                                                  padding: EdgeInsets.symmetric(
+                                                                                    horizontal: 12.w,
+                                                                                    vertical: 6.h,
+                                                                                  ),
+                                                                                  decoration: BoxDecoration(
+                                                                                    color: kPrimary,
+                                                                                    borderRadius: BorderRadius.circular(20.r),
+                                                                                  ),
+                                                                                  child: Icon(Icons.edit, color: kWhite, size: 16),
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                          ),
                                                                         ),
-                                                                      ),
-                                                                      SizedBox(
-                                                                          height:
-                                                                              16.h),
-                                                                      buildInfoRow(
-                                                                        Icons
-                                                                            .directions_car_outlined,
-                                                                        '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
-                                                                      ),
-                                                                      Divider(
-                                                                          height:
-                                                                              24.h),
-                                                                      buildInfoRow(
-                                                                        Icons
-                                                                            .build_outlined,
-                                                                        () {
-                                                                          List<String>
-                                                                              serviceNames =
-                                                                              services.map((service) => service['serviceName'].toString()).toList();
-                                                                          serviceNames
-                                                                              .sort();
-                                                                          return serviceNames
-                                                                              .join(", ");
-                                                                        }(),
-                                                                      ),
-                                                                      Divider(
-                                                                          height:
-                                                                              24.h),
-                                                                      buildInfoRow(
-                                                                        Icons
-                                                                            .store_outlined,
-                                                                        record['workshopName'] ??
-                                                                            'N/A',
-                                                                      ),
-                                                                      if (record[
-                                                                              "description"]
-                                                                          .isNotEmpty) ...[
+                                                                        SizedBox(
+                                                                            height:
+                                                                                16.h),
+                                                                        buildInfoRow(
+                                                                          Icons
+                                                                              .directions_car_outlined,
+                                                                          '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
+                                                                        ),
                                                                         Divider(
                                                                             height:
                                                                                 24.h),
                                                                         buildInfoRow(
                                                                           Icons
-                                                                              .description_outlined,
-                                                                          record[
-                                                                              'description'],
+                                                                              .build_outlined,
+                                                                          () {
+                                                                            List<String>
+                                                                                serviceNames =
+                                                                                services.map((service) => service['serviceName'].toString()).toList();
+                                                                            serviceNames.sort();
+                                                                            return serviceNames.join(", ");
+                                                                          }(),
+                                                                        ),
+                                                                        Divider(
+                                                                            height:
+                                                                                24.h),
+                                                                        buildInfoRow(
+                                                                          Icons
+                                                                              .store_outlined,
+                                                                          record['workshopName'] ??
+                                                                              'N/A',
+                                                                        ),
+                                                                        if (record["description"]
+                                                                            .isNotEmpty) ...[
+                                                                          Divider(
+                                                                              height: 24.h),
+                                                                          buildInfoRow(
+                                                                            Icons.description_outlined,
+                                                                            record['description'],
+                                                                          ),
+                                                                        ],
+                                                                        Divider(
+                                                                            height:
+                                                                                24.h),
+                                                                        Row(
+                                                                          mainAxisAlignment:
+                                                                              MainAxisAlignment.spaceBetween,
+                                                                          children: [
+                                                                            if (record["invoiceAmount"].isNotEmpty) ...[
+                                                                              Row(
+                                                                                children: [
+                                                                                  Text("Invoice Amount :", style: appStyle(14, kDark, FontWeight.w500)),
+                                                                                  SizedBox(width: 8.w),
+                                                                                  Text('${record['invoiceAmount']}', style: appStyleUniverse(14, kPrimary, FontWeight.bold)),
+                                                                                ],
+                                                                              ),
+                                                                            ],
+                                                                            if (record.containsKey("miles") &&
+                                                                                record['miles'] != 0)
+                                                                              Row(
+                                                                                children: [
+                                                                                  Text("Miles :", style: appStyle(14, kDark, FontWeight.w500)),
+                                                                                  SizedBox(width: 8.w),
+                                                                                  Text('${record['miles']}', style: appStyleUniverse(14, kPrimary, FontWeight.bold)),
+                                                                                ],
+                                                                              ),
+                                                                            if (record.containsKey("hours") &&
+                                                                                record['hours'] != 0)
+                                                                              Row(
+                                                                                children: [
+                                                                                  Text("Hours :", style: appStyle(14, kDark, FontWeight.w500)),
+                                                                                  SizedBox(width: 8.w),
+                                                                                  Text('${record['hours']}', style: appStyleUniverse(14, kPrimary, FontWeight.bold)),
+                                                                                ],
+                                                                              ),
+                                                                          ],
                                                                         ),
                                                                       ],
-                                                                      Divider(
-                                                                          height:
-                                                                              24.h),
-                                                                      Row(
-                                                                        mainAxisAlignment:
-                                                                            MainAxisAlignment.spaceBetween,
-                                                                        children: [
-                                                                          if (record["invoiceAmount"]
-                                                                              .isNotEmpty) ...[
-                                                                            Row(
-                                                                              children: [
-                                                                                Text("Invoice Amount :", style: appStyle(14, kDark, FontWeight.w500)),
-                                                                                SizedBox(width: 8.w),
-                                                                                Text('${record['invoiceAmount']}', style: appStyleUniverse(14, kPrimary, FontWeight.bold)),
-                                                                              ],
-                                                                            ),
-                                                                          ],
-                                                                          if (record.containsKey("miles") &&
-                                                                              record['miles'] != 0)
-                                                                            Row(
-                                                                              children: [
-                                                                                Text("Miles :", style: appStyle(14, kDark, FontWeight.w500)),
-                                                                                SizedBox(width: 8.w),
-                                                                                Text('${record['miles']}', style: appStyleUniverse(14, kPrimary, FontWeight.bold)),
-                                                                              ],
-                                                                            ),
-                                                                          if (record.containsKey("hours") &&
-                                                                              record['hours'] != 0)
-                                                                            Row(
-                                                                              children: [
-                                                                                Text("Hours :", style: appStyle(14, kDark, FontWeight.w500)),
-                                                                                SizedBox(width: 8.w),
-                                                                                Text('${record['hours']}', style: appStyleUniverse(14, kPrimary, FontWeight.bold)),
-                                                                              ],
-                                                                            ),
-                                                                        ],
-                                                                      ),
-                                                                    ],
+                                                                    ),
                                                                   ),
                                                                 ),
                                                               ),
                                                             ),
-                                                          ),
-                                                        )
-                                                            .animate()
-                                                            .fadeIn(
-                                                                duration:
-                                                                    400.ms,
-                                                                delay: (index *
-                                                                        100)
-                                                                    .ms)
-                                                            .slideX(
-                                                                begin: 0.2,
-                                                                end: 0);
-                                                      },
-                                                    ),
-                                                  ],
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-
-                                  // My Miles Tab
-                                  (reController.isAnonymous == true ||
-                                          reController.isProfileComplete ==
-                                              false)
-                                      ? Center(
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.lock,
-                                                  size: 50, color: Colors.grey),
-                                              SizedBox(height: 20),
-                                              Text(
-                                                  'Please Create an account to \nadd miles and view miles',
-                                                  style: TextStyle(
-                                                      color: Colors.grey)),
-                                              SizedBox(height: 20),
-                                              CustomButton(
-                                                  text: "Register/Login",
-                                                  onPress: () =>
-                                                      showLoginPrompt(),
-                                                  color: kPrimary)
-                                            ],
-                                          ),
-                                        )
-                                      : ListView.builder(
-                                          itemCount:
-                                              reController.vehicles.length,
-                                          itemBuilder: (context, index) {
-                                            final vehicle =
-                                                reController.vehicles[index];
-                                            return GestureDetector(
-                                              onTap: () => Get.to(() =>
-                                                  MilesDetailsScreen(
-                                                      milesRecord: vehicle)),
-                                              child: Card(
-                                                margin: EdgeInsets.symmetric(
-                                                    vertical: 8.h),
-                                                child: ListTile(
-                                                  title: Text(
-                                                    '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
-                                                    style: appStyleUniverse(16,
-                                                        kDark, FontWeight.w500),
+                                                          )
+                                                              .animate()
+                                                              .fadeIn(
+                                                                  duration:
+                                                                      400.ms,
+                                                                  delay: (index *
+                                                                          100)
+                                                                      .ms)
+                                                              .slideX(
+                                                                  begin: 0.2,
+                                                                  end: 0);
+                                                        },
+                                                      ),
+                                                    ],
                                                   ),
-                                                  subtitle: vehicle[
-                                                              'vehicleType'] ==
-                                                          "Truck"
-                                                      ? Text(
-                                                          'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
-                                                          style:
-                                                              appStyleUniverse(
-                                                                  14,
-                                                                  kDarkGray,
-                                                                  FontWeight
-                                                                      .normal))
-                                                      : Text(
-                                                          'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
-                                                          style:
-                                                              appStyleUniverse(
-                                                                  14,
-                                                                  kDarkGray,
-                                                                  FontWeight
-                                                                      .normal),
-                                                        ),
-                                                  trailing: Icon(
-                                                      Icons
-                                                          .directions_car_outlined,
-                                                      color: kPrimary),
-                                                ),
-                                              ).animate().fadeIn(
-                                                  duration: 400.ms,
-                                                  delay: (index * 100).ms),
-                                            );
-                                          },
-                                        ),
-                                ],
-                              ),
-                            ),
+                                              ],
+                                            ),
+                                          ),
 
-                            // SizedBox(height: 20.h),
-                          ],
+                                    // My Miles Tab
+                                    (reController.isAnonymous == true ||
+                                            reController.isProfileComplete ==
+                                                false)
+                                        ? Center(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.lock,
+                                                    size: 50,
+                                                    color: Colors.grey),
+                                                SizedBox(height: 20),
+                                                Text(
+                                                    'Please Create an account to \nadd miles and view miles',
+                                                    style: TextStyle(
+                                                        color: Colors.grey)),
+                                                SizedBox(height: 20),
+                                                CustomButton(
+                                                    text: "Register/Login",
+                                                    onPress: () =>
+                                                        showLoginPrompt(),
+                                                    color: kPrimary)
+                                              ],
+                                            ),
+                                          )
+                                        : ListView.builder(
+                                            itemCount:
+                                                reController.vehicles.length,
+                                            itemBuilder: (context, index) {
+                                              final vehicle =
+                                                  reController.vehicles[index];
+                                              return GestureDetector(
+                                                onTap: () => Get.to(() =>
+                                                    MilesDetailsScreen(
+                                                        milesRecord: vehicle)),
+                                                child: Card(
+                                                  margin: EdgeInsets.symmetric(
+                                                      vertical: 8.h),
+                                                  child: ListTile(
+                                                    title: Text(
+                                                      '${vehicle['vehicleNumber']} (${vehicle['companyName']})',
+                                                      style: appStyleUniverse(
+                                                          16,
+                                                          kDark,
+                                                          FontWeight.w500),
+                                                    ),
+                                                    subtitle: vehicle[
+                                                                'vehicleType'] ==
+                                                            "Truck"
+                                                        ? Text(
+                                                            'Current Miles: ${vehicle['currentMiles'] ?? '0'}',
+                                                            style:
+                                                                appStyleUniverse(
+                                                                    14,
+                                                                    kDarkGray,
+                                                                    FontWeight
+                                                                        .normal))
+                                                        : Text(
+                                                            'Hours Reading: ${vehicle['hoursReading'] ?? '0'}',
+                                                            style:
+                                                                appStyleUniverse(
+                                                                    14,
+                                                                    kDarkGray,
+                                                                    FontWeight
+                                                                        .normal),
+                                                          ),
+                                                    trailing: Icon(
+                                                        Icons
+                                                            .directions_car_outlined,
+                                                        color: kPrimary),
+                                                  ),
+                                                ).animate().fadeIn(
+                                                    duration: 400.ms,
+                                                    delay: (index * 100).ms),
+                                              );
+                                            },
+                                          ),
+                                  ],
+                                ),
+                              ),
+
+                              // SizedBox(height: 20.h),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  )
+                    ))
                 : Center(
                     child: Text(
                       'You don\'t have access to view this page',
@@ -1792,7 +1813,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                   labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: TextInputType.number,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
               ),
             ),
             SizedBox(height: 10.h),
@@ -1810,7 +1832,10 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             SizedBox(height: 10.h),
             GestureDetector(
-              onTap: () => reController.showImageSourceDialog(context),
+              onTap: () {
+                FocusScope.of(context).unfocus();
+                reController.showImageSourceDialog(context);
+              },
               child: Container(
                 height: 40.h,
                 width: double.maxFinite,
@@ -1970,6 +1995,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   onPress: reController.isRecordSaving
                       ? null
                       : () {
+                          FocusScope.of(context).unfocus();
                           if (reController.isAdd == true) {
                             reController.handleSaveRecords(mounted, context);
                           } else {
@@ -1992,7 +2018,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                         text: "Cancel",
                         onPress: reController.isRecordSaving
                             ? null
-                            : () => reController.resetForm(),
+                            : () {
+                                FocusScope.of(context).unfocus();
+                                reController.resetForm();
+                              },
                         color: reController.isRecordSaving ? kGray : kPrimary)
                     : SizedBox(),
               ],

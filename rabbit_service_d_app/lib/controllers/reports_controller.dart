@@ -807,6 +807,7 @@ class ReportsController extends GetxController {
 
   Future<void> handleSaveRecords(mounted, context,
       {bool bypassDuplicateCheck = false}) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (isRecordSaving) return;
     if (!_validateMandatoryFields()) {
       return;
@@ -1889,6 +1890,7 @@ class ReportsController extends GetxController {
   }
 
   void resetForm() {
+    FocusManager.instance.primaryFocus?.unfocus();
     isEditing = false;
     isRecordSaving = false;
     editingRecordId = null;
@@ -1919,6 +1921,7 @@ class ReportsController extends GetxController {
   }
 
   void resetFilters() {
+    FocusManager.instance.primaryFocus?.unfocus();
     filterVehicle = '';
     filterService = '';
     startDate = null;
