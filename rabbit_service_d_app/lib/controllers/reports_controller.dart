@@ -428,6 +428,15 @@ class ReportsController extends GetxController {
 
       serviceDefaultValues.clear();
 
+      final engineName = (selectedVehicleData?['engineName'] ??
+              selectedVehicleData?['engineNumber'] ??
+              '')
+          .toString()
+          .toUpperCase();
+      final vehType = (selectedVehicleData?['vehicleType'] ?? '')
+          .toString()
+          .toUpperCase();
+
       for (var serviceId in selectedServices) {
         // Check if vehicle has a default for this service
         final vehicleService = vehicleServices.firstWhere(
@@ -455,29 +464,48 @@ class ReportsController extends GetxController {
 
         if (selectedService.isEmpty) continue;
 
-        final dValues = selectedService['dValues'] as List<dynamic>?;
-        if (dValues != null) {
-          for (var dValue in dValues) {
-            if (dValue['brand'].toString().toUpperCase() ==
-                selectedVehicleData?['engineName'].toString().toUpperCase()) {
-              String type = dValue['type'].toString().toLowerCase();
-              int value =
-                  int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
-              int notificationValue;
+        final dValues = (selectedService['dValues'] as List<dynamic>?) ?? [];
+        if (dValues.isNotEmpty) {
+          dynamic matchingDValue;
+          if (engineName.isNotEmpty) {
+            matchingDValue = dValues.firstWhere(
+              (dv) =>
+                  dv is Map &&
+                  dv['brand']?.toString().toUpperCase() == engineName,
+              orElse: () => null,
+            );
+          }
 
-              if (type == "reading") {
-                notificationValue = value * 1000;
-              } else if (type == "day") {
-                notificationValue = value;
-              } else if (type == "hours") {
-                notificationValue = value;
-              } else {
-                notificationValue = value;
-              }
+          if (matchingDValue == null) {
+            matchingDValue = dValues.firstWhere(
+              (dv) =>
+                  dv is Map &&
+                  (dv['brand']?.toString().toUpperCase() == 'ALL' ||
+                      dv['brand']?.toString().toUpperCase() == 'TRAILER' ||
+                      (vehType.isNotEmpty &&
+                          dv['brand']?.toString().toUpperCase() == vehType)),
+              orElse: () => dValues.first,
+            );
+          }
 
-              serviceDefaultValues[serviceId] = notificationValue;
-              break;
+          if (matchingDValue != null && matchingDValue is Map) {
+            String rawType =
+                (matchingDValue['type'] ?? '').toString().toLowerCase();
+            int baseValue = int.tryParse(
+                    matchingDValue['value']?.toString().split(',')[0] ?? '0') ??
+                0;
+            int notificationValue = baseValue;
+
+            if (rawType == "reading" ||
+                (rawType.isEmpty &&
+                    (selectedService['vType'] ?? '')
+                            .toString()
+                            .toLowerCase() ==
+                        'truck')) {
+              notificationValue = baseValue * 1000;
             }
+
+            serviceDefaultValues[serviceId] = notificationValue;
           }
         }
       }
@@ -501,31 +529,57 @@ class ReportsController extends GetxController {
 
     serviceDefaultValues.clear();
 
+    final engineName = (selectedVehicleData?['engineName'] ??
+            selectedVehicleData?['engineNumber'] ??
+            '')
+        .toString()
+        .toUpperCase();
+    final vehType = (selectedVehicleData?['vehicleType'] ?? '')
+        .toString()
+        .toUpperCase();
+
     for (var service in selectedServiceData) {
-      final dValues = service['dValues'] as List<dynamic>?;
+      final dValues = (service['dValues'] as List<dynamic>?) ?? [];
 
-      if (dValues != null) {
-        for (var dValue in dValues) {
-          if (dValue['brand'].toString().toUpperCase() ==
-              selectedVehicleData?['engineName'].toString().toUpperCase()) {
-            String type = dValue['type'].toString().toLowerCase();
-            int value =
-                int.tryParse(dValue['value'].toString().split(',')[0]) ?? 0;
-            int notificationValue;
+      if (dValues.isNotEmpty) {
+        dynamic matchingDValue;
+        if (engineName.isNotEmpty) {
+          matchingDValue = dValues.firstWhere(
+            (dv) =>
+                dv is Map &&
+                dv['brand']?.toString().toUpperCase() == engineName,
+            orElse: () => null,
+          );
+        }
 
-            if (type == "reading") {
-              notificationValue = value * 1000;
-            } else if (type == "day") {
-              notificationValue = value;
-            } else if (type == "hours") {
-              notificationValue = value;
-            } else {
-              notificationValue = value;
-            }
+        if (matchingDValue == null) {
+          matchingDValue = dValues.firstWhere(
+            (dv) =>
+                dv is Map &&
+                (dv['brand']?.toString().toUpperCase() == 'ALL' ||
+                    dv['brand']?.toString().toUpperCase() == 'TRAILER' ||
+                    (vehType.isNotEmpty &&
+                        dv['brand']?.toString().toUpperCase() == vehType)),
+            orElse: () => dValues.first,
+          );
+        }
 
-            serviceDefaultValues[service['sId']] = notificationValue;
-            break;
+        if (matchingDValue != null && matchingDValue is Map) {
+          String rawType =
+              (matchingDValue['type'] ?? '').toString().toLowerCase();
+          int baseValue = int.tryParse(
+                  matchingDValue['value']?.toString().split(',')[0] ?? '0') ??
+              0;
+          int notificationValue = baseValue;
+
+          if (rawType == "reading" ||
+              (rawType.isEmpty &&
+                  (service['vType'] ?? '').toString().toLowerCase() ==
+                      'truck')) {
+            notificationValue = baseValue * 1000;
           }
+
+          serviceDefaultValues[service['sId']] = notificationValue;
         }
       }
     }
@@ -874,34 +928,77 @@ class ReportsController extends GetxController {
           orElse: () => {},
         );
 
-        String type = "reading";
-        int defaultValue = 0;
-        DateTime? nextNotificationDate;
+        final engineName = (selectedVehicleData?['engineName'] ??
+                selectedVehicleData?['engineNumber'] ??
+                '')
+            .toString()
+            .toUpperCase();
+        final vehType = (selectedVehicleData?['vehicleType'] ?? '')
+            .toString()
+            .toUpperCase();
+        final dValues = (service['dValues'] as List<dynamic>?) ?? [];
 
-        // Priority 1: Use vehicle-specific default if available
-        if (vehicleService.isNotEmpty &&
-            vehicleService['defaultNotificationValue'] != null) {
-          type = vehicleService['type']?.toString().toLowerCase() ?? "reading";
-          defaultValue = vehicleService['defaultNotificationValue'] is int
-              ? vehicleService['defaultNotificationValue']
-              : int.tryParse(
-                      vehicleService['defaultNotificationValue'].toString()) ??
-                  0;
-        }
-        // Priority 2: Fall back to metadata defaults
-        else {
-          final engineName =
-              selectedVehicleData?['engineName'].toString().toUpperCase();
-          final dValues = service['dValues'] as List<dynamic>;
-          final matchingDValue = dValues.firstWhere(
-            (dv) => dv['brand'].toString().toUpperCase() == engineName,
+        dynamic matchingDValue;
+        if (engineName.isNotEmpty) {
+          matchingDValue = dValues.firstWhere(
+            (dv) =>
+                dv is Map &&
+                dv['brand']?.toString().toUpperCase() == engineName,
             orElse: () => null,
           );
+        }
 
-          if (matchingDValue != null) {
-            type =
-                (matchingDValue['type'] ?? 'reading').toString().toLowerCase();
-            defaultValue = serviceDefaultValues[serviceId] ?? 0;
+        if (matchingDValue == null && dValues.isNotEmpty) {
+          matchingDValue = dValues.firstWhere(
+            (dv) =>
+                dv is Map &&
+                (dv['brand']?.toString().toUpperCase() == 'ALL' ||
+                    dv['brand']?.toString().toUpperCase() == 'TRAILER' ||
+                    (vehType.isNotEmpty &&
+                        dv['brand']?.toString().toUpperCase() == vehType)),
+            orElse: () => dValues.first,
+          );
+        }
+
+        String rawMetaType = (matchingDValue is Map
+                ? (matchingDValue['type'] ?? '')
+                : '')
+            .toString()
+            .toLowerCase();
+
+        String metaType = "reading";
+        if (rawMetaType == "day" ||
+            rawMetaType == "date" ||
+            rawMetaType == "time") {
+          metaType = "day";
+        } else if (rawMetaType == "hours" || rawMetaType == "hour") {
+          metaType = "hours";
+        } else if (rawMetaType == "reading" ||
+            rawMetaType == "miles" ||
+            rawMetaType == "mile") {
+          metaType = "reading";
+        } else if ((service['vType'] ?? '').toString().toLowerCase() ==
+            "trailer") {
+          metaType = "day";
+        } else {
+          metaType = "reading";
+        }
+
+        String type = metaType;
+        int defaultValue = serviceDefaultValues[serviceId] ?? 0;
+
+        if (vehicleService.isNotEmpty) {
+          String existingType =
+              (vehicleService['type'] ?? '').toString().toLowerCase();
+          type = (existingType.isNotEmpty && existingType != "reading")
+              ? existingType
+              : metaType;
+          if (vehicleService['defaultNotificationValue'] != null) {
+            defaultValue = vehicleService['defaultNotificationValue'] is int
+                ? vehicleService['defaultNotificationValue']
+                : int.tryParse(vehicleService['defaultNotificationValue']
+                        .toString()) ??
+                    defaultValue;
           }
         }
 
@@ -1278,12 +1375,47 @@ class ReportsController extends GetxController {
     }
   }
 
+  Map<String, dynamic>? _findMatchingService(
+      String? sId, String? sName, String targetVehType) {
+    if ((sId == null || sId.isEmpty) && (sName == null || sName.isEmpty)) {
+      return null;
+    }
+    // 1. Try vehicle-specific match
+    for (var serv in services) {
+      final servVehType = (serv['vType'] ?? '').toString().toLowerCase();
+      final matchesVeh = targetVehType.isEmpty || servVehType == targetVehType;
+      if (matchesVeh) {
+        if (sId != null && sId.isNotEmpty && serv['sId'] == sId) return serv;
+        if (sName != null &&
+            sName.isNotEmpty &&
+            (serv['sName'] ?? '').toString().toLowerCase() ==
+                sName.toLowerCase()) {
+          return serv;
+        }
+      }
+    }
+    // 2. Fallback to general match
+    for (var serv in services) {
+      if (sId != null && sId.isNotEmpty && serv['sId'] == sId) return serv;
+      if (sName != null &&
+          sName.isNotEmpty &&
+          (serv['sName'] ?? '').toString().toLowerCase() ==
+              sName.toLowerCase()) {
+        return serv;
+      }
+    }
+    return null;
+  }
+
   void handleEditRecord(Map<String, dynamic> record) {
     isEditing = true;
     editingRecordId = record['id'];
     originalRecordDate = DateTime.tryParse(record['date']?.toString() ?? '');
     selectedVehicle = record['vehicleId'];
     selectedVehicleData = record['vehicleDetails'];
+
+    final targetVehType =
+        (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
 
     // Initialize serviceDefaultValues from vehicle services first
     if (record['vehicleDetails'] != null &&
@@ -1294,25 +1426,36 @@ class ReportsController extends GetxController {
       serviceDefaultValues.clear();
       final recordServices = record['services'] as List<dynamic>? ?? [];
       for (var service in recordServices) {
-        String serviceId = (service['serviceId'] ?? '').toString();
+        String originalServiceId = (service['serviceId'] ?? '').toString();
+        String serviceName = (service['serviceName'] ?? '').toString();
+        final matched = _findMatchingService(
+            originalServiceId, serviceName, targetVehType);
+        String targetServiceId = matched != null
+            ? (matched['sId'] ?? originalServiceId).toString()
+            : originalServiceId;
+
         final vehicleService = vehicleServices.firstWhere(
-          (vs) => vs['serviceId'] == serviceId,
+          (vs) =>
+              vs['serviceId'] == targetServiceId ||
+              vs['serviceId'] == originalServiceId,
           orElse: () => {},
         );
 
         if (vehicleService.isNotEmpty &&
             vehicleService['defaultNotificationValue'] != null) {
-          serviceDefaultValues[serviceId] =
+          serviceDefaultValues[targetServiceId] =
               vehicleService['defaultNotificationValue'] is int
                   ? vehicleService['defaultNotificationValue']
                   : int.tryParse(vehicleService['defaultNotificationValue']
                           .toString()) ??
                       0;
         } else if (service['defaultNotificationValue'] != null) {
-          serviceDefaultValues[serviceId] =
+          serviceDefaultValues[targetServiceId] =
               service['defaultNotificationValue'] is int
                   ? service['defaultNotificationValue']
-                  : int.tryParse(service['defaultNotificationValue'].toString()) ?? 0;
+                  : int.tryParse(
+                          service['defaultNotificationValue'].toString()) ??
+                      0;
         }
       }
     }
@@ -1324,18 +1467,30 @@ class ReportsController extends GetxController {
 
     final recordServices = record['services'] as List<dynamic>? ?? [];
     for (var service in recordServices) {
-      String serviceId = (service['serviceId'] ?? '').toString();
-      if (serviceId.startsWith('custom_')) {
-        isOtherServiceSelected = true;
-        otherServiceController.text = (service['serviceName'] ?? '').toString();
-      } else if (serviceId.isNotEmpty) {
-        selectedServices.add(serviceId);
-      }
+      String originalServiceId = (service['serviceId'] ?? '').toString();
+      String serviceName = (service['serviceName'] ?? '').toString();
 
-      if (service['subServices'] != null) {
-        selectedSubServices[serviceId] = (service['subServices'] as List)
-            .map<String>((sub) => (sub is Map ? sub['name'] : sub).toString())
-            .toList();
+      if (originalServiceId.startsWith('custom_')) {
+        isOtherServiceSelected = true;
+        otherServiceController.text = serviceName;
+      } else if (originalServiceId.isNotEmpty || serviceName.isNotEmpty) {
+        final matched = _findMatchingService(
+            originalServiceId, serviceName, targetVehType);
+        String targetServiceId = matched != null
+            ? (matched['sId'] ?? originalServiceId).toString()
+            : originalServiceId;
+
+        if (targetServiceId.isNotEmpty) {
+          selectedServices.add(targetServiceId);
+
+          if (service['subServices'] != null) {
+            selectedSubServices[targetServiceId] =
+                (service['subServices'] as List)
+                    .map<String>(
+                        (sub) => (sub is Map ? sub['name'] : sub).toString())
+                    .toList();
+          }
+        }
       }
     }
 
@@ -1382,6 +1537,9 @@ class ReportsController extends GetxController {
     selectedVehicle = record['vehicleId'];
     selectedVehicleData = record['vehicleDetails'];
 
+    final targetVehType =
+        (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
+
     // Initialize serviceDefaultValues from vehicle services first
     if (record['vehicleDetails'] != null &&
         record['vehicleDetails']['services'] != null) {
@@ -1391,25 +1549,36 @@ class ReportsController extends GetxController {
       serviceDefaultValues.clear();
       final recordServices = record['services'] as List<dynamic>? ?? [];
       for (var service in recordServices) {
-        String serviceId = (service['serviceId'] ?? '').toString();
+        String originalServiceId = (service['serviceId'] ?? '').toString();
+        String serviceName = (service['serviceName'] ?? '').toString();
+        final matched = _findMatchingService(
+            originalServiceId, serviceName, targetVehType);
+        String targetServiceId = matched != null
+            ? (matched['sId'] ?? originalServiceId).toString()
+            : originalServiceId;
+
         final vehicleService = vehicleServices.firstWhere(
-          (vs) => vs['serviceId'] == serviceId,
+          (vs) =>
+              vs['serviceId'] == targetServiceId ||
+              vs['serviceId'] == originalServiceId,
           orElse: () => {},
         );
 
         if (vehicleService.isNotEmpty &&
             vehicleService['defaultNotificationValue'] != null) {
-          serviceDefaultValues[serviceId] =
+          serviceDefaultValues[targetServiceId] =
               vehicleService['defaultNotificationValue'] is int
                   ? vehicleService['defaultNotificationValue']
                   : int.tryParse(vehicleService['defaultNotificationValue']
                           .toString()) ??
                       0;
         } else if (service['defaultNotificationValue'] != null) {
-          serviceDefaultValues[serviceId] =
+          serviceDefaultValues[targetServiceId] =
               service['defaultNotificationValue'] is int
                   ? service['defaultNotificationValue']
-                  : int.tryParse(service['defaultNotificationValue'].toString()) ?? 0;
+                  : int.tryParse(
+                          service['defaultNotificationValue'].toString()) ??
+                      0;
         }
       }
     }
@@ -1421,18 +1590,30 @@ class ReportsController extends GetxController {
 
     final recordServices = record['services'] as List<dynamic>? ?? [];
     for (var service in recordServices) {
-      String serviceId = (service['serviceId'] ?? '').toString();
-      if (serviceId.startsWith('custom_')) {
-        isOtherServiceSelected = true;
-        otherServiceController.text = (service['serviceName'] ?? '').toString();
-      } else if (serviceId.isNotEmpty) {
-        selectedServices.add(serviceId);
-      }
+      String originalServiceId = (service['serviceId'] ?? '').toString();
+      String serviceName = (service['serviceName'] ?? '').toString();
 
-      if (service['subServices'] != null) {
-        selectedSubServices[serviceId] = (service['subServices'] as List)
-            .map<String>((sub) => (sub is Map ? sub['name'] : sub).toString())
-            .toList();
+      if (originalServiceId.startsWith('custom_')) {
+        isOtherServiceSelected = true;
+        otherServiceController.text = serviceName;
+      } else if (originalServiceId.isNotEmpty || serviceName.isNotEmpty) {
+        final matched = _findMatchingService(
+            originalServiceId, serviceName, targetVehType);
+        String targetServiceId = matched != null
+            ? (matched['sId'] ?? originalServiceId).toString()
+            : originalServiceId;
+
+        if (targetServiceId.isNotEmpty) {
+          selectedServices.add(targetServiceId);
+
+          if (service['subServices'] != null) {
+            selectedSubServices[targetServiceId] =
+                (service['subServices'] as List)
+                    .map<String>(
+                        (sub) => (sub is Map ? sub['name'] : sub).toString())
+                    .toList();
+          }
+        }
       }
     }
 

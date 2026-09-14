@@ -1534,10 +1534,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                           .toString()
                           .toLowerCase()
                           .contains(searchTerm);
-                  final matchesVehicleType =
-                      reController.selectedVehicleData == null ||
-                          service['vType'] ==
-                              reController.selectedVehicleData?['vehicleType'];
+                  final matchesVehicleType = reController.selectedVehicleData ==
+                          null ||
+                      (service['vType'] ?? '').toString().toLowerCase() ==
+                          (reController.selectedVehicleData?['vehicleType'] ??
+                                  '')
+                              .toString()
+                              .toLowerCase();
 
                   return matchesSearch && matchesVehicleType;
                 }).map((service) {
@@ -1970,8 +1973,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                           if (reController.isAdd == true) {
                             reController.handleSaveRecords(mounted, context);
                           } else {
-                            showToastMessage(
-                                "Alert!", "Sorry you don't have access", kPrimary);
+                            showToastMessage("Alert!",
+                                "Sorry you don't have access", kPrimary);
                           }
                         },
                   color: reController.isRecordSaving ? kGray : kSecondary,

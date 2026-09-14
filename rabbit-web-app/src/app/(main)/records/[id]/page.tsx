@@ -600,6 +600,48 @@ export default function RecordsDetailsPage({
     }
   };
 
+  const handlePrintImage = (imageUrl?: string) => {
+    if (!imageUrl) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Document</title>
+          <style>
+            @page {
+              size: auto;
+              margin: 10mm;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              background: #fff;
+            }
+            img {
+              max-width: 100%;
+              max-height: 98vh;
+              object-fit: contain;
+              display: block;
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${imageUrl}" onload="setTimeout(function(){ window.focus(); window.print(); window.close(); }, 300);" onerror="window.close();" />
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   // Update loading checks
   if (!user) {
     return (
@@ -804,6 +846,12 @@ export default function RecordsDetailsPage({
                   >
                     <FaDownload size={13} /> Download
                   </button>
+                  <button
+                    onClick={() => handlePrintImage(record.imageUrl)}
+                    className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold hover:bg-gray-200 transition border shadow-sm cursor-pointer"
+                  >
+                    <FaPrint size={13} /> Print
+                  </button>
                 </div>
               </div>
             ) : (
@@ -826,7 +874,13 @@ export default function RecordsDetailsPage({
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-center mt-3">
+                <div className="flex justify-center gap-3 mt-3">
+                  <button
+                    onClick={openImageModal}
+                    className="text-sm bg-red-500 text-white hover:bg-red-600 px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm transition cursor-pointer"
+                  >
+                    <FaExternalLinkAlt size={12} /> View Image
+                  </button>
                   <button
                     onClick={() =>
                       handleDownloadFile(
@@ -835,9 +889,15 @@ export default function RecordsDetailsPage({
                         false
                       )
                     }
-                    className="text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 border shadow-sm transition"
+                    className="text-sm bg-gray-800 text-white hover:bg-gray-900 px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm transition cursor-pointer"
                   >
-                    <FaDownload size={12} /> Download Image
+                    <FaDownload size={12} /> Download
+                  </button>
+                  <button
+                    onClick={() => handlePrintImage(record.imageUrl)}
+                    className="text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium flex items-center gap-2 border shadow-sm transition cursor-pointer"
+                  >
+                    <FaPrint size={12} /> Print
                   </button>
                 </div>
               </div>
@@ -850,7 +910,7 @@ export default function RecordsDetailsPage({
             onClick={handlePrint}
             className="w-full max-w-sm no-print mt-6 bg-red-500 text-white px-4 py-2 rounded-lg flex items-center justify-center content-center gap-2 shadow-md hover:bg-red-600 transition"
           >
-            <FaPrint /> Print
+            <FaPrint /> Print Report
           </button>
         </div>
       </div>
@@ -875,6 +935,13 @@ export default function RecordsDetailsPage({
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handlePrintImage(record.imageUrl)}
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
+                  title="Print PDF"
+                >
+                  <FaPrint size={11} /> Print
+                </button>
                 <button
                   onClick={() =>
                     handleDownloadFile(
@@ -919,42 +986,69 @@ export default function RecordsDetailsPage({
 
       {/* Image Modal */}
       {isImageModalOpen && record.imageUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="relative max-w-full max-h-full">
-            <Image
-              src={record.imageUrl}
-              alt="Service record zoomed"
-              width={1200}
-              height={900}
-              className="max-w-full max-h-[90vh]"
-              style={{ transform: `scale(${imageScale})` }}
-            />
-
-            <div className="absolute top-4 right-4 flex space-x-2">
-              <button
-                onClick={zoomIn}
-                className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
-                title="Zoom In"
-              >
-                <FaSearchPlus size={20} />
-              </button>
-              <button
-                onClick={zoomOut}
-                className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
-                title="Zoom Out"
-              >
-                <FaSearchMinus size={20} />
-              </button>
-              <button
-                onClick={closeImageModal}
-                className="bg-white p-2 rounded-full shadow-lg hover:bg-gray-100"
-                title="Close"
-              >
-                <FaTimes size={20} />
-              </button>
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4 no-print">
+          <div className="relative max-w-5xl w-full max-h-[92vh] flex flex-col items-center">
+            {/* Top Toolbar */}
+            <div className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-900/90 text-white rounded-t-xl mb-2 backdrop-blur-md">
+              <span className="text-sm font-medium text-gray-200 truncate">
+                {record.invoice ? `Invoice #${record.invoice}` : "Service Document"}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePrintImage(record.imageUrl)}
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
+                  title="Print Image"
+                >
+                  <FaPrint size={12} /> Print
+                </button>
+                <button
+                  onClick={() =>
+                    handleDownloadFile(
+                      record.imageUrl!,
+                      `invoice_${record.invoice || record.id}`,
+                      false
+                    )
+                  }
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700 transition cursor-pointer"
+                  title="Download Image"
+                >
+                  <FaDownload size={12} /> Download
+                </button>
+                <button
+                  onClick={zoomIn}
+                  className="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg text-xs transition cursor-pointer"
+                  title="Zoom In"
+                >
+                  <FaSearchPlus size={14} />
+                </button>
+                <button
+                  onClick={zoomOut}
+                  className="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-lg text-xs transition cursor-pointer"
+                  title="Zoom Out"
+                >
+                  <FaSearchMinus size={14} />
+                </button>
+                <button
+                  onClick={closeImageModal}
+                  className="bg-red-600/80 hover:bg-red-600 text-white p-2 rounded-lg transition ml-1 cursor-pointer"
+                  title="Close"
+                >
+                  <FaTimes size={15} />
+                </button>
+              </div>
             </div>
 
-            <div className="absolute bottom-4 left-0 right-0 text-center text-white">
+            {/* Image Viewer */}
+            <div className="w-full flex items-center justify-center overflow-auto max-h-[78vh] p-2 bg-black/40 rounded-b-xl">
+              <img
+                src={record.imageUrl}
+                alt="Service record zoomed"
+                className="max-w-full max-h-[75vh] object-contain rounded-lg transition-transform duration-150"
+                style={{ transform: `scale(${imageScale})` }}
+              />
+            </div>
+
+            <div className="mt-2 text-center text-gray-300 text-xs">
               <p>Zoom: {(imageScale * 100).toFixed(0)}%</p>
             </div>
           </div>

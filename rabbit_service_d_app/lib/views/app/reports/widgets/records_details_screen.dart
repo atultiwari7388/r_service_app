@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 import '../../../../utils/app_styles.dart';
 import '../../../../utils/constants.dart';
 import 'package:photo_view/photo_view.dart';
@@ -14,6 +15,79 @@ class RecordsDetailsScreen extends StatelessWidget {
 
   const RecordsDetailsScreen({Key? key, required this.record})
       : super(key: key);
+
+  Future<void> _printDocumentOrImage(
+      BuildContext context, String url, bool isPdf) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final response = await http.get(Uri.parse(url));
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        if (isPdf) {
+          await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => bytes,
+          );
+        } else {
+          final doc = pw.Document();
+          final image = pw.MemoryImage(bytes);
+          doc.addPage(
+            pw.Page(
+              pageFormat: PdfPageFormat.a4,
+              margin: const pw.EdgeInsets.all(10),
+              build: (pw.Context ctx) {
+                return pw.Center(
+                  child: pw.Image(image, fit: pw.BoxFit.contain),
+                );
+              },
+            ),
+          );
+          await Printing.layoutPdf(
+            onLayout: (PdfPageFormat format) async => doc.save(),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load file for printing')),
+        );
+      }
+    } catch (e) {
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      debugPrint('Error printing document: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error printing: $e')),
+      );
+    }
+  }
+
+  Future<void> _downloadDocumentOrImage(
+      BuildContext context, String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch download URL')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error downloading document: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error downloading: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,173 +132,277 @@ class RecordsDetailsScreen extends StatelessWidget {
                     '${record['vehicleDetails']['vehicleNumber']} (${record['vehicleDetails']['companyName']})',
                   ),
                   Divider(height: 24.h),
+                  buildInfoRow(Icons.category_outlined, vehicleType),
+                  Divider(height: 24.h),
+                  buildInfoRow(Icons.calendar_month_outlined, date),
+                  Divider(height: 24.h),
+                  buildInfoRow(Icons.storefront_outlined,
+                      record['workshopName'] ?? 'N/A'),
+                  Divider(height: 24.h),
                   buildInfoRow(
-                    Icons.store_outlined,
-                    record['workshopName'] ?? 'N/A',
+                    vehicleType == "Truck"
+                        ? Icons.speed
+                        : Icons.access_time_outlined,
+                    vehicleType == "Truck"
+                        ? '${record['miles'] ?? 'N/A'} Miles'
+                        : '${record['hours'] ?? 'N/A'} Hours',
                   ),
                   Divider(height: 24.h),
                   buildInfoRow(
-                    Icons.date_range,
-                    date,
+                    Icons.receipt_outlined,
+                    (record['invoice'] != null &&
+                            record['invoice'].toString().trim().isNotEmpty)
+                        ? record['invoice'].toString()
+                        : 'N/A',
                   ),
+                  if (record['invoiceAmount'] != null &&
+                      record['invoiceAmount'].toString().trim().isNotEmpty) ...[
+                    Divider(height: 24.h),
+                    buildInfoRow(
+                      Icons.attach_money_outlined,
+                      '\$${record['invoiceAmount']}',
+                    ),
+                  ],
                   Divider(height: 24.h),
-                  vehicleType == "Truck"
-                      ? buildInfoRow(
-                          Icons.tire_repair, record['miles'].toString())
-                      : buildInfoRow(
-                          Icons.tire_repair, record['hours'].toString()),
-                  SizedBox(height: 10.h),
                   Text(
-                    "Services:",
-                    style: appStyleUniverse(18, kDark, FontWeight.bold),
+                    'Services',
+                    style: appStyleUniverse(16, kDark, FontWeight.bold),
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 10.h),
+                  ...services.map((service) {
+                    final subServices = (service['subServices'] as List?)
+                            ?.map((s) => s['name'] as String)
+                            .toList() ??
+                        [];
 
-                  /// Sort services by name
-                  Builder(builder: (context) {
-                    final sortedServices = [...services];
-                    sortedServices.sort((a, b) => (a['serviceName'] ?? '')
-                        .toString()
-                        .toLowerCase()
-                        .compareTo(
-                            (b['serviceName'] ?? '').toString().toLowerCase()));
-
-                    return ListView.separated(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: sortedServices.length,
-                      separatorBuilder: (context, index) =>
-                          Divider(height: 24.h),
-                      itemBuilder: (context, index) {
-                        final service = sortedServices[index];
-                        final serviceName = service['serviceName'];
-                        final serviceType = service['type'];
-                        final rawNotificationValue =
-                            service['nextNotificationValue'];
-                        var nextNotificationValue;
-
-                        if (rawNotificationValue != null &&
-                            rawNotificationValue != 0 &&
-                            rawNotificationValue != "0") {
-                          if (serviceType == 'day') {
-                            try {
-                              final parsedDate = DateFormat('dd/MM/yyyy')
-                                  .parse(rawNotificationValue);
-                              nextNotificationValue =
-                                  DateFormat('MM-dd-yyyy').format(parsedDate);
-                            } catch (e) {
-                              nextNotificationValue = "Invalid Date";
-                            }
-                          } else {
-                            nextNotificationValue =
-                                rawNotificationValue.toString();
-                          }
-                        }
-
-                        final subServices = (service['subServices'] as List?)
-                                ?.map((s) => s['name'])
-                                .toList() ??
-                            [];
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.build_outlined,
-                                    size: 16, color: kSecondary),
-                                SizedBox(width: 8.w),
-                                Expanded(
-                                  child: Text(
-                                    "$serviceName ",
-                                    style: appStyleUniverse(
-                                        14, kDark, FontWeight.w500),
-                                  ),
-                                ),
-                                if (nextNotificationValue != null)
-                                  Container(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 6.w),
-                                    decoration: BoxDecoration(
-                                      color: kPrimary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12.r),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                            Icons.notifications_active_outlined,
-                                            size: 15,
-                                            color: kPrimary),
-                                        SizedBox(width: 2.w),
-                                        Text(
-                                          "$nextNotificationValue",
-                                          style: appStyleUniverse(
-                                              14, kDark, FontWeight.w500),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              service['serviceName'],
+                              style:
+                                  appStyleUniverse(14, kDark, FontWeight.w500),
                             ),
-                            if (subServices.isNotEmpty)
-                              Padding(
-                                padding: EdgeInsets.only(left: 28.w, top: 4.h),
-                                child: Text(
-                                  "Subservices: ${subServices.join(', ')}",
-                                  style: appStyleUniverse(
-                                      14, kDarkGray, FontWeight.w400),
+                          ),
+                          // Container(
+                          //   padding: EdgeInsets.symmetric(
+                          //     horizontal: 8.w,
+                          //     vertical: 4.h,
+                          //   ),
+                          //   decoration: BoxDecoration(
+                          //     color: kPrimary.withOpacity(0.1),
+                          //     borderRadius: BorderRadius.circular(4.r),
+                          //   ),
+                          //   child: Text(
+                          //     service['type'] ?? 'N/A',
+                          //     style: appStyleUniverse(
+                          //         12, kPrimary, FontWeight.w500),
+                          //   ),
+                          // ),
+                        ],
+                      ),
+                      subtitle: subServices.isNotEmpty
+                          ? Padding(
+                              padding: EdgeInsets.only(top: 4.h),
+                              child: Text(
+                                'Sub-services: ${subServices.join(', ')}',
+                                style: appStyleUniverse(
+                                  12,
+                                  kDark.withOpacity(0.6),
+                                  FontWeight.normal,
                                 ),
                               ),
-                          ],
-                        );
-                      },
+                            )
+                          : null,
+                      trailing: service['nextNotificationValue'] != null &&
+                              service['nextNotificationValue'] != 0
+                          ? Text(
+                              '${service['type'] == 'day' ? service['nextNotificationValue'] : '${service['nextNotificationValue']} ${service['type'] == 'reading' ? 'miles' : 'hours'}'}',
+                              style: appStyleUniverse(
+                                12,
+                                kDark.withOpacity(0.6),
+                                FontWeight.normal,
+                              ),
+                            )
+                          : null,
                     );
                   }),
-
                   if (record["description"].isNotEmpty) ...[
                     Divider(height: 24.h),
                     buildInfoRow(
                         Icons.description_outlined, record['description']),
                   ],
-
                   if (imageUrl != null && imageUrl.toString().isNotEmpty) ...[
                     Builder(builder: (context) {
-                      final bool isPdfDoc = imageUrl.toString().toLowerCase().contains('.pdf') ||
-                          record['fileType'] == 'pdf';
+                      final bool isPdfDoc =
+                          imageUrl.toString().toLowerCase().contains('.pdf') ||
+                              record['fileType'] == 'pdf';
 
                       if (isPdfDoc) {
-                        return InkWell(
-                          onTap: () async {
-                            final uri = Uri.parse(imageUrl.toString());
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri,
-                                  mode: LaunchMode.externalApplication);
-                            }
-                          },
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(
-                                vertical: 20.h, horizontal: 16.w),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(12.r),
-                              border: Border.all(color: Colors.red.shade200),
+                        return Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.picture_as_pdf,
+                                  color: Colors.red, size: 48),
+                              SizedBox(height: 8.h),
+                              Text(
+                                "Invoice / Service Document (PDF)",
+                                style:
+                                    appStyle(15, Colors.red, FontWeight.bold),
+                              ),
+                              SizedBox(height: 12.h),
+                              Wrap(
+                                spacing: 8.w,
+                                runSpacing: 8.h,
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final uri =
+                                          Uri.parse(imageUrl.toString());
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(uri,
+                                            mode:
+                                                LaunchMode.externalApplication);
+                                      }
+                                    },
+                                    icon:
+                                        const Icon(Icons.open_in_new, size: 16),
+                                    label: const Text("View / Open"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 14.w, vertical: 8.h),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(8.r),
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _downloadDocumentOrImage(
+                                        context, imageUrl.toString()),
+                                    icon: const Icon(Icons.download, size: 16),
+                                    label: const Text("Download"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.grey.shade800,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 14.w, vertical: 8.h),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(8.r),
+                                      ),
+                                    ),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: () => _printDocumentOrImage(
+                                        context, imageUrl.toString(), true),
+                                    icon: const Icon(Icons.print, size: 16),
+                                    label: const Text("Print"),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red.shade700,
+                                      side: BorderSide(
+                                          color: Colors.red.shade300),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 14.w, vertical: 8.h),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(8.r),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      void openImageViewer() {
+                        showDialog(
+                          context: context,
+                          builder: (dialogCtx) => Dialog(
+                            insetPadding: EdgeInsets.symmetric(
+                                horizontal: 10.w, vertical: 20.h),
+                            backgroundColor: Colors.black87,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.r),
                             ),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.picture_as_pdf,
-                                    color: Colors.red, size: 50),
-                                SizedBox(height: 8.h),
-                                Text(
-                                  "Invoice / Service Document (PDF)",
-                                  style: appStyle(
-                                      15, Colors.red, FontWeight.bold),
+                                // Top Action Bar
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 8.h),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(16.r),
+                                      topRight: Radius.circular(16.r),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        "Document Image",
+                                        style: appStyle(
+                                            14, Colors.white, FontWeight.bold),
+                                      ),
+                                      const Spacer(),
+                                      IconButton(
+                                        icon: const Icon(Icons.print,
+                                            color: Colors.white, size: 20),
+                                        tooltip: "Print",
+                                        onPressed: () => _printDocumentOrImage(
+                                            context,
+                                            imageUrl.toString(),
+                                            false),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.download,
+                                            color: Colors.white, size: 20),
+                                        tooltip: "Download",
+                                        onPressed: () =>
+                                            _downloadDocumentOrImage(
+                                                context, imageUrl.toString()),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close,
+                                            color: Colors.white, size: 20),
+                                        tooltip: "Close",
+                                        onPressed: () =>
+                                            Navigator.pop(dialogCtx),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                SizedBox(height: 4.h),
-                                Text(
-                                  "Tap to View / Open PDF",
-                                  style: appStyle(12, Colors.grey.shade700,
-                                      FontWeight.normal),
+                                // Zoomable Image
+                                SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.9,
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.65,
+                                  child: PhotoView(
+                                    imageProvider: NetworkImage(imageUrl),
+                                    minScale: PhotoViewComputedScale.contained,
+                                    maxScale:
+                                        PhotoViewComputedScale.covered * 2,
+                                    backgroundDecoration: const BoxDecoration(
+                                      color: Colors.transparent,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -232,52 +410,93 @@ class RecordsDetailsScreen extends StatelessWidget {
                         );
                       }
 
-                      return GestureDetector(
-                        onTap: () {
-                          // Show zoomable image dialog
-                          showDialog(
-                            context: context,
-                            builder: (context) => Dialog(
-                              child: Container(
-                                width: MediaQuery.of(context).size.width * 0.9,
-                                height:
-                                    MediaQuery.of(context).size.height * 0.7,
-                                child: PhotoView(
-                                  imageProvider: NetworkImage(imageUrl),
-                                  minScale: PhotoViewComputedScale.contained,
-                                  maxScale: PhotoViewComputedScale.covered * 2,
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GestureDetector(
+                            onTap: openImageViewer,
+                            child: Container(
+                              width: double.infinity,
+                              height: 200.h,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(color: Colors.grey.shade300),
+                                image: DecorationImage(
+                                  image: NetworkImage(imageUrl),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              child: Align(
+                                alignment: Alignment.bottomRight,
+                                child: Container(
+                                  margin: EdgeInsets.all(8.w),
+                                  padding: EdgeInsets.all(6.w),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(20.r),
+                                  ),
+                                  child: Icon(
+                                    Icons.zoom_in,
+                                    color: Colors.white,
+                                    size: 20.sp,
+                                  ),
                                 ),
                               ),
                             ),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          height: 200.h,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12.r),
-                            image: DecorationImage(
-                              image: NetworkImage(imageUrl),
-                              fit: BoxFit.cover,
-                            ),
                           ),
-                          child: Align(
-                            alignment: Alignment.bottomRight,
-                            child: Container(
-                              margin: EdgeInsets.all(8.w),
-                              padding: EdgeInsets.all(6.w),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(20.r),
+                          SizedBox(height: 10.h),
+                          Wrap(
+                            spacing: 8.w,
+                            runSpacing: 8.h,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: openImageViewer,
+                                icon: const Icon(Icons.fullscreen, size: 16),
+                                label: const Text("View Fullscreen"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: kPrimary,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                ),
                               ),
-                              child: Icon(
-                                Icons.zoom_in,
-                                color: Colors.white,
-                                size: 20.sp,
+                              ElevatedButton.icon(
+                                onPressed: () => _downloadDocumentOrImage(
+                                    context, imageUrl.toString()),
+                                icon: const Icon(Icons.download, size: 16),
+                                label: const Text("Download"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade800,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                ),
                               ),
-                            ),
+                              OutlinedButton.icon(
+                                onPressed: () => _printDocumentOrImage(
+                                    context, imageUrl.toString(), false),
+                                icon: const Icon(Icons.print, size: 16),
+                                label: const Text("Print"),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: kPrimary,
+                                  side: BorderSide(color: kPrimary),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 8.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                        ],
                       );
                     }),
                     SizedBox(height: 16.h),
