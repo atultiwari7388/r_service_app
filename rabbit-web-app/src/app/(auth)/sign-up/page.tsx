@@ -1,24 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@nextui-org/react";
 import {
   createUserWithEmailAndPassword,
-  deleteUser,
   sendEmailVerification,
+  EmailAuthProvider,
+  linkWithCredential,
+  onAuthStateChanged,
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   setDoc,
   where,
 } from "firebase/firestore";
-import { toast } from "react-toastify";
 import {
   FaUser,
   FaBuilding,
@@ -31,6 +33,8 @@ import {
   FaMapMarkerAlt,
   FaCity,
   FaGlobeAmericas,
+  FaInfoCircle,
+  FaCheckCircle,
 } from "react-icons/fa";
 
 const Signup: React.FC = () => {
@@ -53,7 +57,40 @@ const Signup: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showEmailPopup, setShowEmailPopup] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isGuestUpgrade, setIsGuestUpgrade] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        let phone = currentUser.phoneNumber || "";
+
+        // Fallback to Firestore Users/{uid} if not on auth object
+        if (!phone) {
+          try {
+            const userDoc = await getDoc(doc(db, "Users", currentUser.uid));
+            if (userDoc.exists()) {
+              phone = userDoc.data()?.phoneNumber || "";
+            }
+          } catch (err) {
+            console.warn("Could not fetch user document for phone number:", err);
+          }
+        }
+
+        if (phone || currentUser.isAnonymous) {
+          setIsGuestUpgrade(true);
+          if (phone) {
+            setFormValues((prev) => ({
+              ...prev,
+              phoneNumber: phone,
+            }));
+          }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const countryOptions = [
     "USA",
@@ -113,52 +150,70 @@ const Signup: React.FC = () => {
     setLoading(true);
 
     try {
-      // Firebase Auth: Create a new user with email and password
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formValues.email.trim(),
-        formValues.password
-      );
-      const user = userCredential.user;
-
-      if (!user) {
-        throw new Error("User creation failed - no user returned");
-      }
-
-      // Check if email exists in collections
+      let user = auth.currentUser;
       const emailToCheck = formValues.email.trim().toLowerCase();
-      let shouldDeleteUser = false;
 
-      // Check Users collection
+      // Check Users collection for email collision
       const usersQuery = query(
         collection(db, "Users"),
         where("email", "==", emailToCheck)
       );
       const usersSnapshot = await getDocs(usersQuery);
       if (!usersSnapshot.empty) {
-        shouldDeleteUser = true;
-        toast.error("This email is already registered. Try to login.");
+        const existingDoc = usersSnapshot.docs[0];
+        if (!user || existingDoc.id !== user.uid) {
+          setError("This email is already registered. Try to login.");
+          setLoading(false);
+          return;
+        }
       }
 
-      // Check Mechanics collection
+      // Check Mechanics collection for email collision
       const mechanicsQuery = query(
         collection(db, "Mechanics"),
         where("email", "==", emailToCheck)
       );
       const mechanicsSnapshot = await getDocs(mechanicsQuery);
       if (!mechanicsSnapshot.empty) {
-        shouldDeleteUser = true;
-        toast.error("This email is registered with a mechanic account.");
-      }
-
-      // If email exists in any collection, delete the auth user we just created
-      if (shouldDeleteUser) {
-        await deleteUser(user);
+        setError("This email is registered with a mechanic account.");
         setLoading(false);
         return;
       }
 
-      // Store additional user details in Firestore
+      // If user is currently logged in via Guest Phone Auth, link credentials
+      if (user && (user.isAnonymous || user.phoneNumber)) {
+        try {
+          const credential = EmailAuthProvider.credential(
+            formValues.email.trim(),
+            formValues.password
+          );
+          const userCredential = await linkWithCredential(user, credential);
+          user = userCredential.user;
+        } catch (linkErr: unknown) {
+          console.warn("Account link error, falling back to new account:", linkErr);
+          // If already linked or error, create fresh user
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            formValues.email.trim(),
+            formValues.password
+          );
+          user = userCredential.user;
+        }
+      } else {
+        // Create fresh user with email and password
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formValues.email.trim(),
+          formValues.password
+        );
+        user = userCredential.user;
+      }
+
+      if (!user) {
+        throw new Error("User creation failed - no user returned");
+      }
+
+      // Store / update user details in Firestore
       const uid = user.uid;
       const userData = {
         uid: uid,
@@ -167,6 +222,7 @@ const Signup: React.FC = () => {
         email2: "",
         active: true,
         isAnonymous: false,
+        isGuest: false,
         isProfileComplete: true,
         userName: formValues.name.trim(),
         phoneNumber: formValues.phoneNumber.trim(),
@@ -215,8 +271,8 @@ const Signup: React.FC = () => {
         lastLogin: new Date(),
       };
 
-      // Save user data in Firestore
-      await setDoc(doc(db, "Users", uid), userData);
+      // Save user data in Firestore (merge in case guest data existed)
+      await setDoc(doc(db, "Users", uid), userData, { merge: true });
 
       // Save initial company in myCompanies subcollection
       if (formValues.companyName.trim()) {
@@ -253,6 +309,9 @@ const Signup: React.FC = () => {
         switch (err.code) {
           case "auth/email-already-in-use":
             errorMessage = "This email is already in use by another account.";
+            break;
+          case "auth/credential-already-in-use":
+            errorMessage = "An account already exists with this email.";
             break;
           case "auth/invalid-email":
             errorMessage = "The email address is not valid.";
@@ -294,12 +353,23 @@ const Signup: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Create Your Account
+            {isGuestUpgrade ? "Upgrade to Fleet Owner" : "Create Your Account"}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Sign up as a Fleet Owner to manage vehicles, dispatch, and maintenance
+            {isGuestUpgrade
+              ? "Complete your profile to unlock full fleet management, live dispatch, and vehicle tracking"
+              : "Sign up as a Fleet Owner to manage vehicles, dispatch, and maintenance"}
           </p>
         </div>
+
+        {isGuestUpgrade && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl flex items-start gap-3 shadow-sm">
+            <FaInfoCircle className="text-amber-500 text-lg mt-0.5 flex-shrink-0" />
+            <div className="text-xs sm:text-sm text-amber-900">
+              <span className="font-bold">Guest Account Detected:</span> We will link your verified phone number (<strong>{formValues.phoneNumber}</strong>) so all your previous jobs and breakdown history are preserved.
+            </div>
+          </div>
+        )}
 
         <div className="bg-white py-8 px-6 shadow-xl rounded-2xl sm:px-10 border border-gray-100">
           <form onSubmit={handleSignup} className="space-y-8">
@@ -366,9 +436,19 @@ const Signup: React.FC = () => {
 
                 {/* Phone Number */}
                 <div>
-                  <label htmlFor="phoneNumber" className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                    Phone Number *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label
+                      htmlFor="phoneNumber"
+                      className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                    >
+                      Phone Number *
+                    </label>
+                    {isGuestUpgrade && formValues.phoneNumber && (
+                      <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                        <FaCheckCircle className="text-xs" /> Verified (Linked)
+                      </span>
+                    )}
+                  </div>
                   <div className="relative rounded-lg shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                       <FaPhone className="text-sm" />

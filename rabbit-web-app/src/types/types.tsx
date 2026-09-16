@@ -60,6 +60,7 @@ export interface ProfileValues {
   isEdit: boolean;
   isView: boolean;
   isOwner: boolean;
+  isGuest?: boolean;
 }
 
 /** Services */
@@ -169,4 +170,6 @@ export interface HistoryItem {
   userPhoneNumber: string;
   userPhoto: string;
   vehicleNumber: string;
+  engineName?: string;
+  isGuest?: boolean;
 }

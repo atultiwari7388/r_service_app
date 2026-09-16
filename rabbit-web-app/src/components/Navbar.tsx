@@ -31,6 +31,7 @@ interface UserData {
   wallet: number;
   role: string; // Add role field
   createdBy?: string; // Add createdBy field for SubOwner
+  isGuest?: boolean;
 }
 
 interface Notification {
@@ -170,8 +171,32 @@ export default function NavBar() {
               />
             </Link>
 
-            {/* Desktop Navigation - Logged In and Email Verified */}
-            {isLoggedIn && isEmailVerified && (
+            {/* Desktop Navigation - Logged In Guest User */}
+            {isLoggedIn && (userData?.role === "Guest" || userData?.isGuest === true) && (
+              <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
+                <Link
+                  href="/find-mechanic"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
+                >
+                  Find Mechanic
+                </Link>
+                <Link
+                  href="/my-jobs"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
+                >
+                  My Jobs
+                </Link>
+                <Link
+                  href="/history"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
+                >
+                  History
+                </Link>
+              </div>
+            )}
+
+            {/* Desktop Navigation - Logged In and Email Verified (Full Owners/Drivers) */}
+            {isLoggedIn && isEmailVerified && userData?.role !== "Guest" && !userData?.isGuest && (
               <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
                 {/* Maintenance */}
                 <div className="relative group">
@@ -305,7 +330,25 @@ export default function NavBar() {
           <div className="hidden md:flex items-center space-x-6">
             {isLoggedIn ? (
               <>
-                {isEmailVerified ? (
+                {userData?.role === "Guest" || userData?.isGuest === true ? (
+                  <div className="flex items-center space-x-4">
+                    <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium border flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Guest: {userData?.phoneNumber || user?.phoneNumber || "User"}
+                    </span>
+                    <Link href="/sign-up">
+                      <Button className="bg-[#58BB87] text-white px-4 py-1.5 rounded-md hover:bg-[#4ca877] text-xs font-semibold shadow transition-colors">
+                        Upgrade to Owner
+                      </Button>
+                    </Link>
+                    <Button
+                      className="bg-[#F96176] text-white px-3 py-1.5 rounded-md hover:bg-[#e05065] text-xs font-medium transition-colors"
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </Button>
+                  </div>
+                ) : isEmailVerified ? (
                   <div className="flex items-center space-x-6">
                     <Link href="/account/notifications" className="relative">
                       <IoMdNotificationsOutline className="text-2xl text-gray-600 hover:text-[#F96176] transition-colors" />
@@ -357,6 +400,7 @@ export default function NavBar() {
               </>
             ) : (
               <div className="flex items-center space-x-6">
+                <NavLink href="/find-mechanic">Find Mechanic</NavLink>
                 <NavLink href="/about-us">About Us</NavLink>
                 <NavLink href="/contact-us">Contact Us</NavLink>
                 <Link href="/login">
@@ -390,7 +434,39 @@ export default function NavBar() {
           <div className="pt-2 pb-3 space-y-1 px-4">
             {isLoggedIn ? (
               <>
-                {isEmailVerified ? (
+                {userData?.role === "Guest" || userData?.isGuest === true ? (
+                  <>
+                    <div className="pl-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Guest Dashboard ({userData?.phoneNumber || user?.phoneNumber || "User"})
+                    </div>
+                    <MobileNavLink href="/find-mechanic" onClick={toggleMenu}>
+                      🛠️ Find Mechanic
+                    </MobileNavLink>
+                    <MobileNavLink href="/my-jobs" onClick={toggleMenu}>
+                      📋 My Jobs
+                    </MobileNavLink>
+                    <MobileNavLink href="/history" onClick={toggleMenu}>
+                      📜 History
+                    </MobileNavLink>
+
+                    <div className="pt-3 border-t mt-2 flex flex-col gap-2">
+                      <Link href="/sign-up" onClick={toggleMenu}>
+                        <Button className="w-full bg-[#58BB87] text-white py-2 rounded-md font-medium hover:bg-[#4ca877]">
+                          Upgrade to Full Owner
+                        </Button>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          toggleMenu();
+                        }}
+                        className="block w-full text-center px-3 py-2 rounded-md text-base font-medium text-[#F96176] bg-gray-50 hover:bg-gray-100"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                ) : isEmailVerified ? (
                   <>
                     {/* Maintenance */}
                     <div className="pl-3 py-2 text-base font-medium text-gray-900 font-semibold">
@@ -508,11 +584,8 @@ export default function NavBar() {
                   </>
                 ) : (
                   <>
-                    {/* <div className="px-3 py-2 text-sm text-orange-600">
-                      Please verify your email
-                    </div> */}
-
                     <div className="flex items-center space-x-6">
+                      <NavLink href="/find-mechanic">Find Mechanic</NavLink>
                       <NavLink href="/about-us">About Us</NavLink>
                       <NavLink href="/contact-us">Contact Us</NavLink>
                       <Link href="/login">
@@ -528,6 +601,9 @@ export default function NavBar() {
               <>
                 <MobileNavLink href="/" onClick={toggleMenu}>
                   Home
+                </MobileNavLink>
+                <MobileNavLink href="/find-mechanic" onClick={toggleMenu}>
+                  Find Mechanic
                 </MobileNavLink>
                 <MobileNavLink href="/about-us" onClick={toggleMenu}>
                   About Us
