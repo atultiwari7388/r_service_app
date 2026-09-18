@@ -209,7 +209,9 @@ export default function NotificationDetailsComponent({
 
             {/* Services Section */}
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-gray-800">Services:</h2>
+              <h2 className="text-xl font-semibold text-gray-800">
+                Next Due :
+              </h2>
               <div className="space-y-4">
                 {[...notification.notifications]
                   .sort((a, b) => a.serviceName.localeCompare(b.serviceName))

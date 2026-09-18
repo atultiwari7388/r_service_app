@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContexts";
 import { db } from "@/lib/firebase";
+import toast from "react-hot-toast";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
 import {
@@ -414,17 +415,22 @@ export default function ManageCheckScreen() {
         setCurrentCheckNumber(startSeriesNumber);
       }
 
-      GlobalToastSuccess("Check series saved successfully!");
+      toast.success("Check series saved successfully!");
 
       // Reset form and close
+      const createdStartNumber = startSeriesNumber;
       setStartSeriesNumber("");
       setEndSeriesNumber("");
       setShowAddSeries(false);
 
       // Refresh data
       await fetchCheckSeries();
+
+      // Automatically open Write Check form with newly created series
+      setCheckNumber(createdStartNumber);
+      setShowWriteCheck(true);
     } catch (error) {
-      GlobalToastError("Error saving check series");
+      toast.error("Error saving check series");
       console.error(error);
     } finally {
       setAddingSeries(false);
@@ -535,14 +541,13 @@ export default function ManageCheckScreen() {
   };
 
   const getNextAvailableCheckNumber = async (): Promise<string | null> => {
-    if (!currentCheckNumber) return null;
-
     try {
       const seriesQuery = query(
         collection(db, "CheckSeries"),
         where("userId", "==", effectiveUserId) // Use effectiveUserId
       );
       const seriesSnapshot = await getDocs(seriesQuery);
+      if (seriesSnapshot.empty) return null;
 
       let allCheckNumbers: string[] = [];
 
@@ -557,6 +562,8 @@ export default function ManageCheckScreen() {
         );
         allCheckNumbers = [...allCheckNumbers, ...checkNumbers];
       }
+
+      if (allCheckNumbers.length === 0) return null;
 
       allCheckNumbers.sort((a, b) => {
         const prefixA = a.replace(/\d/g, "");
@@ -638,7 +645,7 @@ export default function ManageCheckScreen() {
 
   const handleWriteCheck = async () => {
     if (isAnonymous && !isProfileComplete) {
-      GlobalToastError("Please create an account to write checks.");
+      toast.error("Please create an account to write checks.");
       return;
     }
 
@@ -662,9 +669,10 @@ export default function ManageCheckScreen() {
       setCheckNumber(nextCheckNumber);
       setShowWriteCheck(true);
     } else {
-      GlobalToastError(
+      toast.error(
         "No available check numbers. Please add a check series first."
       );
+      setShowAddSeries(true);
     }
   };
 
