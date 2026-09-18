@@ -117,7 +117,7 @@ class NotificationDetailsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Services:",
+                            "Next Due:",
                             style: appStyleUniverse(18, kDark, FontWeight.bold),
                           ),
                           SizedBox(height: 8.h),

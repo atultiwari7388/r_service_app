@@ -165,7 +165,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                   ],
                   Divider(height: 24.h),
                   Text(
-                    'Services',
+                    'Next Due',
                     style: appStyleUniverse(16, kDark, FontWeight.bold),
                   ),
                   SizedBox(height: 10.h),
@@ -186,28 +186,13 @@ class RecordsDetailsScreen extends StatelessWidget {
                                   appStyleUniverse(14, kDark, FontWeight.w500),
                             ),
                           ),
-                          // Container(
-                          //   padding: EdgeInsets.symmetric(
-                          //     horizontal: 8.w,
-                          //     vertical: 4.h,
-                          //   ),
-                          //   decoration: BoxDecoration(
-                          //     color: kPrimary.withOpacity(0.1),
-                          //     borderRadius: BorderRadius.circular(4.r),
-                          //   ),
-                          //   child: Text(
-                          //     service['type'] ?? 'N/A',
-                          //     style: appStyleUniverse(
-                          //         12, kPrimary, FontWeight.w500),
-                          //   ),
-                          // ),
                         ],
                       ),
                       subtitle: subServices.isNotEmpty
                           ? Padding(
                               padding: EdgeInsets.only(top: 4.h),
                               child: Text(
-                                'Sub-services: ${subServices.join(', ')}',
+                                '${subServices.join(', ')}',
                                 style: appStyleUniverse(
                                   12,
                                   kDark.withOpacity(0.6),
