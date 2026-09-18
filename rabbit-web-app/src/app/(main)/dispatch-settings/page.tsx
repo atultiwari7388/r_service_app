@@ -175,16 +175,10 @@ const getFormFields = (tabId: TabId): FormField[] => {
         },
         { name: "email", label: "Email", type: "email", required: true },
         {
-          name: "cellPhone",
-          label: "Cell Phone",
-          type: "tel",
-          required: true,
-        },
-        {
           name: "telephone",
           label: "Telephone",
           type: "tel",
-          required: true,
+          required: false,
         },
       ];
     case "bookingAuthority":
@@ -226,7 +220,6 @@ const getExtraColumns = (tabId: TabId) => {
         { key: "dotNumber", label: "DOT Number" },
         { key: "primaryContact", label: "Primary Contact" },
         { key: "email", label: "Email" },
-        { key: "cellPhone", label: "Cell Phone" },
         { key: "telephone", label: "Telephone" },
       ];
     case "customers":
