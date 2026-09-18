@@ -167,6 +167,79 @@ interface RedirectProps {
   path: string;
 }
 
+interface ServiceDisplayItem {
+  serviceId?: string;
+  serviceName?: string;
+  sName?: string;
+  title?: string;
+  subServices?: Array<{
+    name?: string;
+    sName?: string | string[];
+    id?: string;
+    subserviceName?: string;
+    title?: string;
+  } | string>;
+  subservices?: Array<{
+    name?: string;
+    sName?: string | string[];
+    id?: string;
+    subserviceName?: string;
+    title?: string;
+  } | string>;
+  subServiceList?: Array<{
+    name?: string;
+    sName?: string | string[];
+    id?: string;
+    subserviceName?: string;
+    title?: string;
+  } | string>;
+}
+
+const formatServiceWithSubservices = (
+  service?: ServiceDisplayItem | null
+): string => {
+  if (!service) return "";
+  const name = (
+    service.serviceName ||
+    service.sName ||
+    service.title ||
+    ""
+  ).trim();
+  if (!name) return "";
+
+  const rawSubs =
+    service.subServices || service.subservices || service.subServiceList;
+  if (!rawSubs || !Array.isArray(rawSubs) || rawSubs.length === 0) {
+    return name;
+  }
+
+  const subs: string[] = [];
+  rawSubs.forEach((item) => {
+    if (typeof item === "string") {
+      if (item.trim()) subs.push(item.trim());
+    } else if (item && typeof item === "object") {
+      if (Array.isArray(item.sName)) {
+        item.sName.forEach((n) => {
+          if (typeof n === "string" && n.trim()) subs.push(n.trim());
+        });
+      } else if (typeof item.sName === "string" && item.sName.trim()) {
+        subs.push(item.sName.trim());
+      } else if (typeof item.name === "string" && item.name.trim()) {
+        subs.push(item.name.trim());
+      } else if (
+        typeof item.subserviceName === "string" &&
+        item.subserviceName.trim()
+      ) {
+        subs.push(item.subserviceName.trim());
+      } else if (typeof item.title === "string" && item.title.trim()) {
+        subs.push(item.title.trim());
+      }
+    }
+  });
+
+  return subs.length > 0 ? `${name} (${subs.join(", ")})` : name;
+};
+
 export default function RecordsPage() {
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
@@ -986,16 +1059,16 @@ export default function RecordsPage() {
 
       const matchesService =
         !filterService ||
-        (record.services || []).some((s: { serviceName?: string }) =>
-          (s?.serviceName || "")
+        (record.services || []).some((s) =>
+          formatServiceWithSubservices(s)
             .toLowerCase()
             .includes(filterService.toLowerCase())
         );
 
       const matchesOtherService =
         !filterOtherService ||
-        (record.services || []).some((s: { serviceName?: string }) =>
-          (s?.serviceName || "")
+        (record.services || []).some((s) =>
+          formatServiceWithSubservices(s)
             .toLowerCase()
             .includes(filterOtherService.toLowerCase())
         );
@@ -1315,7 +1388,10 @@ export default function RecordsPage() {
         ...(isTrailer
           ? { hours: record.hours || 0 }
           : { miles: record.miles || 0 }),
-        services: record.services?.map((s) => s.serviceName).join(", ") || "",
+        services:
+          record.services
+            ?.map((s) => formatServiceWithSubservices(s))
+            .join(", ") || "",
         subServices:
           record.services
             ?.flatMap((s) => (s.subServices || []).map((sub) => sub.name))
@@ -1373,7 +1449,10 @@ export default function RecordsPage() {
           date: record.date || "",
           miles: isTrailer ? "" : record.miles || 0,
           hours: isTrailer ? record.hours || 0 : "",
-          services: record.services?.map((s) => s.serviceName).join(", ") || "",
+          services:
+            record.services
+              ?.map((s) => formatServiceWithSubservices(s))
+              .join(", ") || "",
           subServices:
             record.services
               ?.flatMap((s) => (s.subServices || []).map((sub) => sub.name))
@@ -3705,7 +3784,7 @@ export default function RecordsPage() {
                                   b.serviceName || ""
                                 )
                               )
-                              .map((service) => service.serviceName)
+                              .map((service) => formatServiceWithSubservices(service))
                               .join(", ") || ""
                           : ""}
                       </TableCell>

@@ -561,7 +561,9 @@ export default function RecordsDetailsPage({
         // fallback
       }
     }
-    return record.invoice ? `invoice_${record.invoice}.pdf` : "service_document.pdf";
+    return record.invoice
+      ? `invoice_${record.invoice}.pdf`
+      : "service_document.pdf";
   };
 
   const handleDownloadFile = async (
@@ -750,7 +752,7 @@ export default function RecordsDetailsPage({
         </div>
 
         <h3 className="text-2xl font-semibold text-gray-800 mt-8 m-8 border-b pb-2">
-          Services
+          Next Due
         </h3>
         <div className="mt-3 border rounded-lg p-3 bg-gray-50 m-8">
           {record.services
@@ -776,9 +778,9 @@ export default function RecordsDetailsPage({
                 {/* Subservices section */}
                 {service.subServices && service.subServices.length > 0 && (
                   <div className="mt-2 ml-4">
-                    <div className="text-sm font-medium text-gray-500 mb-1">
+                    {/* <div className="text-sm font-medium text-gray-500 mb-1">
                       Subservices:
-                    </div>
+                    </div> */}
                     <div className="flex flex-wrap gap-2">
                       {service.subServices.map((subService) => (
                         <div
@@ -991,7 +993,9 @@ export default function RecordsDetailsPage({
             {/* Top Toolbar */}
             <div className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-900/90 text-white rounded-t-xl mb-2 backdrop-blur-md">
               <span className="text-sm font-medium text-gray-200 truncate">
-                {record.invoice ? `Invoice #${record.invoice}` : "Service Document"}
+                {record.invoice
+                  ? `Invoice #${record.invoice}`
+                  : "Service Document"}
               </span>
               <div className="flex items-center gap-2">
                 <button
