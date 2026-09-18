@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   collection,
   doc,
@@ -35,6 +35,7 @@ import {
   FaFilePdf,
   FaFileImage,
   FaExternalLinkAlt,
+  FaArrowLeft,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { ProfileValues } from "@/types/types";
@@ -79,6 +80,7 @@ interface FileWithId {
 
 export default function MyVehicleDetailsScreen() {
   const params = useParams();
+  const router = useRouter();
   const vehicleId = params?.vehicleId as string;
 
   const [filesToUpload, setFilesToUpload] = useState<FileWithId[]>([]);
@@ -1285,11 +1287,20 @@ export default function MyVehicleDetailsScreen() {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-bold">Vehicle Details</h1>
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3.5 py-2 rounded-lg transition-colors cursor-pointer shadow-2xs"
+            title="Back to My Vehicles"
+          >
+            <FaArrowLeft className="text-xs" /> Back to Vehicles
+          </button>
+          <h1 className="text-3xl font-bold">Vehicle Details</h1>
+        </div>
         <button
           onClick={handlePrint}
-          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#F96176]"
+          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#e14a60] transition cursor-pointer"
         >
           <FaPrint /> Print
         </button>

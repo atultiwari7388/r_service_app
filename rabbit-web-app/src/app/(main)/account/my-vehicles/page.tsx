@@ -42,6 +42,9 @@ interface RedirectProps {
 
 export default function MyVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [highlightedVehicleId, setHighlightedVehicleId] = useState<
+    string | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth() || { user: null };
   const [showPopup, setShowPopup] = useState(false);
@@ -57,6 +60,35 @@ export default function MyVehiclesPage() {
       return numA.localeCompare(numB);
     });
   }, [vehicles]);
+
+  // Restore scroll position & highlight vehicle when returning from details or edit page
+  useEffect(() => {
+    if (loading || sortedVehicles.length === 0) return;
+    const targetId =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("lastViewedVehicleId")
+        : null;
+    if (!targetId) return;
+
+    const timer = setTimeout(() => {
+      const rowElement = document.getElementById(`vehicle-row-${targetId}`);
+      if (rowElement) {
+        rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedVehicleId(targetId);
+
+        const highlightTimer = setTimeout(() => {
+          setHighlightedVehicleId(null);
+          sessionStorage.removeItem("lastViewedVehicleId");
+        }, 2500);
+
+        return () => clearTimeout(highlightTimer);
+      } else {
+        sessionStorage.removeItem("lastViewedVehicleId");
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [sortedVehicles, loading]);
 
   useEffect(() => {
     if (!user) {
@@ -300,7 +332,19 @@ export default function MyVehiclesPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedVehicles.map((vehicle) => (
-                <tr key={vehicle.id} className="hover:bg-gray-50">
+                <tr
+                  key={vehicle.id}
+                  id={`vehicle-row-${vehicle.id}`}
+                  className={`transition-all duration-700 ${
+                    highlightedVehicleId === vehicle.id
+                      ? "bg-amber-100/75 ring-2 ring-amber-400 shadow-sm"
+                      : "hover:bg-gray-50"
+                  }`}
+                  style={{
+                    transition:
+                      "background-color 0.8s ease, box-shadow 0.8s ease",
+                  }}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex-shrink-0 h-10 w-10">
                       {vehicle.vehicleType}
@@ -353,6 +397,14 @@ export default function MyVehiclesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                     <Link
                       href={`/account/my-vehicles/${vehicle.id}`}
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          sessionStorage.setItem(
+                            "lastViewedVehicleId",
+                            vehicle.id
+                          );
+                        }
+                      }}
                       className="text-[#F96176] hover:text-[#eb929e] font-medium"
                     >
                       View
@@ -360,6 +412,14 @@ export default function MyVehiclesPage() {
                     {(role === "Owner" || role === "SubOwner") && (
                       <Link
                         href={`/account/my-vehicles/edit/${vehicle.id}`}
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            sessionStorage.setItem(
+                              "lastViewedVehicleId",
+                              vehicle.id
+                            );
+                          }
+                        }}
                         className="text-blue-600 hover:text-blue-800 font-medium"
                       >
                         Edit

@@ -244,6 +244,9 @@ export default function RecordsPage() {
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
+  const [highlightedRecordId, setHighlightedRecordId] = useState<string | null>(
+    null
+  );
   const { user } = useAuth() || { user: null };
   const [effectiveUserId, setEffectiveUserId] = useState("");
   const [userRole, setUserRole] = useState("");
@@ -1274,6 +1277,35 @@ export default function RecordsPage() {
     updateServiceDefaultValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVehicle, selectedServices]);
+
+  // Restore scroll position & highlight record when returning from details page
+  useEffect(() => {
+    if (records.length === 0) return;
+    const targetId =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("lastViewedRecordId")
+        : null;
+    if (!targetId) return;
+
+    const timer = setTimeout(() => {
+      const rowElement = document.getElementById(`record-row-${targetId}`);
+      if (rowElement) {
+        rowElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedRecordId(targetId);
+
+        const highlightTimer = setTimeout(() => {
+          setHighlightedRecordId(null);
+          sessionStorage.removeItem("lastViewedRecordId");
+        }, 2500);
+
+        return () => clearTimeout(highlightTimer);
+      } else {
+        sessionStorage.removeItem("lastViewedRecordId");
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [records]);
 
   //print record lists
   const handlePrint = async () => {
@@ -3742,7 +3774,21 @@ export default function RecordsPage() {
                 </TableHead>
                 <TableBody>
                   {filteredRecords.map((record) => (
-                    <TableRow key={record.id}>
+                    <TableRow
+                      key={record.id}
+                      id={`record-row-${record.id}`}
+                      className="transition-all duration-700"
+                      sx={{
+                        backgroundColor:
+                          highlightedRecordId === record.id
+                            ? "rgba(254, 240, 138, 0.55) !important"
+                            : undefined,
+                        transition: "background-color 0.8s ease",
+                        ...(highlightedRecordId === record.id && {
+                          boxShadow: "0 0 0 2px #f59e0b inset",
+                        }),
+                      }}
+                    >
                       <TableCell className="table-cell whitespace-nowrap min-w-[110px]">
                         {formatDateSafe(record.date)}
                       </TableCell>
@@ -3839,7 +3885,18 @@ export default function RecordsPage() {
                             <FaCopy className="text-[11px]" /> Duplicate
                           </button>
 
-                          <Link href={`/records/${record.id}`} passHref>
+                          <Link
+                            href={`/records/${record.id}`}
+                            passHref
+                            onClick={() => {
+                              if (typeof window !== "undefined") {
+                                sessionStorage.setItem(
+                                  "lastViewedRecordId",
+                                  record.id
+                                );
+                              }
+                            }}
+                          >
                             <button className="bg-[#F96176] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#e14a60] transition cursor-pointer">
                               View
                             </button>
