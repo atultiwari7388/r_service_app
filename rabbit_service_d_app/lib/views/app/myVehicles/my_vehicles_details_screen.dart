@@ -1934,7 +1934,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     final hoursReading = vehicleData['hoursReading'] ?? '';
 
     final StringBuffer buffer = StringBuffer();
-    buffer.writeln('🚚 Vehicle Details Overview | Trenoops App 🔧\n');
+    buffer.writeln('🚚 Vehicle Details Overview | TrenoOps App 🔧\n');
     buffer.writeln('📋 Vehicle Information:');
     buffer.writeln('-----------------------------------');
     if (vehicleNumber.toString().isNotEmpty) {
@@ -1963,9 +1963,18 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     }
     buffer.writeln('-----------------------------------\n');
 
-    buffer.writeln('📱 Download & Explore Trenoops App:');
+    buffer.writeln('🌟 Why TrenoOps?');
+    buffer.writeln('• Track vehicle maintenance');
+    buffer.writeln('• Service reminders');
+    buffer.writeln('• Document management');
+    buffer.writeln('• Digital records');
+    buffer.writeln('• And much more!\n');
+
+    buffer.writeln('📱 Download & Explore TrenoOps App:');
     buffer.writeln(
         '• Android: https://play.google.com/store/apps/details?id=com.trenoops.app');
+    buffer
+        .writeln('• iOS: https://apps.apple.com/in/app/trenoops/id6765658994');
     buffer.writeln('• Website: https://www.trenoops.com/');
 
     // Share the enhanced message
