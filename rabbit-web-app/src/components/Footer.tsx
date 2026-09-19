@@ -7,12 +7,12 @@ import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import {
   FaMapMarkerAlt,
-  FaPhoneAlt,
   FaEnvelope,
   FaTwitter,
   FaFacebookF,
   FaYoutube,
   FaLinkedinIn,
+  FaWhatsapp,
 } from "react-icons/fa";
 
 const Footer: React.FC = () => {
@@ -21,6 +21,7 @@ const Footer: React.FC = () => {
     contactMail?: string;
     contactNumber?: string;
     address?: string;
+    whatsApp?: string;
   }>({});
 
   const fetchContactUs = async () => {
@@ -32,8 +33,9 @@ const Footer: React.FC = () => {
       if (contactUsSnapshot.exists()) {
         const contactMail = contactUsSnapshot.data()?.mail || "";
         const contactNumber = contactUsSnapshot.data()?.phone || "";
+        const whatsApp = contactUsSnapshot.data()?.whatsApp || "";
         const address = contactUsSnapshot.data()?.address || "";
-        setContactInfo({ contactMail, contactNumber, address });
+        setContactInfo({ contactMail, contactNumber, address, whatsApp });
       }
     } catch (error) {
       // GlobalToastError(error);
@@ -51,6 +53,11 @@ const Footer: React.FC = () => {
     return <LoadingIndicator />;
   }
 
+  const whatsappPhone = (contactInfo.whatsApp || "+15593886914").replace(
+    /[^0-9]/g,
+    ""
+  );
+
   return (
     <footer className="bg-[#F5F5F5] text-black pt-10">
       <div className="container mx-auto px-6 md:px-12">
@@ -60,18 +67,21 @@ const Footer: React.FC = () => {
             <h4 className="text-black text-lg font-semibold mb-4">Address</h4>
             <p className="mb-2 flex items-center">
               <FaMapMarkerAlt className="mr-2 text-[#F96176]" />
-              California, 93711, USA
+              {contactInfo.address || "California, 93711, USA"}
             </p>
-            {contactInfo.contactNumber &&
-              +(
-                <p className="mb-2 flex items-center">
-                  <FaPhoneAlt className="mr-2 text-[#F96176]" />
-                  {contactInfo.contactNumber}
-                </p>
-              )}
+            {/** Whatsapp number */}
+            <a
+              href={`https://wa.me/${whatsappPhone}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-2 flex items-center hover:text-[#F96176] transition-colors cursor-pointer"
+            >
+              <FaWhatsapp className="mr-2 text-[#F96176] text-lg" />
+              {contactInfo.whatsApp || "+15593886914"}
+            </a>
             <p className="mb-2 flex items-center">
               <FaEnvelope className="mr-2 text-[#F96176]" />
-              info@trenoops.com
+              {contactInfo.contactMail || "team@trenoops.com"}
             </p>
           </div>
           {/* Quick links Section */}
@@ -176,7 +186,7 @@ const Footer: React.FC = () => {
               </div>
               <div className="flex max-w-xs gap-2 mt-5 items-center">
                 <Link
-                  href="https://play.google.com/store/apps/details?id=com.rabbit_u_d_app.rabbit_services_app"
+                  href="https://play.google.com/store/apps/details?id=com.trenoops.app"
                   target="_blank"
                 >
                   <img
