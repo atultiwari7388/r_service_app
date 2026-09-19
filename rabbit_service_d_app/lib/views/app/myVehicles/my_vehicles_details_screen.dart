@@ -453,7 +453,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                     ? uploadedDocuments.map<Widget>((doc) {
                                         final String? docUrl = doc['imageUrl'];
                                         final bool isPdfDoc = docUrl != null &&
-                                            (docUrl.toLowerCase().contains('.pdf') ||
+                                            (docUrl
+                                                    .toLowerCase()
+                                                    .contains('.pdf') ||
                                                 doc['fileType'] == 'pdf');
 
                                         return Card(
@@ -487,13 +489,14 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                       height: 120,
                                                       width: double.infinity,
                                                       decoration: BoxDecoration(
-                                                        color: Colors.red.shade50,
+                                                        color:
+                                                            Colors.red.shade50,
                                                         borderRadius:
-                                                            BorderRadius.circular(
-                                                                10),
+                                                            BorderRadius
+                                                                .circular(10),
                                                         border: Border.all(
-                                                            color: Colors.red
-                                                                .shade200),
+                                                            color: Colors
+                                                                .red.shade200),
                                                       ),
                                                       child: Column(
                                                         mainAxisAlignment:
@@ -528,8 +531,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                           const Text(
                                                             'Tap to View / Open PDF',
                                                             style: TextStyle(
-                                                                color: Colors
-                                                                    .grey,
+                                                                color:
+                                                                    Colors.grey,
                                                                 fontSize: 12),
                                                           ),
                                                         ],
@@ -615,7 +618,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                         IconButton(
                                                           onPressed: () async {
                                                             if (isPdfDoc &&
-                                                                docUrl != null) {
+                                                                docUrl !=
+                                                                    null) {
                                                               final uri =
                                                                   Uri.parse(
                                                                       docUrl);
@@ -1920,43 +1924,52 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
   }
 
   void _shareVehicleDetails(Map<String, dynamic> vehicleData) {
-    // Build the details string with enhanced message and URLs
-    final String details = '''
-  🚗 Hey! Check out my vehicle details managed with Rabbit Mechanic! 🔧
+    final vehicleNumber = vehicleData['vehicleNumber'] ?? '';
+    final year = vehicleData['year'] ?? '';
+    final licensePlate = vehicleData['licensePlate'] ?? '';
+    final companyName = vehicleData['companyName'] ?? '';
+    final dot = vehicleData['dot'] ?? '';
+    final iccms = vehicleData['iccms'] ?? '';
+    final vin = vehicleData['vin'] ?? '';
+    final hoursReading = vehicleData['hoursReading'] ?? '';
 
-  📱 Get the Rabbit Mechanic App:
-  • Android: [Play Store URL]
-  • iOS: [App Store URL]
-  • Web: www.rabbitmechanic.com
+    final StringBuffer buffer = StringBuffer();
+    buffer.writeln('🚚 Vehicle Details Overview | Trenoops App 🔧\n');
+    buffer.writeln('📋 Vehicle Information:');
+    buffer.writeln('-----------------------------------');
+    if (vehicleNumber.toString().isNotEmpty) {
+      buffer.writeln('• Vehicle Number: $vehicleNumber');
+    }
+    if (year.toString().isNotEmpty) {
+      buffer.writeln('• Year: $year');
+    }
+    if (licensePlate.toString().isNotEmpty) {
+      buffer.writeln('• License Plate: $licensePlate');
+    }
+    if (companyName.toString().isNotEmpty) {
+      buffer.writeln('• Company Name: $companyName');
+    }
+    if (vin.toString().isNotEmpty) {
+      buffer.writeln('• VIN: $vin');
+    }
+    if (dot.toString().isNotEmpty) {
+      buffer.writeln('• DOT: $dot');
+    }
+    if (iccms.toString().isNotEmpty) {
+      buffer.writeln('• ICCMS: $iccms');
+    }
+    if (hoursReading.toString().isNotEmpty) {
+      buffer.writeln('• Hours Reading: $hoursReading');
+    }
+    buffer.writeln('-----------------------------------\n');
 
-  Vehicle Details:
-  -----------------------------------
-  Vehicle Number: ${vehicleData['vehicleNumber']}
-  Year: ${vehicleData['year']}
-  Current Miles: ${vehicleData['currentMiles']}
-  License Plate: ${vehicleData['licensePlate']}
-  Company Name: ${vehicleData['companyName']}
-  ${vehicleData['dot'].isNotEmpty ? 'DOT: ${vehicleData['dot']}' : ''}
-  ${vehicleData['iccms'].isNotEmpty ? 'ICCMS: ${vehicleData['iccms']}' : ''}
-  ${vehicleData['vin'].isNotEmpty ? 'VIN: ${vehicleData['vin']}' : ''}
-  ${vehicleData['oilChangeDate'].isNotEmpty ? 'Oil Change Date: ${vehicleData['oilChangeDate']}' : ''}
-  ${vehicleData['hoursReading'].isNotEmpty ? 'Hours Reading: ${vehicleData['hoursReading']}' : ''}
-  
-  -----------------------------------
-
-  🌟 Why Rabbit Mechanic?
-  • Track vehicle maintenance
-  • Service reminders
-  • Document management
-  • Digital records
-  • And much more!
-
-  Join thousands of smart vehicle owners using Rabbit Mechanic! 🚀
-  #RabbitMechanic #VehicleManagement
-  ''';
+    buffer.writeln('📱 Download & Explore Trenoops App:');
+    buffer.writeln(
+        '• Android: https://play.google.com/store/apps/details?id=com.trenoops.app');
+    buffer.writeln('• Website: https://www.trenoops.com/');
 
     // Share the enhanced message
-    Share.share(details);
+    Share.share(buffer.toString().trim());
   }
 
 //generate vehicle details pdf
