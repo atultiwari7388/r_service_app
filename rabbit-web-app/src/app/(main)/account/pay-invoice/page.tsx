@@ -193,15 +193,15 @@ function PayInvoiceContent() {
           const data = docSnap.data();
           const rawAmount = parseFloat(String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")) || 0;
           
-          // Only process records that represent an invoice with an amount > 0
-          if (rawAmount > 0 || (data.invoice && String(data.invoice).trim() !== "")) {
+          // Only process records that represent a valid invoice with an amount > 0
+          if (rawAmount > 0) {
             const paid = typeof data.paidAmount === "number" ? data.paidAmount : 0;
             const balance = typeof data.balanceAmount === "number" ? data.balanceAmount : Math.max(0, rawAmount - paid);
             
             let status: "Unpaid" | "Partially Paid" | "Paid" = "Unpaid";
             if (data.paymentStatus) {
               status = data.paymentStatus;
-            } else if (paid >= rawAmount && rawAmount > 0) {
+            } else if (paid >= rawAmount) {
               status = "Paid";
             } else if (paid > 0) {
               status = "Partially Paid";
@@ -544,11 +544,11 @@ function PayInvoiceContent() {
           paymentId: paymentId,
           paymentMethod: paymentMethod,
           amountPaid: payAmount,
-          transactionId: transactionId.trim() || undefined,
-          description: paymentDescription.trim() || undefined,
+          ...(transactionId.trim() ? { transactionId: transactionId.trim() } : {}),
+          ...(paymentDescription.trim() ? { description: paymentDescription.trim() } : {}),
           paidAt: nowIso,
           paidBy: user?.uid || effectiveUserId,
-          paidByName: currentUserName,
+          paidByName: currentUserName || "User",
         };
 
         const existingHistory = Array.isArray(rec.paymentHistory) ? rec.paymentHistory : [];
@@ -564,16 +564,16 @@ function PayInvoiceContent() {
 
         // A. Owner Record
         const ownerRecordRef = doc(db, "Users", effectiveUserId, "DataServices", rec.id);
-        batch.update(ownerRecordRef, updatePayload);
+        batch.set(ownerRecordRef, updatePayload, { merge: true });
 
         // B. Global Record
         const globalRecordRef = doc(db, "DataServicesRecords", rec.id);
-        batch.update(globalRecordRef, updatePayload);
+        batch.set(globalRecordRef, updatePayload, { merge: true });
 
         // C. Team Members Records
         for (const memberId of memberIds) {
           const memberRecordRef = doc(db, "Users", memberId, "DataServices", rec.id);
-          batch.update(memberRecordRef, updatePayload);
+          batch.set(memberRecordRef, updatePayload, { merge: true });
         }
 
         invoiceLedgerDetails.push({
@@ -594,12 +594,12 @@ function PayInvoiceContent() {
         vendorName: selectedVendor || "Vendor",
         totalAmount: totalPaymentAmount,
         paymentMethod: paymentMethod,
-        transactionId: transactionId.trim() || undefined,
-        description: paymentDescription.trim() || undefined,
+        ...(transactionId.trim() ? { transactionId: transactionId.trim() } : {}),
+        ...(paymentDescription.trim() ? { description: paymentDescription.trim() } : {}),
         invoices: invoiceLedgerDetails,
         createdAt: serverTimestamp(),
         createdBy: user?.uid || effectiveUserId,
-        createdByName: currentUserName,
+        createdByName: currentUserName || "User",
       };
 
       batch.set(ledgerDocRef, ledgerData);
