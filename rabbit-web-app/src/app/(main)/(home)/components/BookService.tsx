@@ -696,6 +696,20 @@ const BookingSection: React.FC = () => {
         ownerId: effectiveUserId || "",
         createdAt: serverTimestamp(),
       });
+
+      // Send email notification to owner via Resend
+      try {
+        await fetch("/api/send-demo-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(trimmedData),
+        });
+      } catch (mailErr) {
+        console.warn("Could not dispatch demo notification email:", mailErr);
+      }
+
       toast.success("Demo request sent successfully!");
       setShowDemoModal(false);
       setDemoForm({
