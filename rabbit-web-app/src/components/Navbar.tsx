@@ -172,158 +172,168 @@ export default function NavBar() {
             </Link>
 
             {/* Desktop Navigation - Logged In Guest User */}
-            {isLoggedIn && (userData?.role === "Guest" || userData?.isGuest === true) && (
-              <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
-                <Link
-                  href="/find-mechanic"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
-                >
-                  Find Mechanic
-                </Link>
-                <Link
-                  href="/my-jobs"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
-                >
-                  My Jobs
-                </Link>
-                <Link
-                  href="/history"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
-                >
-                  History
-                </Link>
-              </div>
-            )}
+            {isLoggedIn &&
+              (userData?.role === "Guest" || userData?.isGuest === true) && (
+                <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
+                  <Link
+                    href="/find-mechanic"
+                    className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
+                  >
+                    Find Mechanic
+                  </Link>
+                  <Link
+                    href="/my-jobs"
+                    className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
+                  >
+                    My Jobs
+                  </Link>
+                  <Link
+                    href="/history"
+                    className="inline-flex items-center px-1 pt-1 text-sm font-semibold text-gray-700 hover:text-[#F96176] transition-colors"
+                  >
+                    History
+                  </Link>
+                </div>
+              )}
 
             {/* Desktop Navigation - Logged In and Email Verified (Full Owners/Drivers) */}
-            {isLoggedIn && isEmailVerified && userData?.role !== "Guest" && !userData?.isGuest && (
-              <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
-                {/* Maintenance */}
-                <div className="relative group">
-                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
-                    Maintenance
-                  </span>
-                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
-                    <Link
-                      href="/records"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Records
-                    </Link>
-                    <Link
-                      href="/account/my-vehicles"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Vehicles
-                    </Link>
-                    <Link
-                      href="/account/manage-trip"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      My Trip
-                    </Link>
-                    <Link
-                      href="/account/trip-wise-vehicle"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Tripwise Vehicle
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Mechanic */}
-                <div className="relative group">
-                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
-                    Mechanic
-                  </span>
-                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
-                    <Link
-                      href="/find-mechanic"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Find Mechanic
-                    </Link>
-                    <Link
-                      href="/my-jobs"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      My Jobs
-                    </Link>
-                  </div>
-                </div>
-
-                {(userData?.role === "Owner" ||
-                  userData?.role === "SubOwner") && (
+            {isLoggedIn &&
+              isEmailVerified &&
+              userData?.role !== "Guest" &&
+              !userData?.isGuest && (
+                <div className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:space-x-8">
+                  {/* Maintenance */}
                   <div className="relative group">
                     <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
-                      Dispatch
+                      Maintenance
                     </span>
                     <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
                       <Link
-                        href="/create-new-load"
+                        href="/records"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
                       >
-                        Create Load
+                        Records
                       </Link>
                       <Link
-                        href="/truck-dispatch"
+                        href="/account/my-vehicles"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
                       >
-                        View Load
+                        Vehicles
+                      </Link>
+                      <Link
+                        href="/account/manage-trip"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        My Trip
+                      </Link>
+                      <Link
+                        href="/account/trip-wise-vehicle"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Tripwise Vehicle
                       </Link>
                     </div>
                   </div>
-                )}
 
-                {/* Financial */}
-                <div className="relative group">
-                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
-                    Financial
-                  </span>
-                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
-                    <Link
-                      href="/account/manage-check"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Write Check
-                    </Link>
-                    <Link
-                      href=""
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Payments
-                    </Link>
+                  {/* Mechanic */}
+                  <div className="relative group">
+                    <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                      Mechanic
+                    </span>
+                    <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                      <Link
+                        href="/find-mechanic"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Find Mechanic
+                      </Link>
+                      <Link
+                        href="/my-jobs"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        My Jobs
+                      </Link>
+                    </div>
+                  </div>
+
+                  {(userData?.role === "Owner" ||
+                    userData?.role === "SubOwner") && (
+                    <div className="relative group">
+                      <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                        Dispatch
+                      </span>
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                        <Link
+                          href="/create-new-load"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                        >
+                          Create Load
+                        </Link>
+                        <Link
+                          href="/truck-dispatch"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                        >
+                          View Load
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Financial */}
+                  <div className="relative group">
+                    <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                      Financial
+                    </span>
+                    <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                      <Link
+                        href="/account/manage-check"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Write Check
+                      </Link>
+                      {/* <Link
+                        href="/account/manage-check"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Payments
+                      </Link> */}
+                      <Link
+                        href="/account/pay-invoice"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Pay Invoice
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Settings */}
+                  <div className="relative group">
+                    <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
+                      Settings
+                    </span>
+                    <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
+                      <Link
+                        href="/account/manage-team"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Manage Team
+                      </Link>
+                      <Link
+                        href="/my-companies"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        My Companies
+                      </Link>
+                      <Link
+                        href="/dispatch-settings"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
+                      >
+                        Dispatch
+                      </Link>
+                    </div>
                   </div>
                 </div>
-
-                {/* Settings */}
-                <div className="relative group">
-                  <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-600 hover:text-[#F96176] hover:border-[#F96176] transition-colors cursor-pointer">
-                    Settings
-                  </span>
-                  <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border">
-                    <Link
-                      href="/account/manage-team"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Manage Team
-                    </Link>
-                    <Link
-                      href="/my-companies"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      My Companies
-                    </Link>
-                    <Link
-                      href="/dispatch-settings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#F96176]"
-                    >
-                      Dispatch
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* Right side - Desktop */}
@@ -334,7 +344,8 @@ export default function NavBar() {
                   <div className="flex items-center space-x-4">
                     <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium border flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      Guest: {userData?.phoneNumber || user?.phoneNumber || "User"}
+                      Guest:{" "}
+                      {userData?.phoneNumber || user?.phoneNumber || "User"}
                     </span>
                     <Link href="/sign-up">
                       <Button className="bg-[#58BB87] text-white px-4 py-1.5 rounded-md hover:bg-[#4ca877] text-xs font-semibold shadow transition-colors">
@@ -437,7 +448,8 @@ export default function NavBar() {
                 {userData?.role === "Guest" || userData?.isGuest === true ? (
                   <>
                     <div className="pl-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Guest Dashboard ({userData?.phoneNumber || user?.phoneNumber || "User"})
+                      Guest Dashboard (
+                      {userData?.phoneNumber || user?.phoneNumber || "User"})
                     </div>
                     <MobileNavLink href="/find-mechanic" onClick={toggleMenu}>
                       🛠️ Find Mechanic
@@ -516,10 +528,10 @@ export default function NavBar() {
                       ↳ Write Check
                     </MobileNavLink>
                     <MobileNavLink
-                      href="/account/payments"
+                      href="/account/pay-invoice"
                       onClick={toggleMenu}
                     >
-                      ↳ Payments
+                      ↳ Pay Invoice
                     </MobileNavLink>
 
                     {/* Settings */}
@@ -532,10 +544,7 @@ export default function NavBar() {
                     >
                       ↳ Manage Team
                     </MobileNavLink>
-                    <MobileNavLink
-                      href="/my-companies"
-                      onClick={toggleMenu}
-                    >
+                    <MobileNavLink href="/my-companies" onClick={toggleMenu}>
                       ↳ My Companies
                     </MobileNavLink>
 

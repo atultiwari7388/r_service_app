@@ -155,6 +155,20 @@ interface ServiceRecord {
   invoice?: string;
   description?: string;
   invoiceAmount: string;
+  paidAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: "Unpaid" | "Partially Paid" | "Paid";
+  paymentHistory?: Array<{
+    paymentId: string;
+    paymentMethod: string;
+    amountPaid: number;
+    transactionId?: string;
+    description?: string;
+    checkNumber?: string;
+    checkId?: string;
+    paidAt: string;
+    paidBy: string;
+  }>;
   imageUrl: string;
 }
 
@@ -1187,6 +1201,26 @@ export default function RecordsPage() {
           invoice: data.invoice || "",
           description: data.description || "",
           invoiceAmount: data.invoiceAmount ? String(data.invoiceAmount) : "",
+          paidAmount: typeof data.paidAmount === "number" ? data.paidAmount : 0,
+          balanceAmount:
+            typeof data.balanceAmount === "number"
+              ? data.balanceAmount
+              : Math.max(
+                  0,
+                  (parseFloat(String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")) || 0) -
+                    (typeof data.paidAmount === "number" ? data.paidAmount : 0)
+                ),
+          paymentStatus:
+            data.paymentStatus ||
+            ((typeof data.paidAmount === "number" && data.paidAmount > 0)
+              ? (data.paidAmount >=
+                (parseFloat(String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")) || 0)
+                  ? "Paid"
+                  : "Partially Paid")
+              : "Unpaid"),
+          paymentHistory: Array.isArray(data.paymentHistory)
+            ? data.paymentHistory
+            : [],
           imageUrl: data.imageUrl || "",
           vehicle: vehDetails.companyName || vehDetails.vehicleNumber || "",
         } as RecordData;
@@ -3758,6 +3792,7 @@ export default function RecordsPage() {
                     <TableCell>Vehicle</TableCell>
                     <TableCell>Company</TableCell>
                     <TableCell>Inv. Amount</TableCell>
+                    <TableCell>Payment</TableCell>
                     {records.some((record) => record.miles > 0) && (
                       <TableCell>Miles/Hours</TableCell>
                     )}
@@ -3810,6 +3845,37 @@ export default function RecordsPage() {
                         Number(record.invoiceAmount) !== 0
                           ? `$${record.invoiceAmount}`
                           : ""}
+                      </TableCell>
+
+                      <TableCell className="table-cell whitespace-nowrap">
+                        {record.invoiceAmount &&
+                        Number(record.invoiceAmount) > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            {record.paymentStatus === "Paid" ? (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
+                                Paid
+                              </span>
+                            ) : record.paymentStatus === "Partially Paid" ? (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
+                                Partial (${record.paidAmount || 0})
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
+                                Unpaid
+                              </span>
+                            )}
+                            {record.paymentStatus !== "Paid" && (
+                              <Link
+                                href={`/account/pay-invoice?recordId=${record.id}`}
+                                className="text-[11px] font-bold text-[#F96176] hover:underline"
+                              >
+                                Pay
+                              </Link>
+                            )}
+                          </div>
+                        ) : (
+                          ""
+                        )}
                       </TableCell>
 
                       <TableCell className="table-cell">

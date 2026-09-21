@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
 import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
 import { LoadingIndicator } from "@/utils/LoadinIndicator";
+import { useSearchParams } from "next/navigation";
 import {
   addDoc,
   collection,
@@ -90,7 +91,7 @@ interface CheckSeries {
   createdAt: Date;
 }
 
-export default function ManageCheckScreen() {
+function ManageCheckScreenContent() {
   const [role, setUserRole] = useState<string>("");
   const [isCheque, setIsCheque] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -128,6 +129,16 @@ export default function ManageCheckScreen() {
   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
   const [addingSeries, setAddingSeries] = useState<boolean>(false);
   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
+  const searchParams = useSearchParams();
+  const [attachedInvoices, setAttachedInvoices] = useState<
+    Array<{
+      recordId: string;
+      invoiceNumber: string;
+      amount: number;
+      vehicleNumber?: string;
+      description?: string;
+    }>
+  >([]);
 
   const topSectionRef = React.useRef<HTMLDivElement>(null);
 
@@ -208,6 +219,77 @@ export default function ManageCheckScreen() {
       fetchCheckSeries();
     }
   }, [effectiveUserId, isCheque]);
+
+  // Handle prefilled query params when redirected from Pay Invoice screen
+  useEffect(() => {
+    if (!effectiveUserId) return;
+    const action = searchParams.get("action");
+    if (action === "writeCheck") {
+      const payee = searchParams.get("payee") || "";
+      const rawInvoices = searchParams.get("invoices");
+      const paramTotal = parseFloat(searchParams.get("totalAmount") || "0") || 0;
+
+      let parsedInvoices: Array<{
+        recordId: string;
+        invoiceNumber: string;
+        amount: number;
+        vehicleNumber?: string;
+        description?: string;
+      }> = [];
+
+      if (rawInvoices) {
+        try {
+          parsedInvoices = JSON.parse(decodeURIComponent(rawInvoices));
+        } catch (e) {
+          console.error("Error parsing prefilled invoices:", e);
+        }
+      }
+
+      if (parsedInvoices.length > 0) {
+        setAttachedInvoices(parsedInvoices);
+        setSelectedType("Vendor");
+        setSelectedUserName(payee || "Vendor");
+        const matching = allMembers.find(
+          (m) => m.name.toLowerCase() === payee.toLowerCase()
+        );
+        setSelectedUserId(
+          matching?.memberId ||
+            `vendor_${(payee || "vendor").replace(/\s+/g, "_").toLowerCase()}`
+        );
+
+        const newServiceDetails: ServiceDetail[] = parsedInvoices.map((inv) => ({
+          serviceName: inv.description || `Inv #${inv.invoiceNumber}`,
+          amount: inv.amount,
+        }));
+
+        while (newServiceDetails.length < 5) {
+          newServiceDetails.push({ serviceName: "", amount: 0 });
+        }
+
+        setServiceDetails(newServiceDetails);
+        setTotalAmount(
+          paramTotal > 0
+            ? paramTotal
+            : parsedInvoices.reduce((s, i) => s + (i.amount || 0), 0)
+        );
+        setMemoNumber(
+          `Invoices: ${parsedInvoices.map((i) => i.invoiceNumber).join(", ")}`
+        );
+
+        getNextAvailableCheckNumber().then((nextCheckNumber) => {
+          if (nextCheckNumber) {
+            setCheckNumber(nextCheckNumber);
+            setShowWriteCheck(true);
+          } else {
+            toast.error(
+              "No available check numbers. Please add a check series first."
+            );
+            setShowAddSeries(true);
+          }
+        });
+      }
+    }
+  }, [effectiveUserId, searchParams, allMembers]);
 
   const fetchTeamMembersWithVehicles = async () => {
     try {
@@ -792,7 +874,7 @@ export default function ManageCheckScreen() {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "Checks"), checkData);
+      const checkDocRef = await addDoc(collection(db, "Checks"), checkData);
 
       await updateCheckNumberUsage(checkNumber);
 
@@ -803,6 +885,130 @@ export default function ManageCheckScreen() {
           batch.update(tripRef, { isPaid: true });
         });
         await batch.commit();
+      }
+
+      // Sync attached invoices from Pay Invoice screen
+      if (attachedInvoices.length > 0) {
+        try {
+          const batch = writeBatch(db);
+          const paymentId = `PAY-CHK-${checkNumber}`;
+          const nowIso = new Date().toISOString();
+
+          // Get team members for syncing
+          const teamMembersQuery = query(
+            collection(db, "Users"),
+            where("createdBy", "==", effectiveUserId),
+            where("isTeamMember", "==", true)
+          );
+          const teamMembersSnapshot = await getDocs(teamMembersQuery);
+          const memberIds = teamMembersSnapshot.docs.map((docSnap) => docSnap.id);
+
+          const ledgerInvoices: any[] = [];
+
+          for (const inv of attachedInvoices) {
+            if (!inv.recordId) continue;
+            const ownerRecordRef = doc(
+              db,
+              "Users",
+              effectiveUserId,
+              "DataServices",
+              inv.recordId
+            );
+            const recordSnap = await getDoc(ownerRecordRef);
+
+            if (recordSnap.exists()) {
+              const recData = recordSnap.data();
+              const totalInv =
+                parseFloat(
+                  String(recData.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+                ) || 0;
+              const currentPaid =
+                typeof recData.paidAmount === "number" ? recData.paidAmount : 0;
+              const newPaid = Number((currentPaid + inv.amount).toFixed(2));
+              const newBalance = Number(Math.max(0, totalInv - newPaid).toFixed(2));
+              const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid";
+
+              const paymentEntry = {
+                paymentId: paymentId,
+                paymentMethod: "Check",
+                amountPaid: inv.amount,
+                checkNumber: String(checkNumber),
+                checkId: checkDocRef.id,
+                paidAt: nowIso,
+                paidBy: user?.uid || effectiveUserId,
+                paidByName: selectedUserName || "User",
+              };
+
+              const existingHist = Array.isArray(recData.paymentHistory)
+                ? recData.paymentHistory
+                : [];
+              const updatedHistory = [...existingHist, paymentEntry];
+
+              const updatePayload = {
+                paidAmount: newPaid,
+                balanceAmount: newBalance,
+                paymentStatus: newStatus,
+                paymentHistory: updatedHistory,
+                updatedAt: nowIso,
+              };
+
+              batch.update(ownerRecordRef, updatePayload);
+
+              const globalRecordRef = doc(
+                db,
+                "DataServicesRecords",
+                inv.recordId
+              );
+              batch.update(globalRecordRef, updatePayload);
+
+              for (const mId of memberIds) {
+                const memberRecRef = doc(
+                  db,
+                  "Users",
+                  mId,
+                  "DataServices",
+                  inv.recordId
+                );
+                batch.update(memberRecRef, updatePayload);
+              }
+
+              ledgerInvoices.push({
+                recordId: inv.recordId,
+                invoiceNumber: inv.invoiceNumber,
+                vehicleNumber: inv.vehicleNumber || "N/A",
+                amountPaid: inv.amount,
+                remainingBalance: newBalance,
+              });
+            }
+          }
+
+          // Save Master Payment Ledger Entry
+          const ledgerDocRef = doc(
+            collection(db, "Users", effectiveUserId, "InvoicePayments")
+          );
+          batch.set(ledgerDocRef, {
+            id: ledgerDocRef.id,
+            paymentId: paymentId,
+            ownerId: effectiveUserId,
+            vendorName: selectedUserName || "Vendor",
+            totalAmount: totalAmount,
+            paymentMethod: "Check",
+            checkNumber: String(checkNumber),
+            checkId: checkDocRef.id,
+            invoices: ledgerInvoices,
+            createdAt: serverTimestamp(),
+            createdBy: user?.uid || effectiveUserId,
+            createdByName: selectedUserName || "User",
+          });
+
+          await batch.commit();
+          setAttachedInvoices([]);
+        } catch (invoiceSyncError) {
+          console.error(
+            "Error updating invoice records on check creation:",
+            invoiceSyncError
+          );
+        }
       }
 
       GlobalToastSuccess("Check created successfully!");
@@ -2753,3 +2959,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     </div>
   );
 };
+
+export default function ManageCheckScreen() {
+  return (
+    <React.Suspense fallback={<LoadingIndicator />}>
+      <ManageCheckScreenContent />
+    </React.Suspense>
+  );
+}

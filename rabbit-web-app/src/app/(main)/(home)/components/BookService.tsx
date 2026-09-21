@@ -64,23 +64,142 @@ interface EngineMetadataItem {
 
 // Default Fallback Services List so dropdown is NEVER blank for unauthenticated users
 const DEFAULT_SERVICES: ServiceType[] = [
-  { title: "Air Leak truck", image_type: 0, price_type: 0, image: "", priority: 1, isFeatured: true },
-  { title: "Battery", image_type: 0, price_type: 0, image: "", priority: 2, isFeatured: true },
-  { title: "Brake Service", image_type: 0, price_type: 0, image: "", priority: 3, isFeatured: true },
-  { title: "Electrical", image_type: 0, price_type: 0, image: "", priority: 4, isFeatured: true },
-  { title: "Engine Diagnostic", image_type: 0, price_type: 0, image: "", priority: 5, isFeatured: true },
-  { title: "Engine Sign", image_type: 0, price_type: 0, image: "", priority: 6, isFeatured: true },
-  { title: "Fuel Delivery / DEF", image_type: 0, price_type: 0, image: "", priority: 7, isFeatured: true },
-  { title: "Jump Start", image_type: 0, price_type: 0, image: "", priority: 8, isFeatured: true },
-  { title: "Lockout Service", image_type: 0, price_type: 0, image: "", priority: 9, isFeatured: true },
-  { title: "Oil & Fluid Leak", image_type: 0, price_type: 0, image: "", priority: 10, isFeatured: true },
-  { title: "Reefer Repair", image_type: 0, price_type: 0, image: "", priority: 11, isFeatured: true },
-  { title: "Suspension & Steering", image_type: 0, price_type: 0, image: "", priority: 12, isFeatured: true },
-  { title: "Tire Steer", image_type: 0, price_type: 0, image: "", priority: 13, isFeatured: true },
-  { title: "Tire Drive / Trailer", image_type: 0, price_type: 0, image: "", priority: 14, isFeatured: true },
-  { title: "Towing", image_type: 0, price_type: 0, image: "", priority: 15, isFeatured: true },
-  { title: "Transmission & Clutch", image_type: 0, price_type: 0, image: "", priority: 16, isFeatured: true },
-  { title: "Welding & Fabrication", image_type: 0, price_type: 0, image: "", priority: 17, isFeatured: true },
+  {
+    title: "Air Leak truck",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 1,
+    isFeatured: true,
+  },
+  {
+    title: "Battery",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 2,
+    isFeatured: true,
+  },
+  {
+    title: "Brake Service",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 3,
+    isFeatured: true,
+  },
+  {
+    title: "Electrical",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 4,
+    isFeatured: true,
+  },
+  {
+    title: "Engine Diagnostic",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 5,
+    isFeatured: true,
+  },
+  {
+    title: "Engine Sign",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 6,
+    isFeatured: true,
+  },
+  {
+    title: "Fuel Delivery / DEF",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 7,
+    isFeatured: true,
+  },
+  {
+    title: "Jump Start",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 8,
+    isFeatured: true,
+  },
+  {
+    title: "Lockout Service",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 9,
+    isFeatured: true,
+  },
+  {
+    title: "Oil & Fluid Leak",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 10,
+    isFeatured: true,
+  },
+  {
+    title: "Reefer Repair",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 11,
+    isFeatured: true,
+  },
+  {
+    title: "Suspension & Steering",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 12,
+    isFeatured: true,
+  },
+  {
+    title: "Tire Steer",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 13,
+    isFeatured: true,
+  },
+  {
+    title: "Tire Drive / Trailer",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 14,
+    isFeatured: true,
+  },
+  {
+    title: "Towing",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 15,
+    isFeatured: true,
+  },
+  {
+    title: "Transmission & Clutch",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 16,
+    isFeatured: true,
+  },
+  {
+    title: "Welding & Fabrication",
+    image_type: 0,
+    price_type: 0,
+    image: "",
+    priority: 17,
+    isFeatured: true,
+  },
 ];
 
 const DEFAULT_TRUCK_COMPANIES = [
@@ -106,13 +225,24 @@ const DEFAULT_TRAILER_COMPANIES = [
 ];
 
 const DEFAULT_ENGINES: Record<string, string[]> = {
-  FREIGHTLINER: ["DETROIT DD13", "DETROIT DD15", "DETROIT DD16", "CUMMINS ISX", "CUMMINS X15"],
+  FREIGHTLINER: [
+    "DETROIT DD13",
+    "DETROIT DD15",
+    "DETROIT DD16",
+    "CUMMINS ISX",
+    "CUMMINS X15",
+  ],
   KENWORTH: ["PACCAR MX-11", "PACCAR MX-13", "CUMMINS ISX", "CUMMINS X15"],
   PETERBILT: ["PACCAR MX-11", "PACCAR MX-13", "CUMMINS ISX", "CUMMINS X15"],
   VOLVO: ["VOLVO D11", "VOLVO D13", "CUMMINS X15"],
   MACK: ["MACK MP7", "MACK MP8", "MACK MP10"],
   INTERNATIONAL: ["INTERNATIONAL A26", "CUMMINS ISX", "CUMMINS X15"],
-  "WESTERN STAR": ["DETROIT DD13", "DETROIT DD15", "DETROIT DD16", "CUMMINS X15"],
+  "WESTERN STAR": [
+    "DETROIT DD13",
+    "DETROIT DD15",
+    "DETROIT DD16",
+    "CUMMINS X15",
+  ],
 };
 
 const COUNTRY_CODES = [
@@ -144,8 +274,12 @@ const BookingSection: React.FC = () => {
     "Van",
     "Bus",
   ]);
-  const [allCompaniesRaw, setAllCompaniesRaw] = useState<CompanyMetadataItem[]>([]);
-  const [companyList, setCompanyList] = useState<string[]>(DEFAULT_TRUCK_COMPANIES);
+  const [allCompaniesRaw, setAllCompaniesRaw] = useState<CompanyMetadataItem[]>(
+    []
+  );
+  const [companyList, setCompanyList] = useState<string[]>(
+    DEFAULT_TRUCK_COMPANIES
+  );
   const [allEnginesRaw, setAllEnginesRaw] = useState<EngineMetadataItem[]>([]);
   const [engineNameList, setEngineNameList] = useState<string[]>([]);
 
@@ -250,12 +384,13 @@ const BookingSection: React.FC = () => {
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const [vTypeDoc, companyDoc, engineDoc, servicesDoc] = await Promise.all([
-          getDoc(doc(db, "metadata", "vehicleType")),
-          getDoc(doc(db, "metadata", "companyNameL")),
-          getDoc(doc(db, "metadata", "engineNameList")),
-          getDoc(doc(db, "metadata", "servicesList")),
-        ]);
+        const [vTypeDoc, companyDoc, engineDoc, servicesDoc] =
+          await Promise.all([
+            getDoc(doc(db, "metadata", "vehicleType")),
+            getDoc(doc(db, "metadata", "companyNameL")),
+            getDoc(doc(db, "metadata", "engineNameList")),
+            getDoc(doc(db, "metadata", "servicesList")),
+          ]);
 
         if (vTypeDoc.exists()) {
           const types = vTypeDoc.data()?.type || [];
@@ -309,9 +444,7 @@ const BookingSection: React.FC = () => {
 
     if (allCompaniesRaw.length > 0) {
       const filtered = allCompaniesRaw
-        .filter(
-          (c) => c.type?.toLowerCase() === guestVehicleType.toLowerCase()
-        )
+        .filter((c) => c.type?.toLowerCase() === guestVehicleType.toLowerCase())
         .map((c) => c.cName.toString().toUpperCase());
 
       // Deduplicate
@@ -406,7 +539,8 @@ const BookingSection: React.FC = () => {
 
   // Fetch vehicles and addresses for registered fleet accounts
   useEffect(() => {
-    if (!effectiveUserId || userData?.role === "Guest" || userData?.isGuest) return;
+    if (!effectiveUserId || userData?.role === "Guest" || userData?.isGuest)
+      return;
 
     const fetchUserVehicles = async (): Promise<VehicleTypes[]> => {
       try {
@@ -616,7 +750,9 @@ const BookingSection: React.FC = () => {
       (err) => {
         setIsDetectingLocation(false);
         console.error("Geolocation error:", err);
-        toast.error("Could not fetch GPS. Please enter your location manually.");
+        toast.error(
+          "Could not fetch GPS. Please enter your location manually."
+        );
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -682,7 +818,8 @@ const BookingSection: React.FC = () => {
         } else if (err.code === "auth/invalid-phone-number") {
           errMsg = "Invalid phone number format. Please check country code.";
         } else if (err.code === "auth/captcha-check-failed") {
-          errMsg = "reCAPTCHA verification failed. Please refresh and try again.";
+          errMsg =
+            "reCAPTCHA verification failed. Please refresh and try again.";
         } else if (err.message) {
           errMsg = err.message;
         }
@@ -869,7 +1006,10 @@ const BookingSection: React.FC = () => {
         const imageUrls: string[] = [];
 
         if (selectedImage) {
-          const imageRef = ref(storage, `jobs/${orderId}/${selectedImage.name}`);
+          const imageRef = ref(
+            storage,
+            `jobs/${orderId}/${selectedImage.name}`
+          );
           await uploadBytes(imageRef, selectedImage);
           const imageUrl = await getDownloadURL(imageRef);
           imageUrls.push(imageUrl);
@@ -1240,7 +1380,8 @@ const BookingSection: React.FC = () => {
                       options={[
                         {
                           label: "Add Vehicle",
-                          onClick: () => handleRedirect({ path: "/add-vehicle" }),
+                          onClick: () =>
+                            handleRedirect({ path: "/add-vehicle" }),
                         },
                         {
                           label: "Import Vehicle",
@@ -1496,7 +1637,9 @@ const BookingSection: React.FC = () => {
             <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
               ✓
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Verify Mobile Number</h3>
+            <h3 className="text-lg font-bold text-gray-900">
+              Verify Mobile Number
+            </h3>
             <p className="text-xs text-gray-600">
               Enter the 6-digit code sent to{" "}
               <span className="font-semibold text-gray-900">
@@ -1524,7 +1667,12 @@ const BookingSection: React.FC = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    handleSendOtp(`${guestCountryCode}${guestPhoneNumber.replace(/\D/g, "")}`)
+                    handleSendOtp(
+                      `${guestCountryCode}${guestPhoneNumber.replace(
+                        /\D/g,
+                        ""
+                      )}`
+                    )
                   }
                   className="text-[#58BB87] font-semibold hover:underline"
                 >
