@@ -1931,12 +1931,12 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     final dot = vehicleData['dot'] ?? '';
     final iccms = vehicleData['iccms'] ?? '';
     final vin = vehicleData['vin'] ?? '';
-    final hoursReading = vehicleData['hoursReading'] ?? '';
+    final engineName = vehicleData['engineName'] ?? '';
 
     final StringBuffer buffer = StringBuffer();
     buffer.writeln('🚚 Vehicle Details Overview | TrenoOps App 🔧\n');
     buffer.writeln('📋 Vehicle Information:');
-    buffer.writeln('-----------------------------------');
+    buffer.writeln('-----------------');
     if (vehicleNumber.toString().isNotEmpty) {
       buffer.writeln('• Vehicle Number: $vehicleNumber');
     }
@@ -1952,16 +1952,16 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     if (vin.toString().isNotEmpty) {
       buffer.writeln('• VIN: $vin');
     }
+    if (engineName.toString().isNotEmpty) {
+      buffer.writeln('• Engine Name: $engineName');
+    }
     if (dot.toString().isNotEmpty) {
       buffer.writeln('• DOT: $dot');
     }
     if (iccms.toString().isNotEmpty) {
       buffer.writeln('• ICCMS: $iccms');
     }
-    if (hoursReading.toString().isNotEmpty) {
-      buffer.writeln('• Hours Reading: $hoursReading');
-    }
-    buffer.writeln('-----------------------------------\n');
+    buffer.writeln('---------------');
 
     buffer.writeln('🌟 Why TrenoOps?');
     buffer.writeln('• Track vehicle maintenance');
@@ -2023,8 +2023,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                         'Vehicle Number: ${vehicleData['vehicleNumber'] ?? "Unknown Number"}'),
                     pw.Text('Year: ${vehicleData['year'] ?? "Unknown Year"}'),
                     pw.Text(
-                        'Current Miles: ${vehicleData['currentMiles'] ?? "Unknown Miles"}'),
-                    pw.Text(
                         'License Plate: ${vehicleData['licensePlate'] ?? "Unknown License Plate"}'),
                     if (vehicleData['dot']?.isNotEmpty ?? false)
                       pw.Text('DOT: ${vehicleData['dot']}'),
@@ -2035,8 +2033,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                     if (vehicleData['oilChangeDate']?.isNotEmpty ?? false)
                       pw.Text(
                           'Oil Change Date: ${vehicleData['oilChangeDate']}'),
-                    if (vehicleData['hoursReading']?.isNotEmpty ?? false)
-                      pw.Text('Hours Reading: ${vehicleData['hoursReading']}'),
                     pw.Text(
                         'Engine Name: ${vehicleData['engineName'] ?? "Unknown Engine Name"}'),
                     pw.Text(
