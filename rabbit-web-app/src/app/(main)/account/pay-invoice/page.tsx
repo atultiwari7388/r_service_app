@@ -368,7 +368,11 @@ function PayInvoiceContent() {
 
   const selectedVendor = useMemo(() => {
     if (selectedRecordsList.length === 0) return null;
-    return selectedRecordsList[0].workshopName || "Unspecified Vendor";
+    const vendorSet = new Set(selectedRecordsList.map((r) => r.workshopName || "Unspecified Vendor"));
+    if (vendorSet.size === 1) {
+      return Array.from(vendorSet)[0];
+    }
+    return `Multiple Vendors (${vendorSet.size})`;
   }, [selectedRecordsList]);
 
   const totalPaymentAmount = useMemo(() => {
@@ -382,40 +386,6 @@ function PayInvoiceContent() {
       delete next[rec.id];
       setSelectedInvoices(next);
       return;
-    }
-
-    // Vendor consistency check:
-    if (selectedRecordsList.length > 0 && selectedVendor) {
-      const recVendor = rec.workshopName || "Unspecified Vendor";
-      if (recVendor !== selectedVendor) {
-        toast((t) => (
-          <div className="flex flex-col gap-1 text-xs">
-            <span className="font-semibold text-amber-700">Different Vendor Detected</span>
-            <span>
-              You selected <b>{recVendor}</b>, but you currently have invoices from <b>{selectedVendor}</b> selected.
-            </span>
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  // Switch to new vendor
-                  setSelectedInvoices({ [rec.id]: rec.balanceAmount || Number(rec.invoiceAmount) || 0 });
-                }}
-                className="bg-[#F96176] text-white px-2 py-1 rounded text-xs"
-              >
-                Switch to {recVendor}
-              </button>
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                className="bg-gray-200 text-gray-800 px-2 py-1 rounded text-xs"
-              >
-                Keep Current
-              </button>
-            </div>
-          </div>
-        ), { duration: 6000 });
-        return;
-      }
     }
 
     const defaultAmount = rec.balanceAmount || Number(rec.invoiceAmount) || 0;
@@ -440,15 +410,12 @@ function PayInvoiceContent() {
     setSelectedInvoices((prev) => ({ ...prev, [recordId]: parsed }));
   };
 
-  // Select all visible unpaid invoices for the current filtered vendor
+  // Select all visible unpaid invoices (across all filtered records)
   const handleSelectAllVisible = () => {
     if (filteredRecords.length === 0) return;
     
-    // Determine vendor to select
-    const targetVendor = selectedVendor || (selectedVendorFilter !== "All" ? selectedVendorFilter : filteredRecords[0].workshopName);
-    const matchingRecords = filteredRecords.filter(
-      (r) => (r.workshopName || "Unspecified Vendor") === targetVendor && (r.balanceAmount || 0) > 0
-    );
+    // Select all matching unpaid invoices with positive balance
+    const matchingRecords = filteredRecords.filter((r) => (r.balanceAmount || 0) > 0);
 
     const next: { [id: string]: number } = {};
     matchingRecords.forEach((r) => {
@@ -456,7 +423,7 @@ function PayInvoiceContent() {
     });
 
     setSelectedInvoices(next);
-    toast.success(`Selected ${matchingRecords.length} invoices for ${targetVendor}`);
+    toast.success(`Selected ${matchingRecords.length} invoices`);
   };
 
   const handleClearSelection = () => {
