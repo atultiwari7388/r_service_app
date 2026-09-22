@@ -492,11 +492,6 @@ function PayInvoiceContent() {
       return;
     }
 
-    if (paymentMethod === "Other" && !paymentDescription.trim()) {
-      toast.error("Please enter a description for the 'Other' payment method");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const batch = writeBatch(db);
@@ -1185,40 +1180,19 @@ function PayInvoiceContent() {
                       </div>
                     </div>
 
-                    {/* Payment Method Selector */}
+                    {/* Payment Method Selector Dropdown */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                         Select Payment Method
                       </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          // { id: "Zelle", label: "Zelle", icon: SiZelle },
-                          // { id: "Credit Card", label: "Credit Card", icon: FiCreditCard },
-                          // { id: "Debit Card", label: "Debit Card", icon: FiCreditCard },
-                          // { id: "Bank Transfer", label: "Bank Wire", icon: FaUniversity },
-                          { id: "Check", label: "Check", icon: FiCheckCircle },
-                          // { id: "Cash", label: "Cash", icon: FaMoneyBillWave },
-                          { id: "Other", label: "Other", icon: FiLayers },
-                        ].map((m) => {
-                          const IconComp = m.icon;
-                          const isSelected = paymentMethod === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setPaymentMethod(m.id as PaymentMethodType)}
-                              className={`p-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                                isSelected
-                                  ? "bg-[#F96176] text-white border-[#F96176] shadow-sm"
-                                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                              }`}
-                            >
-                              <IconComp className="text-sm" />
-                              {m.label}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethodType)}
+                        className="w-full p-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white font-medium text-gray-800 transition cursor-pointer"
+                      >
+                        <option value="Check">Check</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
 
                     {/* Conditional Fields based on Payment Method */}
@@ -1269,26 +1243,16 @@ function PayInvoiceContent() {
                           </div>
                         )}
 
-                        {/* Description (Required for 'Other', Optional for others) */}
+                        {/* Description (Optional) */}
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            {paymentMethod === "Other" ? (
-                              <span className="text-gray-900 font-bold">
-                                Description / Method Details <span className="text-rose-500">*</span>
-                              </span>
-                            ) : (
-                              "Memo / Notes (Optional)"
-                            )}
+                            Description / Notes (Optional)
                           </label>
                           <textarea
                             rows={2}
                             value={paymentDescription}
                             onChange={(e) => setPaymentDescription(e.target.value)}
-                            placeholder={
-                              paymentMethod === "Other"
-                                ? "Please explain the payment method or settlement terms..."
-                                : "Add payment notes or memos..."
-                            }
+                            placeholder="Add payment notes, memo, or description..."
                             className="w-full p-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white resize-none"
                           />
                         </div>
