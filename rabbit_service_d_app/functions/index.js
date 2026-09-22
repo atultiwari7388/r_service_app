@@ -203,7 +203,6 @@ exports.createTeamMember = functions.https.onCall(async (data, context) => {
       userName: name,
       phoneNumber: phone,
       vehicleRange: "",
-      companyName: "",
       telephone: telephone || "",
       address: address || "",
       city: city || "",

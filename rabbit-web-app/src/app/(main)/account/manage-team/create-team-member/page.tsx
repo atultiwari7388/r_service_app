@@ -197,13 +197,25 @@ export default function CreateTeamMemberPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      !formData.memberName ||
-      !formData.memberEmail ||
-      !formData.memberPhoneNumber
-    ) {
-      toast.error("Required fields missing");
+    if (!formData.role) {
+      toast.error("Please select a role");
       return;
+    }
+
+    if (formData.role === "Vendor") {
+      if (!formData.memberName.trim()) {
+        toast.error("Vendor Name is required");
+        return;
+      }
+    } else {
+      if (
+        !formData.memberName.trim() ||
+        !formData.memberEmail.trim() ||
+        !formData.memberPhoneNumber.trim()
+      ) {
+        toast.error("Required fields missing");
+        return;
+      }
     }
 
     if (!effectiveUserId) {
@@ -219,25 +231,38 @@ export default function CreateTeamMemberPage() {
     setShowConfirmation(false);
 
     try {
-      // Check if email exists in Users collection
-      const usersQuery = query(
-        collection(db, "Users"),
-        where("email", "==", formData.memberEmail)
-      );
-      const usersSnapshot = await getDocs(usersQuery);
+      const isVendorRole = formData.role === "Vendor";
+      const sanitizedVendorSlug = formData.memberName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+      const autoVendorEmail =
+        formData.memberEmail.trim() ||
+        `vendor_${sanitizedVendorSlug || "partner"}_${Date.now()}@trenoops.internal`;
+      const autoVendorPhone = formData.memberPhoneNumber.trim() || "+10000000000";
+      const autoVendorPassword = formData.memberPassword.trim() || "12345678";
 
-      // Check if email exists in Mechanics collection
-      const mechanicsQuery = query(
-        collection(db, "Mechanics"),
-        where("email", "==", formData.memberEmail)
-      );
-      const mechanicsSnapshot = await getDocs(mechanicsQuery);
+      // Check if email exists in Users collection (only if user provided an email or for non-vendor)
+      if (formData.memberEmail.trim()) {
+        const usersQuery = query(
+          collection(db, "Users"),
+          where("email", "==", formData.memberEmail.trim())
+        );
+        const usersSnapshot = await getDocs(usersQuery);
 
-      // If email exists in either collection, show error
-      if (!usersSnapshot.empty || !mechanicsSnapshot.empty) {
-        toast.error("This email is already registered with another account");
-        setIsLoading(false);
-        return;
+        // Check if email exists in Mechanics collection
+        const mechanicsQuery = query(
+          collection(db, "Mechanics"),
+          where("email", "==", formData.memberEmail.trim())
+        );
+        const mechanicsSnapshot = await getDocs(mechanicsQuery);
+
+        // If email exists in either collection, show error
+        if (!usersSnapshot.empty || !mechanicsSnapshot.empty) {
+          toast.error("This email is already registered with another account");
+          setIsLoading(false);
+          return;
+        }
       }
 
       const createTeamMember = httpsCallable(functions, "createTeamMember");
@@ -252,16 +277,22 @@ export default function CreateTeamMemberPage() {
         return `+1${digits}`;
       };
 
+      const finalEmail = isVendorRole ? autoVendorEmail : formData.memberEmail.trim();
+      const finalPhone = isVendorRole
+        ? formatPhoneForBackend(autoVendorPhone)
+        : formatPhoneForBackend(formData.memberPhoneNumber);
+      const finalPassword = isVendorRole ? autoVendorPassword : formData.memberPassword;
+
       await createTeamMember({
-        name: formData.memberName,
-        email: formData.memberEmail,
-        email2: formData.memberEmail2,
-        phone: formatPhoneForBackend(formData.memberPhoneNumber),
+        name: formData.memberName.trim(),
+        email: finalEmail,
+        email2: formData.memberEmail2.trim(),
+        phone: finalPhone,
         telephone: formData.memberTelephone
           ? formatPhoneForBackend(formData.memberTelephone)
           : "",
-        password: formData.memberPassword,
-        companyName: formData.companyName,
+        password: finalPassword,
+        companyName: formData.companyName || formData.memberName.trim(),
         address: formData.address,
         city: formData.city,
         state: formData.state,
@@ -377,13 +408,27 @@ export default function CreateTeamMemberPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Confirm Email Address
+              {formData.role === "Vendor" ? "Confirm Vendor Creation" : "Confirm Email Address"}
             </h3>
             <p className="text-sm text-gray-500 mb-6">
-              Please verify that <strong>{formData.memberEmail}</strong> is
-              correct. After creating this team member, you won&apos;t be able
-              to change their email address. An invitation will be sent to this
-              email for account activation.
+              {formData.role === "Vendor" ? (
+                formData.memberEmail.trim() ? (
+                  <>
+                    Please verify that <strong>{formData.memberEmail}</strong> is correct for Vendor <strong>{formData.memberName}</strong>.
+                  </>
+                ) : (
+                  <>
+                    You are creating Vendor <strong>{formData.memberName}</strong> as a directory partner record.
+                  </>
+                )
+              ) : (
+                <>
+                  Please verify that <strong>{formData.memberEmail}</strong> is
+                  correct. After creating this team member, you won&apos;t be able
+                  to change their email address. An invitation will be sent to this
+                  email for account activation.
+                </>
+              )}
             </p>
             <div className="flex justify-end space-x-3">
               <button
@@ -446,7 +491,7 @@ export default function CreateTeamMemberPage() {
           <div className="space-y-4">
             <input
               type="text"
-              placeholder="Name*"
+              placeholder={formData.role === "Vendor" ? "Vendor Name*" : "Name*"}
               name="memberName"
               value={formData.memberName}
               onChange={handleInputChange}
@@ -455,12 +500,12 @@ export default function CreateTeamMemberPage() {
             />
             <input
               type="email"
-              placeholder="Email*"
+              placeholder={formData.role === "Vendor" ? "Email (Optional)" : "Email*"}
               name="memberEmail"
               value={formData.memberEmail}
               onChange={handleInputChange}
               className="w-full p-2 border rounded"
-              required
+              required={formData.role !== "Vendor"}
             />
             <input
               type="email"
@@ -472,12 +517,12 @@ export default function CreateTeamMemberPage() {
             />
             <input
               type="tel"
-              placeholder="Phone Number*"
+              placeholder={formData.role === "Vendor" ? "Phone Number (Optional)" : "Phone Number*"}
               name="memberPhoneNumber"
               value={formData.memberPhoneNumber}
               onChange={handleInputChange}
               className="w-full p-2 border rounded"
-              required
+              required={formData.role !== "Vendor"}
             />
             <input
               type="tel"
@@ -491,67 +536,57 @@ export default function CreateTeamMemberPage() {
             {(formData.role === "Vendor" ||
               formData.role === "Other Staff") && (
               <>
-                {/* <input
-                  type="text"
-                  placeholder="Company Name*"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded"
-                  required
-                /> */}
-
                 <input
                   type="text"
-                  placeholder="Address*"
+                  placeholder={formData.role === "Vendor" ? "Address (Optional)" : "Address*"}
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded"
-                  required
+                  required={formData.role !== "Vendor"}
                 />
 
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="City*"
+                    placeholder={formData.role === "Vendor" ? "City (Optional)" : "City*"}
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
                     className="w-full p-2 border rounded"
-                    required
+                    required={formData.role !== "Vendor"}
                   />
 
                   <input
                     type="text"
-                    placeholder="State*"
+                    placeholder={formData.role === "Vendor" ? "State (Optional)" : "State*"}
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
                     className="w-full p-2 border rounded"
-                    required
+                    required={formData.role !== "Vendor"}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="Country*"
+                    placeholder={formData.role === "Vendor" ? "Country (Optional)" : "Country*"}
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
                     className="w-full p-2 border rounded"
-                    required
+                    required={formData.role !== "Vendor"}
                   />
 
                   <input
                     type="text"
-                    placeholder="Zip Code*"
+                    placeholder={formData.role === "Vendor" ? "Zip Code (Optional)" : "Zip Code*"}
                     name="postal"
                     value={formData.postal}
                     onChange={handleInputChange}
                     className="w-full p-2 border rounded"
-                    required
+                    required={formData.role !== "Vendor"}
                   />
                 </div>
               </>
