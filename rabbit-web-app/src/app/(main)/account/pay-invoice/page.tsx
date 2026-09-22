@@ -435,20 +435,42 @@ function PayInvoiceContent() {
     setSelectedInvoices((prev) => ({ ...prev, [recordId]: parsed }));
   };
 
-  // Select all visible unpaid invoices (across all filtered records)
-  const handleSelectAllVisible = () => {
-    if (filteredRecords.length === 0) return;
-    
-    // Select all matching unpaid invoices with positive balance
-    const matchingRecords = filteredRecords.filter((r) => (r.balanceAmount || 0) > 0);
+  const selectableUnpaidRecords = useMemo(() => {
+    return filteredRecords.filter((r) => (r.balanceAmount || 0) > 0);
+  }, [filteredRecords]);
 
-    const next: { [id: string]: number } = {};
-    matchingRecords.forEach((r) => {
-      next[r.id] = r.balanceAmount || Number(r.invoiceAmount) || 0;
-    });
+  const isAllVisibleSelected = useMemo(() => {
+    return (
+      selectableUnpaidRecords.length > 0 &&
+      selectableUnpaidRecords.every((r) => selectedInvoices.hasOwnProperty(r.id))
+    );
+  }, [selectableUnpaidRecords, selectedInvoices]);
 
-    setSelectedInvoices(next);
-    toast.success(`Selected ${matchingRecords.length} invoices`);
+  const isSomeVisibleSelected = useMemo(() => {
+    return (
+      selectableUnpaidRecords.some((r) => selectedInvoices.hasOwnProperty(r.id)) &&
+      !isAllVisibleSelected
+    );
+  }, [selectableUnpaidRecords, selectedInvoices, isAllVisibleSelected]);
+
+  // Toggle select / deselect all visible unpaid invoices
+  const handleToggleSelectAll = () => {
+    if (selectableUnpaidRecords.length === 0) return;
+
+    if (isAllVisibleSelected) {
+      const next = { ...selectedInvoices };
+      selectableUnpaidRecords.forEach((r) => {
+        delete next[r.id];
+      });
+      setSelectedInvoices(next);
+    } else {
+      const next = { ...selectedInvoices };
+      selectableUnpaidRecords.forEach((r) => {
+        next[r.id] = r.balanceAmount || Number(r.invoiceAmount) || 0;
+      });
+      setSelectedInvoices(next);
+      toast.success(`Selected ${selectableUnpaidRecords.length} invoices`);
+    }
   };
 
   const handleClearSelection = () => {
@@ -950,11 +972,11 @@ function PayInvoiceContent() {
 
                   {activeTab === "unpaid" && (
                     <button
-                      onClick={handleSelectAllVisible}
-                      title="Select all visible for active vendor"
+                      onClick={handleToggleSelectAll}
+                      title={isAllVisibleSelected ? "Deselect all visible" : "Select all visible"}
                       className="whitespace-nowrap px-3 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
                     >
-                      Select All
+                      {isAllVisibleSelected ? "Deselect All" : "Select All"}
                     </button>
                   )}
                 </div>
@@ -977,7 +999,28 @@ function PayInvoiceContent() {
                     <table className="w-full text-left text-sm text-gray-600">
                       <thead className="bg-gray-50 text-gray-700 font-semibold uppercase text-xs border-b border-gray-200">
                         <tr>
-                          {activeTab === "unpaid" && <th className="py-3 px-4 w-10">Select</th>}
+                          {activeTab === "unpaid" && (
+                            <th className="py-3 px-4 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={isAllVisibleSelected}
+                                  ref={(el) => {
+                                    if (el) el.indeterminate = isSomeVisibleSelected;
+                                  }}
+                                  onChange={handleToggleSelectAll}
+                                  title={isAllVisibleSelected ? "Deselect All" : "Select All"}
+                                  className="w-4 h-4 text-[#F96176] rounded border-gray-300 focus:ring-[#F96176] cursor-pointer"
+                                />
+                                <span
+                                  onClick={handleToggleSelectAll}
+                                  className="cursor-pointer select-none"
+                                >
+                                  Select
+                                </span>
+                              </div>
+                            </th>
+                          )}
                           <th className="py-3 px-4">Invoice & Date</th>
                           <th className="py-3 px-4">Vendor</th>
                           <th className="py-3 px-4">Vehicle</th>

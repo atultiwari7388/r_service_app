@@ -257,6 +257,11 @@ function ManageCheckScreenContent() {
             `vendor_${(payee || "vendor").replace(/\s+/g, "_").toLowerCase()}`
         );
 
+        const total =
+          paramTotal > 0
+            ? paramTotal
+            : parsedInvoices.reduce((s, i) => s + (i.amount || 0), 0);
+
         const newServiceDetails: ServiceDetail[] = parsedInvoices.map((inv) => ({
           serviceName: inv.description || `Inv #${inv.invoiceNumber}`,
           amount: inv.amount,
@@ -267,14 +272,8 @@ function ManageCheckScreenContent() {
         }
 
         setServiceDetails(newServiceDetails);
-        setTotalAmount(
-          paramTotal > 0
-            ? paramTotal
-            : parsedInvoices.reduce((s, i) => s + (i.amount || 0), 0)
-        );
-        setMemoNumber(
-          `Invoices: ${parsedInvoices.map((i) => i.invoiceNumber).join(", ")}`
-        );
+        setTotalAmount(total);
+        setMemoNumber("");
 
         getNextAvailableCheckNumber().then((nextCheckNumber) => {
           if (nextCheckNumber) {
@@ -907,6 +906,7 @@ function ManageCheckScreenContent() {
 
           for (const inv of attachedInvoices) {
             if (!inv.recordId) continue;
+
             const ownerRecordRef = doc(
               db,
               "Users",
@@ -914,92 +914,133 @@ function ManageCheckScreenContent() {
               "DataServices",
               inv.recordId
             );
-            const recordSnap = await getDoc(ownerRecordRef);
+            let recordSnap = await getDoc(ownerRecordRef);
+            let targetOwnerRef = ownerRecordRef;
 
-            if (recordSnap.exists()) {
-              const recData = recordSnap.data();
-              const totalInv =
-                parseFloat(
-                  String(recData.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
-                ) || 0;
-              const currentPaid =
-                typeof recData.paidAmount === "number" ? recData.paidAmount : 0;
-              const newPaid = Number((currentPaid + inv.amount).toFixed(2));
-              const newBalance = Number(Math.max(0, totalInv - newPaid).toFixed(2));
-              const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid";
-
-              const paymentEntry = {
-                paymentId: paymentId,
-                paymentMethod: "Check",
-                amountPaid: inv.amount,
-                checkNumber: String(checkNumber),
-                checkId: checkDocRef.id,
-                paidAt: nowIso,
-                paidBy: user?.uid || effectiveUserId,
-                paidByName: selectedUserName || "User",
-              };
-
-              const existingHist = Array.isArray(recData.paymentHistory)
-                ? recData.paymentHistory
-                : [];
-              const updatedHistory = [...existingHist, paymentEntry];
-
-              const updatePayload = {
-                paidAmount: newPaid,
-                balanceAmount: newBalance,
-                paymentStatus: newStatus,
-                paymentHistory: updatedHistory,
-                updatedAt: nowIso,
-              };
-
-              batch.update(ownerRecordRef, updatePayload);
-
+            if (!recordSnap.exists()) {
               const globalRecordRef = doc(
                 db,
                 "DataServicesRecords",
                 inv.recordId
               );
-              batch.update(globalRecordRef, updatePayload);
-
-              for (const mId of memberIds) {
-                const memberRecRef = doc(
+              const globalSnap = await getDoc(globalRecordRef);
+              if (globalSnap.exists()) {
+                recordSnap = globalSnap;
+              } else if (user?.uid && user.uid !== effectiveUserId) {
+                const userRecordRef = doc(
                   db,
                   "Users",
-                  mId,
+                  user.uid,
                   "DataServices",
                   inv.recordId
                 );
-                batch.update(memberRecRef, updatePayload);
+                const userSnap = await getDoc(userRecordRef);
+                if (userSnap.exists()) {
+                  recordSnap = userSnap;
+                  targetOwnerRef = userRecordRef;
+                }
               }
-
-              ledgerInvoices.push({
-                recordId: inv.recordId,
-                invoiceNumber: inv.invoiceNumber,
-                vehicleNumber: inv.vehicleNumber || "N/A",
-                amountPaid: inv.amount,
-                remainingBalance: newBalance,
-              });
             }
+
+            // If not found in any collection, skip gracefully
+            if (!recordSnap.exists()) {
+              console.warn(
+                `DataServices record ${inv.recordId} not found, skipping sync.`
+              );
+              continue;
+            }
+
+            const recData = recordSnap.data();
+            const totalInv =
+              parseFloat(
+                String(recData.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+              ) || 0;
+            const currentPaid =
+              typeof recData.paidAmount === "number" ? recData.paidAmount : 0;
+            const newPaid = Number((currentPaid + inv.amount).toFixed(2));
+            const newBalance = Number(Math.max(0, totalInv - newPaid).toFixed(2));
+            const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid";
+
+            const paymentEntry = {
+              paymentId: paymentId,
+              paymentMethod: "Check",
+              amountPaid: inv.amount,
+              checkNumber: String(checkNumber),
+              checkId: checkDocRef.id,
+              paidAt: nowIso,
+              paidBy: user?.uid || effectiveUserId,
+              paidByName: selectedUserName || "User",
+            };
+
+            const existingHist = Array.isArray(recData.paymentHistory)
+              ? recData.paymentHistory
+              : [];
+            const updatedHistory = [...existingHist, paymentEntry];
+
+            const updatePayload = {
+              paidAmount: newPaid,
+              balanceAmount: newBalance,
+              paymentStatus: newStatus,
+              paymentHistory: updatedHistory,
+              updatedAt: nowIso,
+            };
+
+            // Safely update owner record using merge
+            batch.set(targetOwnerRef, updatePayload, { merge: true });
+
+            // Safely update global record using merge
+            const globalRecordRef = doc(
+              db,
+              "DataServicesRecords",
+              inv.recordId
+            );
+            batch.set(globalRecordRef, updatePayload, { merge: true });
+
+            // Safely sync with team members if the document exists for them
+            for (const mId of memberIds) {
+              if (mId === effectiveUserId) continue;
+              const memberRecRef = doc(
+                db,
+                "Users",
+                mId,
+                "DataServices",
+                inv.recordId
+              );
+              const mSnap = await getDoc(memberRecRef);
+              if (mSnap.exists()) {
+                batch.set(memberRecRef, updatePayload, { merge: true });
+              }
+            }
+
+            ledgerInvoices.push({
+              recordId: inv.recordId,
+              invoiceNumber: inv.invoiceNumber,
+              vehicleNumber: inv.vehicleNumber || "N/A",
+              amountPaid: inv.amount,
+              remainingBalance: newBalance,
+            });
           }
 
-          // Save Master Payment Ledger Entry
-          const ledgerDocRef = doc(
-            collection(db, "Users", effectiveUserId, "InvoicePayments")
-          );
-          batch.set(ledgerDocRef, {
-            id: ledgerDocRef.id,
-            paymentId: paymentId,
-            ownerId: effectiveUserId,
-            vendorName: selectedUserName || "Vendor",
-            totalAmount: totalAmount,
-            paymentMethod: "Check",
-            checkNumber: String(checkNumber),
-            checkId: checkDocRef.id,
-            invoices: ledgerInvoices,
-            createdAt: serverTimestamp(),
-            createdBy: user?.uid || effectiveUserId,
-            createdByName: selectedUserName || "User",
-          });
+          // Save Master Payment Ledger Entry if any invoices matched
+          if (ledgerInvoices.length > 0) {
+            const ledgerDocRef = doc(
+              collection(db, "Users", effectiveUserId, "InvoicePayments")
+            );
+            batch.set(ledgerDocRef, {
+              id: ledgerDocRef.id,
+              paymentId: paymentId,
+              ownerId: effectiveUserId,
+              vendorName: selectedUserName || "Vendor",
+              totalAmount: totalAmount,
+              paymentMethod: "Check",
+              checkNumber: String(checkNumber),
+              checkId: checkDocRef.id,
+              invoices: ledgerInvoices,
+              createdAt: serverTimestamp(),
+              createdBy: user?.uid || effectiveUserId,
+              createdByName: selectedUserName || "User",
+            });
+          }
 
           await batch.commit();
           setAttachedInvoices([]);
@@ -1242,6 +1283,33 @@ function ManageCheckScreenContent() {
     )}*******************`;
 
     /* -----------------------------
+      Prepare printable service details
+      (Consolidate if multiple invoices to avoid voucher overflow)
+     ----------------------------- */
+    const activeDetails = (printCheck.serviceDetails || []).filter((detail) => {
+      const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
+      const hasAmount =
+        detail.amount !== null &&
+        detail.amount !== undefined &&
+        Number(detail.amount) > 0;
+      return hasDescription || hasAmount;
+    });
+
+    const printableDetails: ServiceDetail[] =
+      activeDetails.length > 1
+        ? [
+            {
+              serviceName:
+                activeDetails[0].serviceName?.trim() ||
+                `Payment for ${activeDetails.length} Invoices`,
+              amount: printCheck.totalAmount,
+            },
+          ]
+        : activeDetails.length === 1
+        ? activeDetails
+        : [{ serviceName: "", amount: printCheck.totalAmount }];
+
+    /* -----------------------------
       Open Print Window
      ----------------------------- */
     const printWindow = window.open("", "_blank");
@@ -1425,16 +1493,7 @@ function ManageCheckScreenContent() {
           <div>${formattedDate}</div>
         </div>
 
-        ${printCheck.serviceDetails
-          .filter((detail, index) => {
-            if (index === 0) return true;
-
-            const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
-            const hasAmount =
-              detail.amount !== null && detail.amount !== undefined;
-
-            return hasDescription || hasAmount;
-          })
+        ${printableDetails
           .map((detail, index) => {
             const description = detail.serviceName?.trim() ?? "";
             const amount = detail.amount ?? 0;
@@ -1472,16 +1531,7 @@ function ManageCheckScreenContent() {
           <div>${formattedDate}</div>
         </div>
 
-        ${printCheck.serviceDetails
-          .filter((detail, index) => {
-            if (index === 0) return true;
-
-            const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
-            const hasAmount =
-              detail.amount !== null && detail.amount !== undefined;
-
-            return hasDescription || hasAmount;
-          })
+        ${printableDetails
           .map((detail, index) => {
             const description = detail.serviceName?.trim() ?? "";
             const amount = detail.amount ?? 0;
@@ -1529,6 +1579,15 @@ function ManageCheckScreenContent() {
   };
 
   const fetchUserAddress = async (userId: string) => {
+    if (!userId || userId.startsWith("vendor_")) {
+      return {
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
+      };
+    }
     try {
       const userDoc = await getDoc(doc(db, "Users", userId));
       if (userDoc.exists()) {
@@ -1542,9 +1601,15 @@ function ManageCheckScreenContent() {
           country: userData.country || "",
         };
       }
-      throw new Error("User not found");
+      return {
+        street: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "",
+      };
     } catch (error) {
-      console.error("Error fetching user address:", error);
+      console.warn("User address not found for userId:", userId);
       return {
         street: "",
         city: "",
