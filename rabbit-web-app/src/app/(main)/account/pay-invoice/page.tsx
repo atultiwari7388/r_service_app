@@ -331,34 +331,59 @@ function PayInvoiceContent() {
 
   // Filtered Invoices according to tab, vendor, and search
   const filteredRecords = useMemo(() => {
-    return records.filter((rec) => {
-      // Tab filter
-      if (activeTab === "unpaid") {
-        if (rec.paymentStatus === "Paid" || (rec.balanceAmount || 0) <= 0) return false;
-      } else if (activeTab === "paid") {
-        if (rec.paymentStatus !== "Paid" && (rec.balanceAmount || 0) > 0) return false;
-      }
+    return records
+      .filter((rec) => {
+        // Tab filter
+        if (activeTab === "unpaid") {
+          if (rec.paymentStatus === "Paid" || (rec.balanceAmount || 0) <= 0) return false;
+        } else if (activeTab === "paid") {
+          if (rec.paymentStatus !== "Paid" && (rec.balanceAmount || 0) > 0) return false;
+        }
 
-      // Vendor filter
-      if (selectedVendorFilter !== "All" && rec.workshopName !== selectedVendorFilter) {
-        return false;
-      }
-
-      // Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const invMatch = (rec.invoice || "").toLowerCase().includes(q);
-        const vendorMatch = (rec.workshopName || "").toLowerCase().includes(q);
-        const vehMatch = (rec.vehicleDetails?.vehicleNumber || "").toLowerCase().includes(q);
-        const compMatch = (rec.vehicleDetails?.companyName || "").toLowerCase().includes(q);
-        const descMatch = (rec.description || "").toLowerCase().includes(q);
-        if (!invMatch && !vendorMatch && !vehMatch && !compMatch && !descMatch) {
+        // Vendor filter
+        if (selectedVendorFilter !== "All" && rec.workshopName !== selectedVendorFilter) {
           return false;
         }
-      }
 
-      return true;
-    });
+        // Search Query
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const invMatch = (rec.invoice || "").toLowerCase().includes(q);
+          const vendorMatch = (rec.workshopName || "").toLowerCase().includes(q);
+          const vehMatch = (rec.vehicleDetails?.vehicleNumber || "").toLowerCase().includes(q);
+          const compMatch = (rec.vehicleDetails?.companyName || "").toLowerCase().includes(q);
+          const descMatch = (rec.description || "").toLowerCase().includes(q);
+          if (!invMatch && !vendorMatch && !vehMatch && !compMatch && !descMatch) {
+            return false;
+          }
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const getTimeSafe = (r: InvoiceRecord): number => {
+          if (r.date) {
+            const t = new Date(r.date).getTime();
+            if (!isNaN(t)) return t;
+          }
+          if (r.createdAt) {
+            const t = new Date(r.createdAt).getTime();
+            if (!isNaN(t)) return t;
+          }
+          return 0;
+        };
+
+        const timeA = getTimeSafe(a);
+        const timeB = getTimeSafe(b);
+
+        // For unpaid invoices: Oldest (top) to Newest (bottom)
+        if (activeTab === "unpaid") {
+          return timeA - timeB;
+        }
+
+        // For paid invoices: Newest (top) to Oldest (bottom)
+        return timeB - timeA;
+      });
   }, [records, activeTab, selectedVendorFilter, searchQuery]);
 
   // Calculate Active Selection Totals and Target Vendor

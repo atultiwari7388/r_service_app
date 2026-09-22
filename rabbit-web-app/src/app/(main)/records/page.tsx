@@ -323,6 +323,34 @@ export default function RecordsPage() {
 
   const [activeTab, setActiveTab] = useState<"records" | "miles">("records");
 
+  // Quick / Short Filter States
+  const [quickPaymentFilter, setQuickPaymentFilter] = useState<
+    "all" | "paid" | "unpaid" | "partial"
+  >("all");
+  const [quickWorkshopFilter, setQuickWorkshopFilter] = useState<string>("all");
+  const [quickTypeFilter, setQuickTypeFilter] = useState<
+    "all" | "truck" | "trailer"
+  >("all");
+  const [quickSortOption, setQuickSortOption] = useState<
+    "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "unit_desc"
+  >("date_desc");
+  const [quickSearchText, setQuickSearchText] = useState<string>("");
+
+  const isQuickFilterActive =
+    quickPaymentFilter !== "all" ||
+    quickWorkshopFilter !== "all" ||
+    quickTypeFilter !== "all" ||
+    quickSortOption !== "date_desc" ||
+    quickSearchText.trim() !== "";
+
+  const clearQuickFilters = () => {
+    setQuickPaymentFilter("all");
+    setQuickWorkshopFilter("all");
+    setQuickTypeFilter("all");
+    setQuickSortOption("date_desc");
+    setQuickSearchText("");
+  };
+
   //for editing
   const [isEditing, setIsEditing] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
@@ -1065,6 +1093,29 @@ export default function RecordsPage() {
     }
   };
 
+  // Derived unique workshop list from both workshopList state and records data
+  const dynamicWorkshopList = Array.from(
+    new Set([
+      ...workshopList,
+      ...records
+        .map((r) => (r?.workshopName || "").trim())
+        .filter(Boolean),
+    ])
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredVehicles = vehicles.filter((v) => {
+    if (quickTypeFilter === "truck" && v.vehicleType !== "Truck") return false;
+    if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
+      return false;
+    if (quickSearchText.trim()) {
+      const q = quickSearchText.trim().toLowerCase();
+      const matchNum = (v.vehicleNumber || "").toLowerCase().includes(q);
+      const matchComp = (v.companyName || "").toLowerCase().includes(q);
+      if (!matchNum && !matchComp) return false;
+    }
+    return true;
+  });
+
   const filteredRecords = records
     .filter((record) => {
       if (!record) return false;
@@ -1110,33 +1161,112 @@ export default function RecordsPage() {
           recordDate >= startDate &&
           recordDate <= endDate);
 
+      let matchesSearchDialog = true;
       switch (searchType) {
         case "vehicle":
-          return matchesVehicle;
+          matchesSearchDialog = matchesVehicle;
+          break;
         case "service":
-          return matchesService;
+          matchesSearchDialog = matchesService;
+          break;
         case "other_service":
-          return matchesOtherService;
+          matchesSearchDialog = matchesOtherService;
+          break;
         case "date":
-          return matchesDate;
+          matchesSearchDialog = matchesDate;
+          break;
         case "invoice":
-          return matchesInvoice;
+          matchesSearchDialog = matchesInvoice;
+          break;
         case "description":
-          return matchesDescription;
+          matchesSearchDialog = matchesDescription;
+          break;
         case "all":
-          return (
+          matchesSearchDialog =
             matchesVehicle &&
             matchesService &&
             matchesOtherService &&
             matchesDate &&
             matchesInvoice &&
-            matchesDescription
-          );
+            matchesDescription;
+          break;
         default:
-          return true;
+          matchesSearchDialog = true;
       }
+
+      if (!matchesSearchDialog) return false;
+
+      // Quick Payment Filter
+      if (quickPaymentFilter === "paid") {
+        if (record.paymentStatus !== "Paid") return false;
+      } else if (quickPaymentFilter === "unpaid") {
+        if (record.paymentStatus && record.paymentStatus !== "Unpaid") return false;
+      } else if (quickPaymentFilter === "partial") {
+        if (record.paymentStatus !== "Partially Paid") return false;
+      }
+
+      // Quick Workshop Filter
+      if (quickWorkshopFilter !== "all") {
+        const recordWorkshop = (record.workshopName || "").trim().toLowerCase();
+        if (recordWorkshop !== quickWorkshopFilter.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Quick Vehicle Type / Unit Filter (Truck / Trailer / Miles / Hours)
+      if (quickTypeFilter === "truck") {
+        const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
+        const hasMiles = (Number(record.miles) || 0) > 0;
+        if (vType !== "truck" && !hasMiles) return false;
+      } else if (quickTypeFilter === "trailer") {
+        const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
+        const hasHours = (Number(record.hours) || 0) > 0;
+        if (vType !== "trailer" && !hasHours) return false;
+      }
+
+      // Quick Search Text (searches vehicle #, invoice #, workshop, description, services)
+      if (quickSearchText.trim()) {
+        const query = quickSearchText.trim().toLowerCase();
+        const matchesVeh = vehNum.toLowerCase().includes(query);
+        const matchesInv = (record.invoice || "").toLowerCase().includes(query);
+        const matchesWork = (record.workshopName || "").toLowerCase().includes(query);
+        const matchesDesc = (record.description || "").toLowerCase().includes(query);
+        const matchesServ = (record.services || []).some((s) =>
+          formatServiceWithSubservices(s).toLowerCase().includes(query)
+        );
+        if (!matchesVeh && !matchesInv && !matchesWork && !matchesDesc && !matchesServ) {
+          return false;
+        }
+      }
+
+      return true;
     })
     .sort((a, b) => {
+      if (quickSortOption === "date_asc") {
+        const dateA = a?.date ? new Date(a.date).getTime() : 0;
+        const dateB = b?.date ? new Date(b.date).getTime() : 0;
+        return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+      }
+
+      if (quickSortOption === "amount_desc") {
+        const amtA = parseFloat(a?.invoiceAmount || "0") || 0;
+        const amtB = parseFloat(b?.invoiceAmount || "0") || 0;
+        return amtB - amtA;
+      }
+
+      if (quickSortOption === "amount_asc") {
+        const amtA = parseFloat(a?.invoiceAmount || "0") || 0;
+        const amtB = parseFloat(b?.invoiceAmount || "0") || 0;
+        return amtA - amtB;
+      }
+
+      if (quickSortOption === "unit_desc") {
+        const valA = (Number(a?.miles) || 0) + (Number(a?.hours) || 0);
+        const valB = (Number(b?.miles) || 0) + (Number(b?.hours) || 0);
+        return valB - valA;
+      }
+
+      // Default: date_desc
       const dateA = a?.date ? new Date(a.date).getTime() : 0;
       const dateB = b?.date ? new Date(b.date).getTime() : 0;
       if (dateB !== dateA) {
@@ -2510,18 +2640,26 @@ export default function RecordsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {vehicles.map((vehicle) => (
-                <TableRow key={vehicle.id}>
-                  <TableCell>{vehicle.vehicleNumber}</TableCell>
-                  <TableCell>{vehicle.companyName}</TableCell>
-                  <TableCell>{vehicle.vehicleType}</TableCell>
-                  <TableCell>
-                    {vehicle.vehicleType === "Truck"
-                      ? vehicle.currentMiles || "0"
-                      : vehicle.hoursReading || "0"}
+              {filteredVehicles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center" className="py-8 text-gray-500">
+                    No vehicles found matching current filter.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredVehicles.map((vehicle) => (
+                  <TableRow key={vehicle.id}>
+                    <TableCell>{vehicle.vehicleNumber}</TableCell>
+                    <TableCell>{vehicle.companyName}</TableCell>
+                    <TableCell>{vehicle.vehicleType}</TableCell>
+                    <TableCell>
+                      {vehicle.vehicleType === "Truck"
+                        ? vehicle.currentMiles || "0"
+                        : vehicle.hoursReading || "0"}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -2769,23 +2907,173 @@ export default function RecordsPage() {
         </div>
       )}
 
-      <div className="flex justify-center gap-4 mb-6">
-        <button
-          onClick={() => setActiveTab("records")}
-          className={`px-4 py-2 rounded ${
-            activeTab === "records" ? "bg-[#F96176] text-white" : "bg-gray-200"
-          }`}
-        >
-          Records
-        </button>
-        <button
-          onClick={() => setActiveTab("miles")}
-          className={`px-4 py-2 rounded ${
-            activeTab === "miles" ? "bg-[#F96176] text-white" : "bg-gray-200"
-          }`}
-        >
-          Miles/Hours
-        </button>
+      {/* Tabs & Quick / Short Filter Bar */}
+      <div className="w-full flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 mb-6 bg-white p-3 md:p-3.5 rounded-xl shadow-sm border border-gray-200">
+        {/* Left Side: Tabs Switcher */}
+        <div className="flex items-center justify-between sm:justify-start gap-3">
+          <div className="inline-flex p-1 bg-gray-100 rounded-lg">
+            <button
+              onClick={() => setActiveTab("records")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+                activeTab === "records"
+                  ? "bg-[#F96176] text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
+              }`}
+            >
+              <span>Records</span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  activeTab === "records"
+                    ? "bg-white/25 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {filteredRecords.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab("miles")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-all ${
+                activeTab === "miles"
+                  ? "bg-[#F96176] text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
+              }`}
+            >
+              <span>Miles/Hours</span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  activeTab === "miles"
+                    ? "bg-white/25 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {filteredVehicles.length}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right Side: Quick / Short Filters */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          {/* Quick Search */}
+          <div className="relative flex-1 sm:flex-none min-w-[150px] sm:min-w-[170px]">
+            <input
+              type="text"
+              value={quickSearchText}
+              onChange={(e) => setQuickSearchText(e.target.value)}
+              placeholder="Quick search..."
+              className="w-full px-3 py-1.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white text-gray-800 transition"
+            />
+            {quickSearchText && (
+              <button
+                onClick={() => setQuickSearchText("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs w-4 h-4 flex items-center justify-center rounded-full hover:bg-gray-200"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* Payment Status Dropdown Filter */}
+          {activeTab === "records" && (
+            <select
+              value={quickPaymentFilter}
+              onChange={(e) =>
+                setQuickPaymentFilter(
+                  e.target.value as "all" | "paid" | "unpaid" | "partial"
+                )
+              }
+              className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickPaymentFilter !== "all"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="all">Payment: All</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="partial">Partially Paid</option>
+            </select>
+          )}
+
+          {/* Workshop Dropdown Filter */}
+          {activeTab === "records" && (
+            <select
+              value={quickWorkshopFilter}
+              onChange={(e) => setQuickWorkshopFilter(e.target.value)}
+              className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickWorkshopFilter !== "all"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="all">All Workshops</option>
+              {dynamicWorkshopList.map((ws) => (
+                <option key={ws} value={ws}>
+                  {ws}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Vehicle Type / Unit Filter (Trucks/Miles vs Trailers/Hours) */}
+          <select
+            value={quickTypeFilter}
+            onChange={(e) =>
+              setQuickTypeFilter(
+                e.target.value as "all" | "truck" | "trailer"
+              )
+            }
+            className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              quickTypeFilter !== "all"
+                ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <option value="all">Type: All</option>
+            <option value="truck">Trucks (Miles)</option>
+            <option value="trailer">Trailers (Hours)</option>
+          </select>
+
+          {/* Sort By Dropdown (Records Tab) */}
+          {activeTab === "records" && (
+            <select
+              value={quickSortOption}
+              onChange={(e) =>
+                setQuickSortOption(
+                  e.target.value as
+                    | "date_desc"
+                    | "date_asc"
+                    | "amount_desc"
+                    | "amount_asc"
+                    | "unit_desc"
+                )
+              }
+              className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+                quickSortOption !== "date_desc"
+                  ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                  : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <option value="date_desc">Date: Newest</option>
+              <option value="date_asc">Date: Oldest</option>
+              <option value="amount_desc">Amount: High to Low</option>
+              <option value="amount_asc">Amount: Low to High</option>
+              <option value="unit_desc">Miles/Hours: Highest</option>
+            </select>
+          )}
+
+          {/* Reset / Clear All Filters */}
+          {isQuickFilterActive && (
+            <button
+              onClick={clearQuickFilters}
+              className="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition shadow-2xs"
+              title="Reset all short filters"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search & Filter Dialog */}
@@ -3808,22 +4096,44 @@ export default function RecordsPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredRecords.map((record) => (
-                    <TableRow
-                      key={record.id}
-                      id={`record-row-${record.id}`}
-                      className="transition-all duration-700"
-                      sx={{
-                        backgroundColor:
-                          highlightedRecordId === record.id
-                            ? "rgba(254, 240, 138, 0.55) !important"
-                            : undefined,
-                        transition: "background-color 0.8s ease",
-                        ...(highlightedRecordId === record.id && {
-                          boxShadow: "0 0 0 2px #f59e0b inset",
-                        }),
-                      }}
-                    >
+                  {filteredRecords.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={11} align="center" className="py-12">
+                        <div className="flex flex-col items-center justify-center text-gray-500 py-8">
+                          <p className="text-base font-semibold text-gray-700 mb-1">
+                            No records found matching current filters
+                          </p>
+                          <p className="text-sm text-gray-400 mb-4">
+                            Try adjusting or resetting your short filters
+                          </p>
+                          {isQuickFilterActive && (
+                            <button
+                              onClick={clearQuickFilters}
+                              className="px-4 py-1.5 text-xs font-semibold text-white bg-[#F96176] hover:bg-[#e14a60] rounded-lg transition shadow-xs"
+                            >
+                              Clear all short filters
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredRecords.map((record) => (
+                      <TableRow
+                        key={record.id}
+                        id={`record-row-${record.id}`}
+                        className="transition-all duration-700"
+                        sx={{
+                          backgroundColor:
+                            highlightedRecordId === record.id
+                              ? "rgba(254, 240, 138, 0.55) !important"
+                              : undefined,
+                          transition: "background-color 0.8s ease",
+                          ...(highlightedRecordId === record.id && {
+                            boxShadow: "0 0 0 2px #f59e0b inset",
+                          }),
+                        }}
+                      >
                       <TableCell className="table-cell whitespace-nowrap min-w-[110px]">
                         {formatDateSafe(record.date)}
                       </TableCell>
@@ -3978,7 +4288,8 @@ export default function RecordsPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )))
+                }
                 </TableBody>
               </Table>
             </TableContainer>
