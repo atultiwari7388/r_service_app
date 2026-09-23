@@ -120,7 +120,7 @@ export default function AddServiceData() {
           fullWidth
           label="Service ID"
           value={serviceData.sId}
-          onChange={(e) =>
+          onChange={(e: any) =>
             setServiceData((prev) => ({ ...prev, sId: e.target.value }))
           }
         />
@@ -129,7 +129,7 @@ export default function AddServiceData() {
           fullWidth
           label="Service Name"
           value={serviceData.sName}
-          onChange={(e) =>
+          onChange={(e: any) =>
             setServiceData((prev) => ({ ...prev, sName: e.target.value }))
           }
         />
@@ -139,7 +139,7 @@ export default function AddServiceData() {
           <Select
             value={serviceData.vType}
             label="Value Type"
-            onChange={(e) =>
+            onChange={(e: any) =>
               setServiceData((prev) => ({ ...prev, vType: e.target.value }))
             }
           >
@@ -182,7 +182,7 @@ export default function AddServiceData() {
               <Select
                 value={vehicle.brand}
                 label="Brand"
-                onChange={(e) => {
+                onChange={(e: any) => {
                   const newDValues = [...serviceData.dValues];
                   newDValues[index].brand = e.target.value;
                   setServiceData((prev) => ({ ...prev, dValues: newDValues }));
@@ -201,7 +201,7 @@ export default function AddServiceData() {
               <Select
                 value={vehicle.type}
                 label="Type"
-                onChange={(e) => {
+                onChange={(e: any) => {
                   const newDValues = [...serviceData.dValues];
                   newDValues[index].type = e.target.value;
                   setServiceData((prev) => ({ ...prev, dValues: newDValues }));
@@ -219,7 +219,7 @@ export default function AddServiceData() {
               fullWidth
               label="Value"
               value={vehicle.value}
-              onChange={(e) => {
+              onChange={(e: any) => {
                 const newDValues = [...serviceData.dValues];
                 newDValues[index].value = e.target.value;
                 setServiceData((prev) => ({ ...prev, dValues: newDValues }));

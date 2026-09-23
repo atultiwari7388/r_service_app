@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import {
+  MaterialReactTable,
+  useMaterialReactTable,
+  type MRT_ColumnDef,
+  type MRT_Row,
+} from "material-react-table";
 import { db, functions, storage } from "@/lib/firebase";
 import {
   arrayUnion,
@@ -47,7 +53,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
 } from "@mui/material";
 import toast from "react-hot-toast";
 import { ProfileValues, VehicleTypes } from "@/types/types";
@@ -2607,16 +2612,6 @@ export default function RecordsPage() {
     setShowAddRecords(false);
   };
 
-  if (!user) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <h1 className="text-xl font-semibold text-gray-700">
-          Please Login to access the page..
-        </h1>
-      </div>
-    );
-  }
-
   const DRY_VAN_EXCLUDED_SERVICES = [
     "Alternator",
     "Battery Change",
@@ -2666,6 +2661,373 @@ export default function RecordsPage() {
       </div>
     );
   };
+
+  const columns = useMemo<MRT_ColumnDef<ServiceRecord>[]>(
+    () => [
+      {
+        accessorFn: (row) => {
+          if (!row.date) return 0;
+          try {
+            const trimmed = String(row.date).trim();
+            const parsed = new Date(trimmed);
+            return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+          } catch {
+            return 0;
+          }
+        },
+        id: "date",
+        header: "Date",
+        size: 120,
+        Cell: ({ row }) => (
+          <span className="whitespace-nowrap font-medium text-gray-800">
+            {formatDateSafe(row.original.date)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "invoice",
+        header: "Invoice",
+        size: 110,
+        Cell: ({ cell }) => {
+          const val = cell.getValue<string>();
+          return <span>{val && val.trim() !== "" ? val : "-"}</span>;
+        },
+      },
+      {
+        accessorFn: (row) => row.vehicleDetails?.vehicleNumber || "",
+        id: "vehicleNumber",
+        header: "Vehicle",
+        size: 120,
+        Cell: ({ row }) => (
+          <span className="font-semibold text-gray-900">
+            {row.original.vehicleDetails?.vehicleNumber || "-"}
+          </span>
+        ),
+      },
+      {
+        accessorFn: (row) => row.vehicleDetails?.companyName || "",
+        id: "companyName",
+        header: "Company",
+        size: 140,
+        Cell: ({ row }) => (
+          <span>{row.original.vehicleDetails?.companyName || "-"}</span>
+        ),
+      },
+      {
+        accessorFn: (row) => {
+          const amt = row.invoiceAmount ? Number(row.invoiceAmount) : 0;
+          return isNaN(amt) ? 0 : amt;
+        },
+        id: "invoiceAmount",
+        header: "Inv. Amount",
+        size: 120,
+        Cell: ({ row }) => {
+          const rawAmt = row.original.invoiceAmount;
+          const num = Number(rawAmt);
+          return (
+            <span className="font-semibold text-gray-900">
+              {rawAmt && String(rawAmt).trim() !== "" && !isNaN(num) && num !== 0
+                ? `$${rawAmt}`
+                : "-"}
+            </span>
+          );
+        },
+      },
+      {
+        accessorFn: (row) => row.paymentStatus || "Unpaid",
+        id: "paymentStatus",
+        header: "Payment",
+        size: 150,
+        Cell: ({ row }) => {
+          const record = row.original;
+          const numAmt = Number(record.invoiceAmount);
+          if (!record.invoiceAmount || isNaN(numAmt) || numAmt <= 0) {
+            return <span>-</span>;
+          }
+          return (
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              {record.paymentStatus === "Paid" ? (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
+                  Paid
+                </span>
+              ) : record.paymentStatus === "Partially Paid" ? (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
+                  Partial (${record.paidAmount || 0})
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
+                  Unpaid
+                </span>
+              )}
+              {record.paymentStatus !== "Paid" && (
+                <Link
+                  href={`/account/pay-invoice?recordId=${record.id}`}
+                  className="text-[11px] font-bold text-[#F96176] hover:underline"
+                >
+                  Pay
+                </Link>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorFn: (row) =>
+          row.vehicleDetails?.vehicleType === "Trailer"
+            ? Number(row.hours) || 0
+            : Number(row.miles) || 0,
+        id: "milesHours",
+        header: "Miles/Hours",
+        size: 120,
+        Cell: ({ row }) => {
+          const record = row.original;
+          if (record.vehicleDetails?.vehicleType === "Trailer") {
+            return (
+              <span>
+                {record.hours && Number(record.hours) !== 0
+                  ? `${record.hours}`
+                  : "-"}
+              </span>
+            );
+          }
+          return (
+            <span>
+              {record.miles && Number(record.miles) !== 0
+                ? `${record.miles}`
+                : "-"}
+            </span>
+          );
+        },
+      },
+      {
+        accessorFn: (row) =>
+          row.services && row.services.length > 0
+            ? [...row.services]
+                .filter((s) => s && s.serviceName)
+                .sort((a, b) =>
+                  (a.serviceName || "").localeCompare(b.serviceName || "")
+                )
+                .map((service) => formatServiceWithSubservices(service))
+                .join(", ")
+            : "",
+        id: "services",
+        header: "Services",
+        size: 220,
+        Cell: ({ row }) => {
+          const record = row.original;
+          if (!record.services || record.services.length === 0) return <span>-</span>;
+          const serviceText = [...record.services]
+            .filter((s) => s && s.serviceName)
+            .sort((a, b) =>
+              (a.serviceName || "").localeCompare(b.serviceName || "")
+            )
+            .map((service) => formatServiceWithSubservices(service))
+            .join(", ");
+          return <span className="text-gray-700 text-xs">{serviceText || "-"}</span>;
+        },
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+        size: 180,
+        Cell: ({ cell }) => {
+          const desc = cell.getValue<string>();
+          if (!desc || desc.trim() === "") return <span>-</span>;
+          const trimmed = desc.trim();
+          const words = trimmed.split(/\s+/);
+          const displayText =
+            words.length > 10 ? words.slice(0, 10).join(" ") + "..." : trimmed;
+          return (
+            <span
+              title={trimmed}
+              className="text-gray-700 block truncate max-w-[180px] text-xs"
+            >
+              {displayText}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "workshopName",
+        header: "Workshop Name",
+        size: 150,
+        Cell: ({ cell }) => {
+          const shop = cell.getValue<string>();
+          return <span>{shop && shop.trim() !== "" ? shop : "-"}</span>;
+        },
+      },
+      {
+        id: "actions",
+        header: "Action",
+        size: 260,
+        enableSorting: false,
+        enableColumnFilter: false,
+        Cell: ({ row }) => {
+          const record = row.original;
+          return (
+            <div className="flex items-center gap-1.5 whitespace-nowrap">
+              <button
+                onClick={() =>
+                  userData?.isEdit
+                    ? handleEditRecord(record)
+                    : toast.error(
+                        "You don't have permission to edit this record."
+                      )
+                }
+                className="bg-[#58BB87] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#48a374] transition cursor-pointer"
+              >
+                Edit
+              </button>
+
+              <button
+                onClick={() => handleDuplicateRecord(record)}
+                className="bg-[#8B5CF6] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer"
+                title="Duplicate record to create a new one"
+              >
+                <FaCopy className="text-[11px]" /> Duplicate
+              </button>
+
+              <Link
+                href={`/records/${record.id}`}
+                passHref
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    sessionStorage.setItem("lastViewedRecordId", record.id);
+                  }
+                }}
+              >
+                <button className="bg-[#F96176] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#e14a60] transition cursor-pointer">
+                  View
+                </button>
+              </Link>
+
+              <button
+                onClick={() => downloadSingleRecord(record)}
+                className="bg-[#10B981] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#059669] transition cursor-pointer"
+                title="Download Excel"
+              >
+                <FaDownload className="text-[11px]" /> Download
+              </button>
+            </div>
+          );
+        },
+      },
+    ],
+    [userData?.isEdit, handleDuplicateRecord, handleEditRecord, downloadSingleRecord]
+  );
+
+  const table = useMaterialReactTable({
+    columns,
+    data: filteredRecords,
+    enableColumnActions: false,
+    enableColumnFilters: false,
+    enablePagination: true,
+    enableSorting: true,
+    enableBottomToolbar: true,
+    enableTopToolbar: false,
+    enableDensityToggle: false,
+    enableFullScreenToggle: false,
+    enableHiding: false,
+    initialState: {
+      density: "comfortable",
+      pagination: { pageSize: 25, pageIndex: 0 },
+      sorting: [{ id: "date", desc: true }],
+    },
+    muiTablePaperProps: {
+      elevation: 0,
+      sx: {
+        borderRadius: "12px",
+        border: "1px solid #E5E7EB",
+        overflow: "hidden",
+        backgroundColor: "#FFFFFF",
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05)",
+      },
+    },
+    muiTableContainerProps: {
+      sx: {
+        maxHeight: "none",
+        backgroundColor: "#FFFFFF",
+      },
+    },
+    muiTableHeadCellProps: {
+      sx: {
+        backgroundColor: "#FFFFFF",
+        color: "#111827",
+        fontWeight: 600,
+        fontSize: "0.8125rem",
+        borderBottom: "2px solid #E5E7EB",
+        py: 1.5,
+        "& .MuiTableSortLabel-root": {
+          color: "#4B5563",
+          "&:hover": {
+            color: "#111827",
+          },
+          "&.Mui-active": {
+            color: "#F96176",
+            "& .MuiTableSortLabel-icon": {
+              color: "#F96176 !important",
+            },
+          },
+        },
+      },
+    },
+    muiTableBodyCellProps: {
+      sx: {
+        backgroundColor: "#FFFFFF",
+        color: "#374151",
+        fontSize: "0.8125rem",
+        borderBottom: "1px solid #F3F4F6",
+        py: 1.25,
+      },
+    },
+    muiTableBodyRowProps: ({ row }: { row: MRT_Row<ServiceRecord> }) => ({
+      id: `record-row-${row.original.id}`,
+      sx: {
+        backgroundColor:
+          highlightedRecordId === row.original.id
+            ? "rgba(254, 240, 138, 0.55) !important"
+            : "#FFFFFF",
+        transition: "background-color 0.4s ease",
+        "&:hover": {
+          backgroundColor:
+            highlightedRecordId === row.original.id
+              ? "rgba(254, 240, 138, 0.7) !important"
+              : "#F9FAFB !important",
+        },
+        ...(highlightedRecordId === row.original.id && {
+          boxShadow: "0 0 0 2px #f59e0b inset",
+        }),
+      },
+    }),
+    renderEmptyRowsFallback: () => (
+      <div className="flex flex-col items-center justify-center text-gray-500 py-12">
+        <p className="text-base font-semibold text-gray-700 mb-1">
+          No records found matching current filters
+        </p>
+        <p className="text-sm text-gray-400 mb-4">
+          Try adjusting or resetting your short filters
+        </p>
+        {isQuickFilterActive && (
+          <button
+            onClick={clearQuickFilters}
+            className="px-4 py-1.5 text-xs font-semibold text-white bg-[#F96176] hover:bg-[#e14a60] rounded-lg transition shadow-xs"
+          >
+            Clear all short filters
+          </button>
+        )}
+      </div>
+    ),
+  });
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <h1 className="text-xl font-semibold text-gray-700">
+          Please Login to access the page..
+        </h1>
+      </div>
+    );
+  }
 
   return userData?.isView ? (
     <div className="flex flex-col justify-center items-center p-6 bg-gray-100 gap-8">
@@ -2960,7 +3322,7 @@ export default function RecordsPage() {
             <input
               type="text"
               value={quickSearchText}
-              onChange={(e) => setQuickSearchText(e.target.value)}
+              onChange={(e: any) => setQuickSearchText(e.target.value)}
               placeholder="Quick search..."
               className="w-full px-3 py-1.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white text-gray-800 transition"
             />
@@ -2978,7 +3340,7 @@ export default function RecordsPage() {
           {activeTab === "records" && (
             <select
               value={quickPaymentFilter}
-              onChange={(e) =>
+              onChange={(e: any) =>
                 setQuickPaymentFilter(
                   e.target.value as "all" | "paid" | "unpaid" | "partial"
                 )
@@ -3000,7 +3362,7 @@ export default function RecordsPage() {
           {activeTab === "records" && (
             <select
               value={quickWorkshopFilter}
-              onChange={(e) => setQuickWorkshopFilter(e.target.value)}
+              onChange={(e: any) => setQuickWorkshopFilter(e.target.value)}
               className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
                 quickWorkshopFilter !== "all"
                   ? "bg-rose-50 border-[#F96176] text-[#F96176]"
@@ -3019,7 +3381,7 @@ export default function RecordsPage() {
           {/* Vehicle Type / Unit Filter (Trucks/Miles vs Trailers/Hours) */}
           <select
             value={quickTypeFilter}
-            onChange={(e) =>
+            onChange={(e: any) =>
               setQuickTypeFilter(
                 e.target.value as "all" | "truck" | "trailer"
               )
@@ -3039,7 +3401,7 @@ export default function RecordsPage() {
           {activeTab === "records" && (
             <select
               value={quickSortOption}
-              onChange={(e) =>
+              onChange={(e: any) =>
                 setQuickSortOption(
                   e.target.value as
                     | "date_desc"
@@ -3098,7 +3460,7 @@ export default function RecordsPage() {
               <InputLabel>Search Type</InputLabel>
               <Select
                 value={searchType}
-                onChange={(e) =>
+                onChange={(e: any) =>
                   setSearchType(
                     e.target.value as
                       | "vehicle"
@@ -3129,7 +3491,7 @@ export default function RecordsPage() {
                 <InputLabel>Vehicle</InputLabel>
                 <Select
                   value={filterVehicle}
-                  onChange={(e) => setFilterVehicle(e.target.value as string)}
+                  onChange={(e: any) => setFilterVehicle(e.target.value as string)}
                   label="Vehicle"
                 >
                   {vehicles.map((vehicle) => (
@@ -3147,7 +3509,7 @@ export default function RecordsPage() {
                 <InputLabel>Service</InputLabel>
                 <Select
                   value={filterService}
-                  onChange={(e) => setFilterService(e.target.value as string)}
+                  onChange={(e: any) => setFilterService(e.target.value as string)}
                   label="Service"
                 >
                   {services.map((service) => (
@@ -3164,7 +3526,7 @@ export default function RecordsPage() {
                 fullWidth
                 label="Other Service (Custom Service)"
                 value={filterOtherService}
-                onChange={(e) => setFilterOtherService(e.target.value)}
+                onChange={(e: any) => setFilterOtherService(e.target.value)}
                 placeholder="Search by other / custom service name..."
                 InputProps={{
                   startAdornment: (
@@ -3208,7 +3570,7 @@ export default function RecordsPage() {
                 fullWidth
                 label="Invoice Number"
                 value={filterInvoice}
-                onChange={(e) => setFilterInvoice(e.target.value)}
+                onChange={(e: any) => setFilterInvoice(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -3224,7 +3586,7 @@ export default function RecordsPage() {
                 fullWidth
                 label="Description"
                 value={filterDescription}
-                onChange={(e) => setFilterDescription(e.target.value)}
+                onChange={(e: any) => setFilterDescription(e.target.value)}
                 placeholder="Search by record description..."
                 InputProps={{
                   startAdornment: (
@@ -3276,7 +3638,7 @@ export default function RecordsPage() {
 
                   <Select
                     value={selectedVehicle}
-                    onChange={(e) => handleVehicleSelect(e.target.value)}
+                    onChange={(e: any) => handleVehicleSelect(e.target.value)}
                     className="rounded-lg"
                     sx={{ minHeight: "56px" }}
                     label="Select Vehicle"
@@ -3301,7 +3663,7 @@ export default function RecordsPage() {
                   }
                   type="number"
                   value={todayMiles}
-                  onChange={(e) => setTodayMiles(e.target.value)}
+                  onChange={(e: any) => setTodayMiles(e.target.value)}
                   className="mb-4 rounded-lg"
                 />
               )}
@@ -3362,7 +3724,7 @@ export default function RecordsPage() {
                     <Select
                       labelId="select-vehicle-label"
                       value={selectedVehicle}
-                      onChange={(e) => {
+                      onChange={(e: any) => {
                         handleAddRecordVehicleSelect(e.target.value);
                       }}
                       className="rounded-lg"
@@ -3386,7 +3748,7 @@ export default function RecordsPage() {
                     <button
                       className="btn bg-[#F96176] text-white text-2xl text-center rounded-md hover:bg-[#eb929e] tooltip mt-1"
                       title="Add Vehicle"
-                      onClick={(e) => {
+                      onClick={(e: any) => {
                         e.preventDefault();
                         setShowPopup(true);
                       }}
@@ -3486,11 +3848,11 @@ export default function RecordsPage() {
                       labelId="select-packages-label"
                       multiple
                       value={Array.from(selectedPackages)}
-                      onChange={(e) => {
+                      onChange={(e: any) => {
                         const newPackages = e.target.value as string[];
                         handlePackageSelect(newPackages);
                       }}
-                      renderValue={(selected) => selected.join(", ")}
+                      renderValue={(selected: any) => selected.join(", ")}
                       label="Select Packages"
                       sx={{ minHeight: "56px" }}
                     >
@@ -3519,7 +3881,7 @@ export default function RecordsPage() {
                   fullWidth
                   label="Search Services"
                   value={serviceSearchText}
-                  onChange={(e) => setServiceSearchText(e.target.value)}
+                  onChange={(e: any) => setServiceSearchText(e.target.value)}
                   InputProps={{
                     endAdornment: (
                       <InputAdornment position="end">
@@ -3560,7 +3922,7 @@ export default function RecordsPage() {
                     <div key={service.sId} className="w-full">
                       <Chip
                         label={service.sName}
-                        onClick={(e) => {
+                        onClick={(e: any) => {
                           e.preventDefault();
                           handleServiceSelect(service.sId);
                         }}
@@ -3621,7 +3983,7 @@ export default function RecordsPage() {
                     ? "bg-[#58BB87] text-gray-800"
                     : "bg-gray-200 text-gray-800"
                 }`}
-                                    onClick={(e) => {
+                                    onClick={(e: any) => {
                                       e.stopPropagation();
                                       handleSubserviceToggle(service.sId, name);
                                     }}
@@ -3648,7 +4010,7 @@ export default function RecordsPage() {
                 <div className="w-full">
                   <Chip
                     label="Other Service"
-                    onClick={(e) => {
+                    onClick={(e: any) => {
                       e.preventDefault();
                       setIsOtherServiceSelected(!isOtherServiceSelected);
                     }}
@@ -3684,7 +4046,7 @@ export default function RecordsPage() {
                         label="Enter Custom Service Name *"
                         placeholder="e.g. Battery Replacement, AC Repair, Body Work"
                         value={otherServiceName}
-                        onChange={(e) => setOtherServiceName(e.target.value)}
+                        onChange={(e: any) => setOtherServiceName(e.target.value)}
                         className="bg-white rounded"
                       />
                     </div>
@@ -3698,7 +4060,7 @@ export default function RecordsPage() {
                     label="Miles"
                     type="number"
                     value={miles}
-                    onChange={(e) => setMiles(e.target.value)}
+                    onChange={(e: any) => setMiles(e.target.value)}
                     className="mb-4 rounded-lg"
                   />
                 )}
@@ -3736,7 +4098,7 @@ export default function RecordsPage() {
                           });
                         }
                       }}
-                      onChangeRaw={(e) => {
+                      onChangeRaw={(e: any) => {
                         const val = e?.target
                           ? (e.target as HTMLInputElement).value
                           : "";
@@ -3791,39 +4153,44 @@ export default function RecordsPage() {
                         label="Hours"
                         type="number"
                         value={hours}
-                        onChange={(e) => setHours(e.target.value)}
+                        onChange={(e: any) => setHours(e.target.value)}
                         className="mb-4 rounded-lg"
                       />
                     )}
                   </>
                 )}
 
-                <Autocomplete
-                  freeSolo
-                  options={workshopList}
-                  value={workshopName}
-                  onInputChange={(event, newInputValue) => {
-                    setWorkshopName(newInputValue);
-                  }}
-                  onChange={(event, newValue) => {
-                    setWorkshopName(newValue || "");
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      fullWidth
-                      label="Workshop Name"
-                      placeholder="Select existing workshop or type new workshop"
-                      className="mb-4 rounded-lg"
+                {(() => {
+                  const AutocompleteAny: any = Autocomplete;
+                  return (
+                    <AutocompleteAny
+                      freeSolo
+                      options={workshopList}
+                      value={workshopName}
+                      onInputChange={(event: any, newInputValue: string) => {
+                        setWorkshopName(newInputValue);
+                      }}
+                      onChange={(event: any, newValue: string | null) => {
+                        setWorkshopName(newValue || "");
+                      }}
+                      renderInput={(params: any) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          label="Workshop Name"
+                          placeholder="Select existing workshop or type new workshop"
+                          className="mb-4 rounded-lg"
+                        />
+                      )}
                     />
-                  )}
-                />
+                  );
+                })()}
 
                 <TextField
                   fullWidth
                   label="Invoice Number (Optional)"
                   value={invoice}
-                  onChange={(e) => {
+                  onChange={(e: any) => {
                     // Limit to 10 characters
                     if (e.target.value.length <= 10) {
                       setInvoice(e.target.value);
@@ -3838,7 +4205,7 @@ export default function RecordsPage() {
                   fullWidth
                   label="Invoice Amount (Optional)"
                   value={invoiceAmount}
-                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  onChange={(e: any) => setInvoiceAmount(e.target.value)}
                   className="mb-4 rounded-lg"
                 />
                 <TextField
@@ -3847,7 +4214,7 @@ export default function RecordsPage() {
                   multiline
                   rows={4}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e: any) => setDescription(e.target.value)}
                   className="rounded-lg"
                 />
 
@@ -4066,233 +4433,10 @@ export default function RecordsPage() {
         ) : (
           <div
             ref={printRef}
-            className="w-full bg-white"
+            className="w-full bg-white rounded-xl shadow-xs"
             style={{ overflow: "visible", maxHeight: "none" }}
           >
-            <TableContainer component={Paper}>
-              <Table className="table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell className="whitespace-nowrap font-medium min-w-[110px]">
-                      Date
-                    </TableCell>
-                    <TableCell>Invoice</TableCell>
-                    <TableCell>Vehicle</TableCell>
-                    <TableCell>Company</TableCell>
-                    <TableCell>Inv. Amount</TableCell>
-                    <TableCell>Payment</TableCell>
-                    {records.some((record) => record.miles > 0) && (
-                      <TableCell>Miles/Hours</TableCell>
-                    )}
-                    {records.some((record) => record.hours < 0) && (
-                      <TableCell>Hours</TableCell>
-                    )}
-                    <TableCell>Services</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Workshop Name</TableCell>
-                    <TableCell className="whitespace-nowrap font-medium">
-                      Action
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredRecords.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} align="center" className="py-12">
-                        <div className="flex flex-col items-center justify-center text-gray-500 py-8">
-                          <p className="text-base font-semibold text-gray-700 mb-1">
-                            No records found matching current filters
-                          </p>
-                          <p className="text-sm text-gray-400 mb-4">
-                            Try adjusting or resetting your short filters
-                          </p>
-                          {isQuickFilterActive && (
-                            <button
-                              onClick={clearQuickFilters}
-                              className="px-4 py-1.5 text-xs font-semibold text-white bg-[#F96176] hover:bg-[#e14a60] rounded-lg transition shadow-xs"
-                            >
-                              Clear all short filters
-                            </button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredRecords.map((record) => (
-                      <TableRow
-                        key={record.id}
-                        id={`record-row-${record.id}`}
-                        className="transition-all duration-700"
-                        sx={{
-                          backgroundColor:
-                            highlightedRecordId === record.id
-                              ? "rgba(254, 240, 138, 0.55) !important"
-                              : undefined,
-                          transition: "background-color 0.8s ease",
-                          ...(highlightedRecordId === record.id && {
-                            boxShadow: "0 0 0 2px #f59e0b inset",
-                          }),
-                        }}
-                      >
-                      <TableCell className="table-cell whitespace-nowrap min-w-[110px]">
-                        {formatDateSafe(record.date)}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        {record.invoice && record.invoice.trim() !== ""
-                          ? record.invoice
-                          : ""}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        {record.vehicleDetails?.vehicleNumber || ""}
-                      </TableCell>
-
-                      <TableCell className="table-cell">
-                        {record.vehicleDetails?.companyName || ""}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        {record.invoiceAmount &&
-                        String(record.invoiceAmount).trim() !== "" &&
-                        Number(record.invoiceAmount) !== 0
-                          ? `$${record.invoiceAmount}`
-                          : ""}
-                      </TableCell>
-
-                      <TableCell className="table-cell whitespace-nowrap">
-                        {record.invoiceAmount &&
-                        Number(record.invoiceAmount) > 0 ? (
-                          <div className="flex items-center gap-1.5">
-                            {record.paymentStatus === "Paid" ? (
-                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
-                                Paid
-                              </span>
-                            ) : record.paymentStatus === "Partially Paid" ? (
-                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700">
-                                Partial (${record.paidAmount || 0})
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
-                                Unpaid
-                              </span>
-                            )}
-                            {record.paymentStatus !== "Paid" && (
-                              <Link
-                                href={`/account/pay-invoice?recordId=${record.id}`}
-                                className="text-[11px] font-bold text-[#F96176] hover:underline"
-                              >
-                                Pay
-                              </Link>
-                            )}
-                          </div>
-                        ) : (
-                          ""
-                        )}
-                      </TableCell>
-
-                      <TableCell className="table-cell">
-                        {record.vehicleDetails?.vehicleType === "Trailer"
-                          ? record.hours && Number(record.hours) !== 0
-                            ? `${record.hours}`
-                            : ""
-                          : record.miles && Number(record.miles) !== 0
-                          ? `${record.miles}`
-                          : ""}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        {record.services && record.services.length > 0
-                          ? [...record.services]
-                              .filter((s) => s && s.serviceName)
-                              .sort((a, b) =>
-                                (a.serviceName || "").localeCompare(
-                                  b.serviceName || ""
-                                )
-                              )
-                              .map((service) => formatServiceWithSubservices(service))
-                              .join(", ") || ""
-                          : ""}
-                      </TableCell>
-
-                      <TableCell className="table-cell max-w-[200px]">
-                        {record.description &&
-                        record.description.trim() !== "" ? (
-                          <span
-                            title={record.description}
-                            className="text-gray-700 block truncate"
-                          >
-                            {record.description.trim().split(/\s+/).length > 10
-                              ? record.description
-                                  .trim()
-                                  .split(/\s+/)
-                                  .slice(0, 10)
-                                  .join(" ") + "..."
-                              : record.description}
-                          </span>
-                        ) : (
-                          ""
-                        )}
-                      </TableCell>
-
-                      <TableCell className="table-cell">
-                        {record.workshopName &&
-                        record.workshopName.trim() !== ""
-                          ? record.workshopName
-                          : ""}
-                      </TableCell>
-
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() =>
-                              userData?.isEdit
-                                ? handleEditRecord(record)
-                                : toast.error(
-                                    "You don't have permission to edit this record."
-                                  )
-                            }
-                            className="bg-[#58BB87] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#48a374] transition cursor-pointer"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            onClick={() => handleDuplicateRecord(record)}
-                            className="bg-[#8B5CF6] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer"
-                            title="Duplicate record to create a new one"
-                          >
-                            <FaCopy className="text-[11px]" /> Duplicate
-                          </button>
-
-                          <Link
-                            href={`/records/${record.id}`}
-                            passHref
-                            onClick={() => {
-                              if (typeof window !== "undefined") {
-                                sessionStorage.setItem(
-                                  "lastViewedRecordId",
-                                  record.id
-                                );
-                              }
-                            }}
-                          >
-                            <button className="bg-[#F96176] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#e14a60] transition cursor-pointer">
-                              View
-                            </button>
-                          </Link>
-
-                          <button
-                            onClick={() => downloadSingleRecord(record)}
-                            className="bg-[#10B981] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#059669] transition cursor-pointer"
-                            title="Download Excel"
-                          >
-                            <FaDownload className="text-[11px]" /> Download
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )))
-                }
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <MaterialReactTable table={table} />
           </div>
         )
       ) : (
