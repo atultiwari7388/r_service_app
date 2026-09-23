@@ -16,7 +16,24 @@ import 'package:regal_service_d_app/views/app/myTeam/widgets/add_team_screen.dar
 import 'package:regal_service_d_app/widgets/custom_button.dart';
 
 class ManageCheckScreen extends StatefulWidget {
-  const ManageCheckScreen({super.key});
+  final String? initialType;
+  final String? initialPayee;
+  final String? initialUserId;
+  final double? initialTotalAmount;
+  final List<Map<String, dynamic>>? initialServiceDetails;
+  final List<Map<String, dynamic>>? attachedInvoices;
+  final bool autoOpenWriteCheck;
+
+  const ManageCheckScreen({
+    super.key,
+    this.initialType,
+    this.initialPayee,
+    this.initialUserId,
+    this.initialTotalAmount,
+    this.initialServiceDetails,
+    this.attachedInvoices,
+    this.autoOpenWriteCheck = false,
+  });
 
   @override
   State<ManageCheckScreen> createState() => _ManageCheckScreenState();
@@ -61,14 +78,33 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   bool _isEditing = false;
   String? _editingCheckId;
   String? _editingCheckNumber;
+  bool _isPreparingAutoCheck = false;
+  bool _isSavingCheck = false;
 
   @override
   void initState() {
     super.initState();
+    if (widget.autoOpenWriteCheck) {
+      _isPreparingAutoCheck = true;
+    }
+    if (widget.initialPayee != null && widget.initialUserId != null) {
+      _allMembers.add(<String, dynamic>{
+        'name': widget.initialPayee!,
+        'memberId': widget.initialUserId!,
+        'role': widget.initialType ?? 'Vendor',
+        'vehicles': <Map<String, dynamic>>[],
+      });
+    }
     fetchUserDetails().then((_) {
+      _fetchCurrentCheckNumber().then((_) {
+        if (widget.autoOpenWriteCheck) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showAddCheckDialog();
+          });
+        }
+      });
       fetchTeamMembersWithVehicles();
       fetchChecks();
-      _fetchCurrentCheckNumber();
     });
   }
 
@@ -102,22 +138,28 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       // Get all check series for the effective user
       QuerySnapshot seriesSnapshot = await FirebaseFirestore.instance
           .collection('CheckSeries')
-          .where('userId', isEqualTo: _effectiveUserId) // Use effective user ID
+          .where('userId', isEqualTo: _effectiveUserId)
           .get();
 
-      // Get all checks from all series
+      // Parallel fetch checks from all series
       List<String> allCheckNumbers = [];
-      for (var seriesDoc in seriesSnapshot.docs) {
-        QuerySnapshot checksSnapshot = await FirebaseFirestore.instance
-            .collection('CheckSeries')
-            .doc(seriesDoc.id)
-            .collection('Checks')
-            .get();
+      final checksSnapshots = await Future.wait(
+        seriesSnapshot.docs.map((seriesDoc) {
+          return FirebaseFirestore.instance
+              .collection('CheckSeries')
+              .doc(seriesDoc.id)
+              .collection('Checks')
+              .get();
+        }),
+      );
 
+      for (var checksSnapshot in checksSnapshots) {
         allCheckNumbers.addAll(checksSnapshot.docs.map((doc) {
           return doc['checkNumber'] as String;
         }));
       }
+
+      if (allCheckNumbers.isEmpty) return null;
 
       // Sort the check numbers
       allCheckNumbers.sort((a, b) {
@@ -126,22 +168,25 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
         if (prefixA != prefixB) return prefixA.compareTo(prefixB);
 
-        int numA = int.parse(a.replaceAll(prefixA, ''));
-        int numB = int.parse(b.replaceAll(prefixB, ''));
+        int numA = int.tryParse(a.replaceAll(prefixA, '')) ?? 0;
+        int numB = int.tryParse(b.replaceAll(prefixB, '')) ?? 0;
         return numA.compareTo(numB);
       });
 
+      // Query all used check numbers in a SINGLE fast query instead of looping roundtrips
+      QuerySnapshot usedChecksSnapshot = await FirebaseFirestore.instance
+          .collection('Checks')
+          .where('createdBy', isEqualTo: _effectiveUserId)
+          .get();
+
+      final Set<String> usedCheckNumbers = usedChecksSnapshot.docs
+          .map((doc) => doc['checkNumber']?.toString() ?? '')
+          .where((num) => num.isNotEmpty)
+          .toSet();
+
       // Find the first unused check number
       for (var checkNumber in allCheckNumbers) {
-        // Check if this check number is used in the Checks collection
-        QuerySnapshot usedCheck = await FirebaseFirestore.instance
-            .collection('Checks')
-            .where('checkNumber', isEqualTo: checkNumber)
-            .where('createdBy',
-                isEqualTo: _effectiveUserId) // Use effective user ID
-            .get();
-
-        if (usedCheck.docs.isEmpty) {
+        if (!usedCheckNumbers.contains(checkNumber)) {
           return checkNumber;
         }
       }
@@ -276,20 +321,39 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     final universeFont =
         pw.Font.ttf(await rootBundle.load('assets/font/UniversRegular.ttf'));
 
+    final rawDetails = (check['serviceDetails'] as List?) ?? [];
+    final activeDetails = rawDetails.where((detail) {
+      final name = (detail['serviceName'] ?? '').toString().trim();
+      final amount = detail['amount'];
+      return name.isNotEmpty || (amount != null && amount != 0);
+    }).toList();
+
+    final printableDetails = activeDetails.length > 1
+        ? [
+            {
+              'serviceName': activeDetails[0]['serviceName']
+                          ?.toString()
+                          .trim()
+                          .isNotEmpty ==
+                      true
+                  ? activeDetails[0]['serviceName']
+                  : 'Payment for ${activeDetails.length} Invoices',
+              'amount': check['totalAmount'],
+            }
+          ]
+        : activeDetails.isNotEmpty
+            ? activeDetails
+            : [
+                {'serviceName': '', 'amount': check['totalAmount']}
+              ];
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        // pageFormat: PdfPageFormat.a4.copyWith(
-        //   marginTop: 0,
-        //   marginBottom: 0,
-        //   marginLeft: 0,
-        //   marginRight: 0,
-        // ),
         build: (pw.Context context) {
           return pw.Transform.translate(
             offset: const PdfPoint(0, -10),
             child: pw.Container(
-              // margin: pw.EdgeInsets.only(top: -4),
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
@@ -327,7 +391,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                           '**${check['totalAmount'] != null ? NumberFormat("#,##0.00", "en_US").format(check['totalAmount']) : "0.00"}',
                           style: pw.TextStyle(fontSize: 11, font: universeFont),
                         ),
-                        // pw.SizedBox(width: 30),
                       ],
                     ),
                   ),
@@ -403,7 +466,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ],
                   ),
                   pw.SizedBox(height: 10),
-                  ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  ...printableDetails.map<pw.Widget>((detail) {
                     final numberFormat = NumberFormat("#,##0.00", "en_US");
                     final formattedTotal = numberFormat.format(
                         detail['amount'] != null ? detail['amount'] : 0);
@@ -437,13 +500,6 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.start,
                         children: [
-                          // pw.Text(
-                          //   'Memo Number :',
-                          //   style: pw.TextStyle(
-                          //       fontSize: 13,
-                          //       fontWeight: pw.FontWeight.normal,
-                          //       font: universeFont),
-                          // ),
                           pw.Text(
                             '${check['memoNumber'].toString()}',
                             style: pw.TextStyle(
@@ -472,7 +528,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ],
                   ),
                   pw.SizedBox(height: 10),
-                  ...check['serviceDetails'].map<pw.Widget>((detail) {
+                  ...printableDetails.map<pw.Widget>((detail) {
                     final numberFormat = NumberFormat("#,##0.00", "en_US");
                     final formattedTotal = numberFormat.format(
                         detail['amount'] != null ? detail['amount'] : 0);
@@ -718,30 +774,53 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                     SizedBox(height: 16),
                     if (_selectedType != null)
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: 'Select Name',
-                          labelStyle: appStyle(14, kDark, FontWeight.normal),
-                          border: OutlineInputBorder(),
-                        ),
-                        value: _selectedUserId,
-                        items: _allMembers
-                            .where((member) => member['role'] == _selectedType)
-                            .map<DropdownMenuItem<String>>(
-                                (member) => DropdownMenuItem<String>(
-                                      value: member['memberId'],
-                                      child: Text(member['name']),
-                                    ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedUserId = value;
-                            _selectedUserName = _allMembers.firstWhere(
-                                (member) =>
-                                    member['memberId'] == value)['name'];
-                          });
+                      Builder(
+                        builder: (context) {
+                          final typeMembers = _allMembers
+                              .where((member) =>
+                                  member['role']?.toString() == _selectedType)
+                              .toList();
+                          final validSelectedId = typeMembers.any((m) =>
+                                  m['memberId']?.toString() == _selectedUserId)
+                              ? _selectedUserId
+                              : null;
+
+                          return DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Select Name',
+                              labelStyle:
+                                  appStyle(14, kDark, FontWeight.normal),
+                              border: const OutlineInputBorder(),
+                            ),
+                            value: validSelectedId,
+                            items: typeMembers
+                                .map<DropdownMenuItem<String>>(
+                                    (member) => DropdownMenuItem<String>(
+                                          value: member['memberId'].toString(),
+                                          child: Text(
+                                              member['name']?.toString() ??
+                                                  'Unknown'),
+                                        ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedUserId = value;
+                                final matched = _allMembers.firstWhere(
+                                  (member) =>
+                                      member['memberId']?.toString() == value,
+                                  orElse: () => <String, dynamic>{
+                                    'name': value ?? '',
+                                    'memberId': value ?? '',
+                                  },
+                                );
+                                _selectedUserName =
+                                    matched['name']?.toString() ?? value;
+                              });
+                            },
+                            validator: (value) =>
+                                value == null ? 'Required' : null,
+                          );
                         },
-                        validator: (value) => value == null ? 'Required' : null,
                       ),
                     SizedBox(height: 16),
                     if (_selectedUserId != null)
@@ -844,19 +923,34 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    _resetForm();
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: _isSavingCheck
+                      ? null
+                      : () {
+                          _resetForm();
+                          Navigator.of(context).pop();
+                        },
                   child: Text('Cancel',
-                      style: appStyle(14, kDark, FontWeight.normal)),
+                      style: appStyle(14, _isSavingCheck ? kGray : kDark, FontWeight.normal)),
                 ),
                 ElevatedButton(
-                  onPressed: _serviceDetails.isEmpty ? null : _updateCheck,
-                  style:
-                      ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                  child: Text('Update Check',
-                      style: appStyle(14, kWhite, FontWeight.normal)),
+                  onPressed: (_serviceDetails.isEmpty || _isSavingCheck)
+                      ? null
+                      : () => _updateCheck(setState),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    disabledBackgroundColor: Colors.orange.withOpacity(0.6),
+                  ),
+                  child: _isSavingCheck
+                      ? SizedBox(
+                          width: 18.w,
+                          height: 18.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: kWhite,
+                          ),
+                        )
+                      : Text('Update Check',
+                          style: appStyle(14, kWhite, FontWeight.normal)),
                 ),
               ],
             );
@@ -942,7 +1036,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     );
   }
 
-  Future<void> _updateCheck() async {
+  Future<void> _updateCheck(StateSetter dialogSetState) async {
+    if (_isSavingCheck) return;
     if (_editingCheckId == null ||
         _selectedUserId == null ||
         _serviceDetails.isEmpty) {
@@ -951,6 +1046,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       );
       return;
     }
+
+    dialogSetState(() => _isSavingCheck = true);
+    setState(() => _isSavingCheck = true);
 
     try {
       // Update check document
@@ -981,6 +1079,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating check: $e')),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingCheck = false);
+      }
     }
   }
 
@@ -1040,7 +1142,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             ),
             SizedBox(height: 8),
             Divider(),
-            ...check['serviceDetails'].map<Widget>((detail) {
+            ...((check['serviceDetails'] is List)
+                    ? (check['serviceDetails'] as List)
+                    : [])
+                .map<Widget>((detail) {
               final formattedAmount = numberFormat
                   .format(detail['amount'] != null ? detail['amount'] : 0);
               return Padding(
@@ -1212,54 +1317,65 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
   Future<void> fetchTeamMembersWithVehicles() async {
     try {
-      List<Map<String, dynamic>> membersWithVehicles = [];
-
       QuerySnapshot teamSnapshot = await FirebaseFirestore.instance
           .collection('Users')
-          .where('createdBy',
-              isEqualTo: _effectiveUserId) // Use effective user ID
-          .where('uid', isNotEqualTo: _effectiveUserId) // Use effective user ID
+          .where('createdBy', isEqualTo: _effectiveUserId)
+          .where('uid', isNotEqualTo: _effectiveUserId)
           .where("active", isEqualTo: true)
           .get();
 
-      for (var member in teamSnapshot.docs) {
-        String memberId = member['uid'];
-        String name = member['userName'] ?? 'No Name';
-        String email = member['email'] ?? 'No Email';
-        bool isActive = member['active'] ?? false;
+      List<Map<String, dynamic>> membersWithVehicles = await Future.wait(
+        teamSnapshot.docs.map((member) async {
+          String memberId = member['uid'];
+          String name = member['userName'] ?? 'No Name';
+          String email = member['email'] ?? 'No Email';
+          bool isActive = member['active'] ?? false;
 
-        QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(memberId)
-            .collection('Vehicles')
-            .get();
+          QuerySnapshot vehicleSnapshot = await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(memberId)
+              .collection('Vehicles')
+              .get();
 
-        List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
-          return {
-            'companyName': doc['companyName'] ?? 'No Company',
-            'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+          List<Map<String, dynamic>> vehicles = vehicleSnapshot.docs.map((doc) {
+            return {
+              'companyName': doc['companyName'] ?? 'No Company',
+              'vehicleNumber': doc['vehicleNumber'] ?? 'No Number'
+            };
+          }).toList();
+
+          vehicles.sort((a, b) => a['vehicleNumber']
+              .toString()
+              .toLowerCase()
+              .compareTo(b['vehicleNumber'].toString().toLowerCase()));
+
+          return <String, dynamic>{
+            'name': name,
+            'email': email,
+            'isActive': isActive,
+            'memberId': memberId,
+            'ownerId': member['createdBy'],
+            'vehicles': vehicles,
+            'perMileCharge': member['perMileCharge'],
+            'role': member['role']
           };
-        }).toList();
-
-        vehicles.sort((a, b) => a['vehicleNumber']
-            .toString()
-            .toLowerCase()
-            .compareTo(b['vehicleNumber'].toString().toLowerCase()));
-
-        membersWithVehicles.add({
-          'name': name,
-          'email': email,
-          'isActive': isActive,
-          'memberId': memberId,
-          'ownerId': member['createdBy'],
-          'vehicles': vehicles,
-          'perMileCharge': member['perMileCharge'],
-          'role': member['role']
-        });
-      }
+        }),
+      );
 
       setState(() {
         _allMembers = membersWithVehicles;
+        if (widget.initialPayee != null && widget.initialUserId != null) {
+          final exists = _allMembers
+              .any((m) => m['memberId']?.toString() == widget.initialUserId);
+          if (!exists) {
+            _allMembers.add(<String, dynamic>{
+              'name': widget.initialPayee!,
+              'memberId': widget.initialUserId!,
+              'role': widget.initialType ?? 'Vendor',
+              'vehicles': <Map<String, dynamic>>[],
+            });
+          }
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -1271,21 +1387,53 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   }
 
   Future<void> _showAddCheckDialog() async {
-    _selectedType = null;
-    _selectedUserId = null;
-    _selectedUserName = null;
-    _serviceDetails.clear();
-    _memoNumberController.clear();
-    _selectedDate = DateTime.now();
-    _totalAmount = 0.0;
+    if (widget.initialPayee != null && widget.initialPayee!.isNotEmpty) {
+      _selectedType = widget.initialType ?? 'Vendor';
+      _selectedUserId = widget.initialUserId;
+      _selectedUserName = widget.initialPayee;
+      _serviceDetails.clear();
+      if (widget.initialServiceDetails != null) {
+        _serviceDetails.addAll(
+            List<Map<String, dynamic>>.from(widget.initialServiceDetails!));
+      }
+      _memoNumberController.clear();
+      _selectedDate = DateTime.now();
+      _totalAmount = widget.initialTotalAmount ?? 0.0;
+    } else {
+      _selectedType = null;
+      _selectedUserId = null;
+      _selectedUserName = null;
+      _serviceDetails.clear();
+      _memoNumberController.clear();
+      _selectedDate = DateTime.now();
+      _totalAmount = 0.0;
+    }
+
+    if (_selectedUserId != null && _selectedUserName != null) {
+      final exists = _allMembers
+          .any((m) => m['memberId']?.toString() == _selectedUserId);
+      if (!exists) {
+        _allMembers.add(<String, dynamic>{
+          'name': _selectedUserName!,
+          'memberId': _selectedUserId!,
+          'role': _selectedType ?? 'Vendor',
+          'vehicles': <Map<String, dynamic>>[],
+        });
+      }
+    }
 
     // Get the next available check number
     String? nextCheckNumber = await _getNextAvailableCheckNumber();
+
+    if (_isPreparingAutoCheck && mounted) {
+      setState(() => _isPreparingAutoCheck = false);
+    }
+
     if (nextCheckNumber != null) {
       _checkNumberController.text = nextCheckNumber;
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
             content: Text(
                 'No available check numbers. Please add a check series first.')),
       );
@@ -1346,30 +1494,53 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                     ),
                     SizedBox(height: 16),
                     if (_selectedType != null)
-                      DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          labelText: 'Select Name',
-                          labelStyle: appStyle(14, kDark, FontWeight.normal),
-                          border: OutlineInputBorder(),
-                        ),
-                        value: _selectedUserId,
-                        items: _allMembers
-                            .where((member) => member['role'] == _selectedType)
-                            .map<DropdownMenuItem<String>>(
-                                (member) => DropdownMenuItem<String>(
-                                      value: member['memberId'],
-                                      child: Text(member['name']),
-                                    ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedUserId = value;
-                            _selectedUserName = _allMembers.firstWhere(
-                                (member) =>
-                                    member['memberId'] == value)['name'];
-                          });
+                      Builder(
+                        builder: (context) {
+                          final typeMembers = _allMembers
+                              .where((member) =>
+                                  member['role']?.toString() == _selectedType)
+                              .toList();
+                          final validSelectedId = typeMembers.any((m) =>
+                                  m['memberId']?.toString() == _selectedUserId)
+                              ? _selectedUserId
+                              : null;
+
+                          return DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Select Name',
+                              labelStyle:
+                                  appStyle(14, kDark, FontWeight.normal),
+                              border: const OutlineInputBorder(),
+                            ),
+                            value: validSelectedId,
+                            items: typeMembers
+                                .map<DropdownMenuItem<String>>(
+                                    (member) => DropdownMenuItem<String>(
+                                          value: member['memberId'].toString(),
+                                          child: Text(
+                                              member['name']?.toString() ??
+                                                  'Unknown'),
+                                        ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedUserId = value;
+                                final matched = _allMembers.firstWhere(
+                                  (member) =>
+                                      member['memberId']?.toString() == value,
+                                  orElse: () => <String, dynamic>{
+                                    'name': value ?? '',
+                                    'memberId': value ?? '',
+                                  },
+                                );
+                                _selectedUserName =
+                                    matched['name']?.toString() ?? value;
+                              });
+                            },
+                            validator: (value) =>
+                                value == null ? 'Required' : null,
+                          );
                         },
-                        validator: (value) => value == null ? 'Required' : null,
                       ),
                     SizedBox(height: 16),
                     if (_selectedUserId != null)
@@ -1463,15 +1634,29 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _isSavingCheck ? null : () => Navigator.of(context).pop(),
                   child: Text('Cancel',
-                      style: appStyle(14, kDark, FontWeight.normal)),
+                      style: appStyle(14, _isSavingCheck ? kGray : kDark, FontWeight.normal)),
                 ),
                 ElevatedButton(
-                  onPressed: _serviceDetails.isEmpty ? null : _saveCheck,
-                  style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
-                  child: Text('Save',
-                      style: appStyle(14, kWhite, FontWeight.normal)),
+                  onPressed: (_serviceDetails.isEmpty || _isSavingCheck)
+                      ? null
+                      : () => _saveCheck(setState),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimary,
+                    disabledBackgroundColor: kPrimary.withOpacity(0.6),
+                  ),
+                  child: _isSavingCheck
+                      ? SizedBox(
+                          width: 18.w,
+                          height: 18.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: kWhite,
+                          ),
+                        )
+                      : Text('Save',
+                          style: appStyle(14, kWhite, FontWeight.normal)),
                 ),
               ],
             );
@@ -1583,9 +1768,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 }
 
                 setState(() {
-                  _serviceDetails.add({
-                    'serviceName': serviceNameController.text,
-                    'amount': double.parse(amountController.text),
+                  _serviceDetails.add(<String, dynamic>{
+                    'serviceName': serviceNameController.text.trim(),
+                    'amount': double.tryParse(amountController.text.trim()) ?? 0.0,
                   });
                   _calculateTotal();
                 });
@@ -1607,7 +1792,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         0.0, (sum, detail) => sum + (detail['amount'] as num).toDouble());
   }
 
-  Future<void> _saveCheck() async {
+  Future<void> _saveCheck(StateSetter dialogSetState) async {
+    if (_isSavingCheck) return;
     if (_selectedUserId == null || _serviceDetails.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please fill all required fields')),
@@ -1615,11 +1801,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       return;
     }
 
+    dialogSetState(() => _isSavingCheck = true);
+    setState(() => _isSavingCheck = true);
+
     try {
       String checkNumber = _checkNumberController.text;
 
       // Create check document
-      await FirebaseFirestore.instance.collection('Checks').add({
+      final checkDocRef = await FirebaseFirestore.instance.collection('Checks').add({
         'checkNumber': checkNumber,
         'type': _selectedType,
         'userId': _selectedUserId,
@@ -1638,29 +1827,154 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       // MARK CHECK NUMBER AS USED
       await _updateCheckNumberUsage(checkNumber);
 
-      // final userDoc = await FirebaseFirestore.instance
-      //     .collection('Users')
-      //     .doc(_selectedUserId!)
-      //     .get();
-      // final currentWallet =
-      //     (userDoc.data()?['wallet'] as num?)?.toDouble() ?? 0.0;
-      // final newWalletBalance = currentWallet + _totalAmount;
+      // Sync attached invoices from Pay Invoice screen
+      if (widget.attachedInvoices != null && widget.attachedInvoices!.isNotEmpty) {
+        try {
+          final batch = FirebaseFirestore.instance.batch();
+          final now = DateTime.now();
+          final nowIso = now.toIso8601String();
+          final paymentId = "PAY-CHK-$checkNumber";
 
-      // await userDoc.reference.update({'wallet': newWalletBalance});
-      // if (_selectedType == 'Driver') {
-      //   final querySnapshot = await FirebaseFirestore.instance
-      //       .collection('Users')
-      //       .doc(_selectedUserId)
-      //       .collection('trips')
-      //       .where('isPaid', isEqualTo: false)
-      //       .get();
+          // Fetch team members
+          final teamSnap = await FirebaseFirestore.instance
+              .collection('Users')
+              .where('createdBy', isEqualTo: _effectiveUserId)
+              .where('isTeamMember', isEqualTo: true)
+              .get();
+          final memberIds = teamSnap.docs.map((d) => d.id).toList();
 
-      //   final batch = FirebaseFirestore.instance.batch();
-      //   for (final doc in querySnapshot.docs) {
-      //     batch.update(doc.reference, {'isPaid': true});
-      //   }
-      //   await batch.commit();
-      // }
+          final List<Map<String, dynamic>> ledgerInvoices = [];
+
+          for (var inv in widget.attachedInvoices!) {
+            final recId = inv['recordId']?.toString() ?? '';
+            if (recId.isEmpty) continue;
+
+            final payAmt = (inv['amount'] as num?)?.toDouble() ?? 0.0;
+            if (payAmt <= 0) continue;
+
+            final ownerDocRef = FirebaseFirestore.instance
+                .collection('Users')
+                .doc(_effectiveUserId)
+                .collection('DataServices')
+                .doc(recId);
+            final ownerSnap = await ownerDocRef.get();
+
+            double totalInv = 0.0;
+            double currentPaid = 0.0;
+            List<dynamic> existingHist = [];
+
+            if (ownerSnap.exists) {
+              final recData = ownerSnap.data() as Map<String, dynamic>;
+              final rawTotal = recData['invoiceAmount'];
+              final totalStr = rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ?? '0';
+              totalInv = double.tryParse(totalStr) ?? 0.0;
+              currentPaid = (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
+              if (recData['paymentHistory'] is List) {
+                existingHist = List<dynamic>.from(recData['paymentHistory']);
+              }
+            } else {
+              // Try global DataServicesRecords
+              final globalDocRef = FirebaseFirestore.instance
+                  .collection('DataServicesRecords')
+                  .doc(recId);
+              final gSnap = await globalDocRef.get();
+              if (gSnap.exists) {
+                final recData = gSnap.data() as Map<String, dynamic>;
+                final rawTotal = recData['invoiceAmount'];
+                final totalStr = rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ?? '0';
+                totalInv = double.tryParse(totalStr) ?? 0.0;
+                currentPaid = (recData['paidAmount'] as num?)?.toDouble() ?? 0.0;
+                if (recData['paymentHistory'] is List) {
+                  existingHist = List<dynamic>.from(recData['paymentHistory']);
+                }
+              }
+            }
+
+            final newPaid = currentPaid + payAmt;
+            final newBalance = (totalInv - newPaid) > 0 ? (totalInv - newPaid) : 0.0;
+            final newStatus = newBalance <= 0 ? 'Paid' : 'Partially Paid';
+
+            final paymentEntry = {
+              'paymentId': paymentId,
+              'paymentMethod': 'Check',
+              'amountPaid': payAmt,
+              'checkNumber': checkNumber,
+              'checkId': checkDocRef.id,
+              'paidAt': nowIso,
+              'paidBy': currentUId,
+              'paidByName': _selectedUserName ?? 'User',
+            };
+
+            existingHist.add(paymentEntry);
+
+            final updatePayload = {
+              'paidAmount': newPaid,
+              'balanceAmount': newBalance,
+              'paymentStatus': newStatus,
+              'paymentHistory': existingHist,
+              'updatedAt': nowIso,
+            };
+
+            // 1. Owner record
+            batch.set(ownerDocRef, updatePayload, SetOptions(merge: true));
+
+            // 2. Global record
+            final globalRef = FirebaseFirestore.instance
+                .collection('DataServicesRecords')
+                .doc(recId);
+            batch.set(globalRef, updatePayload, SetOptions(merge: true));
+
+            // 3. Team members
+            for (final mId in memberIds) {
+              if (mId == _effectiveUserId) continue;
+              final memberRef = FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(mId)
+                  .collection('DataServices')
+                  .doc(recId);
+              final mSnap = await memberRef.get();
+              if (mSnap.exists) {
+                batch.set(memberRef, updatePayload, SetOptions(merge: true));
+              }
+            }
+
+            ledgerInvoices.add({
+              'recordId': recId,
+              'invoiceNumber': inv['invoiceNumber'] ?? 'N/A',
+              'vehicleNumber': inv['vehicleNumber'] ?? 'N/A',
+              'amountPaid': payAmt,
+              'remainingBalance': newBalance,
+            });
+          }
+
+          if (ledgerInvoices.isNotEmpty) {
+            final ledgerRef = FirebaseFirestore.instance
+                .collection('Users')
+                .doc(_effectiveUserId)
+                .collection('InvoicePayments')
+                .doc();
+
+            batch.set(ledgerRef, {
+              'id': ledgerRef.id,
+              'paymentId': paymentId,
+              'ownerId': _effectiveUserId,
+              'vendorName': _selectedUserName ?? 'Vendor',
+              'totalAmount': _totalAmount,
+              'paymentMethod': 'Check',
+              'checkNumber': checkNumber,
+              'checkId': checkDocRef.id,
+              'invoices': ledgerInvoices,
+              'createdAt': FieldValue.serverTimestamp(),
+              'createdBy': currentUId,
+              'createdByName': _selectedUserName ?? 'User',
+            });
+          }
+
+          await batch.commit();
+        } catch (invoiceSyncError) {
+          print('Error updating invoice records on check creation: $invoiceSyncError');
+        }
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Check saved successfully')),
@@ -1672,6 +1986,10 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving check: $e')),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingCheck = false);
+      }
     }
   }
 
@@ -1702,46 +2020,90 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                 ),
               ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (role == "Owner" || role == "SubOwner") ...[
-                CustomButton(
-                  text: "Write Check",
-                  onPress: _showAddCheckDialog,
-                  color: kPrimary,
-                ),
-              ],
-              const SizedBox(height: 16),
-              _buildFilterRow(),
-              if (_dateRange != null)
-                Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Showing checks from ${DateFormat('MMM dd, yyyy').format(_dateRange!.start)} to ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}',
-                    style: appStyle(12, kGray, FontWeight.normal),
-                  ),
-                ),
-              if (_loadingChecks)
-                Center(child: CircularProgressIndicator())
-              else if (_checks.isEmpty)
-                Center(
-                  child: Text(
-                    'No checks found',
-                    style: appStyle(16, kGray, FontWeight.normal),
-                  ),
-                )
-              else
-                Column(
-                  children:
-                      _checks.map((check) => _buildCheckCard(check)).toList(),
-                ),
-            ],
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (role == "Owner" || role == "SubOwner") ...[
+                    CustomButton(
+                      text: "Write Check",
+                      onPress: _showAddCheckDialog,
+                      color: kPrimary,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _buildFilterRow(),
+                  if (_dateRange != null)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'Showing checks from ${DateFormat('MMM dd, yyyy').format(_dateRange!.start)} to ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}',
+                        style: appStyle(12, kGray, FontWeight.normal),
+                      ),
+                    ),
+                  if (_loadingChecks)
+                    Center(child: CircularProgressIndicator())
+                  else if (_checks.isEmpty)
+                    Center(
+                      child: Text(
+                        'No checks found',
+                        style: appStyle(16, kGray, FontWeight.normal),
+                      ),
+                    )
+                  else
+                    Column(
+                      children:
+                          _checks.map((check) => _buildCheckCard(check)).toList(),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
+          if (_isPreparingAutoCheck)
+            Container(
+              color: Colors.black.withOpacity(0.35),
+              child: Center(
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 32.w),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 24.w, vertical: 22.h),
+                  decoration: BoxDecoration(
+                    color: kWhite,
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(color: kPrimary),
+                      SizedBox(height: 16.h),
+                      Text(
+                        "Preparing Check Details...",
+                        style: appStyle(15, kDark, FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        "Loading prefilled invoice details and check series",
+                        style: appStyle(12, kGray, FontWeight.normal),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
