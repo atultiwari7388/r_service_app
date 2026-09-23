@@ -69,10 +69,12 @@ import {
   FaDownload,
   FaFileImport,
   FaFilePdf,
+  FaFileExport,
   FaTrash,
   FaCopy,
   FaExclamationTriangle,
 } from "react-icons/fa";
+import ExportDataDialog from "@/components/records/ExportDataDialog";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -259,6 +261,51 @@ const formatServiceWithSubservices = (
   return subs.length > 0 ? `${name} (${subs.join(", ")})` : name;
 };
 
+const parseServiceDetails = (
+  service?: ServiceDisplayItem | null
+): { name: string; subs: string[] } => {
+  if (!service) return { name: "", subs: [] };
+  const name = (
+    service.serviceName ||
+    service.sName ||
+    service.title ||
+    ""
+  ).trim();
+  if (!name) return { name: "", subs: [] };
+
+  const rawSubs =
+    service.subServices || service.subservices || service.subServiceList;
+  if (!rawSubs || !Array.isArray(rawSubs) || rawSubs.length === 0) {
+    return { name, subs: [] };
+  }
+
+  const subs: string[] = [];
+  rawSubs.forEach((item: any) => {
+    if (typeof item === "string") {
+      if (item.trim()) subs.push(item.trim());
+    } else if (item && typeof item === "object") {
+      if (Array.isArray(item.sName)) {
+        item.sName.forEach((n: any) => {
+          if (typeof n === "string" && n.trim()) subs.push(n.trim());
+        });
+      } else if (typeof item.sName === "string" && item.sName.trim()) {
+        subs.push(item.sName.trim());
+      } else if (typeof item.name === "string" && item.name.trim()) {
+        subs.push(item.name.trim());
+      } else if (
+        typeof item.subserviceName === "string" &&
+        item.subserviceName.trim()
+      ) {
+        subs.push(item.subserviceName.trim());
+      } else if (typeof item.title === "string" && item.title.trim()) {
+        subs.push(item.title.trim());
+      }
+    }
+  });
+
+  return { name, subs };
+};
+
 // ─── Module-level constants (never recreated) ────────────────────────────────
 const DRY_VAN_EXCLUDED_SERVICES = [
   "Alternator",
@@ -344,6 +391,9 @@ export default function RecordsPage() {
     | "description"
     | "all"
   >("all");
+
+  // Export Data Modal State
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Duplicate Invoice Alert State
   const [showDuplicateInvoiceModal, setShowDuplicateInvoiceModal] =
@@ -2852,14 +2902,35 @@ export default function RecordsPage() {
         Cell: ({ row }) => {
           const record = row.original;
           if (!record.services || record.services.length === 0) return <span>-</span>;
-          const serviceText = [...record.services]
-            .filter((s) => s && s.serviceName)
+          const sortedServices = [...record.services]
+            .filter((s) => s && (s.serviceName || (s as any).sName))
             .sort((a, b) =>
-              (a.serviceName || "").localeCompare(b.serviceName || "")
-            )
-            .map((service) => formatServiceWithSubservices(service))
-            .join(", ");
-          return <span className="text-gray-700 text-xs">{serviceText || "-"}</span>;
+              (a.serviceName || (a as any).sName || "").localeCompare(
+                b.serviceName || (b as any).sName || ""
+              )
+            );
+
+          if (sortedServices.length === 0) return <span>-</span>;
+
+          return (
+            <span className="text-xs">
+              {sortedServices.map((service, idx) => {
+                const { name, subs } = parseServiceDetails(service as any);
+                if (!name) return null;
+                return (
+                  <span key={idx}>
+                    {idx > 0 && <span className="text-gray-400 mr-1">, </span>}
+                    <span className="font-bold text-gray-900">{name}</span>
+                    {subs.length > 0 && (
+                      <span className="text-gray-400 font-normal ml-1">
+                        ({subs.join(", ")})
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+            </span>
+          );
         },
       },
       {
@@ -3125,6 +3196,14 @@ export default function RecordsPage() {
           className="bg-[#10B981] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#059669] transition"
         >
           <FaDownload /> Download All
+        </button>
+
+        {/** Export Data (Vehicle-Wise & Service-Wise) */}
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="bg-[#F96176] text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-[#e14a60] transition cursor-pointer shadow-xs"
+        >
+          <FaFileExport /> Export Data
         </button>
       </div>
 
@@ -4478,6 +4557,15 @@ export default function RecordsPage() {
       ) : (
         <MilesTab filteredVehicles={filteredVehicles} />
       )}
+
+      {/* Export Data Dialog */}
+      <ExportDataDialog
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        records={records}
+        vehicles={vehicles}
+        services={services}
+      />
     </div>
   ) : (
     <div>You don&apos;t have permission to see this page.</div>
