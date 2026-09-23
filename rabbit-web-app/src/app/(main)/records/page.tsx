@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   MaterialReactTable,
   useMaterialReactTable,
@@ -259,7 +259,64 @@ const formatServiceWithSubservices = (
   return subs.length > 0 ? `${name} (${subs.join(", ")})` : name;
 };
 
+// ─── Module-level constants (never recreated) ────────────────────────────────
+const DRY_VAN_EXCLUDED_SERVICES = [
+  "Alternator",
+  "Battery Change",
+  "EGR Cooler Clean",
+  "Oil Change/Service",
+  "Starter",
+  "Water /Coolant Pump",
+];
+
+// ─── MilesTab extracted outside RecordsPage so React never remounts it ────────
+interface MilesTabProps {
+  filteredVehicles: VehicleTypes[];
+}
+const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
+  return (
+    <div className="w-full bg-white p-4 rounded-lg shadow">
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Vehicle</TableCell>
+              <TableCell>Company</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Current Miles/Hours</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredVehicles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} align="center" className="py-8 text-gray-500">
+                  No vehicles found matching current filter.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredVehicles.map((vehicle) => (
+                <TableRow key={vehicle.id}>
+                  <TableCell>{vehicle.vehicleNumber}</TableCell>
+                  <TableCell>{vehicle.companyName}</TableCell>
+                  <TableCell>{vehicle.vehicleType}</TableCell>
+                  <TableCell>
+                    {vehicle.vehicleType === "Truck"
+                      ? vehicle.currentMiles || "0"
+                      : vehicle.hoursReading || "0"}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  );
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function RecordsPage() {
+
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
@@ -1108,181 +1165,205 @@ export default function RecordsPage() {
     ])
   ).sort((a, b) => a.localeCompare(b));
 
-  const filteredVehicles = vehicles.filter((v) => {
-    if (quickTypeFilter === "truck" && v.vehicleType !== "Truck") return false;
-    if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
-      return false;
-    if (quickSearchText.trim()) {
-      const q = quickSearchText.trim().toLowerCase();
-      const matchNum = (v.vehicleNumber || "").toLowerCase().includes(q);
-      const matchComp = (v.companyName || "").toLowerCase().includes(q);
-      if (!matchNum && !matchComp) return false;
-    }
-    return true;
-  });
-
-  const filteredRecords = records
-    .filter((record) => {
-      if (!record) return false;
-      const recordDate = record.date ? new Date(record.date) : null;
-      const vehNum = record.vehicleDetails?.vehicleNumber || "";
-      const matchesVehicle =
-        !filterVehicle ||
-        vehNum.toLowerCase().includes(filterVehicle.toLowerCase());
-
-      const matchesService =
-        !filterService ||
-        (record.services || []).some((s) =>
-          formatServiceWithSubservices(s)
-            .toLowerCase()
-            .includes(filterService.toLowerCase())
-        );
-
-      const matchesOtherService =
-        !filterOtherService ||
-        (record.services || []).some((s) =>
-          formatServiceWithSubservices(s)
-            .toLowerCase()
-            .includes(filterOtherService.toLowerCase())
-        );
-
-      const matchesInvoice =
-        !filterInvoice ||
-        (record.invoice || "")
-          .toLowerCase()
-          .includes(filterInvoice.toLowerCase());
-
-      const matchesDescription =
-        !filterDescription ||
-        (record.description || "")
-          .toLowerCase()
-          .includes(filterDescription.toLowerCase());
-
-      const matchesDate =
-        !startDate ||
-        !endDate ||
-        (recordDate !== null &&
-          !isNaN(recordDate.getTime()) &&
-          recordDate >= startDate &&
-          recordDate <= endDate);
-
-      let matchesSearchDialog = true;
-      switch (searchType) {
-        case "vehicle":
-          matchesSearchDialog = matchesVehicle;
-          break;
-        case "service":
-          matchesSearchDialog = matchesService;
-          break;
-        case "other_service":
-          matchesSearchDialog = matchesOtherService;
-          break;
-        case "date":
-          matchesSearchDialog = matchesDate;
-          break;
-        case "invoice":
-          matchesSearchDialog = matchesInvoice;
-          break;
-        case "description":
-          matchesSearchDialog = matchesDescription;
-          break;
-        case "all":
-          matchesSearchDialog =
-            matchesVehicle &&
-            matchesService &&
-            matchesOtherService &&
-            matchesDate &&
-            matchesInvoice &&
-            matchesDescription;
-          break;
-        default:
-          matchesSearchDialog = true;
-      }
-
-      if (!matchesSearchDialog) return false;
-
-      // Quick Payment Filter
-      if (quickPaymentFilter === "paid") {
-        if (record.paymentStatus !== "Paid") return false;
-      } else if (quickPaymentFilter === "unpaid") {
-        if (record.paymentStatus && record.paymentStatus !== "Unpaid") return false;
-      } else if (quickPaymentFilter === "partial") {
-        if (record.paymentStatus !== "Partially Paid") return false;
-      }
-
-      // Quick Workshop Filter
-      if (quickWorkshopFilter !== "all") {
-        const recordWorkshop = (record.workshopName || "").trim().toLowerCase();
-        if (recordWorkshop !== quickWorkshopFilter.trim().toLowerCase()) {
+  const filteredVehicles = useMemo(
+    () =>
+      vehicles.filter((v) => {
+        if (quickTypeFilter === "truck" && v.vehicleType !== "Truck") return false;
+        if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
           return false;
+        if (quickSearchText.trim()) {
+          const q = quickSearchText.trim().toLowerCase();
+          const matchNum = (v.vehicleNumber || "").toLowerCase().includes(q);
+          const matchComp = (v.companyName || "").toLowerCase().includes(q);
+          if (!matchNum && !matchComp) return false;
         }
-      }
+        return true;
+      }),
+    [vehicles, quickTypeFilter, quickSearchText]
+  );
 
-      // Quick Vehicle Type / Unit Filter (Truck / Trailer / Miles / Hours)
-      if (quickTypeFilter === "truck") {
-        const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
-        const hasMiles = (Number(record.miles) || 0) > 0;
-        if (vType !== "truck" && !hasMiles) return false;
-      } else if (quickTypeFilter === "trailer") {
-        const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
-        const hasHours = (Number(record.hours) || 0) > 0;
-        if (vType !== "trailer" && !hasHours) return false;
-      }
+  const filteredRecords = useMemo(
+    () =>
+      records
+        .filter((record) => {
+          if (!record) return false;
+          const recordDate = record.date ? new Date(record.date) : null;
+          const vehNum = record.vehicleDetails?.vehicleNumber || "";
+          const matchesVehicle =
+            !filterVehicle ||
+            vehNum.toLowerCase().includes(filterVehicle.toLowerCase());
 
-      // Quick Search Text (searches vehicle #, invoice #, workshop, description, services)
-      if (quickSearchText.trim()) {
-        const query = quickSearchText.trim().toLowerCase();
-        const matchesVeh = vehNum.toLowerCase().includes(query);
-        const matchesInv = (record.invoice || "").toLowerCase().includes(query);
-        const matchesWork = (record.workshopName || "").toLowerCase().includes(query);
-        const matchesDesc = (record.description || "").toLowerCase().includes(query);
-        const matchesServ = (record.services || []).some((s) =>
-          formatServiceWithSubservices(s).toLowerCase().includes(query)
-        );
-        if (!matchesVeh && !matchesInv && !matchesWork && !matchesDesc && !matchesServ) {
-          return false;
-        }
-      }
+          const matchesService =
+            !filterService ||
+            (record.services || []).some((s) =>
+              formatServiceWithSubservices(s)
+                .toLowerCase()
+                .includes(filterService.toLowerCase())
+            );
 
-      return true;
-    })
-    .sort((a, b) => {
-      if (quickSortOption === "date_asc") {
-        const dateA = a?.date ? new Date(a.date).getTime() : 0;
-        const dateB = b?.date ? new Date(b.date).getTime() : 0;
-        return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
-      }
+          const matchesOtherService =
+            !filterOtherService ||
+            (record.services || []).some((s) =>
+              formatServiceWithSubservices(s)
+                .toLowerCase()
+                .includes(filterOtherService.toLowerCase())
+            );
 
-      if (quickSortOption === "amount_desc") {
-        const amtA = parseFloat(a?.invoiceAmount || "0") || 0;
-        const amtB = parseFloat(b?.invoiceAmount || "0") || 0;
-        return amtB - amtA;
-      }
+          const matchesInvoice =
+            !filterInvoice ||
+            (record.invoice || "")
+              .toLowerCase()
+              .includes(filterInvoice.toLowerCase());
 
-      if (quickSortOption === "amount_asc") {
-        const amtA = parseFloat(a?.invoiceAmount || "0") || 0;
-        const amtB = parseFloat(b?.invoiceAmount || "0") || 0;
-        return amtA - amtB;
-      }
+          const matchesDescription =
+            !filterDescription ||
+            (record.description || "")
+              .toLowerCase()
+              .includes(filterDescription.toLowerCase());
 
-      if (quickSortOption === "unit_desc") {
-        const valA = (Number(a?.miles) || 0) + (Number(a?.hours) || 0);
-        const valB = (Number(b?.miles) || 0) + (Number(b?.hours) || 0);
-        return valB - valA;
-      }
+          const matchesDate =
+            !startDate ||
+            !endDate ||
+            (recordDate !== null &&
+              !isNaN(recordDate.getTime()) &&
+              recordDate >= startDate &&
+              recordDate <= endDate);
 
-      // Default: date_desc
-      const dateA = a?.date ? new Date(a.date).getTime() : 0;
-      const dateB = b?.date ? new Date(b.date).getTime() : 0;
-      if (dateB !== dateA) {
-        return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
-      }
-      const createdA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const createdB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return (
-        (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA)
-      );
-    });
+          let matchesSearchDialog = true;
+          switch (searchType) {
+            case "vehicle":
+              matchesSearchDialog = matchesVehicle;
+              break;
+            case "service":
+              matchesSearchDialog = matchesService;
+              break;
+            case "other_service":
+              matchesSearchDialog = matchesOtherService;
+              break;
+            case "date":
+              matchesSearchDialog = matchesDate;
+              break;
+            case "invoice":
+              matchesSearchDialog = matchesInvoice;
+              break;
+            case "description":
+              matchesSearchDialog = matchesDescription;
+              break;
+            case "all":
+              matchesSearchDialog =
+                matchesVehicle &&
+                matchesService &&
+                matchesOtherService &&
+                matchesDate &&
+                matchesInvoice &&
+                matchesDescription;
+              break;
+            default:
+              matchesSearchDialog = true;
+          }
+
+          if (!matchesSearchDialog) return false;
+
+          // Quick Payment Filter
+          if (quickPaymentFilter === "paid") {
+            if (record.paymentStatus !== "Paid") return false;
+          } else if (quickPaymentFilter === "unpaid") {
+            if (record.paymentStatus && record.paymentStatus !== "Unpaid") return false;
+          } else if (quickPaymentFilter === "partial") {
+            if (record.paymentStatus !== "Partially Paid") return false;
+          }
+
+          // Quick Workshop Filter
+          if (quickWorkshopFilter !== "all") {
+            const recordWorkshop = (record.workshopName || "").trim().toLowerCase();
+            if (recordWorkshop !== quickWorkshopFilter.trim().toLowerCase()) {
+              return false;
+            }
+          }
+
+          // Quick Vehicle Type / Unit Filter (Truck / Trailer / Miles / Hours)
+          if (quickTypeFilter === "truck") {
+            const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
+            const hasMiles = (Number(record.miles) || 0) > 0;
+            if (vType !== "truck" && !hasMiles) return false;
+          } else if (quickTypeFilter === "trailer") {
+            const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
+            const hasHours = (Number(record.hours) || 0) > 0;
+            if (vType !== "trailer" && !hasHours) return false;
+          }
+
+          // Quick Search Text (searches vehicle #, invoice #, workshop, description, services)
+          if (quickSearchText.trim()) {
+            const query = quickSearchText.trim().toLowerCase();
+            const matchesVeh = vehNum.toLowerCase().includes(query);
+            const matchesInv = (record.invoice || "").toLowerCase().includes(query);
+            const matchesWork = (record.workshopName || "").toLowerCase().includes(query);
+            const matchesDesc = (record.description || "").toLowerCase().includes(query);
+            const matchesServ = (record.services || []).some((s) =>
+              formatServiceWithSubservices(s).toLowerCase().includes(query)
+            );
+            if (!matchesVeh && !matchesInv && !matchesWork && !matchesDesc && !matchesServ) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .sort((a, b) => {
+          if (quickSortOption === "date_asc") {
+            const dateA = a?.date ? new Date(a.date).getTime() : 0;
+            const dateB = b?.date ? new Date(b.date).getTime() : 0;
+            return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+          }
+
+          if (quickSortOption === "amount_desc") {
+            const amtA = parseFloat(a?.invoiceAmount || "0") || 0;
+            const amtB = parseFloat(b?.invoiceAmount || "0") || 0;
+            return amtB - amtA;
+          }
+
+          if (quickSortOption === "amount_asc") {
+            const amtA = parseFloat(a?.invoiceAmount || "0") || 0;
+            const amtB = parseFloat(b?.invoiceAmount || "0") || 0;
+            return amtA - amtB;
+          }
+
+          if (quickSortOption === "unit_desc") {
+            const valA = (Number(a?.miles) || 0) + (Number(a?.hours) || 0);
+            const valB = (Number(b?.miles) || 0) + (Number(b?.hours) || 0);
+            return valB - valA;
+          }
+
+          // Default: date_desc
+          const dateA = a?.date ? new Date(a.date).getTime() : 0;
+          const dateB = b?.date ? new Date(b.date).getTime() : 0;
+          if (dateB !== dateA) {
+            return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+          }
+          const createdA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const createdB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return (
+            (isNaN(createdB) ? 0 : createdB) - (isNaN(createdA) ? 0 : createdA)
+          );
+        }),
+    [
+      records,
+      filterVehicle,
+      filterService,
+      filterOtherService,
+      filterInvoice,
+      filterDescription,
+      startDate,
+      endDate,
+      searchType,
+      quickPaymentFilter,
+      quickWorkshopFilter,
+      quickTypeFilter,
+      quickSearchText,
+      quickSortOption,
+    ]
+  );
+
 
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
   const handleSearchFilterClose = () => setShowSearchFilter(false);
@@ -1576,7 +1657,7 @@ export default function RecordsPage() {
     }
   };
 
-  const downloadSingleRecord = (record: ServiceRecord) => {
+  const downloadSingleRecord = useCallback((record: ServiceRecord) => {
     try {
       const isTrailer = record.vehicleDetails?.vehicleType === "Trailer";
       const recordRow = {
@@ -1630,7 +1711,8 @@ export default function RecordsPage() {
       console.error("Error downloading record:", error);
       toast.error("Failed to download record");
     }
-  };
+  }, []);
+
 
   const downloadAllRecords = () => {
     try {
@@ -2179,7 +2261,7 @@ export default function RecordsPage() {
     }
   };
 
-  const handleEditRecord = (record: ServiceRecord) => {
+  const handleEditRecord = useCallback((record: ServiceRecord) => {
     if (!record) return;
     setIsEditing(true);
     setEditingRecordId(record.id);
@@ -2303,9 +2385,10 @@ export default function RecordsPage() {
     setImagePreview(record.imageUrl || null);
 
     setShowAddRecords(true);
-  };
+  }, [vehicles, services]);
 
-  const handleDuplicateRecord = (record: ServiceRecord) => {
+
+  const handleDuplicateRecord = useCallback((record: ServiceRecord) => {
     if (!record) return;
 
     // Set isEditing to false so that saving creates a new record
@@ -2435,7 +2518,8 @@ export default function RecordsPage() {
     toast.success(
       "Record details loaded! Modify fields and save as new record."
     );
-  };
+  }, [vehicles, services]);
+
 
   const formatDateToDDMMYYYY = (date: Date | string): string => {
     const d = new Date(date);
@@ -2612,55 +2696,7 @@ export default function RecordsPage() {
     setShowAddRecords(false);
   };
 
-  const DRY_VAN_EXCLUDED_SERVICES = [
-    "Alternator",
-    "Battery Change",
-    "EGR Cooler Clean",
-    "Oil Change/Service",
-    "Starter",
-    "Water /Coolant Pump",
-  ];
 
-  const MilesTab = () => {
-    return (
-      <div className="w-full bg-white p-4 rounded-lg shadow">
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Vehicle</TableCell>
-                <TableCell>Company</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Current Miles/Hours</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredVehicles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" className="py-8 text-gray-500">
-                    No vehicles found matching current filter.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredVehicles.map((vehicle) => (
-                  <TableRow key={vehicle.id}>
-                    <TableCell>{vehicle.vehicleNumber}</TableCell>
-                    <TableCell>{vehicle.companyName}</TableCell>
-                    <TableCell>{vehicle.vehicleType}</TableCell>
-                    <TableCell>
-                      {vehicle.vehicleType === "Truck"
-                        ? vehicle.currentMiles || "0"
-                        : vehicle.hoursReading || "0"}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </div>
-    );
-  };
 
   const columns = useMemo<MRT_ColumnDef<ServiceRecord>[]>(
     () => [
@@ -4440,7 +4476,7 @@ export default function RecordsPage() {
           </div>
         )
       ) : (
-        <MilesTab />
+        <MilesTab filteredVehicles={filteredVehicles} />
       )}
     </div>
   ) : (
