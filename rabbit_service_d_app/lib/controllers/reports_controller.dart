@@ -87,12 +87,12 @@ class ReportsController extends GetxController {
   final List<Map<String, dynamic>> packages = [];
 
   // Stream subscriptions
-  late StreamSubscription vehiclesSubscription;
-  late StreamSubscription recordsSubscription;
-  late StreamSubscription servicesSubscription;
-  late StreamSubscription milesSubscription;
-  late StreamSubscription packagesSubscription;
-  late StreamSubscription usersSubscription;
+  StreamSubscription? vehiclesSubscription;
+  StreamSubscription? recordsSubscription;
+  StreamSubscription? servicesSubscription;
+  StreamSubscription? milesSubscription;
+  StreamSubscription? packagesSubscription;
+  StreamSubscription? usersSubscription;
   StreamSubscription? workshopSubscription;
   String selectedVehicleType = 'Truck';
 
@@ -158,7 +158,42 @@ class ReportsController extends GetxController {
     }
   }
 
+  void cancelStreams() {
+    try {
+      usersSubscription?.cancel();
+      usersSubscription = null;
+    } catch (_) {}
+    try {
+      vehiclesSubscription?.cancel();
+      vehiclesSubscription = null;
+    } catch (_) {}
+    try {
+      servicesSubscription?.cancel();
+      servicesSubscription = null;
+    } catch (_) {}
+    try {
+      recordsSubscription?.cancel();
+      recordsSubscription = null;
+    } catch (_) {}
+    try {
+      workshopSubscription?.cancel();
+      workshopSubscription = null;
+    } catch (_) {}
+    try {
+      milesSubscription?.cancel();
+      milesSubscription = null;
+    } catch (_) {}
+    try {
+      packagesSubscription?.cancel();
+      packagesSubscription = null;
+    } catch (_) {}
+  }
+
   void initializeStreams() {
+    cancelStreams();
+
+    if (currentUId.isEmpty) return;
+
     // Setup users stream - always use currentUId for user document (permissions and role)
     usersSubscription = FirebaseFirestore.instance
         .collection('Users')
@@ -178,7 +213,11 @@ class ReportsController extends GetxController {
           update();
         }
       }
+    }, onError: (error) {
+      log("Users stream error: $error");
     });
+
+    if (effectiveUserId.isEmpty) return;
 
     // Setup vehicle stream - use effectiveUserId for vehicles
     vehiclesSubscription = FirebaseFirestore.instance
@@ -201,6 +240,8 @@ class ReportsController extends GetxController {
       update();
       debugPrint(
           'Fetched ${vehicles.length} vehicles for effective user: $effectiveUserId');
+    }, onError: (error) {
+      log("Vehicles stream error: $error");
     });
 
     // Setup services stream - metadata is global
@@ -232,6 +273,8 @@ class ReportsController extends GetxController {
           update();
         }
       }
+    }, onError: (error) {
+      log("Services stream error: $error");
     });
 
     // Setup records stream - use effectiveUserId for records
@@ -279,10 +322,11 @@ class ReportsController extends GetxController {
       update();
       debugPrint(
           'Fetched ${records.length} records for effective user: $effectiveUserId');
+    }, onError: (error) {
+      log("Records stream error: $error");
     });
 
     // Setup workshop names stream
-    workshopSubscription?.cancel();
     workshopSubscription = FirebaseFirestore.instance
         .collection('Users')
         .doc(effectiveUserId)
@@ -298,6 +342,8 @@ class ReportsController extends GetxController {
       }
       workshopList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
       update();
+    }, onError: (error) {
+      log("Workshop stream error: $error");
     });
 
     // Setup miles stream - use effectiveUserId
@@ -313,6 +359,8 @@ class ReportsController extends GetxController {
             'id': doc.id,
           }));
       update();
+    }, onError: (error) {
+      log("Miles stream error: $error");
     });
 
     // Listen to the servicePackages stream - metadata is global
@@ -337,6 +385,8 @@ class ReportsController extends GetxController {
           update();
         }
       }
+    }, onError: (error) {
+      log("Packages stream error: $error");
     });
   }
 
@@ -370,17 +420,19 @@ class ReportsController extends GetxController {
 
       // Service filter
       final serviceMatch = filterService.isEmpty ||
-          (record['services'] as List).any((service) => (service['serviceName'] ?? '')
-              .toString()
-              .toLowerCase()
-              .contains(filterService.toLowerCase()));
+          (record['services'] as List).any((service) =>
+              (service['serviceName'] ?? '')
+                  .toString()
+                  .toLowerCase()
+                  .contains(filterService.toLowerCase()));
 
       // Date range filter
       final recordDate = DateTime.tryParse(record['date']?.toString() ?? '');
       final dateMatch = startDate == null ||
           endDate == null ||
           (recordDate != null &&
-              recordDate.isAfter(startDate!.subtract(const Duration(seconds: 1))) &&
+              recordDate
+                  .isAfter(startDate!.subtract(const Duration(seconds: 1))) &&
               recordDate.isBefore(
                   endDate!.add(const Duration(days: 1)))); // Include end date
 
@@ -433,9 +485,8 @@ class ReportsController extends GetxController {
               '')
           .toString()
           .toUpperCase();
-      final vehType = (selectedVehicleData?['vehicleType'] ?? '')
-          .toString()
-          .toUpperCase();
+      final vehType =
+          (selectedVehicleData?['vehicleType'] ?? '').toString().toUpperCase();
 
       for (var serviceId in selectedServices) {
         // Check if vehicle has a default for this service
@@ -498,9 +549,7 @@ class ReportsController extends GetxController {
 
             if (rawType == "reading" ||
                 (rawType.isEmpty &&
-                    (selectedService['vType'] ?? '')
-                            .toString()
-                            .toLowerCase() ==
+                    (selectedService['vType'] ?? '').toString().toLowerCase() ==
                         'truck')) {
               notificationValue = baseValue * 1000;
             }
@@ -513,6 +562,53 @@ class ReportsController extends GetxController {
     }).catchError((error) {
       debugPrint('Error fetching vehicle document: $error');
     });
+  }
+
+  void handleVehicleChange(String? newVehicleId) {
+    final String previousVehicleType =
+        (selectedVehicleData?['vehicleType'] ?? selectedVehicleType)
+            .toString()
+            .toLowerCase();
+
+    selectedVehicle = newVehicleId;
+    if (newVehicleId != null) {
+      selectedVehicleData = vehicles.firstWhere(
+        (vehicle) => vehicle['id'] == newVehicleId,
+        orElse: () => <String, dynamic>{},
+      );
+    } else {
+      selectedVehicleData = null;
+    }
+
+    final String newVehicleType =
+        (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
+
+    // If switching between different vehicle types (e.g. Truck -> Trailer or Trailer -> Truck),
+    // reset services and packages to prevent incompatibility.
+    // BUT if switching within the same vehicle type (e.g. Truck -> Truck or Trailer -> Trailer),
+    // preserve the user's selected services!
+    if (previousVehicleType.isNotEmpty &&
+        newVehicleType.isNotEmpty &&
+        previousVehicleType != newVehicleType) {
+      selectedServices.clear();
+      selectedSubServices.clear();
+      selectedPackages.clear();
+      isOtherServiceSelected = false;
+      otherServiceController.clear();
+    } else if (newVehicleType.isNotEmpty) {
+      // Retain services but filter out any service that doesn't match this vehicle type
+      selectedServices.removeWhere((sId) {
+        final matchingServices = services.where((s) => s['sId'] == sId);
+        if (matchingServices.isEmpty) return false;
+        final service = matchingServices.first;
+        final vType = (service['vType'] ?? '').toString().toLowerCase();
+        return vType.isNotEmpty && vType != newVehicleType;
+      });
+    }
+
+    selectedVehicleType = selectedVehicleData?['vehicleType'] ?? '';
+    updateSelectedVehicleAndService();
+    update();
   }
 
   void updateSelectedVehicleAndService() {
@@ -534,9 +630,8 @@ class ReportsController extends GetxController {
             '')
         .toString()
         .toUpperCase();
-    final vehType = (selectedVehicleData?['vehicleType'] ?? '')
-        .toString()
-        .toUpperCase();
+    final vehType =
+        (selectedVehicleData?['vehicleType'] ?? '').toString().toUpperCase();
 
     for (var service in selectedServiceData) {
       final dValues = (service['dValues'] as List<dynamic>?) ?? [];
@@ -668,8 +763,8 @@ class ReportsController extends GetxController {
     );
   }
 
-  void _showDuplicateInvoiceDialog(
-      BuildContext context, Map<String, dynamic> existingRecord, dynamic mounted) {
+  void _showDuplicateInvoiceDialog(BuildContext context,
+      Map<String, dynamic> existingRecord, dynamic mounted) {
     final vehicleDetails = existingRecord['vehicleDetails'] is Map
         ? existingRecord['vehicleDetails'] as Map<String, dynamic>
         : <String, dynamic>{};
@@ -841,8 +936,7 @@ class ReportsController extends GetxController {
       if (documentFile != null || image != null) {
         final uploadTarget = documentFile ?? image!;
         final String ext = isPdfFile ? 'pdf' : 'jpg';
-        final String fileName =
-            '${DateTime.now().millisecondsSinceEpoch}.$ext';
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
         final Reference storageRef = FirebaseStorage.instance
             .ref()
             .child(isPdfFile ? 'service_documents' : 'service_images')
@@ -852,7 +946,8 @@ class ReportsController extends GetxController {
           contentType: isPdfFile ? 'application/pdf' : 'image/jpeg',
         );
 
-        final UploadTask uploadTask = storageRef.putFile(uploadTarget, metadata);
+        final UploadTask uploadTask =
+            storageRef.putFile(uploadTarget, metadata);
         imageUrl = await (await uploadTask).ref.getDownloadURL();
       } else if (isEditing && existingImageUrl != null) {
         imageUrl = existingImageUrl;
@@ -961,11 +1056,10 @@ class ReportsController extends GetxController {
           );
         }
 
-        String rawMetaType = (matchingDValue is Map
-                ? (matchingDValue['type'] ?? '')
-                : '')
-            .toString()
-            .toLowerCase();
+        String rawMetaType =
+            (matchingDValue is Map ? (matchingDValue['type'] ?? '') : '')
+                .toString()
+                .toLowerCase();
 
         String metaType = "reading";
         if (rawMetaType == "day" ||
@@ -1056,7 +1150,8 @@ class ReportsController extends GetxController {
       }
 
       // If Other Service is selected, add custom service
-      if (isOtherServiceSelected && otherServiceController.text.trim().isNotEmpty) {
+      if (isOtherServiceSelected &&
+          otherServiceController.text.trim().isNotEmpty) {
         final customName = otherServiceController.text.trim();
         final customId =
             'custom_${customName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
@@ -1155,7 +1250,8 @@ class ReportsController extends GetxController {
       // Auto-save new workshop to Users/{effectiveUserId}/recordWorkshopName (deduplicated)
       final String enteredWorkshop = workshopController.text.trim();
       if (enteredWorkshop.isNotEmpty) {
-        if (!workshopList.any((w) => w.toLowerCase() == enteredWorkshop.toLowerCase())) {
+        if (!workshopList
+            .any((w) => w.toLowerCase() == enteredWorkshop.toLowerCase())) {
           FirebaseFirestore.instance
               .collection('Users')
               .doc(effectiveUserId)
@@ -1165,7 +1261,8 @@ class ReportsController extends GetxController {
             'createdAt': FieldValue.serverTimestamp(),
           });
           workshopList.add(enteredWorkshop);
-          workshopList.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+          workshopList
+              .sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
         }
       }
 
@@ -1414,6 +1511,8 @@ class ReportsController extends GetxController {
     originalRecordDate = DateTime.tryParse(record['date']?.toString() ?? '');
     selectedVehicle = record['vehicleId'];
     selectedVehicleData = record['vehicleDetails'];
+    selectedVehicleType =
+        (selectedVehicleData?['vehicleType'] ?? 'Truck').toString();
 
     final targetVehType =
         (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
@@ -1429,8 +1528,8 @@ class ReportsController extends GetxController {
       for (var service in recordServices) {
         String originalServiceId = (service['serviceId'] ?? '').toString();
         String serviceName = (service['serviceName'] ?? '').toString();
-        final matched = _findMatchingService(
-            originalServiceId, serviceName, targetVehType);
+        final matched =
+            _findMatchingService(originalServiceId, serviceName, targetVehType);
         String targetServiceId = matched != null
             ? (matched['sId'] ?? originalServiceId).toString()
             : originalServiceId;
@@ -1475,8 +1574,8 @@ class ReportsController extends GetxController {
         isOtherServiceSelected = true;
         otherServiceController.text = serviceName;
       } else if (originalServiceId.isNotEmpty || serviceName.isNotEmpty) {
-        final matched = _findMatchingService(
-            originalServiceId, serviceName, targetVehType);
+        final matched =
+            _findMatchingService(originalServiceId, serviceName, targetVehType);
         String targetServiceId = matched != null
             ? (matched['sId'] ?? originalServiceId).toString()
             : originalServiceId;
@@ -1495,13 +1594,15 @@ class ReportsController extends GetxController {
       }
     }
 
-    if (record['imageUrl'] != null && record['imageUrl'].toString().isNotEmpty) {
+    if (record['imageUrl'] != null &&
+        record['imageUrl'].toString().isNotEmpty) {
       if (record['imageUrl'] is String) {
         image = null;
         documentFile = null;
         existingImageUrl = record['imageUrl'];
-        isPdfFile = record['imageUrl'].toString().toLowerCase().contains('.pdf') ||
-            record['fileType'] == 'pdf';
+        isPdfFile =
+            record['imageUrl'].toString().toLowerCase().contains('.pdf') ||
+                record['fileType'] == 'pdf';
       } else if (record['imageUrl'] is File) {
         image = record['imageUrl'] as File;
         documentFile = record['imageUrl'] as File;
@@ -1537,6 +1638,8 @@ class ReportsController extends GetxController {
     originalRecordDate = null;
     selectedVehicle = record['vehicleId'];
     selectedVehicleData = record['vehicleDetails'];
+    selectedVehicleType =
+        (selectedVehicleData?['vehicleType'] ?? 'Truck').toString();
 
     final targetVehType =
         (selectedVehicleData?['vehicleType'] ?? '').toString().toLowerCase();
@@ -1552,8 +1655,8 @@ class ReportsController extends GetxController {
       for (var service in recordServices) {
         String originalServiceId = (service['serviceId'] ?? '').toString();
         String serviceName = (service['serviceName'] ?? '').toString();
-        final matched = _findMatchingService(
-            originalServiceId, serviceName, targetVehType);
+        final matched =
+            _findMatchingService(originalServiceId, serviceName, targetVehType);
         String targetServiceId = matched != null
             ? (matched['sId'] ?? originalServiceId).toString()
             : originalServiceId;
@@ -1598,8 +1701,8 @@ class ReportsController extends GetxController {
         isOtherServiceSelected = true;
         otherServiceController.text = serviceName;
       } else if (originalServiceId.isNotEmpty || serviceName.isNotEmpty) {
-        final matched = _findMatchingService(
-            originalServiceId, serviceName, targetVehType);
+        final matched =
+            _findMatchingService(originalServiceId, serviceName, targetVehType);
         String targetServiceId = matched != null
             ? (matched['sId'] ?? originalServiceId).toString()
             : originalServiceId;
@@ -1618,13 +1721,15 @@ class ReportsController extends GetxController {
       }
     }
 
-    if (record['imageUrl'] != null && record['imageUrl'].toString().isNotEmpty) {
+    if (record['imageUrl'] != null &&
+        record['imageUrl'].toString().isNotEmpty) {
       if (record['imageUrl'] is String) {
         image = null;
         documentFile = null;
         existingImageUrl = record['imageUrl'];
-        isPdfFile = record['imageUrl'].toString().toLowerCase().contains('.pdf') ||
-            record['fileType'] == 'pdf';
+        isPdfFile =
+            record['imageUrl'].toString().toLowerCase().contains('.pdf') ||
+                record['fileType'] == 'pdf';
       } else if (record['imageUrl'] is File) {
         image = record['imageUrl'] as File;
         documentFile = record['imageUrl'] as File;
@@ -1723,8 +1828,7 @@ class ReportsController extends GetxController {
       return false;
     }
 
-    if (isOtherServiceSelected &&
-        otherServiceController.text.trim().isEmpty) {
+    if (isOtherServiceSelected && otherServiceController.text.trim().isEmpty) {
       showToastMessage("Error", "Please enter a custom service name", kRed);
       return false;
     }
@@ -1937,12 +2041,12 @@ class ReportsController extends GetxController {
   @override
   void onClose() {
     try {
-      vehiclesSubscription.cancel();
-      recordsSubscription.cancel();
-      servicesSubscription.cancel();
-      milesSubscription.cancel();
-      packagesSubscription.cancel();
-      usersSubscription.cancel();
+      vehiclesSubscription!.cancel();
+      recordsSubscription!.cancel();
+      servicesSubscription!.cancel();
+      milesSubscription!.cancel();
+      packagesSubscription!.cancel();
+      usersSubscription!.cancel();
       workshopSubscription?.cancel();
     } catch (e) {
       log("Error canceling streams in ReportsController onClose: $e");

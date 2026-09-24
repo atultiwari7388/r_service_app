@@ -1051,11 +1051,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     }).toList(),
                     onChanged: (value) {
                       setState(() {
-                        reController.selectedVehicle = value;
-                        reController.selectedServices.clear();
-                        reController.updateSelectedVehicleAndService();
-                        reController.selectedVehicleType =
-                            reController.selectedVehicleData?['vehicleType'];
+                        reController.handleVehicleChange(value);
                       });
                     },
                   ),
@@ -1340,10 +1336,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     }).toList(),
                     onChanged: (value) {
                       setState(() {
-                        reController.selectedVehicle = value;
-                        reController.selectedServices.clear();
-                        reController.selectedPackages.clear();
-                        reController.updateSelectedVehicleAndService();
+                        reController.handleVehicleChange(value);
                       });
                     },
                   ),

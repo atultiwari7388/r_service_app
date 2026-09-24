@@ -106,7 +106,7 @@ class AuthController extends GetxController {
     }
   }
 
-  void clearAllControllers() {
+  void clearAllControllers({bool notify = false}) {
     _nameController.clear();
     _companyNameController.clear();
     _dotController.clear();
@@ -123,7 +123,9 @@ class AuthController extends GetxController {
     isUserAcCreated = false;
     isUserSign = false;
     forgotPass = false;
-    update();
+    if (notify) {
+      update();
+    }
   }
 
   //========================== Create account with email and password =================

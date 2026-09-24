@@ -7,10 +7,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/controllers/authentication_controller.dart';
+import 'package:regal_service_d_app/services/google_places_service.dart';
 import 'package:regal_service_d_app/utils/app_styles.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:regal_service_d_app/widgets/custom_button.dart';
+import 'package:regal_service_d_app/widgets/google_place_search_bottom_sheet.dart';
 import 'package:regal_service_d_app/widgets/reusable_text.dart';
 import '../../../utils/show_toast_msg.dart';
 import '../../../widgets/text_field.dart';
@@ -271,6 +273,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       TextInputType.streetAddress,
                       controller.addressController,
                       MaterialCommunityIcons.home,
+                      suffixIconWidget: IconButton(
+                        icon: const Icon(
+                          MaterialCommunityIcons.map_search_outline,
+                          color: kPrimary,
+                        ),
+                        tooltip: "Search on Google Maps",
+                        onPressed: () => _openGooglePlaceSearch(controller),
+                      ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return "Please enter your address";
@@ -278,7 +288,33 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         return null;
                       },
                     ),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 2.h),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () => _openGooglePlaceSearch(controller),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 4.w, vertical: 2.h),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                MaterialCommunityIcons.google_maps,
+                                size: 14.sp,
+                                color: kPrimary,
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                "Search & Auto-fill Address",
+                                style: appStyle(12, kPrimary, FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
 
                     buildTextFieldInputWidget(
                       "Enter your city*",
@@ -316,7 +352,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        value: _countries.contains(controller.countryController.text)
+                        value: _countries
+                                .contains(controller.countryController.text)
                             ? controller.countryController.text
                             : null,
                         hint: Text(
@@ -424,7 +461,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                     SizedBox(height: 16.h),
                     CustomButton(
-                      text: controller.isUserAcCreated ? "Creating Account..." : "Continue",
+                      text: controller.isUserAcCreated
+                          ? "Creating Account..."
+                          : "Continue",
                       onPress: controller.isUserAcCreated
                           ? null
                           : () async {
@@ -434,7 +473,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   try {
                                     final prefs =
                                         await SharedPreferences.getInstance();
-                                    final userId = prefs.getString('an_user_id');
+                                    final userId =
+                                        prefs.getString('an_user_id');
 
                                     if (userId != null) {
                                       await _firestore
@@ -452,48 +492,65 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                                   await controller
                                       .createUserWithEmailAndPassword();
                                 } else {
-                                  if (controller.nameController.text.trim().isEmpty) {
-                                    showToastMessage(
-                                        "Error",
-                                        "Please enter your name",
-                                        Colors.red);
-                                  } else if (controller.emailController.text.trim().isEmpty ||
-                                      !GetUtils.isEmail(controller.emailController.text.trim())) {
+                                  if (controller.nameController.text
+                                      .trim()
+                                      .isEmpty) {
+                                    showToastMessage("Error",
+                                        "Please enter your name", Colors.red);
+                                  } else if (controller.emailController.text
+                                          .trim()
+                                          .isEmpty ||
+                                      !GetUtils.isEmail(controller
+                                          .emailController.text
+                                          .trim())) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter a valid email",
                                         Colors.red);
-                                  } else if (controller.phoneNumberController.text.trim().length != 10) {
+                                  } else if (controller
+                                          .phoneNumberController.text
+                                          .trim()
+                                          .length !=
+                                      10) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter a valid 10-digit phone number",
                                         Colors.red);
-                                  } else if (controller.passController.text.length < 6) {
+                                  } else if (controller
+                                          .passController.text.length <
+                                      6) {
                                     showToastMessage(
                                         "Error",
                                         "Password must be at least 6 characters",
                                         Colors.red);
-                                  } else if (controller.companyNameController.text.trim().isEmpty) {
+                                  } else if (controller
+                                      .companyNameController.text
+                                      .trim()
+                                      .isEmpty) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter your company name",
                                         Colors.red);
-                                  } else if (controller.addressController.text.trim().isEmpty) {
+                                  } else if (controller.addressController.text
+                                      .trim()
+                                      .isEmpty) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter your address",
                                         Colors.red);
-                                  } else if (controller.cityController.text.trim().isEmpty) {
-                                    showToastMessage(
-                                        "Error",
-                                        "Please enter your city",
-                                        Colors.red);
-                                  } else if (controller.stateController.text.trim().isEmpty) {
-                                    showToastMessage(
-                                        "Error",
-                                        "Please enter your state",
-                                        Colors.red);
-                                  } else if (controller.countryController.text.trim().isEmpty) {
+                                  } else if (controller.cityController.text
+                                      .trim()
+                                      .isEmpty) {
+                                    showToastMessage("Error",
+                                        "Please enter your city", Colors.red);
+                                  } else if (controller.stateController.text
+                                      .trim()
+                                      .isEmpty) {
+                                    showToastMessage("Error",
+                                        "Please enter your state", Colors.red);
+                                  } else if (controller.countryController.text
+                                      .trim()
+                                      .isEmpty) {
                                     showToastMessage(
                                         "Error",
                                         "Please enter your country",
@@ -538,12 +595,45 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
+  Future<void> _openGooglePlaceSearch(AuthController controller) async {
+    final PlaceDetails? result = await GooglePlaceSearchBottomSheet.show(
+      context,
+      initialQuery: controller.addressController.text.trim(),
+    );
+
+    if (result != null) {
+      setState(() {
+        controller.addressController.text = result.streetAddress;
+        if (result.city.isNotEmpty) {
+          controller.cityController.text = result.city;
+        }
+        if (result.state.isNotEmpty) {
+          controller.stateController.text = result.state;
+        }
+        if (result.country.isNotEmpty || result.countryCode.isNotEmpty) {
+          controller.countryController.text =
+              GooglePlacesService.normalizeCountryToSupportedList(
+            result.country,
+            result.countryCode,
+          );
+        }
+      });
+
+      showToastMessage(
+        "Address Selected",
+        "Street address, city, state and country auto-filled.",
+        kSuccess,
+      );
+    }
+  }
+
   TextFieldInputWidget buildTextFieldInputWidget(
     String hintText,
     TextInputType type,
     TextEditingController controller,
     IconData icon, {
     bool isPass = false,
+    Widget? suffixIconWidget,
     String? Function(String?)? validator,
   }) {
     return TextFieldInputWidget(
@@ -552,6 +642,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       textEditingController: controller,
       icon: icon,
       isPass: isPass,
+      suffixIconWidget: suffixIconWidget,
       validator: validator,
     );
   }

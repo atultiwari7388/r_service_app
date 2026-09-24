@@ -64,6 +64,18 @@ class _EntryScreenState extends State<EntryScreen>
     )..repeat();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _userStatusSubscription?.cancel();
+    _animationController.dispose();
+    super.dispose();
+
+    WidgetsBinding.instance.removeObserver(this);
+    _animationController.dispose();
+    _userStatusSubscription?.cancel();
+  }
+
   //  FETCH ANONYMOUS USER ID
   void getAnonymousUserFromSharedPrefs() async {
     final prefs = await SharedPreferences.getInstance();
@@ -486,14 +498,6 @@ class _EntryScreenState extends State<EntryScreen>
         await _loadUserRoleAndOwnerId();
       }
     }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _animationController.dispose();
-    _userStatusSubscription?.cancel();
-    super.dispose();
   }
 
   void setTab(int index) {

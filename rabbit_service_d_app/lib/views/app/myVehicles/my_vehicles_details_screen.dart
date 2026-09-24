@@ -198,6 +198,149 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     }
   }
 
+  void _showDocumentPreview(BuildContext context, Map<String, dynamic> doc) {
+    final String? docUrl = doc['imageUrl'];
+    if (docUrl == null || docUrl.isEmpty) {
+      showToastMessage("Error", "Document URL not available", Colors.red);
+      return;
+    }
+
+    final bool isPdfDoc =
+        docUrl.toLowerCase().contains('.pdf') || doc['fileType'] == 'pdf';
+    final String docTitle =
+        doc['name'] ?? (isPdfDoc ? 'PDF Document' : 'Image Document');
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.height * 0.78,
+          color: Colors.white,
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade200),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isPdfDoc ? Icons.picture_as_pdf : Icons.image,
+                      color: isPdfDoc ? Colors.red : kPrimary,
+                      size: 24.sp,
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            docTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: appStyle(15, kDark, FontWeight.bold),
+                          ),
+                          if (doc['text'] != null &&
+                              doc['text'].toString().trim().isNotEmpty)
+                            Text(
+                              doc['text'].toString(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: appStyle(12, kGray, FontWeight.normal),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: kDarkGray),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Preview Content
+              Expanded(
+                child: isPdfDoc
+                    ? PdfPreview(
+                        build: (format) async {
+                          final response = await http.get(Uri.parse(docUrl));
+                          return response.bodyBytes;
+                        },
+                        canChangePageFormat: false,
+                        canChangeOrientation: false,
+                        canDebug: false,
+                        allowPrinting: true,
+                        allowSharing: true,
+                        maxPageWidth: 700,
+                        loadingWidget: const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(kPrimary),
+                          ),
+                        ),
+                        actionBarTheme:
+                            PdfActionBarTheme(backgroundColor: kPrimary),
+                        onError: (context, error) => Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    size: 48, color: Colors.red),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  "Failed to load PDF preview.",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    final uri = Uri.parse(docUrl);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri,
+                                          mode: LaunchMode.externalApplication);
+                                    }
+                                  },
+                                  child: const Text("Open in Browser"),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : PhotoView(
+                        imageProvider: NetworkImage(docUrl),
+                        minScale: PhotoViewComputedScale.contained,
+                        maxScale: PhotoViewComputedScale.covered * 2.5,
+                        backgroundDecoration: const BoxDecoration(
+                          color: Color(0xff1A1A1A),
+                        ),
+                        loadingBuilder: (context, event) => const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(kPrimary),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -472,18 +615,9 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                               children: [
                                                 if (isPdfDoc)
                                                   InkWell(
-                                                    onTap: () async {
-                                                      if (docUrl != null &&
-                                                          docUrl.isNotEmpty) {
-                                                        final uri =
-                                                            Uri.parse(docUrl);
-                                                        if (await canLaunchUrl(
-                                                            uri)) {
-                                                          await launchUrl(uri,
-                                                              mode: LaunchMode
-                                                                  .externalApplication);
-                                                        }
-                                                      }
+                                                    onTap: () {
+                                                      _showDocumentPreview(
+                                                          context, doc);
                                                     },
                                                     child: Container(
                                                       height: 120,
@@ -529,7 +663,7 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                           const SizedBox(
                                                               height: 4),
                                                           const Text(
-                                                            'Tap to View / Open PDF',
+                                                            'Tap to Preview / Open PDF',
                                                             style: TextStyle(
                                                                 color:
                                                                     Colors.grey,
@@ -543,36 +677,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                     docUrl.isNotEmpty)
                                                   GestureDetector(
                                                     onTap: () {
-                                                      showDialog(
-                                                        context: context,
-                                                        builder: (context) =>
-                                                            Dialog(
-                                                          child: Container(
-                                                            width: MediaQuery.of(
-                                                                        context)
-                                                                    .size
-                                                                    .width *
-                                                                0.9,
-                                                            height: MediaQuery.of(
-                                                                        context)
-                                                                    .size
-                                                                    .height *
-                                                                0.7,
-                                                            child: PhotoView(
-                                                              imageProvider:
-                                                                  NetworkImage(
-                                                                      docUrl),
-                                                              minScale:
-                                                                  PhotoViewComputedScale
-                                                                      .contained,
-                                                              maxScale:
-                                                                  PhotoViewComputedScale
-                                                                          .covered *
-                                                                      2,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      );
+                                                      _showDocumentPreview(
+                                                          context, doc);
                                                     },
                                                     child: ClipRRect(
                                                       borderRadius:
@@ -604,6 +710,21 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                     Row(
                                                       children: [
                                                         IconButton(
+                                                          tooltip:
+                                                              "View Preview",
+                                                          onPressed: () {
+                                                            _showDocumentPreview(
+                                                                context, doc);
+                                                          },
+                                                          icon: const Icon(
+                                                            Icons
+                                                                .visibility_outlined,
+                                                            color: kPrimary,
+                                                          ),
+                                                        ),
+                                                        IconButton(
+                                                          tooltip:
+                                                              "Delete Document",
                                                           onPressed: () {
                                                             _showDeleteConfirmationDialog(
                                                                 context,
@@ -611,11 +732,14 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                                 doc);
                                                           },
                                                           icon: const Icon(
-                                                              Icons.delete,
+                                                              Icons
+                                                                  .delete_outline,
                                                               color:
                                                                   Colors.red),
                                                         ),
                                                         IconButton(
+                                                          tooltip:
+                                                              "Download Document",
                                                           onPressed: () async {
                                                             if (isPdfDoc &&
                                                                 docUrl !=
@@ -636,8 +760,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                                                                   doc['text']);
                                                             }
                                                           },
-                                                          icon: const Icon(
-                                                              Icons.download),
+                                                          icon: const Icon(Icons
+                                                              .download_rounded),
                                                         ),
                                                       ],
                                                     ),

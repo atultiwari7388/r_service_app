@@ -14,6 +14,10 @@ class TextFieldInputWidget extends StatefulWidget {
     this.isIconApply = true,
     this.maxLines = 1,
     this.enabled = true,
+    this.readOnly = false,
+    this.onTap,
+    this.onChanged,
+    this.suffixIconWidget,
     this.validator,
   }) : super(key: key);
 
@@ -25,6 +29,10 @@ class TextFieldInputWidget extends StatefulWidget {
   final bool isIconApply;
   final int maxLines;
   final bool enabled;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
+  final Widget? suffixIconWidget;
   final String? Function(String?)? validator;
 
   @override
@@ -60,6 +68,9 @@ class _TextFieldInputWidgetState extends State<TextFieldInputWidget> {
         controller: widget.textEditingController,
         maxLines: widget.maxLines,
         validator: widget.validator,
+        readOnly: widget.readOnly,
+        onTap: widget.onTap,
+        onChanged: widget.onChanged,
         decoration: InputDecoration(
           prefixIcon: widget.isIconApply ? Icon(widget.icon, color: kPrimary) : null,
           hintText: widget.hintText,
@@ -83,7 +94,7 @@ class _TextFieldInputWidgetState extends State<TextFieldInputWidget> {
               });
             },
           )
-              : null, // Show eye icon only for password fields
+              : widget.suffixIconWidget,
         ),
         keyboardType: widget.textInputType,
         obscureText: widget.isPass ? _obscureText : false,

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:regal_service_d_app/controllers/authentication_controller.dart';
+import 'package:regal_service_d_app/controllers/reports_controller.dart';
 import 'package:regal_service_d_app/views/app/auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,8 +64,15 @@ class UserService extends GetxService {
         log("Anonymous user $userId deleted from Firestore");
       }
 
+      if (Get.isRegistered<ReportsController>()) {
+        try {
+          Get.find<ReportsController>().cancelStreams();
+        } catch (_) {}
+        Get.delete<ReportsController>(force: true);
+      }
+
       if (Get.isRegistered<AuthController>()) {
-        Get.find<AuthController>().clearAllControllers();
+        Get.find<AuthController>().clearAllControllers(notify: false);
       }
 
       await _auth.signOut();
