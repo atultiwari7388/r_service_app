@@ -16,10 +16,7 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
-  query,
   setDoc,
-  where,
 } from "firebase/firestore";
 import {
   FaUser,
@@ -151,34 +148,6 @@ const Signup: React.FC = () => {
 
     try {
       let user = auth.currentUser;
-      const emailToCheck = formValues.email.trim().toLowerCase();
-
-      // Check Users collection for email collision
-      const usersQuery = query(
-        collection(db, "Users"),
-        where("email", "==", emailToCheck)
-      );
-      const usersSnapshot = await getDocs(usersQuery);
-      if (!usersSnapshot.empty) {
-        const existingDoc = usersSnapshot.docs[0];
-        if (!user || existingDoc.id !== user.uid) {
-          setError("This email is already registered. Try to login.");
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Check Mechanics collection for email collision
-      const mechanicsQuery = query(
-        collection(db, "Mechanics"),
-        where("email", "==", emailToCheck)
-      );
-      const mechanicsSnapshot = await getDocs(mechanicsQuery);
-      if (!mechanicsSnapshot.empty) {
-        setError("This email is registered with a mechanic account.");
-        setLoading(false);
-        return;
-      }
 
       // If user is currently logged in via Guest Phone Auth, link credentials
       if (user && (user.isAnonymous || user.phoneNumber)) {
@@ -211,6 +180,19 @@ const Signup: React.FC = () => {
 
       if (!user) {
         throw new Error("User creation failed - no user returned");
+      }
+
+      // Check if UID is already registered as a Mechanic
+      try {
+        const mechanicDoc = await getDoc(doc(db, "Mechanics", user.uid));
+        if (mechanicDoc.exists()) {
+          await auth.signOut();
+          setError("This email is registered with a mechanic account. Please try with another email.");
+          setLoading(false);
+          return;
+        }
+      } catch (mechanicCheckErr) {
+        console.warn("Mechanic check skipped or not found:", mechanicCheckErr);
       }
 
       // Store / update user details in Firestore
