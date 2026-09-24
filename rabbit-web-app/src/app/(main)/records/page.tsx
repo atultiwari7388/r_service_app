@@ -306,6 +306,33 @@ const parseServiceDetails = (
   return { name, subs };
 };
 
+const formatServiceForTable = (
+  service?: ServiceDisplayItem | null
+): string => {
+  if (!service) return "";
+  const name = (
+    service.serviceName ||
+    service.sName ||
+    service.title ||
+    ""
+  ).trim();
+  if (!name) return "";
+
+  const isDpfOrSteer =
+    name.toLowerCase() === "steer tires" ||
+    name.toLowerCase() === "dpf percentage" ||
+    name.toLowerCase() === "dpf clean" ||
+    name.toLowerCase().includes("steer tire") ||
+    name.toLowerCase().includes("dpf");
+
+  if (!isDpfOrSteer) {
+    return name;
+  }
+
+  const { subs } = parseServiceDetails(service);
+  return subs.length > 0 ? `${name} (${subs.join(", ")})` : name;
+};
+
 // ─── Module-level constants (never recreated) ────────────────────────────────
 const DRY_VAN_EXCLUDED_SERVICES = [
   "Alternator",
@@ -2889,11 +2916,13 @@ export default function RecordsPage() {
         accessorFn: (row) =>
           row.services && row.services.length > 0
             ? [...row.services]
-                .filter((s) => s && s.serviceName)
+                .filter((s) => s && (s.serviceName || (s as any).sName))
                 .sort((a, b) =>
-                  (a.serviceName || "").localeCompare(b.serviceName || "")
+                  (a.serviceName || (a as any).sName || "").localeCompare(
+                    b.serviceName || (b as any).sName || ""
+                  )
                 )
-                .map((service) => formatServiceWithSubservices(service))
+                .map((service) => formatServiceForTable(service))
                 .join(", ")
             : "",
         id: "services",
@@ -2902,35 +2931,16 @@ export default function RecordsPage() {
         Cell: ({ row }) => {
           const record = row.original;
           if (!record.services || record.services.length === 0) return <span>-</span>;
-          const sortedServices = [...record.services]
+          const serviceText = [...record.services]
             .filter((s) => s && (s.serviceName || (s as any).sName))
             .sort((a, b) =>
               (a.serviceName || (a as any).sName || "").localeCompare(
                 b.serviceName || (b as any).sName || ""
               )
-            );
-
-          if (sortedServices.length === 0) return <span>-</span>;
-
-          return (
-            <span className="text-xs">
-              {sortedServices.map((service, idx) => {
-                const { name, subs } = parseServiceDetails(service as any);
-                if (!name) return null;
-                return (
-                  <span key={idx}>
-                    {idx > 0 && <span className="text-gray-400 mr-1">, </span>}
-                    <span className="font-bold text-gray-900">{name}</span>
-                    {subs.length > 0 && (
-                      <span className="text-gray-400 font-normal ml-1">
-                        ({subs.join(", ")})
-                      </span>
-                    )}
-                  </span>
-                );
-              })}
-            </span>
-          );
+            )
+            .map((service) => formatServiceForTable(service))
+            .join(", ");
+          return <span>{serviceText || "-"}</span>;
         },
       },
       {

@@ -441,12 +441,12 @@ export default function ExportDataDialog({
       let yPos = 62;
       const headers = [
         { label: "Date", width: 22 },
-        { label: "Vehicle", width: 24 },
-        { label: "Services", width: 55 },
-        { label: "Workshop", width: 32 },
-        { label: "Inv #", width: 20 },
-        { label: "Amount", width: 20 },
-        { label: "Status", width: 15 },
+        { label: "Vehicle", width: 22 },
+        { label: "Miles/Hours", width: 20 },
+        { label: "Services & Subservices", width: 66 },
+        { label: "Workshop", width: 26 },
+        { label: "Inv #", width: 17 },
+        { label: "Amount", width: 17 },
       ];
 
       const drawTableHeader = (y: number) => {
@@ -472,7 +472,26 @@ export default function ExportDataDialog({
       pdf.setFont("helvetica", "normal");
 
       filteredData.forEach((rec, idx) => {
-        if (yPos > pageHeight - 20) {
+        const isTrailer = rec.vehicleDetails?.vehicleType === "Trailer";
+        const unitVal = isTrailer
+          ? `${rec.hours || 0} hrs`
+          : rec.miles && Number(rec.miles) !== 0
+          ? `${rec.miles} mi`
+          : rec.hours && Number(rec.hours) !== 0
+          ? `${rec.hours} hrs`
+          : "-";
+
+        const sString = (rec.services || []).map((s) => formatServiceItem(s)).join(", ") || "-";
+        const sLines = pdf.splitTextToSize(sString, headers[3].width - 3);
+
+        const wString = rec.workshopName || "-";
+        const wLines = pdf.splitTextToSize(wString, headers[4].width - 3);
+
+        const maxLines = Math.max(sLines.length, wLines.length, 1);
+        const lineHeight = 3.8;
+        const rowHeight = maxLines * lineHeight + 4;
+
+        if (yPos + rowHeight > pageHeight - 18) {
           pdf.addPage();
           yPos = 15;
           drawTableHeader(yPos);
@@ -482,45 +501,41 @@ export default function ExportDataDialog({
         // Alternating row background
         if (idx % 2 === 1) {
           pdf.setFillColor(249, 250, 251);
-          pdf.rect(margin, yPos - 3, pageWidth - margin * 2, 7, "F");
+          pdf.rect(margin, yPos - 2, pageWidth - margin * 2, rowHeight, "F");
         }
 
         pdf.setTextColor(30, 41, 59);
         let curX = margin + 2;
 
         // Date
-        pdf.text(formatDateSafe(rec.date), curX, yPos + 1.5);
+        pdf.text(formatDateSafe(rec.date), curX, yPos + 2.5);
         curX += headers[0].width;
 
         // Vehicle
-        pdf.text(rec.vehicleDetails?.vehicleNumber || "-", curX, yPos + 1.5);
+        pdf.text(rec.vehicleDetails?.vehicleNumber || "-", curX, yPos + 2.5);
         curX += headers[1].width;
 
-        // Services (truncate if long)
-        const sString = (rec.services || []).map((s) => formatServiceItem(s)).join(", ");
-        const sTruncated = pdf.splitTextToSize(sString || "-", headers[2].width - 3)[0] || "-";
-        pdf.text(sTruncated, curX, yPos + 1.5);
+        // Miles/Hours
+        pdf.text(unitVal, curX, yPos + 2.5);
         curX += headers[2].width;
 
-        // Workshop
-        const wTruncated = pdf.splitTextToSize(rec.workshopName || "-", headers[3].width - 3)[0] || "-";
-        pdf.text(wTruncated, curX, yPos + 1.5);
+        // Services & Subservices (FULL MULTI-LINE, NEVER TRUNCATED)
+        pdf.text(sLines, curX, yPos + 2.5);
         curX += headers[3].width;
 
-        // Inv #
-        pdf.text(rec.invoice || "-", curX, yPos + 1.5);
+        // Workshop
+        pdf.text(wLines, curX, yPos + 2.5);
         curX += headers[4].width;
+
+        // Inv #
+        pdf.text(rec.invoice || "-", curX, yPos + 2.5);
+        curX += headers[5].width;
 
         // Amount
         const amt = parseFloat(rec.invoiceAmount || "0") || 0;
-        pdf.text(`$${amt.toFixed(2)}`, curX, yPos + 1.5);
-        curX += headers[5].width;
+        pdf.text(`$${amt.toFixed(2)}`, curX, yPos + 2.5);
 
-        // Status
-        const st = rec.paymentStatus || "Unpaid";
-        pdf.text(st, curX, yPos + 1.5);
-
-        yPos += 7;
+        yPos += rowHeight;
       });
 
       // Total summary at bottom of table
@@ -819,8 +834,8 @@ export default function ExportDataDialog({
                     <TableRow>
                       <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Date</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Vehicle #</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Company</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Services</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Miles/Hours</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Services & Subservices</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Workshop</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }}>Inv #</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: "0.75rem", backgroundColor: "#F8FAFC" }} align="right">Amount</TableCell>
@@ -828,44 +843,55 @@ export default function ExportDataDialog({
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredData.slice(0, 50).map((record) => (
-                      <TableRow key={record.id} hover>
-                        <TableCell sx={{ fontSize: "0.75rem" }} className="whitespace-nowrap font-medium">
-                          {formatDateSafe(record.date)}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem" }} className="font-semibold text-gray-900">
-                          {record.vehicleDetails?.vehicleNumber || "-"}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem" }}>
-                          {record.vehicleDetails?.companyName || "-"}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem", maxWidth: "220px" }} className="truncate">
-                          {(record.services || []).map((s) => formatServiceItem(s)).join(", ") || "-"}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem" }}>
-                          {record.workshopName || "-"}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem" }}>
-                          {record.invoice || "-"}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem" }} align="right" className="font-semibold">
-                          ${parseFloat(record.invoiceAmount || "0").toFixed(2)}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem" }}>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                              record.paymentStatus === "Paid"
-                                ? "bg-green-100 text-green-700"
-                                : record.paymentStatus === "Partially Paid"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {record.paymentStatus || "Unpaid"}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredData.slice(0, 50).map((record) => {
+                      const isTrailer = record.vehicleDetails?.vehicleType === "Trailer";
+                      const unitVal = isTrailer
+                        ? `${record.hours || 0} hrs`
+                        : record.miles && Number(record.miles) !== 0
+                        ? `${record.miles} mi`
+                        : record.hours && Number(record.hours) !== 0
+                        ? `${record.hours} hrs`
+                        : "-";
+
+                      return (
+                        <TableRow key={record.id} hover>
+                          <TableCell sx={{ fontSize: "0.75rem" }} className="whitespace-nowrap font-medium">
+                            {formatDateSafe(record.date)}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }} className="font-semibold text-gray-900">
+                            {record.vehicleDetails?.vehicleNumber || "-"}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }} className="whitespace-nowrap">
+                            {unitVal}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }}>
+                            {(record.services || []).map((s) => formatServiceItem(s)).join(", ") || "-"}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }}>
+                            {record.workshopName || "-"}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }}>
+                            {record.invoice || "-"}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }} align="right" className="font-semibold">
+                            ${parseFloat(record.invoiceAmount || "0").toFixed(2)}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: "0.75rem" }}>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                record.paymentStatus === "Paid"
+                                  ? "bg-green-100 text-green-700"
+                                  : record.paymentStatus === "Partially Paid"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {record.paymentStatus || "Unpaid"}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
