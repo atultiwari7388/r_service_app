@@ -3018,13 +3018,13 @@ export default function RecordsPage() {
                 </button>
               </Link>
 
-              <button
+              {/* <button
                 onClick={() => downloadSingleRecord(record)}
                 className="bg-[#10B981] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#059669] transition cursor-pointer"
                 title="Download Excel"
               >
                 <FaDownload className="text-[11px]" /> Download
-              </button>
+              </button> */}
             </div>
           );
         },

@@ -227,7 +227,8 @@ function ManageCheckScreenContent() {
     if (action === "writeCheck") {
       const payee = searchParams.get("payee") || "";
       const rawInvoices = searchParams.get("invoices");
-      const paramTotal = parseFloat(searchParams.get("totalAmount") || "0") || 0;
+      const paramTotal =
+        parseFloat(searchParams.get("totalAmount") || "0") || 0;
 
       let parsedInvoices: Array<{
         recordId: string;
@@ -262,10 +263,12 @@ function ManageCheckScreenContent() {
             ? paramTotal
             : parsedInvoices.reduce((s, i) => s + (i.amount || 0), 0);
 
-        const newServiceDetails: ServiceDetail[] = parsedInvoices.map((inv) => ({
-          serviceName: inv.description || `Inv #${inv.invoiceNumber}`,
-          amount: inv.amount,
-        }));
+        const newServiceDetails: ServiceDetail[] = parsedInvoices.map(
+          (inv) => ({
+            serviceName: inv.description || `Inv #${inv.invoiceNumber}`,
+            amount: inv.amount,
+          })
+        );
 
         while (newServiceDetails.length < 5) {
           newServiceDetails.push({ serviceName: "", amount: 0 });
@@ -900,7 +903,9 @@ function ManageCheckScreenContent() {
             where("isTeamMember", "==", true)
           );
           const teamMembersSnapshot = await getDocs(teamMembersQuery);
-          const memberIds = teamMembersSnapshot.docs.map((docSnap) => docSnap.id);
+          const memberIds = teamMembersSnapshot.docs.map(
+            (docSnap) => docSnap.id
+          );
 
           const ledgerInvoices: any[] = [];
 
@@ -958,7 +963,9 @@ function ManageCheckScreenContent() {
             const currentPaid =
               typeof recData.paidAmount === "number" ? recData.paidAmount : 0;
             const newPaid = Number((currentPaid + inv.amount).toFixed(2));
-            const newBalance = Number(Math.max(0, totalInv - newPaid).toFixed(2));
+            const newBalance = Number(
+              Math.max(0, totalInv - newPaid).toFixed(2)
+            );
             const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid";
 
             const paymentEntry = {
@@ -1284,7 +1291,7 @@ function ManageCheckScreenContent() {
 
     /* -----------------------------
       Prepare printable service details
-      (Consolidate if multiple invoices to avoid voucher overflow)
+      (Include all invoice numbers / descriptions formatted cleanly)
      ----------------------------- */
     const activeDetails = (printCheck.serviceDetails || []).filter((detail) => {
       const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
@@ -1295,19 +1302,19 @@ function ManageCheckScreenContent() {
       return hasDescription || hasAmount;
     });
 
-    const printableDetails: ServiceDetail[] =
-      activeDetails.length > 1
-        ? [
-            {
-              serviceName:
-                activeDetails[0].serviceName?.trim() ||
-                `Payment for ${activeDetails.length} Invoices`,
-              amount: printCheck.totalAmount,
-            },
-          ]
-        : activeDetails.length === 1
-        ? activeDetails
-        : [{ serviceName: "", amount: printCheck.totalAmount }];
+    const allDescriptions = activeDetails
+      .map((d) => d.serviceName?.trim() ?? "")
+      .filter((name) => name.length > 0);
+
+    const fullDescription =
+      allDescriptions.length > 0 ? allDescriptions.join(", ") : "";
+
+    const printableDetails: ServiceDetail[] = [
+      {
+        serviceName: fullDescription,
+        amount: printCheck.totalAmount,
+      },
+    ];
 
     /* -----------------------------
       Open Print Window
@@ -1436,10 +1443,26 @@ function ManageCheckScreenContent() {
       .service-line {
         display: flex;
         justify-content: space-between;
-        font-size: 13pt;
+        align-items: flex-start;
+        font-size: 11pt;
         margin: 0;
         font-weight: 400;
         font-family: "Univers", sans-serif;
+        gap: 15px;
+      }
+
+      .service-description {
+        flex: 1;
+        max-width: 148mm;
+        line-height: 1.35;
+        word-break: break-word;
+        white-space: normal;
+      }
+
+      .service-amount {
+        white-space: nowrap;
+        text-align: right;
+        font-size: 12pt;
       }
 
       .total-line {
@@ -1504,8 +1527,14 @@ function ManageCheckScreenContent() {
 
             return `
       <div class="service-line">
-        <div>${hasDescription ? description : ""}</div>
-        ${showAmount ? `<div>$${formatAmount(amount)}</div>` : ""}
+        <div class="service-description">${
+          hasDescription ? description : ""
+        }</div>
+        ${
+          showAmount
+            ? `<div class="service-amount">$${formatAmount(amount)}</div>`
+            : ""
+        }
       </div>
     `;
           })
@@ -1514,8 +1543,8 @@ function ManageCheckScreenContent() {
           ${
             printCheck.memoNumber
               ? `
-        <div class="service-line">
-          <div>${printCheck.memoNumber}</div>
+        <div class="service-line" style="margin-top: 4px;">
+          <div class="service-description">${printCheck.memoNumber}</div>
         </div>
 `
               : ""
@@ -1542,8 +1571,14 @@ function ManageCheckScreenContent() {
 
             return `
       <div class="service-line">
-        <div>${hasDescription ? description : ""}</div>
-        ${showAmount ? `<div>$${formatAmount(amount)}</div>` : ""}
+        <div class="service-description">${
+          hasDescription ? description : ""
+        }</div>
+        ${
+          showAmount
+            ? `<div class="service-amount">$${formatAmount(amount)}</div>`
+            : ""
+        }
       </div>
     `;
           })
@@ -1552,9 +1587,9 @@ function ManageCheckScreenContent() {
           ${
             printCheck.memoNumber
               ? `
-      <div class="service-line">
-        <div>${printCheck.memoNumber}</div>
-         </div>
+      <div class="service-line" style="margin-top: 4px;">
+        <div class="service-description">${printCheck.memoNumber}</div>
+      </div>
 `
               : ""
           }
