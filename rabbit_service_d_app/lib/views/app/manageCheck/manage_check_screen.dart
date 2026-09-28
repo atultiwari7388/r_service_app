@@ -78,8 +78,35 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   bool _isEditing = false;
   String? _editingCheckId;
   String? _editingCheckNumber;
+  List<Map<String, dynamic>> _attachedInvoices = [];
   bool _isPreparingAutoCheck = false;
   bool _isSavingCheck = false;
+
+  double _parseAmount(dynamic val) {
+    if (val == null) return 0.0;
+    if (val is num) return val.toDouble();
+    if (val is String) {
+      final clean = val.replaceAll(RegExp(r'[^0-9.-]'), '');
+      return double.tryParse(clean) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  DateTime _parseDate(dynamic val) {
+    if (val == null) return DateTime.now();
+    if (val is Timestamp) return val.toDate();
+    if (val is DateTime) return val;
+    if (val is String) {
+      try {
+        return DateTime.parse(val);
+      } catch (_) {
+        try {
+          return DateFormat("MM/dd/yyyy").parse(val);
+        } catch (_) {}
+      }
+    }
+    return DateTime.now();
+  }
 
   @override
   void initState() {
@@ -265,7 +292,8 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
           return {
             'id': doc.id,
             ...data,
-            'date': (data['date'] as Timestamp).toDate(),
+            'date': _parseDate(data['date']),
+            'totalAmount': _parseAmount(data['totalAmount']),
           };
         }).toList();
         _loadingChecks = false;
@@ -522,7 +550,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                             font: universeFont),
                       ),
                       pw.Text(
-                        DateFormat('MM/dd/yyyy').format(check['date']),
+                        DateFormat('MM/dd/yyyy').format(_parseDate(check['date'])),
                         style: pw.TextStyle(fontSize: 15, font: universeFont),
                       ),
                     ],
@@ -530,13 +558,12 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   pw.SizedBox(height: 10),
                   ...printableDetails.map<pw.Widget>((detail) {
                     final numberFormat = NumberFormat("#,##0.00", "en_US");
-                    final formattedTotal = numberFormat.format(
-                        detail['amount'] != null ? detail['amount'] : 0);
+                    final formattedTotal = numberFormat.format(_parseAmount(detail['amount']));
                     return pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
                         pw.Text(
-                          detail['serviceName'],
+                          detail['serviceName']?.toString() ?? '',
                           style: pw.TextStyle(fontSize: 13, font: universeFont),
                         ),
                         pw.Text(
@@ -550,7 +577,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   pw.Row(children: [
                     pw.Spacer(),
                     pw.Text(
-                      '\$${check['totalAmount'].toStringAsFixed(2)}',
+                      '\$${_parseAmount(check['totalAmount']).toStringAsFixed(2)}',
                       style: pw.TextStyle(
                           fontSize: 13,
                           fontWeight: pw.FontWeight.normal,
@@ -700,19 +727,129 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
   }
 
   Future<void> _showEditCheckDialog(Map<String, dynamic> check) async {
+    final checkId = check['id']?.toString() ?? '';
+    final checkNumStr = check['checkNumber']?.toString() ?? '';
+
+    List<Map<String, dynamic>> initialAttachedInvoices = [];
+    if (check['attachedInvoices'] is List) {
+      initialAttachedInvoices = (check['attachedInvoices'] as List).map((x) {
+        if (x is Map) {
+          final m = Map<String, dynamic>.from(x);
+          m['amount'] = _parseAmount(m['amount'] ?? m['amountPaid']);
+          return m;
+        }
+        return <String, dynamic>{};
+      }).where((m) => m.isNotEmpty).toList();
+    }
+
+    final initialDetails = (check['serviceDetails'] as List? ?? []).map((x) {
+      if (x is Map) {
+        final m = Map<String, dynamic>.from(x);
+        m['amount'] = _parseAmount(m['amount']);
+        return m;
+      }
+      return <String, dynamic>{'serviceName': '', 'amount': 0.0};
+    }).toList();
+
+    // 1. If attachedInvoices is empty, try to recover from InvoicePayments ledger
+    if (initialAttachedInvoices.isEmpty && checkId.isNotEmpty) {
+      try {
+        final ledgerSnap = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(_effectiveUserId)
+            .collection('InvoicePayments')
+            .where('checkId', isEqualTo: checkId)
+            .get();
+
+        for (var doc in ledgerSnap.docs) {
+          final data = doc.data();
+          if (data['invoices'] is List) {
+            for (var inv in data['invoices']) {
+              if (inv is Map) {
+                final invMap = Map<String, dynamic>.from(inv);
+                invMap['amount'] = _parseAmount(invMap['amount'] ?? invMap['amountPaid']);
+                initialAttachedInvoices.add(invMap);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print("Error fetching ledger for check edit: $e");
+      }
+    }
+
+    // 2. Try matching serviceDetails to DataServices records if recordId is missing
+    for (var sd in initialDetails) {
+      if (sd['recordId'] == null || sd['recordId'].toString().isEmpty) {
+        final serviceName = sd['serviceName']?.toString() ?? '';
+
+        // Match with initialAttachedInvoices if available
+        final matched = initialAttachedInvoices.firstWhere(
+          (inv) =>
+              (inv['invoiceNumber']?.toString().isNotEmpty == true &&
+                  serviceName.contains(inv['invoiceNumber'].toString())) ||
+              (inv['recordId']?.toString().isNotEmpty == true &&
+                  serviceName.contains(inv['recordId'].toString())),
+          orElse: () => <String, dynamic>{},
+        );
+
+        if (matched.isNotEmpty) {
+          sd['recordId'] = matched['recordId'];
+          sd['invoiceNumber'] = matched['invoiceNumber'];
+          sd['vehicleNumber'] = matched['vehicleNumber'];
+        } else {
+          // Extract invoice number using pattern match (e.g. Inv #1001, Inv 1001, 1001)
+          final regexMatch = RegExp(
+                  r'(?:Inv|Invoice)?\s*#?\s*([a-zA-Z0-9_-]+)',
+                  caseSensitive: false)
+              .firstMatch(serviceName);
+          final extractedNum = regexMatch?.group(1);
+
+          if (extractedNum != null && extractedNum.isNotEmpty) {
+            try {
+              final dsQuery = await FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(_effectiveUserId)
+                  .collection('DataServices')
+                  .where('invoice', isEqualTo: extractedNum)
+                  .limit(1)
+                  .get();
+
+              if (dsQuery.docs.isNotEmpty) {
+                final dsDoc = dsQuery.docs.first;
+                final dsData = dsDoc.data();
+                sd['recordId'] = dsDoc.id;
+                sd['invoiceNumber'] = dsData['invoice'] ?? extractedNum;
+                sd['vehicleNumber'] = dsData['vehicleNumber'] ?? '';
+
+                if (!initialAttachedInvoices.any((p) => p['recordId'] == dsDoc.id)) {
+                  initialAttachedInvoices.add({
+                    'recordId': dsDoc.id,
+                    'invoiceNumber': sd['invoiceNumber'],
+                    'vehicleNumber': sd['vehicleNumber'],
+                    'amount': _parseAmount(sd['amount']),
+                  });
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    }
+
     setState(() {
       _isEditing = true;
-      _editingCheckId = check['id'];
-      _editingCheckNumber = check['checkNumber'].toString();
+      _editingCheckId = checkId;
+      _editingCheckNumber = checkNumStr;
       _selectedType = check['type'];
       _selectedUserId = check['userId'];
       _selectedUserName = check['userName'];
       _serviceDetails.clear();
-      _serviceDetails
-          .addAll(List<Map<String, dynamic>>.from(check['serviceDetails']));
+      _serviceDetails.addAll(initialDetails);
+      _attachedInvoices = initialAttachedInvoices;
       _memoNumberController.text = check['memoNumber'] ?? '';
-      _selectedDate = check['date'];
-      _totalAmount = (check['totalAmount'] as num).toDouble();
+      _selectedDate = _parseDate(check['date']);
+      _totalAmount = _parseAmount(check['totalAmount']);
       _calculateTotal();
     });
 
@@ -850,29 +987,29 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               child: Row(
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${detail['serviceName']}: \$${detail['amount']}',
-                                      style: appStyle(
-                                          12, kDark, FontWeight.normal),
+                                    Expanded(
+                                      child: Text(
+                                        '${detail['serviceName']}: \$${detail['amount']}',
+                                        style: appStyle(
+                                            12, kDark, FontWeight.normal),
+                                      ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.edit, color: kPrimary),
-                                    onPressed: () {
-                                      _showEditDetailDialog(
-                                          context, setState, index);
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () {
-                                      setState(() {
-                                        _serviceDetails.removeAt(index);
-                                        _calculateTotal();
-                                      });
-                                    },
-                                  ),
+                                    IconButton(
+                                      icon: Icon(Icons.edit, color: kPrimary),
+                                      onPressed: () {
+                                        _showEditDetailDialog(
+                                            context, setState, index);
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () {
+                                        setState(() {
+                                          _serviceDetails.removeAt(index);
+                                          _calculateTotal();
+                                        });
+                                      },
+                                    ),
                                 ],
                               ),
                             );
@@ -1020,6 +1157,9 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                   _serviceDetails[index] = {
                     'serviceName': serviceNameController.text,
                     'amount': double.parse(amountController.text),
+                    if (detail['recordId'] != null) 'recordId': detail['recordId'],
+                    if (detail['invoiceNumber'] != null) 'invoiceNumber': detail['invoiceNumber'],
+                    if (detail['vehicleNumber'] != null) 'vehicleNumber': detail['vehicleNumber'],
                   };
                   _calculateTotal();
                 });
@@ -1051,11 +1191,149 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     setState(() => _isSavingCheck = true);
 
     try {
-      // Update check document
-      await FirebaseFirestore.instance
+      final checkRef = FirebaseFirestore.instance
           .collection('Checks')
-          .doc(_editingCheckId)
-          .update({
+          .doc(_editingCheckId);
+
+      final prevCheckSnap = await checkRef.get();
+      final prevCheckData = prevCheckSnap.exists
+          ? prevCheckSnap.data() as Map<String, dynamic>
+          : null;
+
+      // Extract previous attached invoices
+      final List<Map<String, dynamic>> prevAttachedInvoices = [];
+      if (_attachedInvoices.isNotEmpty) {
+        prevAttachedInvoices.addAll(_attachedInvoices);
+      }
+      if (prevCheckData?['attachedInvoices'] is List) {
+        for (var inv in prevCheckData!['attachedInvoices']) {
+          if (inv is Map) {
+            final recId = inv['recordId']?.toString() ?? '';
+            if (recId.isNotEmpty &&
+                !prevAttachedInvoices.any((p) => p['recordId'] == recId)) {
+              prevAttachedInvoices.add({
+                'recordId': recId,
+                'invoiceNumber': inv['invoiceNumber']?.toString() ?? '',
+                'vehicleNumber': inv['vehicleNumber']?.toString() ?? '',
+                'amount': (inv['amount'] as num?)?.toDouble() ??
+                    (inv['amountPaid'] as num?)?.toDouble() ??
+                    0.0,
+              });
+            }
+          }
+        }
+      }
+
+      // If prevAttachedInvoices is still empty, try to extract from serviceDetails
+      if (prevAttachedInvoices.isEmpty &&
+          prevCheckData?['serviceDetails'] is List) {
+        for (var sd in prevCheckData!['serviceDetails']) {
+          if (sd is Map && sd['recordId'] != null) {
+            final recId = sd['recordId'].toString();
+            if (recId.isNotEmpty &&
+                !prevAttachedInvoices.any((p) => p['recordId'] == recId)) {
+              prevAttachedInvoices.add({
+                'recordId': recId,
+                'invoiceNumber': sd['invoiceNumber']?.toString() ?? '',
+                'vehicleNumber': sd['vehicleNumber']?.toString() ?? '',
+                'amount': (sd['amount'] as num?)?.toDouble() ?? 0.0,
+              });
+            }
+          }
+        }
+      }
+
+      // Check DataServices directly for any records that have this check in their payment history
+      try {
+        final checkNumStr = _editingCheckNumber ??
+            prevCheckData?['checkNumber']?.toString() ??
+            '';
+        final checkPaymentId = "PAY-CHK-$checkNumStr";
+        final allDs = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(_effectiveUserId)
+            .collection('DataServices')
+            .get();
+        for (var doc in allDs.docs) {
+          final data = doc.data();
+          if (data['paymentHistory'] is List) {
+            final hasThisCheck = (data['paymentHistory'] as List).any((p) {
+              if (p is Map) {
+                return p['checkId']?.toString() == _editingCheckId ||
+                    p['paymentId']?.toString() == checkPaymentId ||
+                    p['checkNumber']?.toString() == checkNumStr;
+              }
+              return false;
+            });
+            if (hasThisCheck) {
+              if (!prevAttachedInvoices.any((p) => p['recordId'] == doc.id)) {
+                prevAttachedInvoices.add({
+                  'recordId': doc.id,
+                  'invoiceNumber': data['invoice']?.toString() ?? '',
+                  'vehicleNumber': data['vehicleNumber']?.toString() ?? '',
+                  'amount': 0.0,
+                });
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      // Determine updated attached invoices from the currently edited _serviceDetails
+      final List<Map<String, dynamic>> updatedAttachedInvoices = [];
+      for (var detail in _serviceDetails) {
+        String? matchedRecordId = detail['recordId']?.toString();
+        final serviceName = detail['serviceName']?.toString() ?? '';
+        final amount = (detail['amount'] as num?)?.toDouble() ?? 0.0;
+
+        if ((matchedRecordId == null || matchedRecordId.isEmpty) &&
+            prevAttachedInvoices.isNotEmpty) {
+          final found = prevAttachedInvoices.firstWhere(
+            (inv) =>
+                (inv['invoiceNumber']?.toString().isNotEmpty == true &&
+                    serviceName.contains(inv['invoiceNumber'].toString())) ||
+                (inv['recordId']?.toString().isNotEmpty == true &&
+                    serviceName.contains(inv['recordId'].toString())),
+            orElse: () => <String, dynamic>{},
+          );
+          if (found.isNotEmpty) {
+            matchedRecordId = found['recordId']?.toString();
+            detail['recordId'] = found['recordId'];
+            detail['invoiceNumber'] = found['invoiceNumber'];
+            detail['vehicleNumber'] = found['vehicleNumber'];
+          }
+        }
+
+        if (matchedRecordId != null &&
+            matchedRecordId.isNotEmpty &&
+            amount > 0) {
+          updatedAttachedInvoices.add({
+            'recordId': matchedRecordId,
+            'invoiceNumber': detail['invoiceNumber']?.toString() ?? '',
+            'vehicleNumber': detail['vehicleNumber']?.toString() ?? '',
+            'amount': amount,
+          });
+        }
+      }
+
+      // Identify removed invoices
+      final removedInvoices = prevAttachedInvoices.where((prevInv) {
+        final pId = prevInv['recordId']?.toString();
+        return !updatedAttachedInvoices.any((curr) => curr['recordId'] == pId);
+      }).toList();
+
+      // Identify modified invoices
+      final modifiedInvoices = updatedAttachedInvoices.where((currInv) {
+        final cId = currInv['recordId']?.toString();
+        final prev = prevAttachedInvoices.firstWhere(
+          (p) => p['recordId'] == cId,
+          orElse: () => <String, dynamic>{},
+        );
+        return prev.isNotEmpty && prev['amount'] != currInv['amount'];
+      }).toList();
+
+      // Update check document
+      await checkRef.update({
         'type': _selectedType,
         'userId': _selectedUserId,
         'userName': _selectedUserName,
@@ -1065,8 +1343,195 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
             ? null
             : _memoNumberController.text,
         'date': _selectedDate,
+        'attachedInvoices': updatedAttachedInvoices,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // Synchronize affected DataServices records if invoices removed or modified
+      if (removedInvoices.isNotEmpty || modifiedInvoices.isNotEmpty) {
+        final batch = FirebaseFirestore.instance.batch();
+        final nowIso = DateTime.now().toIso8601String();
+        final checkNumStr = _editingCheckNumber ??
+            prevCheckData?['checkNumber']?.toString() ??
+            '';
+        final checkPaymentId = "PAY-CHK-$checkNumStr";
+
+        // Fetch team members
+        final teamSnap = await FirebaseFirestore.instance
+            .collection('Users')
+            .where('createdBy', isEqualTo: _effectiveUserId)
+            .where('isTeamMember', isEqualTo: true)
+            .get();
+        final memberIds = teamSnap.docs.map((d) => d.id).toList();
+
+        Future<void> syncRecordAdjustment(
+            String recordId, String action, [double newAmount = 0.0]) async {
+          if (recordId.isEmpty) return;
+
+          final ownerDocRef = FirebaseFirestore.instance
+              .collection('Users')
+              .doc(_effectiveUserId)
+              .collection('DataServices')
+              .doc(recordId);
+          DocumentSnapshot recordSnap = await ownerDocRef.get();
+          DocumentReference targetOwnerRef = ownerDocRef;
+
+          if (!recordSnap.exists) {
+            final globalDocRef = FirebaseFirestore.instance
+                .collection('DataServicesRecords')
+                .doc(recordId);
+            final gSnap = await globalDocRef.get();
+            if (gSnap.exists) {
+              recordSnap = gSnap;
+            } else if (currentUId != _effectiveUserId) {
+              final userDocRef = FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(currentUId)
+                  .collection('DataServices')
+                  .doc(recordId);
+              final uSnap = await userDocRef.get();
+              if (uSnap.exists) {
+                recordSnap = uSnap;
+                targetOwnerRef = userDocRef;
+              }
+            }
+          }
+
+          if (!recordSnap.exists) return;
+
+          final recData = recordSnap.data() as Map<String, dynamic>;
+          final rawTotal = recData['invoiceAmount'];
+          final totalStr =
+              rawTotal?.toString().replaceAll(RegExp(r'[^0-9.-]'), '') ?? '0';
+          final totalInv = double.tryParse(totalStr) ?? 0.0;
+
+          List<dynamic> existingHist = [];
+          if (recData['paymentHistory'] is List) {
+            existingHist = List<dynamic>.from(recData['paymentHistory']);
+          }
+
+          List<dynamic> updatedHistory = [];
+          if (action == 'remove') {
+            updatedHistory = existingHist.where((p) {
+              if (p is Map) {
+                final pCheckId = p['checkId']?.toString();
+                final pPaymentId = p['paymentId']?.toString();
+                final pCheckNum = p['checkNumber']?.toString();
+                if (pCheckId == _editingCheckId ||
+                    pPaymentId == checkPaymentId ||
+                    pCheckNum == checkNumStr) {
+                  return false;
+                }
+              }
+              return true;
+            }).toList();
+          } else if (action == 'modify') {
+            updatedHistory = existingHist.map((p) {
+              if (p is Map) {
+                final pCheckId = p['checkId']?.toString();
+                final pPaymentId = p['paymentId']?.toString();
+                final pCheckNum = p['checkNumber']?.toString();
+                if (pCheckId == _editingCheckId ||
+                    pPaymentId == checkPaymentId ||
+                    pCheckNum == checkNumStr) {
+                  final mapCopy = Map<String, dynamic>.from(p);
+                  mapCopy['amountPaid'] = newAmount;
+                  mapCopy['updatedAt'] = nowIso;
+                  return mapCopy;
+                }
+              }
+              return p;
+            }).toList();
+          }
+
+          double newPaid = 0.0;
+          for (var p in updatedHistory) {
+            if (p is Map && p['amountPaid'] != null) {
+              newPaid += (p['amountPaid'] as num).toDouble();
+            }
+          }
+
+          final newBalance =
+              (totalInv - newPaid) > 0 ? (totalInv - newPaid) : 0.0;
+          String newStatus = 'Unpaid';
+          if (newPaid >= totalInv && totalInv > 0) {
+            newStatus = 'Paid';
+          } else if (newPaid > 0) {
+            newStatus = 'Partially Paid';
+          } else {
+            newStatus = 'Unpaid';
+          }
+
+          final updatePayload = {
+            'paidAmount': newPaid,
+            'balanceAmount': newBalance,
+            'paymentStatus': newStatus,
+            'paymentHistory': updatedHistory,
+            'updatedAt': nowIso,
+          };
+
+          batch.set(targetOwnerRef, updatePayload, SetOptions(merge: true));
+
+          final globalDocRef = FirebaseFirestore.instance
+              .collection('DataServicesRecords')
+              .doc(recordId);
+          batch.set(globalDocRef, updatePayload, SetOptions(merge: true));
+
+          for (final mId in memberIds) {
+            if (mId == _effectiveUserId) continue;
+            final mDocRef = FirebaseFirestore.instance
+                .collection('Users')
+                .doc(mId)
+                .collection('DataServices')
+                .doc(recordId);
+            final mSnap = await mDocRef.get();
+            if (mSnap.exists) {
+              batch.set(mDocRef, updatePayload, SetOptions(merge: true));
+            }
+          }
+        }
+
+        for (var rem in removedInvoices) {
+          final rId = rem['recordId']?.toString() ?? '';
+          if (rId.isNotEmpty) {
+            await syncRecordAdjustment(rId, 'remove');
+          }
+        }
+
+        for (var mod in modifiedInvoices) {
+          final rId = mod['recordId']?.toString() ?? '';
+          final amt = (mod['amount'] as num?)?.toDouble() ?? 0.0;
+          if (rId.isNotEmpty) {
+            await syncRecordAdjustment(rId, 'modify', amt);
+          }
+        }
+
+        // Update Master Payment Ledger
+        try {
+          final ledgerSnap = await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(_effectiveUserId)
+              .collection('InvoicePayments')
+              .where('checkId', isEqualTo: _editingCheckId)
+              .get();
+
+          for (var lDoc in ledgerSnap.docs) {
+            if (updatedAttachedInvoices.isEmpty) {
+              batch.delete(lDoc.reference);
+            } else {
+              batch.update(lDoc.reference, {
+                'totalAmount': _totalAmount,
+                'invoices': updatedAttachedInvoices,
+                'updatedAt': nowIso,
+              });
+            }
+          }
+        } catch (lErr) {
+          print("Error updating ledger in check edit: $lErr");
+        }
+
+        await batch.commit();
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Check updated successfully')),
@@ -1091,6 +1556,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
       _isEditing = false;
       _editingCheckId = null;
       _editingCheckNumber = null;
+      _attachedInvoices.clear();
       _selectedType = null;
       _selectedUserId = null;
       _selectedUserName = null;
@@ -1691,7 +2157,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         }).toList();
 
         driverUnpaidTotal = unpaidTrips.fold(
-            0.0, (sum, trip) => sum + (trip['oEarnings'] as num).toDouble());
+            0.0, (sum, trip) => sum + _parseAmount(trip['oEarnings']));
 
         setState(() {
           amountController.text = driverUnpaidTotal.toStringAsFixed(2);
@@ -1728,7 +2194,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
                       ...unpaidTrips.map((trip) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 2),
                             child: Text(
-                              '${trip['tripName']}: \$${(trip['oEarnings'] as num).toStringAsFixed(2)}',
+                              '${trip['tripName']}: \$${_parseAmount(trip['oEarnings']).toStringAsFixed(2)}',
                               style: appStyle(12, kDark, FontWeight.normal),
                             ),
                           )),
@@ -1789,7 +2255,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
   void _calculateTotal() {
     _totalAmount = _serviceDetails.fold(
-        0.0, (sum, detail) => sum + (detail['amount'] as num).toDouble());
+        0.0, (sum, detail) => sum + _parseAmount(detail['amount']));
   }
 
   Future<void> _saveCheck(StateSetter dialogSetState) async {
@@ -1822,6 +2288,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         'createdBy': _effectiveUserId,
         'createdByUser': currentUId,
         'createdAt': FieldValue.serverTimestamp(),
+        'attachedInvoices': widget.attachedInvoices ?? [],
       });
 
       // MARK CHECK NUMBER AS USED

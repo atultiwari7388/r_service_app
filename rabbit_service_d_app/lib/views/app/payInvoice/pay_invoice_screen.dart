@@ -51,7 +51,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
   bool _isProcessingPayment = false;
 
   // Pagination - Invoices (Unpaid & Paid)
-  static const int _pageSize = 20;
+  static const int _pageSize = 100;
   final List<Map<String, dynamic>> _invoices = [];
   DocumentSnapshot? _lastInvoiceDoc;
   bool _isInitialLoadingInvoices = true;
@@ -428,6 +428,9 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
       return <String, dynamic>{
         'serviceName': displayDesc,
         'amount': payAmt,
+        'recordId': r['id']?.toString() ?? '',
+        'invoiceNumber': invNum,
+        'vehicleNumber': vNum,
       };
     }).toList();
 

@@ -44,6 +44,9 @@ import { FaFileAlt } from "react-icons/fa";
 interface ServiceDetail {
   serviceName: string;
   amount: number | null;
+  recordId?: string;
+  invoiceNumber?: string;
+  vehicleNumber?: string;
 }
 
 interface Trip {
@@ -80,6 +83,13 @@ interface Check {
   postalCode: string;
   createdBy: string;
   createdAt: string;
+  attachedInvoices?: Array<{
+    recordId: string;
+    invoiceNumber?: string;
+    vehicleNumber?: string;
+    amount?: number;
+    description?: string;
+  }>;
 }
 
 interface CheckSeries {
@@ -269,6 +279,9 @@ function ManageCheckScreenContent() {
           (inv) => ({
             serviceName: inv.description || `Inv #${inv.invoiceNumber}`,
             amount: inv.amount,
+            recordId: inv.recordId,
+            invoiceNumber: inv.invoiceNumber,
+            vehicleNumber: inv.vehicleNumber,
           })
         );
 
@@ -406,6 +419,7 @@ function ManageCheckScreenContent() {
           state: data.state || "",
           country: data.country || "",
           postalCode: data.postalCode || "",
+          attachedInvoices: data.attachedInvoices || [],
         };
       });
 
@@ -775,8 +789,37 @@ function ManageCheckScreenContent() {
         setSelectedUserId(checkData.userId);
         setSelectedUserName(checkData.userName);
 
-        // Use the saved service details, don't add extra empty rows
-        setServiceDetails(checkData.serviceDetails || []);
+        const savedServiceDetails: ServiceDetail[] = (checkData.serviceDetails || []).map(
+          (sd: any) => ({
+            serviceName: sd.serviceName || "",
+            amount: sd.amount,
+            recordId: sd.recordId,
+            invoiceNumber: sd.invoiceNumber,
+            vehicleNumber: sd.vehicleNumber,
+          })
+        );
+        const savedAttachedInvoices = checkData.attachedInvoices || [];
+
+        // Match recordId if not directly on serviceDetail item
+        if (savedAttachedInvoices.length > 0) {
+          savedServiceDetails.forEach((sd) => {
+            if (!sd.recordId) {
+              const matched = savedAttachedInvoices.find(
+                (inv: any) =>
+                  (inv.invoiceNumber && sd.serviceName.includes(inv.invoiceNumber)) ||
+                  (inv.recordId && sd.serviceName.includes(inv.recordId))
+              );
+              if (matched) {
+                sd.recordId = matched.recordId;
+                sd.invoiceNumber = matched.invoiceNumber;
+                sd.vehicleNumber = matched.vehicleNumber;
+              }
+            }
+          });
+        }
+
+        setServiceDetails(savedServiceDetails);
+        setAttachedInvoices(savedAttachedInvoices);
 
         setMemoNumber(checkData.memoNumber || "");
         setSelectedDate(checkData.date?.toDate() || new Date());
@@ -819,6 +862,7 @@ function ManageCheckScreenContent() {
     setSelectedUserId(null);
     setSelectedUserName(null);
     setServiceDetails([]);
+    setAttachedInvoices([]);
     setMemoNumber("");
     setSelectedDate(new Date());
     setTotalAmount(0);
@@ -830,6 +874,7 @@ function ManageCheckScreenContent() {
     setSelectedUserId(null);
     setSelectedUserName(null);
     setServiceDetails([]);
+    setAttachedInvoices([]);
     setMemoNumber("");
     setSelectedDate(new Date());
     setTotalAmount(0);
@@ -859,11 +904,14 @@ function ManageCheckScreenContent() {
       return;
     }
 
-    // Ensure we include 0 amounts properly
+    // Ensure we include 0 amounts and invoice metadata properly
     const detailsToSave = nonEmptyDetails.map((detail) => ({
       serviceName: detail.serviceName,
       amount:
         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
+      recordId: detail.recordId || undefined,
+      invoiceNumber: detail.invoiceNumber || undefined,
+      vehicleNumber: detail.vehicleNumber || undefined,
     }));
 
     setIsSavingCheck(true);
@@ -880,6 +928,7 @@ function ManageCheckScreenContent() {
         date: Timestamp.fromDate(selectedDate),
         createdBy: effectiveUserId, // Always use effectiveUserId (owner's ID)
         createdAt: serverTimestamp(),
+        attachedInvoices: attachedInvoices || [],
       };
 
       const checkDocRef = await addDoc(collection(db, "Checks"), checkData);
@@ -1094,18 +1143,97 @@ function ManageCheckScreenContent() {
       return;
     }
 
-    // Ensure we include 0 amounts properly
+    // Ensure we include 0 amounts and metadata properly
     const detailsToSave = nonEmptyDetails.map((detail) => ({
       serviceName: detail.serviceName,
       amount:
         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
+      recordId: detail.recordId || undefined,
+      invoiceNumber: detail.invoiceNumber || undefined,
+      vehicleNumber: detail.vehicleNumber || undefined,
     }));
 
     setIsUpdatingCheck(true);
 
     try {
       const checkRef = doc(db, "Checks", editingCheckId);
+      const prevCheckSnap = await getDoc(checkRef);
+      const prevCheckData = prevCheckSnap.exists() ? prevCheckSnap.data() : null;
 
+      // Extract previous attached invoices
+      const prevAttachedInvoices: Array<{
+        recordId: string;
+        invoiceNumber?: string;
+        vehicleNumber?: string;
+        amount?: number;
+      }> = (prevCheckData?.attachedInvoices || []).map((inv: any) => ({
+        recordId: inv.recordId,
+        invoiceNumber: inv.invoiceNumber,
+        vehicleNumber: inv.vehicleNumber,
+        amount: typeof inv.amount === "number" ? inv.amount : inv.amountPaid || 0,
+      }));
+
+      // If prevAttachedInvoices is empty, try to extract from prevCheckData.serviceDetails if they had recordId
+      if (prevAttachedInvoices.length === 0 && prevCheckData?.serviceDetails) {
+        prevCheckData.serviceDetails.forEach((sd: any) => {
+          if (sd.recordId) {
+            prevAttachedInvoices.push({
+              recordId: sd.recordId,
+              invoiceNumber: sd.invoiceNumber,
+              vehicleNumber: sd.vehicleNumber,
+              amount: typeof sd.amount === "number" ? sd.amount : 0,
+            });
+          }
+        });
+      }
+
+      // Determine remaining attached invoices from the new detailsToSave
+      const updatedAttachedInvoices: typeof prevAttachedInvoices = [];
+      detailsToSave.forEach((detail) => {
+        let matchedRecordId = detail.recordId;
+        // If detail doesn't have recordId directly, try matching by description/invoiceNumber from prevAttachedInvoices
+        if (!matchedRecordId && prevAttachedInvoices.length > 0) {
+          const found = prevAttachedInvoices.find(
+            (inv) =>
+              (inv.invoiceNumber &&
+                detail.serviceName.includes(inv.invoiceNumber)) ||
+              (inv.recordId && detail.serviceName.includes(inv.recordId))
+          );
+          if (found) {
+            matchedRecordId = found.recordId;
+            detail.recordId = found.recordId;
+            detail.invoiceNumber = found.invoiceNumber;
+            detail.vehicleNumber = found.vehicleNumber;
+          }
+        }
+
+        if (matchedRecordId && (detail.amount || 0) > 0) {
+          updatedAttachedInvoices.push({
+            recordId: matchedRecordId,
+            invoiceNumber: detail.invoiceNumber,
+            vehicleNumber: detail.vehicleNumber,
+            amount: detail.amount || 0,
+          });
+        }
+      });
+
+      // Identify removed invoices (were on check previously, but no longer present)
+      const removedInvoices = prevAttachedInvoices.filter(
+        (prevInv) =>
+          !updatedAttachedInvoices.some(
+            (currInv) => currInv.recordId === prevInv.recordId
+          )
+      );
+
+      // Identify modified invoices (amount changed)
+      const modifiedInvoices = updatedAttachedInvoices.filter((currInv) => {
+        const prevInv = prevAttachedInvoices.find(
+          (p) => p.recordId === currInv.recordId
+        );
+        return prevInv && prevInv.amount !== currInv.amount;
+      });
+
+      // Update check document in Firestore
       await updateDoc(checkRef, {
         type: selectedType,
         userId: selectedUserId,
@@ -1114,8 +1242,194 @@ function ManageCheckScreenContent() {
         totalAmount: totalAmount,
         memoNumber: memoNumber || null,
         date: Timestamp.fromDate(selectedDate),
+        attachedInvoices: updatedAttachedInvoices,
         updatedAt: serverTimestamp(),
       });
+
+      // Perform rollback / recalculation on DataServices records if invoices were removed or modified
+      if (removedInvoices.length > 0 || modifiedInvoices.length > 0) {
+        const batch = writeBatch(db);
+        const nowIso = new Date().toISOString();
+        const checkNumStr = String(
+          editingCheckNumber || prevCheckData?.checkNumber || ""
+        );
+        const checkPaymentId = `PAY-CHK-${checkNumStr}`;
+
+        // Fetch team members for synchronization
+        const teamMembersQuery = query(
+          collection(db, "Users"),
+          where("createdBy", "==", effectiveUserId),
+          where("isTeamMember", "==", true)
+        );
+        const teamMembersSnapshot = await getDocs(teamMembersQuery);
+        const memberIds = teamMembersSnapshot.docs.map((docSnap) => docSnap.id);
+
+        const syncRecordAdjustment = async (
+          recordId: string,
+          action: "remove" | "modify",
+          newAmount: number = 0
+        ) => {
+          const ownerRecordRef = doc(
+            db,
+            "Users",
+            effectiveUserId,
+            "DataServices",
+            recordId
+          );
+          let recordSnap = await getDoc(ownerRecordRef);
+          let targetOwnerRef = ownerRecordRef;
+
+          if (!recordSnap.exists()) {
+            const globalRecordRef = doc(
+              db,
+              "DataServicesRecords",
+              recordId
+            );
+            const globalSnap = await getDoc(globalRecordRef);
+            if (globalSnap.exists()) {
+              recordSnap = globalSnap;
+            } else if (user?.uid && user.uid !== effectiveUserId) {
+              const userRecordRef = doc(
+                db,
+                "Users",
+                user.uid,
+                "DataServices",
+                recordId
+              );
+              const userSnap = await getDoc(userRecordRef);
+              if (userSnap.exists()) {
+                recordSnap = userSnap;
+                targetOwnerRef = userRecordRef;
+              }
+            }
+          }
+
+          if (!recordSnap.exists()) return;
+
+          const recData = recordSnap.data();
+          const totalInv =
+            parseFloat(
+              String(recData.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+            ) || 0;
+
+          const existingHist: any[] = Array.isArray(recData.paymentHistory)
+            ? recData.paymentHistory
+            : [];
+
+          let updatedHistory: any[] = [];
+          if (action === "remove") {
+            // Remove the payment entry for this check
+            updatedHistory = existingHist.filter(
+              (p: any) =>
+                p.checkId !== editingCheckId &&
+                p.paymentId !== checkPaymentId &&
+                String(p.checkNumber) !== checkNumStr
+            );
+          } else if (action === "modify") {
+            // Update the payment amount for this check
+            updatedHistory = existingHist.map((p: any) => {
+              if (
+                p.checkId === editingCheckId ||
+                p.paymentId === checkPaymentId ||
+                String(p.checkNumber) === checkNumStr
+              ) {
+                return {
+                  ...p,
+                  amountPaid: newAmount,
+                  updatedAt: nowIso,
+                };
+              }
+              return p;
+            });
+          }
+
+          // Recalculate paid amount, balance and payment status from updated history
+          const newPaid = Number(
+            updatedHistory
+              .reduce(
+                (sum: number, p: any) => sum + (Number(p.amountPaid) || 0),
+                0
+              )
+              .toFixed(2)
+          );
+          const newBalance = Number(
+            Math.max(0, totalInv - newPaid).toFixed(2)
+          );
+          let newStatus: "Unpaid" | "Partially Paid" | "Paid" = "Unpaid";
+          if (newPaid >= totalInv && totalInv > 0) {
+            newStatus = "Paid";
+          } else if (newPaid > 0) {
+            newStatus = "Partially Paid";
+          } else {
+            newStatus = "Unpaid";
+          }
+
+          const updatePayload = {
+            paidAmount: newPaid,
+            balanceAmount: newBalance,
+            paymentStatus: newStatus,
+            paymentHistory: updatedHistory,
+            updatedAt: nowIso,
+          };
+
+          // Update owner record
+          batch.set(targetOwnerRef, updatePayload, { merge: true });
+
+          // Update global record
+          const globalRecordRef = doc(db, "DataServicesRecords", recordId);
+          batch.set(globalRecordRef, updatePayload, { merge: true });
+
+          // Sync team members
+          for (const mId of memberIds) {
+            if (mId === effectiveUserId) continue;
+            const memberRecRef = doc(
+              db,
+              "Users",
+              mId,
+              "DataServices",
+              recordId
+            );
+            const mSnap = await getDoc(memberRecRef);
+            if (mSnap.exists()) {
+              batch.set(memberRecRef, updatePayload, { merge: true });
+            }
+          }
+        };
+
+        // Process removed invoices
+        for (const rem of removedInvoices) {
+          await syncRecordAdjustment(rem.recordId, "remove");
+        }
+
+        // Process modified invoices
+        for (const mod of modifiedInvoices) {
+          await syncRecordAdjustment(mod.recordId, "modify", mod.amount);
+        }
+
+        // Also update Master Payment Ledger InvoicePayments entry
+        try {
+          const ledgerQuery = query(
+            collection(db, "Users", effectiveUserId, "InvoicePayments"),
+            where("checkId", "==", editingCheckId)
+          );
+          const ledgerSnap = await getDocs(ledgerQuery);
+          for (const lDoc of ledgerSnap.docs) {
+            if (updatedAttachedInvoices.length === 0) {
+              batch.delete(lDoc.ref);
+            } else {
+              batch.update(lDoc.ref, {
+                totalAmount: totalAmount,
+                invoices: updatedAttachedInvoices,
+                updatedAt: nowIso,
+              });
+            }
+          }
+        } catch (lErr) {
+          console.error("Error updating ledger entry:", lErr);
+        }
+
+        await batch.commit();
+      }
 
       GlobalToastSuccess("Check updated successfully!");
       handleCancelEditCheck();
