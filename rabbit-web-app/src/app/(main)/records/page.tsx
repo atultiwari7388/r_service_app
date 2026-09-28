@@ -3525,11 +3525,19 @@ export default function RecordsPage() {
               <p className="text-2xl font-bold">${trailerTotal.toFixed(0)}</p>
             </div>
 
-            <div className="bg-red-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-500">
-                Other Services
-              </h3>
-              <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
+            <div className="bg-red-50 p-4 rounded-lg flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">
+                  Other Expenses
+                </h3>
+                <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
+              </div>
+              <Link
+                href="/other-expenses"
+                className="px-3 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors duration-200 flex items-center gap-1 shrink-0"
+              >
+                <IoMdAdd className="text-sm" /> Add
+              </Link>
             </div>
           </div>
         </div>
