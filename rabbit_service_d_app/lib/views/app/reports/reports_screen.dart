@@ -670,15 +670,17 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                   ),
                                                                                   child: Row(
                                                                                     children: [
-                                                                                      Icon(Icons.receipt_outlined, size: 20, color: kPrimary),
-                                                                                      SizedBox(width: 8.w),
+                                                                                      // Icon(Icons.receipt_outlined, size: 20, color: kPrimary),
+                                                                                      // SizedBox(width: 8.w),
                                                                                       SizedBox(
-                                                                                        width: 80.w,
+                                                                                        width: 50.w,
                                                                                         child: Text("#${record['invoice']}", overflow: TextOverflow.ellipsis, style: appStyleUniverse(13, kDark, FontWeight.w500)),
                                                                                       ),
                                                                                     ],
                                                                                   ),
                                                                                 ),
+                                                                              SizedBox(width: 8.w),
+
                                                                               Container(
                                                                                 padding: EdgeInsets.symmetric(
                                                                                   horizontal: 12.w,
@@ -690,12 +692,13 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                 ),
                                                                                 child: Row(
                                                                                   children: [
-                                                                                    Icon(Icons.calendar_today, size: 18, color: kSecondary),
-                                                                                    SizedBox(width: 8.w),
+                                                                                    // Icon(Icons.calendar_today, size: 18, color: kSecondary),
+                                                                                    // SizedBox(width: 8.w),
                                                                                     Text(date, style: appStyleUniverse(13, kDark, FontWeight.w500)),
                                                                                   ],
                                                                                 ),
                                                                               ),
+                                                                              SizedBox(width: 8.w),
 
                                                                               // Duplicate Icon
                                                                               GestureDetector(
@@ -746,9 +749,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                   child: Row(
                                                                                     mainAxisSize: MainAxisSize.min,
                                                                                     children: [
-                                                                                      const Icon(Icons.copy, color: kWhite, size: 14),
-                                                                                      SizedBox(width: 4.w),
-                                                                                      Text("Duplicate", style: appStyle(12, kWhite, FontWeight.w600)),
+                                                                                      // const Icon(Icons.copy, color: kWhite, size: 14),
+                                                                                      // SizedBox(width: 4.w),
+                                                                                      Text("Clone", style: appStyle(12, kWhite, FontWeight.w500)),
                                                                                     ],
                                                                                   ),
                                                                                 ),
@@ -801,7 +804,10 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                                     color: kPrimary,
                                                                                     borderRadius: BorderRadius.circular(20.r),
                                                                                   ),
-                                                                                  child: Icon(Icons.edit, color: kWhite, size: 16),
+                                                                                  child: Text(
+                                                                                    "Edit",
+                                                                                    style: appStyle(12, kWhite, FontWeight.w500),
+                                                                                  ),
                                                                                 ),
                                                                               ),
                                                                             ],

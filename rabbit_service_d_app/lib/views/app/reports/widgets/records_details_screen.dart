@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import '../../../../utils/app_styles.dart';
 import '../../../../utils/constants.dart';
 import 'package:photo_view/photo_view.dart';
@@ -89,6 +90,71 @@ class RecordsDetailsScreen extends StatelessWidget {
     }
   }
 
+  void _shareRecordDetails() {
+    final vehicle = record['vehicleDetails'] as Map<String, dynamic>? ?? {};
+    final services = record['services'] as List<dynamic>? ?? [];
+    final date = record['date'] != null
+        ? DateFormat('MM-dd-yy')
+            .format(DateTime.parse(record['date'].toString()))
+        : 'N/A';
+    final vehicleType = vehicle['vehicleType'] ?? 'N/A';
+
+    final StringBuffer buffer = StringBuffer();
+    buffer.writeln("🚗 *SERVICE RECORD DETAILS*");
+    buffer.writeln("----------------------------");
+    buffer.writeln(
+        "• *Vehicle:* ${vehicle['vehicleNumber'] ?? 'N/A'} (${vehicle['companyName'] ?? 'N/A'})");
+    buffer.writeln("• *Type:* $vehicleType");
+    buffer.writeln("• *Date:* $date");
+    buffer.writeln("• *Workshop:* ${record['workshopName'] ?? 'N/A'}");
+    if (vehicleType == "Truck") {
+      buffer.writeln("• *Miles:* ${record['miles'] ?? 'N/A'}");
+    } else {
+      buffer.writeln("• *Hours:* ${record['hours'] ?? 'N/A'}");
+    }
+    if (record['invoice'] != null &&
+        record['invoice'].toString().trim().isNotEmpty) {
+      buffer.writeln("• *Invoice #:* ${record['invoice']}");
+    }
+    if (record['invoiceAmount'] != null &&
+        record['invoiceAmount'].toString().trim().isNotEmpty) {
+      buffer.writeln("• *Invoice Amount:* \$${record['invoiceAmount']}");
+    }
+
+    if (services.isNotEmpty) {
+      buffer.writeln("\n🛠️ *Services & Next Due:*");
+      for (var service in services) {
+        final serviceName = service['serviceName'] ?? 'Unknown Service';
+        final nextValue = service['nextNotificationValue'];
+        final type = service['type'];
+        String nextDueStr = "";
+        if (nextValue != null && nextValue != 0) {
+          nextDueStr = type == 'day'
+              ? " (Next Due: $nextValue)"
+              : " (Next Due: $nextValue ${type == 'reading' ? 'miles' : 'hours'})";
+        }
+        final subServices = (service['subServices'] as List?)
+                ?.map((s) => s['name'] as String)
+                .toList() ??
+            [];
+        if (subServices.isNotEmpty) {
+          buffer.writeln(
+              "  • $serviceName$nextDueStr [Subservices: ${subServices.join(', ')}]");
+        } else {
+          buffer.writeln("  • $serviceName$nextDueStr");
+        }
+      }
+    }
+
+    if (record['description'] != null &&
+        record['description'].toString().trim().isNotEmpty) {
+      buffer.writeln("\n📝 *Description:*");
+      buffer.writeln("  ${record['description']}");
+    }
+
+    Share.share(buffer.toString().trim());
+  }
+
   @override
   Widget build(BuildContext context) {
     final services = record['services'] as List<dynamic>? ?? [];
@@ -102,7 +168,13 @@ class RecordsDetailsScreen extends StatelessWidget {
             style: appStyleUniverse(25, kDark, FontWeight.normal)),
         actions: [
           IconButton(
-            icon: Icon(Icons.print),
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () {
+              _shareRecordDetails();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
             onPressed: () {
               _printRecordDetails();
             },
@@ -168,50 +240,59 @@ class RecordsDetailsScreen extends StatelessWidget {
                     'Next Due',
                     style: appStyleUniverse(16, kDark, FontWeight.bold),
                   ),
-                  SizedBox(height: 10.h),
+                  SizedBox(height: 6.h),
                   ...services.map((service) {
                     final subServices = (service['subServices'] as List?)
                             ?.map((s) => s['name'] as String)
                             .toList() ??
                         [];
+                    final hasNextNotification =
+                        service['nextNotificationValue'] != null &&
+                            service['nextNotificationValue'] != 0;
 
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Row(
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4.h),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(
-                              service['serviceName'],
-                              style:
-                                  appStyleUniverse(14, kDark, FontWeight.w500),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  service['serviceName'] ?? '',
+                                  style: appStyleUniverse(
+                                      14, kDark, FontWeight.w500),
+                                ),
+                                if (subServices.isNotEmpty)
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 2.h),
+                                    child: Text(
+                                      subServices.join(', '),
+                                      style: appStyleUniverse(
+                                        12,
+                                        kDark.withOpacity(0.6),
+                                        FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                      subtitle: subServices.isNotEmpty
-                          ? Padding(
-                              padding: EdgeInsets.only(top: 4.h),
+                          if (hasNextNotification)
+                            Padding(
+                              padding: EdgeInsets.only(left: 8.w),
                               child: Text(
-                                '${subServices.join(', ')}',
+                                '${service['type'] == 'day' ? service['nextNotificationValue'] : '${service['nextNotificationValue']} ${service['type'] == 'reading' ? 'miles' : 'hours'}'}',
                                 style: appStyleUniverse(
                                   12,
                                   kDark.withOpacity(0.6),
                                   FontWeight.normal,
                                 ),
                               ),
-                            )
-                          : null,
-                      trailing: service['nextNotificationValue'] != null &&
-                              service['nextNotificationValue'] != 0
-                          ? Text(
-                              '${service['type'] == 'day' ? service['nextNotificationValue'] : '${service['nextNotificationValue']} ${service['type'] == 'reading' ? 'miles' : 'hours'}'}',
-                              style: appStyleUniverse(
-                                12,
-                                kDark.withOpacity(0.6),
-                                FontWeight.normal,
-                              ),
-                            )
-                          : null,
+                            ),
+                        ],
+                      ),
                     );
                   }),
                   if (record["description"].isNotEmpty) ...[
