@@ -37,7 +37,7 @@ import {
   FiFileText,
   FiSave,
   FiHash,
-  // FiTrash2,
+  FiTrash2,
 } from "react-icons/fi";
 import { FaFileAlt } from "react-icons/fa";
 
@@ -2444,95 +2444,95 @@ function ManageCheckScreenContent() {
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  {/* First, show all existing service details */}
-                  {serviceDetails
-                    .filter((detail, index) => {
-                      // Always show first row
-                      if (index === 0) return true;
+                  {serviceDetails.map((detail, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50/60 p-4 rounded-xl border border-gray-200"
+                    >
+                      <div className="md:col-span-7">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Service Name {index === 0 && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={detail.serviceName}
+                          onChange={(e) => {
+                            const newDetails = [...serviceDetails];
+                            const text = e.target.value;
+                            const words = text.trim().split(/\s+/);
 
-                      // Show other rows if they have service name OR amount
-                      return (
-                        (detail.serviceName?.trim() ?? "") !== "" ||
-                        detail.amount !== null ||
-                        detail.amount !== undefined
-                      );
-                    })
-                    .map((detail, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                      >
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Service Name{" "}
-                            {index === 0 && (
-                              <span className="text-red-500">*</span>
-                            )}
-                          </label>
-                          <input
-                            type="text"
-                            value={detail.serviceName}
-                            onChange={(e) => {
-                              const newDetails = [...serviceDetails];
-                              const text = e.target.value;
-                              const words = text.trim().split(/\s+/);
-
-                              // Limit to 70 words
-                              if (words.length <= 70) {
-                                newDetails[index].serviceName = text;
-                                setServiceDetails(newDetails);
-                                // Recalculate total
-                                calculateTotal(newDetails);
-                              }
-                            }}
-                            placeholder={`Enter service description`}
-                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                          />
-                          <p className="text-sm text-gray-500 mt-1">
-                            {detail.serviceName.trim() === ""
-                              ? 0
-                              : detail.serviceName.trim().split(/\s+/).length}
-                            /70 words
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Amount{" "}
-                            {index === 0 && (
-                              <span className="text-red-500">*</span>
-                            )}
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={
-                              detail.amount === null ||
-                              detail.amount === undefined
-                                ? ""
-                                : detail.amount
-                            }
-                            onChange={(e) => {
-                              const newDetails = [...serviceDetails];
-                              const value = e.target.value;
-
-                              if (value === "") {
-                                newDetails[index].amount = null;
-                              } else {
-                                const numValue = parseFloat(value);
-                                newDetails[index].amount = isNaN(numValue)
-                                  ? null
-                                  : numValue;
-                              }
-
+                            // Limit to 70 words
+                            if (words.length <= 70) {
+                              newDetails[index].serviceName = text;
                               setServiceDetails(newDetails);
-                            }}
-                            placeholder="Enter amount"
-                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
-                          />
-                        </div>
+                              calculateTotal(newDetails);
+                            }
+                          }}
+                          placeholder={`Enter service description`}
+                          className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                        />
+                        <p className="text-sm text-gray-500 mt-1">
+                          {detail.serviceName.trim() === ""
+                            ? 0
+                            : detail.serviceName.trim().split(/\s+/).length}
+                          /70 words
+                        </p>
                       </div>
-                    ))}
+
+                      <div className="md:col-span-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Amount {index === 0 && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={
+                            detail.amount === null || detail.amount === undefined
+                              ? ""
+                              : detail.amount
+                          }
+                          onChange={(e) => {
+                            const newDetails = [...serviceDetails];
+                            const value = e.target.value;
+
+                            if (value === "") {
+                              newDetails[index].amount = null;
+                            } else {
+                              const numValue = parseFloat(value);
+                              newDetails[index].amount = isNaN(numValue)
+                                ? null
+                                : numValue;
+                            }
+
+                            setServiceDetails(newDetails);
+                            calculateTotal(newDetails);
+                          }}
+                          placeholder="Enter amount"
+                          className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                        />
+                      </div>
+
+                      <div className="md:col-span-1 flex justify-end md:justify-center md:pt-8">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let newDetails = [...serviceDetails];
+                            if (newDetails.length > 1) {
+                              newDetails.splice(index, 1);
+                            } else {
+                              newDetails = [{ serviceName: "", amount: 0 }];
+                            }
+                            setServiceDetails(newDetails);
+                            calculateTotal(newDetails);
+                          }}
+                          title="Delete detail"
+                          className="p-3 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                        >
+                          <FiTrash2 size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Add "Add More" button if less than 5 rows */}
                   {serviceDetails.length < 5 && (
@@ -2791,14 +2791,11 @@ function ManageCheckScreenContent() {
                   {serviceDetails.map((detail, index) => (
                     <div
                       key={index}
-                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                      className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50/60 p-4 rounded-xl border border-gray-200"
                     >
-                      <div>
+                      <div className="md:col-span-7">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Service Name{" "}
-                          {index === 0 && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          Service Name {index === 0 && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="text"
@@ -2812,13 +2809,11 @@ function ManageCheckScreenContent() {
                             if (words.length <= 70) {
                               newDetails[index].serviceName = text;
                               setServiceDetails(newDetails);
-
-                              // Recalculate total
                               calculateTotal(newDetails);
                             }
                           }}
                           placeholder={`Enter service description`}
-                          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                          className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                         />
                         <p className="text-sm text-gray-500 mt-1">
                           {detail.serviceName.trim() === ""
@@ -2828,19 +2823,15 @@ function ManageCheckScreenContent() {
                         </p>
                       </div>
 
-                      <div>
+                      <div className="md:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount{" "}
-                          {index === 0 && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          Amount {index === 0 && <span className="text-red-500">*</span>}
                         </label>
                         <input
                           type="number"
                           step="0.01"
                           value={
-                            detail.amount === null ||
-                            detail.amount === undefined
+                            detail.amount === null || detail.amount === undefined
                               ? ""
                               : detail.amount
                           }
@@ -2858,10 +2849,31 @@ function ManageCheckScreenContent() {
                             }
 
                             setServiceDetails(newDetails);
+                            calculateTotal(newDetails);
                           }}
                           placeholder="Enter amount"
-                          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+                          className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
                         />
+                      </div>
+
+                      <div className="md:col-span-1 flex justify-end md:justify-center md:pt-8">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let newDetails = [...serviceDetails];
+                            if (newDetails.length > 1) {
+                              newDetails.splice(index, 1);
+                            } else {
+                              newDetails = [{ serviceName: "", amount: 0 }];
+                            }
+                            setServiceDetails(newDetails);
+                            calculateTotal(newDetails);
+                          }}
+                          title="Delete detail"
+                          className="p-3 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                        >
+                          <FiTrash2 size={20} />
+                        </button>
                       </div>
                     </div>
                   ))}
