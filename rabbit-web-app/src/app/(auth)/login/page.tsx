@@ -15,12 +15,45 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContexts";
 import { LoginFormValues } from "@/types/types";
 
+interface AuthErrorPayload {
+  code?: string;
+  message?: string;
+}
+
+const getAuthErrorMessage = (error: unknown): string => {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const authError = error as AuthErrorPayload;
+    switch (authError.code) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+        return "Invalid email or password. Please check your credentials and try again.";
+      case "auth/user-not-found":
+        return "No account found with this email. Please check your email or sign up.";
+      case "auth/invalid-email":
+        return "Please enter a valid email address.";
+      case "auth/user-disabled":
+        return "This account has been disabled. Please contact support.";
+      case "auth/too-many-requests":
+        return "Too many failed login attempts. Please try again later or reset your password.";
+      case "auth/network-request-failed":
+        return "Network connection error. Please check your internet connection.";
+      default:
+        return authError.message || "Failed to log in. Please try again.";
+    }
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Invalid email or password. Please try again.";
+};
+
 const Login: React.FC = () => {
   const [formValues, setFormValues] = useState<LoginFormValues>({
     email: "",
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
@@ -34,6 +67,9 @@ const Login: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (errorMessage) {
+      setErrorMessage(null);
+    }
     setFormValues((prevValues) => ({
       ...prevValues,
       [name]: value,
@@ -42,22 +78,24 @@ const Login: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsLoading(true);
 
     try {
       const { email, password } = formValues;
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        email,
+        email.trim(),
         password
       );
       const user = userCredential.user;
 
       if (user) {
         if (!user.emailVerified) {
-          alert(
-            "Email not verified. Please verify your email. If you haven’t received the mail, please also check your Spam folder."
-          );
+          const verifyMsg =
+            "Email not verified. Please verify your email. If you haven’t received the mail, please also check your Spam folder.";
+          toast.error(verifyMsg);
+          setErrorMessage(verifyMsg);
           await sendEmailVerification(user);
           await signOut(auth);
           setIsLoading(false);
@@ -74,9 +112,10 @@ const Login: React.FC = () => {
 
         // 🚫 Restrict Mechanic logins
         if (mechanicDoc.exists()) {
-          toast.error(
-            "This email is registered with the Mechanic app. Please try with another email."
-          );
+          const mechanicMsg =
+            "This email is registered with the Mechanic app. Please try with another email.";
+          toast.error(mechanicMsg);
+          setErrorMessage(mechanicMsg);
           await signOut(auth);
           setIsLoading(false);
           return;
@@ -86,12 +125,13 @@ const Login: React.FC = () => {
         if (userDoc.exists()) {
           const userData = userDoc.data();
 
-          if (userData.uid === user.uid) {
+          if (userData?.uid === user.uid) {
             // 🚫 Restrict Driver role
             if (userData.role === "Driver") {
-              toast.error(
-                "Access restricted! Drivers can only log in using the mobile app."
-              );
+              const driverMsg =
+                "Access restricted! Drivers can only log in using the mobile app.";
+              toast.error(driverMsg);
+              setErrorMessage(driverMsg);
               await signOut(auth);
               setIsLoading(false);
               return;
@@ -102,27 +142,35 @@ const Login: React.FC = () => {
               toast.success("Login Successful");
               router.push("/records");
             } else if (userData.status === "deactivated") {
-              toast.error(
-                "Your account is deactivated. Please contact your office."
-              );
+              const deactMsg =
+                "Your account is deactivated. Please contact your office.";
+              toast.error(deactMsg);
+              setErrorMessage(deactMsg);
               router.push("/contact-us");
             } else {
-              toast.error(
-                "Your account is not active. Please contact your office."
-              );
+              const inactiveMsg =
+                "Your account is not active. Please contact your office.";
+              toast.error(inactiveMsg);
+              setErrorMessage(inactiveMsg);
               router.push("/contact-us");
             }
           } else {
-            toast.error("User mismatch. Please try again.");
+            const mismatchMsg = "User mismatch. Please try again.";
+            toast.error(mismatchMsg);
+            setErrorMessage(mismatchMsg);
             await signOut(auth);
           }
         } else {
-          toast.error("User not found in system. Please sign up.");
+          const notFoundMsg = "User not found in system. Please sign up.";
+          toast.error(notFoundMsg);
+          setErrorMessage(notFoundMsg);
           router.push("/sign-up");
         }
       }
-    } catch (error) {
-      toast.error("Invalid email or password. Please try again.");
+    } catch (error: unknown) {
+      const customMessage = getAuthErrorMessage(error);
+      toast.error(customMessage);
+      setErrorMessage(customMessage);
       console.error("Login error:", error);
     } finally {
       setIsLoading(false);
@@ -137,6 +185,24 @@ const Login: React.FC = () => {
     <div className="flex items-center justify-center mt-10 mb-5">
       <div className="w-full max-w-md p-8 space-y-4 bg-white rounded-lg shadow-lg">
         <h2 className="text-2xl font-bold text-center text-gray-800">Login</h2>
+
+        {errorMessage && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-start gap-2 animate-shake">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-red-500 shrink-0 mt-0.5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           {/* Email Input */}
