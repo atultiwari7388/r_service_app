@@ -2273,6 +2273,47 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
     try {
       String checkNumber = _checkNumberController.text;
 
+      // Derive active attached invoices from _serviceDetails
+      final List<Map<String, dynamic>> activeAttachedInvoices = [];
+      final List<Map<String, dynamic>> baseAttached =
+          widget.attachedInvoices ?? _attachedInvoices;
+
+      for (var detail in _serviceDetails) {
+        final amt = _parseAmount(detail['amount']);
+        if (amt <= 0) continue;
+
+        String? recId = detail['recordId']?.toString();
+        String? invNum = detail['invoiceNumber']?.toString();
+        String? vehNum = detail['vehicleNumber']?.toString();
+
+        if ((recId == null || recId.isEmpty) && baseAttached.isNotEmpty) {
+          final sName = detail['serviceName']?.toString() ?? '';
+          final matched = baseAttached.firstWhere(
+            (inv) =>
+                (inv['invoiceNumber'] != null &&
+                    sName.contains(inv['invoiceNumber'].toString())) ||
+                (inv['recordId'] != null &&
+                    sName.contains(inv['recordId'].toString())),
+            orElse: () => <String, dynamic>{},
+          );
+          if (matched.isNotEmpty) {
+            recId = matched['recordId']?.toString();
+            invNum = matched['invoiceNumber']?.toString();
+            vehNum = matched['vehicleNumber']?.toString();
+          }
+        }
+
+        if (recId != null && recId.isNotEmpty) {
+          activeAttachedInvoices.add({
+            'recordId': recId,
+            'invoiceNumber': invNum ?? '',
+            'vehicleNumber': vehNum ?? '',
+            'amount': amt,
+            'description': detail['serviceName'] ?? '',
+          });
+        }
+      }
+
       // Create check document
       final checkDocRef = await FirebaseFirestore.instance.collection('Checks').add({
         'checkNumber': checkNumber,
@@ -2288,14 +2329,14 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
         'createdBy': _effectiveUserId,
         'createdByUser': currentUId,
         'createdAt': FieldValue.serverTimestamp(),
-        'attachedInvoices': widget.attachedInvoices ?? [],
+        'attachedInvoices': activeAttachedInvoices,
       });
 
       // MARK CHECK NUMBER AS USED
       await _updateCheckNumberUsage(checkNumber);
 
       // Sync attached invoices from Pay Invoice screen
-      if (widget.attachedInvoices != null && widget.attachedInvoices!.isNotEmpty) {
+      if (activeAttachedInvoices.isNotEmpty) {
         try {
           final batch = FirebaseFirestore.instance.batch();
           final now = DateTime.now();
@@ -2312,7 +2353,7 @@ class _ManageCheckScreenState extends State<ManageCheckScreen> {
 
           final List<Map<String, dynamic>> ledgerInvoices = [];
 
-          for (var inv in widget.attachedInvoices!) {
+          for (var inv in activeAttachedInvoices) {
             final recId = inv['recordId']?.toString() ?? '';
             if (recId.isEmpty) continue;
 

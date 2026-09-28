@@ -789,15 +789,15 @@ function ManageCheckScreenContent() {
         setSelectedUserId(checkData.userId);
         setSelectedUserName(checkData.userName);
 
-        const savedServiceDetails: ServiceDetail[] = (checkData.serviceDetails || []).map(
-          (sd: any) => ({
-            serviceName: sd.serviceName || "",
-            amount: sd.amount,
-            recordId: sd.recordId,
-            invoiceNumber: sd.invoiceNumber,
-            vehicleNumber: sd.vehicleNumber,
-          })
-        );
+        const savedServiceDetails: ServiceDetail[] = (
+          checkData.serviceDetails || []
+        ).map((sd: any) => ({
+          serviceName: sd.serviceName || "",
+          amount: sd.amount,
+          recordId: sd.recordId,
+          invoiceNumber: sd.invoiceNumber,
+          vehicleNumber: sd.vehicleNumber,
+        }));
         const savedAttachedInvoices = checkData.attachedInvoices || [];
 
         // Match recordId if not directly on serviceDetail item
@@ -806,7 +806,8 @@ function ManageCheckScreenContent() {
             if (!sd.recordId) {
               const matched = savedAttachedInvoices.find(
                 (inv: any) =>
-                  (inv.invoiceNumber && sd.serviceName.includes(inv.invoiceNumber)) ||
+                  (inv.invoiceNumber &&
+                    sd.serviceName.includes(inv.invoiceNumber)) ||
                   (inv.recordId && sd.serviceName.includes(inv.recordId))
               );
               if (matched) {
@@ -914,6 +915,48 @@ function ManageCheckScreenContent() {
       vehicleNumber: detail.vehicleNumber || undefined,
     }));
 
+    // Extract only the currently active attached invoices from detailsToSave
+    const activeAttachedInvoices: Array<{
+      recordId: string;
+      invoiceNumber?: string;
+      vehicleNumber?: string;
+      amount: number;
+      description?: string;
+    }> = [];
+
+    for (const detail of detailsToSave) {
+      const amt = detail.amount ?? 0;
+      if (amt <= 0) continue;
+
+      let recId = detail.recordId;
+      let invNum = detail.invoiceNumber;
+      let vehNum = detail.vehicleNumber;
+
+      if (!recId && attachedInvoices.length > 0) {
+        const matched = attachedInvoices.find(
+          (inv: any) =>
+            (inv.invoiceNumber &&
+              detail.serviceName.includes(inv.invoiceNumber)) ||
+            (inv.recordId && detail.serviceName.includes(inv.recordId))
+        );
+        if (matched) {
+          recId = matched.recordId;
+          invNum = matched.invoiceNumber;
+          vehNum = matched.vehicleNumber;
+        }
+      }
+
+      if (recId) {
+        activeAttachedInvoices.push({
+          recordId: recId,
+          invoiceNumber: invNum || "",
+          vehicleNumber: vehNum || "",
+          amount: amt,
+          description: detail.serviceName,
+        });
+      }
+    }
+
     setIsSavingCheck(true);
 
     try {
@@ -928,7 +971,7 @@ function ManageCheckScreenContent() {
         date: Timestamp.fromDate(selectedDate),
         createdBy: effectiveUserId, // Always use effectiveUserId (owner's ID)
         createdAt: serverTimestamp(),
-        attachedInvoices: attachedInvoices || [],
+        attachedInvoices: activeAttachedInvoices,
       };
 
       const checkDocRef = await addDoc(collection(db, "Checks"), checkData);
@@ -945,7 +988,7 @@ function ManageCheckScreenContent() {
       }
 
       // Sync attached invoices from Pay Invoice screen
-      if (attachedInvoices.length > 0) {
+      if (activeAttachedInvoices.length > 0) {
         try {
           const batch = writeBatch(db);
           const paymentId = `PAY-CHK-${checkNumber}`;
@@ -964,7 +1007,7 @@ function ManageCheckScreenContent() {
 
           const ledgerInvoices: any[] = [];
 
-          for (const inv of attachedInvoices) {
+          for (const inv of activeAttachedInvoices) {
             if (!inv.recordId) continue;
 
             const ownerRecordRef = doc(
@@ -1158,7 +1201,9 @@ function ManageCheckScreenContent() {
     try {
       const checkRef = doc(db, "Checks", editingCheckId);
       const prevCheckSnap = await getDoc(checkRef);
-      const prevCheckData = prevCheckSnap.exists() ? prevCheckSnap.data() : null;
+      const prevCheckData = prevCheckSnap.exists()
+        ? prevCheckSnap.data()
+        : null;
 
       // Extract previous attached invoices
       const prevAttachedInvoices: Array<{
@@ -1170,7 +1215,8 @@ function ManageCheckScreenContent() {
         recordId: inv.recordId,
         invoiceNumber: inv.invoiceNumber,
         vehicleNumber: inv.vehicleNumber,
-        amount: typeof inv.amount === "number" ? inv.amount : inv.amountPaid || 0,
+        amount:
+          typeof inv.amount === "number" ? inv.amount : inv.amountPaid || 0,
       }));
 
       // If prevAttachedInvoices is empty, try to extract from prevCheckData.serviceDetails if they had recordId
@@ -1280,11 +1326,7 @@ function ManageCheckScreenContent() {
           let targetOwnerRef = ownerRecordRef;
 
           if (!recordSnap.exists()) {
-            const globalRecordRef = doc(
-              db,
-              "DataServicesRecords",
-              recordId
-            );
+            const globalRecordRef = doc(db, "DataServicesRecords", recordId);
             const globalSnap = await getDoc(globalRecordRef);
             if (globalSnap.exists()) {
               recordSnap = globalSnap;
@@ -1352,9 +1394,7 @@ function ManageCheckScreenContent() {
               )
               .toFixed(2)
           );
-          const newBalance = Number(
-            Math.max(0, totalInv - newPaid).toFixed(2)
-          );
+          const newBalance = Number(Math.max(0, totalInv - newPaid).toFixed(2));
           let newStatus: "Unpaid" | "Partially Paid" | "Paid" = "Unpaid";
           if (newPaid >= totalInv && totalInv > 0) {
             newStatus = "Paid";
@@ -1816,7 +1856,6 @@ function ManageCheckScreenContent() {
 
   <body>
     <div class="check-container">
-
       <div class="date-row">${formattedDate}</div>
 
       <div class="payee-row">
@@ -2451,7 +2490,10 @@ function ManageCheckScreenContent() {
                     >
                       <div className="md:col-span-7">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Service Name {index === 0 && <span className="text-red-500">*</span>}
+                          Service Name{" "}
+                          {index === 0 && (
+                            <span className="text-red-500">*</span>
+                          )}
                         </label>
                         <input
                           type="text"
@@ -2481,13 +2523,17 @@ function ManageCheckScreenContent() {
 
                       <div className="md:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount {index === 0 && <span className="text-red-500">*</span>}
+                          Amount{" "}
+                          {index === 0 && (
+                            <span className="text-red-500">*</span>
+                          )}
                         </label>
                         <input
                           type="number"
                           step="0.01"
                           value={
-                            detail.amount === null || detail.amount === undefined
+                            detail.amount === null ||
+                            detail.amount === undefined
                               ? ""
                               : detail.amount
                           }
@@ -2627,7 +2673,8 @@ function ManageCheckScreenContent() {
                     serviceDetails[0].serviceName.trim() === ""
                   }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    isUpdatingCheck || serviceDetails[0].serviceName.trim() === ""
+                    isUpdatingCheck ||
+                    serviceDetails[0].serviceName.trim() === ""
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-[#F96176] hover:bg-[#F96176] cursor-pointer"
                   } text-white`}
@@ -2795,7 +2842,10 @@ function ManageCheckScreenContent() {
                     >
                       <div className="md:col-span-7">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Service Name {index === 0 && <span className="text-red-500">*</span>}
+                          Service Name{" "}
+                          {index === 0 && (
+                            <span className="text-red-500">*</span>
+                          )}
                         </label>
                         <input
                           type="text"
@@ -2825,13 +2875,17 @@ function ManageCheckScreenContent() {
 
                       <div className="md:col-span-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount {index === 0 && <span className="text-red-500">*</span>}
+                          Amount{" "}
+                          {index === 0 && (
+                            <span className="text-red-500">*</span>
+                          )}
                         </label>
                         <input
                           type="number"
                           step="0.01"
                           value={
-                            detail.amount === null || detail.amount === undefined
+                            detail.amount === null ||
+                            detail.amount === undefined
                               ? ""
                               : detail.amount
                           }
