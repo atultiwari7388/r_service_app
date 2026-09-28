@@ -129,6 +129,8 @@ function ManageCheckScreenContent() {
   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
   const [addingSeries, setAddingSeries] = useState<boolean>(false);
   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
+  const [isSavingCheck, setIsSavingCheck] = useState<boolean>(false);
+  const [isUpdatingCheck, setIsUpdatingCheck] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const [attachedInvoices, setAttachedInvoices] = useState<
     Array<{
@@ -835,6 +837,8 @@ function ManageCheckScreenContent() {
   };
 
   const saveCheck = async () => {
+    if (isSavingCheck) return;
+
     // Filter out service details based on the new logic
     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
       // First row: must have service name (amount can be 0 or negative)
@@ -861,6 +865,8 @@ function ManageCheckScreenContent() {
       amount:
         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
     }));
+
+    setIsSavingCheck(true);
 
     try {
       const checkData = {
@@ -1065,11 +1071,13 @@ function ManageCheckScreenContent() {
     } catch (error) {
       console.error(error);
       GlobalToastError("Error saving check");
+    } finally {
+      setIsSavingCheck(false);
     }
   };
 
   const updateCheck = async () => {
-    if (!editingCheckId) return;
+    if (!editingCheckId || isUpdatingCheck) return;
 
     // Filter out service details based on the new logic
     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
@@ -1093,6 +1101,8 @@ function ManageCheckScreenContent() {
         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
     }));
 
+    setIsUpdatingCheck(true);
+
     try {
       const checkRef = doc(db, "Checks", editingCheckId);
 
@@ -1113,6 +1123,8 @@ function ManageCheckScreenContent() {
     } catch (error) {
       console.error(error);
       GlobalToastError("Error updating check");
+    } finally {
+      setIsUpdatingCheck(false);
     }
   };
 
@@ -2286,24 +2298,37 @@ function ManageCheckScreenContent() {
               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
                 <button
                   onClick={handleCancelEditCheck}
-                  className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+                  disabled={isUpdatingCheck}
+                  className={`px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all ${
+                    isUpdatingCheck ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={updateCheck}
                   disabled={
+                    isUpdatingCheck ||
                     // First row must have service name (amount can be 0)
                     serviceDetails[0].serviceName.trim() === ""
                   }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    serviceDetails[0].serviceName.trim() === ""
+                    isUpdatingCheck || serviceDetails[0].serviceName.trim() === ""
                       ? "bg-gray-300 cursor-not-allowed"
-                      : "bg-[#F96176] hover:bg-[#F96176]"
+                      : "bg-[#F96176] hover:bg-[#F96176] cursor-pointer"
                   } text-white`}
                 >
-                  <FiSave className="mr-2" />
-                  Update Check
+                  {isUpdatingCheck ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <FiSave className="mr-2" />
+                      Update Check
+                    </>
+                  )}
                 </button>
               </div>
             </>
@@ -2585,24 +2610,37 @@ function ManageCheckScreenContent() {
               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
                 <button
                   onClick={handleCancelWriteCheck}
-                  className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+                  disabled={isSavingCheck}
+                  className={`px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all ${
+                    isSavingCheck ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={saveCheck}
                   disabled={
+                    isSavingCheck ||
                     // First row must have service name (amount can be 0)
                     serviceDetails[0].serviceName.trim() === ""
                   }
                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
-                    serviceDetails[0].serviceName.trim() === ""
+                    isSavingCheck || serviceDetails[0].serviceName.trim() === ""
                       ? "bg-gray-300 cursor-not-allowed"
-                      : "bg-[#F96176] hover:bg-[#F96176]/80"
+                      : "bg-[#F96176] hover:bg-[#F96176]/80 cursor-pointer"
                   } text-white`}
                 >
-                  <FiSave className="mr-2" />
-                  Save Check
+                  {isSavingCheck ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <FiSave className="mr-2" />
+                      Save Check
+                    </>
+                  )}
                 </button>
               </div>
             </>
