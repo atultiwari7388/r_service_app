@@ -461,11 +461,18 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
                   },
                 )
               : SizedBox(),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              _shareVehicleDetails(widget.vehicleData);
-            },
+          Builder(
+            builder: (btnContext) => IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () {
+                final box = btnContext.findRenderObject() as RenderBox?;
+                final sharePositionOrigin = box != null
+                    ? box.localToGlobal(Offset.zero) & box.size
+                    : null;
+                _shareVehicleDetails(widget.vehicleData,
+                    sharePositionOrigin: sharePositionOrigin);
+              },
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.picture_as_pdf),
@@ -2047,7 +2054,8 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  void _shareVehicleDetails(Map<String, dynamic> vehicleData) {
+  void _shareVehicleDetails(Map<String, dynamic> vehicleData,
+      {Rect? sharePositionOrigin}) {
     final vehicleNumber = vehicleData['vehicleNumber'] ?? '';
     final year = vehicleData['year'] ?? '';
     final licensePlate = vehicleData['licensePlate'] ?? '';
@@ -2101,71 +2109,455 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         .writeln('• iOS: https://apps.apple.com/in/app/trenoops/id6765658994');
     buffer.writeln('• Website: https://www.trenoops.com/');
 
-    // Share the enhanced message
-    Share.share(buffer.toString().trim());
+    // Share the enhanced message with iOS origin support
+    Share.share(
+      buffer.toString().trim(),
+      sharePositionOrigin: sharePositionOrigin,
+    );
   }
 
-//generate vehicle details pdf
+  // Generate redesigned vehicle details PDF without any Rabbit Mechanic watermark
   void _generatePdf(Map<String, dynamic> vehicleData) async {
     final pdf = pw.Document();
 
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Stack(
-            children: [
-              // Background watermark
-              pw.Center(
-                child: pw.Text(
-                  // vehicleData['companyName']?.toUpperCase() ?? "COMPANY NAME",
-                  "Rabbit Mechanic",
-                  style: pw.TextStyle(
-                    fontSize: 100,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.grey300,
-                  ),
-                  textAlign: pw.TextAlign.center,
+    final vehicleNumber = vehicleData['vehicleNumber']?.toString() ?? 'N/A';
+    final companyName = vehicleData['companyName']?.toString() ?? 'N/A';
+    final vehicleType = vehicleData['vehicleType']?.toString() ?? 'N/A';
+    final licensePlate = vehicleData['licensePlate']?.toString() ?? 'N/A';
+    final vin = vehicleData['vin']?.toString() ?? 'N/A';
+    final engineName = vehicleData['engineName']?.toString() ?? 'N/A';
+    final dot = vehicleData['dot']?.toString() ?? '';
+    final iccms = vehicleData['iccms']?.toString() ?? '';
+    final currentMiles = vehicleData['currentMiles']?.toString() ?? '';
+    final oilChangeDate = vehicleData['oilChangeDate']?.toString() ?? '';
+
+    final rawDate = vehicleData['year'] ?? '';
+    String formattedYear = 'N/A';
+    if (rawDate != null && rawDate.toString().isNotEmpty) {
+      if (rawDate.toString().length == 4 &&
+          int.tryParse(rawDate.toString()) != null) {
+        formattedYear = rawDate.toString();
+      } else {
+        try {
+          formattedYear = DateFormat('MM-dd-yyyy')
+              .format(DateTime.parse(rawDate.toString()));
+        } catch (_) {
+          formattedYear = rawDate.toString();
+        }
+      }
+    }
+
+    final services = (vehicleData['services'] as List<dynamic>? ?? [])
+        .where((service) =>
+            service['defaultNotificationValue'] != null &&
+            service['defaultNotificationValue'] != 0)
+        .toList()
+      ..sort((a, b) => (a['serviceName'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['serviceName'] ?? '').toString().toLowerCase()));
+
+    final primaryColor = PdfColor.fromInt(0xFF1E293B);
+    final accentColor = PdfColor.fromInt(0xFFF96176);
+    final lightBgColor = PdfColor.fromInt(0xFFF8FAFC);
+    final borderColor = PdfColor.fromInt(0xFFE2E8F0);
+    final mutedTextColor = PdfColor.fromInt(0xFF64748B);
+
+    pw.Widget buildInfoRow(String label, String value) {
+      return pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 4.0),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.SizedBox(
+              width: 120,
+              child: pw.Text(
+                label,
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  color: mutedTextColor,
                 ),
               ),
-              // Foreground content
-              pw.Padding(
-                padding: const pw.EdgeInsets.all(16.0),
-                child: pw.Column(
+            ),
+            pw.Expanded(
+              child: pw.Text(
+                value.isNotEmpty ? value : 'N/A',
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  color: primaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(bottom: 20),
+            padding: const pw.EdgeInsets.only(bottom: 12),
+            decoration: pw.BoxDecoration(
+              border: pw.Border(
+                bottom: pw.BorderSide(color: accentColor, width: 2),
+              ),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'Vehicle Details',
+                      'TRENOOPS',
                       style: pw.TextStyle(
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: pw.FontWeight.bold,
+                        color: accentColor,
+                        letterSpacing: 1.5,
                       ),
                     ),
-                    pw.SizedBox(height: 20),
+                    pw.SizedBox(height: 2),
                     pw.Text(
-                        'Company Name: ${vehicleData['companyName'] ?? "Unknown Company"}'),
-                    pw.Text(
-                        'Vehicle Number: ${vehicleData['vehicleNumber'] ?? "Unknown Number"}'),
-                    pw.Text('Year: ${vehicleData['year'] ?? "Unknown Year"}'),
-                    pw.Text(
-                        'License Plate: ${vehicleData['licensePlate'] ?? "Unknown License Plate"}'),
-                    if (vehicleData['dot']?.isNotEmpty ?? false)
-                      pw.Text('DOT: ${vehicleData['dot']}'),
-                    if (vehicleData['iccms']?.isNotEmpty ?? false)
-                      pw.Text('ICCMS: ${vehicleData['iccms']}'),
-                    if (vehicleData['vin']?.isNotEmpty ?? false)
-                      pw.Text('VIN: ${vehicleData['vin']}'),
-                    if (vehicleData['oilChangeDate']?.isNotEmpty ?? false)
-                      pw.Text(
-                          'Oil Change Date: ${vehicleData['oilChangeDate']}'),
-                    pw.Text(
-                        'Engine Name: ${vehicleData['engineName'] ?? "Unknown Engine Name"}'),
-                    pw.Text(
-                        'Vehicle Type: ${vehicleData['vehicleType'] ?? "Unknown Vehicle Type"}'),
+                      'Fleet Maintenance & Vehicle Specification Report',
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        color: mutedTextColor,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Container(
+                      padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: pw.BoxDecoration(
+                        color: primaryColor,
+                        borderRadius:
+                            const pw.BorderRadius.all(pw.Radius.circular(6)),
+                      ),
+                      child: pw.Text(
+                        'Vehicle # $vehicleNumber',
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      DateFormat('MMM dd, yyyy').format(DateTime.now()),
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        color: mutedTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           );
+        },
+        footer: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.only(top: 16),
+            padding: const pw.EdgeInsets.only(top: 8),
+            decoration: pw.BoxDecoration(
+              border: pw.Border(
+                top: pw.BorderSide(color: borderColor, width: 1),
+              ),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Confidential - Generated by TrenoOps Fleet Management',
+                  style: pw.TextStyle(fontSize: 8, color: mutedTextColor),
+                ),
+                pw.Text(
+                  'Page ${context.pageNumber} of ${context.pagesCount}',
+                  style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                      color: mutedTextColor),
+                ),
+              ],
+            ),
+          );
+        },
+        build: (pw.Context context) {
+          return [
+            // Vehicle Overview Card
+            pw.Container(
+              decoration: pw.BoxDecoration(
+                color: lightBgColor,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                border: pw.Border.all(color: borderColor),
+              ),
+              padding: const pw.EdgeInsets.all(14),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'VEHICLE SPECIFICATIONS',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: primaryColor,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey200,
+                          borderRadius:
+                              const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Text(
+                          vehicleType,
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontWeight: pw.FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            buildInfoRow('Vehicle Number:', vehicleNumber),
+                            buildInfoRow('Company Name:', companyName),
+                            buildInfoRow('License Plate:', licensePlate),
+                            buildInfoRow('Year / Model:', formattedYear),
+                            if (currentMiles.isNotEmpty)
+                              buildInfoRow('Current Miles:', currentMiles),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(width: 20),
+                      pw.Expanded(
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            buildInfoRow('VIN:', vin),
+                            buildInfoRow('Engine:', engineName),
+                            if (dot.isNotEmpty) buildInfoRow('DOT:', dot),
+                            if (iccms.isNotEmpty)
+                              buildInfoRow('ICCMS:', iccms),
+                            if (oilChangeDate.isNotEmpty)
+                              buildInfoRow(
+                                  'Oil Change Date:', oilChangeDate),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Configured Services Section
+            pw.Text(
+              'MAINTENANCE & SERVICE SCHEDULE',
+              style: pw.TextStyle(
+                fontSize: 12,
+                fontWeight: pw.FontWeight.bold,
+                color: primaryColor,
+                letterSpacing: 0.8,
+              ),
+            ),
+            pw.SizedBox(height: 8),
+
+            if (services.isEmpty)
+              pw.Container(
+                width: double.infinity,
+                padding: const pw.EdgeInsets.symmetric(vertical: 20),
+                decoration: pw.BoxDecoration(
+                  color: lightBgColor,
+                  borderRadius:
+                      const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  border: pw.Border.all(color: borderColor),
+                ),
+                child: pw.Center(
+                  child: pw.Text(
+                    'No active services configured for this vehicle.',
+                    style: pw.TextStyle(fontSize: 10, color: mutedTextColor),
+                  ),
+                ),
+              )
+            else
+              pw.Table(
+                border: pw.TableBorder.all(
+                  color: borderColor,
+                  width: 0.8,
+                ),
+                columnWidths: const {
+                  0: pw.FixedColumnWidth(30),
+                  1: pw.FlexColumnWidth(3),
+                  2: pw.FlexColumnWidth(2),
+                  3: pw.FixedColumnWidth(70),
+                },
+                children: [
+                  // Table Header
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(
+                      color: primaryColor,
+                    ),
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 4),
+                        child: pw.Center(
+                          child: pw.Text(
+                            '#',
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 9,
+                            ),
+                          ),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 8),
+                        child: pw.Text(
+                          'Service Name',
+                          style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 8),
+                        child: pw.Text(
+                          'Default Interval',
+                          style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontWeight: pw.FontWeight.bold,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 4),
+                        child: pw.Center(
+                          child: pw.Text(
+                            'Status',
+                            style: pw.TextStyle(
+                              color: PdfColors.white,
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 9,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Table Data Rows
+                  ...services.asMap().entries.map((entry) {
+                    final index = entry.key + 1;
+                    final service = entry.value as Map<String, dynamic>;
+                    final isEven = index % 2 == 0;
+                    final isNotificationActive =
+                        service['isNotification'] != false;
+                    final serviceType = service['type'] ?? '';
+                    final defaultVal =
+                        service['defaultNotificationValue']?.toString() ?? '';
+
+                    String intervalLabel = defaultVal;
+                    if (serviceType == 'day') {
+                      intervalLabel += ' Days';
+                    } else if (serviceType == 'reading') {
+                      intervalLabel += ' Miles';
+                    } else if (serviceType == 'hours') {
+                      intervalLabel += ' Hours';
+                    }
+
+                    return pw.TableRow(
+                      decoration: pw.BoxDecoration(
+                        color: isEven ? lightBgColor : PdfColors.white,
+                      ),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 4),
+                          child: pw.Center(
+                            child: pw.Text(
+                              index.toString(),
+                              style: const pw.TextStyle(fontSize: 9),
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 8),
+                          child: pw.Text(
+                            service['serviceName']?.toString() ?? 'Unknown',
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontWeight: pw.FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 8),
+                          child: pw.Text(
+                            intervalLabel,
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 4),
+                          child: pw.Center(
+                            child: pw.Text(
+                              isNotificationActive ? 'Active' : 'Muted',
+                              style: pw.TextStyle(
+                                fontSize: 8,
+                                fontWeight: pw.FontWeight.bold,
+                                color: isNotificationActive
+                                    ? PdfColors.green700
+                                    : mutedTextColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+          ];
         },
       ),
     );
@@ -2175,13 +2567,11 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
     );
   }
 
-//generate pdf for image
-
+  // Generate clean document preview PDF without Rabbit Mechanic watermark
   Future<void> _generatePdfForDocument(String? imageUrl, String? text) async {
     try {
       final pdf = pw.Document();
 
-      // Download the image
       Uint8List? imageBytes;
       if (imageUrl != null) {
         try {
@@ -2194,72 +2584,113 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         }
       }
 
-      // Debugging logs
-      print('Image Bytes: ${imageBytes?.length ?? 0}');
-      print('Text: ${text ?? 'No description provided'}');
+      final primaryColor = PdfColor.fromInt(0xFF1E293B);
+      final accentColor = PdfColor.fromInt(0xFFF96176);
+      final mutedTextColor = PdfColor.fromInt(0xFF64748B);
+      final lightBgColor = PdfColor.fromInt(0xFFF8FAFC);
+      final borderColor = PdfColor.fromInt(0xFFE2E8F0);
 
-      // Add page with cropped image and text
       if (imageBytes != null) {
         pdf.addPage(
           pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(32),
             build: (pw.Context context) {
-              return pw.Stack(
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  // Watermark in the background
-                  pw.Center(
-                    child: pw.Opacity(
-                      opacity: 0.1,
-                      child: pw.Text(
-                        'Rabbit Mechanic',
-                        style: pw.TextStyle(
-                          fontSize: 80,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.grey,
-                        ),
-                        textAlign: pw.TextAlign.center,
-                      ),
-                    ),
-                  ),
-                  // Main content
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
-                      // Cropped image
-                      pw.Container(
-                          height: 500,
-                          width: double.infinity, // Make it full width
-                          child: pw.Center(
-                            child: pw.ClipRect(
-                              child: pw.Image(
-                                pw.MemoryImage(imageBytes!),
-                                fit: pw.BoxFit.contain, // Crop the image
-                              ),
-                            ),
-                          )),
-                      pw.SizedBox(height: 20),
-                      // Text description
                       pw.Text(
-                        text?.trim().isNotEmpty == true
-                            ? text!
-                            : 'No description provided',
-                        style: pw.TextStyle(fontSize: 14),
+                        'DOCUMENT PREVIEW',
+                        style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold,
+                          color: accentColor,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      pw.Text(
+                        DateFormat('MMM dd, yyyy').format(DateTime.now()),
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: mutedTextColor,
+                        ),
                       ),
                     ],
                   ),
+                  pw.SizedBox(height: 8),
+                  pw.Divider(color: accentColor, thickness: 1.5),
+                  pw.SizedBox(height: 12),
+                  pw.Expanded(
+                    child: pw.Container(
+                      width: double.infinity,
+                      decoration: pw.BoxDecoration(
+                        borderRadius:
+                            const pw.BorderRadius.all(pw.Radius.circular(8)),
+                        border: pw.Border.all(color: borderColor),
+                      ),
+                      child: pw.Center(
+                        child: pw.ClipRRect(
+                          horizontalRadius: 6,
+                          verticalRadius: 6,
+                          child: pw.Image(
+                            pw.MemoryImage(imageBytes!),
+                            fit: pw.BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(height: 14),
+                  if (text?.trim().isNotEmpty == true)
+                    pw.Container(
+                      width: double.infinity,
+                      padding: const pw.EdgeInsets.all(12),
+                      decoration: pw.BoxDecoration(
+                        color: lightBgColor,
+                        borderRadius:
+                            const pw.BorderRadius.all(pw.Radius.circular(6)),
+                        border: pw.Border.all(color: borderColor),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Description',
+                            style: pw.TextStyle(
+                              fontSize: 10,
+                              fontWeight: pw.FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            text!.trim(),
+                            style: pw.TextStyle(
+                              fontSize: 10,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               );
             },
           ),
         );
       } else {
-        // Error handling if image cannot be loaded
         pdf.addPage(
           pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(32),
             build: (pw.Context context) {
               return pw.Center(
                 child: pw.Text(
                   'Image could not be loaded.',
-                  style: pw.TextStyle(fontSize: 18, color: PdfColors.red),
+                  style: pw.TextStyle(fontSize: 14, color: PdfColors.red),
                 ),
               );
             },
@@ -2267,7 +2698,6 @@ class _MyVehiclesDetailsScreenState extends State<MyVehiclesDetailsScreen> {
         );
       }
 
-      // Show PDF preview and allow download
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdf.save(),
       );
