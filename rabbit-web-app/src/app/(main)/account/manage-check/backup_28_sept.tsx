@@ -1,0 +1,3485 @@
+// "use client";
+
+// import { useAuth } from "@/contexts/AuthContexts";
+// import { db } from "@/lib/firebase";
+// import toast from "react-hot-toast";
+// import { GlobalToastError, GlobalToastSuccess } from "@/utils/globalErrorToast";
+// import { LoadingIndicator } from "@/utils/LoadinIndicator";
+// import { useSearchParams } from "next/navigation";
+// import {
+//   addDoc,
+//   collection,
+//   doc,
+//   getDocs,
+//   onSnapshot,
+//   query,
+//   serverTimestamp,
+//   Timestamp,
+//   where,
+//   writeBatch,
+//   orderBy,
+//   updateDoc,
+//   getDoc,
+// } from "firebase/firestore";
+// import React, { useEffect, useRef, useState } from "react";
+// import DatePicker from "react-datepicker";
+// import "react-datepicker/dist/react-datepicker.css";
+// import { format } from "date-fns";
+// import {
+//   FiPlus,
+//   FiX,
+//   FiFilter,
+//   FiPrinter,
+//   FiUser,
+//   FiCalendar,
+//   FiList,
+//   FiEdit2,
+//   FiFileText,
+//   FiSave,
+//   FiHash,
+//   FiTrash2,
+// } from "react-icons/fi";
+// import { FaFileAlt } from "react-icons/fa";
+
+// interface ServiceDetail {
+//   serviceName: string;
+//   amount: number | null;
+//   recordId?: string;
+//   invoiceNumber?: string;
+//   vehicleNumber?: string;
+// }
+
+// interface Trip {
+//   id: string;
+//   tripName: string;
+//   oEarnings: number;
+// }
+
+// interface Member {
+//   name: string;
+//   email: string;
+//   isActive: boolean;
+//   memberId: string;
+//   ownerId: string;
+//   vehicles: { companyName: string; vehicleNumber: string }[];
+//   perMileCharge: number;
+//   role: string;
+// }
+
+// interface Check {
+//   id: string;
+//   checkNumber: number;
+//   type: string;
+//   userId: string;
+//   userName: string;
+//   serviceDetails: ServiceDetail[];
+//   totalAmount: number;
+//   memoNumber?: string;
+//   date: Date;
+//   address: string;
+//   city: string;
+//   state: string;
+//   country: string;
+//   postalCode: string;
+//   createdBy: string;
+//   createdAt: string;
+//   attachedInvoices?: Array<{
+//     recordId: string;
+//     invoiceNumber?: string;
+//     vehicleNumber?: string;
+//     amount?: number;
+//     description?: string;
+//   }>;
+// }
+
+// interface CheckSeries {
+//   id: string;
+//   userId: string;
+//   startNumber: string;
+//   endNumber: string;
+//   totalChecks: number;
+//   createdAt: Date;
+// }
+
+// function ManageCheckScreenContent() {
+//   const [role, setUserRole] = useState<string>("");
+//   const [isCheque, setIsCheque] = useState<boolean>(false);
+//   const [isLoading, setIsLoading] = useState<boolean>(true);
+//   const [allMembers, setAllMembers] = useState<Member[]>([]);
+//   const [checks, setChecks] = useState<Check[]>([]);
+//   const [loadingChecks, setLoadingChecks] = useState<boolean>(true);
+//   const [filterType, setFilterType] = useState<string | null>(null);
+//   const [startDate, setStartDate] = useState<Date | null>(null);
+//   const [endDate, setEndDate] = useState<Date | null>(null);
+//   const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+//   const [showWriteCheck, setShowWriteCheck] = useState<boolean>(false);
+//   const [showEditCheck, setShowEditCheck] = useState<boolean>(false);
+//   const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
+//   const [selectedType, setSelectedType] = useState<string | null>(null);
+//   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+//   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
+//   const [serviceDetails, setServiceDetails] = useState<ServiceDetail[]>([]);
+//   const [memoNumber, setMemoNumber] = useState<string>("");
+//   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+//   const [totalAmount, setTotalAmount] = useState<number>(0);
+//   const [showAddDetail, setShowAddDetail] = useState<boolean>(false);
+//   const [unpaidTrips, setUnpaidTrips] = useState<Trip[]>([]);
+//   const [checkNumber, setCheckNumber] = useState<string>("");
+//   const [currentCheckNumber, setCurrentCheckNumber] = useState<string | null>(
+//     null
+//   );
+//   const [checkSeries, setCheckSeries] = useState<CheckSeries[]>([]);
+//   const [isAnonymous, setIsAnonymous] = useState<boolean>(true);
+//   const [isProfileComplete, setIsProfileComplete] = useState<boolean>(false);
+//   const [effectiveUserId, setEffectiveUserId] = useState("");
+//   const [currentUserRole, setCurrentUserRole] = useState("");
+//   const [showAddSeries, setShowAddSeries] = useState<boolean>(false);
+//   const [showCheckSeries, setShowCheckSeries] = useState<boolean>(false);
+//   const [startSeriesNumber, setStartSeriesNumber] = useState<string>("");
+//   const [endSeriesNumber, setEndSeriesNumber] = useState<string>("");
+//   const [addingSeries, setAddingSeries] = useState<boolean>(false);
+//   const [editingCheckNumber, setEditingCheckNumber] = useState<string>("");
+//   const [isSavingCheck, setIsSavingCheck] = useState<boolean>(false);
+//   const [isUpdatingCheck, setIsUpdatingCheck] = useState<boolean>(false);
+//   const searchParams = useSearchParams();
+//   const [attachedInvoices, setAttachedInvoices] = useState<
+//     Array<{
+//       recordId: string;
+//       invoiceNumber: string;
+//       amount: number;
+//       vehicleNumber?: string;
+//       description?: string;
+//     }>
+//   >([]);
+
+//   const topSectionRef = React.useRef<HTMLDivElement>(null);
+
+//   const { user } = useAuth() || { user: null };
+
+//   useEffect(() => {
+//     if (!user) return;
+
+//     setIsLoading(true);
+//     const userRef = doc(db, "Users", user.uid);
+//     const unsubscribe = onSnapshot(
+//       userRef,
+//       async (docSnap) => {
+//         if (docSnap.exists()) {
+//           const userProfile = docSnap.data();
+//           setUserRole(userProfile.role || "");
+//           setCurrentUserRole(userProfile.role || "");
+
+//           // Determine effectiveUserId based on role
+//           let ownerId: string;
+//           if (
+//             ["SubOwner", "Manager", "Accountant"].includes(userProfile.role) &&
+//             userProfile.createdBy
+//           ) {
+//             ownerId = userProfile.createdBy;
+//             setEffectiveUserId(ownerId);
+//             console.log(
+//               `${userProfile.role} detected, using owner's ID: ${ownerId}`
+//             );
+//           } else {
+//             ownerId = user.uid;
+//             setEffectiveUserId(ownerId);
+//             console.log(`Owner detected, using own ID: ${user.uid}`);
+//           }
+
+//           // IMPORTANT: Fetch owner's currentCheckNumber from owner's document
+//           if (ownerId !== user.uid) {
+//             try {
+//               const ownerDoc = await getDoc(doc(db, "Users", ownerId));
+//               if (ownerDoc.exists()) {
+//                 const ownerData = ownerDoc.data();
+//                 setCurrentCheckNumber(ownerData.currentCheckNumber || null);
+//                 console.log(
+//                   "Fetched owner's check number:",
+//                   ownerData.currentCheckNumber
+//                 );
+//               }
+//             } catch (error) {
+//               console.error("Error fetching owner's data:", error);
+//             }
+//           } else {
+//             // For owner, use their own check number
+//             setCurrentCheckNumber(userProfile.currentCheckNumber || null);
+//           }
+
+//           setIsCheque(userProfile.isCheque || false);
+//           setIsAnonymous(userProfile.isAnonymous || true);
+//           setIsProfileComplete(userProfile.isProfileComplete || false);
+//         } else {
+//           GlobalToastError("User document not found");
+//         }
+//         setIsLoading(false);
+//       },
+//       (error: Error) => {
+//         GlobalToastError(error.message || "Error fetching user data");
+//         console.error("Error fetching user data:", error);
+//         setIsLoading(false);
+//       }
+//     );
+
+//     return () => unsubscribe();
+//   }, [user]);
+
+//   useEffect(() => {
+//     if (effectiveUserId && isCheque) {
+//       fetchTeamMembersWithVehicles();
+//       fetchChecks();
+//       fetchCheckSeries();
+//     }
+//   }, [effectiveUserId, isCheque]);
+
+//   // Handle prefilled query params when redirected from Pay Invoice screen
+//   useEffect(() => {
+//     if (!effectiveUserId) return;
+//     const action = searchParams.get("action");
+//     if (action === "writeCheck") {
+//       const payee = searchParams.get("payee") || "";
+//       const rawInvoices = searchParams.get("invoices");
+//       const paramTotal =
+//         parseFloat(searchParams.get("totalAmount") || "0") || 0;
+
+//       let parsedInvoices: Array<{
+//         recordId: string;
+//         invoiceNumber: string;
+//         amount: number;
+//         vehicleNumber?: string;
+//         description?: string;
+//       }> = [];
+
+//       if (rawInvoices) {
+//         try {
+//           parsedInvoices = JSON.parse(decodeURIComponent(rawInvoices));
+//         } catch (e) {
+//           console.error("Error parsing prefilled invoices:", e);
+//         }
+//       }
+
+//       if (parsedInvoices.length > 0) {
+//         setAttachedInvoices(parsedInvoices);
+//         setSelectedType("Vendor");
+//         setSelectedUserName(payee || "Vendor");
+//         const matching = allMembers.find(
+//           (m) => m.name.toLowerCase() === payee.toLowerCase()
+//         );
+//         setSelectedUserId(
+//           matching?.memberId ||
+//             `vendor_${(payee || "vendor").replace(/\s+/g, "_").toLowerCase()}`
+//         );
+
+//         const total =
+//           paramTotal > 0
+//             ? paramTotal
+//             : parsedInvoices.reduce((s, i) => s + (i.amount || 0), 0);
+
+//         const newServiceDetails: ServiceDetail[] = parsedInvoices.map(
+//           (inv) => ({
+//             serviceName: inv.description || `Inv #${inv.invoiceNumber}`,
+//             amount: inv.amount,
+//             recordId: inv.recordId,
+//             invoiceNumber: inv.invoiceNumber,
+//             vehicleNumber: inv.vehicleNumber,
+//           })
+//         );
+
+//         while (newServiceDetails.length < 5) {
+//           newServiceDetails.push({ serviceName: "", amount: 0 });
+//         }
+
+//         setServiceDetails(newServiceDetails);
+//         setTotalAmount(total);
+//         setMemoNumber("");
+
+//         getNextAvailableCheckNumber().then((nextCheckNumber) => {
+//           if (nextCheckNumber) {
+//             setCheckNumber(nextCheckNumber);
+//             setShowWriteCheck(true);
+//           } else {
+//             toast.error(
+//               "No available check numbers. Please add a check series first."
+//             );
+//             setShowAddSeries(true);
+//           }
+//         });
+//       }
+//     }
+//   }, [effectiveUserId, searchParams, allMembers]);
+
+//   const fetchTeamMembersWithVehicles = async () => {
+//     try {
+//       if (!effectiveUserId) return;
+
+//       let teamQuery;
+
+//       if (["Accountant", "Manager", "SubOwner"].includes(currentUserRole)) {
+//         teamQuery = query(
+//           collection(db, "Users"),
+//           where("active", "==", true),
+//           where("createdBy", "==", effectiveUserId),
+//           where("uid", "!=", user?.uid) // Exclude current user
+//         );
+//       } else {
+//         // For Owner, fetch all team members
+//         teamQuery = query(
+//           collection(db, "Users"),
+//           where("active", "==", true),
+//           where("createdBy", "==", effectiveUserId),
+//           where("uid", "!=", effectiveUserId) // Exclude owner themselves
+//         );
+//       }
+
+//       const teamSnapshot = await getDocs(teamQuery);
+//       const members: Member[] = [];
+
+//       for (const memberDoc of teamSnapshot.docs) {
+//         const memberData = memberDoc.data();
+//         const memberId = memberData.uid;
+
+//         const vehiclesQuery = query(
+//           collection(db, "Users", memberId, "Vehicles")
+//         );
+//         const vehiclesSnapshot = await getDocs(vehiclesQuery);
+
+//         const vehicles = vehiclesSnapshot.docs
+//           .map((vehicleDoc) => ({
+//             companyName: vehicleDoc.data().companyName || "No Company",
+//             vehicleNumber: vehicleDoc.data().vehicleNumber || "No Number",
+//           }))
+//           .sort((a, b) =>
+//             a.vehicleNumber
+//               .toLowerCase()
+//               .localeCompare(b.vehicleNumber.toLowerCase())
+//           );
+
+//         members.push({
+//           name: memberData.userName || "No Name",
+//           email: memberData.email || "No Email",
+//           isActive: memberData.active || false,
+//           memberId: memberId,
+//           ownerId: memberData.createdBy,
+//           vehicles: vehicles,
+//           perMileCharge: memberData.perMileCharge || 0,
+//           role: memberData.role || "",
+//         });
+//       }
+
+//       console.log(`${showAddDetail}`);
+//       console.log(`${setUnpaidTrips}`);
+
+//       console.log("Fetched team members:", members.length);
+//       setAllMembers(members);
+//     } catch (error) {
+//       console.error(error);
+//     }
+//   };
+
+//   const fetchChecks = async () => {
+//     try {
+//       if (!effectiveUserId) return;
+
+//       setLoadingChecks(true);
+//       let checksQuery = query(
+//         collection(db, "Checks"),
+//         where("createdBy", "==", effectiveUserId), // Always use effectiveUserId (owner's ID)
+//         orderBy("date", "desc")
+//       );
+
+//       if (filterType) {
+//         checksQuery = query(checksQuery, where("type", "==", filterType));
+//       }
+
+//       if (startDate && endDate) {
+//         checksQuery = query(
+//           checksQuery,
+//           where("date", ">=", Timestamp.fromDate(startDate)),
+//           where("date", "<=", Timestamp.fromDate(endDate))
+//         );
+//       }
+
+//       const snapshot = await getDocs(checksQuery);
+//       const checksData: Check[] = snapshot.docs.map((doc) => {
+//         const data = doc.data();
+//         return {
+//           id: doc.id,
+//           checkNumber: data.checkNumber || 0,
+//           type: data.type || "",
+//           userId: data.userId || "",
+//           userName: data.userName || "",
+//           serviceDetails: data.serviceDetails || [],
+//           totalAmount: data.totalAmount || 0,
+//           memoNumber: data.memoNumber || undefined,
+//           date: data.date?.toDate() || new Date(),
+//           createdBy: data.createdBy || "",
+//           createdAt: data.createdAt,
+//           address: data.address || "",
+//           city: data.city || "",
+//           state: data.state || "",
+//           country: data.country || "",
+//           postalCode: data.postalCode || "",
+//           attachedInvoices: data.attachedInvoices || [],
+//         };
+//       });
+
+//       setChecks(checksData);
+//     } catch (error) {
+//       console.error(error);
+//       GlobalToastError("Error loading checks");
+//     } finally {
+//       setLoadingChecks(false);
+//     }
+//   };
+
+//   const fetchCheckSeries = async () => {
+//     try {
+//       if (!effectiveUserId) return;
+
+//       const seriesQuery = query(
+//         collection(db, "CheckSeries"),
+//         where("userId", "==", effectiveUserId), // Use effectiveUserId
+//         orderBy("createdAt", "desc")
+//       );
+
+//       const snapshot = await getDocs(seriesQuery);
+//       const seriesData: CheckSeries[] = snapshot.docs.map((doc) => {
+//         const data = doc.data();
+//         return {
+//           id: doc.id,
+//           userId: data.userId,
+//           startNumber: data.startNumber,
+//           endNumber: data.endNumber,
+//           totalChecks: data.totalChecks || 0,
+//           createdAt: data.createdAt?.toDate() || new Date(),
+//         };
+//       });
+
+//       setCheckSeries(seriesData);
+//     } catch (error) {
+//       console.error(error);
+//     }
+//   };
+
+//   const handleAddCheckSeries = async () => {
+//     if (!startSeriesNumber || !endSeriesNumber) {
+//       GlobalToastError("Please enter both start and end numbers");
+//       return;
+//     }
+
+//     setAddingSeries(true);
+
+//     try {
+//       // Generate the check numbers
+//       const checkNumbers = generateCheckNumbers(
+//         startSeriesNumber,
+//         endSeriesNumber
+//       );
+
+//       if (checkNumbers.length === 0) {
+//         return;
+//       }
+
+//       // Save the series to Firestore using effectiveUserId (owner's ID)
+//       const seriesRef = await addDoc(collection(db, "CheckSeries"), {
+//         userId: effectiveUserId,
+//         startNumber: startSeriesNumber,
+//         endNumber: endSeriesNumber,
+//         createdAt: serverTimestamp(),
+//         totalChecks: checkNumbers.length,
+//       });
+
+//       // Save individual check numbers to a subcollection
+//       const batch = writeBatch(db);
+
+//       for (const checkNumber of checkNumbers) {
+//         const docRef = doc(
+//           collection(db, "CheckSeries", seriesRef.id, "Checks")
+//         );
+//         batch.set(docRef, {
+//           checkNumber: checkNumber,
+//           isUsed: false,
+//           seriesId: seriesRef.id,
+//           userId: effectiveUserId,
+//           createdAt: serverTimestamp(),
+//         });
+//       }
+
+//       await batch.commit();
+
+//       // Update current check number if not set
+//       if (!currentCheckNumber) {
+//         await updateDoc(doc(db, "Users", effectiveUserId), {
+//           currentCheckNumber: startSeriesNumber,
+//         });
+//         setCurrentCheckNumber(startSeriesNumber);
+//       }
+
+//       toast.success("Check series saved successfully!");
+
+//       // Reset form and close
+//       const createdStartNumber = startSeriesNumber;
+//       setStartSeriesNumber("");
+//       setEndSeriesNumber("");
+//       setShowAddSeries(false);
+
+//       // Refresh data
+//       await fetchCheckSeries();
+
+//       // Automatically open Write Check form with newly created series
+//       setCheckNumber(createdStartNumber);
+//       setShowWriteCheck(true);
+//     } catch (error) {
+//       toast.error("Error saving check series");
+//       console.error(error);
+//     } finally {
+//       setAddingSeries(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     if (effectiveUserId && isCheque) {
+//       fetchChecks();
+//     }
+//   }, [filterType, startDate, endDate, effectiveUserId, isCheque]);
+
+//   useEffect(() => {
+//     // Calculate total whenever serviceDetails changes
+//     const total = serviceDetails.reduce((sum, detail, index) => {
+//       // First row: must have service name (amount can be 0, positive, or negative)
+//       if (index === 0) {
+//         if (detail.serviceName.trim() !== "") {
+//           // For first row, include the amount even if it's 0 or negative
+//           return (
+//             sum +
+//             (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//           );
+//         }
+//         return sum;
+//       }
+//       // Other rows: include amount if it's entered (can be 0, positive, or negative)
+//       // Service name is optional for other rows
+//       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
+//         return (
+//           sum +
+//           (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//         );
+//       }
+//       return sum;
+//     }, 0);
+//     setTotalAmount(total);
+//   }, [serviceDetails]);
+
+//   const calculateTotal = (details: ServiceDetail[]) => {
+//     const total = details.reduce((sum, detail, index) => {
+//       // First row: must have service name (amount can be 0, positive, or negative)
+//       if (index === 0) {
+//         if (detail.serviceName.trim() !== "") {
+//           // For first row, include the amount even if it's 0 or negative
+//           return (
+//             sum +
+//             (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//           );
+//         }
+//         return sum;
+//       }
+//       // Other rows: include amount if it's entered OR if service name exists
+//       else if (detail.amount !== 0 || detail.serviceName.trim() !== "") {
+//         return (
+//           sum +
+//           (detail.amount === null || isNaN(detail.amount) ? 0 : detail.amount)
+//         );
+//       }
+//       return sum;
+//     }, 0);
+//     setTotalAmount(total);
+//   };
+
+//   const generateCheckNumbers = (start: string, end: string): string[] => {
+//     const checkNumbers: string[] = [];
+
+//     try {
+//       // Extract prefix and numeric parts
+//       const prefix = start.replace(/\d/g, "");
+//       const endPrefix = end.replace(/\d/g, "");
+
+//       // Verify prefixes match
+//       if (prefix !== endPrefix) {
+//         GlobalToastError("Number prefixes must match");
+//         return [];
+//       }
+
+//       // Extract numeric parts
+//       const startNumStr = start.replace(prefix, "");
+//       const endNumStr = end.replace(prefix, "");
+
+//       const startNum = parseInt(startNumStr);
+//       const endNum = parseInt(endNumStr);
+
+//       if (startNum >= endNum) {
+//         GlobalToastError("End number must be greater than start number");
+//         return [];
+//       }
+
+//       // Generate all numbers in the range
+//       for (let i = startNum; i <= endNum; i++) {
+//         // Format number with leading zeros to match the original format
+//         let numStr = i.toString();
+//         if (startNumStr.length > numStr.length) {
+//           numStr = numStr.padStart(startNumStr.length, "0");
+//         }
+
+//         checkNumbers.push(`${prefix}${numStr}`);
+//       }
+//     } catch (error) {
+//       GlobalToastError("Error generating check numbers");
+//       console.error(error);
+//       return [];
+//     }
+
+//     return checkNumbers;
+//   };
+
+//   const getNextAvailableCheckNumber = async (): Promise<string | null> => {
+//     try {
+//       const seriesQuery = query(
+//         collection(db, "CheckSeries"),
+//         where("userId", "==", effectiveUserId) // Use effectiveUserId
+//       );
+//       const seriesSnapshot = await getDocs(seriesQuery);
+//       if (seriesSnapshot.empty) return null;
+
+//       let allCheckNumbers: string[] = [];
+
+//       for (const seriesDoc of seriesSnapshot.docs) {
+//         const checksQuery = query(
+//           collection(db, "CheckSeries", seriesDoc.id, "Checks")
+//         );
+//         const checksSnapshot = await getDocs(checksQuery);
+
+//         const checkNumbers = checksSnapshot.docs.map(
+//           (doc) => doc.data().checkNumber as string
+//         );
+//         allCheckNumbers = [...allCheckNumbers, ...checkNumbers];
+//       }
+
+//       if (allCheckNumbers.length === 0) return null;
+
+//       allCheckNumbers.sort((a, b) => {
+//         const prefixA = a.replace(/\d/g, "");
+//         const prefixB = b.replace(/\d/g, "");
+
+//         if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+
+//         const numA = parseInt(a.replace(prefixA, ""));
+//         const numB = parseInt(b.replace(prefixB, ""));
+//         return numA - numB;
+//       });
+
+//       for (const checkNumber of allCheckNumbers) {
+//         const usedCheckQuery = query(
+//           collection(db, "Checks"),
+//           where("checkNumber", "==", checkNumber),
+//           where("createdBy", "==", effectiveUserId)
+//         );
+//         const usedCheckSnapshot = await getDocs(usedCheckQuery);
+
+//         if (usedCheckSnapshot.empty) {
+//           return checkNumber;
+//         }
+//       }
+
+//       return null;
+//     } catch (error) {
+//       console.error("Error getting next check number:", error);
+//       return null;
+//     }
+//   };
+
+//   const updateCheckNumberUsage = async (checkNumber: string) => {
+//     try {
+//       // Use effectiveUserId (owner's ID) to find the check series
+//       const seriesQuery = query(
+//         collection(db, "CheckSeries"),
+//         where("userId", "==", effectiveUserId)
+//       );
+//       const seriesSnapshot = await getDocs(seriesQuery);
+
+//       for (const seriesDoc of seriesSnapshot.docs) {
+//         const checksQuery = query(
+//           collection(db, "CheckSeries", seriesDoc.id, "Checks"),
+//           where("checkNumber", "==", checkNumber)
+//         );
+//         const checksSnapshot = await getDocs(checksQuery);
+
+//         if (!checksSnapshot.empty) {
+//           await updateDoc(
+//             doc(
+//               db,
+//               "CheckSeries",
+//               seriesDoc.id,
+//               "Checks",
+//               checksSnapshot.docs[0].id
+//             ),
+//             {
+//               isUsed: true,
+//               usedAt: serverTimestamp(),
+//               usedBy: effectiveUserId, // Owner's ID
+//             }
+//           );
+//           break;
+//         }
+//       }
+
+//       // Update the owner's current check number
+//       if (effectiveUserId) {
+//         await updateDoc(doc(db, "Users", effectiveUserId), {
+//           currentCheckNumber: checkNumber,
+//         });
+//         setCurrentCheckNumber(checkNumber);
+//       }
+//     } catch (error) {
+//       console.error("Error updating check number usage:", error);
+//     }
+//   };
+
+//   const handleWriteCheck = async () => {
+//     if (isAnonymous && !isProfileComplete) {
+//       toast.error("Please create an account to write checks.");
+//       return;
+//     }
+
+//     setSelectedType(null);
+//     setSelectedUserId(null);
+//     setSelectedUserName(null);
+//     // Initialize with 5 empty service details
+//     setServiceDetails([
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//       { serviceName: "", amount: 0 },
+//     ]);
+//     setMemoNumber("");
+//     setSelectedDate(new Date());
+//     setTotalAmount(0);
+
+//     const nextCheckNumber = await getNextAvailableCheckNumber();
+//     if (nextCheckNumber) {
+//       setCheckNumber(nextCheckNumber);
+//       setShowWriteCheck(true);
+//     } else {
+//       toast.error(
+//         "No available check numbers. Please add a check series first."
+//       );
+//       setShowAddSeries(true);
+//     }
+//   };
+
+//   const handleEditCheck = async (checkId: string) => {
+//     try {
+//       const checkRef = doc(db, "Checks", checkId);
+//       const checkSnap = await getDoc(checkRef);
+
+//       if (checkSnap.exists()) {
+//         const checkData = checkSnap.data();
+//         setEditingCheckId(checkId);
+//         setEditingCheckNumber(checkData.checkNumber.toString());
+//         setSelectedType(checkData.type);
+//         setSelectedUserId(checkData.userId);
+//         setSelectedUserName(checkData.userName);
+
+//         const savedServiceDetails: ServiceDetail[] = (
+//           checkData.serviceDetails || []
+//         ).map((sd: any) => ({
+//           serviceName: sd.serviceName || "",
+//           amount: sd.amount,
+//           recordId: sd.recordId,
+//           invoiceNumber: sd.invoiceNumber,
+//           vehicleNumber: sd.vehicleNumber,
+//         }));
+//         const savedAttachedInvoices = checkData.attachedInvoices || [];
+
+//         // Match recordId if not directly on serviceDetail item
+//         if (savedAttachedInvoices.length > 0) {
+//           savedServiceDetails.forEach((sd) => {
+//             if (!sd.recordId) {
+//               const matched = savedAttachedInvoices.find(
+//                 (inv: any) =>
+//                   (inv.invoiceNumber &&
+//                     sd.serviceName.includes(inv.invoiceNumber)) ||
+//                   (inv.recordId && sd.serviceName.includes(inv.recordId))
+//               );
+//               if (matched) {
+//                 sd.recordId = matched.recordId;
+//                 sd.invoiceNumber = matched.invoiceNumber;
+//                 sd.vehicleNumber = matched.vehicleNumber;
+//               }
+//             }
+//           });
+//         }
+
+//         setServiceDetails(savedServiceDetails);
+//         setAttachedInvoices(savedAttachedInvoices);
+
+//         setMemoNumber(checkData.memoNumber || "");
+//         setSelectedDate(checkData.date?.toDate() || new Date());
+//         setTotalAmount(checkData.totalAmount || 0);
+//         setShowEditCheck(true);
+
+//         // Scroll to top after a small delay to ensure state is updated
+//         setTimeout(() => {
+//           scrollToTop();
+//         }, 100);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching check for edit:", error);
+//       GlobalToastError("Error loading check details");
+//     }
+//   };
+
+//   // Function to scroll to top smoothly
+//   const scrollToTop = () => {
+//     if (topSectionRef.current) {
+//       // Scroll to the top section
+//       topSectionRef.current.scrollIntoView({
+//         behavior: "smooth",
+//         block: "start",
+//       });
+//     } else {
+//       // Fallback: scroll to top of page
+//       window.scrollTo({
+//         top: 0,
+//         behavior: "smooth",
+//       });
+//     }
+//   };
+
+//   const handleCancelEditCheck = () => {
+//     setShowEditCheck(false);
+//     setEditingCheckId(null);
+//     setEditingCheckNumber("");
+//     setSelectedType(null);
+//     setSelectedUserId(null);
+//     setSelectedUserName(null);
+//     setServiceDetails([]);
+//     setAttachedInvoices([]);
+//     setMemoNumber("");
+//     setSelectedDate(new Date());
+//     setTotalAmount(0);
+//   };
+
+//   const handleCancelWriteCheck = () => {
+//     setShowWriteCheck(false);
+//     setSelectedType(null);
+//     setSelectedUserId(null);
+//     setSelectedUserName(null);
+//     setServiceDetails([]);
+//     setAttachedInvoices([]);
+//     setMemoNumber("");
+//     setSelectedDate(new Date());
+//     setTotalAmount(0);
+//     setShowAddDetail(false);
+//   };
+
+//   const saveCheck = async () => {
+//     if (isSavingCheck) return;
+
+//     // Filter out service details based on the new logic
+//     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
+//       // First row: must have service name (amount can be 0 or negative)
+//       if (index === 0) {
+//         return detail.serviceName.trim() !== "";
+//       }
+//       // Other rows: can have either service name OR amount (amount can be 0 or negative)
+//       return detail.serviceName.trim() !== "" || detail.amount !== 0;
+//     });
+
+//     if (
+//       !selectedUserId ||
+//       nonEmptyDetails.length === 0 ||
+//       !effectiveUserId ||
+//       !checkNumber
+//     ) {
+//       GlobalToastError("Please fill at least the first service detail");
+//       return;
+//     }
+
+//     // Ensure we include 0 amounts and invoice metadata properly
+//     const detailsToSave = nonEmptyDetails.map((detail) => ({
+//       serviceName: detail.serviceName,
+//       amount:
+//         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
+//       recordId: detail.recordId || undefined,
+//       invoiceNumber: detail.invoiceNumber || undefined,
+//       vehicleNumber: detail.vehicleNumber || undefined,
+//     }));
+
+//     // Extract only the currently active attached invoices from detailsToSave
+//     const activeAttachedInvoices: Array<{
+//       recordId: string;
+//       invoiceNumber?: string;
+//       vehicleNumber?: string;
+//       amount: number;
+//       description?: string;
+//     }> = [];
+
+//     for (const detail of detailsToSave) {
+//       const amt = detail.amount ?? 0;
+//       if (amt <= 0) continue;
+
+//       let recId = detail.recordId;
+//       let invNum = detail.invoiceNumber;
+//       let vehNum = detail.vehicleNumber;
+
+//       if (!recId && attachedInvoices.length > 0) {
+//         const matched = attachedInvoices.find(
+//           (inv: any) =>
+//             (inv.invoiceNumber &&
+//               detail.serviceName.includes(inv.invoiceNumber)) ||
+//             (inv.recordId && detail.serviceName.includes(inv.recordId))
+//         );
+//         if (matched) {
+//           recId = matched.recordId;
+//           invNum = matched.invoiceNumber;
+//           vehNum = matched.vehicleNumber;
+//         }
+//       }
+
+//       if (recId) {
+//         activeAttachedInvoices.push({
+//           recordId: recId,
+//           invoiceNumber: invNum || "",
+//           vehicleNumber: vehNum || "",
+//           amount: amt,
+//           description: detail.serviceName,
+//         });
+//       }
+//     }
+
+//     setIsSavingCheck(true);
+
+//     try {
+//       const checkData = {
+//         checkNumber: checkNumber,
+//         type: selectedType,
+//         userId: selectedUserId,
+//         userName: selectedUserName,
+//         serviceDetails: detailsToSave,
+//         totalAmount: totalAmount,
+//         memoNumber: memoNumber || null,
+//         date: Timestamp.fromDate(selectedDate),
+//         createdBy: effectiveUserId, // Always use effectiveUserId (owner's ID)
+//         createdAt: serverTimestamp(),
+//         attachedInvoices: activeAttachedInvoices,
+//       };
+
+//       const checkDocRef = await addDoc(collection(db, "Checks"), checkData);
+
+//       await updateCheckNumberUsage(checkNumber);
+
+//       if (selectedType === "Driver") {
+//         const batch = writeBatch(db);
+//         unpaidTrips.forEach((trip) => {
+//           const tripRef = doc(db, "Users", selectedUserId, "trips", trip.id);
+//           batch.update(tripRef, { isPaid: true });
+//         });
+//         await batch.commit();
+//       }
+
+//       // Sync attached invoices from Pay Invoice screen
+//       if (activeAttachedInvoices.length > 0) {
+//         try {
+//           const batch = writeBatch(db);
+//           const paymentId = `PAY-CHK-${checkNumber}`;
+//           const nowIso = new Date().toISOString();
+
+//           // Get team members for syncing
+//           const teamMembersQuery = query(
+//             collection(db, "Users"),
+//             where("createdBy", "==", effectiveUserId),
+//             where("isTeamMember", "==", true)
+//           );
+//           const teamMembersSnapshot = await getDocs(teamMembersQuery);
+//           const memberIds = teamMembersSnapshot.docs.map(
+//             (docSnap) => docSnap.id
+//           );
+
+//           const ledgerInvoices: any[] = [];
+
+//           for (const inv of activeAttachedInvoices) {
+//             if (!inv.recordId) continue;
+
+//             const ownerRecordRef = doc(
+//               db,
+//               "Users",
+//               effectiveUserId,
+//               "DataServices",
+//               inv.recordId
+//             );
+//             let recordSnap = await getDoc(ownerRecordRef);
+//             let targetOwnerRef = ownerRecordRef;
+
+//             if (!recordSnap.exists()) {
+//               const globalRecordRef = doc(
+//                 db,
+//                 "DataServicesRecords",
+//                 inv.recordId
+//               );
+//               const globalSnap = await getDoc(globalRecordRef);
+//               if (globalSnap.exists()) {
+//                 recordSnap = globalSnap;
+//               } else if (user?.uid && user.uid !== effectiveUserId) {
+//                 const userRecordRef = doc(
+//                   db,
+//                   "Users",
+//                   user.uid,
+//                   "DataServices",
+//                   inv.recordId
+//                 );
+//                 const userSnap = await getDoc(userRecordRef);
+//                 if (userSnap.exists()) {
+//                   recordSnap = userSnap;
+//                   targetOwnerRef = userRecordRef;
+//                 }
+//               }
+//             }
+
+//             // If not found in any collection, skip gracefully
+//             if (!recordSnap.exists()) {
+//               console.warn(
+//                 `DataServices record ${inv.recordId} not found, skipping sync.`
+//               );
+//               continue;
+//             }
+
+//             const recData = recordSnap.data();
+//             const totalInv =
+//               parseFloat(
+//                 String(recData.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+//               ) || 0;
+//             const currentPaid =
+//               typeof recData.paidAmount === "number" ? recData.paidAmount : 0;
+//             const newPaid = Number((currentPaid + inv.amount).toFixed(2));
+//             const newBalance = Number(
+//               Math.max(0, totalInv - newPaid).toFixed(2)
+//             );
+//             const newStatus = newBalance <= 0 ? "Paid" : "Partially Paid";
+
+//             const paymentEntry = {
+//               paymentId: paymentId,
+//               paymentMethod: "Check",
+//               amountPaid: inv.amount,
+//               checkNumber: String(checkNumber),
+//               checkId: checkDocRef.id,
+//               paidAt: nowIso,
+//               paidBy: user?.uid || effectiveUserId,
+//               paidByName: selectedUserName || "User",
+//             };
+
+//             const existingHist = Array.isArray(recData.paymentHistory)
+//               ? recData.paymentHistory
+//               : [];
+//             const updatedHistory = [...existingHist, paymentEntry];
+
+//             const updatePayload = {
+//               paidAmount: newPaid,
+//               balanceAmount: newBalance,
+//               paymentStatus: newStatus,
+//               paymentHistory: updatedHistory,
+//               updatedAt: nowIso,
+//             };
+
+//             // Safely update owner record using merge
+//             batch.set(targetOwnerRef, updatePayload, { merge: true });
+
+//             // Safely update global record using merge
+//             const globalRecordRef = doc(
+//               db,
+//               "DataServicesRecords",
+//               inv.recordId
+//             );
+//             batch.set(globalRecordRef, updatePayload, { merge: true });
+
+//             // Safely sync with team members if the document exists for them
+//             for (const mId of memberIds) {
+//               if (mId === effectiveUserId) continue;
+//               const memberRecRef = doc(
+//                 db,
+//                 "Users",
+//                 mId,
+//                 "DataServices",
+//                 inv.recordId
+//               );
+//               const mSnap = await getDoc(memberRecRef);
+//               if (mSnap.exists()) {
+//                 batch.set(memberRecRef, updatePayload, { merge: true });
+//               }
+//             }
+
+//             ledgerInvoices.push({
+//               recordId: inv.recordId,
+//               invoiceNumber: inv.invoiceNumber,
+//               vehicleNumber: inv.vehicleNumber || "N/A",
+//               amountPaid: inv.amount,
+//               remainingBalance: newBalance,
+//             });
+//           }
+
+//           // Save Master Payment Ledger Entry if any invoices matched
+//           if (ledgerInvoices.length > 0) {
+//             const ledgerDocRef = doc(
+//               collection(db, "Users", effectiveUserId, "InvoicePayments")
+//             );
+//             batch.set(ledgerDocRef, {
+//               id: ledgerDocRef.id,
+//               paymentId: paymentId,
+//               ownerId: effectiveUserId,
+//               vendorName: selectedUserName || "Vendor",
+//               totalAmount: totalAmount,
+//               paymentMethod: "Check",
+//               checkNumber: String(checkNumber),
+//               checkId: checkDocRef.id,
+//               invoices: ledgerInvoices,
+//               createdAt: serverTimestamp(),
+//               createdBy: user?.uid || effectiveUserId,
+//               createdByName: selectedUserName || "User",
+//             });
+//           }
+
+//           await batch.commit();
+//           setAttachedInvoices([]);
+//         } catch (invoiceSyncError) {
+//           console.error(
+//             "Error updating invoice records on check creation:",
+//             invoiceSyncError
+//           );
+//         }
+//       }
+
+//       GlobalToastSuccess("Check created successfully!");
+//       handleCancelWriteCheck();
+//       fetchChecks();
+//     } catch (error) {
+//       console.error(error);
+//       GlobalToastError("Error saving check");
+//     } finally {
+//       setIsSavingCheck(false);
+//     }
+//   };
+
+//   const updateCheck = async () => {
+//     if (!editingCheckId || isUpdatingCheck) return;
+
+//     // Filter out service details based on the new logic
+//     const nonEmptyDetails = serviceDetails.filter((detail, index) => {
+//       // First row: must have service name (amount can be 0 or negative)
+//       if (index === 0) {
+//         return detail.serviceName.trim() !== "";
+//       }
+//       // Other rows: can have either service name OR amount (amount can be 0 or negative)
+//       return detail.serviceName.trim() !== "" || detail.amount !== 0;
+//     });
+
+//     if (!selectedUserId || nonEmptyDetails.length === 0 || !effectiveUserId) {
+//       GlobalToastError("Please fill at least the first service detail");
+//       return;
+//     }
+
+//     // Ensure we include 0 amounts and metadata properly
+//     const detailsToSave = nonEmptyDetails.map((detail) => ({
+//       serviceName: detail.serviceName,
+//       amount:
+//         detail.amount === null || isNaN(detail.amount) ? null : detail.amount,
+//       recordId: detail.recordId || undefined,
+//       invoiceNumber: detail.invoiceNumber || undefined,
+//       vehicleNumber: detail.vehicleNumber || undefined,
+//     }));
+
+//     setIsUpdatingCheck(true);
+
+//     try {
+//       const checkRef = doc(db, "Checks", editingCheckId);
+//       const prevCheckSnap = await getDoc(checkRef);
+//       const prevCheckData = prevCheckSnap.exists()
+//         ? prevCheckSnap.data()
+//         : null;
+
+//       // Extract previous attached invoices
+//       const prevAttachedInvoices: Array<{
+//         recordId: string;
+//         invoiceNumber?: string;
+//         vehicleNumber?: string;
+//         amount?: number;
+//       }> = (prevCheckData?.attachedInvoices || []).map((inv: any) => ({
+//         recordId: inv.recordId,
+//         invoiceNumber: inv.invoiceNumber,
+//         vehicleNumber: inv.vehicleNumber,
+//         amount:
+//           typeof inv.amount === "number" ? inv.amount : inv.amountPaid || 0,
+//       }));
+
+//       // If prevAttachedInvoices is empty, try to extract from prevCheckData.serviceDetails if they had recordId
+//       if (prevAttachedInvoices.length === 0 && prevCheckData?.serviceDetails) {
+//         prevCheckData.serviceDetails.forEach((sd: any) => {
+//           if (sd.recordId) {
+//             prevAttachedInvoices.push({
+//               recordId: sd.recordId,
+//               invoiceNumber: sd.invoiceNumber,
+//               vehicleNumber: sd.vehicleNumber,
+//               amount: typeof sd.amount === "number" ? sd.amount : 0,
+//             });
+//           }
+//         });
+//       }
+
+//       // Determine remaining attached invoices from the new detailsToSave
+//       const updatedAttachedInvoices: typeof prevAttachedInvoices = [];
+//       detailsToSave.forEach((detail) => {
+//         let matchedRecordId = detail.recordId;
+//         // If detail doesn't have recordId directly, try matching by description/invoiceNumber from prevAttachedInvoices
+//         if (!matchedRecordId && prevAttachedInvoices.length > 0) {
+//           const found = prevAttachedInvoices.find(
+//             (inv) =>
+//               (inv.invoiceNumber &&
+//                 detail.serviceName.includes(inv.invoiceNumber)) ||
+//               (inv.recordId && detail.serviceName.includes(inv.recordId))
+//           );
+//           if (found) {
+//             matchedRecordId = found.recordId;
+//             detail.recordId = found.recordId;
+//             detail.invoiceNumber = found.invoiceNumber;
+//             detail.vehicleNumber = found.vehicleNumber;
+//           }
+//         }
+
+//         if (matchedRecordId && (detail.amount || 0) > 0) {
+//           updatedAttachedInvoices.push({
+//             recordId: matchedRecordId,
+//             invoiceNumber: detail.invoiceNumber,
+//             vehicleNumber: detail.vehicleNumber,
+//             amount: detail.amount || 0,
+//           });
+//         }
+//       });
+
+//       // Identify removed invoices (were on check previously, but no longer present)
+//       const removedInvoices = prevAttachedInvoices.filter(
+//         (prevInv) =>
+//           !updatedAttachedInvoices.some(
+//             (currInv) => currInv.recordId === prevInv.recordId
+//           )
+//       );
+
+//       // Identify modified invoices (amount changed)
+//       const modifiedInvoices = updatedAttachedInvoices.filter((currInv) => {
+//         const prevInv = prevAttachedInvoices.find(
+//           (p) => p.recordId === currInv.recordId
+//         );
+//         return prevInv && prevInv.amount !== currInv.amount;
+//       });
+
+//       // Update check document in Firestore
+//       await updateDoc(checkRef, {
+//         type: selectedType,
+//         userId: selectedUserId,
+//         userName: selectedUserName,
+//         serviceDetails: detailsToSave,
+//         totalAmount: totalAmount,
+//         memoNumber: memoNumber || null,
+//         date: Timestamp.fromDate(selectedDate),
+//         attachedInvoices: updatedAttachedInvoices,
+//         updatedAt: serverTimestamp(),
+//       });
+
+//       // Perform rollback / recalculation on DataServices records if invoices were removed or modified
+//       if (removedInvoices.length > 0 || modifiedInvoices.length > 0) {
+//         const batch = writeBatch(db);
+//         const nowIso = new Date().toISOString();
+//         const checkNumStr = String(
+//           editingCheckNumber || prevCheckData?.checkNumber || ""
+//         );
+//         const checkPaymentId = `PAY-CHK-${checkNumStr}`;
+
+//         // Fetch team members for synchronization
+//         const teamMembersQuery = query(
+//           collection(db, "Users"),
+//           where("createdBy", "==", effectiveUserId),
+//           where("isTeamMember", "==", true)
+//         );
+//         const teamMembersSnapshot = await getDocs(teamMembersQuery);
+//         const memberIds = teamMembersSnapshot.docs.map((docSnap) => docSnap.id);
+
+//         const syncRecordAdjustment = async (
+//           recordId: string,
+//           action: "remove" | "modify",
+//           newAmount: number = 0
+//         ) => {
+//           const ownerRecordRef = doc(
+//             db,
+//             "Users",
+//             effectiveUserId,
+//             "DataServices",
+//             recordId
+//           );
+//           let recordSnap = await getDoc(ownerRecordRef);
+//           let targetOwnerRef = ownerRecordRef;
+
+//           if (!recordSnap.exists()) {
+//             const globalRecordRef = doc(db, "DataServicesRecords", recordId);
+//             const globalSnap = await getDoc(globalRecordRef);
+//             if (globalSnap.exists()) {
+//               recordSnap = globalSnap;
+//             } else if (user?.uid && user.uid !== effectiveUserId) {
+//               const userRecordRef = doc(
+//                 db,
+//                 "Users",
+//                 user.uid,
+//                 "DataServices",
+//                 recordId
+//               );
+//               const userSnap = await getDoc(userRecordRef);
+//               if (userSnap.exists()) {
+//                 recordSnap = userSnap;
+//                 targetOwnerRef = userRecordRef;
+//               }
+//             }
+//           }
+
+//           if (!recordSnap.exists()) return;
+
+//           const recData = recordSnap.data();
+//           const totalInv =
+//             parseFloat(
+//               String(recData.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+//             ) || 0;
+
+//           const existingHist: any[] = Array.isArray(recData.paymentHistory)
+//             ? recData.paymentHistory
+//             : [];
+
+//           let updatedHistory: any[] = [];
+//           if (action === "remove") {
+//             // Remove the payment entry for this check
+//             updatedHistory = existingHist.filter(
+//               (p: any) =>
+//                 p.checkId !== editingCheckId &&
+//                 p.paymentId !== checkPaymentId &&
+//                 String(p.checkNumber) !== checkNumStr
+//             );
+//           } else if (action === "modify") {
+//             // Update the payment amount for this check
+//             updatedHistory = existingHist.map((p: any) => {
+//               if (
+//                 p.checkId === editingCheckId ||
+//                 p.paymentId === checkPaymentId ||
+//                 String(p.checkNumber) === checkNumStr
+//               ) {
+//                 return {
+//                   ...p,
+//                   amountPaid: newAmount,
+//                   updatedAt: nowIso,
+//                 };
+//               }
+//               return p;
+//             });
+//           }
+
+//           // Recalculate paid amount, balance and payment status from updated history
+//           const newPaid = Number(
+//             updatedHistory
+//               .reduce(
+//                 (sum: number, p: any) => sum + (Number(p.amountPaid) || 0),
+//                 0
+//               )
+//               .toFixed(2)
+//           );
+//           const newBalance = Number(Math.max(0, totalInv - newPaid).toFixed(2));
+//           let newStatus: "Unpaid" | "Partially Paid" | "Paid" = "Unpaid";
+//           if (newPaid >= totalInv && totalInv > 0) {
+//             newStatus = "Paid";
+//           } else if (newPaid > 0) {
+//             newStatus = "Partially Paid";
+//           } else {
+//             newStatus = "Unpaid";
+//           }
+
+//           const updatePayload = {
+//             paidAmount: newPaid,
+//             balanceAmount: newBalance,
+//             paymentStatus: newStatus,
+//             paymentHistory: updatedHistory,
+//             updatedAt: nowIso,
+//           };
+
+//           // Update owner record
+//           batch.set(targetOwnerRef, updatePayload, { merge: true });
+
+//           // Update global record
+//           const globalRecordRef = doc(db, "DataServicesRecords", recordId);
+//           batch.set(globalRecordRef, updatePayload, { merge: true });
+
+//           // Sync team members
+//           for (const mId of memberIds) {
+//             if (mId === effectiveUserId) continue;
+//             const memberRecRef = doc(
+//               db,
+//               "Users",
+//               mId,
+//               "DataServices",
+//               recordId
+//             );
+//             const mSnap = await getDoc(memberRecRef);
+//             if (mSnap.exists()) {
+//               batch.set(memberRecRef, updatePayload, { merge: true });
+//             }
+//           }
+//         };
+
+//         // Process removed invoices
+//         for (const rem of removedInvoices) {
+//           await syncRecordAdjustment(rem.recordId, "remove");
+//         }
+
+//         // Process modified invoices
+//         for (const mod of modifiedInvoices) {
+//           await syncRecordAdjustment(mod.recordId, "modify", mod.amount);
+//         }
+
+//         // Also update Master Payment Ledger InvoicePayments entry
+//         try {
+//           const ledgerQuery = query(
+//             collection(db, "Users", effectiveUserId, "InvoicePayments"),
+//             where("checkId", "==", editingCheckId)
+//           );
+//           const ledgerSnap = await getDocs(ledgerQuery);
+//           for (const lDoc of ledgerSnap.docs) {
+//             if (updatedAttachedInvoices.length === 0) {
+//               batch.delete(lDoc.ref);
+//             } else {
+//               batch.update(lDoc.ref, {
+//                 totalAmount: totalAmount,
+//                 invoices: updatedAttachedInvoices,
+//                 updatedAt: nowIso,
+//               });
+//             }
+//           }
+//         } catch (lErr) {
+//           console.error("Error updating ledger entry:", lErr);
+//         }
+
+//         await batch.commit();
+//       }
+
+//       GlobalToastSuccess("Check updated successfully!");
+//       handleCancelEditCheck();
+//       fetchChecks();
+//     } catch (error) {
+//       console.error(error);
+//       GlobalToastError("Error updating check");
+//     } finally {
+//       setIsUpdatingCheck(false);
+//     }
+//   };
+
+//   const handlePrint = async (check: Check) => {
+//     // Fetch address if missing
+//     let printCheck = { ...check };
+//     if (!check.address || !check.city || !check.state) {
+//       try {
+//         const userAddress = await fetchUserAddress(check.userId);
+//         printCheck = {
+//           ...check,
+//           address: userAddress.street || "",
+//           city: userAddress.city || "",
+//           state: userAddress.state || "",
+//           postalCode: userAddress.postalCode || "",
+//           country: userAddress.country || "",
+//         };
+//       } catch (error) {
+//         console.error("Error fetching user address:", error);
+//       }
+//     }
+
+//     /* -----------------------------
+//       Words conversion functions
+//      ----------------------------- */
+//     function numberToWords(num: number): string {
+//       if (num === 0) return "Zero";
+
+//       const units = [
+//         "",
+//         "One",
+//         "Two",
+//         "Three",
+//         "Four",
+//         "Five",
+//         "Six",
+//         "Seven",
+//         "Eight",
+//         "Nine",
+//       ];
+
+//       const teens = [
+//         "Ten",
+//         "Eleven",
+//         "Twelve",
+//         "Thirteen",
+//         "Fourteen",
+//         "Fifteen",
+//         "Sixteen",
+//         "Seventeen",
+//         "Eighteen",
+//         "Nineteen",
+//       ];
+
+//       const tens = [
+//         "",
+//         "",
+//         "Twenty",
+//         "Thirty",
+//         "Forty",
+//         "Fifty",
+//         "Sixty",
+//         "Seventy",
+//         "Eighty",
+//         "Ninety",
+//       ];
+
+//       function underThousand(n: number): string {
+//         let w = "";
+
+//         if (Math.floor(n / 100) > 0) {
+//           w += units[Math.floor(n / 100)] + " Hundred ";
+//           n %= 100;
+//         }
+
+//         if (n > 0) {
+//           if (n < 10) w += units[n];
+//           else if (n < 20) w += teens[n - 10];
+//           else {
+//             w += tens[Math.floor(n / 10)];
+//             if (n % 10 > 0) w += " " + units[n % 10];
+//           }
+//         }
+
+//         return w.trim();
+//       }
+
+//       let words = "";
+
+//       const billions = Math.floor(num / 1_000_000_000);
+//       if (billions > 0) {
+//         words += underThousand(billions) + " Billion ";
+//         num %= 1_000_000_000;
+//       }
+
+//       const millions = Math.floor(num / 1_000_000);
+//       if (millions > 0) {
+//         words += underThousand(millions) + " Million ";
+//         num %= 1_000_000;
+//       }
+
+//       const thousands = Math.floor(num / 1000);
+//       if (thousands > 0) {
+//         words += underThousand(thousands) + " Thousand ";
+//         num %= 1000;
+//       }
+
+//       if (num > 0) {
+//         words += underThousand(num);
+//       }
+
+//       return words.trim();
+//     }
+
+//     function amountToWords(amount: number): string {
+//       const whole = Math.floor(amount);
+//       const cents = Math.round((amount - whole) * 100);
+//       const words = numberToWords(whole);
+//       const centsText = `${cents.toString().padStart(2, "0")}/100`;
+//       return `${words} and ${centsText}`;
+//     }
+
+//     /* -----------------------------
+//       ADDRESS LINES
+//      ----------------------------- */
+//     const addressLines: string[] = [];
+
+//     if (printCheck.address)
+//       addressLines.push(printCheck.address.toString().toUpperCase());
+
+//     if (printCheck.city || printCheck.state) {
+//       const parts = [];
+//       if (printCheck.city) parts.push(printCheck.city.toUpperCase());
+//       if (printCheck.state) parts.push(printCheck.state.toUpperCase());
+//       addressLines.push(parts.join(", "));
+//     }
+
+//     if (printCheck.country || printCheck.postalCode) {
+//       const parts = [];
+//       if (printCheck.country) parts.push(printCheck.country.toUpperCase());
+//       if (printCheck.postalCode)
+//         parts.push(printCheck.postalCode.toUpperCase());
+//       addressLines.push(parts.join(", "));
+//     }
+
+//     // Dynamic space below address (converted from Flutter)
+//     let extraMm = 0;
+//     const lineCount = addressLines.length;
+//     if (lineCount === 0) extraMm = 4;
+//     else if (lineCount === 1) extraMm = 7;
+//     else if (lineCount === 2) extraMm = 4;
+//     else extraMm = 2.5;
+
+//     /* -----------------------------
+//       TOP OFFSET (you chose 10mm)
+//      ----------------------------- */
+//     const globalTop = 9;
+
+//     const dateTopMm = globalTop + 8;
+//     const payeeTopMm = globalTop + 23;
+//     const wordsTopMm = globalTop + 32;
+//     const addressTopMm = globalTop + 42;
+//     const memoTopMm = globalTop + 57 + extraMm;
+//     const detailsTopMm = globalTop + 90 + extraMm;
+//     const duplicateTopMm = globalTop + 190 + extraMm;
+//     // const duplicateTopMm = globalTop + 100 + extraMm;
+
+//     /* -----------------------------
+//       Prepare values
+//      ----------------------------- */
+//     const formattedDate = format(printCheck.date, "MM/dd/yyyy");
+//     // const totalFormatted = Number(printCheck.totalAmount).toFixed(2);
+//     const amountWordsFormatted = `****${amountToWords(
+//       Number(printCheck.totalAmount)
+//     )}*******************`;
+
+//     /* -----------------------------
+//       Prepare printable service details
+//       (Include all invoice numbers / descriptions formatted cleanly)
+//      ----------------------------- */
+//     const activeDetails = (printCheck.serviceDetails || []).filter((detail) => {
+//       const hasDescription = (detail.serviceName?.trim() ?? "") !== "";
+//       const hasAmount =
+//         detail.amount !== null &&
+//         detail.amount !== undefined &&
+//         Number(detail.amount) > 0;
+//       return hasDescription || hasAmount;
+//     });
+
+//     const allDescriptions = activeDetails
+//       .map((d) => d.serviceName?.trim() ?? "")
+//       .filter((name) => name.length > 0);
+
+//     const fullDescription =
+//       allDescriptions.length > 0 ? allDescriptions.join(", ") : "";
+
+//     const printableDetails: ServiceDetail[] = [
+//       {
+//         serviceName: fullDescription,
+//         amount: printCheck.totalAmount,
+//       },
+//     ];
+
+//     /* -----------------------------
+//       Open Print Window
+//      ----------------------------- */
+//     const printWindow = window.open("", "_blank");
+//     if (!printWindow) return;
+
+//     const html = `
+// <!doctype html>
+// <html>
+//   <head>
+//     <meta charset="utf-8" />
+//     <title>Check</title>
+
+//     <style>
+//       @page { size: A4; margin: 0; }
+
+//       /* LOAD UNIVERSE FONT */
+//       @font-face {
+//         font-family: "Univers";
+//         src: url("/fonts/UniversRegular.ttf") format("truetype");
+//         font-weight: normal;
+//         font-style: normal;
+//       }
+
+//       body {
+//         margin: 0;
+//         padding: 0;
+//         background: white;
+//         font-family: "Univers", sans-serif;
+//         line-height: 1.1;
+//         padding-top: 3mm;
+//       }
+
+//       .check-container {
+//         width: 210mm;
+//         // height: 297mm;
+//         position: relative;
+//         font-family: "Univers", sans-serif;
+//         margin-left: -3mm;
+//         margin-top: 0.7mm; /** adjust as needed */
+//       }
+
+//       /* DATE — MOVED RIGHT BY 6mm */
+//       .date-row {
+//         position: absolute;
+//         top: ${dateTopMm}mm;
+//         right: 10mm;   /* was 9mm → moved 1mm more right */
+//         font-size: 11pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       /* PAYEE + AMOUNT */
+//       .payee-row {
+//         position: absolute;
+//         top: ${payeeTopMm}mm;
+//         left: 25mm;     /* 25 was 15mm → moved 10mm more left */
+//         right: 7mm;    /* was 10mm → moved 2mm left */
+//         font-size: 11pt;
+//         text-transform: uppercase;
+//         display: flex;
+//         justify-content: space-between;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       .payee-amount {
+//         margin-left: auto;
+//         }
+
+//       /* AMOUNT IN WORDS */
+//       .amount-words {
+//         position: absolute;
+//         top: ${wordsTopMm}mm;
+//         left: 15mm;
+//         font-size: 11pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       /* ADDRESS */
+//       .address-section {
+//         position: absolute;
+//         top: ${addressTopMm}mm;
+//         left: 20mm; /** was 15mm → moved 5mm more right */
+//         font-size: 11pt;
+//         text-transform: uppercase;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+//       .address-line {
+//         margin: 2px 0;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       /* MEMO */
+//       .memo-section {
+//         position: absolute;
+//         top: ${memoTopMm + 3}mm;
+//         left: 20mm; /** was 15mm → moved 5mm more right */
+//         font-size: 11pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       /* DETAILS SECTION */
+//       .details-section {
+//         position: absolute;
+//         top: ${detailsTopMm}mm;
+//         left: 15mm;
+//         right: 9mm;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       .check-header {
+//         display: flex;
+//         justify-content: space-between;
+//         text-transform: uppercase;
+//         margin-bottom: 5px;
+//         font-size: 12pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       .service-line {
+//         display: flex;
+//         justify-content: space-between;
+//         align-items: flex-start;
+//         font-size: 11pt;
+//         margin: 0;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//         gap: 15px;
+//       }
+
+//       .service-description {
+//         flex: 1;
+//         max-width: 148mm;
+//         line-height: 1.35;
+//         word-break: break-word;
+//         white-space: normal;
+//       }
+
+//       .service-amount {
+//         white-space: nowrap;
+//         text-align: right;
+//         font-size: 12pt;
+//       }
+
+//       .total-line {
+//         font-size: 13pt;
+//         display: flex;
+//         justify-content: flex-end;
+//         margin-top: 4px;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+
+//       /* DUPLICATE SECTION */
+//       .duplicate-section {
+//         position: absolute;
+//         /* top: ${duplicateTopMm}mm; */
+//         top: 190mm;
+//         left: 15mm;
+//         right: 9mm;
+//         font-size: 12pt;
+//         font-weight: 400;
+//         font-family: "Univers", sans-serif;
+//       }
+//     </style>
+//   </head>
+
+//   <body>
+//     <div class="check-container">
+//       <div class="date-row">${formattedDate}</div>
+
+//       <div class="payee-row">
+//         <div>${String(printCheck.userName).toUpperCase()}</div>
+//         <div class="payee-amount">**${formatAmount(
+//           printCheck.totalAmount
+//         )}</div>
+//       </div>
+
+//       <div class="amount-words">${amountWordsFormatted}</div>
+
+//       <div class="address-section">
+//         ${addressLines
+//           .map((l) => `<div class="address-line">${l}</div>`)
+//           .join("")}
+//       </div>
+
+//       <div class="memo-section">${printCheck.memoNumber || ""}</div>
+
+//       <div class="details-section">
+//         <div class="check-header">
+//           <div>${String(printCheck.userName).toUpperCase()}</div>
+//           <div>${formattedDate}</div>
+//         </div>
+
+//         ${printableDetails
+//           .map((detail, index) => {
+//             const description = detail.serviceName?.trim() ?? "";
+//             const amount = detail.amount ?? 0;
+//             const isFirst = index === 0;
+//             const hasDescription = description !== "";
+
+//             const showAmount = isFirst || amount !== 0 || !hasDescription;
+
+//             return `
+//       <div class="service-line">
+//         <div class="service-description">${
+//           hasDescription ? description : ""
+//         }</div>
+//         ${
+//           showAmount
+//             ? `<div class="service-amount">$${formatAmount(amount)}</div>`
+//             : ""
+//         }
+//       </div>
+//     `;
+//           })
+//           .join("")}
+
+//           ${
+//             printCheck.memoNumber
+//               ? `
+//         <div class="service-line" style="margin-top: 4px;">
+//           <div class="service-description">${printCheck.memoNumber}</div>
+//         </div>
+// `
+//               : ""
+//           }
+
+//         <div class="total-line">$${formatAmount(printCheck.totalAmount)}</div>
+//       </div>
+
+//       <div class="duplicate-section">
+//         <div class="check-header">
+//           <div>${String(printCheck.userName).toUpperCase()}</div>
+//           <div>${formattedDate}</div>
+//         </div>
+
+//         ${printableDetails
+//           .map((detail, index) => {
+//             const description = detail.serviceName?.trim() ?? "";
+//             const amount = detail.amount ?? 0;
+//             const isFirst = index === 0;
+//             const hasDescription = description !== "";
+
+//             const showAmount = isFirst || amount !== 0 || !hasDescription;
+
+//             return `
+//       <div class="service-line">
+//         <div class="service-description">${
+//           hasDescription ? description : ""
+//         }</div>
+//         ${
+//           showAmount
+//             ? `<div class="service-amount">$${formatAmount(amount)}</div>`
+//             : ""
+//         }
+//       </div>
+//     `;
+//           })
+//           .join("")}
+
+//           ${
+//             printCheck.memoNumber
+//               ? `
+//       <div class="service-line" style="margin-top: 4px;">
+//         <div class="service-description">${printCheck.memoNumber}</div>
+//       </div>
+// `
+//               : ""
+//           }
+
+//         <div class="total-line">$${formatAmount(printCheck.totalAmount)}</div>
+//       </div>
+
+//     </div>
+
+//     <script>
+//       window.onload = function() {
+//         setTimeout(() => window.print(), 300);
+//       };
+//     </script>
+//   </body>
+// </html>
+// `;
+
+//     printWindow.document.write(html);
+//     printWindow.document.close();
+//   };
+
+//   const fetchUserAddress = async (userId: string) => {
+//     if (!userId || userId.startsWith("vendor_")) {
+//       return {
+//         street: "",
+//         city: "",
+//         state: "",
+//         postalCode: "",
+//         country: "",
+//       };
+//     }
+//     try {
+//       const userDoc = await getDoc(doc(db, "Users", userId));
+//       if (userDoc.exists()) {
+//         const userData = userDoc.data();
+//         return {
+//           street: userData.address || userData.street || "",
+//           city: userData.city || "",
+//           state: userData.state || "",
+//           postalCode:
+//             userData.zipCode || userData.zip || userData.postalCode || "",
+//           country: userData.country || "",
+//         };
+//       }
+//       return {
+//         street: "",
+//         city: "",
+//         state: "",
+//         postalCode: "",
+//         country: "",
+//       };
+//     } catch (error) {
+//       console.warn("User address not found for userId:", userId);
+//       return {
+//         street: "",
+//         city: "",
+//         state: "",
+//         postalCode: "",
+//         country: "",
+//       };
+//     }
+//   };
+
+//   if (!user) {
+//     return <div>Please log in to access the manage team page.</div>;
+//   }
+
+//   if (isLoading) {
+//     return <LoadingIndicator />;
+//   }
+
+//   if (!isCheque) {
+//     return <div>You do not have permission to access this page.</div>;
+//   }
+
+//   // Format number with commas and 2 decimal places
+//   const formatAmount = (amount: number): string => {
+//     return new Intl.NumberFormat("en-US", {
+//       minimumFractionDigits: 2,
+//       maximumFractionDigits: 2,
+//     }).format(amount);
+//   };
+
+//   // helper function
+//   const numberToWords = (num: number): string => {
+//     if (num === 0) return "Zero";
+
+//     const units = [
+//       "",
+//       "One",
+//       "Two",
+//       "Three",
+//       "Four",
+//       "Five",
+//       "Six",
+//       "Seven",
+//       "Eight",
+//       "Nine",
+//     ];
+
+//     const teens = [
+//       "Ten",
+//       "Eleven",
+//       "Twelve",
+//       "Thirteen",
+//       "Fourteen",
+//       "Fifteen",
+//       "Sixteen",
+//       "Seventeen",
+//       "Eighteen",
+//       "Nineteen",
+//     ];
+
+//     const tens = [
+//       "",
+//       "",
+//       "Twenty",
+//       "Thirty",
+//       "Forty",
+//       "Fifty",
+//       "Sixty",
+//       "Seventy",
+//       "Eighty",
+//       "Ninety",
+//     ];
+
+//     function underThousand(n: number): string {
+//       let w = "";
+
+//       if (Math.floor(n / 100) > 0) {
+//         w += units[Math.floor(n / 100)] + " Hundred ";
+//         n %= 100;
+//       }
+
+//       if (n > 0) {
+//         if (n < 10) w += units[n];
+//         else if (n < 20) w += teens[n - 10];
+//         else {
+//           w += tens[Math.floor(n / 10)];
+//           if (n % 10 > 0) w += " " + units[n % 10];
+//         }
+//       }
+
+//       return w.trim();
+//     }
+
+//     let words = "";
+
+//     const billions = Math.floor(num / 1_000_000_000);
+//     if (billions > 0) {
+//       words += underThousand(billions) + " Billion ";
+//       num %= 1_000_000_000;
+//     }
+
+//     const millions = Math.floor(num / 1_000_000);
+//     if (millions > 0) {
+//       words += underThousand(millions) + " Million ";
+//       num %= 1_000_000;
+//     }
+
+//     const thousands = Math.floor(num / 1000);
+//     if (thousands > 0) {
+//       words += underThousand(thousands) + " Thousand ";
+//       num %= 1000;
+//     }
+
+//     if (num > 0) {
+//       words += underThousand(num);
+//     }
+
+//     return words.trim();
+//   };
+
+//   const amountToWords = (amount: number): string => {
+//     const whole = Math.floor(Math.abs(amount));
+//     const cents = Math.round((Math.abs(amount) - whole) * 100);
+//     const words = numberToWords(whole);
+//     const centsText = `${cents.toString().padStart(2, "0")}/100`;
+
+//     // Add negative sign if amount is negative
+//     const sign = amount < 0 ? "Negative " : "";
+
+//     return `${sign}${words} and ${centsText}`;
+//   };
+
+//   return (
+//     <div
+//       key={role}
+//       className="container py-4 mx-auto"
+//       style={{ maxWidth: "1200px" }}
+//     >
+//       {/* Header Section */}
+//       <div className="text-center mb-8">
+//         <div className="inline-flex items-center justify-center bg-white p-4 rounded-full shadow-lg mb-4">
+//           <FaFileAlt className="text-[#F96176] mr-3" size={32} />
+//           <h1 className="text-3xl font-serif font-bold text-gray-800">
+//             Check Management
+//           </h1>
+//         </div>
+//         <p className="text-lg text-gray-600 mb-6 italic">
+//           &quot;Track and manage all check transactions with precision&quot;
+//         </p>
+
+//         {isAnonymous && !isProfileComplete ? (
+//           <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
+//             <p className="text-red-700 font-medium">
+//               Please create an account to write checks.
+//             </p>
+//           </div>
+//         ) : (
+//           <div className="flex justify-center space-x-4">
+//             <button
+//               onClick={
+//                 showWriteCheck || showEditCheck
+//                   ? handleCancelWriteCheck
+//                   : handleWriteCheck
+//               }
+//               className="flex items-center px-6 py-2.5 bg-[#F96176] rounded-full shadow-md hover:bg-[#F96176] transition-all duration-300 text-white"
+//             >
+//               <FiPlus className="mr-2" />
+//               {showWriteCheck || showEditCheck ? "Cancel" : "Write Check"}
+//             </button>
+
+//             <button
+//               onClick={() => setShowAddSeries(true)}
+//               className="flex items-center px-6 py-2.5 bg-[#58BB87] rounded-full shadow-md hover:bg-[#58BB87] transition-all duration-300 text-white"
+//             >
+//               <FiHash className="mr-2" />
+//               Add Check Series
+//             </button>
+
+//             <button
+//               onClick={() => setShowCheckSeries(!showCheckSeries)}
+//               className="flex items-center justify-center px-6 py-2.5 bg-gray-100 rounded-full shadow-md hover:bg-gray-200 transition-all duration-300 text-gray-700 mx-auto"
+//             >
+//               <FiHash className="mr-2" />
+//               {showCheckSeries ? "Hide Check Series" : "Show Check Series"}
+//             </button>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Add Check Series Modal */}
+//       {showAddSeries && (
+//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+//           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+//             <div className="flex items-center justify-between mb-6">
+//               <div className="flex items-center">
+//                 <div className="bg-green-100 p-3 rounded-full mr-4">
+//                   <FiHash className="text-green-600" size={24} />
+//                 </div>
+//                 <div>
+//                   <h3 className="text-2xl font-serif font-bold text-gray-800">
+//                     Add Check Series
+//                   </h3>
+//                   <p className="text-gray-600">
+//                     Create a new range of check numbers
+//                   </p>
+//                 </div>
+//               </div>
+//               <button
+//                 onClick={() => setShowAddSeries(false)}
+//                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+//               >
+//                 <FiX size={20} />
+//               </button>
+//             </div>
+
+//             <div className="space-y-4">
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Start Number (e.g., RMS001)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={startSeriesNumber}
+//                   onChange={(e) => setStartSeriesNumber(e.target.value)}
+//                   placeholder="Enter start number"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   End Number (e.g., RMS050)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={endSeriesNumber}
+//                   onChange={(e) => setEndSeriesNumber(e.target.value)}
+//                   placeholder="Enter end number"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+
+//               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+//                 <p className="text-sm text-yellow-800">
+//                   <strong>Note:</strong> Make sure the prefix (e.g.,
+//                   &quot;RMS&quot;) matches for both numbers. The end number must
+//                   be greater than the start number.
+//                 </p>
+//               </div>
+//             </div>
+
+//             <div className="flex justify-end space-x-3 mt-6">
+//               <button
+//                 onClick={() => setShowAddSeries(false)}
+//                 className="px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 onClick={handleAddCheckSeries}
+//                 disabled={addingSeries}
+//                 className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
+//                   addingSeries
+//                     ? "bg-gray-300 cursor-not-allowed"
+//                     : "bg-[#58BB87] hover:bg-[#58BB87]"
+//                 } text-white`}
+//               >
+//                 {addingSeries ? (
+//                   <>
+//                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+//                     Adding...
+//                   </>
+//                 ) : (
+//                   <>
+//                     <FiSave className="mr-2" />
+//                     Save Series
+//                   </>
+//                 )}
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {showCheckSeries && (
+//         <>
+//           {/* Current Check Number Display */}
+//           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8 text-center">
+//             <p className="text-lg font-semibold text-blue-800">
+//               Current Check Number: {currentCheckNumber || "Not set"}
+//             </p>
+//           </div>
+//           {/* Check Series List */}
+//           {checkSeries.length > 0 && (
+//             <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+//               <div className="flex items-center justify-between mb-6">
+//                 <div className="flex items-center">
+//                   <div className="bg-green-100 p-2 rounded-full mr-3">
+//                     <FiHash className="text-green-600" size={20} />
+//                   </div>
+//                   <h3 className="text-xl font-serif font-bold text-gray-800">
+//                     Check Series
+//                   </h3>
+//                 </div>
+//                 <span className="text-sm text-gray-500">
+//                   {checkSeries.length} series
+//                 </span>
+//               </div>
+
+//               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//                 {checkSeries.map((series) => (
+//                   <div
+//                     key={series.id}
+//                     className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-green-300 transition-all"
+//                   >
+//                     <div className="flex justify-between items-start mb-2">
+//                       <h4 className="font-semibold text-gray-800">
+//                         {series.startNumber} - {series.endNumber}
+//                       </h4>
+//                       <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+//                         {series.totalChecks} checks
+//                       </span>
+//                     </div>
+//                     <p className="text-sm text-gray-600">
+//                       Created: {format(series.createdAt, "MMM dd, yyyy")}
+//                     </p>
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           )}
+//         </>
+//       )}
+
+//       {/* Edit Check Section */}
+//       {showEditCheck && (
+//         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
+//           <div className="flex items-center justify-between mb-6">
+//             <div className="flex items-center">
+//               <div className="bg-yellow-100 p-3 rounded-full mr-4">
+//                 <FiEdit2 className="text-yellow-600" size={24} />
+//               </div>
+//               <div>
+//                 <h3 className="text-2xl font-serif font-bold text-gray-800">
+//                   Edit Check
+//                 </h3>
+//                 <p className="text-gray-600">Update check details below</p>
+//               </div>
+//             </div>
+//             <button
+//               onClick={handleCancelEditCheck}
+//               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+//             >
+//               <FiX size={20} />
+//             </button>
+//           </div>
+
+//           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Check Number
+//               </label>
+//               <input
+//                 type="text"
+//                 value={editingCheckNumber}
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-500"
+//                 readOnly
+//                 disabled
+//               />
+//               <p className="mt-2 text-sm text-gray-500">
+//                 Check number cannot be changed
+//               </p>
+//             </div>
+
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Date
+//               </label>
+//               <DatePicker
+//                 selected={selectedDate}
+//                 onChange={(date: Date | null) =>
+//                   setSelectedDate(date || new Date())
+//                 }
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 dateFormat="MMMM d, yyyy"
+//               />
+//             </div>
+
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Recipient Type
+//               </label>
+//               <select
+//                 value={selectedType || ""}
+//                 onChange={(e) => {
+//                   setSelectedType(e.target.value || null);
+//                   setSelectedUserId(null);
+//                   setSelectedUserName(null);
+//                 }}
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//               >
+//                 <option value="">Select Type</option>
+//                 <option value="Manager">Manager</option>
+//                 <option value="Accountant">Accountant</option>
+//                 <option value="Driver">Driver</option>
+//                 <option value="Vendor">Vendor</option>
+//                 <option value="Other Staff">Other Staff</option>
+//               </select>
+//             </div>
+//           </div>
+
+//           {selectedType && (
+//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Recipient Name
+//                 </label>
+//                 <SearchableSelect
+//                   value={selectedUserId || ""}
+//                   onChange={(value) => {
+//                     const member = allMembers.find((m) => m.memberId === value);
+//                     setSelectedUserId(value || null);
+//                     setSelectedUserName(member?.name || null);
+//                   }}
+//                   options={allMembers
+//                     .filter((member) => member.role === selectedType)
+//                     .map((member) => ({
+//                       value: member.memberId,
+//                       label: member.name,
+//                     }))}
+//                   placeholder="Search or select recipient..."
+//                   disabled={!selectedType}
+//                 />
+//                 {selectedUserId && (
+//                   <p className="mt-2 text-sm text-green-600">
+//                     Selected:{" "}
+//                     {
+//                       allMembers.find((m) => m.memberId === selectedUserId)
+//                         ?.name
+//                     }
+//                   </p>
+//                 )}
+//               </div>
+
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Memo (Optional)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={memoNumber}
+//                   onChange={(e) => setMemoNumber(e.target.value)}
+//                   placeholder="Enter memo"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+//             </div>
+//           )}
+
+//           {/* Edit Check Section - Service Details */}
+//           {selectedUserId && (
+//             <>
+//               <div className="mb-6">
+//                 <div className="flex items-center mb-4">
+//                   <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+//                     <FiList className="text-[#F96176]" />
+//                   </div>
+//                   <h4 className="text-lg font-semibold text-gray-800">
+//                     Service Details
+//                   </h4>
+//                 </div>
+
+//                 <div className="space-y-4 mb-6">
+//                   {serviceDetails.map((detail, index) => (
+//                     <div
+//                       key={index}
+//                       className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50/60 p-4 rounded-xl border border-gray-200"
+//                     >
+//                       <div className="md:col-span-7">
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Service Name{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="text"
+//                           value={detail.serviceName}
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const text = e.target.value;
+//                             const words = text.trim().split(/\s+/);
+
+//                             // Limit to 70 words
+//                             if (words.length <= 70) {
+//                               newDetails[index].serviceName = text;
+//                               setServiceDetails(newDetails);
+//                               calculateTotal(newDetails);
+//                             }
+//                           }}
+//                           placeholder={`Enter service description`}
+//                           className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                         <p className="text-sm text-gray-500 mt-1">
+//                           {detail.serviceName.trim() === ""
+//                             ? 0
+//                             : detail.serviceName.trim().split(/\s+/).length}
+//                           /70 words
+//                         </p>
+//                       </div>
+
+//                       <div className="md:col-span-4">
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Amount{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="number"
+//                           step="0.01"
+//                           value={
+//                             detail.amount === null ||
+//                             detail.amount === undefined
+//                               ? ""
+//                               : detail.amount
+//                           }
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const value = e.target.value;
+
+//                             if (value === "") {
+//                               newDetails[index].amount = null;
+//                             } else {
+//                               const numValue = parseFloat(value);
+//                               newDetails[index].amount = isNaN(numValue)
+//                                 ? null
+//                                 : numValue;
+//                             }
+
+//                             setServiceDetails(newDetails);
+//                             calculateTotal(newDetails);
+//                           }}
+//                           placeholder="Enter amount"
+//                           className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                       </div>
+
+//                       <div className="md:col-span-1 flex justify-end md:justify-center md:pt-8">
+//                         <button
+//                           type="button"
+//                           onClick={() => {
+//                             let newDetails = [...serviceDetails];
+//                             if (newDetails.length > 1) {
+//                               newDetails.splice(index, 1);
+//                             } else {
+//                               newDetails = [{ serviceName: "", amount: 0 }];
+//                             }
+//                             setServiceDetails(newDetails);
+//                             calculateTotal(newDetails);
+//                           }}
+//                           title="Delete detail"
+//                           className="p-3 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+//                         >
+//                           <FiTrash2 size={20} />
+//                         </button>
+//                       </div>
+//                     </div>
+//                   ))}
+
+//                   {/* Add "Add More" button if less than 5 rows */}
+//                   {serviceDetails.length < 5 && (
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         const newDetails = [
+//                           ...serviceDetails,
+//                           { serviceName: "", amount: 0 },
+//                         ];
+//                         setServiceDetails(newDetails);
+//                       }}
+//                       className="flex items-center justify-center w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#F96176] hover:bg-[#F96176]/5 transition-all"
+//                     >
+//                       <FiPlus className="mr-2 text-gray-400" />
+//                       <span className="text-gray-500 font-medium">
+//                         Add More Details
+//                       </span>
+//                     </button>
+//                   )}
+//                 </div>
+//               </div>
+
+//               {/* Show total amount */}
+//               {totalAmount !== 0 && (
+//                 <div className="mt-6 pt-4 border-t border-gray-200">
+//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     {/* Numeric Amount */}
+//                     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+//                       <div className="flex justify-between items-center">
+//                         <span className="text-lg font-semibold text-gray-800">
+//                           Total Amount:
+//                         </span>
+//                         <span
+//                           className={`text-2xl font-bold ${
+//                             totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
+//                           }`}
+//                         >
+//                           ${totalAmount.toFixed(2)}
+//                         </span>
+//                       </div>
+//                     </div>
+
+//                     {/* Amount in Words */}
+//                     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+//                       <div className="flex items-start">
+//                         <div className="flex-shrink-0 mt-1">
+//                           <FiFileText className="text-gray-400 mr-2" />
+//                         </div>
+//                         <div className="flex-1">
+//                           <div className="text-sm font-medium text-gray-700 mb-1">
+//                             Amount in Words:
+//                           </div>
+//                           <div className="text-gray-800 font-medium text-sm bg-gray-50 p-3 rounded border border-gray-100">
+//                             {totalAmount === 0 ? (
+//                               <span className="text-gray-400 italic">Zero</span>
+//                             ) : (
+//                               <>
+//                                 {amountToWords(totalAmount)}
+//                                 <div className="mt-1 text-xs text-gray-500">
+//                                   Dollars
+//                                 </div>
+//                               </>
+//                             )}
+//                           </div>
+//                           <p className="text-xs text-gray-500 mt-1 italic">
+//                             This is how it will appear on the check
+//                           </p>
+//                         </div>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {/* Update Check Button */}
+//               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+//                 <button
+//                   onClick={handleCancelEditCheck}
+//                   disabled={isUpdatingCheck}
+//                   className={`px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all ${
+//                     isUpdatingCheck ? "opacity-50 cursor-not-allowed" : ""
+//                   }`}
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={updateCheck}
+//                   disabled={
+//                     isUpdatingCheck ||
+//                     // First row must have service name (amount can be 0)
+//                     serviceDetails[0].serviceName.trim() === ""
+//                   }
+//                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
+//                     isUpdatingCheck ||
+//                     serviceDetails[0].serviceName.trim() === ""
+//                       ? "bg-gray-300 cursor-not-allowed"
+//                       : "bg-[#F96176] hover:bg-[#F96176] cursor-pointer"
+//                   } text-white`}
+//                 >
+//                   {isUpdatingCheck ? (
+//                     <>
+//                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+//                       Updating...
+//                     </>
+//                   ) : (
+//                     <>
+//                       <FiSave className="mr-2" />
+//                       Update Check
+//                     </>
+//                   )}
+//                 </button>
+//               </div>
+//             </>
+//           )}
+//         </div>
+//       )}
+
+//       {/* Write Check Section (Only show when not editing) */}
+//       {showWriteCheck && !showEditCheck && (
+//         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200 transition-all duration-300">
+//           <div className="flex items-center justify-between mb-6">
+//             <div className="flex items-center">
+//               <div className="bg-blue-100 p-3 rounded-full mr-4">
+//                 <FiEdit2 className="text-[#F96176]" size={24} />
+//               </div>
+//               <div>
+//                 <h3 className="text-2xl font-serif font-bold text-gray-800">
+//                   Write New Check
+//                 </h3>
+//                 <p className="text-gray-600">Fill in the check details below</p>
+//               </div>
+//             </div>
+//             <button
+//               onClick={handleCancelWriteCheck}
+//               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all"
+//             >
+//               <FiX size={20} />
+//             </button>
+//           </div>
+
+//           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Check Number
+//               </label>
+//               <input
+//                 type="text"
+//                 value={checkNumber}
+//                 onChange={(e) => setCheckNumber(e.target.value)}
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] bg-gray-50"
+//                 readOnly
+//               />
+//               <p className="mt-2 text-sm text-gray-500">
+//                 Next available check number
+//               </p>
+//             </div>
+
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Date
+//               </label>
+//               <DatePicker
+//                 selected={selectedDate}
+//                 onChange={(date: Date | null) =>
+//                   setSelectedDate(date || new Date())
+//                 }
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 dateFormat="MMMM d, yyyy"
+//               />
+//             </div>
+
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Recipient Type
+//               </label>
+//               <select
+//                 value={selectedType || ""}
+//                 onChange={(e) => {
+//                   setSelectedType(e.target.value || null);
+//                   setSelectedUserId(null);
+//                   setSelectedUserName(null);
+//                 }}
+//                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//               >
+//                 <option value="">Select Type</option>
+//                 <option value="Manager">Manager</option>
+//                 <option value="Accountant">Accountant</option>
+//                 <option value="Driver">Driver</option>
+//                 <option value="Vendor">Vendor</option>
+//                 <option value="Other Staff">Other Staff</option>
+//               </select>
+//             </div>
+//           </div>
+
+//           {selectedType && (
+//             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Recipient Name
+//                 </label>
+//                 <SearchableSelect
+//                   value={selectedUserId || ""}
+//                   onChange={(value) => {
+//                     const member = allMembers.find((m) => m.memberId === value);
+//                     setSelectedUserId(value || null);
+//                     setSelectedUserName(member?.name || null);
+//                   }}
+//                   options={allMembers
+//                     .filter((member) => member.role === selectedType)
+//                     .map((member) => ({
+//                       value: member.memberId,
+//                       label: member.name,
+//                     }))}
+//                   placeholder="Search or select recipient..."
+//                   disabled={!selectedType}
+//                 />
+//                 {selectedUserId && (
+//                   <p className="mt-2 text-sm text-green-600">
+//                     Selected:{" "}
+//                     {
+//                       allMembers.find((m) => m.memberId === selectedUserId)
+//                         ?.name
+//                     }
+//                   </p>
+//                 )}
+//               </div>
+
+//               <div>
+//                 <label className="block text-sm font-medium text-gray-700 mb-2">
+//                   Memo (Optional)
+//                 </label>
+//                 <input
+//                   type="text"
+//                   value={memoNumber}
+//                   onChange={(e) => setMemoNumber(e.target.value)}
+//                   placeholder="Enter memo"
+//                   className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 />
+//               </div>
+//             </div>
+//           )}
+
+//           {selectedUserId && (
+//             <>
+//               <div className="mb-6">
+//                 <div className="flex items-center mb-4">
+//                   <div className="bg-[#F96176]/10 p-2 rounded-full mr-3">
+//                     <FiList className="text-[#F96176]" />
+//                   </div>
+//                   <h4 className="text-lg font-semibold text-gray-800">
+//                     Service Details
+//                   </h4>
+//                 </div>
+
+//                 <div className="space-y-4 mb-6">
+//                   {serviceDetails.map((detail, index) => (
+//                     <div
+//                       key={index}
+//                       className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start bg-gray-50/60 p-4 rounded-xl border border-gray-200"
+//                     >
+//                       <div className="md:col-span-7">
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Service Name{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="text"
+//                           value={detail.serviceName}
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const text = e.target.value;
+//                             const words = text.trim().split(/\s+/);
+
+//                             // Limit to 70 words
+//                             if (words.length <= 70) {
+//                               newDetails[index].serviceName = text;
+//                               setServiceDetails(newDetails);
+//                               calculateTotal(newDetails);
+//                             }
+//                           }}
+//                           placeholder={`Enter service description`}
+//                           className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                         <p className="text-sm text-gray-500 mt-1">
+//                           {detail.serviceName.trim() === ""
+//                             ? 0
+//                             : detail.serviceName.trim().split(/\s+/).length}
+//                           /70 words
+//                         </p>
+//                       </div>
+
+//                       <div className="md:col-span-4">
+//                         <label className="block text-sm font-medium text-gray-700 mb-1">
+//                           Amount{" "}
+//                           {index === 0 && (
+//                             <span className="text-red-500">*</span>
+//                           )}
+//                         </label>
+//                         <input
+//                           type="number"
+//                           step="0.01"
+//                           value={
+//                             detail.amount === null ||
+//                             detail.amount === undefined
+//                               ? ""
+//                               : detail.amount
+//                           }
+//                           onChange={(e) => {
+//                             const newDetails = [...serviceDetails];
+//                             const value = e.target.value;
+
+//                             if (value === "") {
+//                               newDetails[index].amount = null; // empty input
+//                             } else {
+//                               const numValue = parseFloat(value);
+//                               newDetails[index].amount = isNaN(numValue)
+//                                 ? null
+//                                 : numValue; // allows -123, 0, etc.
+//                             }
+
+//                             setServiceDetails(newDetails);
+//                             calculateTotal(newDetails);
+//                           }}
+//                           placeholder="Enter amount"
+//                           className="w-full p-3 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                         />
+//                       </div>
+
+//                       <div className="md:col-span-1 flex justify-end md:justify-center md:pt-8">
+//                         <button
+//                           type="button"
+//                           onClick={() => {
+//                             let newDetails = [...serviceDetails];
+//                             if (newDetails.length > 1) {
+//                               newDetails.splice(index, 1);
+//                             } else {
+//                               newDetails = [{ serviceName: "", amount: 0 }];
+//                             }
+//                             setServiceDetails(newDetails);
+//                             calculateTotal(newDetails);
+//                           }}
+//                           title="Delete detail"
+//                           className="p-3 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+//                         >
+//                           <FiTrash2 size={20} />
+//                         </button>
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               {/* Show total amount */}
+//               {totalAmount !== 0 && (
+//                 <div className="mt-6 pt-4 border-t border-gray-200">
+//                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//                     {/* Numeric Amount */}
+//                     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+//                       <div className="flex justify-between items-center">
+//                         <span className="text-lg font-semibold text-gray-800">
+//                           Total Amount:
+//                         </span>
+//                         <span
+//                           className={`text-2xl font-bold ${
+//                             totalAmount >= 0 ? "text-[#F96176]" : "text-red-600"
+//                           }`}
+//                         >
+//                           ${totalAmount.toFixed(2)}
+//                         </span>
+//                       </div>
+//                     </div>
+
+//                     {/* Amount in Words */}
+//                     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+//                       <div className="flex items-start">
+//                         <div className="flex-shrink-0 mt-1">
+//                           <FiFileText className="text-gray-400 mr-2" />
+//                         </div>
+//                         <div className="flex-1">
+//                           <div className="text-sm font-medium text-gray-700 mb-1">
+//                             Amount in Words:
+//                           </div>
+//                           <div className="text-gray-800 font-medium text-sm bg-gray-50 p-3 rounded border border-gray-100">
+//                             {totalAmount === 0 ? (
+//                               <span className="text-gray-400 italic">Zero</span>
+//                             ) : (
+//                               <>
+//                                 {amountToWords(totalAmount)}
+//                                 <div className="mt-1 text-xs text-gray-500">
+//                                   Dollars
+//                                 </div>
+//                               </>
+//                             )}
+//                           </div>
+//                           <p className="text-xs text-gray-500 mt-1 italic">
+//                             This is how it will appear on the check
+//                           </p>
+//                         </div>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </div>
+//               )}
+
+//               {/* Save Check Button */}
+//               <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+//                 <button
+//                   onClick={handleCancelWriteCheck}
+//                   disabled={isSavingCheck}
+//                   className={`px-6 py-2.5 bg-white border border-gray-300 rounded-full shadow-sm text-gray-700 hover:bg-gray-50 transition-all ${
+//                     isSavingCheck ? "opacity-50 cursor-not-allowed" : ""
+//                   }`}
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={saveCheck}
+//                   disabled={
+//                     isSavingCheck ||
+//                     // First row must have service name (amount can be 0)
+//                     serviceDetails[0].serviceName.trim() === ""
+//                   }
+//                   className={`px-8 py-2.5 rounded-full shadow-sm transition-all flex items-center ${
+//                     isSavingCheck || serviceDetails[0].serviceName.trim() === ""
+//                       ? "bg-gray-300 cursor-not-allowed"
+//                       : "bg-[#F96176] hover:bg-[#F96176]/80 cursor-pointer"
+//                   } text-white`}
+//                 >
+//                   {isSavingCheck ? (
+//                     <>
+//                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+//                       Saving...
+//                     </>
+//                   ) : (
+//                     <>
+//                       <FiSave className="mr-2" />
+//                       Save Check
+//                     </>
+//                   )}
+//                 </button>
+//               </div>
+//             </>
+//           )}
+//         </div>
+//       )}
+
+//       {/* Filters Section */}
+//       <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+//         <div className="flex items-center justify-center mb-6">
+//           <div className="bg-blue-100 p-2 rounded-full mr-3">
+//             <FiFilter className="text-[#F96176]" size={20} />
+//           </div>
+//           <h3 className="text-xl font-serif font-bold text-gray-800">
+//             Filter Checks
+//           </h3>
+//         </div>
+
+//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//           {/* Type Filter */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+//               Filter by Type
+//             </label>
+//             <div className="flex flex-wrap justify-center gap-2">
+//               {["Manager", "Accountant", "Driver", "Vendor", "Other Staff"].map(
+//                 (type) => (
+//                   <button
+//                     key={type}
+//                     className={`px-4 py-1.5 rounded-full text-sm font-medium shadow-sm transition-all ${
+//                       filterType === type
+//                         ? "bg-[#F96176] text-white border border-[#F96176]"
+//                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+//                     }`}
+//                     onClick={() => {
+//                       const newFilterType = filterType === type ? null : type;
+//                       setFilterType(newFilterType);
+//                       setLoadingChecks(true);
+//                       fetchChecks();
+//                     }}
+//                   >
+//                     {type}
+//                     {filterType === type && <FiX className="ml-2 inline" />}
+//                   </button>
+//                 )
+//               )}
+//             </div>
+//           </div>
+
+//           {/* Date Filter */}
+//           <div>
+//             <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+//               Date Range
+//             </label>
+//             <div className="flex items-center justify-center space-x-2">
+//               <button
+//                 onClick={() => setShowDatePicker(!showDatePicker)}
+//                 className={`flex items-center px-4 py-1.5 rounded-full shadow-sm transition-all ${
+//                   startDate
+//                     ? "bg-[#F96176] text-white"
+//                     : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+//                 }`}
+//               >
+//                 <FiCalendar className="mr-2" />
+//                 {startDate ? format(startDate, "MMM dd, yyyy") : "Start Date"}
+//                 {endDate && ` - ${format(endDate, "MMM dd, yyyy")}`}
+//               </button>
+//               {(startDate || endDate) && (
+//                 <button
+//                   onClick={() => {
+//                     setStartDate(null);
+//                     setEndDate(null);
+//                     fetchChecks();
+//                   }}
+//                   className="flex items-center px-3 py-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+//                 >
+//                   <FiX className="mr-1" />
+//                   Clear
+//                 </button>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Date Picker */}
+//       {showDatePicker && (
+//         <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200">
+//           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Start Date
+//               </label>
+//               <DatePicker
+//                 selected={startDate}
+//                 onChange={(date: Date | null) => setStartDate(date)}
+//                 selectsStart
+//                 startDate={startDate}
+//                 endDate={endDate}
+//                 className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 dateFormat="MMMM d, yyyy"
+//               />
+//             </div>
+//             <div>
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 End Date
+//               </label>
+//               <DatePicker
+//                 selected={endDate}
+//                 onChange={(date: Date | null) => setEndDate(date)}
+//                 selectsEnd
+//                 startDate={startDate}
+//                 endDate={endDate}
+//                 minDate={startDate || undefined}
+//                 className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176]"
+//                 dateFormat="MMMM d, yyyy"
+//               />
+//             </div>
+//           </div>
+//           <div className="flex justify-center mt-6">
+//             <button
+//               onClick={() => {
+//                 setShowDatePicker(false);
+//                 fetchChecks();
+//               }}
+//               className="px-6 py-2 bg-[#F96176] text-white rounded-full shadow-md hover:bg-[#F96176] transition-all"
+//             >
+//               Apply Filters
+//             </button>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Checks List */}
+//       {loadingChecks ? (
+//         <div className="text-center my-12 py-12">
+//           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#F96176] mb-4"></div>
+//           <p className="text-gray-600 italic">Loading your checks...</p>
+//         </div>
+//       ) : checks.length === 0 ? (
+//         <div className="bg-white rounded-xl shadow-md p-12 text-center border border-gray-100">
+//           <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+//             <FiFileText size={40} className="text-gray-400" />
+//           </div>
+//           <h3 className="text-2xl font-serif font-bold text-gray-800 mb-2">
+//             No Checks Found
+//           </h3>
+//           <p className="text-gray-600 mb-6 max-w-md mx-auto">
+//             {isAnonymous && !isProfileComplete
+//               ? "Please create an account to write checks."
+//               : "It looks like you haven't written any checks yet. Get started by creating your first check."}
+//           </p>
+//           {!(isAnonymous && !isProfileComplete) &&
+//             !showWriteCheck &&
+//             !showEditCheck && (
+//               <div className="space-x-4">
+//                 <button
+//                   onClick={handleWriteCheck}
+//                   className="px-8 py-3 bg-[#F96176] text-white rounded-full shadow-lg hover:bg-[#F96176] transition-all"
+//                 >
+//                   Write First Check
+//                 </button>
+//                 <button
+//                   onClick={() => setShowAddSeries(true)}
+//                   className="px-8 py-3 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+//                 >
+//                   Add Check Series
+//                 </button>
+//               </div>
+//             )}
+//         </div>
+//       ) : (
+//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+//           {checks.map((check) => (
+//             <div
+//               key={check.id}
+//               className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-all duration-300"
+//             >
+//               <div className="p-6">
+//                 {/* Check Header */}
+//                 <div className="flex justify-between items-start mb-4">
+//                   <div>
+//                     <span
+//                       className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+//                         check.type === "Manager"
+//                           ? "bg-purple-100 text-purple-800"
+//                           : check.type === "Accountant"
+//                           ? "bg-green-100 text-green-800"
+//                           : check.type === "Driver"
+//                           ? "bg-yellow-100 text-yellow-800"
+//                           : check.type === "Vendor"
+//                           ? "bg-red-100 text-red-800"
+//                           : "bg-gray-100 text-gray-800"
+//                       }`}
+//                     >
+//                       {check.type}
+//                     </span>
+//                     <h3 className="text-xl font-bold mt-2 text-gray-800">
+//                       Check #{check.checkNumber}
+//                     </h3>
+//                   </div>
+//                   <div className="flex space-x-2">
+//                     <span className="text-sm text-gray-500">
+//                       {format(check.date, "MMM dd, yyyy")}
+//                     </span>
+//                     {(role === "Owner" || role === "SubOwner") && (
+//                       <button
+//                         onClick={() => handleEditCheck(check.id)}
+//                         className="p-2 bg-yellow-100 rounded-full hover:bg-yellow-200 transition-all"
+//                         title="Edit Check"
+//                       >
+//                         <FiEdit2 className="text-[#F96176]" size={16} />
+//                       </button>
+//                     )}
+//                   </div>
+//                 </div>
+
+//                 {/* Recipient */}
+//                 <div className="flex items-center mb-6">
+//                   <div className="bg-blue-100 p-2 rounded-full mr-3">
+//                     <FiUser className="text-[#F96176]" />
+//                   </div>
+//                   <div>
+//                     <p className="text-sm text-gray-500">Paid To</p>
+//                     <p className="font-medium text-gray-800">
+//                       {check.userName}
+//                     </p>
+//                   </div>
+//                 </div>
+//                 {/** Services */}
+
+//                 <div className="mb-6">
+//                   {check.serviceDetails
+//                     .filter((detail, index) => {
+//                       // Always show the first row
+//                       if (index === 0) return true;
+
+//                       // Show row if description or amount exists
+//                       return (
+//                         (detail.serviceName?.trim() ?? "") !== "" ||
+//                         detail.amount !== null ||
+//                         detail.amount !== undefined
+//                       );
+//                     })
+//                     .map((detail, index) => {
+//                       const description = detail.serviceName?.trim() ?? "";
+//                       const amount = detail.amount ?? 0;
+//                       const isFirst = index === 0;
+//                       const hasDescription = description !== "";
+
+//                       const showAmount =
+//                         isFirst || amount !== 0 || !hasDescription;
+
+//                       return (
+//                         <div
+//                           key={index}
+//                           className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+//                         >
+//                           {/* LEFT SIDE: Description (only if available) */}
+//                           {hasDescription ? (
+//                             <p className="text-gray-700">{description}</p>
+//                           ) : (
+//                             // If no description → create an empty div so layout stays aligned
+//                             <div></div>
+//                           )}
+
+//                           {/* RIGHT SIDE: Amount */}
+//                           {showAmount && (
+//                             <p className="font-semibold text-gray-800">
+//                               ${formatAmount(amount)}
+//                             </p>
+//                           )}
+//                         </div>
+//                       );
+//                     })}
+//                 </div>
+
+//                 {/* Footer */}
+//                 <div className="pt-4 border-t border-gray-100">
+//                   <div className="flex justify-between items-center">
+//                     <div>
+//                       <h4 className="font-bold text-gray-800">Total Amount</h4>
+//                       {check.memoNumber && (
+//                         <p className="text-sm text-gray-500">
+//                           Memo: {check.memoNumber}
+//                         </p>
+//                       )}
+//                     </div>
+//                     <div className="flex items-center">
+//                       <span className="text-2xl font-bold text-[#F96176] mr-4">
+//                         {/* ${check.totalAmount.toFixed(2)} */}$
+//                         {formatAmount(check.totalAmount ?? 0)}
+//                       </span>
+//                       <button
+//                         onClick={() => handlePrint(check)}
+//                         className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-all"
+//                         title="Print Check"
+//                       >
+//                         <FiPrinter className="text-gray-600" />
+//                       </button>
+//                     </div>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+
+//       {/* Hidden print content */}
+//       <div id="print-check-content" style={{ display: "none" }}></div>
+//     </div>
+//   );
+// }
+
+// interface SearchableSelectProps {
+//   value: string;
+//   onChange: (value: string) => void;
+//   options: { value: string; label: string }[];
+//   placeholder?: string;
+//   disabled?: boolean;
+// }
+
+// const SearchableSelect: React.FC<SearchableSelectProps> = ({
+//   value,
+//   onChange,
+//   options,
+//   placeholder = "Select or search...",
+//   disabled = false,
+// }) => {
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [isOpen, setIsOpen] = useState(false);
+//   const [focusedIndex, setFocusedIndex] = useState(-1);
+//   const selectRef = useRef<HTMLDivElement>(null);
+
+//   const filteredOptions = options.filter((option) =>
+//     option.label.toLowerCase().includes(searchTerm.toLowerCase())
+//   );
+
+//   const selectedOption = options.find((opt) => opt.value === value);
+
+//   useEffect(() => {
+//     const handleClickOutside = (event: MouseEvent) => {
+//       if (
+//         selectRef.current &&
+//         !selectRef.current.contains(event.target as Node)
+//       ) {
+//         setIsOpen(false);
+//       }
+//     };
+
+//     document.addEventListener("mousedown", handleClickOutside);
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
+
+//   const handleKeyDown = (e: React.KeyboardEvent) => {
+//     if (!isOpen) return;
+
+//     switch (e.key) {
+//       case "ArrowDown":
+//         e.preventDefault();
+//         setFocusedIndex((prev) =>
+//           prev < filteredOptions.length - 1 ? prev + 1 : 0
+//         );
+//         break;
+//       case "ArrowUp":
+//         e.preventDefault();
+//         setFocusedIndex((prev) =>
+//           prev > 0 ? prev - 1 : filteredOptions.length - 1
+//         );
+//         break;
+//       case "Enter":
+//         e.preventDefault();
+//         if (focusedIndex >= 0 && filteredOptions[focusedIndex]) {
+//           onChange(filteredOptions[focusedIndex].value);
+//           setIsOpen(false);
+//           setSearchTerm("");
+//         }
+//         break;
+//       case "Escape":
+//         e.preventDefault();
+//         setIsOpen(false);
+//         break;
+//     }
+//   };
+
+//   return (
+//     <div ref={selectRef} className="relative">
+//       <div className="relative">
+//         <div className="flex items-center">
+//           <input
+//             type="text"
+//             value={isOpen ? searchTerm : selectedOption?.label || ""}
+//             onChange={(e) => {
+//               setSearchTerm(e.target.value);
+//               setIsOpen(true);
+//               if (!isOpen) setIsOpen(true);
+//             }}
+//             onFocus={() => setIsOpen(true)}
+//             onKeyDown={handleKeyDown}
+//             placeholder={placeholder}
+//             disabled={disabled}
+//             className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-[#F96176] focus:border-[#F96176] pr-10"
+//           />
+//           <button
+//             type="button"
+//             onClick={() => setIsOpen(!isOpen)}
+//             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+//             disabled={disabled}
+//           >
+//             <FiUser size={18} />
+//           </button>
+//         </div>
+//       </div>
+
+//       {isOpen && filteredOptions.length > 0 && (
+//         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+//           {filteredOptions.map((option, index) => (
+//             <div
+//               key={option.value}
+//               className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+//                 value === option.value ? "bg-[#F96176]/10" : ""
+//               } ${index === focusedIndex ? "bg-gray-100" : ""} ${
+//                 index > 0 ? "border-t border-gray-100" : ""
+//               }`}
+//               onClick={() => {
+//                 onChange(option.value);
+//                 setIsOpen(false);
+//                 setSearchTerm("");
+//               }}
+//               onMouseEnter={() => setFocusedIndex(index)}
+//             >
+//               <div className="flex items-center">
+//                 <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+//                   <FiUser className="text-gray-500" size={14} />
+//                 </div>
+//                 <div>
+//                   <div className="font-medium text-gray-800">
+//                     {option.label}
+//                   </div>
+//                   {/* <div className="text-sm text-gray-500">{option.value}</div> */}
+//                 </div>
+//               </div>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+
+//       {isOpen && searchTerm && filteredOptions.length === 0 && (
+//         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+//           <p className="text-gray-500 text-center">No recipients found</p>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default function ManageCheckScreen() {
+//   return (
+//     <React.Suspense fallback={<LoadingIndicator />}>
+//       <ManageCheckScreenContent />
+//     </React.Suspense>
+//   );
+// }

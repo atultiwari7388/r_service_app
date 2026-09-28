@@ -1724,20 +1724,20 @@ function ManageCheckScreenContent() {
         margin-top: 0.7mm; /** adjust as needed */
       }
 
-      /* DATE — MOVED RIGHT BY 6mm */
+      /* DATE — MOVED RIGHT BY 6mm (Shifted 10px up) */
       .date-row {
         position: absolute;
-        top: ${dateTopMm}mm;
+        top: calc(${dateTopMm}mm - 10px);
         right: 10mm;   /* was 9mm → moved 1mm more right */
         font-size: 11pt;
         font-weight: 400;
         font-family: "Univers", sans-serif;
       }
 
-      /* PAYEE + AMOUNT */
+      /* PAYEE + AMOUNT (Shifted 10px up) */
       .payee-row {
         position: absolute;
-        top: ${payeeTopMm}mm;
+        top: calc(${payeeTopMm}mm - 10px);
         left: 25mm;     /* 25 was 15mm → moved 10mm more left */
         right: 7mm;    /* was 10mm → moved 2mm left */
         font-size: 11pt;
@@ -1752,10 +1752,10 @@ function ManageCheckScreenContent() {
         margin-left: auto;
         }
 
-      /* AMOUNT IN WORDS */
+      /* AMOUNT IN WORDS (Shifted 10px up) */
       .amount-words {
         position: absolute;
-        top: ${wordsTopMm}mm;
+        top: calc(${wordsTopMm}mm - 10px);
         left: 15mm;
         font-size: 11pt;
         font-weight: 400;

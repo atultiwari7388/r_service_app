@@ -1966,13 +1966,16 @@ export default function RecordsPage() {
     if (!date || date.trim() === "") {
       errors.date = "Please enter or select a date";
     } else {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const parsed = new Date(date + "T00:00:00");
-      if (isNaN(parsed.getTime())) {
-        errors.date = "Invalid date format. Please use YYYY-MM-DD";
-      } else if (date > todayStr) {
-        errors.date =
-          "Future dates are not allowed. Please select today or a previous date.";
+      const parsed = parseCustomDate(date);
+      if (!parsed || isNaN(parsed.getTime())) {
+        errors.date = "Invalid date format. Please use MM-DD-YYYY";
+      } else {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (parsed > today) {
+          errors.date =
+            "Future dates are not allowed. Please select today or a previous date.";
+        }
       }
     }
 
@@ -2156,7 +2159,7 @@ export default function RecordsPage() {
             const baseDate = parseCustomDate(date) || new Date();
             const nextDate = new Date(baseDate);
             nextDate.setDate(baseDate.getDate() + Number(defaultValue));
-            formattedDate = formatDateToMMDDYYYY(nextDate);
+            formattedDate = format(nextDate, "yyyy-MM-dd");
             numericValue = nextDate.getTime();
             nextNotificationValue = numericValue;
           } else if (type === "hours") {
@@ -2232,7 +2235,7 @@ export default function RecordsPage() {
 
       // Prepare record data
       const baseDate = parseCustomDate(date) || new Date();
-      const formattedDate = format(baseDate, "MM-dd-yyyy");
+      const formattedDate = format(baseDate, "yyyy-MM-dd");
 
       const selectedVehicleObj = vehicles.find((v) => v.id === selectedVehicle);
       const myCompany =
