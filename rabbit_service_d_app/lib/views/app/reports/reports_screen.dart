@@ -700,35 +700,39 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                                               // Duplicate Icon
                                                                               GestureDetector(
                                                                                 onTap: () {
-                                                                                  showDialog(
-                                                                                      context: context,
-                                                                                      builder: (_) {
-                                                                                        return AlertDialog(
-                                                                                          title: const Text("Duplicate Record"),
-                                                                                          content: const Text("Do you want to duplicate this record to create a new one?"),
-                                                                                          actions: [
-                                                                                            TextButton(
-                                                                                              onPressed: () {
-                                                                                                Navigator.pop(context);
-                                                                                                reController.handleDuplicateRecord(record);
-                                                                                              },
-                                                                                              child: Text(
-                                                                                                "Yes",
-                                                                                                style: appStyle(15, kSecondary, FontWeight.bold),
+                                                                                  if (reController.isEdit == true) {
+                                                                                    showDialog(
+                                                                                        context: context,
+                                                                                        builder: (_) {
+                                                                                          return AlertDialog(
+                                                                                            title: const Text("Duplicate Record"),
+                                                                                            content: const Text("Do you want to duplicate this record to create a new one?"),
+                                                                                            actions: [
+                                                                                              TextButton(
+                                                                                                onPressed: () {
+                                                                                                  Navigator.pop(context);
+                                                                                                  reController.handleDuplicateRecord(record);
+                                                                                                },
+                                                                                                child: Text(
+                                                                                                  "Yes",
+                                                                                                  style: appStyle(15, kSecondary, FontWeight.bold),
+                                                                                                ),
                                                                                               ),
-                                                                                            ),
-                                                                                            TextButton(
-                                                                                              onPressed: () {
-                                                                                                Navigator.pop(context);
-                                                                                              },
-                                                                                              child: Text(
-                                                                                                "No",
-                                                                                                style: appStyle(15, kPrimary, FontWeight.bold),
+                                                                                              TextButton(
+                                                                                                onPressed: () {
+                                                                                                  Navigator.pop(context);
+                                                                                                },
+                                                                                                child: Text(
+                                                                                                  "No",
+                                                                                                  style: appStyle(15, kPrimary, FontWeight.bold),
+                                                                                                ),
                                                                                               ),
-                                                                                            ),
-                                                                                          ],
-                                                                                        );
-                                                                                      });
+                                                                                            ],
+                                                                                          );
+                                                                                        });
+                                                                                  } else {
+                                                                                    showToastMessage("Sorry", "You don't have permission to duplicate record", kPrimary);
+                                                                                  }
                                                                                 },
                                                                                 child: Container(
                                                                                   padding: EdgeInsets.symmetric(

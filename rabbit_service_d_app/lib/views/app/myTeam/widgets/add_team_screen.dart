@@ -96,8 +96,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
     payTypeModes = [
       "Per Mile",
       "Per Trip",
-      "Per Hour",
-      "Per Month",
+      // "Per Hour",
+      // "Per Month",
     ];
     fetchOwnerVehiclesDetails();
   }
@@ -166,15 +166,15 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     setState(() {
                       selectedRole = newValue;
                       // Update payTypeModes based on selected role
-                      if (newValue == "Other Staff") {
-                        payTypeModes = ["Per Hour", "Per Month"];
-                      } else {
+                      if (newValue == "Driver") {
                         payTypeModes = [
                           "Per Mile",
                           "Per Trip",
-                          "Per Hour",
-                          "Per Month",
+                          // "Per Hour",
+                          // "Per Month",
                         ];
+                      } else {
+                        payTypeModes = [];
                       }
                       // Reset selected pay type when role changes
                       selectedPayType = null;
@@ -483,10 +483,7 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                 ),
               ],
               SizedBox(height: 10.h),
-              if (selectedRole != null &&
-                  selectedRole != "Vendor" &&
-                  selectedRole != "Other Staff" &&
-                  selectedRole != "SubOwner") ...[
+              if (selectedRole == "Driver") ...[
                 //payment type access
                 Text(
                   "Assign Payment Type Access",
@@ -513,31 +510,27 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                     }).toList(),
                   ),
                 ),
+                if (selectedPayType != null && selectedPayType!.isNotEmpty)
+                  buildTextFieldInputWidget(
+                    selectedPayType == "Per Mile"
+                        ? "Enter per mile charge"
+                        : selectedPayType == "Per Trip"
+                            ? "Enter per trip charge"
+                            : "Enter ${selectedPayType!} charge",
+                    const TextInputType.numberWithOptions(
+                        decimal: true, signed: false),
+                    perMileChargeController,
+                    Icons.attach_money,
+                  )
+                else
+                  buildTextFieldInputWidget(
+                    "Enter per mile charge",
+                    const TextInputType.numberWithOptions(
+                        decimal: true, signed: false),
+                    perMileChargeController,
+                    Icons.attach_money,
+                  ),
               ],
-              if (selectedPayType != null && selectedPayType!.isNotEmpty)
-                buildTextFieldInputWidget(
-                  selectedPayType == "Per Mile"
-                      ? "Enter per mile charge"
-                      : selectedPayType == "Per Trip"
-                          ? "Enter per trip charge"
-                          : selectedPayType == "Per Hour"
-                              ? "Enter per hour charge"
-                              : selectedPayType == "Per Month"
-                                  ? "Enter per month charge"
-                                  : "Enter ${selectedPayType!} charge",
-                  const TextInputType.numberWithOptions(
-                      decimal: true, signed: false),
-                  perMileChargeController,
-                  Icons.attach_money,
-                )
-              else if (selectedRole == "Driver")
-                buildTextFieldInputWidget(
-                  "Enter per mile charge",
-                  const TextInputType.numberWithOptions(
-                      decimal: true, signed: false),
-                  perMileChargeController,
-                  Icons.attach_money,
-                ),
               SizedBox(height: 24.h),
               isUserAcCreated
                   ? CircularProgressIndicator()
@@ -563,10 +556,8 @@ class _AddTeamMemberState extends State<AddTeamMember> {
                           }
                         }
 
-                        // Additional validation for non-Vendor and non-SubOwner roles
-                        if (selectedRole != "Vendor" &&
-                            selectedRole != "SubOwner" &&
-                            selectedRole != "Other Staff") {
+                        // Additional validation for Driver role
+                        if (selectedRole == "Driver") {
                           if (selectedPayType == null) {
                             showToastMessage("Error",
                                 "Please select a pay type", Colors.red);

@@ -693,11 +693,15 @@ class _MyTeamScreenState extends State<MyTeamScreen>
           child: ListTile(
             title: Row(
               children: [
-                Text(
-                  name,
-                  style: kIsWeb
-                      ? TextStyle()
-                      : appStyle(16, kDark, FontWeight.bold),
+                Flexible(
+                  child: Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: kIsWeb
+                        ? TextStyle()
+                        : appStyle(16, kDark, FontWeight.bold),
+                  ),
                 ),
                 if (isTeamMemberOwner)
                   Container(

@@ -1633,6 +1633,12 @@ class ReportsController extends GetxController {
   }
 
   void handleDuplicateRecord(Map<String, dynamic> record) {
+    if (isEdit != true) {
+      showToastMessage(
+          "Sorry", "You don't have permission to duplicate record", kPrimary);
+      return;
+    }
+
     isEditing = false;
     editingRecordId = null;
     originalRecordDate = null;
