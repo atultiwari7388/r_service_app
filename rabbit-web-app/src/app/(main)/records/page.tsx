@@ -73,6 +73,7 @@ import {
   FaTrash,
   FaCopy,
   FaExclamationTriangle,
+  FaLock,
 } from "react-icons/fa";
 import ExportDataDialog from "@/components/records/ExportDataDialog";
 import { utils, writeFile } from "xlsx";
@@ -193,27 +194,43 @@ interface ServiceDisplayItem {
   serviceName?: string;
   sName?: string;
   title?: string;
-  subServices?: Array<{
-    name?: string;
-    sName?: string | string[];
-    id?: string;
-    subserviceName?: string;
-    title?: string;
-  } | string>;
-  subservices?: Array<{
-    name?: string;
-    sName?: string | string[];
-    id?: string;
-    subserviceName?: string;
-    title?: string;
-  } | string>;
-  subServiceList?: Array<{
-    name?: string;
-    sName?: string | string[];
-    id?: string;
-    subserviceName?: string;
-    title?: string;
-  } | string>;
+  subServices?: Array<
+    | {
+        name?: string;
+        sName?: string | string[];
+        id?: string;
+        subserviceName?: string;
+        title?: string;
+      }
+    | string
+  >;
+  subservices?: Array<
+    | {
+        name?: string;
+        sName?: string | string[];
+        id?: string;
+        subserviceName?: string;
+        title?: string;
+      }
+    | string
+  >;
+  subServiceList?: Array<
+    | {
+        name?: string;
+        sName?: string | string[];
+        id?: string;
+        subserviceName?: string;
+        title?: string;
+      }
+    | string
+  >;
+}
+
+interface PermissionModalState {
+  open: boolean;
+  title: string;
+  actionName: string;
+  message: string;
 }
 
 const formatServiceWithSubservices = (
@@ -306,9 +323,7 @@ const parseServiceDetails = (
   return { name, subs };
 };
 
-const formatServiceForTable = (
-  service?: ServiceDisplayItem | null
-): string => {
+const formatServiceForTable = (service?: ServiceDisplayItem | null): string => {
   if (!service) return "";
   const name = (
     service.serviceName ||
@@ -363,7 +378,11 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
           <TableBody>
             {filteredVehicles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" className="py-8 text-gray-500">
+                <TableCell
+                  colSpan={4}
+                  align="center"
+                  className="py-8 text-gray-500"
+                >
                   No vehicles found matching current filter.
                 </TableCell>
               </TableRow>
@@ -390,7 +409,6 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function RecordsPage() {
-
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
@@ -528,6 +546,31 @@ export default function RecordsPage() {
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
   }>({});
+
+  const [permissionModal, setPermissionModal] = useState<PermissionModalState>({
+    open: false,
+    title: "Access Restricted",
+    actionName: "",
+    message: "",
+  });
+
+  const openPermissionModal = useCallback(
+    (actionName: string, customMsg?: string) => {
+      setPermissionModal({
+        open: true,
+        title: "Permission Denied",
+        actionName,
+        message:
+          customMsg ||
+          `You do not have permission to ${actionName}. Please contact your administrator or company owner to request edit access.`,
+      });
+    },
+    []
+  );
+
+  const closePermissionModal = useCallback(() => {
+    setPermissionModal((prev) => ({ ...prev, open: false }));
+  }, []);
 
   const handleRedirect = ({ path }: RedirectProps): void => {
     setShowPopup(false);
@@ -1236,16 +1279,15 @@ export default function RecordsPage() {
   const dynamicWorkshopList = Array.from(
     new Set([
       ...workshopList,
-      ...records
-        .map((r) => (r?.workshopName || "").trim())
-        .filter(Boolean),
+      ...records.map((r) => (r?.workshopName || "").trim()).filter(Boolean),
     ])
   ).sort((a, b) => a.localeCompare(b));
 
   const filteredVehicles = useMemo(
     () =>
       vehicles.filter((v) => {
-        if (quickTypeFilter === "truck" && v.vehicleType !== "Truck") return false;
+        if (quickTypeFilter === "truck" && v.vehicleType !== "Truck")
+          return false;
         if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
           return false;
         if (quickSearchText.trim()) {
@@ -1345,14 +1387,17 @@ export default function RecordsPage() {
           if (quickPaymentFilter === "paid") {
             if (record.paymentStatus !== "Paid") return false;
           } else if (quickPaymentFilter === "unpaid") {
-            if (record.paymentStatus && record.paymentStatus !== "Unpaid") return false;
+            if (record.paymentStatus && record.paymentStatus !== "Unpaid")
+              return false;
           } else if (quickPaymentFilter === "partial") {
             if (record.paymentStatus !== "Partially Paid") return false;
           }
 
           // Quick Workshop Filter
           if (quickWorkshopFilter !== "all") {
-            const recordWorkshop = (record.workshopName || "").trim().toLowerCase();
+            const recordWorkshop = (record.workshopName || "")
+              .trim()
+              .toLowerCase();
             if (recordWorkshop !== quickWorkshopFilter.trim().toLowerCase()) {
               return false;
             }
@@ -1360,11 +1405,15 @@ export default function RecordsPage() {
 
           // Quick Vehicle Type / Unit Filter (Truck / Trailer / Miles / Hours)
           if (quickTypeFilter === "truck") {
-            const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
+            const vType = (
+              record.vehicleDetails?.vehicleType || ""
+            ).toLowerCase();
             const hasMiles = (Number(record.miles) || 0) > 0;
             if (vType !== "truck" && !hasMiles) return false;
           } else if (quickTypeFilter === "trailer") {
-            const vType = (record.vehicleDetails?.vehicleType || "").toLowerCase();
+            const vType = (
+              record.vehicleDetails?.vehicleType || ""
+            ).toLowerCase();
             const hasHours = (Number(record.hours) || 0) > 0;
             if (vType !== "trailer" && !hasHours) return false;
           }
@@ -1373,13 +1422,25 @@ export default function RecordsPage() {
           if (quickSearchText.trim()) {
             const query = quickSearchText.trim().toLowerCase();
             const matchesVeh = vehNum.toLowerCase().includes(query);
-            const matchesInv = (record.invoice || "").toLowerCase().includes(query);
-            const matchesWork = (record.workshopName || "").toLowerCase().includes(query);
-            const matchesDesc = (record.description || "").toLowerCase().includes(query);
+            const matchesInv = (record.invoice || "")
+              .toLowerCase()
+              .includes(query);
+            const matchesWork = (record.workshopName || "")
+              .toLowerCase()
+              .includes(query);
+            const matchesDesc = (record.description || "")
+              .toLowerCase()
+              .includes(query);
             const matchesServ = (record.services || []).some((s) =>
               formatServiceWithSubservices(s).toLowerCase().includes(query)
             );
-            if (!matchesVeh && !matchesInv && !matchesWork && !matchesDesc && !matchesServ) {
+            if (
+              !matchesVeh &&
+              !matchesInv &&
+              !matchesWork &&
+              !matchesDesc &&
+              !matchesServ
+            ) {
               return false;
             }
           }
@@ -1441,7 +1502,6 @@ export default function RecordsPage() {
     ]
   );
 
-
   const handleSearchFilterOpen = () => setShowSearchFilter(true);
   const handleSearchFilterClose = () => setShowSearchFilter(false);
 
@@ -1500,16 +1560,20 @@ export default function RecordsPage() {
               ? data.balanceAmount
               : Math.max(
                   0,
-                  (parseFloat(String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")) || 0) -
+                  (parseFloat(
+                    String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+                  ) || 0) -
                     (typeof data.paidAmount === "number" ? data.paidAmount : 0)
                 ),
           paymentStatus:
             data.paymentStatus ||
-            ((typeof data.paidAmount === "number" && data.paidAmount > 0)
-              ? (data.paidAmount >=
-                (parseFloat(String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")) || 0)
-                  ? "Paid"
-                  : "Partially Paid")
+            (typeof data.paidAmount === "number" && data.paidAmount > 0
+              ? data.paidAmount >=
+                (parseFloat(
+                  String(data.invoiceAmount || "0").replace(/[^0-9.-]+/g, "")
+                ) || 0)
+                ? "Paid"
+                : "Partially Paid"
               : "Unpaid"),
           paymentHistory: Array.isArray(data.paymentHistory)
             ? data.paymentHistory
@@ -1790,7 +1854,6 @@ export default function RecordsPage() {
     }
   }, []);
 
-
   const downloadAllRecords = () => {
     try {
       if (!filteredRecords || filteredRecords.length === 0) {
@@ -2019,11 +2082,7 @@ export default function RecordsPage() {
         }
 
         let metaType = (matchingDValue?.type || "").toLowerCase();
-        if (
-          metaType === "day" ||
-          metaType === "date" ||
-          metaType === "time"
-        ) {
+        if (metaType === "day" || metaType === "date" || metaType === "time") {
           metaType = "day";
         } else if (metaType === "hours" || metaType === "hour") {
           metaType = "hours";
@@ -2338,265 +2397,296 @@ export default function RecordsPage() {
     }
   };
 
-  const handleEditRecord = useCallback((record: ServiceRecord) => {
-    if (!record) return;
-    setIsEditing(true);
-    setEditingRecordId(record.id);
+  const handleEditRecord = useCallback(
+    (record: ServiceRecord) => {
+      if (!record) return;
 
-    // Set form values from record
-    setSelectedVehicle(record.vehicleId || "");
-    const matchingVeh =
-      vehicles.find((v) => v.id === record.vehicleId) ||
-      (record.vehicleDetails
-        ? (record.vehicleDetails as unknown as VehicleTypes)
-        : null);
-    setSelectedVehicleData(matchingVeh);
+      if (!userData?.isEdit) {
+        openPermissionModal(
+          "edit records",
+          "You do not have permission to edit records. Please contact your company administrator or owner to request edit access."
+        );
+        return;
+      }
 
-    const targetVehType = (
-      matchingVeh?.vehicleType ||
-      (record.vehicleDetails as unknown as { vehicleType?: string })
-        ?.vehicleType ||
-      ""
-    ).toLowerCase();
+      setIsEditing(true);
+      setEditingRecordId(record.id);
 
-    const recordServices = Array.isArray(record.services)
-      ? record.services
-      : [];
+      // Set form values from record
+      setSelectedVehicle(record.vehicleId || "");
+      const matchingVeh =
+        vehicles.find((v) => v.id === record.vehicleId) ||
+        (record.vehicleDetails
+          ? (record.vehicleDetails as unknown as VehicleTypes)
+          : null);
+      setSelectedVehicleData(matchingVeh);
 
-    // Helper to find matching service with vehicle awareness
-    const findMatchingService = (sId?: string, sName?: string) => {
-      if (!sId && !sName) return null;
-      return (
-        services.find((serv) => {
-          const matchesVeh =
-            !targetVehType ||
-            (serv.vType || "").toLowerCase() === targetVehType;
-          return (
-            matchesVeh &&
-            ((sId && serv.sId === sId) ||
-              (sName && serv.sName.toLowerCase() === sName.toLowerCase()))
+      const targetVehType = (
+        matchingVeh?.vehicleType ||
+        (record.vehicleDetails as unknown as { vehicleType?: string })
+          ?.vehicleType ||
+        ""
+      ).toLowerCase();
+
+      const recordServices = Array.isArray(record.services)
+        ? record.services
+        : [];
+
+      // Helper to find matching service with vehicle awareness
+      const findMatchingService = (sId?: string, sName?: string) => {
+        if (!sId && !sName) return null;
+        return (
+          services.find((serv) => {
+            const matchesVeh =
+              !targetVehType ||
+              (serv.vType || "").toLowerCase() === targetVehType;
+            return (
+              matchesVeh &&
+              ((sId && serv.sId === sId) ||
+                (sName && serv.sName.toLowerCase() === sName.toLowerCase()))
+            );
+          }) ||
+          services.find(
+            (serv) =>
+              (sId && serv.sId === sId) ||
+              (sName && serv.sName.toLowerCase() === sName.toLowerCase())
+          ) ||
+          null
+        );
+      };
+
+      // Initialize service defaults
+      const newServiceDefaultValues: Record<string, number> = {};
+      recordServices.forEach((service) => {
+        if (service && (service.serviceId || service.serviceName)) {
+          const matchingService = findMatchingService(
+            service.serviceId,
+            service.serviceName
           );
-        }) ||
-        services.find(
-          (serv) =>
-            (sId && serv.sId === sId) ||
-            (sName && serv.sName.toLowerCase() === sName.toLowerCase())
-        ) ||
-        null
-      );
-    };
-
-    // Initialize service defaults
-    const newServiceDefaultValues: Record<string, number> = {};
-    recordServices.forEach((service) => {
-      if (service && (service.serviceId || service.serviceName)) {
-        const matchingService = findMatchingService(
-          service.serviceId,
-          service.serviceName
-        );
-        const targetId = matchingService
-          ? matchingService.sId
-          : service.serviceId;
-        if (targetId) {
-          newServiceDefaultValues[targetId] =
-            service.defaultNotificationValue || 0;
+          const targetId = matchingService
+            ? matchingService.sId
+            : service.serviceId;
+          if (targetId) {
+            newServiceDefaultValues[targetId] =
+              service.defaultNotificationValue || 0;
+          }
         }
-      }
-    });
-    setServiceDefaultValues(newServiceDefaultValues);
+      });
+      setServiceDefaultValues(newServiceDefaultValues);
 
-    // Set selected services and subservices
-    const predefinedIds = new Set<string>();
-    let customServiceFound = false;
-    let customServiceName = "";
+      // Set selected services and subservices
+      const predefinedIds = new Set<string>();
+      let customServiceFound = false;
+      let customServiceName = "";
 
-    recordServices.forEach((s) => {
-      if (!s) return;
-      if (s.serviceId && s.serviceId.startsWith("custom_")) {
-        customServiceFound = true;
-        customServiceName = s.serviceName || "";
-      } else if (s.serviceId || s.serviceName) {
-        const matchingService = findMatchingService(s.serviceId, s.serviceName);
-        predefinedIds.add(matchingService ? matchingService.sId : s.serviceId);
-      }
-    });
-
-    setSelectedServices(predefinedIds);
-    setIsOtherServiceSelected(customServiceFound);
-    setOtherServiceName(customServiceName);
-
-    const subServices: Record<string, string[]> = {};
-    recordServices.forEach((service) => {
-      if (service && (service.serviceId || service.serviceName)) {
-        const matchingService = findMatchingService(
-          service.serviceId,
-          service.serviceName
-        );
-        const targetId = matchingService
-          ? matchingService.sId
-          : service.serviceId;
-        if (targetId) {
-          subServices[targetId] = Array.isArray(service.subServices)
-            ? service.subServices.map((ss) =>
-                typeof ss === "string"
-                  ? ss
-                  : (ss as unknown as { name?: string })?.name || ""
-              )
-            : [];
-        }
-      }
-    });
-    setSelectedSubServices(subServices);
-
-    // Set other fields
-    setMiles((record.miles || 0).toString());
-    setHours((record.hours || 0).toString());
-    const dateStr = record.date || "";
-    setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
-    setWorkshopName(record.workshopName || "");
-    setInvoice(record.invoice || "");
-    setInvoiceAmount(record.invoiceAmount || "");
-    setDescription(record.description || "");
-
-    setExistingImageUrl(record.imageUrl || null);
-    setImagePreview(record.imageUrl || null);
-
-    setShowAddRecords(true);
-  }, [vehicles, services]);
-
-
-  const handleDuplicateRecord = useCallback((record: ServiceRecord) => {
-    if (!record) return;
-
-    // Set isEditing to false so that saving creates a new record
-    setIsEditing(false);
-    setEditingRecordId(null);
-
-    // Set form values from record to duplicate
-    setSelectedVehicle(record.vehicleId || "");
-    const matchingVeh =
-      vehicles.find((v) => v.id === record.vehicleId) ||
-      (record.vehicleDetails
-        ? (record.vehicleDetails as unknown as VehicleTypes)
-        : null);
-    setSelectedVehicleData(matchingVeh);
-
-    const targetVehType = (
-      matchingVeh?.vehicleType ||
-      (record.vehicleDetails as unknown as { vehicleType?: string })
-        ?.vehicleType ||
-      ""
-    ).toLowerCase();
-
-    const recordServices = Array.isArray(record.services)
-      ? record.services
-      : [];
-
-    // Helper to find matching service with vehicle awareness
-    const findMatchingService = (sId?: string, sName?: string) => {
-      if (!sId && !sName) return null;
-      return (
-        services.find((serv) => {
-          const matchesVeh =
-            !targetVehType ||
-            (serv.vType || "").toLowerCase() === targetVehType;
-          return (
-            matchesVeh &&
-            ((sId && serv.sId === sId) ||
-              (sName && serv.sName.toLowerCase() === sName.toLowerCase()))
+      recordServices.forEach((s) => {
+        if (!s) return;
+        if (s.serviceId && s.serviceId.startsWith("custom_")) {
+          customServiceFound = true;
+          customServiceName = s.serviceName || "";
+        } else if (s.serviceId || s.serviceName) {
+          const matchingService = findMatchingService(
+            s.serviceId,
+            s.serviceName
           );
-        }) ||
-        services.find(
-          (serv) =>
-            (sId && serv.sId === sId) ||
-            (sName && serv.sName.toLowerCase() === sName.toLowerCase())
-        ) ||
-        null
+          predefinedIds.add(
+            matchingService ? matchingService.sId : s.serviceId
+          );
+        }
+      });
+
+      setSelectedServices(predefinedIds);
+      setIsOtherServiceSelected(customServiceFound);
+      setOtherServiceName(customServiceName);
+
+      const subServices: Record<string, string[]> = {};
+      recordServices.forEach((service) => {
+        if (service && (service.serviceId || service.serviceName)) {
+          const matchingService = findMatchingService(
+            service.serviceId,
+            service.serviceName
+          );
+          const targetId = matchingService
+            ? matchingService.sId
+            : service.serviceId;
+          if (targetId) {
+            subServices[targetId] = Array.isArray(service.subServices)
+              ? service.subServices.map((ss) =>
+                  typeof ss === "string"
+                    ? ss
+                    : (ss as unknown as { name?: string })?.name || ""
+                )
+              : [];
+          }
+        }
+      });
+      setSelectedSubServices(subServices);
+
+      // Set other fields
+      setMiles((record.miles || 0).toString());
+      setHours((record.hours || 0).toString());
+      const dateStr = record.date || "";
+      setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
+      setWorkshopName(record.workshopName || "");
+      setInvoice(record.invoice || "");
+      setInvoiceAmount(record.invoiceAmount || "");
+      setDescription(record.description || "");
+
+      setExistingImageUrl(record.imageUrl || null);
+      setImagePreview(record.imageUrl || null);
+
+      setShowAddRecords(true);
+    },
+    [vehicles, services, userData?.isEdit, openPermissionModal]
+  );
+
+  const handleDuplicateRecord = useCallback(
+    (record: ServiceRecord) => {
+      if (!record) return;
+
+      if (!userData?.isEdit) {
+        openPermissionModal(
+          "duplicate records",
+          "You do not have permission to duplicate records. Duplicating records requires edit permission. Please contact your administrator or company owner to request edit access."
+        );
+        return;
+      }
+
+      // Set isEditing to false so that saving creates a new record
+      setIsEditing(false);
+      setEditingRecordId(null);
+
+      // Set form values from record to duplicate
+      setSelectedVehicle(record.vehicleId || "");
+      const matchingVeh =
+        vehicles.find((v) => v.id === record.vehicleId) ||
+        (record.vehicleDetails
+          ? (record.vehicleDetails as unknown as VehicleTypes)
+          : null);
+      setSelectedVehicleData(matchingVeh);
+
+      const targetVehType = (
+        matchingVeh?.vehicleType ||
+        (record.vehicleDetails as unknown as { vehicleType?: string })
+          ?.vehicleType ||
+        ""
+      ).toLowerCase();
+
+      const recordServices = Array.isArray(record.services)
+        ? record.services
+        : [];
+
+      // Helper to find matching service with vehicle awareness
+      const findMatchingService = (sId?: string, sName?: string) => {
+        if (!sId && !sName) return null;
+        return (
+          services.find((serv) => {
+            const matchesVeh =
+              !targetVehType ||
+              (serv.vType || "").toLowerCase() === targetVehType;
+            return (
+              matchesVeh &&
+              ((sId && serv.sId === sId) ||
+                (sName && serv.sName.toLowerCase() === sName.toLowerCase()))
+            );
+          }) ||
+          services.find(
+            (serv) =>
+              (sId && serv.sId === sId) ||
+              (sName && serv.sName.toLowerCase() === sName.toLowerCase())
+          ) ||
+          null
+        );
+      };
+
+      // Initialize service defaults
+      const newServiceDefaultValues: Record<string, number> = {};
+      recordServices.forEach((service) => {
+        if (service && (service.serviceId || service.serviceName)) {
+          const matchingService = findMatchingService(
+            service.serviceId,
+            service.serviceName
+          );
+          const targetId = matchingService
+            ? matchingService.sId
+            : service.serviceId;
+          if (targetId) {
+            newServiceDefaultValues[targetId] =
+              service.defaultNotificationValue || 0;
+          }
+        }
+      });
+      setServiceDefaultValues(newServiceDefaultValues);
+
+      // Set selected services and subservices
+      const predefinedIds = new Set<string>();
+      let customServiceFound = false;
+      let customServiceName = "";
+
+      recordServices.forEach((s) => {
+        if (!s) return;
+        if (s.serviceId && s.serviceId.startsWith("custom_")) {
+          customServiceFound = true;
+          customServiceName = s.serviceName || "";
+        } else if (s.serviceId || s.serviceName) {
+          const matchingService = findMatchingService(
+            s.serviceId,
+            s.serviceName
+          );
+          predefinedIds.add(
+            matchingService ? matchingService.sId : s.serviceId
+          );
+        }
+      });
+
+      setSelectedServices(predefinedIds);
+      setIsOtherServiceSelected(customServiceFound);
+      setOtherServiceName(customServiceName);
+
+      const subServices: Record<string, string[]> = {};
+      recordServices.forEach((service) => {
+        if (service && (service.serviceId || service.serviceName)) {
+          const matchingService = findMatchingService(
+            service.serviceId,
+            service.serviceName
+          );
+          const targetId = matchingService
+            ? matchingService.sId
+            : service.serviceId;
+          if (targetId) {
+            subServices[targetId] = Array.isArray(service.subServices)
+              ? service.subServices.map((ss) =>
+                  typeof ss === "string"
+                    ? ss
+                    : (ss as unknown as { name?: string })?.name || ""
+                )
+              : [];
+          }
+        }
+      });
+      setSelectedSubServices(subServices);
+
+      // Set other fields
+      setMiles((record.miles || 0).toString());
+      setHours((record.hours || 0).toString());
+      const dateStr = record.date || "";
+      setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
+      setWorkshopName(record.workshopName || "");
+      setInvoice(record.invoice || "");
+      setInvoiceAmount(record.invoiceAmount || "");
+      setDescription(record.description || "");
+
+      setExistingImageUrl(record.imageUrl || null);
+      setImagePreview(record.imageUrl || null);
+      setImageFile(null);
+
+      setShowAddRecords(true);
+      toast.success(
+        "Record details loaded! Modify fields and save as new record."
       );
-    };
-
-    // Initialize service defaults
-    const newServiceDefaultValues: Record<string, number> = {};
-    recordServices.forEach((service) => {
-      if (service && (service.serviceId || service.serviceName)) {
-        const matchingService = findMatchingService(
-          service.serviceId,
-          service.serviceName
-        );
-        const targetId = matchingService
-          ? matchingService.sId
-          : service.serviceId;
-        if (targetId) {
-          newServiceDefaultValues[targetId] =
-            service.defaultNotificationValue || 0;
-        }
-      }
-    });
-    setServiceDefaultValues(newServiceDefaultValues);
-
-    // Set selected services and subservices
-    const predefinedIds = new Set<string>();
-    let customServiceFound = false;
-    let customServiceName = "";
-
-    recordServices.forEach((s) => {
-      if (!s) return;
-      if (s.serviceId && s.serviceId.startsWith("custom_")) {
-        customServiceFound = true;
-        customServiceName = s.serviceName || "";
-      } else if (s.serviceId || s.serviceName) {
-        const matchingService = findMatchingService(s.serviceId, s.serviceName);
-        predefinedIds.add(matchingService ? matchingService.sId : s.serviceId);
-      }
-    });
-
-    setSelectedServices(predefinedIds);
-    setIsOtherServiceSelected(customServiceFound);
-    setOtherServiceName(customServiceName);
-
-    const subServices: Record<string, string[]> = {};
-    recordServices.forEach((service) => {
-      if (service && (service.serviceId || service.serviceName)) {
-        const matchingService = findMatchingService(
-          service.serviceId,
-          service.serviceName
-        );
-        const targetId = matchingService
-          ? matchingService.sId
-          : service.serviceId;
-        if (targetId) {
-          subServices[targetId] = Array.isArray(service.subServices)
-            ? service.subServices.map((ss) =>
-                typeof ss === "string"
-                  ? ss
-                  : (ss as unknown as { name?: string })?.name || ""
-              )
-            : [];
-        }
-      }
-    });
-    setSelectedSubServices(subServices);
-
-    // Set other fields
-    setMiles((record.miles || 0).toString());
-    setHours((record.hours || 0).toString());
-    const dateStr = record.date || "";
-    setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
-    setWorkshopName(record.workshopName || "");
-    setInvoice(record.invoice || "");
-    setInvoiceAmount(record.invoiceAmount || "");
-    setDescription(record.description || "");
-
-    setExistingImageUrl(record.imageUrl || null);
-    setImagePreview(record.imageUrl || null);
-    setImageFile(null);
-
-    setShowAddRecords(true);
-    toast.success(
-      "Record details loaded! Modify fields and save as new record."
-    );
-  }, [vehicles, services]);
-
+    },
+    [vehicles, services, userData?.isEdit, openPermissionModal]
+  );
 
   const formatDateToDDMMYYYY = (date: Date | string): string => {
     const d = new Date(date);
@@ -2773,8 +2863,6 @@ export default function RecordsPage() {
     setShowAddRecords(false);
   };
 
-
-
   const columns = useMemo<MRT_ColumnDef<ServiceRecord>[]>(
     () => [
       {
@@ -2839,7 +2927,10 @@ export default function RecordsPage() {
           const num = Number(rawAmt);
           return (
             <span className="font-semibold text-gray-900">
-              {rawAmt && String(rawAmt).trim() !== "" && !isNaN(num) && num !== 0
+              {rawAmt &&
+              String(rawAmt).trim() !== "" &&
+              !isNaN(num) &&
+              num !== 0
                 ? `$${rawAmt}`
                 : "-"}
             </span>
@@ -2930,7 +3021,8 @@ export default function RecordsPage() {
         size: 220,
         Cell: ({ row }) => {
           const record = row.original;
-          if (!record.services || record.services.length === 0) return <span>-</span>;
+          if (!record.services || record.services.length === 0)
+            return <span>-</span>;
           const serviceText = [...record.services]
             .filter((s) => s && (s.serviceName || (s as any).sName))
             .sort((a, b) =>
@@ -2984,20 +3076,32 @@ export default function RecordsPage() {
           return (
             <div className="flex items-center gap-1.5 whitespace-nowrap">
               <button
-                onClick={() =>
-                  userData?.isEdit
-                    ? handleEditRecord(record)
-                    : toast.error(
-                        "You don't have permission to edit this record."
-                      )
-                }
+                onClick={() => {
+                  if (!userData?.isEdit) {
+                    openPermissionModal(
+                      "edit records",
+                      "You do not have permission to edit records. Please contact your company administrator or owner to request edit access."
+                    );
+                    return;
+                  }
+                  handleEditRecord(record);
+                }}
                 className="bg-[#58BB87] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#48a374] transition cursor-pointer"
               >
                 Edit
               </button>
 
               <button
-                onClick={() => handleDuplicateRecord(record)}
+                onClick={() => {
+                  if (!userData?.isEdit) {
+                    openPermissionModal(
+                      "duplicate records",
+                      "You do not have permission to duplicate records. Duplicating records requires edit permission. Please contact your company administrator or owner to request edit access."
+                    );
+                    return;
+                  }
+                  handleDuplicateRecord(record);
+                }}
                 className="bg-[#8B5CF6] text-white px-2.5 py-1 text-xs rounded flex items-center gap-1 hover:bg-[#7C3AED] transition shadow-xs cursor-pointer"
                 title="Duplicate record to create a new one"
               >
@@ -3030,7 +3134,13 @@ export default function RecordsPage() {
         },
       },
     ],
-    [userData?.isEdit, handleDuplicateRecord, handleEditRecord, downloadSingleRecord]
+    [
+      userData?.isEdit,
+      handleDuplicateRecord,
+      handleEditRecord,
+      downloadSingleRecord,
+      openPermissionModal,
+    ]
   );
 
   const table = useMaterialReactTable({
@@ -3507,9 +3617,7 @@ export default function RecordsPage() {
           <select
             value={quickTypeFilter}
             onChange={(e: any) =>
-              setQuickTypeFilter(
-                e.target.value as "all" | "truck" | "trailer"
-              )
+              setQuickTypeFilter(e.target.value as "all" | "truck" | "trailer")
             }
             className={`px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
               quickTypeFilter !== "all"
@@ -3616,7 +3724,9 @@ export default function RecordsPage() {
                 <InputLabel>Vehicle</InputLabel>
                 <Select
                   value={filterVehicle}
-                  onChange={(e: any) => setFilterVehicle(e.target.value as string)}
+                  onChange={(e: any) =>
+                    setFilterVehicle(e.target.value as string)
+                  }
                   label="Vehicle"
                 >
                   {vehicles.map((vehicle) => (
@@ -3634,7 +3744,9 @@ export default function RecordsPage() {
                 <InputLabel>Service</InputLabel>
                 <Select
                   value={filterService}
-                  onChange={(e: any) => setFilterService(e.target.value as string)}
+                  onChange={(e: any) =>
+                    setFilterService(e.target.value as string)
+                  }
                   label="Service"
                 >
                   {services.map((service) => (
@@ -4171,7 +4283,9 @@ export default function RecordsPage() {
                         label="Enter Custom Service Name *"
                         placeholder="e.g. Battery Replacement, AC Repair, Body Work"
                         value={otherServiceName}
-                        onChange={(e: any) => setOtherServiceName(e.target.value)}
+                        onChange={(e: any) =>
+                          setOtherServiceName(e.target.value)
+                        }
                         className="bg-white rounded"
                       />
                     </div>
@@ -4576,6 +4690,55 @@ export default function RecordsPage() {
         vehicles={vehicles}
         services={services}
       />
+
+      {/* Permission Restriction Dialog */}
+      <Dialog
+        open={permissionModal.open}
+        onClose={closePermissionModal}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          style: {
+            borderRadius: "16px",
+            overflow: "hidden",
+          },
+        }}
+      >
+        <div className="bg-gradient-to-r from-red-500 to-rose-600 p-5 text-white flex items-center gap-3">
+          <div className="p-2.5 bg-white/20 backdrop-blur-xs rounded-full flex items-center justify-center">
+            <FaLock className="text-xl text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold tracking-tight">
+              {permissionModal.title}
+            </h3>
+            <p className="text-xs text-red-100 font-medium">
+              Action Restricted
+            </p>
+          </div>
+        </div>
+        <DialogContent className="pt-5 pb-4 px-6">
+          <div className="flex flex-col gap-3">
+            <div className="p-3.5 bg-red-50 border border-red-100 rounded-xl text-xs text-red-900 leading-relaxed font-medium">
+              {permissionModal.message}
+            </div>
+            <p className="text-xs text-gray-500">
+              Only authorized team members with edit privileges can modify or
+              duplicate records. If you require access, please reach out to your
+              account administrator.
+            </p>
+          </div>
+        </DialogContent>
+        <DialogActions className="px-6 py-3.5 bg-gray-50 border-t border-gray-100 flex justify-end">
+          <Button
+            onClick={closePermissionModal}
+            variant="contained"
+            className="bg-gray-800 hover:bg-gray-900 text-white font-semibold text-xs px-5 py-2 rounded-lg cursor-pointer shadow-sm capitalize"
+          >
+            I Understand
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   ) : (
     <div>You don&apos;t have permission to see this page.</div>
