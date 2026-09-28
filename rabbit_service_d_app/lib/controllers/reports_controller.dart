@@ -1142,7 +1142,7 @@ class ReportsController extends GetxController {
           } else if (type == 'day') {
             final baseDate = selectedDate ?? DateTime.now();
             final nextDate = baseDate.add(Duration(days: defaultValue));
-            formattedDate = DateFormat('dd/MM/yyyy').format(nextDate);
+            formattedDate = DateFormat('MM-dd-yyyy').format(nextDate);
             nextNotificationValue = nextDate.millisecondsSinceEpoch;
           } else if (type == 'hours') {
             nextNotificationValue = currentHours + defaultValue;

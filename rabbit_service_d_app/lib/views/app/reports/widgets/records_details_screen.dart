@@ -144,7 +144,7 @@ class RecordsDetailsScreen extends StatelessWidget {
         String nextDueStr = "";
         if (nextValue != null && nextValue != 0) {
           nextDueStr = type == 'day'
-              ? " (Next Due: $nextValue)"
+              ? " (Next Due: ${_formatDateSafe(nextValue)})"
               : " (Next Due: $nextValue ${type == 'reading' ? 'miles' : 'hours'})";
         }
         final subServices = (service['subServices'] as List?)
@@ -297,7 +297,7 @@ class RecordsDetailsScreen extends StatelessWidget {
                             Padding(
                               padding: EdgeInsets.only(left: 8.w),
                               child: Text(
-                                '${service['type'] == 'day' ? service['nextNotificationValue'] : '${service['nextNotificationValue']} ${service['type'] == 'reading' ? 'miles' : 'hours'}'}',
+                                '${service['type'] == 'day' ? _formatDateSafe(service['nextNotificationValue']) : '${service['nextNotificationValue']} ${service['type'] == 'reading' ? 'miles' : 'hours'}'}',
                                 style: appStyleUniverse(
                                   12,
                                   kDark.withOpacity(0.6),
@@ -685,8 +685,9 @@ class RecordsDetailsScreen extends StatelessWidget {
                 ),
                 if (service['nextNotificationValue'] != null &&
                     service['nextNotificationValue'] != 0)
-                  _buildNotificationBadge(
-                      service['nextNotificationValue'].toString()),
+                  _buildNotificationBadge(service['type'] == 'day'
+                      ? _formatDateSafe(service['nextNotificationValue'])
+                      : service['nextNotificationValue'].toString()),
               ],
             ),
             if (subServices.isNotEmpty)

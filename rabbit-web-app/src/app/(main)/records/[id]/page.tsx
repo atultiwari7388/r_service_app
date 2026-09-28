@@ -317,15 +317,15 @@ export default function RecordsDetailsPage({
       const trimmed = String(dateStr).trim();
       if (!trimmed) return "";
 
-      // If format is MM-DD-YYYY or MM/DD/YYYY, convert to MM-DD-YYYY
       if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
-        return trimmed.replace(/\//g, "-");
-      }
-
-      // If format is DD/MM/YYYY, convert to MM-DD-YYYY
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
-        const [dd, mm, yyyy] = trimmed.split("/");
-        return `${mm}-${dd}-${yyyy}`;
+        const parts = trimmed.includes("-") ? trimmed.split("-") : trimmed.split("/");
+        const p0 = Number(parts[0]);
+        const p1 = Number(parts[1]);
+        const yyyy = parts[2];
+        if (p0 > 12) {
+          return `${String(p1).padStart(2, "0")}-${String(p0).padStart(2, "0")}-${yyyy}`;
+        }
+        return `${String(p0).padStart(2, "0")}-${String(p1).padStart(2, "0")}-${yyyy}`;
       }
 
       // Try parseISO
