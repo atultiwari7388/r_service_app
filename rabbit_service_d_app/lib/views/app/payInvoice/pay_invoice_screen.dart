@@ -467,7 +467,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
     });
   }
 
-  // Show Direct Payment Bottom Sheet (Card, Bank, Cash, Zelle, Other)
+  // Show Payment Method Bottom Sheet (Credit Card, Debit Card, Check, Bank Transfer, Cash, Zelle, Other)
   void _showDirectPaymentSheet(List<Map<String, dynamic>> allUnpaidRecords) {
     if (_selectedInvoices.isEmpty) {
       showToastMessage(
@@ -479,7 +479,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
         .where((r) => _selectedInvoices.containsKey(r['id']))
         .toList();
 
-    String selectedMethod = 'Other';
+    String selectedMethod = 'Credit Card';
     final txIdController = TextEditingController();
     final notesController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -491,6 +491,9 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final isCheck = selectedMethod == 'Check';
+            final isCash = selectedMethod == 'Cash';
+
             return Container(
               padding: EdgeInsets.only(
                 top: 20.h,
@@ -524,7 +527,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "Record Payment",
+                            "Select Payment Method",
                             style: appStyle(18, kDark, FontWeight.bold),
                           ),
                           IconButton(
@@ -568,7 +571,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                         ),
                       ),
                       SizedBox(height: 16.h),
-                      Text("Payment Method",
+                      Text("Select Payment Method",
                           style: appStyle(14, kDark, FontWeight.w600)),
                       SizedBox(height: 6.h),
                       DropdownButtonFormField<String>(
@@ -581,9 +584,9 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                           ),
                         ),
                         items: [
-                          'Check',
                           'Credit Card',
                           'Debit Card',
+                          'Check',
                           'Bank Transfer',
                           'Cash',
                           'Zelle',
@@ -599,55 +602,117 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                         },
                       ),
                       SizedBox(height: 14.h),
-                      Text("Transaction / Reference ID (Optional)",
-                          style: appStyle(14, kDark, FontWeight.w600)),
-                      SizedBox(height: 6.h),
-                      TextFormField(
-                        controller: txIdController,
-                        decoration: InputDecoration(
-                          hintText: "e.g. TXN-984723",
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 12.h),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+
+                      // If Check is selected -> Show "Proceed to Write Check" Flow
+                      if (isCheck) ...[
+                        Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle_outline,
+                                  color: Colors.green.shade700, size: 24.sp),
+                              SizedBox(width: 10.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("Check Payment Flow",
+                                        style: appStyle(13,
+                                            Colors.green.shade900,
+                                            FontWeight.bold)),
+                                    SizedBox(height: 2.h),
+                                    Text(
+                                      "Write a check for \$${_totalSelectedAmount.toStringAsFixed(2)} across ${_selectedInvoices.length} invoice(s).",
+                                      style: appStyle(11,
+                                          Colors.green.shade800,
+                                          FontWeight.normal),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      SizedBox(height: 14.h),
-                      Text("Notes / Description (Optional)",
-                          style: appStyle(14, kDark, FontWeight.w600)),
-                      SizedBox(height: 6.h),
-                      TextFormField(
-                        controller: notesController,
-                        maxLines: 2,
-                        decoration: InputDecoration(
-                          hintText: "Optional payment notes...",
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w, vertical: 12.h),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.r),
+                        SizedBox(height: 20.h),
+                        CustomButton(
+                          text: "Proceed to Write Check",
+                          color: Colors.green.shade600,
+                          height: 48.h,
+                          onPress: () {
+                            Navigator.pop(context);
+                            _proceedToWriteCheck(allUnpaidRecords);
+                          },
+                        ),
+                      ] else ...[
+                        // Transaction ID field for Credit Card, Debit Card, Bank Transfer, Zelle, Other
+                        if (!isCash) ...[
+                          Text(
+                            selectedMethod == 'Zelle'
+                                ? "Zelle Confirmation / Ref #"
+                                : selectedMethod == 'Bank Transfer'
+                                    ? "Wire / Transfer Reference #"
+                                    : (selectedMethod == 'Credit Card' ||
+                                            selectedMethod == 'Debit Card')
+                                        ? "Authorization / Txn ID (Optional)"
+                                        : "Transaction / Reference ID (Optional)",
+                            style: appStyle(14, kDark, FontWeight.w600),
+                          ),
+                          SizedBox(height: 6.h),
+                          TextFormField(
+                            controller: txIdController,
+                            decoration: InputDecoration(
+                              hintText: "e.g. TXN-984723",
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12.w, vertical: 12.h),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 14.h),
+                        ],
+
+                        // Description field (shown for Cash and all direct methods)
+                        Text("Description / Notes (Optional)",
+                            style: appStyle(14, kDark, FontWeight.w600)),
+                        SizedBox(height: 6.h),
+                        TextFormField(
+                          controller: notesController,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            hintText: "Add payment notes, memo, or description...",
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12.w, vertical: 12.h),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 20.h),
-                      CustomButton(
-                        text: _isProcessingPayment
-                            ? "Processing..."
-                            : "Confirm Payment (\$${_totalSelectedAmount.toStringAsFixed(2)})",
-                        color: kSecondary,
-                        height: 48.h,
-                        onPress: _isProcessingPayment
-                            ? null
-                            : () async {
-                                Navigator.pop(context);
-                                await _executeDirectPayment(
-                                  selectedRecords: selectedRecords,
-                                  paymentMethod: selectedMethod,
-                                  transactionId: txIdController.text.trim(),
-                                  description: notesController.text.trim(),
-                                );
-                              },
-                      ),
+                        SizedBox(height: 20.h),
+                        CustomButton(
+                          text: _isProcessingPayment
+                              ? "Processing..."
+                              : "Confirm Payment (\$${_totalSelectedAmount.toStringAsFixed(2)})",
+                          color: kSecondary,
+                          height: 48.h,
+                          onPress: _isProcessingPayment
+                              ? null
+                              : () async {
+                                  Navigator.pop(context);
+                                  await _executeDirectPayment(
+                                    selectedRecords: selectedRecords,
+                                    paymentMethod: selectedMethod,
+                                    transactionId: txIdController.text.trim(),
+                                    description: notesController.text.trim(),
+                                  );
+                                },
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -940,7 +1005,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                   ...invoices.map((inv) {
                     final invNum = inv['invoiceNumber'] ?? 'N/A';
                     final vNum = inv['vehicleNumber'] ?? 'N/A';
-                    final amt = _parseAmount(inv['amountPaid']);
+                    final amt = _parseAmount(inv['amountPaid'] ?? inv['amount']);
                     final rem = _parseAmount(inv['remainingBalance']);
                     return pw.TableRow(
                       children: [
@@ -1834,17 +1899,8 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                     children: [
                       Expanded(
                         child: CustomButton(
-                          text: "Write Check",
+                          text: "Select Payment Method",
                           color: kPrimary,
-                          height: 44.h,
-                          onPress: () => _proceedToWriteCheck(unpaidRecords),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: CustomButton(
-                          text: "Other Payment",
-                          color: kSecondary,
                           height: 44.h,
                           onPress: () => _showDirectPaymentSheet(unpaidRecords),
                         ),
@@ -2201,7 +2257,7 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
                       ...invoices.map((inv) {
                         final invNum = inv['invoiceNumber'] ?? 'N/A';
                         final vNum = inv['vehicleNumber'] ?? 'N/A';
-                        final amt = _parseAmount(inv['amountPaid']);
+                        final amt = _parseAmount(inv['amountPaid'] ?? inv['amount']);
                         final rem = _parseAmount(inv['remainingBalance']);
                         return Container(
                           padding: EdgeInsets.symmetric(vertical: 4.h),

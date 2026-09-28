@@ -91,9 +91,10 @@ export interface PaymentLedgerItem {
   invoices: Array<{
     recordId: string;
     invoiceNumber: string;
-    vehicleNumber: string;
-    amountPaid: number;
-    remainingBalance: number;
+    vehicleNumber?: string;
+    amountPaid?: number;
+    amount?: number;
+    remainingBalance?: number;
   }>;
   createdAt: Timestamp | Date | FieldValue | null | { toDate?: () => Date };
   createdBy: string;
@@ -892,18 +893,21 @@ function PayInvoiceContent() {
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="flex flex-wrap gap-1">
-                              {item.invoices?.map((inv, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full"
-                                >
-                                  Inv #{inv.invoiceNumber} (${inv.amountPaid.toFixed(2)})
-                                </span>
-                              ))}
+                              {item.invoices?.map((inv, idx) => {
+                                const amt = Number(inv.amountPaid ?? inv.amount ?? 0);
+                                return (
+                                  <span
+                                    key={idx}
+                                    className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full"
+                                  >
+                                    Inv #{inv.invoiceNumber || "N/A"} (${amt.toFixed(2)})
+                                  </span>
+                                );
+                              })}
                             </div>
                           </td>
                           <td className="py-3.5 px-4 text-right font-bold text-emerald-600 text-base">
-                            ${item.totalAmount.toFixed(2)}
+                            ${Number(item.totalAmount ?? 0).toFixed(2)}
                           </td>
                           <td className="py-3.5 px-4 text-center">
                             <button
@@ -1233,7 +1237,12 @@ function PayInvoiceContent() {
                         onChange={(e) => setPaymentMethod(e.target.value as PaymentMethodType)}
                         className="w-full p-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F96176] focus:bg-white font-medium text-gray-800 transition cursor-pointer"
                       >
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Debit Card">Debit Card</option>
                         <option value="Check">Check</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Zelle">Zelle</option>
                         <option value="Other">Other</option>
                       </select>
                     </div>
@@ -1446,22 +1455,27 @@ function PayInvoiceContent() {
                   Invoices Included
                 </p>
                 <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                  {viewingReceipt.invoices?.map((inv, i) => (
-                    <div key={i} className="p-3 flex justify-between items-center text-xs">
-                      <div>
-                        <span className="font-bold text-gray-900">Invoice #{inv.invoiceNumber}</span>
-                        <span className="text-gray-400 ml-2">Veh: {inv.vehicleNumber}</span>
+                  {viewingReceipt.invoices?.map((inv, i) => {
+                    const amt = Number(inv.amountPaid ?? inv.amount ?? 0);
+                    return (
+                      <div key={i} className="p-3 flex justify-between items-center text-xs">
+                        <div>
+                          <span className="font-bold text-gray-900">Invoice #{inv.invoiceNumber || "N/A"}</span>
+                          {inv.vehicleNumber && (
+                            <span className="text-gray-400 ml-2">Veh: {inv.vehicleNumber}</span>
+                          )}
+                        </div>
+                        <span className="font-bold text-gray-900">${amt.toFixed(2)}</span>
                       </div>
-                      <span className="font-bold text-gray-900">${inv.amountPaid.toFixed(2)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="p-4 bg-emerald-50 rounded-xl flex items-center justify-between border border-emerald-100">
                 <span className="font-bold text-emerald-900">Total Settled</span>
                 <span className="text-xl font-extrabold text-emerald-700">
-                  ${viewingReceipt.totalAmount.toFixed(2)}
+                  ${Number(viewingReceipt.totalAmount ?? 0).toFixed(2)}
                 </span>
               </div>
             </div>
