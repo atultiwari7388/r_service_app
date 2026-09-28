@@ -94,6 +94,12 @@ const formatDateSafe = (dateStr?: string | null): string => {
       return trimmed.replace(/\//g, "-");
     }
 
+    // If format is DD/MM/YYYY, convert to MM-DD-YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      const [dd, mm, yyyy] = trimmed.split("/");
+      return `${mm}-${dd}-${yyyy}`;
+    }
+
     // Try parseISO
     const isoParsed = parseISO(trimmed);
     if (!isNaN(isoParsed.getTime())) {
@@ -110,6 +116,30 @@ const formatDateSafe = (dateStr?: string | null): string => {
   } catch {
     return dateStr ? String(dateStr) : "";
   }
+};
+
+const parseCustomDate = (dateStr?: string | null): Date | null => {
+  if (!dateStr) return null;
+  const trimmed = String(dateStr).trim();
+  if (!trimmed) return null;
+
+  if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
+    const parts = trimmed.includes("-") ? trimmed.split("-") : trimmed.split("/");
+    const mm = Number(parts[0]);
+    const dd = Number(parts[1]);
+    const yyyy = Number(parts[2]);
+    const d = new Date(yyyy, mm - 1, dd);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [yyyy, mm, dd] = trimmed.split("-").map(Number);
+    const d = new Date(yyyy, mm - 1, dd);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(trimmed);
+  return isNaN(d.getTime()) ? null : d;
 };
 
 interface Vehicle {
@@ -2123,7 +2153,7 @@ export default function RecordsPage() {
             nextNotificationValue = currentMiles + defaultValue;
             numericValue = nextNotificationValue;
           } else if (type === "day") {
-            const baseDate = date ? new Date(date) : new Date();
+            const baseDate = parseCustomDate(date) || new Date();
             const nextDate = new Date(baseDate);
             nextDate.setDate(baseDate.getDate() + Number(defaultValue));
             formattedDate = formatDateToDDMMYYYY(nextDate);
@@ -2201,8 +2231,8 @@ export default function RecordsPage() {
       }
 
       // Prepare record data
-      const baseDate = date ? new Date(date) : new Date();
-      const formattedDate = baseDate.toISOString().split("T")[0];
+      const baseDate = parseCustomDate(date) || new Date();
+      const formattedDate = format(baseDate, "MM-dd-yyyy");
 
       const selectedVehicleObj = vehicles.find((v) => v.id === selectedVehicle);
       const myCompany =
@@ -2525,8 +2555,7 @@ export default function RecordsPage() {
       // Set other fields
       setMiles((record.miles || 0).toString());
       setHours((record.hours || 0).toString());
-      const dateStr = record.date || "";
-      setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
+      setDate(formatDateSafe(record.date));
       setWorkshopName(record.workshopName || "");
       setInvoice(record.invoice || "");
       setInvoiceAmount(record.invoiceAmount || "");
@@ -2669,8 +2698,7 @@ export default function RecordsPage() {
       // Set other fields
       setMiles((record.miles || 0).toString());
       setHours((record.hours || 0).toString());
-      const dateStr = record.date || "";
-      setDate(dateStr.includes("T") ? dateStr.split("T")[0] : dateStr);
+      setDate(formatDateSafe(record.date));
       setWorkshopName(record.workshopName || "");
       setInvoice(record.invoice || "");
       setInvoiceAmount(record.invoiceAmount || "");
@@ -4310,24 +4338,21 @@ export default function RecordsPage() {
                   </label>
                   <div className="relative">
                     <DatePicker
-                      selected={
-                        date && !isNaN(new Date(date + "T00:00:00").getTime())
-                          ? new Date(date + "T00:00:00")
-                          : null
-                      }
+                      selected={parseCustomDate(date)}
                       onChange={(selectedDate: Date | null) => {
                         if (!selectedDate) {
                           setDate("");
                           return;
                         }
-                        const todayStr = format(new Date(), "yyyy-MM-dd");
-                        const formatted = format(selectedDate, "yyyy-MM-dd");
-                        if (formatted > todayStr) {
+                        const today = new Date();
+                        today.setHours(23, 59, 59, 999);
+                        if (selectedDate > today) {
                           toast.error(
                             "Future dates cannot be selected. Please select today or a past date."
                           );
                           return;
                         }
+                        const formatted = format(selectedDate, "MM-dd-yyyy");
                         setDate(formatted);
                         if (validationErrors.date) {
                           setValidationErrors((prev) => {
@@ -4342,22 +4367,23 @@ export default function RecordsPage() {
                           ? (e.target as HTMLInputElement).value
                           : "";
                         if (val) {
-                          const todayStr = format(new Date(), "yyyy-MM-dd");
-                          if (
-                            val > todayStr &&
-                            /^\d{4}-\d{2}-\d{2}$/.test(val)
-                          ) {
-                            toast.error(
-                              "Future dates cannot be selected. Please select today or a past date."
-                            );
-                            return;
+                          const parsed = parseCustomDate(val);
+                          if (parsed) {
+                            const today = new Date();
+                            today.setHours(23, 59, 59, 999);
+                            if (parsed > today) {
+                              toast.error(
+                                "Future dates cannot be selected. Please select today or a past date."
+                              );
+                              return;
+                            }
                           }
                           setDate(val);
                         }
                       }}
                       maxDate={new Date()}
-                      dateFormat="yyyy-MM-dd"
-                      placeholderText="YYYY-MM-DD (e.g. 2025-04-12)"
+                      dateFormat="MM-dd-yyyy"
+                      placeholderText="MM-DD-YYYY (e.g. 04-12-2025)"
                       className={`w-full p-3 border rounded-lg text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#F96176] ${
                         validationErrors.date
                           ? "border-red-500"
@@ -4372,7 +4398,7 @@ export default function RecordsPage() {
                     />
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1">
-                    Format: YYYY-MM-DD (You can type directly or pick from
+                    Format: MM-DD-YYYY (You can type directly or pick from
                     calendar)
                   </p>
                   {validationErrors.date && (

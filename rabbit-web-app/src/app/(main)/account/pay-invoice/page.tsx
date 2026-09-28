@@ -218,7 +218,7 @@ function PayInvoiceContent() {
               balanceAmount: balance,
               paymentStatus: status,
               paymentHistory: data.paymentHistory || [],
-              workshopName: data.workshopName || "Unspecified Vendor",
+              workshopName: data.workshopName || "",
               date: data.date || data.createdAt || "",
               createdAt: data.createdAt || "",
               description: data.description || "",
@@ -394,9 +394,16 @@ function PayInvoiceContent() {
 
   const selectedVendor = useMemo(() => {
     if (selectedRecordsList.length === 0) return null;
-    const vendorSet = new Set(selectedRecordsList.map((r) => r.workshopName || "Unspecified Vendor"));
+    const vendorSet = new Set(
+      selectedRecordsList
+        .map((r) => r.workshopName?.trim())
+        .filter((v) => Boolean(v))
+    );
     if (vendorSet.size === 1) {
       return Array.from(vendorSet)[0];
+    }
+    if (vendorSet.size === 0) {
+      return "";
     }
     return `Multiple Vendors (${vendorSet.size})`;
   }, [selectedRecordsList]);
@@ -1072,7 +1079,7 @@ function PayInvoiceContent() {
                               </td>
 
                               <td className="py-3.5 px-4 font-medium text-gray-800">
-                                {rec.workshopName || "Unspecified"}
+                                {rec.workshopName || ""}
                               </td>
 
                               <td className="py-3.5 px-4">

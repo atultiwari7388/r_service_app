@@ -90,13 +90,27 @@ class RecordsDetailsScreen extends StatelessWidget {
     }
   }
 
+  String _formatDateSafe(dynamic val) {
+    if (val == null) return 'N/A';
+    final str = val.toString().trim();
+    if (str.isEmpty) return 'N/A';
+
+    if (RegExp(r'^\d{2}[-/]\d{2}[-/]\d{4}$').hasMatch(str)) {
+      return str.replaceAll('/', '-');
+    }
+
+    try {
+      final dt = DateTime.parse(str);
+      return DateFormat('MM-dd-yyyy').format(dt);
+    } catch (_) {}
+
+    return str;
+  }
+
   void _shareRecordDetails() {
     final vehicle = record['vehicleDetails'] as Map<String, dynamic>? ?? {};
     final services = record['services'] as List<dynamic>? ?? [];
-    final date = record['date'] != null
-        ? DateFormat('MM-dd-yy')
-            .format(DateTime.parse(record['date'].toString()))
-        : 'N/A';
+    final date = _formatDateSafe(record['date']);
     final vehicleType = vehicle['vehicleType'] ?? 'N/A';
 
     final StringBuffer buffer = StringBuffer();
@@ -158,7 +172,7 @@ class RecordsDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final services = record['services'] as List<dynamic>? ?? [];
-    final date = DateFormat('MM-dd-yy').format(DateTime.parse(record['date']));
+    final date = _formatDateSafe(record['date']);
     final vehicleType = record['vehicleDetails']['vehicleType'] ?? 'N/A';
     final imageUrl = record['imageUrl'];
 
@@ -719,7 +733,7 @@ class RecordsDetailsScreen extends StatelessWidget {
         ),
         pw.SizedBox(height: 1),
         pw.Text(
-          DateFormat('dd-MM-yyyy').format(DateTime.parse(record['createdAt'])),
+          _formatDateSafe(record['createdAt']),
           style: pw.TextStyle(
             fontSize: 12,
             color: PdfColors.grey600,

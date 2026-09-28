@@ -600,11 +600,9 @@ class _ReportsScreenState extends State<ReportsScreen>
                                                               record['services']
                                                                   as List<
                                                                       dynamic>;
-                                                          final date = DateFormat(
-                                                                  'MM-dd-yy')
-                                                              .format(DateTime
-                                                                  .parse(record[
-                                                                      'date']));
+                                                          final date = reController
+                                                              .formatDateSafe(
+                                                                  record['date']);
 
                                                           return Container(
                                                             child:
@@ -1654,8 +1652,8 @@ class _ReportsScreenState extends State<ReportsScreen>
                 controller: reController.dateController,
                 keyboardType: TextInputType.datetime,
                 decoration: InputDecoration(
-                  labelText: 'Date (YYYY-MM-DD)',
-                  hintText: 'YYYY-MM-DD',
+                  labelText: 'Date (MM-DD-YYYY)',
+                  hintText: 'MM-DD-YYYY',
                   labelStyle: appStyleUniverse(14, kDark, FontWeight.normal),
                   border: const OutlineInputBorder(),
                   contentPadding:
@@ -1668,7 +1666,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     onPressed: () async {
                       DateTime initial = reController.selectedDate ??
                           (reController.dateController.text.trim().isNotEmpty
-                              ? DateTime.tryParse(reController
+                              ? reController.parseDateSafe(reController
                                       .dateController.text
                                       .trim()) ??
                                   DateTime.now()
@@ -1686,14 +1684,14 @@ class _ReportsScreenState extends State<ReportsScreen>
                         setState(() {
                           reController.selectedDate = picked;
                           reController.dateController.text =
-                              DateFormat('yyyy-MM-dd').format(picked);
+                              DateFormat('MM-dd-yyyy').format(picked);
                         });
                       }
                     },
                   ),
                 ),
                 onChanged: (value) {
-                  final parsed = DateTime.tryParse(value.trim());
+                  final parsed = reController.parseDateSafe(value.trim());
                   if (parsed != null) {
                     reController.selectedDate = parsed;
                   }

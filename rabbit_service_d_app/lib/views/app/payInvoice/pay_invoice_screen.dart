@@ -358,9 +358,11 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
   String _getVendorName(Map<String, dynamic> record) {
     final ws = record['workshop']?.toString().trim();
     if (ws != null && ws.isNotEmpty && ws.toLowerCase() != 'n/a') return ws;
+    final wName = record['workshopName']?.toString().trim();
+    if (wName != null && wName.isNotEmpty && wName.toLowerCase() != 'n/a') return wName;
     final vn = record['vendorName']?.toString().trim();
     if (vn != null && vn.isNotEmpty && vn.toLowerCase() != 'n/a') return vn;
-    return 'Other Vendor';
+    return '';
   }
 
   // Extract vehicle number
@@ -416,6 +418,9 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
     String payee = _selectedVendor != 'All Vendors'
         ? _selectedVendor
         : _getVendorName(selectedRecords.first);
+    if (payee.trim().isEmpty) {
+      payee = 'Vendor';
+    }
 
     // Map each invoice into serviceDetails
     final List<Map<String, dynamic>> serviceDetails = selectedRecords.map((r) {
@@ -825,9 +830,12 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
           .collection('InvoicePayments')
           .doc();
 
-      final payeeName = _selectedVendor != 'All Vendors'
+      String payeeName = _selectedVendor != 'All Vendors'
           ? _selectedVendor
           : _getVendorName(selectedRecords.first);
+      if (payeeName.trim().isEmpty) {
+        payeeName = 'Vendor';
+      }
 
       final ledgerData = {
         'id': ledgerRef.id,
@@ -1291,7 +1299,10 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen>
     // Extract unique vendors from unpaid records
     final Set<String> vendorSet = {'All Vendors'};
     for (var r in unpaidRecords) {
-      vendorSet.add(_getVendorName(r));
+      final vName = _getVendorName(r);
+      if (vName.isNotEmpty) {
+        vendorSet.add(vName);
+      }
     }
     final vendorList = vendorSet.toList();
 

@@ -311,10 +311,39 @@ export default function RecordsDetailsPage({
     return <div className="p-6 text-red-500">No record found.</div>;
   }
 
-  const formatDate: FormatDateFn = (value) => {
-    if (!value || !value.includes("/")) return value;
-    const [dd, mm, yyyy] = value.split("/");
-    return `${mm}/${dd}/${yyyy}`;
+  const formatDateSafe = (dateStr?: string | null): string => {
+    if (!dateStr) return "";
+    try {
+      const trimmed = String(dateStr).trim();
+      if (!trimmed) return "";
+
+      // If format is MM-DD-YYYY or MM/DD/YYYY, convert to MM-DD-YYYY
+      if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(trimmed)) {
+        return trimmed.replace(/\//g, "-");
+      }
+
+      // If format is DD/MM/YYYY, convert to MM-DD-YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+        const [dd, mm, yyyy] = trimmed.split("/");
+        return `${mm}-${dd}-${yyyy}`;
+      }
+
+      // Try parseISO
+      const isoParsed = parseISO(trimmed);
+      if (!isNaN(isoParsed.getTime())) {
+        return format(isoParsed, "MM-dd-yyyy");
+      }
+
+      // Try new Date
+      const fallback = new Date(trimmed);
+      if (!isNaN(fallback.getTime())) {
+        return format(fallback, "MM-dd-yyyy");
+      }
+
+      return trimmed;
+    } catch {
+      return dateStr ? String(dateStr) : "";
+    }
   };
 
   return (
@@ -375,7 +404,7 @@ export default function RecordsDetailsPage({
             <p className="flex justify-between">
               <span className="font-medium text-xl">Date:</span>
               <span className="text-xl">
-                {format(parseISO(record.date), "MM-dd-yyyy")}
+                {formatDateSafe(record.date)}
               </span>
             </p>
           </div>
@@ -424,7 +453,7 @@ export default function RecordsDetailsPage({
                     {service.defaultNotificationValue === 0
                       ? ""
                       : service.type === "day"
-                      ? formatDate(service.nextNotificationValue)
+                      ? formatDateSafe(service.nextNotificationValue)
                       : `${service.nextNotificationValue}`}
                   </span>
                 </div>

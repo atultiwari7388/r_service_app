@@ -100,6 +100,42 @@ class ReportsController extends GetxController {
   Map<String, dynamic>? selectedVehicleData;
   List<Map<String, dynamic>> selectedServiceData = [];
 
+  DateTime? parseDateSafe(dynamic val) {
+    if (val == null) return null;
+    if (val is DateTime) return val;
+    if (val is Timestamp) return val.toDate();
+    final str = val.toString().trim();
+    if (str.isEmpty) return null;
+
+    // Try MM-dd-yyyy or MM/dd/yyyy
+    if (RegExp(r'^\d{2}[-/]\d{2}[-/]\d{4}$').hasMatch(str)) {
+      final parts = str.contains('-') ? str.split('-') : str.split('/');
+      final m = int.tryParse(parts[0]) ?? 1;
+      final d = int.tryParse(parts[1]) ?? 1;
+      final y = int.tryParse(parts[2]) ?? 2000;
+      return DateTime(y, m, d);
+    }
+
+    // Try standard ISO / yyyy-MM-dd
+    final parsed = DateTime.tryParse(str);
+    if (parsed != null) return parsed;
+
+    return null;
+  }
+
+  String formatDateSafe(dynamic val) {
+    if (val == null) return '';
+    final dt = parseDateSafe(val);
+    if (dt != null) {
+      return DateFormat('MM-dd-yyyy').format(dt);
+    }
+    final str = val.toString().trim();
+    if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(str)) {
+      return str.replaceAll('/', '-');
+    }
+    return str;
+  }
+
   // Search and filter variables
   String filterVehicle = '';
   String filterService = '';
@@ -1174,16 +1210,16 @@ class ReportsController extends GetxController {
       }
 
       if (dateController.text.trim().isNotEmpty) {
-        final parsed = DateTime.tryParse(dateController.text.trim());
+        final parsed = parseDateSafe(dateController.text.trim());
         if (parsed != null) {
           selectedDate = parsed;
         }
       }
 
       final formattedDate = selectedDate != null
-          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+          ? DateFormat('MM-dd-yyyy').format(selectedDate!)
           : dateController.text.trim().isNotEmpty
-              ? dateController.text.trim()
+              ? formatDateSafe(dateController.text.trim())
               : null;
 
       // Extract myCompany and mycomId from selected vehicle
@@ -1622,8 +1658,8 @@ class ReportsController extends GetxController {
     invoiceAmountController.text = (record['invoiceAmount'] ?? '').toString();
     descriptionController.text = (record['description'] ?? '').toString();
     if (record['date'] != null) {
-      selectedDate = DateTime.tryParse(record['date'].toString());
-      dateController.text = record['date'].toString();
+      selectedDate = parseDateSafe(record['date']);
+      dateController.text = formatDateSafe(record['date']);
     } else {
       selectedDate = null;
       dateController.clear();
@@ -1756,8 +1792,8 @@ class ReportsController extends GetxController {
     descriptionController.text = (record['description'] ?? '').toString();
 
     if (record['date'] != null) {
-      selectedDate = DateTime.tryParse(record['date'].toString());
-      dateController.text = record['date'].toString();
+      selectedDate = parseDateSafe(record['date']);
+      dateController.text = formatDateSafe(record['date']);
     } else {
       selectedDate = null;
       dateController.clear();
@@ -1842,7 +1878,7 @@ class ReportsController extends GetxController {
     // Miles and Hours are optional
 
     if (dateController.text.trim().isNotEmpty) {
-      final parsed = DateTime.tryParse(dateController.text.trim());
+      final parsed = parseDateSafe(dateController.text.trim());
       if (parsed != null) {
         selectedDate = parsed;
       }
