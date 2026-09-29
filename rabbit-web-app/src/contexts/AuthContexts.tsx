@@ -9,6 +9,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import RouteGuard from "@/components/RouteGuard";
 
 // Define types for the context value
 interface AuthContextType {
@@ -53,7 +54,7 @@ export default function AuthContextProvider({
         logout,
       }}
     >
-      {children}
+      <RouteGuard>{children}</RouteGuard>
     </AuthContext.Provider>
   );
 }
