@@ -197,9 +197,7 @@ const Footer: React.FC = () => {
                   />
                 </Link>
                 <Link
-                  href={
-                    "https://apps.apple.com/us/app/rabbit-mechanic-service/id6739995003"
-                  }
+                  href={"https://apps.apple.com/in/app/trenoops/id6765658994"}
                   target="_blank"
                 >
                   <img
