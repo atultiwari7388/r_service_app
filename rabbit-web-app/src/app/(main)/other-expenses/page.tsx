@@ -393,7 +393,7 @@ export default function OtherExpensesPage() {
     }
   };
 
-  // Export to Excel
+  // Export to Excel with wide, comfortable column formatting
   const handleExportExcel = () => {
     if (filteredRecords.length === 0) {
       toast.error("No records available to export");
@@ -411,6 +411,17 @@ export default function OtherExpensesPage() {
       }));
 
       const ws = utils.json_to_sheet(exportData);
+
+      // Define expanded, comfortable column widths (wch = character count)
+      ws["!cols"] = [
+        { wch: 10 }, // S.No
+        { wch: 18 }, // Date (MM-DD-YYYY)
+        { wch: 36 }, // Service / Expense
+        { wch: 24 }, // Type (Credit (Cash In) / Debit (Cash Out))
+        { wch: 20 }, // Amount ($)
+        { wch: 50 }, // Description / Notes
+      ];
+
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, "Other Expenses");
       writeFile(
