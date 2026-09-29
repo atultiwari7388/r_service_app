@@ -74,8 +74,10 @@ import {
   FaCopy,
   FaExclamationTriangle,
   FaLock,
+  FaEye,
 } from "react-icons/fa";
 import ExportDataDialog from "@/components/records/ExportDataDialog";
+import AddOtherExpenseModal from "@/components/records/AddOtherExpenseModal";
 import { utils, writeFile } from "xlsx";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -581,6 +583,7 @@ export default function RecordsPage() {
       active?: boolean;
     }>
   >([]);
+  const [isOtherExpenseModalOpen, setIsOtherExpenseModalOpen] = useState(false);
 
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
@@ -3617,12 +3620,23 @@ export default function RecordsPage() {
                     : `$${otherExpensesNetBalance.toFixed(0)}`}
                 </p>
               </div>
-              <Link
-                href="/other-expenses"
-                className="px-3 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors duration-200 flex items-center gap-1 shrink-0"
-              >
-                <IoMdAdd className="text-sm" /> Add
-              </Link>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsOtherExpenseModalOpen(true)}
+                  className="px-3 py-1.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-200 flex items-center gap-1 cursor-pointer active:scale-95"
+                  title="Add Other Expense"
+                >
+                  <IoMdAdd className="text-sm" /> Add
+                </button>
+                <Link
+                  href="/other-expenses"
+                  className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg shadow-xs transition-colors duration-200 flex items-center gap-1"
+                  title="View Other Expenses"
+                >
+                  <FaEye className="text-xs text-gray-500" /> View
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -4861,6 +4875,13 @@ export default function RecordsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Add Other Expense Modal */}
+      <AddOtherExpenseModal
+        isOpen={isOtherExpenseModalOpen}
+        onClose={() => setIsOtherExpenseModalOpen(false)}
+        effectiveUserId={effectiveUserId}
+      />
     </div>
   ) : (
     <div>You don&apos;t have permission to see this page.</div>

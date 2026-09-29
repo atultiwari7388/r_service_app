@@ -7,7 +7,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  setDoc,
   updateDoc,
   onSnapshot,
 } from "firebase/firestore";
@@ -30,34 +29,14 @@ import {
   FaMoneyBillWave,
   FaCalendarAlt,
   FaTimes,
-  FaCheck,
   FaExclamationTriangle,
   FaWallet,
 } from "react-icons/fa";
 import { utils, writeFile } from "xlsx";
-
-export type TransactionType = "Credit" | "Debit";
-
-export interface OtherExpenseRecord {
-  id: string;
-  userId: string;
-  serviceId?: string;
-  serviceName: string;
-  isCustomService?: boolean;
-  date: string; // Stored in DB as YYYY-MM-DD
-  amount: number;
-  type: TransactionType;
-  description?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  active?: boolean;
-  addedFrom?: string;
-}
-
-export interface OtherExpenseServiceOption {
-  id: string;
-  sName: string;
-}
+import AddOtherExpenseModal, {
+  OtherExpenseRecord,
+  OtherExpenseServiceOption,
+} from "@/components/records/AddOtherExpenseModal";
 
 const DEFAULT_SERVICES: string[] = [
   "Fuel / Gas Surcharge",
@@ -161,7 +140,6 @@ export default function OtherExpensesPage() {
     []
   );
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(true);
-  const [isLoadingServices, setIsLoadingServices] = useState<boolean>(true);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -173,27 +151,14 @@ export default function OtherExpensesPage() {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editingRecord, setEditingRecord] =
+    useState<OtherExpenseRecord | null>(null);
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<OtherExpenseRecord | null>(
     null
   );
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-
-  // Form states
-  const [formDate, setFormDate] = useState<string>(
-    format(new Date(), "MM-dd-yyyy")
-  );
-  const [formSelectedService, setFormSelectedService] = useState<string>("");
-  const [formCustomServiceName, setFormCustomServiceName] =
-    useState<string>("");
-  const [formAmount, setFormAmount] = useState<string>("");
-  const [formType, setFormType] = useState<TransactionType>("Debit");
-  const [formDescription, setFormDescription] = useState<string>("");
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   // 1. Fetch effective user ID
   useEffect(() => {
@@ -226,7 +191,6 @@ export default function OtherExpensesPage() {
   // 2. Fetch predefined services from otherExpensesServices collection
   useEffect(() => {
     const fetchServices = async () => {
-      setIsLoadingServices(true);
       try {
         const colRef = collection(db, "otherExpensesServices");
         const snapshot = await getDocs(colRef);
@@ -244,13 +208,11 @@ export default function OtherExpensesPage() {
           }
         });
 
-        // Ensure "Other" is present
         const hasOther = fetchedServices.some(
           (s) => s.sName.toLowerCase() === "other"
         );
 
         if (fetchedServices.length === 0) {
-          // Use default list if collection has no items
           const defaults = DEFAULT_SERVICES.map((name, idx) => ({
             id: `default_${idx}`,
             sName: name,
@@ -264,15 +226,12 @@ export default function OtherExpensesPage() {
         }
       } catch (error) {
         console.error("Error fetching otherExpensesServices:", error);
-        // Fallback to default list on error
         setServicesList(
           DEFAULT_SERVICES.map((name, idx) => ({
             id: `default_${idx}`,
             sName: name,
           }))
         );
-      } finally {
-        setIsLoadingServices(false);
       }
     };
 
@@ -316,7 +275,6 @@ export default function OtherExpensesPage() {
           }
         });
 
-        // Sort records by date descending (newest first)
         loaded.sort((a, b) => {
           const dateA = parseCustomDate(a.date)?.getTime() || 0;
           const dateB = parseCustomDate(b.date)?.getTime() || 0;
@@ -339,12 +297,10 @@ export default function OtherExpensesPage() {
   // Filtered records
   const filteredRecords = useMemo(() => {
     return records.filter((rec) => {
-      // Type filter
       if (typeFilter !== "All" && rec.type !== typeFilter) {
         return false;
       }
 
-      // Search query (Service name or description)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = (rec.serviceName || "").toLowerCase().includes(q);
@@ -355,7 +311,6 @@ export default function OtherExpensesPage() {
         }
       }
 
-      // Date range filter
       if (startDate || endDate) {
         const recDate = parseCustomDate(rec.date);
         if (!recDate) return false;
@@ -377,7 +332,7 @@ export default function OtherExpensesPage() {
     });
   }, [records, typeFilter, searchQuery, startDate, endDate]);
 
-  // Summary calculations (based on active filtered records or all records)
+  // Summary calculations
   const { totalCredit, totalDebit, netBalance } = useMemo(() => {
     let credit = 0;
     let debit = 0;
@@ -398,165 +353,16 @@ export default function OtherExpensesPage() {
     };
   }, [filteredRecords]);
 
-  // Reset form
-  const resetForm = () => {
-    setFormDate(format(new Date(), "MM-dd-yyyy"));
-    setFormSelectedService(servicesList[0]?.sName || "");
-    setFormCustomServiceName("");
-    setFormAmount("");
-    setFormType("Debit");
-    setFormDescription("");
-    setFormErrors({});
-    setIsEditing(false);
-    setEditingRecordId(null);
-  };
-
   // Open modal for Create
   const handleOpenAddModal = () => {
-    resetForm();
-    if (servicesList.length > 0) {
-      setFormSelectedService(servicesList[0].sName);
-    }
+    setEditingRecord(null);
     setIsModalOpen(true);
   };
 
   // Open modal for Edit
   const handleOpenEditModal = (rec: OtherExpenseRecord) => {
-    setIsEditing(true);
-    setEditingRecordId(rec.id);
-    setFormDate(formatDateSafe(rec.date));
-
-    const matchedService = servicesList.find(
-      (s) => s.sName.toLowerCase() === rec.serviceName.toLowerCase()
-    );
-
-    if (matchedService && matchedService.sName.toLowerCase() !== "other") {
-      setFormSelectedService(matchedService.sName);
-      setFormCustomServiceName("");
-    } else {
-      setFormSelectedService("Other");
-      setFormCustomServiceName(rec.serviceName);
-    }
-
-    setFormAmount(rec.amount ? rec.amount.toString() : "");
-    setFormType(rec.type);
-    setFormDescription(rec.description || "");
-    setFormErrors({});
+    setEditingRecord(rec);
     setIsModalOpen(true);
-  };
-
-  // Validate form
-  const validateForm = (): boolean => {
-    const errors: { [key: string]: string } = {};
-
-    if (!formDate || !formDate.trim()) {
-      errors.date = "Please select or enter a date";
-    } else {
-      const parsed = parseCustomDate(formDate);
-      if (!parsed || isNaN(parsed.getTime())) {
-        errors.date = "Invalid date format. Please use MM-DD-YYYY";
-      }
-    }
-
-    if (!formSelectedService || !formSelectedService.trim()) {
-      errors.service = "Please select an expense / service";
-    } else if (
-      formSelectedService.toLowerCase() === "other" &&
-      !formCustomServiceName.trim()
-    ) {
-      errors.customService = "Please enter the custom service/expense name";
-    }
-
-    const numAmount = parseFloat(formAmount);
-    if (!formAmount || isNaN(numAmount) || numAmount <= 0) {
-      errors.amount = "Please enter a valid amount greater than 0";
-    }
-
-    if (!formType) {
-      errors.type = "Please select transaction type (Credit or Debit)";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle Save (Create / Update)
-  const handleSaveExpense = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!effectiveUserId) {
-      toast.error("User identification missing. Please re-login.");
-      return;
-    }
-
-    if (!validateForm()) {
-      toast.error("Please fill in all required fields correctly.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const isOther = formSelectedService.toLowerCase() === "other";
-      const finalServiceName = isOther
-        ? formCustomServiceName.trim()
-        : formSelectedService.trim();
-
-      const matchedServiceObj = servicesList.find(
-        (s) => s.sName.toLowerCase() === formSelectedService.toLowerCase()
-      );
-
-      const parsedDate = parseCustomDate(formDate) || new Date();
-      const dbDateFormatted = format(parsedDate, "yyyy-MM-dd"); // Saved in database as YYYY-MM-DD
-
-      const recordId =
-        isEditing && editingRecordId
-          ? editingRecordId
-          : doc(
-              collection(db, "Users", effectiveUserId, "record_otherExpenses")
-            ).id;
-
-      const recordPayload = {
-        id: recordId,
-        userId: effectiveUserId,
-        serviceId: matchedServiceObj ? matchedServiceObj.id : "custom",
-        serviceName: finalServiceName,
-        isCustomService: isOther,
-        date: dbDateFormatted,
-        amount: parseFloat(formAmount) || 0,
-        type: formType,
-        description: formDescription.trim(),
-        active: true,
-        addedFrom: "Web",
-        updatedAt: new Date().toISOString(),
-        ...(isEditing
-          ? {}
-          : {
-              createdAt: new Date().toISOString(),
-            }),
-      };
-
-      const docRef = doc(
-        db,
-        "Users",
-        effectiveUserId,
-        "record_otherExpenses",
-        recordId
-      );
-
-      await setDoc(docRef, recordPayload, { merge: true });
-
-      toast.success(
-        isEditing
-          ? "Expense updated successfully!"
-          : "Expense recorded successfully!"
-      );
-      setIsModalOpen(false);
-      resetForm();
-    } catch (error) {
-      console.error("Error saving other expense:", error);
-      toast.error("Failed to save expense. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   // Handle Delete
@@ -572,7 +378,6 @@ export default function OtherExpensesPage() {
         deleteTarget.id
       );
 
-      // Soft delete for safety
       await updateDoc(docRef, {
         active: false,
         updatedAt: new Date().toISOString(),
@@ -608,7 +413,10 @@ export default function OtherExpensesPage() {
       const ws = utils.json_to_sheet(exportData);
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, "Other Expenses");
-      writeFile(wb, `other_expenses_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      writeFile(
+        wb,
+        `other_expenses_${format(new Date(), "yyyy-MM-dd")}.xlsx`
+      );
       toast.success("Excel exported successfully!");
     } catch (error) {
       console.error("Export error:", error);
@@ -669,7 +477,7 @@ export default function OtherExpensesPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        {/* KPI Summary Cards (No Blue - Using Emerald, Rose, and Dark/Teal) */}
+        {/* KPI Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Total Credit (Cash In) */}
           <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-5 shadow-xs transition-all hover:shadow-sm">
@@ -774,16 +582,16 @@ export default function OtherExpensesPage() {
                         ? tab === "Credit"
                           ? "bg-emerald-600 text-white shadow-xs"
                           : tab === "Debit"
-                          ? "bg-rose-600 text-white shadow-xs"
-                          : "bg-gray-900 text-white shadow-xs"
+                            ? "bg-rose-600 text-white shadow-xs"
+                            : "bg-gray-900 text-white shadow-xs"
                         : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
                     {tab === "All"
                       ? "All Types"
                       : tab === "Credit"
-                      ? "Credit (Cash In)"
-                      : "Debit (Cash Out)"}
+                        ? "Credit (Cash In)"
+                        : "Debit (Cash Out)"}
                   </button>
                 );
               })}
@@ -841,7 +649,7 @@ export default function OtherExpensesPage() {
                       setStartDate(null);
                       setEndDate(null);
                     }}
-                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
                     title="Clear date filter"
                   >
                     <FaTimes className="text-xs" />
@@ -990,270 +798,17 @@ export default function OtherExpensesPage() {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-gray-100 overflow-hidden transform transition-all animate-in fade-in duration-200">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/70">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  {isEditing ? "Edit Expense Record" : "Add Expense / Service"}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {isEditing
-                    ? "Modify this Cash In or Cash Out transaction"
-                    : "Record additional cash inflow or cash outflow"}
-                </p>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-200/60 transition-colors"
-              >
-                <FaTimes className="text-sm" />
-              </button>
-            </div>
-
-            {/* Modal Form */}
-            <form onSubmit={handleSaveExpense} className="p-6 space-y-4">
-              {/* Type Selector (Credit vs Debit) */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Transaction Type <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Credit Button */}
-                  <button
-                    type="button"
-                    onClick={() => setFormType("Credit")}
-                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
-                      formType === "Credit"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-emerald-50/50 hover:border-emerald-300"
-                    }`}
-                  >
-                    <FaArrowDown className="text-xs transform rotate-45" />
-                    <span>Credit (Cash In)</span>
-                  </button>
-
-                  {/* Debit Button */}
-                  <button
-                    type="button"
-                    onClick={() => setFormType("Debit")}
-                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border font-bold text-xs transition-all cursor-pointer ${
-                      formType === "Debit"
-                        ? "bg-rose-600 text-white border-rose-600 shadow-sm"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-rose-50/50 hover:border-rose-300"
-                    }`}
-                  >
-                    <FaArrowUp className="text-xs transform rotate-45" />
-                    <span>Debit (Cash Out)</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Date Input */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Date <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <DatePicker
-                    selected={parseCustomDate(formDate)}
-                    onChange={(d: Date | null) => {
-                      if (!d) {
-                        setFormDate("");
-                        return;
-                      }
-                      const formatted = format(d, "MM-dd-yyyy");
-                      setFormDate(formatted);
-                      if (formErrors.date) {
-                        setFormErrors((prev) => {
-                          const copy = { ...prev };
-                          delete copy.date;
-                          return copy;
-                        });
-                      }
-                    }}
-                    onChangeRaw={(e: any) => {
-                      const val = e?.target?.value || "";
-                      setFormDate(val);
-                    }}
-                    dateFormat="MM-dd-yyyy"
-                    placeholderText="MM-DD-YYYY"
-                    className={`w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all ${
-                      formErrors.date ? "border-red-500" : "border-gray-200"
-                    }`}
-                    wrapperClassName="w-full"
-                    showMonthDropdown
-                    showYearDropdown
-                    dropdownMode="select"
-                    popperPlacement="bottom-start"
-                    popperClassName="!z-[9999]"
-                  />
-                </div>
-                {formErrors.date && (
-                  <p className="text-[11px] text-red-500 mt-1">
-                    {formErrors.date}
-                  </p>
-                )}
-              </div>
-
-              {/* Service / Expense Dropdown */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Service / Expense Name <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formSelectedService}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormSelectedService(val);
-                    if (formErrors.service) {
-                      setFormErrors((prev) => {
-                        const copy = { ...prev };
-                        delete copy.service;
-                        return copy;
-                      });
-                    }
-                  }}
-                  className={`w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all ${
-                    formErrors.service ? "border-red-500" : "border-gray-200"
-                  }`}
-                >
-                  <option value="" disabled>
-                    -- Select Service / Expense --
-                  </option>
-                  {servicesList.map((s) => (
-                    <option key={s.id} value={s.sName}>
-                      {s.sName}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.service && (
-                  <p className="text-[11px] text-red-500 mt-1">
-                    {formErrors.service}
-                  </p>
-                )}
-              </div>
-
-              {/* Custom Expense Input (Visible if "Other" is selected) */}
-              {formSelectedService.toLowerCase() === "other" && (
-                <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl space-y-1">
-                  <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider">
-                    Specify Custom Expense Name{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formCustomServiceName}
-                    onChange={(e) => {
-                      setFormCustomServiceName(e.target.value);
-                      if (formErrors.customService) {
-                        setFormErrors((prev) => {
-                          const copy = { ...prev };
-                          delete copy.customService;
-                          return copy;
-                        });
-                      }
-                    }}
-                    placeholder="e.g., Warehouse cleaning, Parking fee, Tool purchase..."
-                    className={`w-full p-2.5 bg-white border rounded-lg text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all ${
-                      formErrors.customService
-                        ? "border-red-500"
-                        : "border-amber-300"
-                    }`}
-                  />
-                  {formErrors.customService && (
-                    <p className="text-[11px] text-red-500 mt-1">
-                      {formErrors.customService}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Amount */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Amount ($) <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formAmount}
-                    onChange={(e) => {
-                      setFormAmount(e.target.value);
-                      if (formErrors.amount) {
-                        setFormErrors((prev) => {
-                          const copy = { ...prev };
-                          delete copy.amount;
-                          return copy;
-                        });
-                      }
-                    }}
-                    placeholder="0.00"
-                    className={`w-full pl-8 pr-3.5 py-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all ${
-                      formErrors.amount ? "border-red-500" : "border-gray-200"
-                    }`}
-                  />
-                </div>
-                {formErrors.amount && (
-                  <p className="text-[11px] text-red-500 mt-1">
-                    {formErrors.amount}
-                  </p>
-                )}
-              </div>
-
-              {/* Description / Notes */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                  Description / Notes (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Additional context or reference notes..."
-                  className="w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all resize-none"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#F96176] hover:bg-[#e04f63] text-white text-xs font-bold rounded-xl shadow-sm transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaCheck className="text-xs" />
-                      <span>{isEditing ? "Update" : "Save"}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Add / Edit Modal Component */}
+      <AddOtherExpenseModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingRecord(null);
+        }}
+        effectiveUserId={effectiveUserId}
+        editingRecord={editingRecord}
+        preloadedServices={servicesList}
+      />
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
