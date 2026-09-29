@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -9,12 +9,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
-  deleteDoc,
   onSnapshot,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContexts";
@@ -92,9 +87,15 @@ const formatDateSafe = (dateStr?: string | null): string => {
       const p1 = Number(parts[1]);
       const yyyy = parts[2];
       if (p0 > 12) {
-        return `${String(p1).padStart(2, "0")}-${String(p0).padStart(2, "0")}-${yyyy}`;
+        return `${String(p1).padStart(2, "0")}-${String(p0).padStart(
+          2,
+          "0"
+        )}-${yyyy}`;
       }
-      return `${String(p0).padStart(2, "0")}-${String(p1).padStart(2, "0")}-${yyyy}`;
+      return `${String(p0).padStart(2, "0")}-${String(p1).padStart(
+        2,
+        "0"
+      )}-${yyyy}`;
     }
 
     const isoParsed = parseISO(trimmed);
@@ -346,12 +347,8 @@ export default function OtherExpensesPage() {
       // Search query (Service name or description)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = (rec.serviceName || "")
-          .toLowerCase()
-          .includes(q);
-        const matchesDesc = (rec.description || "")
-          .toLowerCase()
-          .includes(q);
+        const matchesName = (rec.serviceName || "").toLowerCase().includes(q);
+        const matchesDesc = (rec.description || "").toLowerCase().includes(q);
         const matchesAmount = rec.amount.toString().includes(q);
         if (!matchesName && !matchesDesc && !matchesAmount) {
           return false;
@@ -514,12 +511,7 @@ export default function OtherExpensesPage() {
         isEditing && editingRecordId
           ? editingRecordId
           : doc(
-              collection(
-                db,
-                "Users",
-                effectiveUserId,
-                "record_otherExpenses"
-              )
+              collection(db, "Users", effectiveUserId, "record_otherExpenses")
             ).id;
 
       const recordPayload = {
@@ -616,10 +608,7 @@ export default function OtherExpensesPage() {
       const ws = utils.json_to_sheet(exportData);
       const wb = utils.book_new();
       utils.book_append_sheet(wb, ws, "Other Expenses");
-      writeFile(
-        wb,
-        `other_expenses_${format(new Date(), "yyyy-MM-dd")}.xlsx`
-      );
+      writeFile(wb, `other_expenses_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
       toast.success("Excel exported successfully!");
     } catch (error) {
       console.error("Export error:", error);
@@ -785,16 +774,16 @@ export default function OtherExpensesPage() {
                         ? tab === "Credit"
                           ? "bg-emerald-600 text-white shadow-xs"
                           : tab === "Debit"
-                            ? "bg-rose-600 text-white shadow-xs"
-                            : "bg-gray-900 text-white shadow-xs"
+                          ? "bg-rose-600 text-white shadow-xs"
+                          : "bg-gray-900 text-white shadow-xs"
                         : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
                     {tab === "All"
                       ? "All Types"
                       : tab === "Credit"
-                        ? "Credit (Cash In)"
-                        : "Debit (Cash Out)"}
+                      ? "Credit (Cash In)"
+                      : "Debit (Cash Out)"}
                   </button>
                 );
               })}
@@ -1256,7 +1245,7 @@ export default function OtherExpensesPage() {
                   ) : (
                     <>
                       <FaCheck className="text-xs" />
-                      <span>{isEditing ? "Update Record" : "Save Record"}</span>
+                      <span>{isEditing ? "Update" : "Save"}</span>
                     </>
                   )}
                 </button>

@@ -572,6 +572,15 @@ export default function RecordsPage() {
     Set<string>
   >(new Set());
   const [showVehicleFilter, setShowVehicleFilter] = useState(false);
+  const [otherExpensesRecords, setOtherExpensesRecords] = useState<
+    Array<{
+      id: string;
+      amount: number;
+      type: "Credit" | "Debit";
+      date: string;
+      active?: boolean;
+    }>
+  >([]);
 
   const [validationErrors, setValidationErrors] = useState<{
     [key: string]: string;
@@ -1728,6 +1737,49 @@ export default function RecordsPage() {
     return () => clearTimeout(timer);
   }, [records]);
 
+  // Real-time listener for user's Other Expenses (record_otherExpenses)
+  useEffect(() => {
+    if (!effectiveUserId) return;
+
+    const expensesRef = collection(
+      db,
+      "Users",
+      effectiveUserId,
+      "record_otherExpenses"
+    );
+
+    const unsubscribe = onSnapshot(
+      expensesRef,
+      (snapshot) => {
+        const loaded: Array<{
+          id: string;
+          amount: number;
+          type: "Credit" | "Debit";
+          date: string;
+          active?: boolean;
+        }> = [];
+        snapshot.forEach((d) => {
+          const data = d.data();
+          if (data.active !== false) {
+            loaded.push({
+              id: d.id,
+              amount: Number(data.amount) || 0,
+              type: data.type === "Credit" ? "Credit" : "Debit",
+              date: data.date || "",
+              active: data.active !== false,
+            });
+          }
+        });
+        setOtherExpensesRecords(loaded);
+      },
+      (error) => {
+        console.error("Error listening to record_otherExpenses:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [effectiveUserId]);
+
   //print record lists
   const handlePrint = async () => {
     if (!printRef.current) return;
@@ -2868,6 +2920,35 @@ export default function RecordsPage() {
   const { totalInvoiceAmount, truckTotal, trailerTotal, otherTotal } =
     calculateTotals();
 
+  const otherExpensesNetBalance = useMemo(() => {
+    let credit = 0;
+    let debit = 0;
+
+    const startDateStr = summaryStartDate
+      ? formatDateToYYYYMMDD(summaryStartDate)
+      : null;
+    const endDateStr = summaryEndDate
+      ? formatDateToYYYYMMDD(summaryEndDate)
+      : null;
+
+    otherExpensesRecords.forEach((exp) => {
+      const expDate = exp.date;
+      const isWithinDateRange =
+        (!startDateStr || expDate >= startDateStr) &&
+        (!endDateStr || expDate <= endDateStr);
+
+      if (isWithinDateRange) {
+        if (exp.type === "Credit") {
+          credit += Number(exp.amount) || 0;
+        } else {
+          debit += Number(exp.amount) || 0;
+        }
+      }
+    });
+
+    return credit - debit;
+  }, [otherExpensesRecords, summaryStartDate, summaryEndDate]);
+
   const resetForm = () => {
     setSelectedVehicle("");
     setSelectedVehicleData(null);
@@ -3530,7 +3611,11 @@ export default function RecordsPage() {
                 <h3 className="text-sm font-medium text-gray-500">
                   Other Expenses
                 </h3>
-                <p className="text-2xl font-bold">${otherTotal.toFixed(0)}</p>
+                <p className="text-2xl font-bold">
+                  {otherExpensesNetBalance < 0
+                    ? `-$${Math.abs(otherExpensesNetBalance).toFixed(0)}`
+                    : `$${otherExpensesNetBalance.toFixed(0)}`}
+                </p>
               </div>
               <Link
                 href="/other-expenses"
