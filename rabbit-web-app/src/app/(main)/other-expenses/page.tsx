@@ -150,6 +150,7 @@ export default function OtherExpensesPage() {
     []
   );
   const [companies, setCompanies] = useState<CompanyType[]>([]);
+  const [vehicles, setVehicles] = useState<{ id: string; vehicleNumber: string }[]>([]);
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
@@ -158,6 +159,7 @@ export default function OtherExpensesPage() {
   const [typeFilter, setTypeFilter] = useState<"All" | "Credit" | "Debit">(
     "All"
   );
+  const [vehicleFilter, setVehicleFilter] = useState<string>("All");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
 
@@ -243,7 +245,39 @@ export default function OtherExpensesPage() {
       }
     );
 
-    return () => unsubscribeCompanies();
+    // Fetch vehicles for filtering and search
+    const vehiclesRef = collection(
+      db,
+      "Users",
+      effectiveUserId,
+      "Vehicles"
+    );
+
+    const unsubscribeVehicles = onSnapshot(
+      vehiclesRef,
+      (snapshot) => {
+        const loaded: { id: string; vehicleNumber: string }[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.active !== false) {
+            const vNum = data.vehicleNumber || data.name || docSnap.id;
+            if (vNum) {
+              loaded.push({ id: docSnap.id, vehicleNumber: vNum });
+            }
+          }
+        });
+        loaded.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
+        setVehicles(loaded);
+      },
+      (error) => {
+        console.error("Error fetching vehicles:", error);
+      }
+    );
+
+    return () => {
+      unsubscribeCompanies();
+      unsubscribeVehicles();
+    };
   }, [effectiveUserId]);
 
   // Determine Default Company Name
@@ -339,6 +373,10 @@ export default function OtherExpensesPage() {
               serviceId: data.serviceId || "",
               serviceName: data.serviceName || "Other Expense",
               isCustomService: !!data.isCustomService,
+              companyId: data.companyId || "",
+              companyName: data.companyName || "",
+              vehicleId: data.vehicleId || "",
+              vehicleNumber: data.vehicleNumber || "",
               date: data.date || "",
               amount: Number(data.amount) || 0,
               type: data.type === "Credit" ? "Credit" : "Debit",
@@ -377,12 +415,32 @@ export default function OtherExpensesPage() {
         return false;
       }
 
+      if (
+        vehicleFilter !== "All" &&
+        rec.vehicleNumber !== vehicleFilter &&
+        rec.vehicleId !== vehicleFilter
+      ) {
+        return false;
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = (rec.serviceName || "").toLowerCase().includes(q);
         const matchesDesc = (rec.description || "").toLowerCase().includes(q);
         const matchesAmount = rec.amount.toString().includes(q);
-        if (!matchesName && !matchesDesc && !matchesAmount) {
+        const matchesVehicle = (rec.vehicleNumber || "")
+          .toLowerCase()
+          .includes(q);
+        const matchesCompany = (rec.companyName || "")
+          .toLowerCase()
+          .includes(q);
+        if (
+          !matchesName &&
+          !matchesDesc &&
+          !matchesAmount &&
+          !matchesVehicle &&
+          !matchesCompany
+        ) {
           return false;
         }
       }
@@ -406,7 +464,7 @@ export default function OtherExpensesPage() {
 
       return true;
     });
-  }, [records, typeFilter, searchQuery, startDate, endDate]);
+  }, [records, typeFilter, vehicleFilter, searchQuery, startDate, endDate]);
 
   // Summary calculations
   const { totalCredit, totalDebit, netBalance } = useMemo(() => {
@@ -543,6 +601,8 @@ export default function OtherExpensesPage() {
         "S.No": String(index + 1),
         Date: formatDateSafe(r.date),
         "Service / Expense": r.serviceName,
+        Company: r.companyName || "-",
+        Vehicle: r.vehicleNumber || "-",
         Type: r.type === "Credit" ? "Credit (Cash In)" : "Debit (Cash Out)",
         "Amount ($)": Number(r.amount).toFixed(2),
         Description: r.description || "-",
@@ -554,10 +614,12 @@ export default function OtherExpensesPage() {
       ws["!cols"] = [
         { wch: 10 }, // S.No
         { wch: 18 }, // Date (MM-DD-YYYY)
-        { wch: 36 }, // Service / Expense
+        { wch: 32 }, // Service / Expense
+        { wch: 24 }, // Company
+        { wch: 18 }, // Vehicle
         { wch: 24 }, // Type (Credit (Cash In) / Debit (Cash Out))
-        { wch: 20 }, // Amount ($)
-        { wch: 50 }, // Description / Notes
+        { wch: 18 }, // Amount ($)
+        { wch: 45 }, // Description / Notes
       ];
 
       const wb = utils.book_new();
@@ -836,7 +898,7 @@ export default function OtherExpensesPage() {
               })}
             </div>
 
-            {/* Right Side: Search & Date Range */}
+            {/* Right Side: Search, Vehicle Filter & Date Range */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Search input */}
               <div className="relative min-w-[200px] flex-1 sm:flex-none">
@@ -845,7 +907,7 @@ export default function OtherExpensesPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search expense or notes..."
+                  placeholder="Search expense, vehicle, notes..."
                   className="w-full pl-9 pr-3.5 py-2 bg-gray-50 hover:bg-gray-100/80 focus:bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all"
                 />
                 {searchQuery && (
@@ -856,6 +918,26 @@ export default function OtherExpensesPage() {
                     <FaTimes />
                   </button>
                 )}
+              </div>
+
+              {/* Vehicle Filter Dropdown */}
+              <div className="relative min-w-[140px] flex-1 sm:flex-none">
+                <select
+                  value={vehicleFilter}
+                  onChange={(e) => setVehicleFilter(e.target.value)}
+                  className={`w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/80 focus:bg-white border rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all cursor-pointer font-medium ${
+                    vehicleFilter !== "All"
+                      ? "border-[#F96176] text-[#F96176] font-bold bg-rose-50/40"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <option value="All">All Vehicles</option>
+                  {vehicles.map((v) => (
+                    <option key={v.id} value={v.vehicleNumber}>
+                      🚗 {v.vehicleNumber}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Date Filters */}
@@ -914,13 +996,21 @@ export default function OtherExpensesPage() {
                 <FaMoneyBillWave className="text-2xl" />
               </div>
               <h3 className="text-base font-bold text-gray-800 mb-1">
-                {searchQuery || typeFilter !== "All" || startDate || endDate
+                {searchQuery ||
+                typeFilter !== "All" ||
+                vehicleFilter !== "All" ||
+                startDate ||
+                endDate
                   ? "No matching expenses found"
                   : "No other expenses recorded yet"}
               </h3>
               <p className="text-xs text-gray-500 max-w-sm mx-auto mb-4">
-                {searchQuery || typeFilter !== "All" || startDate || endDate
-                  ? "Try adjusting your search query, filter type, or date range."
+                {searchQuery ||
+                typeFilter !== "All" ||
+                vehicleFilter !== "All" ||
+                startDate ||
+                endDate
+                  ? "Try adjusting your search query, vehicle, filter type, or date range."
                   : "Record cash inflows (Credit) and cash outflows (Debit) to keep your financials organized."}
               </p>
               <button
@@ -961,15 +1051,31 @@ export default function OtherExpensesPage() {
                         </td>
 
                         {/* Service / Expense Name */}
-                        <td className="py-4 px-4 sm:px-6 font-semibold text-gray-900">
+                        <td className="py-4 px-4 sm:px-6">
                           <div>
-                            <span>{record.serviceName}</span>
+                            <span className="font-semibold text-gray-900">
+                              {record.serviceName}
+                            </span>
                             {record.isCustomService && (
                               <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-medium">
                                 Custom
                               </span>
                             )}
                           </div>
+                          {(record.vehicleNumber || record.companyName) && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              {record.vehicleNumber && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-medium text-[10px] border border-blue-100">
+                                  🚗 {record.vehicleNumber}
+                                </span>
+                              )}
+                              {record.companyName && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-medium text-[10px] border border-purple-100">
+                                  🏢 {record.companyName}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* Type Badge */}
@@ -1106,11 +1212,13 @@ export default function OtherExpensesPage() {
             style={{ backgroundColor: "#EEF4FF", borderColor: "#DBEAFE" }}
             className="rounded-2xl p-5 flex items-center gap-4 mb-6 border"
           >
-            <img
-              src="/logo-new.png"
-              alt="Logo"
-              className="w-16 h-16 object-contain rounded-xl bg-white p-1.5 border border-blue-100 shadow-xs"
-            />
+            <div className="bg-white px-3.5 py-2 rounded-xl border border-blue-100 shadow-xs flex items-center justify-center flex-shrink-0">
+              <img
+                src="/logo-new.png"
+                alt="Logo"
+                className="h-12 w-auto max-w-[200px] object-contain"
+              />
+            </div>
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900 tracking-tight">
                 {defaultCompanyName} Report
@@ -1210,8 +1318,29 @@ export default function OtherExpensesPage() {
                       {formatEntryDate(row.date)}
                     </td>
                     <td className="py-2.5 px-3.5 border-r border-gray-200">
-                      {row.serviceName}
-                      {row.description ? ` (${row.description})` : ""}
+                      <div className="font-semibold text-gray-900">
+                        {row.serviceName}
+                      </div>
+                      {(row.vehicleNumber ||
+                        row.companyName ||
+                        row.description) && (
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {row.vehicleNumber && (
+                            <span className="font-medium text-gray-700">
+                              Veh: {row.vehicleNumber}
+                            </span>
+                          )}
+                          {row.vehicleNumber &&
+                            (row.companyName || row.description) && (
+                              <span> • </span>
+                            )}
+                          {row.companyName && <span>{row.companyName}</span>}
+                          {row.companyName && row.description && (
+                            <span> • </span>
+                          )}
+                          {row.description && <span>{row.description}</span>}
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5 px-3.5 border-r border-gray-200">
                       Cash
@@ -1261,7 +1390,7 @@ export default function OtherExpensesPage() {
             <img
               src="/logo-new.png"
               alt="TrenoOps"
-              className="w-8 h-8 object-contain rounded"
+              className="h-7 w-auto object-contain"
             />
             <p className="text-xs text-gray-700">
               Generated by{" "}

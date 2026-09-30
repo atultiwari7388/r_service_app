@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   collection,
   doc,
@@ -17,6 +17,8 @@ import {
   FaCheck,
   FaArrowDown,
   FaArrowUp,
+  FaBuilding,
+  FaTruck,
 } from "react-icons/fa";
 
 export type TransactionType = "Credit" | "Debit";
@@ -27,6 +29,10 @@ export interface OtherExpenseRecord {
   serviceId?: string;
   serviceName: string;
   isCustomService?: boolean;
+  companyId?: string;
+  companyName?: string;
+  vehicleId?: string;
+  vehicleNumber?: string;
   date: string;
   amount: number;
   type: TransactionType;
@@ -40,6 +46,22 @@ export interface OtherExpenseRecord {
 export interface OtherExpenseServiceOption {
   id: string;
   sName: string;
+}
+
+export interface CompanyOption {
+  id: string;
+  companyName: string;
+  isDefault?: boolean;
+}
+
+export interface VehicleOption {
+  id: string;
+  vehicleNumber: string;
+  vehicleType?: string;
+  mycomId?: string;
+  myCompany?: string;
+  companyName?: string;
+  active?: boolean;
 }
 
 export interface AddOtherExpenseModalProps {
@@ -143,12 +165,20 @@ export default function AddOtherExpenseModal({
   const [servicesList, setServicesList] = useState<OtherExpenseServiceOption[]>(
     preloadedServices || []
   );
+  const [companiesList, setCompaniesList] = useState<CompanyOption[]>([]);
+  const [vehiclesList, setVehiclesList] = useState<VehicleOption[]>([]);
+
+  // Form states
   const [formDate, setFormDate] = useState<string>(
     format(new Date(), "MM-dd-yyyy")
   );
   const [formSelectedService, setFormSelectedService] = useState<string>("");
   const [formCustomServiceName, setFormCustomServiceName] =
     useState<string>("");
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
+  const [selectedVehicleNumber, setSelectedVehicleNumber] = useState<string>("");
   const [formAmount, setFormAmount] = useState<string>("");
   const [formType, setFormType] = useState<TransactionType>("Debit");
   const [formDescription, setFormDescription] = useState<string>("");
@@ -210,7 +240,86 @@ export default function AddOtherExpenseModal({
     fetchServices();
   }, [preloadedServices]);
 
-  // 2. Initialize or reset form based on editingRecord
+  // 2. Fetch companies and vehicles for effective user
+  useEffect(() => {
+    if (!effectiveUserId || !isOpen) return;
+
+    const fetchCompaniesAndVehicles = async () => {
+      try {
+        // Fetch myCompanies
+        const compSnapshot = await getDocs(
+          collection(db, "Users", effectiveUserId, "myCompanies")
+        );
+        const loadedCompanies: CompanyOption[] = [];
+        compSnapshot.forEach((d) => {
+          const data = d.data();
+          if (data.isActive !== false) {
+            loadedCompanies.push({
+              id: d.id,
+              companyName: data.companyName || data.name || "Unnamed Company",
+              isDefault: Boolean(data.isDefault),
+            });
+          }
+        });
+        loadedCompanies.sort((a, b) => a.companyName.localeCompare(b.companyName));
+        setCompaniesList(loadedCompanies);
+
+        // Fetch Vehicles
+        const vehSnapshot = await getDocs(
+          collection(db, "Users", effectiveUserId, "Vehicles")
+        );
+        const loadedVehicles: VehicleOption[] = [];
+        vehSnapshot.forEach((d) => {
+          const data = d.data();
+          if (data.active !== false) {
+            loadedVehicles.push({
+              id: d.id,
+              vehicleNumber: data.vehicleNumber || data.name || d.id,
+              vehicleType: data.vehicleType || "",
+              mycomId: data.mycomId || "",
+              myCompany: data.myCompany || "",
+              companyName: data.companyName || "",
+              active: data.active !== false,
+            });
+          }
+        });
+        loadedVehicles.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber));
+        setVehiclesList(loadedVehicles);
+      } catch (err) {
+        console.error("Error loading companies and vehicles in modal:", err);
+      }
+    };
+
+    fetchCompaniesAndVehicles();
+  }, [effectiveUserId, isOpen]);
+
+  // Filter vehicles according to selected company
+  const availableVehicles = useMemo(() => {
+    if (!selectedCompanyId) {
+      return vehiclesList;
+    }
+    const comp = companiesList.find((c) => c.id === selectedCompanyId);
+    const compNameLower = comp?.companyName?.trim().toLowerCase() || "";
+
+    return vehiclesList.filter((v) => {
+      if (v.mycomId && v.mycomId === selectedCompanyId) return true;
+      if (
+        compNameLower &&
+        v.myCompany &&
+        v.myCompany.trim().toLowerCase() === compNameLower
+      )
+        return true;
+      if (
+        compNameLower &&
+        v.companyName &&
+        v.companyName.trim().toLowerCase() === compNameLower
+      )
+        return true;
+      return false;
+    });
+  }, [vehiclesList, selectedCompanyId, companiesList]);
+
+  // 3. Initialize or reset form based on editingRecord
   useEffect(() => {
     if (!isOpen) return;
 
@@ -229,6 +338,11 @@ export default function AddOtherExpenseModal({
         setFormCustomServiceName(editingRecord.serviceName);
       }
 
+      setSelectedCompanyId(editingRecord.companyId || "");
+      setSelectedCompanyName(editingRecord.companyName || "");
+      setSelectedVehicleId(editingRecord.vehicleId || "");
+      setSelectedVehicleNumber(editingRecord.vehicleNumber || "");
+
       setFormAmount(
         editingRecord.amount ? editingRecord.amount.toString() : ""
       );
@@ -239,12 +353,59 @@ export default function AddOtherExpenseModal({
       setFormDate(format(new Date(), "MM-dd-yyyy"));
       setFormSelectedService(servicesList[0]?.sName || "");
       setFormCustomServiceName("");
+
+      // Default to default company if available
+      const defaultComp =
+        companiesList.find((c) => c.isDefault) || companiesList[0];
+      if (defaultComp) {
+        setSelectedCompanyId(defaultComp.id);
+        setSelectedCompanyName(defaultComp.companyName);
+      } else {
+        setSelectedCompanyId("");
+        setSelectedCompanyName("");
+      }
+
+      setSelectedVehicleId("");
+      setSelectedVehicleNumber("");
       setFormAmount("");
       setFormType("Debit");
       setFormDescription("");
       setFormErrors({});
     }
-  }, [isOpen, editingRecord, servicesList]);
+  }, [isOpen, editingRecord, servicesList, companiesList]);
+
+  // Handle company change
+  const handleCompanyChange = (compId: string) => {
+    setSelectedCompanyId(compId);
+    const matched = companiesList.find((c) => c.id === compId);
+    setSelectedCompanyName(matched ? matched.companyName : "");
+
+    // Check if previously selected vehicle still belongs to new company
+    if (selectedVehicleId) {
+      const compNameLower = matched?.companyName?.trim().toLowerCase() || "";
+      const currentVeh = vehiclesList.find((v) => v.id === selectedVehicleId);
+      const isStillValid =
+        !compId ||
+        (currentVeh &&
+          (currentVeh.mycomId === compId ||
+            (compNameLower &&
+              currentVeh.myCompany?.trim().toLowerCase() === compNameLower) ||
+            (compNameLower &&
+              currentVeh.companyName?.trim().toLowerCase() === compNameLower)));
+
+      if (!isStillValid) {
+        setSelectedVehicleId("");
+        setSelectedVehicleNumber("");
+      }
+    }
+  };
+
+  // Handle vehicle change
+  const handleVehicleChange = (vId: string) => {
+    setSelectedVehicleId(vId);
+    const matched = vehiclesList.find((v) => v.id === vId);
+    setSelectedVehicleNumber(matched ? matched.vehicleNumber : "");
+  };
 
   if (!isOpen) return null;
 
@@ -320,6 +481,10 @@ export default function AddOtherExpenseModal({
         serviceId: matchedServiceObj ? matchedServiceObj.id : "custom",
         serviceName: finalServiceName,
         isCustomService: isOther,
+        companyId: selectedCompanyId || "",
+        companyName: selectedCompanyName || "",
+        vehicleId: selectedVehicleId || "",
+        vehicleNumber: selectedVehicleNumber || "",
         date: dbDateFormatted,
         amount: parseFloat(formAmount) || 0,
         type: formType,
@@ -386,7 +551,7 @@ export default function AddOtherExpenseModal({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSaveExpense} className="p-6 space-y-4">
+        <form onSubmit={handleSaveExpense} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
           {/* Type Selector (Credit vs Debit) */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
@@ -468,6 +633,55 @@ export default function AddOtherExpenseModal({
                 {formErrors.date}
               </p>
             )}
+          </div>
+
+          {/* Company & Vehicle Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Company Selection */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                <span className="inline-flex items-center gap-1">
+                  <FaBuilding className="text-gray-400 text-[11px]" />
+                  Company
+                </span>
+              </label>
+              <select
+                value={selectedCompanyId}
+                onChange={(e) => handleCompanyChange(e.target.value)}
+                className="w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all"
+              >
+                <option value="">-- Select Company (Optional) --</option>
+                {companiesList.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.companyName}
+                    {comp.isDefault ? " (Default)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Vehicle Selection */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                <span className="inline-flex items-center gap-1">
+                  <FaTruck className="text-gray-400 text-[11px]" />
+                  Vehicle
+                </span>
+              </label>
+              <select
+                value={selectedVehicleId}
+                onChange={(e) => handleVehicleChange(e.target.value)}
+                className="w-full p-3 bg-gray-50 hover:bg-gray-100/70 focus:bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all"
+              >
+                <option value="">-- Select Vehicle (Optional) --</option>
+                {availableVehicles.map((veh) => (
+                  <option key={veh.id} value={veh.id}>
+                    {veh.vehicleNumber}
+                    {veh.vehicleType ? ` (${veh.vehicleType})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Service / Expense Dropdown */}
