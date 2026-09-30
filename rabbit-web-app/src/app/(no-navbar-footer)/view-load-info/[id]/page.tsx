@@ -6,6 +6,9 @@ import {
   Printer,
   Download,
   FileText,
+  FileImage,
+  FileSpreadsheet,
+  File,
   Clock,
   Calendar,
   Eye,
@@ -20,6 +23,8 @@ import {
   Check,
   X,
   ExternalLink,
+  Search,
+  Filter,
 } from "lucide-react";
 import { DocumentActionsDropdown } from "@/components/dropdown/DocumentActionDropdown";
 import Link from "next/link";
@@ -349,6 +354,7 @@ const MOCK_DOCUMENTS: LoadDocument[] = [
 const TABS = [
   { id: "load-info", label: "Load Information" },
   { id: "load-docs", label: "Load Docs" },
+  { id: "uploaded-docs", label: "Uploaded Docs" },
 ];
 
 const GENERATED_DOCUMENTS: LoadDocument[] = [
@@ -1262,6 +1268,11 @@ export default function LoadDetailsPage() {
   const loadDocId = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const requestedAction = searchParams.get("action");
   const [activeTab, setActiveTab] = useState("load-info");
+  const [previewUploadedDoc, setPreviewUploadedDoc] =
+    useState<DispatchDocumentRecord | null>(null);
+  const [uploadedCategoryFilter, setUploadedCategoryFilter] =
+    useState<string>("all");
+  const [uploadedSearchQuery, setUploadedSearchQuery] = useState<string>("");
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [showBolModal, setShowBolModal] = useState(false);
   const [showLoadSheetModal, setShowLoadSheetModal] = useState(false);
@@ -1775,6 +1786,145 @@ export default function LoadDetailsPage() {
     [documents]
   );
 
+  const uploadedDocumentsList = useMemo<DispatchDocumentRecord[]>(() => {
+    if (!dbLoad?.documents) return [];
+    return dbLoad.documents;
+  }, [dbLoad?.documents]);
+
+  const filteredUploadedDocs = useMemo(() => {
+    let list = uploadedDocumentsList;
+    if (uploadedCategoryFilter !== "all") {
+      list = list.filter((doc) => {
+        const typeKey = (doc.type || "").toLowerCase().trim();
+        const filterKey = uploadedCategoryFilter.toLowerCase().trim();
+        return (
+          typeKey === filterKey ||
+          typeKey.replace(/-/g, "") === filterKey.replace(/-/g, "") ||
+          (filterKey === "bol" && (typeKey === "bill-of-lading" || typeKey === "bol")) ||
+          (filterKey === "pod" && (typeKey === "proof-of-delivery" || typeKey === "pod")) ||
+          (filterKey === "lumper" && (typeKey === "lumper-receipt" || typeKey === "lumper")) ||
+          (filterKey === "damage-photos" && (typeKey === "damage-photo" || typeKey === "damage-photos")) ||
+          (filterKey === "rate-confirmation" && (typeKey === "rate-confirmation" || typeKey === "rate-conf"))
+        );
+      });
+    }
+    if (uploadedSearchQuery.trim()) {
+      const q = uploadedSearchQuery.toLowerCase().trim();
+      list = list.filter((doc) => {
+        const name = (doc.name || "").toLowerCase();
+        const type = (doc.type || "").toLowerCase();
+        const uploader = (
+          doc.uploadedByName ||
+          doc.uploadedByRole ||
+          ""
+        ).toLowerCase();
+        return name.includes(q) || type.includes(q) || uploader.includes(q);
+      });
+    }
+    return list;
+  }, [uploadedDocumentsList, uploadedCategoryFilter, uploadedSearchQuery]);
+
+  const formatDocFileSize = (bytes?: number) => {
+    if (!bytes || bytes === 0) return "-";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const getDocTypeCategoryBadge = (type?: string) => {
+    const normalized = (type || "").toLowerCase().replace(/[\s_]+/g, "-");
+    switch (normalized) {
+      case "bol":
+      case "bill-of-lading":
+        return {
+          label: "Bill of Lading",
+          bg: "bg-blue-50 text-blue-700 border-blue-200",
+        };
+      case "pod":
+      case "proof-of-delivery":
+        return {
+          label: "Proof of Delivery",
+          bg: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        };
+      case "damage-photos":
+      case "damage-photo":
+        return {
+          label: "Damage Photos",
+          bg: "bg-amber-50 text-amber-700 border-amber-200",
+        };
+      case "scale-ticket":
+        return {
+          label: "Scale Ticket",
+          bg: "bg-indigo-50 text-indigo-700 border-indigo-200",
+        };
+      case "lumper":
+      case "lumper-receipt":
+        return {
+          label: "Lumper Receipt",
+          bg: "bg-purple-50 text-purple-700 border-purple-200",
+        };
+      case "rate-confirmation":
+        return {
+          label: "Rate Confirmation",
+          bg: "bg-rose-50 text-rose-700 border-rose-200",
+        };
+      case "insurance":
+      case "insurance-cert":
+        return {
+          label: "Insurance",
+          bg: "bg-teal-50 text-teal-700 border-teal-200",
+        };
+      default:
+        return {
+          label: type
+            ? type
+                .split("-")
+                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(" ")
+            : "Other Document",
+          bg: "bg-gray-100 text-gray-700 border-gray-200",
+        };
+    }
+  };
+
+  const isImageDocument = (docItem: DispatchDocumentRecord) => {
+    const mime = (docItem.mimeType || "").toLowerCase();
+    const name = (docItem.name || "").toLowerCase();
+    const url = (docItem.url || "").toLowerCase();
+    return (
+      mime.includes("image") ||
+      mime === "jpg" ||
+      mime === "jpeg" ||
+      mime === "png" ||
+      mime === "webp" ||
+      mime === "gif" ||
+      /\.(jpg|jpeg|png|webp|gif|bmp)(\?.*)?$/i.test(name) ||
+      /\.(jpg|jpeg|png|webp|gif|bmp)(\?.*)?$/i.test(url)
+    );
+  };
+
+  const isPdfDocument = (docItem: DispatchDocumentRecord) => {
+    const mime = (docItem.mimeType || "").toLowerCase();
+    const name = (docItem.name || "").toLowerCase();
+    const url = (docItem.url || "").toLowerCase();
+    return (
+      mime.includes("pdf") ||
+      mime === "pdf" ||
+      name.endsWith(".pdf") ||
+      url.includes(".pdf")
+    );
+  };
+
+  const handleDownloadUploadedDoc = (docItem: DispatchDocumentRecord) => {
+    if (!docItem.url) return;
+    const link = window.document.createElement("a");
+    link.href = docItem.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.download = docItem.name || "document";
+    link.click();
+  };
+
   const formatCurrency = (value?: number | string) =>
     `$${Number(value || 0).toFixed(2)}`;
 
@@ -1902,20 +2052,38 @@ export default function LoadDetailsPage() {
           {/* --- TAB NAVIGATION BAR --- */}
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 mt-1">
             <div className="flex overflow-x-auto hide-scrollbar gap-6 border-b border-gray-200">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 px-1
+              {TABS.map((tab) => {
+                const count =
+                  tab.id === "uploaded-docs"
+                    ? uploadedDocumentsList.length
+                    : null;
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`pb-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-200 px-1 flex items-center gap-2
                     ${
                       activeTab === tab.id
                         ? "border-[#F96176] text-[#F96176]"
                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                  >
+                    <span>{tab.label}</span>
+                    {count !== null && count > 0 && (
+                      <span
+                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          activeTab === tab.id
+                            ? "bg-[#F96176] text-white"
+                            : "bg-gray-100 text-gray-600 border border-gray-200"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </header>
@@ -2712,6 +2880,383 @@ export default function LoadDetailsPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {activeTab === "uploaded-docs" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* Top Filter and Search Bar */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-[#F96176]" />
+                      Uploaded Documents
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F96176]/10 text-[#F96176]">
+                        {uploadedDocumentsList.length} Total
+                      </span>
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Documents uploaded by the driver or dispatch team for this load.
+                    </p>
+                  </div>
+
+                  {/* Search Bar */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-full md:w-72">
+                      <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={uploadedSearchQuery}
+                        onChange={(e) => setUploadedSearchQuery(e.target.value)}
+                        placeholder="Search document name, type..."
+                        className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-1 focus:ring-[#F96176] focus:border-[#F96176] outline-none"
+                      />
+                      {uploadedSearchQuery && (
+                        <button
+                          onClick={() => setUploadedSearchQuery("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category Filter Pills */}
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 overflow-x-auto pb-1 hide-scrollbar text-xs">
+                  <span className="text-gray-400 font-medium whitespace-nowrap flex items-center gap-1 mr-1">
+                    <Filter className="w-3.5 h-3.5" /> Filter:
+                  </span>
+                  {[
+                    { key: "all", label: "All Docs" },
+                    { key: "bol", label: "BOL" },
+                    { key: "pod", label: "POD" },
+                    { key: "damage-photos", label: "Damage Photos" },
+                    { key: "scale-ticket", label: "Scale Ticket" },
+                    { key: "lumper", label: "Lumper Receipt" },
+                    { key: "rate-confirmation", label: "Rate Conf." },
+                    { key: "other", label: "Other" },
+                  ].map((item) => {
+                    const isSelected = uploadedCategoryFilter === item.key;
+                    const count =
+                      item.key === "all"
+                        ? uploadedDocumentsList.length
+                        : uploadedDocumentsList.filter((doc) => {
+                            const typeKey = (doc.type || "").toLowerCase().trim();
+                            const filterKey = item.key.toLowerCase().trim();
+                            return (
+                              typeKey === filterKey ||
+                              typeKey.replace(/-/g, "") === filterKey.replace(/-/g, "") ||
+                              (filterKey === "bol" && (typeKey === "bill-of-lading" || typeKey === "bol")) ||
+                              (filterKey === "pod" && (typeKey === "proof-of-delivery" || typeKey === "pod")) ||
+                              (filterKey === "lumper" && (typeKey === "lumper-receipt" || typeKey === "lumper")) ||
+                              (filterKey === "damage-photos" && (typeKey === "damage-photo" || typeKey === "damage-photos")) ||
+                              (filterKey === "rate-confirmation" && (typeKey === "rate-confirmation" || typeKey === "rate-conf"))
+                            );
+                          }).length;
+
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => setUploadedCategoryFilter(item.key)}
+                        className={`px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-[#F96176] text-white shadow-sm"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            isSelected
+                              ? "bg-white/20 text-white"
+                              : "bg-white text-gray-600 border border-gray-200"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Table List View */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100/70 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-semibold">
+                        <th className="px-6 py-4 w-[140px] text-center">Actions</th>
+                        <th className="px-6 py-4">Document Details</th>
+                        <th className="px-6 py-4">Category</th>
+                        <th className="px-6 py-4">Uploaded By</th>
+                        <th className="px-6 py-4">Uploaded Date</th>
+                        <th className="px-6 py-4 text-right">File Size</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {filteredUploadedDocs.map((docItem) => {
+                        const categoryBadge = getDocTypeCategoryBadge(docItem.type);
+                        const isImage = isImageDocument(docItem);
+                        const isPdf = isPdfDocument(docItem);
+                        const formattedDate = docItem.createdAt?.seconds
+                          ? new Date(docItem.createdAt.seconds * 1000).toLocaleString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                                hour: "numeric",
+                                minute: "numeric",
+                                hour12: true,
+                              }
+                            )
+                          : "-";
+
+                        return (
+                          <tr
+                            key={docItem.id}
+                            className="hover:bg-gray-50/80 transition-colors group"
+                          >
+                            {/* ACTIONS */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setPreviewUploadedDoc(docItem)}
+                                  title="Preview Document"
+                                  className="p-1.5 text-blue-600 hover:text-white hover:bg-blue-600 rounded-md border border-blue-200 hover:border-blue-600 transition shadow-xs"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadUploadedDoc(docItem)}
+                                  title="Download Document"
+                                  className="p-1.5 text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-md border border-emerald-200 hover:border-emerald-600 transition shadow-xs"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                                {docItem.url && (
+                                  <a
+                                    href={docItem.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Open in new tab"
+                                    className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md border border-gray-200 transition"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* DOCUMENT DETAILS */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+                                    isImage
+                                      ? "bg-sky-50 border-sky-200 text-sky-600"
+                                      : isPdf
+                                      ? "bg-rose-50 border-rose-200 text-rose-600"
+                                      : "bg-gray-100 border-gray-200 text-gray-600"
+                                  }`}
+                                >
+                                  {isImage ? (
+                                    <FileImage className="w-5 h-5" />
+                                  ) : isPdf ? (
+                                    <FileText className="w-5 h-5" />
+                                  ) : (
+                                    <File className="w-5 h-5" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <button
+                                    onClick={() => setPreviewUploadedDoc(docItem)}
+                                    className="text-sm font-semibold text-gray-900 hover:text-[#F96176] transition-colors text-left truncate block max-w-xs md:max-w-md"
+                                    title={docItem.name || "Document"}
+                                  >
+                                    {docItem.name || "Untitled Document"}
+                                  </button>
+                                  <span className="text-xs text-gray-400 block mt-0.5 font-mono">
+                                    ID: {docItem.id}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* CATEGORY */}
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${categoryBadge.bg}`}
+                              >
+                                {categoryBadge.label}
+                              </span>
+                            </td>
+
+                            {/* UPLOADED BY */}
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                                    docItem.uploadedByRole === "driver"
+                                      ? "bg-amber-50 text-amber-800 border-amber-200"
+                                      : "bg-purple-50 text-purple-800 border-purple-200"
+                                  }`}
+                                >
+                                  {docItem.uploadedByRole === "driver"
+                                    ? "Driver"
+                                    : "Admin / Owner"}
+                                </span>
+                                {docItem.uploadedByName && (
+                                  <span className="text-xs text-gray-600">
+                                    {docItem.uploadedByName}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* UPLOADED DATE */}
+                            <td className="px-6 py-4 text-xs text-gray-600">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                <span>{formattedDate}</span>
+                              </div>
+                            </td>
+
+                            {/* FILE SIZE */}
+                            <td className="px-6 py-4 text-right text-xs font-semibold text-gray-700">
+                              {formatDocFileSize(docItem.size)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* EMPTY STATE */}
+                      {filteredUploadedDocs.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-16 text-center">
+                            <div className="max-w-sm mx-auto flex flex-col items-center">
+                              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-3">
+                                <FileText className="w-7 h-7" />
+                              </div>
+                              <h3 className="text-sm font-bold text-gray-900 mb-1">
+                                {uploadedDocumentsList.length === 0
+                                  ? "No Uploaded Documents"
+                                  : "No matching documents found"}
+                              </h3>
+                              <p className="text-xs text-gray-500 leading-relaxed">
+                                {uploadedDocumentsList.length === 0
+                                  ? "Documents uploaded by the driver on mobile or uploaded during dispatch will appear here for preview and download."
+                                  : "Try adjusting your search query or filter category."}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Uploaded Document Preview Modal */}
+              {previewUploadedDoc && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50/80">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-[#F96176]/10 text-[#F96176] flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3
+                            className="text-sm font-bold text-gray-900 truncate"
+                            title={previewUploadedDoc.name}
+                          >
+                            {previewUploadedDoc.name || "Document Preview"}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                            <span>
+                              {getDocTypeCategoryBadge(previewUploadedDoc.type).label}
+                            </span>
+                            <span>•</span>
+                            <span>{formatDocFileSize(previewUploadedDoc.size)}</span>
+                            {previewUploadedDoc.uploadedByRole && (
+                              <>
+                                <span>•</span>
+                                <span className="capitalize">
+                                  By {previewUploadedDoc.uploadedByName || previewUploadedDoc.uploadedByRole}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleDownloadUploadedDoc(previewUploadedDoc)}
+                          className="px-3 py-1.5 bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#F96176]/90 transition shadow-sm flex items-center gap-1.5"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </button>
+                        {previewUploadedDoc.url && (
+                          <a
+                            href={previewUploadedDoc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-semibold rounded-md hover:bg-gray-100 transition shadow-xs flex items-center gap-1.5"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> Open in New Tab
+                          </a>
+                        )}
+                        <button
+                          onClick={() => setPreviewUploadedDoc(null)}
+                          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Modal Body Preview */}
+                    <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex items-center justify-center bg-gray-100/50 min-h-[400px] max-h-[70vh]">
+                      {isImageDocument(previewUploadedDoc) && previewUploadedDoc.url ? (
+                        <img
+                          src={previewUploadedDoc.url}
+                          alt={previewUploadedDoc.name || "Preview"}
+                          className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-md border border-gray-200"
+                        />
+                      ) : isPdfDocument(previewUploadedDoc) && previewUploadedDoc.url ? (
+                        <iframe
+                          src={`${previewUploadedDoc.url}#toolbar=1`}
+                          title={previewUploadedDoc.name || "PDF Document"}
+                          className="w-full h-[65vh] rounded-lg border border-gray-200 shadow-sm bg-white"
+                        />
+                      ) : (
+                        <div className="text-center py-12 px-6">
+                          <File className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                          <h4 className="text-base font-bold text-gray-800 mb-1">
+                            Preview Not Available
+                          </h4>
+                          <p className="text-xs text-gray-500 max-w-sm mb-4">
+                            This file type cannot be previewed directly in the browser. You can download or open it in a new window.
+                          </p>
+                          <button
+                            onClick={() => handleDownloadUploadedDoc(previewUploadedDoc)}
+                            className="px-4 py-2 bg-[#F96176] text-white text-xs font-semibold rounded-md hover:bg-[#F96176]/90 transition"
+                          >
+                            Download File
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </main>
