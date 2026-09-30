@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:regal_service_d_app/services/driver_location_service.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/widgets/truck_dispatch_detail_screen.dart';
+import 'package:regal_service_d_app/views/app/truckDispatch/widgets/upload_document_modal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class TruckDispatchDashboard extends StatefulWidget {
@@ -752,8 +753,8 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                         ),
                       ),
                     ),
-                    if (showAcceptButton) ...[
-                      const SizedBox(width: 12),
+                    const SizedBox(width: 12),
+                    if (showAcceptButton)
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () => _onAccept(load),
@@ -771,8 +772,30 @@ class _TruckDispatchDashboardState extends State<TruckDispatchDashboard>
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
+                      )
+                    else
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            UploadDocumentModal.show(context, load: load);
+                          },
+                          icon:
+                              const Icon(Icons.cloud_upload_outlined, size: 18),
+                          label: const Text(
+                            'Upload Docs',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
                   ],
                 ),
               ],

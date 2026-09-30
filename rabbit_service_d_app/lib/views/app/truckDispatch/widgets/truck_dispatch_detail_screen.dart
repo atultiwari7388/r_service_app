@@ -14,6 +14,7 @@ import 'package:photo_view/photo_view.dart';
 import 'package:printing/printing.dart';
 import 'package:regal_service_d_app/utils/constants.dart';
 import 'package:regal_service_d_app/views/app/truckDispatch/truck_disptach_screen.dart';
+import 'package:regal_service_d_app/views/app/truckDispatch/widgets/upload_document_modal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DispatchDetailsScreen extends StatefulWidget {
@@ -929,49 +930,71 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
       padding: const EdgeInsets.all(20),
       children: [
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: kLightWhite,
+            color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.grey.shade200,
-              style: BorderStyle.none,
+              color: kPrimary.withOpacity(0.2),
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.05),
-                blurRadius: 10,
+                color: kPrimary.withOpacity(0.06),
+                blurRadius: 14,
                 offset: const Offset(0, 4),
               )
             ],
           ),
           child: Column(
             children: [
-              const Icon(Icons.cloud_upload_outlined,
-                  size: 48, color: kPrimary),
-              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: kPrimary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.cloud_upload_outlined,
+                  size: 36,
+                  color: kPrimary,
+                ),
+              ),
+              const SizedBox(height: 14),
               const Text(
-                'Upload POD or Receipts',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                'Upload Compliance Documents',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: kDark,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
-                'Supports PDF, JPG, PNG, DOC, DOCX, XLS, XLSX',
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                'Upload BOL, POD, Damage Photos, Scale Tickets, or Receipts via Camera, Gallery, or Files.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isUploading ? null : _browseFiles,
+              ElevatedButton.icon(
+                onPressed: () {
+                  UploadDocumentModal.show(context, load: widget.load);
+                },
+                icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                label: const Text(
+                  'Upload Documents',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimary,
                   foregroundColor: Colors.white,
+                  elevation: 0,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(_isUploading ? 'Uploading...' : 'Browse Files'),
               ),
             ],
           ),
@@ -986,11 +1009,20 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
                   fontSize: 18, fontWeight: FontWeight.bold, color: kDark),
             ),
             if (documents.isNotEmpty)
-              Text(
-                '${documents.length} files',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${documents.length} files',
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],
@@ -1033,84 +1065,130 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
         else
           ...documents.map((doc) {
             final uploaderRole = (doc['uploadedByRole'] ?? 'admin').toString();
+            final isDriverUpload = uploaderRole.toLowerCase() == 'driver';
             final uploaderLabel =
-                uploaderRole == 'driver' ? 'Driver Upload' : 'Admin Upload';
-            final createdAt = doc['createdAt'];
-            final fileSize = (doc['size'] as num?)?.toInt() ?? 0;
-            final createdAtLabel = _createdAtLabel(createdAt);
+                isDriverUpload ? 'Driver Upload' : 'Admin Upload';
+            final docType = (doc['type'] ?? '').toString();
+            final categoryLabel = _getDocCategoryLabel(docType);
+            final categoryColor = _getDocCategoryColor(docType);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
+                color: Colors.white,
                 border: Border.all(color: Colors.grey.shade200),
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _getFileTypeColor((doc['type'] ?? '').toString()),
-                      borderRadius: BorderRadius.circular(10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getFileTypeIconData(doc),
+                        color: categoryColor,
+                        size: 24,
+                      ),
                     ),
-                    child: _getFileTypeIcon((doc['type'] ?? '').toString()),
-                  ),
-                  title: Text(
-                    _shortDocumentName(
-                      (doc['name'] ?? 'Document').toString(),
-                    ),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  // subtitle: Text(
-                  //   '${(doc['type'] ?? 'Document').toString()} • ${_formatFileSize(fileSize)}${createdAtLabel.isNotEmpty ? '\n$createdAtLabel' : ''}',
-                  //   style: TextStyle(
-                  //     color: Colors.grey[600],
-                  //   ),
-                  // ),
-                  trailing: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 2,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: uploaderRole == 'driver'
-                                ? Colors.green.withOpacity(0.1)
-                                : kPrimary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            uploaderLabel,
-                            style: TextStyle(
-                              color: uploaderRole == 'driver'
-                                  ? Colors.green
-                                  : kPrimary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _shortDocumentName(
+                              (doc['name'] ?? 'Document').toString(),
+                              maxLength: 28,
                             ),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: kDark,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // Category Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: categoryColor.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  categoryLabel,
+                                  style: TextStyle(
+                                    color: categoryColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              // Uploader Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isDriverUpload
+                                      ? Colors.green.withOpacity(0.1)
+                                      : kPrimary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  uploaderLabel,
+                                  style: TextStyle(
+                                    color: isDriverUpload
+                                        ? Colors.green.shade700
+                                        : kPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_red_eye_outlined,
+                          color: kDark, size: 20),
+                      tooltip: 'Preview',
+                      onPressed: () => _viewDocument(doc),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.download_rounded,
+                          color: kPrimary, size: 20),
+                      tooltip: 'Download',
+                      onPressed: () => _downloadDocument(doc),
+                    ),
+                    if (isDriverUpload)
                       IconButton(
-                        icon: const Icon(Icons.remove_red_eye_outlined,
-                            color: kDark),
-                        tooltip: 'Preview',
-                        onPressed: () => _viewDocument(doc),
+                        icon: Icon(Icons.delete_outline,
+                            color: Colors.red.shade400, size: 20),
+                        tooltip: 'Delete',
+                        onPressed: () => _deleteDocument(doc),
                       ),
-                      IconButton(
-                        icon:
-                            const Icon(Icons.download_rounded, color: kPrimary),
-                        tooltip: 'Download',
-                        onPressed: () => _downloadDocument(doc),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             );
@@ -1491,6 +1569,141 @@ class _DispatchDetailsScreenState extends State<DispatchDetailsScreen>
         ],
       ),
     );
+  }
+
+  String _getDocCategoryLabel(String type) {
+    final normalized = type.toLowerCase().replaceAll('_', '-');
+    switch (normalized) {
+      case 'bol':
+        return 'BOL';
+      case 'pod':
+      case 'proof-of-delivery':
+        return 'POD';
+      case 'damage-photos':
+      case 'damage_photos':
+        return 'Damage Photo';
+      case 'scale-ticket':
+      case 'scale_ticket':
+        return 'Scale Ticket';
+      case 'lumper':
+        return 'Lumper';
+      case 'rate-confirmation':
+      case 'rate_confirmation':
+        return 'Rate Con';
+      default:
+        return type.isNotEmpty ? type : 'Document';
+    }
+  }
+
+  Color _getDocCategoryColor(String type) {
+    final normalized = type.toLowerCase().replaceAll('_', '-');
+    switch (normalized) {
+      case 'bol':
+        return const Color(0xFF4F46E5); // Indigo
+      case 'pod':
+      case 'proof-of-delivery':
+        return const Color(0xFF10B981); // Emerald
+      case 'damage-photos':
+      case 'damage_photos':
+        return const Color(0xFFF59E0B); // Amber
+      case 'scale-ticket':
+      case 'scale_ticket':
+        return const Color(0xFF8B5CF6); // Purple
+      case 'lumper':
+        return const Color(0xFF06B6D4); // Cyan
+      case 'rate-confirmation':
+      case 'rate_confirmation':
+        return const Color(0xFF2563EB); // Blue
+      default:
+        return const Color(0xFF64748B); // Slate
+    }
+  }
+
+  IconData _getFileTypeIconData(Map<String, dynamic> doc) {
+    if (_isPdfDocument(doc)) return Icons.picture_as_pdf_outlined;
+    if (_isImageDocument(doc)) return Icons.image_outlined;
+    final type = (doc['type'] ?? '').toString().toLowerCase();
+    if (type.contains('bol')) return Icons.article_outlined;
+    if (type.contains('pod')) return Icons.local_shipping_outlined;
+    if (type.contains('damage')) return Icons.camera_alt_outlined;
+    if (type.contains('scale')) return Icons.scale_outlined;
+    if (type.contains('lumper')) return Icons.receipt_long_outlined;
+    if (type.contains('rate')) return Icons.request_quote_outlined;
+    return Icons.insert_drive_file_outlined;
+  }
+
+  Future<void> _deleteDocument(Map<String, dynamic> targetDoc) async {
+    final docId = (targetDoc['id'] ?? '').toString();
+    final docName = (targetDoc['name'] ?? 'Document').toString();
+    if (docId.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete Document?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text('Are you sure you want to delete "$docName"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final loadRef = FirebaseFirestore.instance
+          .collection('dispatch_loads')
+          .doc(widget.load.id);
+      final allDocs = _documents();
+      final updatedDocs = allDocs
+          .where((d) => (d['id'] ?? '').toString() != docId)
+          .toList();
+
+      await loadRef.update({
+        'documents': updatedDocs,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await loadRef.collection('history').add({
+        'action': 'driver-deleted-document',
+        'message': 'Driver deleted document: $docName',
+        'createdBy': currentUId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Document deleted successfully'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete document: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Color _getFileTypeColor(String type) {
