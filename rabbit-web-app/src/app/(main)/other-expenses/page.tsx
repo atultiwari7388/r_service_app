@@ -150,7 +150,15 @@ export default function OtherExpensesPage() {
     []
   );
   const [companies, setCompanies] = useState<CompanyType[]>([]);
-  const [vehicles, setVehicles] = useState<{ id: string; vehicleNumber: string }[]>([]);
+  const [vehicles, setVehicles] = useState<
+    {
+      id: string;
+      vehicleNumber: string;
+      mycomId?: string;
+      myCompany?: string;
+      companyName?: string;
+    }[]
+  >([]);
   const [isLoadingRecords, setIsLoadingRecords] = useState<boolean>(true);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
@@ -159,6 +167,7 @@ export default function OtherExpensesPage() {
   const [typeFilter, setTypeFilter] = useState<"All" | "Credit" | "Debit">(
     "All"
   );
+  const [companyFilter, setCompanyFilter] = useState<string>("All");
   const [vehicleFilter, setVehicleFilter] = useState<string>("All");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -256,13 +265,25 @@ export default function OtherExpensesPage() {
     const unsubscribeVehicles = onSnapshot(
       vehiclesRef,
       (snapshot) => {
-        const loaded: { id: string; vehicleNumber: string }[] = [];
+        const loaded: {
+          id: string;
+          vehicleNumber: string;
+          mycomId?: string;
+          myCompany?: string;
+          companyName?: string;
+        }[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (data.active !== false) {
             const vNum = data.vehicleNumber || data.name || docSnap.id;
             if (vNum) {
-              loaded.push({ id: docSnap.id, vehicleNumber: vNum });
+              loaded.push({
+                id: docSnap.id,
+                vehicleNumber: vNum,
+                mycomId: data.mycomId || data.companyId || "",
+                myCompany: data.myCompany || "",
+                companyName: data.companyName || data.company || "",
+              });
             }
           }
         });
@@ -408,6 +429,74 @@ export default function OtherExpensesPage() {
     return () => unsubscribe();
   }, [effectiveUserId]);
 
+  // Derived available companies for filter (from fetched companies + any companyName recorded in records)
+  const availableCompanies = useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach((c) => {
+      if (c.companyName?.trim()) {
+        map.set(c.companyName.trim().toLowerCase(), c.companyName.trim());
+      }
+    });
+    records.forEach((r) => {
+      if (r.companyName?.trim()) {
+        const key = r.companyName.trim().toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, r.companyName.trim());
+        }
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [companies, records]);
+
+  // Vehicles available for filter based on selected company
+  const availableVehiclesForFilter = useMemo(() => {
+    if (companyFilter === "All") {
+      return vehicles;
+    }
+
+    const targetCompanyLower = companyFilter.toLowerCase().trim();
+    const matchedCompany = companies.find(
+      (c) =>
+        c.companyName?.trim().toLowerCase() === targetCompanyLower ||
+        c.id === companyFilter
+    );
+
+    return vehicles.filter((v) => {
+      const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+      if (vCompName && vCompName === targetCompanyLower) return true;
+      if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
+        return true;
+      return false;
+    });
+  }, [vehicles, companyFilter, companies]);
+
+  // Handle Company filter change with smart vehicle reset
+  const handleCompanyFilterChange = (selectedCompany: string) => {
+    setCompanyFilter(selectedCompany);
+    if (selectedCompany !== "All" && vehicleFilter !== "All") {
+      const targetCompanyLower = selectedCompany.toLowerCase().trim();
+      const matchedCompany = companies.find(
+        (c) =>
+          c.companyName?.trim().toLowerCase() === targetCompanyLower ||
+          c.id === selectedCompany
+      );
+      const vehicleExistsInCompany = vehicles.some((v) => {
+        const isThisVehicle =
+          v.vehicleNumber === vehicleFilter || v.id === vehicleFilter;
+        if (!isThisVehicle) return false;
+        const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+        if (vCompName && vCompName === targetCompanyLower) return true;
+        if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
+          return true;
+        return false;
+      });
+
+      if (!vehicleExistsInCompany) {
+        setVehicleFilter("All");
+      }
+    }
+  };
+
   // Filtered records
   const filteredRecords = useMemo(() => {
     return records.filter((rec) => {
@@ -415,12 +504,26 @@ export default function OtherExpensesPage() {
         return false;
       }
 
-      if (
-        vehicleFilter !== "All" &&
-        rec.vehicleNumber !== vehicleFilter &&
-        rec.vehicleId !== vehicleFilter
-      ) {
-        return false;
+      // 1. Company Filter
+      if (companyFilter !== "All") {
+        const targetCompany = companyFilter.toLowerCase().trim();
+        const matchesCompany =
+          (rec.companyName || "").toLowerCase().trim() === targetCompany ||
+          rec.companyId === companyFilter;
+        if (!matchesCompany) {
+          return false;
+        }
+      }
+
+      // 2. Vehicle Filter
+      if (vehicleFilter !== "All") {
+        const targetVehicle = vehicleFilter.toLowerCase().trim();
+        const matchesVehicle =
+          (rec.vehicleNumber || "").toLowerCase().trim() === targetVehicle ||
+          rec.vehicleId === vehicleFilter;
+        if (!matchesVehicle) {
+          return false;
+        }
       }
 
       if (searchQuery.trim()) {
@@ -464,7 +567,15 @@ export default function OtherExpensesPage() {
 
       return true;
     });
-  }, [records, typeFilter, vehicleFilter, searchQuery, startDate, endDate]);
+  }, [
+    records,
+    typeFilter,
+    companyFilter,
+    vehicleFilter,
+    searchQuery,
+    startDate,
+    endDate,
+  ]);
 
   // Summary calculations
   const { totalCredit, totalDebit, netBalance } = useMemo(() => {
@@ -898,7 +1009,7 @@ export default function OtherExpensesPage() {
               })}
             </div>
 
-            {/* Right Side: Search, Vehicle Filter & Date Range */}
+            {/* Right Side: Search, Company Filter, Vehicle Filter & Date Range */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Search input */}
               <div className="relative min-w-[200px] flex-1 sm:flex-none">
@@ -920,6 +1031,26 @@ export default function OtherExpensesPage() {
                 )}
               </div>
 
+              {/* Company Filter Dropdown (Placed before Vehicle Filter) */}
+              <div className="relative min-w-[140px] flex-1 sm:flex-none">
+                <select
+                  value={companyFilter}
+                  onChange={(e) => handleCompanyFilterChange(e.target.value)}
+                  className={`w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/80 focus:bg-white border rounded-xl text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#F96176] transition-all cursor-pointer font-medium ${
+                    companyFilter !== "All"
+                      ? "border-[#F96176] text-[#F96176] font-bold bg-rose-50/40"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <option value="All">All Companies</option>
+                  {availableCompanies.map((compName) => (
+                    <option key={compName} value={compName}>
+                      🏢 {compName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Vehicle Filter Dropdown */}
               <div className="relative min-w-[140px] flex-1 sm:flex-none">
                 <select
@@ -932,7 +1063,7 @@ export default function OtherExpensesPage() {
                   }`}
                 >
                   <option value="All">All Vehicles</option>
-                  {vehicles.map((v) => (
+                  {availableVehiclesForFilter.map((v) => (
                     <option key={v.id} value={v.vehicleNumber}>
                       🚗 {v.vehicleNumber}
                     </option>
@@ -998,6 +1129,7 @@ export default function OtherExpensesPage() {
               <h3 className="text-base font-bold text-gray-800 mb-1">
                 {searchQuery ||
                 typeFilter !== "All" ||
+                companyFilter !== "All" ||
                 vehicleFilter !== "All" ||
                 startDate ||
                 endDate
@@ -1007,10 +1139,11 @@ export default function OtherExpensesPage() {
               <p className="text-xs text-gray-500 max-w-sm mx-auto mb-4">
                 {searchQuery ||
                 typeFilter !== "All" ||
+                companyFilter !== "All" ||
                 vehicleFilter !== "All" ||
                 startDate ||
                 endDate
-                  ? "Try adjusting your search query, vehicle, filter type, or date range."
+                  ? "Try adjusting your search query, company, vehicle, filter type, or date range."
                   : "Record cash inflows (Credit) and cash outflows (Debit) to keep your financials organized."}
               </p>
               <button
