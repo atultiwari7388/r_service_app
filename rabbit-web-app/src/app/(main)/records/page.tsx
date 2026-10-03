@@ -55,7 +55,7 @@ import {
   TableRow,
 } from "@mui/material";
 import toast from "react-hot-toast";
-import { ProfileValues, VehicleTypes } from "@/types/types";
+import { ProfileValues, VehicleTypes, CompanyType } from "@/types/types";
 import { useAuth } from "@/contexts/AuthContexts";
 // import { GlobalToastError } from "@/utils/globalErrorToast";
 import { CiSearch, CiTurnL1 } from "react-icons/ci";
@@ -441,6 +441,7 @@ const MilesTab = ({ filteredVehicles }: MilesTabProps) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function RecordsPage() {
+  const [companies, setCompanies] = useState<CompanyType[]>([]);
   const [vehicles, setVehicles] = useState<VehicleTypes[]>([]);
   const [services, setServices] = useState<ServiceData[]>([]);
   const [records, setRecords] = useState<ServiceRecord[]>([]);
@@ -513,6 +514,8 @@ export default function RecordsPage() {
   const [activeTab, setActiveTab] = useState<"records" | "miles">("records");
 
   // Quick / Short Filter States
+  const [quickCompanyFilter, setQuickCompanyFilter] = useState<string>("all");
+  const [quickVehicleFilter, setQuickVehicleFilter] = useState<string>("all");
   const [quickPaymentFilter, setQuickPaymentFilter] = useState<
     "all" | "paid" | "unpaid" | "partial"
   >("all");
@@ -526,6 +529,8 @@ export default function RecordsPage() {
   const [quickSearchText, setQuickSearchText] = useState<string>("");
 
   const isQuickFilterActive =
+    quickCompanyFilter !== "all" ||
+    quickVehicleFilter !== "all" ||
     quickPaymentFilter !== "all" ||
     quickWorkshopFilter !== "all" ||
     quickTypeFilter !== "all" ||
@@ -533,6 +538,8 @@ export default function RecordsPage() {
     quickSearchText.trim() !== "";
 
   const clearQuickFilters = () => {
+    setQuickCompanyFilter("all");
+    setQuickVehicleFilter("all");
     setQuickPaymentFilter("all");
     setQuickWorkshopFilter("all");
     setQuickTypeFilter("all");
@@ -1325,6 +1332,78 @@ export default function RecordsPage() {
     ])
   ).sort((a, b) => a.localeCompare(b));
 
+  // Derived unique company list for quick filter
+  const availableCompanies = useMemo(() => {
+    const map = new Map<string, string>();
+    companies.forEach((c) => {
+      if (c.companyName?.trim()) {
+        map.set(c.companyName.trim().toLowerCase(), c.companyName.trim());
+      }
+    });
+    vehicles.forEach((v) => {
+      const cName = (v.companyName || v.myCompany || "").trim();
+      if (cName) {
+        map.set(cName.toLowerCase(), cName);
+      }
+    });
+    records.forEach((r) => {
+      const cName = (r?.vehicleDetails?.companyName || "").trim();
+      if (cName) {
+        map.set(cName.toLowerCase(), cName);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
+  }, [companies, vehicles, records]);
+
+  // Derived available vehicles based on quickCompanyFilter
+  const availableVehiclesForQuickFilter = useMemo(() => {
+    if (quickCompanyFilter === "all") {
+      return vehicles;
+    }
+
+    const targetCompanyLower = quickCompanyFilter.toLowerCase().trim();
+    const matchedCompany = companies.find(
+      (c) =>
+        c.companyName?.trim().toLowerCase() === targetCompanyLower ||
+        c.id === quickCompanyFilter
+    );
+
+    return vehicles.filter((v) => {
+      const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+      if (vCompName && vCompName === targetCompanyLower) return true;
+      if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
+        return true;
+      return false;
+    });
+  }, [vehicles, quickCompanyFilter, companies]);
+
+  // Handle Quick Company filter change with smart vehicle reset
+  const handleQuickCompanyFilterChange = (selectedCompany: string) => {
+    setQuickCompanyFilter(selectedCompany);
+    if (selectedCompany !== "all" && quickVehicleFilter !== "all") {
+      const targetCompanyLower = selectedCompany.toLowerCase().trim();
+      const matchedCompany = companies.find(
+        (c) =>
+          c.companyName?.trim().toLowerCase() === targetCompanyLower ||
+          c.id === selectedCompany
+      );
+      const vehicleExistsInCompany = vehicles.some((v) => {
+        const isThisVehicle =
+          v.vehicleNumber === quickVehicleFilter || v.id === quickVehicleFilter;
+        if (!isThisVehicle) return false;
+        const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+        if (vCompName && vCompName === targetCompanyLower) return true;
+        if (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id)
+          return true;
+        return false;
+      });
+
+      if (!vehicleExistsInCompany) {
+        setQuickVehicleFilter("all");
+      }
+    }
+  };
+
   const filteredVehicles = useMemo(
     () =>
       vehicles.filter((v) => {
@@ -1332,6 +1411,33 @@ export default function RecordsPage() {
           return false;
         if (quickTypeFilter === "trailer" && v.vehicleType !== "Trailer")
           return false;
+
+        // Quick Company filter
+        if (quickCompanyFilter !== "all") {
+          const target = quickCompanyFilter.toLowerCase().trim();
+          const matchedCompany = companies.find(
+            (c) =>
+              c.companyName?.trim().toLowerCase() === target ||
+              c.id === quickCompanyFilter
+          );
+          const vCompName = (v.companyName || v.myCompany || "").toLowerCase().trim();
+          const matchesComp =
+            vCompName === target ||
+            (matchedCompany && v.mycomId && v.mycomId === matchedCompany.id);
+          if (!matchesComp) return false;
+        }
+
+        // Quick Vehicle filter
+        if (quickVehicleFilter !== "all") {
+          const target = quickVehicleFilter.toLowerCase().trim();
+          if (
+            (v.vehicleNumber || "").toLowerCase().trim() !== target &&
+            v.id !== quickVehicleFilter
+          ) {
+            return false;
+          }
+        }
+
         if (quickSearchText.trim()) {
           const q = quickSearchText.trim().toLowerCase();
           const matchNum = (v.vehicleNumber || "").toLowerCase().includes(q);
@@ -1340,7 +1446,14 @@ export default function RecordsPage() {
         }
         return true;
       }),
-    [vehicles, quickTypeFilter, quickSearchText]
+    [
+      vehicles,
+      quickTypeFilter,
+      quickCompanyFilter,
+      quickVehicleFilter,
+      quickSearchText,
+      companies,
+    ]
   );
 
   const filteredRecords = useMemo(
@@ -1424,6 +1537,40 @@ export default function RecordsPage() {
           }
 
           if (!matchesSearchDialog) return false;
+
+          // Quick Company Filter
+          if (quickCompanyFilter !== "all") {
+            const target = quickCompanyFilter.toLowerCase().trim();
+            const recComp = (
+              record.vehicleDetails?.companyName || ""
+            ).toLowerCase().trim();
+            const matchedVeh = vehicles.find(
+              (v) =>
+                v.id === record.vehicleId ||
+                (v.vehicleNumber || "").toLowerCase() ===
+                  (record.vehicleDetails?.vehicleNumber || "").toLowerCase()
+            );
+            const vehComp = (
+              matchedVeh?.companyName ||
+              matchedVeh?.myCompany ||
+              ""
+            ).toLowerCase().trim();
+            if (recComp !== target && vehComp !== target) {
+              return false;
+            }
+          }
+
+          // Quick Vehicle Filter
+          if (quickVehicleFilter !== "all") {
+            const target = quickVehicleFilter.toLowerCase().trim();
+            const recVehNum = (
+              record.vehicleDetails?.vehicleNumber || ""
+            ).toLowerCase().trim();
+            const recVehId = record.vehicleId;
+            if (recVehNum !== target && recVehId !== quickVehicleFilter) {
+              return false;
+            }
+          }
 
           // Quick Payment Filter
           if (quickPaymentFilter === "paid") {
@@ -1538,9 +1685,13 @@ export default function RecordsPage() {
       searchType,
       quickPaymentFilter,
       quickWorkshopFilter,
+      quickCompanyFilter,
+      quickVehicleFilter,
       quickTypeFilter,
       quickSearchText,
       quickSortOption,
+      vehicles,
+      companies,
     ]
   );
 
@@ -1698,12 +1849,50 @@ export default function RecordsPage() {
       }
     };
 
+    // Fetch companies using effectiveUserId
+    const companiesRef = collection(
+      db,
+      "Users",
+      effectiveUserId,
+      "myCompanies"
+    );
+    const unsubscribeCompanies = onSnapshot(
+      companiesRef,
+      (snapshot) => {
+        const loaded: CompanyType[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          loaded.push({
+            id: docSnap.id,
+            companyName: data.companyName || data.name || "Unnamed Company",
+            dot: data.dot || "",
+            mc: data.mc || "",
+            address: data.address || "",
+            city: data.city || "",
+            state: data.state || "",
+            country: data.country || "",
+            isDefault: Boolean(data.isDefault),
+            isActive: data.isActive !== false,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+          });
+        });
+        setCompanies(loaded);
+      },
+      (error) => {
+        console.error("Error fetching companies in records:", error);
+      }
+    );
+
     fetchData();
     fetchServices();
     fetchServicePackages();
     fetchWorkshopNames();
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeCompanies();
+    };
   }, [effectiveUserId]);
 
   useEffect(() => {
@@ -3708,6 +3897,44 @@ export default function RecordsPage() {
               </button>
             )}
           </div>
+
+          {/* Company Filter Dropdown (Placed before Vehicle Filter) */}
+          <select
+            value={quickCompanyFilter}
+            onChange={(e: any) =>
+              handleQuickCompanyFilterChange(e.target.value)
+            }
+            className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              quickCompanyFilter !== "all"
+                ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <option value="all">All Companies</option>
+            {availableCompanies.map((compName) => (
+              <option key={compName} value={compName}>
+                🏢 {compName}
+              </option>
+            ))}
+          </select>
+
+          {/* Vehicle Filter Dropdown */}
+          <select
+            value={quickVehicleFilter}
+            onChange={(e: any) => setQuickVehicleFilter(e.target.value)}
+            className={`max-w-[150px] sm:max-w-[180px] truncate px-3 py-1.5 text-xs sm:text-sm border rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-[#F96176] transition cursor-pointer ${
+              quickVehicleFilter !== "all"
+                ? "bg-rose-50 border-[#F96176] text-[#F96176]"
+                : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <option value="all">All Vehicles</option>
+            {availableVehiclesForQuickFilter.map((v) => (
+              <option key={v.id} value={v.vehicleNumber}>
+                🚗 {v.vehicleNumber}
+              </option>
+            ))}
+          </select>
 
           {/* Payment Status Dropdown Filter */}
           {activeTab === "records" && (
