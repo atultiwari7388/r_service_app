@@ -3253,7 +3253,7 @@ export default function RecordsPage() {
             return <span>-</span>;
           }
           return (
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <div className="flex items-center gap-2 whitespace-nowrap">
               {record.paymentStatus === "Paid" ? (
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
                   Paid
@@ -3263,16 +3263,19 @@ export default function RecordsPage() {
                   Partial (${record.paidAmount || 0})
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
+                /* Unpaid badge commented out as requested */
+                /* <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
                   Unpaid
-                </span>
+                </span> */
+                null
               )}
               {record.paymentStatus !== "Paid" && (
                 <Link
                   href={`/account/pay-invoice?recordId=${record.id}`}
-                  className="text-[11px] font-bold text-[#F96176] hover:underline"
+                  className="relative inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#F96176] via-[#ff4b63] to-[#e03b52] shadow-[0_0_12px_rgba(249,97,118,0.65)] hover:shadow-[0_0_20px_rgba(249,97,118,0.95)] hover:scale-105 active:scale-95 transition-all duration-300 animate-pulse font-sans tracking-wide"
                 >
-                  Pay
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  <span>Pay</span>
                 </Link>
               )}
             </div>
