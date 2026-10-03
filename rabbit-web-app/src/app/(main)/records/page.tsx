@@ -3272,10 +3272,9 @@ export default function RecordsPage() {
               {record.paymentStatus !== "Paid" && (
                 <Link
                   href={`/account/pay-invoice?recordId=${record.id}`}
-                  className="relative inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#F96176] via-[#ff4b63] to-[#e03b52] shadow-[0_0_12px_rgba(249,97,118,0.65)] hover:shadow-[0_0_20px_rgba(249,97,118,0.95)] hover:scale-105 active:scale-95 transition-all duration-300 animate-pulse font-sans tracking-wide"
+                  className="relative inline-flex items-center justify-center px-3.5 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-[#F96176] to-[#e03b52] shadow-[0_0_10px_rgba(249,97,118,0.5)] hover:shadow-[0_0_16px_rgba(249,97,118,0.85)] hover:scale-105 active:scale-95 transition-all duration-200 font-sans tracking-wide"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                  <span>Pay</span>
+                  Pay
                 </Link>
               )}
             </div>
