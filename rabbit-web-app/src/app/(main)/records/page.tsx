@@ -3192,7 +3192,7 @@ export default function RecordsPage() {
       {
         accessorKey: "invoice",
         header: "Invoice",
-        size: 110,
+        size: 85,
         Cell: ({ cell }) => {
           const val = cell.getValue<string>();
           return <span>{val && val.trim() !== "" ? val : "-"}</span>;
@@ -3202,7 +3202,7 @@ export default function RecordsPage() {
         accessorFn: (row) => row.vehicleDetails?.vehicleNumber || "",
         id: "vehicleNumber",
         header: "Vehicle",
-        size: 120,
+        size: 110,
         Cell: ({ row }) => (
           <span className="font-semibold text-gray-900">
             {row.original.vehicleDetails?.vehicleNumber || "-"}
@@ -3213,7 +3213,7 @@ export default function RecordsPage() {
         accessorFn: (row) => row.vehicleDetails?.companyName || "",
         id: "companyName",
         header: "Company",
-        size: 140,
+        size: 130,
         Cell: ({ row }) => (
           <span>{row.original.vehicleDetails?.companyName || "-"}</span>
         ),
@@ -3225,7 +3225,7 @@ export default function RecordsPage() {
         },
         id: "invoiceAmount",
         header: "Inv. Amount",
-        size: 120,
+        size: 95,
         Cell: ({ row }) => {
           const rawAmt = row.original.invoiceAmount;
           const num = Number(rawAmt);
@@ -3245,7 +3245,7 @@ export default function RecordsPage() {
         accessorFn: (row) => row.paymentStatus || "Unpaid",
         id: "paymentStatus",
         header: "Payment",
-        size: 150,
+        size: 90,
         Cell: ({ row }) => {
           const record = row.original;
           const numAmt = Number(record.invoiceAmount);
@@ -3288,7 +3288,7 @@ export default function RecordsPage() {
             : Number(row.miles) || 0,
         id: "milesHours",
         header: "Miles/Hours",
-        size: 120,
+        size: 95,
         Cell: ({ row }) => {
           const record = row.original;
           if (record.vehicleDetails?.vehicleType === "Trailer") {
@@ -3316,7 +3316,7 @@ export default function RecordsPage() {
                 .filter((s) => s && (s.serviceName || (s as any).sName))
                 .sort((a, b) =>
                   (a.serviceName || (a as any).sName || "").localeCompare(
-                    b.serviceName || (b as any).sName || ""
+                     b.serviceName || (b as any).sName || ""
                   )
                 )
                 .map((service) => formatServiceForTable(service))
@@ -3324,7 +3324,7 @@ export default function RecordsPage() {
             : "",
         id: "services",
         header: "Services",
-        size: 220,
+        size: 200,
         Cell: ({ row }) => {
           const record = row.original;
           if (!record.services || record.services.length === 0)
@@ -3344,7 +3344,7 @@ export default function RecordsPage() {
       {
         accessorKey: "description",
         header: "Description",
-        size: 180,
+        size: 160,
         Cell: ({ cell }) => {
           const desc = cell.getValue<string>();
           if (!desc || desc.trim() === "") return <span>-</span>;
@@ -3355,7 +3355,7 @@ export default function RecordsPage() {
           return (
             <span
               title={trimmed}
-              className="text-gray-700 block truncate max-w-[180px] text-xs"
+              className="text-gray-700 block truncate max-w-[160px] text-xs"
             >
               {displayText}
             </span>
@@ -3365,7 +3365,7 @@ export default function RecordsPage() {
       {
         accessorKey: "workshopName",
         header: "Workshop Name",
-        size: 150,
+        size: 130,
         Cell: ({ cell }) => {
           const shop = cell.getValue<string>();
           return <span>{shop && shop.trim() !== "" ? shop : "-"}</span>;
@@ -3489,7 +3489,8 @@ export default function RecordsPage() {
         fontWeight: 600,
         fontSize: "0.8125rem",
         borderBottom: "2px solid #E5E7EB",
-        py: 1.5,
+        py: 1,
+        px: 1.25,
         "& .MuiTableSortLabel-root": {
           color: "#4B5563",
           "&:hover": {
@@ -3510,7 +3511,8 @@ export default function RecordsPage() {
         color: "#374151",
         fontSize: "0.8125rem",
         borderBottom: "1px solid #F3F4F6",
-        py: 1.25,
+        py: 0.85,
+        px: 1.25,
       },
     },
     muiTableBodyRowProps: ({ row }: { row: MRT_Row<ServiceRecord> }) => ({
